@@ -12,6 +12,12 @@ import (
 // fatal error, stays on stderr.
 const extLogEnv = "PIG_EXT_LOG"
 
+// extLogCreateEnv, set to "1" beside PIG_EXT_LOG, lets the SDK create the log on its first write. The host sets it for the extensions it fuses into its own process,
+// whose log has no other writer and no reader, and names a path that does not exist yet: a session in which no handler fails leaves nothing in the temporary
+// directory, as Pi's does. An isolated or packed extension's log is made by the host, which reads it, so the SDK never creates that one: a log the host removed
+// is not made again by a process that outlives it.
+const extLogCreateEnv = "PIG_EXT_LOG_CREATE"
+
 // diagnosticLogMax bounds the diagnostics a process writes to the log: the host bounds what a process writes to stderr (processStderrLog), and a handler that
 // panics on every event must not fill the disk through this path. The diagnostic that crosses the bound is the last.
 const diagnosticLogMax = 1 << 20
@@ -40,9 +46,14 @@ func writeDiagnostic(text []byte) {
 	_, _ = os.Stderr.Write(text)
 }
 
-// appendToLog writes text in one write to the end of the file at path, which the host opened for appending too.
+// appendToLog writes text in one write to the end of the file at path, which the host opened for appending too, or, when the host allowed it (extLogCreateEnv),
+// creates it with mode 0600. A creating open does not follow a symbolic link where the platform has the flag, so a link planted at the path is not written through.
 func appendToLog(path string, text []byte) error {
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND, 0)
+	flags := os.O_WRONLY | os.O_APPEND
+	if os.Getenv(extLogCreateEnv) == "1" {
+		flags |= os.O_CREATE | openNoFollow
+	}
+	file, err := os.OpenFile(path, flags, 0o600)
 	if err != nil {
 		return err
 	}

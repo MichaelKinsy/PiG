@@ -2677,6 +2677,10 @@ func TerminateHostProcesses(hosts ...*Host) {
 	for _, log := range logs {
 		log.remove()
 	}
+	// The fused extensions run in this process and no process of theirs was killed, so the log their SDK created for a diagnostic is removed here, as Shutdown removes it.
+	for _, h := range hosts {
+		h.fusedLog.remove()
+	}
 }
 
 // killProcesses kills the processes of h and returns the channels that close once each is reaped, and the stderr logs of the processes it killed.

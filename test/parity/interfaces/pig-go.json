@@ -151965,6 +151965,17 @@
       "shapeHash": "sha256:e4599f7030a122b160bfbe4cc61e53e5995365c2204c18a35031b8c112ef22de"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#extLogCreateEnvName",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "extLogCreateEnvName",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#extLogEnvName",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "extLogEnvName",
@@ -227557,6 +227568,17 @@
       "shapeHash": "sha256:0b86403d75362749e127438280fbd6816e4dcfad896c5180170b1e9551e37462"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#extLogCreateEnv",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "extLogCreateEnv",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#extLogEnv",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "extLogEnv",
@@ -230613,6 +230635,17 @@
         "type": "func(value any) bool"
       },
       "shapeHash": "sha256:e97bf7bf1ecfdfceef9dc48e038cbf324758ba5a8557005c28b1eea4898962d3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#openNoFollow",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "openNoFollow",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#openStream",

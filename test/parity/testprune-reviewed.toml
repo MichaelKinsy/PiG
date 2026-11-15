@@ -2276,3 +2276,10 @@ commit = "949305dc9dc79243a9af23b31178385c18edcd6f"
 class = "DIVERGENCE"
 cite = "D167"
 reason = "D167 records that PiG splits a compaction's summary requests by the history's size, where Pi sends one request. The commit changes what the rule expects of a session without usage (the first form: unchanged chunks by the plain estimate) and of a session with usage (the estimate times the measured ratio times 1.05, and the first form again after the provider refuses a calibrated request); no Pi line governs the split, so no Pi citation applies. The expected values are the request counts of TestCompactionOfACalibratedSessionSizesRequestsByItsRatio, TestCompactionOfASessionWithoutUsageIsTheFirstFormOfTheSplit and TestCompactionAfterARefusalOfACalibratedRequestContinuesByTheFirstForm."
+
+[[entry]]
+path = "coding/extension/host/subprocess/ext_log_test.go"
+commit = "c96c624b894a86e4d29fde72dc050cc6f42703b1"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Row 185 (a Piglet Binary with a fused extension left pig-ext-fused-N.log in the temporary directory). Pi writes no extension log file at all: Pi runs an extension in its own process and its console reaches the terminal, so the file is PiG's own transport for SDK diagnostics (docs/extension-api-parity.md, row `SDK-owned diagnostics`, which has no Pi counterpart) and no Pi line governs the test. The two changed expected values are PiG's own rule of the commit: TestFusedExtLogIsExportedAndRemoved now requires that export names the path and creates no file (the Go SDK creates it with the first diagnostic, tested by TestFusedExtLogIsCreatedByTheFirstDiagnostic) where it required the file to exist, and that remove unsets PIG_EXT_LOG_CREATE with PIG_EXT_LOG. A session with no handler failure leaves the temporary directory as Pi's does, which TestFusedExtensionLogInTempDirectory pins in a real Piglet Binary."

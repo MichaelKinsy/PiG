@@ -36,6 +36,13 @@ func Extension() *sdk.Extension {
 		}
 		return nil
 	})
+	// vping answers with a notice that repeats its argument: the extension is loaded and serving once it is seen.
+	ext.Command("vping", "Answer with a notice", func(ctx sdk.Context, args string) error {
+		ctx.Notify("viewfx-pong"+args, "info")
+		return nil
+	})
+	// vpanic fails the way a handler fails: the SDK recovers the panic and reports it, with its stack, to the extension's log (the fused log of a Piglet Binary).
+	ext.Command("vpanic", "Panic in a handler, as a failing extension does", func(sdk.Context, string) error { panic("viewfx-probe-boom") })
 	ext.OnViewIntent(func(in sdk.ViewIntentInvocation) sdk.ViewIntentResult {
 		var arg struct {
 			Value string `json:"value"`

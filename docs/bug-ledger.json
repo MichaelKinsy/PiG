@@ -48218,6 +48218,34 @@
       ]
     },
     {
+      "id": "BF-c96c624",
+      "title": "A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the…",
+      "symptom": "A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the session ends, and creates none unless an extension handler fails.",
+      "rootCause": "A Piglet Binary with a fused extension put pig-ext-fused-N.log into the temporary directory for the whole session and left it behind when the process ended through TerminateHostProcesses (a hung-up terminal, SIGINT, the crash exit, the end of print and rpc mode). Pi writes no such file.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the session ends, and creates none unless an extension handler fails.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c96c624b89",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/ext_log_test.go::TestFusedExtLogIsExportedAndRemoved",
+        "coding/extension/host/subprocess/fused_ext_log_test.go::TestFusedExtLogEndsWithTheProcess",
+        "coding/extension/host/subprocess/fused_ext_log_test.go::TestFusedExtLogIsCreatedByTheFirstDiagnostic",
+        "coding/extension/host/subprocess/fused_ext_log_test.go::TestWithExtLogDropsThePermissionToCreate",
+        "extensions/sdk/diagnostic_create_test.go::TestDiagnosticCreatesTheLogOnlyWithThePermission",
+        "extensions/sdk/diagnostic_create_test.go::TestDiagnosticDoesNotCreateThroughASymbolicLink",
+        "test/integration/fused_ext_log_exit_test.go::TestFusedExtensionLogInTempDirectory"
+      ]
+    },
+    {
       "id": "BF-c98be55",
       "title": "The renderer's width and height are read through one atomic snapshot",
       "symptom": "The renderer's width and height are read through one atomic snapshot.",
