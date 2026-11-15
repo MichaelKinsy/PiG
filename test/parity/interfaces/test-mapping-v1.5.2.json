@@ -2732,7 +2732,7 @@
       "evidence": [
         "chord/next/host/host_dependencies_test.go"
       ],
-      "rationale": "All 13 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 13 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi 8270d9af6 adds the two cases of `a denied dependency (slice 14 §2.2)`: TestADeniedDependencyParksItsDependentShowingTheDenial... and TestADeniedDependencyWithTimersIsNoParkedLongReport... (host_dependencies_test.go); 15 cases at 7cc21c24."
     },
     {
       "path": "packages/chord/test/host/facet.test.ts",
@@ -2871,7 +2871,7 @@
       "evidence": [
         "chord/next/host/host_reference_source_test.go"
       ],
-      "rationale": "All 18 upstream cases run in the evidence files. Pi 47e9d74f9 adds 3 cases (a member its reference has not seen): the three TestReferenceSourceUnseen... tests; the hash is the pin's."
+      "rationale": "All 18 upstream cases run in the evidence files. Pi 47e9d74f9 adds 3 cases (a member its reference has not seen): the three TestReferenceSourceUnseen... tests; the hash is the pin's. Pi 8270d9af6 adds the case `a denied reference's source (slice 14 §2.2)` (keeps no value): TestHostReferenceSourceADeniedReferencesSourceKeepsNoValue... (host_reference_source_test.go); 22 cases at 7cc21c24."
     },
     {
       "path": "packages/chord/test/host/reference.test.ts",

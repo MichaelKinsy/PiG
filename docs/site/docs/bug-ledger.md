@@ -207,6 +207,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-19a07f0](#bf-19a07f0) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
 | [BF-19a2d2d](#bf-19a2d2d) | fix(durable/core): match Pi's passes in the cut-off flows: drain resumes after the async reserve, open and… | PiG's own defect | All platforms | Unreleased |
 | [BF-19f9ce2](#bf-19f9ce2) | Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the… | PiG's own defect | All platforms | Unreleased |
+| [BF-1a00b07](#bf-1a00b07) | Chord: the loading and paging of a list and of a tiling are tasks of the host's loop that waiting for the… | PiG's own defect | All platforms | Unreleased |
 | [BF-1a6b1ab](#bf-1a6b1ab) | A tool whose name, description or parameter schema holds a lone UTF-16 surrogate now reaches the provider… | PiG's own defect | All platforms | Unreleased |
 | [BF-1a855cd](#bf-1a855cd) | The `/session` block now follows a later theme change and shows the cache-warming countdown as of each… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1a893bc](#bf-1a893bc) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
@@ -660,6 +661,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-53312d8-2](#bf-53312d8-2) | `pi.exec()` no longer waits forever for a command that ignores SIGTERM after a timeout, an abort or the… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-53385a3](#bf-53385a3) | Registering a large MCP catalog, building a CodeMode sandbox from one, and CodeMode tool discovery were… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-536faf0](#bf-536faf0) | A failed extension load could report a less specific error than the extension's stderr gave | PiG's own defect | All platforms | Unreleased |
+| [BF-537249a](#bf-537249a) | Chord: an abort listener of the host (a call's wait, an event subscription's stop, a reference's `until`, a… | PiG's own defect | All platforms | Unreleased |
 | [BF-5380e0a](#bf-5380e0a) | fix(extension): load failure shows the extension's own cause; registration edge-case rows | PiG's own defect | All platforms | Unreleased |
 | [BF-5425648](#bf-5425648) | A provider written with the Go extension SDK whose `streamSimple` request the host cancels is now always… | PiG's own defect | All platforms | Unreleased |
 | [BF-54283ce](#bf-54283ce) | fix(extension): Shutdown closes live child sessions and releases the objects they hold | PiG's own defect | All platforms | Unreleased |
@@ -701,6 +703,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-57dc298](#bf-57dc298) | On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an… | PiG's own defect | Linux | Unreleased |
 | [BF-57ee33b](#bf-57ee33b) | A model an extension registers with `registerProvider` reaches `ctx.modelRegistry`, `ctx.model` and RPC as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-57f113b](#bf-57f113b) | A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event… | PiG's own defect | All platforms | Unreleased |
+| [BF-58c30ec](#bf-58c30ec) | Chord: a parked call whose caller aborts is rejected inside the abort, and a flush that runs in the same… | PiG's own defect | All platforms | Unreleased |
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-59693cd](#bf-59693cd) | Interactive mode: after choosing an entry in `/tree` the chat first redrew at the old position and, about a… | PiG's own defect | All platforms | Unreleased |
@@ -1119,6 +1122,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7e16053-2](#bf-7e16053-2) | A configured local Package whose directory does not exist is now a startup warning in the session, and an… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7e1a05c](#bf-7e1a05c) | Resource resolution follows Pi's `DefaultPackageManager.resolve` in two cases: built-in extensions come after… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7e42a6a](#bf-7e42a6a) | CSS module mappings are what Node's `vm` gives, as Pi's (key order of integer-like names, no `__proto__` key… | PiG's own defect | All platforms | Unreleased |
+| [BF-7e9a4bc](#bf-7e9a4bc) | Chord: an abort listener that ran leaves every source it listened to, and an emptied listener set is dropped | PiG's own defect | All platforms | Unreleased |
 | [BF-7ea21f3](#bf-7ea21f3) | RPC output writes summed usage (a tool result's usage with nested model calls, a compaction summary's usage)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7eb7d29](#bf-7eb7d29) | The model picker (`/model`) now shows a catalog-refresh timeout or failure as soon as it happens | PiG's own defect | All platforms | Unreleased |
 | [BF-7ecacae](#bf-7ecacae) | When a session's working directory no longer exists, interactive mode now offers Continue, Fork or Cancel (Pi… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -2253,6 +2257,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fdaba00](#bf-fdaba00) | fix: chord/delta sorts with package slices, customContentChars decodes without any, REUSE and provenance… | PiG's own defect | All platforms | Unreleased |
 | [BF-fdbd6ca](#bf-fdbd6ca) | Automatic `fd` and `rg` downloads no longer fetch x86-64 binaries on ARM32 and other architectures without a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-fdfb748](#bf-fdfb748) | A surrogate pair split across two concatenated string halves is written as its character in session files… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-fe0d5a3](#bf-fe0d5a3) | Chord: waiting for a host to settle now waits for the rest of a handler that parked (a method handler's or a… | PiG's own defect | All platforms | Unreleased |
 | [BF-fe16108](#bf-fe16108) | Provider request bodies (OpenAI Completions, OpenAI Responses, Codex, Anthropic, Google and Mistral) write… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fe4bd27](#bf-fe4bd27) | `PI_TUI_ESC_TIMEOUT` now waits as Node's `setTimeout` does for the lone-Escape timer: a fractional value is… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-fe625bb](#bf-fe625bb) | Mistral request bodies list their members in Pi's order (`model`, `stream`, `messages`, ..., then the renamed… | PiG's own defect | All platforms | 0.5.0 |
@@ -4854,6 +4859,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `19f9ce245e` (2026-11-12)
 - **Tests:** `chord/next/store/store_test.go::TestStore`
 - **Release note:** Chord store: `Close` now waits for the `OnCommitted` announcement of the last commit before it closes the backend. A listener could be called after `Close` had returned, or not have been called yet when it returned.
+
+### BF-1a00b07
+
+**Chord: the loading and paging of a list and of a tiling are tasks of the host's loop that waiting for the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** They ran on goroutines that only a test helper joined, so a settle could return while a page was still loading.
+- **Root cause:** Pi's list and tiling continue through promises: `void read.load()` (tiling.ts:211, :259), `void this.read(...)` (list.ts:126), the `more` chain `#loading.then(async () => { while (...) await #switched.promise; await #current?.more() })` (list.ts:92-99) and `await Promise.all(pages.map((page) => page.read.load()))` (tiling.ts:127). The Go list and tiling started bare goroutines behind sync.WaitGroups that only a test's `idle()` joined: not counted by the loop's join.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1a00b075b6` (2026-11-15)
+- **Tests:** None recorded.
+- **Release note:** Chord: the loading and paging of a list and of a tiling are tasks of the host's loop that waiting for the host to settle counts. Before, they ran on goroutines that only a test helper joined, so a settle could return while a page was still loading.
 
 ### BF-1a6b1ab
 
@@ -11116,6 +11135,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** A failed extension load could report a less specific error than the extension's stderr gave. When a Go, Rust, Python or Lisp runner failed its only member and exited at once, the host read the stderr log before its copy had forwarded the runner's last line, so a factory that returned nothing after a host helper call was reported as a bare "connection closed before register", while the same factory in a shared cell reported "factory returned nil". The host now waits for that copy to end, within two seconds, before it reads the cause.
 
+### BF-537249a
+
+**Chord: an abort listener of the host (a call's wait, an event subscription's stop, a reference's `until`, a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The work started on a goroutine of its own after the cancel, in no order against the cancelling section, so a settle could return between a cancel and the work it caused.
+- **Root cause:** Every registration is ended where it was before the change (each site kept its stop call: completion, stop, seal, release); TestOnAbortStoppedRegistrationsLeaveNothingOnALongLivedContext (20,000 stopped registrations on one context grow the heap under 2 MiB).
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `537249aa9f` (2026-11-15), `80406e92df` (2026-11-15)
+- **Tests:** `chord/next/host/host_loop_abort_test.go::TestALinkedAbortFollowsItsSourcesInsideTheirCancel`, `chord/next/host/host_loop_abort_test.go::TestOnAbortFromOutsideASectionIsAHopTheJoinWaitsFor`, `chord/next/host/host_loop_abort_test.go::TestOnAbortInASectionQueuesItsWorkAfterTheSection`, `chord/next/host/host_loop_abort_test.go::TestOnAbortListensToASourceOfAnotherPackageToo`, `chord/next/host/host_loop_abort_test.go::TestOnAbortNowRunsInsideTheCancelThatAbortsTheContext`, `chord/next/host/host_loop_abort_test.go::TestOnAbortNowRunsOnceAndNotAfterItsStop`, `chord/next/host/host_loop_abort_test.go::TestOnAbortOnAnAbortedContextQueuesAtOnce`, `chord/next/host/host_loop_abort_test.go::TestOnAbortStopKeepsItsWorkFromBeingQueued` and 1 more in docs/bug-ledger.json
+- **Release note:** Chord: an abort listener of the host (a call's wait, an event subscription's stop, a reference's `until`, a root scope's seal, a routine's sleep and `on` watch, a consumer's outgoing call, the end of a blocked route settle) now runs inside the cancel and hands its work to the host's loop at once, as Pi's abort listener runs inside `abort()`. Before, the work started on a goroutine of its own after the cancel, in no order against the cancelling section, so a settle could return between a cancel and the work it caused.
+
 ### BF-5380e0a
 
 **fix(extension): load failure shows the extension's own cause; registration edge-case rows**
@@ -11679,6 +11712,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `57f113ba40` (2026-11-09)
 - **Tests:** None recorded.
 - **Release note:** A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it. The SDK queued the event the provider pushed and a goroutine or thread encoded it later, so a provider that appended to its shared partial message right after a `Push` could have the host receive the later text (under load every `text_delta` showed the finished message), and in the Go SDK the encoder's read of the provider's map was a data race with the provider's writes. `Push` and `End` now take the event, and the result, at the call (the Go SDK encodes the event on the provider's goroutine; the Python and Lisp SDKs queue a copy), so the host sees each event as it was at the push, which is stronger than Pi's own guarantee (D615): Pi's consumer reads the shared message at its own turn, so after a synchronous burst of pushes or between microtask awaits it shows later changes. The event and the message the provider reads back (`Events()`, `result()`) are still its own objects, and a value of a kind JSON has no copy of (a lock, a cycle) ends the request instead of raising in the provider's `Push`. The Rust SDK takes the event by value and is unchanged.
+
+### BF-58c30ec
+
+**Chord: a parked call whose caller aborts is rejected inside the abort, and a flush that runs in the same…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: a parked call whose caller aborts is rejected inside the abort, and a flush that runs in the same section no longer sends the cancelled call.
+- **Root cause:** Pi's listener rejects the parked call and takes it out of the queue inside `abort()`. The call's cancel was context.AfterFunc plus Loop.Run: a goroutine of the runtime's, in no order against the cancelling section and uncounted by the join. It is onAbort now (a microtask of the loop after the cancelling section). A flush that runs before that microtask (the same section) meets a call whose context is aborted: it takes it out and rejects it with the reason, as Pi's synchronous listener had already done, and does not send it (TestParkedCallsAFlushBeforeTheCancelListenerRanDoesNotSendTheCancelledCall: red without the check, 3 of 3).
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `58c30eca5c` (2026-11-15)
+- **Tests:** `chord/next/host/host_parked_test.go::TestParkedCallsAFlushBeforeTheCancelListenerRanDoesNotSendTheCancelledCall`, `chord/next/host/host_parked_test.go::TestParkedCallsKeepTheirOrderAfterManyLeft`, `chord/next/host/host_parked_test.go::TestParkedCallsRejectAtOnceWhenTheirCallerCancels`
+- **Release note:** Chord: a parked call whose caller aborts is rejected inside the abort, and a flush that runs in the same section no longer sends the cancelled call.
 
 ### BF-58f6697
 
@@ -17479,6 +17526,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7e42a6a5f6` (2026-11-07)
 - **Tests:** `chord/nextnode/plugins/plugins_cssmodules_node_test.go::FuzzScopeCSSModuleMatchesNode`, `chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorEndsAnEvaluationWithItsContextAndGoesOnWithTheNext`, `chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorKillsAProcessThatDoesNotAnswer`, `chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorRefusesAfterCloseAndEndsItsProcess`, `chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorReportsAModuleThatDoesNotEvaluateAndGoesOn`, `chord/nextnode/plugins/plugins_cssmodules_pi_test.go::TestScopeCSSModuleGivesWhatPisScopeCssModuleGivesForEveryGoldenCase`, `chord/nextnode/plugins/plugins_cssmodules_test.go::TestEsbuildBuildsThatShareAnEvaluatorStartOneNodeSubprocessBetweenThem`
 - **Release note:** CSS module mappings are what Node's `vm` gives, as Pi's (key order of integer-like names, no `__proto__` key, template-literal names): `ScopeCSSModule` now takes the Node options and a context (the component's builds share one Node subprocess for the mappings), and `ScopedCSS.Classes` is the mapping's JSON text; a CSS module is decoded as UTF-8 like `TextDecoder`. A chmod of a recorded base file is compared like a write, and the base watches are renewed only when the directory is another one (inode and birth time), as Pi's.
+
+### BF-7e9a4bc
+
+**Chord: an abort listener that ran leaves every source it listened to, and an emptied listener set is dropped**
+
+- **Source:** PiG's own defect
+- **Symptom:** A context that outlived its waits (a link's or a host's) kept every wait that had ended by an abort, and the memory of its busiest moment.
+- **Root cause:** OnAbort registers a listener on every cancel that can abort its context: the context itself and each parent and signal behind it. A cancel clears the set of its own source only, so a listener that ran stayed in the sets of the others until its waiter called stop, and a set emptied by stop kept the buckets it grew to. A source that outlives its waits (a link's or a host's context) kept every wait that ended by an abort, and the size of its busiest moment.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7e9a4bc8f5` (2026-11-15)
+- **Tests:** `chord/context/abort_listener_leak_test.go::TestOnAbortLeavesNothingHeldByALongLivedContext`
+- **Release note:** Chord: an abort listener that ran leaves every source it listened to, and an emptied listener set is dropped. Before, a context that outlived its waits (a link's or a host's) kept every wait that had ended by an abort, and the memory of its busiest moment.
 
 ### BF-7ea21f3
 
@@ -33252,6 +33313,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `89338b7eac` (2026-10-10), `fdfb74849c` (2026-10-10), `fe16108cc7` (2026-10-10)
 - **Tests:** `ai/openai_request_key_order_oracle_test.go::TestOpenAICompletionsRequestKeysFollowPiAssignmentOrder`, `ai/openai_responses_request_key_order_oracle_test.go::TestOpenAIResponsesRequestKeysFollowPiAssignmentOrder`, `ai/perf_gate_norace_test.go::TestProviderRequestHistoryAllocationGate`, `ai/request_body_escaping_test.go::TestProviderRequestBodiesWriteCharactersAsJSONStringifyDoes`, `durable/core/jv/split_pair_test.go::TestAppendStringJoinsASplitSurrogatePair`, `extensions/sdk/json/surrogate_test.go::TestSplitSurrogatePairEncodesAsItsCharacter`, `internal/jsstring/unescape_stringify_test.go::TestUnescapeForStringifyRewritesOnlyRealEscapes`
 - **Release note:** A surrogate pair split across two concatenated string halves is written as its character in session files, extension frames and Durable records, as Pi's `JSON.stringify` writes it, instead of as two `\u` escapes.
+
+### BF-fe0d5a3
+
+**Chord: waiting for a host to settle now waits for the rest of a handler that parked (a method handler's or a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The rest of such a handler ran on a goroutine the settle did not count, so a check made right after the settle could see a state from before it.
+- **Root cause:** Lifetimes are unchanged: each task started as a Loop.Go task before (the loop's WaitGroup, which the host's close does not call: Loop.Wait has no production caller) and ends when what it waits for ends at close (the watch, the turn, the ending, the store's refusal of an ended object); the ones that run plugin code (a root fn, a job's Run, an `Awaiting` work) end when the plugin returns, as before, with their context aborted at the seal. Nothing here makes a task outlive its owner that did not.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f0020ca3a4` (2026-11-15), `fe0d5a32ce` (2026-11-15)
+- **Tests:** `chord/next/host/host_loop_join_test.go::TestLoopJoinDoesNotWaitForAHandlerInSleepAndItResumesAtTheDeadlineAndAtAnAbort`, `chord/next/host/host_loop_join_test.go::TestLoopJoinDoesNotWaitForAHandlerInUntilAbortedAndWaitsForItsRestOnceItIsAborted`, `chord/next/host/host_loop_join_test.go::TestLoopJoinDoesNotWaitForAHandlerParkedOnAGateAndWaitsForItsRestOnceTheGateIsReleased`, `chord/next/host/host_loop_join_test.go::TestLoopJoinWaitsForWhatIsLeftOfAHandlerThatParked`
+- **Release note:** Chord: waiting for a host to settle now waits for the rest of a handler that parked (a method handler's or a route's `resolve` after its first wait), for the continuations of every unawaited promise of the host (the close tail, host-data turns, flushes and retries of an object, a reference's follow and release, a root scope's handler, a routine's wait, a job's record) and of the documents. Before, the rest of such a handler ran on a goroutine the settle did not count, so a check made right after the settle could see a state from before it.
 
 ### BF-fe16108
 
