@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"reflect"
 	"strings"
 	"testing"
@@ -119,9 +120,7 @@ func TestACorrectionThatIsMalformedFailsTheGenerator(t *testing.T) {
 	}
 	with := func(key, value string) map[string]string {
 		c := map[string]string{}
-		for k, v := range good {
-			c[k] = v
-		}
+		maps.Copy(c, good)
 		c[key] = value
 		return c
 	}
