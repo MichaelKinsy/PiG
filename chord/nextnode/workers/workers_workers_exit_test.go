@@ -31,6 +31,11 @@ func reportingFleet(t *testing.T, log *reportLog, onError func(err WorkersError)
 	return f, hold, chordStore.LastSeq
 }
 
+// Case 1's order, the link closed before the exit is told, is the process's contract (`WorkerProcess.ended`: `p.telling.release()` before
+// `events.Exited`) and is proven at the process level: TestAWorkerProcessClosesItsLinkAtItsExitBeforeTheExitIsToldAsNeitherALostNorAClosedLink
+// and TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsChannel go red when the exit is told first ([started exited closed],
+// want [started closed exited]). This case does not pin it: its gate (`before`) is released at the publication, after the settle, so the
+// link is closed long before in either order (it survived that mutation 50 / 50).
 func TestAWorkersExitAWorkerThatReportsAndExitsInTheSameTurnItsLinkIsClosedBeforeItsExitIsPublishedNoTransactionOfItsReportsCommits(t *testing.T) {
 	published := make(chan struct{})
 	var once atomic.Bool

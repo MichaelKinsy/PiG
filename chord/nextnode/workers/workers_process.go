@@ -263,7 +263,9 @@ func (p *WorkerProcess) ended(exit Exit, events ProcessEvents) {
 		exit = killedExit(exit)
 	}
 	// The link's end is the exit's from here: the close of the channel the tree's end causes is told as neither a lost nor a
-	// closed link (Pi's `link.end()` sits right after the group's kill, before anything is told).
+	// closed link. Go only: Pi's kill of the group and its `link.end()` (process.ts:79-81) are one turn, nothing reaches the link
+	// between them; here the exit waits for the output's pumps between the kill and the release below, and without this a channel
+	// EOF that lands in that wait would be told as a closed link before the exit.
 	p.telling.ending()
 	p.tree.kill()
 	// Everything it wrote is told before its exit, and its exit waits for no stream's end: each reader settles what was

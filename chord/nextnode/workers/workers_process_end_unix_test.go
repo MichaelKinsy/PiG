@@ -5,6 +5,7 @@ package workers
 import (
 	"reflect"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"testing"
 )
@@ -52,6 +53,60 @@ func TestAWorkerProcessClosesItsLinkAtItsExitBeforeTheExitIsToldAsNeitherALostNo
 	}
 	// What the tree's end still tells is told once the streams ended: nothing reads the child's any more.
 	until(t, func() bool { return !child.stillRead() })
+	mu.Lock()
+	defer mu.Unlock()
+	if want := []string{"started", "closed", "exited"}; !reflect.DeepEqual(events, want) {
+		t.Fatalf("events = %v, want %v", events, want)
+	}
+}
+
+// Go-only: Pi has no counterpart of `ending` (process.ts:79-81: its kill of the group and its `link.end()` are one turn of the event
+// loop, so nothing reaches the link between them). Go's exit waits for the output's pumps between the kill and the release, and here
+// the kill is what ends the channel's last holder (the fixture's grandchild, in the tree): a close of the channel that lands in that
+// wait is the exit's to tell, not a closed link told before it. The first output pump to tell a chunk is held in its handler, so the exit
+// stays in the wait until the channel's reader and the other pump ended.
+func TestAWorkerProcessLinkClosedByTheKillOfItsTreeWhileItsExitWaitsForItsOutputIsNeitherALostNorAClosedLink(t *testing.T) {
+	var mu sync.Mutex
+	var events []string
+	record := func(event string) {
+		mu.Lock()
+		defer mu.Unlock()
+		events = append(events, event)
+	}
+	started := make(chan struct{})
+	var once sync.Once
+	var holding atomic.Bool
+	held, release := make(chan struct{}), make(chan struct{})
+	letGo := sync.OnceFunc(func() { close(release) })
+	t.Cleanup(letGo)
+	child, err := NewWorkerProcess(
+		ForkOptions{Entry: fixtureEntry(t), Env: fixtureEnvironment("child"), OnOutput: func(string, []byte) {
+			// The first chunk of either stream holds its pump; the other stream's goes on (a `sync.Once` would hold it too).
+			if holding.CompareAndSwap(false, true) {
+				close(held)
+				<-release
+			}
+		}},
+		ProcessEvents{
+			Control:    func(FromWorker) { record("started"); once.Do(func() { close(started) }) },
+			LinkLost:   func() { record("link lost") },
+			LinkClosed: func() { record("link closed") },
+			Exited:     func(Exit) { record("exited") },
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	child.Link.OnClose(func() { record("closed") })
+	<-started
+	<-held
+	if err := syscall.Kill(child.Pid, syscall.SIGTERM); err != nil {
+		t.Fatal(err)
+	}
+	// The channel's reader and the stderr pump end with the tree's kill; the stdout pump is held: nothing else reads.
+	until(t, func() bool { return child.reading.Load() == 1 })
+	letGo()
+	<-child.Exited()
 	mu.Lock()
 	defer mu.Unlock()
 	if want := []string{"started", "closed", "exited"}; !reflect.DeepEqual(events, want) {
