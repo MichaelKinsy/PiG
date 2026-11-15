@@ -284,8 +284,8 @@ func TestAttemptAnAttemptWaitingForItsPreviousInstancesTeardownIsBoundedByReadyT
 	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(attemptPage, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			factories.Add(1)
-			self.Open(func(context.Context) (any, error) { return "native", nil }, func(any, NativeCloseReason, context.Context) error {
-				closing.wait(t)
+			self.Open(func(context.Context) (any, error) { return "native", nil }, func(_ any, _ NativeCloseReason, ctx context.Context) error {
+				closing.await(t, ctx)
 				return nil
 			})
 			return contracts.Implementation{Members: contracts.VariantImplementation{

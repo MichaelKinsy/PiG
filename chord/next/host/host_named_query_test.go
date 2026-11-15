@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -675,7 +676,10 @@ func TestNamedQueryASetMovedToAnotherPluginsTableInOneReloadIsBoundToTheNewTable
 	slow := HostFacet{Name: "@test/sessions", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return nqServeSessions(h, nqRows, func(self StoreSelf) {
 			self.Open(func(context.Context) (any, error) { return nil, nil },
-				func(any, NativeCloseReason, context.Context) error { <-closing; return nil })
+				func(_ any, _ NativeCloseReason, ctx context.Context) error {
+					_, _ = chordctx.Receive(context.WithoutCancel(ctx), closing)
+					return nil
+				})
 		})
 	})}
 	reloadMust(t)(host.Reload([]HostFacet{slow, club}, background, ReloadOptions{}))
