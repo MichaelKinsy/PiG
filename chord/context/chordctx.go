@@ -5,6 +5,7 @@ package chordctx
 import (
 	"context"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -60,6 +61,9 @@ type abortContext struct {
 	detached bool
 	// order is the place of this context's own cancel in the order of aborts (see AbortOrder); 0 until it was cancelled.
 	order atomic.Uint64
+	// listeners are the OnAbort listeners of this context's own cancel, guarded by mu; the cancel function runs and clears them.
+	mu        sync.Mutex
+	listeners map[*abortListener]struct{}
 }
 
 // aborts numbers the aborts of the contexts WithCancel makes, in the order their cancel functions ran.
@@ -192,6 +196,7 @@ func WithCancel(parent context.Context) (ctx context.Context, cancel func(cause 
 	return child, func(cause error) {
 		child.order.CompareAndSwap(0, aborts.Add(1))
 		cancelCause(cause)
+		child.dispatch()
 	}
 }
 
