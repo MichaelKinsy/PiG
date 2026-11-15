@@ -48,6 +48,21 @@ import (
 var (
 	fixtureSession = mustFixture(contracts.NewHostKind("session", contracts.Prop("id", contracts.Str())))
 
+	// fixtureServer is the server's own kind: `hostKind("server")` (control.ts `Server`).
+	fixtureServer = mustFixture(contracts.NewHostKind("server"))
+
+	// fixtureReports is what a worker reports to the server (control.ts `Reports`).
+	fixtureReports = mustFixture(contracts.Remote("test.reports", contracts.RemoteDeclaration{
+		Version: 1,
+		Params:  contracts.Params{},
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) {
+			return fixtureServer.Address(nil), nil
+		},
+		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+			contracts.Meth("report", contracts.NewMethod(contracts.Str())),
+		}})},
+	}))
+
 	fixtureControl = mustFixture(contracts.Remote("test.control", contracts.RemoteDeclaration{
 		Version: 1,
 		Params:  contracts.Params{contracts.Prop("id", contracts.Str())},
@@ -60,6 +75,24 @@ var (
 			contracts.Meth("busy", contracts.NewMethod(contracts.Int())),
 			contracts.Meth("block", contracts.NewMethod(contracts.Str())),
 			contracts.Meth("localCalls", contracts.NewMethod(contracts.Int(), contracts.Int())),
+		}})},
+	}))
+
+	// fixtureReporter is Pi's `Control.report` and `Control.reportAndExit`, a type of its own at the same address: the module of the
+	// worker's NodeHost holds the server's `Reports` with the object (taken at its activation), where Pi's worker holds them from its
+	// first report, so a `Control` that had them would not be served without a server that serves `Reports` (Pi's default fleet has none).
+	fixtureReporter = mustFixture(contracts.Remote("test.reporter", contracts.RemoteDeclaration{
+		Version: 1,
+		Params:  contracts.Params{contracts.Prop("id", contracts.Str())},
+		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
+			id, _ := params.Value("id").(string)
+			return fixtureSession.Address(delta.JsonObjectOf("id", id)), nil
+		},
+		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
+			// Sends the server a report and returns without waiting for its answer.
+			contracts.Meth("report", contracts.NewMethod(contracts.Str())),
+			// Sends the server a report and exits (code 7) in the same turn.
+			contracts.Meth("reportAndExit", contracts.NewMethod(contracts.Str())),
 		}})},
 	}))
 
@@ -146,6 +179,12 @@ type workerBehaviour struct {
 	// ProgramOnClose is a file the last closer writes after looking for the program the worker runs from (`present`, or the error):
 	// Pi's `lazyOnClose` (a closer's first import of a lazy chunk of the worker base at close).
 	ProgramOnClose string
+	// ReportAtStart: after its load, before it is ready, it sends the server this report and waits for its answer (`reportAtStart`).
+	ReportAtStart string
+	// HoldsChannel: it starts a process of its tree that inherits its IPC channel (descriptor 3): the channel stays open after the
+	// worker's exit, until the server killed its tree, so the server hears of the exit strictly before the channel closes
+	// (`holdsChannel`).
+	HoldsChannel bool
 }
 
 func (b workerBehaviour) json() *delta.JsonObject {
@@ -198,6 +237,12 @@ func (b workerBehaviour) json() *delta.JsonObject {
 	if b.ProgramOnClose != "" {
 		object.Set("programOnClose", b.ProgramOnClose)
 	}
+	if b.ReportAtStart != "" {
+		object.Set("reportAtStart", b.ReportAtStart)
+	}
+	if b.HoldsChannel {
+		object.Set("holdsChannel", true)
+	}
 	if b.GoReload {
 		object.Set("goReload", true)
 	}
@@ -221,6 +266,8 @@ func behaviourOf(value delta.JsonValue) workerBehaviour {
 	b.CloserPanics, _ = object.Value("closerPanics").(bool)
 	b.GoReload, _ = object.Value("goReload").(bool)
 	b.ProgramOnClose, _ = object.Value("programOnClose").(string)
+	b.ReportAtStart, _ = object.Value("reportAtStart").(string)
+	b.HoldsChannel, _ = object.Value("holdsChannel").(bool)
 	if ms, ok := object.Value("loadMs").(float64); ok {
 		b.LoadMs = int(ms)
 	}
@@ -336,6 +383,9 @@ func fixtureOutput(port *countingPort) func(stream plugins.NodeStream, chunk []b
 	}
 }
 
+// holdsChannel is what HoldsChannel does (the Unix tests set it): a process of the worker's tree inherits the channel.
+var holdsChannel func(port *channel) error
+
 // holdNodeGate is the file HoldNodeStart names, once the worker knows its behaviour.
 var holdNodeGate atomic.Pointer[string]
 
@@ -430,6 +480,11 @@ func runWorkerFixture() {
 		if behaviour.NoConnect {
 			return nil, sleep(ctx, 1_000_000_000*time.Millisecond)
 		}
+		if behaviour.HoldsChannel {
+			if err := holdsChannel(port.processPort.(*channel)); err != nil {
+				return nil, err
+			}
+		}
 		if err := worker.Connect(start.Parent, host.LinkOptions{Principal: delta.JsonObjectOf("kind", "server"), Trusted: true}, ctx); err != nil {
 			return nil, err
 		}
@@ -476,6 +531,17 @@ func runWorkerFixture() {
 				port.processPort.(*channel).prependDisconnect(func() { time.Sleep(20 * time.Second) })
 				port.Disconnect()
 			})
+		}
+		if behaviour.ReportAtStart != "" {
+			reports, err := worker.Get(ctx, fixtureReports, delta.NewJsonObject(0), host.GetOptions{})
+			if err != nil {
+				return nil, err
+			}
+			_, err = reports.Call("report", behaviour.ReportAtStart, ctx)
+			reports.Release()
+			if err != nil {
+				return nil, err
+			}
 		}
 		if calls := behaviour.LocalCalls; calls != 0 {
 			time.AfterFunc(300*time.Millisecond, func() {

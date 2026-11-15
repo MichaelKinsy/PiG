@@ -109,19 +109,21 @@ func channelRecord(kind byte, payload []byte) []byte {
 // lastWordsTold is what a worker process told, in order, and what the workers component records for its exit: the reason
 // of a `fatal` told before the exit, else publicExit's fixed text (workers_workers.go `exited`).
 type lastWordsTold struct {
-	mu       sync.Mutex
-	control  []string
-	frames   []string
-	output   string
-	stderr   string
-	lost     int
-	closed   int
+	mu      sync.Mutex
+	control []string
+	frames  []string
+	output  string
+	stderr  string
+	lost    int
+	closed  int
+	// ended is how often the link's listener (Link.OnClose) was told: its close, whoever caused it.
+	ended    int
 	exits    int
 	atExit   lastWordsSeen
 	recorded string
-	// closedAtExit and outputAtExit: how often the link's close was told, and the output told (stdout, then stderr), when the
-	// exit was.
-	closedAtExit int
+	// endedAtExit and outputAtExit: how often the link's close was told to its listener, and the output told (stdout, then
+	// stderr), when the exit was.
+	endedAtExit  int
 	outputAtExit string
 }
 
@@ -208,7 +210,7 @@ func startLastWords(t *testing.T, told *lastWordsTold, env map[string]string, de
 				told.mu.Lock()
 				defer told.mu.Unlock()
 				told.exits++
-				told.closedAtExit, told.outputAtExit = told.closed, told.output+told.stderr
+				told.endedAtExit, told.outputAtExit = told.ended, told.output+told.stderr
 				told.atExit = lastWordsSeen{Control: append([]string(nil), told.control...), Frames: append([]string(nil), told.frames...)}
 				told.recorded = publicExit(exit, &child{status: WorkerStarting}).Message
 				if reason != nil {
@@ -224,6 +226,11 @@ func startLastWords(t *testing.T, told *lastWordsTold, env map[string]string, de
 		told.mu.Lock()
 		defer told.mu.Unlock()
 		told.frames = append(told.frames, string(message))
+	})
+	process.Link.OnClose(func() {
+		told.mu.Lock()
+		defer told.mu.Unlock()
+		told.ended++
 	})
 	return process
 }
@@ -386,7 +393,8 @@ func outsideTree(t *testing.T, told *lastWordsTold) int {
 
 // A process the worker started cannot hold its channel: a worker opens it as a descriptor nothing it starts inherits
 // (openProcessChannel), so the channel ends with the worker although a process in a session of its own, which outlives the
-// worker's tree, lives on: the link's close is told before the exit, as for a worker that started nothing.
+// worker's tree, lives on: the link is closed before the exit is told, as for a worker that started nothing, and not as a lost
+// link (Pi f57cd9484: the exit tells it; whether the worker's own end of the channel closed first, a closed link, is its race).
 func TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatItStartedAfterItOpenedItsChannel(t *testing.T) {
 	told := &lastWordsTold{}
 	process := startLastWords(t, told, map[string]string{lastWordsGrandchild: "after"}, nil, nil)
@@ -398,16 +406,15 @@ func TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatItStartedAfterIt
 	}
 	told.mu.Lock()
 	defer told.mu.Unlock()
-	if told.closedAtExit != 1 {
-		t.Errorf("the link's close was told %d times before the exit, want once: the channel ends with the worker, a process it started does not hold it", told.closedAtExit)
+	if told.endedAtExit != 1 || told.lost != 0 {
+		t.Errorf("the link's close was told to its listener %d times before the exit, as a lost link %d times, want once and 0: the channel ends with the worker, a process it started does not hold it", told.endedAtExit, told.lost)
 	}
 }
 
 // A process outside the worker's tree that holds its channel (started before the worker opened it: a worker of another
-// making) holds neither the worker's exit nor what it writes later. Node tells `exit` when the process ended and
-// `disconnect` when the channel did: the exit is told with the worker's last words while the channel is open; what the
-// holder then writes on it is told as before, a frame to the link and a control message to the handler; and this side's
-// close of the link (the heartbeat's, in the component) ends the read.
+// making) holds neither the worker's exit nor the link's close: the exit is told with the worker's last words, and the link is
+// closed (this side disconnects the channel) before it is, as neither a lost nor a closed link, though the holder lives
+// (Pi f57cd9484, Node's `disconnect`): what the holder writes on it later is told to no one.
 func TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsChannel(t *testing.T) {
 	told := &lastWordsTold{}
 	process := startLastWords(t, told, map[string]string{lastWordsGrandchild: "before", outsideTreeHolds: "channel"}, nil, nil)
@@ -418,24 +425,9 @@ func TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsChannel(
 		t.Fatal("the process outside the worker's tree is not alive: it proved nothing")
 	}
 	told.mu.Lock()
-	closed, lost := told.closed, told.lost
-	told.mu.Unlock()
-	if closed != 0 || lost != 0 || !process.channel.Connected() {
-		t.Errorf("at the exit: the link's close told %d times, its loss %d times, connected = %v; want an open channel, its holder lives", closed, lost, process.channel.Connected())
-	}
-	if err := syscall.Kill(holder, syscall.SIGUSR1); err != nil {
-		t.Fatal(err)
-	}
-	late := lastWordsSeen{
-		Control: append(slices.Clone(lastWordsWhole.Control), string(FromWorkerFatal)),
-		Frames:  append(slices.Clone(lastWordsWhole.Frames), holderLate),
-	}
-	until(t, func() bool { seen, _ := told.seen(); return reflect.DeepEqual(seen, late) })
-	process.Link.Close()
-	told.mu.Lock()
 	defer told.mu.Unlock()
-	if told.lost != 1 || told.closed != 0 || told.exits != 1 || process.channel.Connected() {
-		t.Errorf("after this side's close: the link's loss told %d times, its close %d times, exits %d, connected = %v; want 1, 0, 1 and false", told.lost, told.closed, told.exits, process.channel.Connected())
+	if told.endedAtExit != 1 || told.closed != 0 || told.lost != 0 || told.exits != 1 || process.channel.Connected() {
+		t.Errorf("at the exit: the link's close told to its listener %d times, as a closed link %d times, as a lost one %d times, exits %d, connected = %v; want 1, 0, 0, 1 and false", told.endedAtExit, told.closed, told.lost, told.exits, process.channel.Connected())
 	}
 }
 

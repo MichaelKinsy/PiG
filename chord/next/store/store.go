@@ -590,6 +590,16 @@ func (store *ChordStore) Detach() {
 	store.attachment = nil
 }
 
+// Settled (Pi's `settled()`) is closed once every commit queued before the call settled (stored and adopted, or rejected),
+// also on a stopped or closed store; commits queued later are not waited for. It is the commit queue's tail at the call, which
+// closes however its entry ended, so a receive never fails. For a caller that has ended a source of commits and must not go on
+// while one it queued can still be adopted (the workers component, at a worker's exit).
+func (store *ChordStore) Settled() <-chan struct{} {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	return store.tail
+}
+
 // ticket takes the next place of the commit queue: the entry waits for previous, and closes done once it settled.
 func (store *ChordStore) ticket() (previous <-chan struct{}, done chan struct{}) {
 	done = make(chan struct{})

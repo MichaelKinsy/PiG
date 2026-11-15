@@ -73,8 +73,9 @@ func (f *fleet) stopWorker(t *testing.T, id string, stopped *child) {
 // What an exited worker's streams tell later is told of it, not of the worker that followed it. A process outside the
 // first worker's tree holds its stdout and its channel; the worker is stopped, its address forgotten, and a second worker
 // started for the same address. Then the holder writes: its output reaches the app's OnOutput with the address, as Pi's
-// `onOutput` does; its frame reaches the first worker's link; its `fatal` is recorded on the first worker's child. The
-// second worker has no cause, no frame of it, and runs: nothing is reported and the state is the second worker's.
+// `onOutput` does; what it writes on the channel reaches no one: the link was closed at the exit (Pi f57cd9484, `link.end()`
+// disconnects the channel), so neither a frame of the first worker's link nor a `fatal` of its child is told. The second
+// worker has no cause, no frame of it, and runs: nothing is reported and the state is the second worker's.
 func TestWhatAnExitedWorkersStreamsTellLaterIsToldOfItNotOfTheWorkerThatFollowedIt(t *testing.T) {
 	f := newFleet(t, fleetOptions{env: map[string]string{lastWordsGrandchild: "before", outsideTreeHolds: "stdout,channel"}})
 	first, firstFrames := f.startWorker(t, "S1")
@@ -93,19 +94,15 @@ func TestWhatAnExitedWorkersStreamsTellLaterIsToldOfItNotOfTheWorkerThatFollowed
 	}
 	late := strings.TrimSpace(holderLate)
 	until(t, func() bool { return slices.Contains(f.output.all(), "session|S1 "+late) })
-	until(t, func() bool { return slices.Contains(firstFrames.all(), holderLate) })
 	var firstCause, secondCause *cause
 	var current *child
 	var status WorkerStatus
-	until(t, func() bool {
-		f.workers.loop.Run(func() {
-			firstCause, secondCause = first.cause, second.cause
-			current, status = f.workers.addresses[session("S1").Key].child, second.status
-		})
-		return firstCause != nil
+	f.workers.loop.Run(func() {
+		firstCause, secondCause = first.cause, second.cause
+		current, status = f.workers.addresses[session("S1").Key].child, second.status
 	})
-	if firstCause.public == nil || firstCause.public.Message != holderLate {
-		t.Errorf("the first worker's cause = %+v, want the reason of the `fatal` its holder wrote, %q", firstCause, holderLate)
+	if first.process.channel.Connected() || slices.Contains(firstFrames.all(), holderLate) || (firstCause != nil && firstCause.public != nil && firstCause.public.Message == holderLate) {
+		t.Errorf("the first worker's channel is connected = %v, its frames = %v, its cause = %+v: what its holder writes on the channel after the exit is told to no one", first.process.channel.Connected(), firstFrames.all(), firstCause)
 	}
 	if secondCause != nil || current != second || status == WorkerStopping || !alive(second.process.Pid) {
 		t.Errorf("the second worker: cause = %+v, the address's child = %v, status = %q, alive = %v; want none, true, not stopping, true", secondCause, current == second, status, alive(second.process.Pid))
@@ -152,8 +149,8 @@ func openDescriptors(t *testing.T) int {
 }
 
 // Close ends what is still read of the workers that exited. A process outside a worker's tree holds its stdout, its stderr
-// and its channel; the worker is stopped, and this side goes on reading the three (their goroutines and descriptors are
-// kept, as Node keeps a child's handles). The component's Close closes them although the holder lives: no goroutine reads
+// and its channel; the worker is stopped, its link closed at the exit (the channel is disconnected), and this side goes on
+// reading the two streams (their goroutines and descriptors are kept, as Node keeps a child's handles). The component's Close closes them although the holder lives: no goroutine reads
 // a worker's stream any more, and no more descriptors are open than before the worker started.
 func TestCloseEndsWhatIsStillReadOfAnExitedWorkerWhoseStreamsAProcessOutsideItsTreeHolds(t *testing.T) {
 	f := newFleet(t, fleetOptions{env: map[string]string{lastWordsGrandchild: "before", outsideTreeHolds: "stdout,stderr,channel"}})
@@ -166,8 +163,8 @@ func TestCloseEndsWhatIsStillReadOfAnExitedWorkerWhoseStreamsAProcessOutsideItsT
 	f.stopWorker(t, "S1", worker)
 	var lingering int
 	f.workers.loop.Run(func() { lingering = len(f.workers.lingering) })
-	if readers := streamReaders(); !alive(holder) || !worker.process.stillRead() || readers < 3 || lingering != 1 {
-		t.Fatalf("after the exit: holder alive = %v, still read = %v, %d goroutines on its streams, %d processes kept; want true, true, the three readers, 1: it proved nothing", alive(holder), worker.process.stillRead(), readers, lingering)
+	if readers := streamReaders(); !alive(holder) || !worker.process.stillRead() || readers < 2 || lingering != 1 {
+		t.Fatalf("after the exit: holder alive = %v, still read = %v, %d goroutines on its streams, %d processes kept; want true, true, the two stream readers, 1: it proved nothing", alive(holder), worker.process.stillRead(), readers, lingering)
 	}
 	if err := f.workers.Close(background); err != nil {
 		t.Fatal(err)
