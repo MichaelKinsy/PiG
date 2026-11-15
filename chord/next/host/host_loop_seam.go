@@ -100,7 +100,7 @@ func (l *Loop) start(work any, fn func(), paced bool) {
 		leave := t.Enter()
 		if paced {
 			l.mu.Lock()
-			l.pacing.gids[t.GID()] = t
+			l.pacing.enterLocked(t, t.GID())
 			l.mu.Unlock()
 		}
 		defer func() {
@@ -192,12 +192,18 @@ func (c *taskCounter) Resumed(p *parking.Parked) {
 // unlocked, and a paced task waits for the peer's frames only parked. A reader that is inside a section (a link on the
 // loop's own queue, a test's) never waits: it would wait for tasks that need the section.
 //
-// pacer is the count: tasks are the paced tasks that have not ended, running those of them that are neither parked on a real
-// wait nor in a transport's send (sending), pending the endings made and not ended (a chain's endings that wait for their
-// predecessor are no task yet). quiet is closed when running falls to zero. All guarded by Loop.mu, the lock of the join's
-// count, so the wake-up cannot be lost between a reader's last look at running and its wait.
+// pacer is the count: tasks are the paced tasks that have not ended, each with the ID of the goroutine it registered under
+// (zero before it ran), running those of them that are neither parked on a real wait nor in a transport's send (sending),
+// pending the endings made and not ended (a chain's endings that wait for their predecessor are no task yet). quiet is
+// closed when running falls to zero. All guarded by Loop.mu, the lock of the join's count, so the wake-up cannot be lost
+// between a reader's last look at running and its wait.
+//
+// Nothing of a task stays once it ended, as nothing of a settled promise does in Pi (a settled promise holds no reaction;
+// host/object.ts:1625, host.ts:1690): gids is deleted by the ID the task registered under, not by Task.GID, which
+// parking.Adopt moves to a handler's coroutine while the task's goroutine finishes the handlers its section resumed. An entry
+// left behind would keep the ended task, its work, and the attempt the work closes over.
 type pacer struct {
-	tasks   map[*parking.Task]struct{}
+	tasks   map[*parking.Task]uint64
 	gids    map[uint64]*parking.Task
 	running int
 	pending int
@@ -225,17 +231,23 @@ func (p *pacer) quietLocked() {
 
 func (p *pacer) startLocked(t *parking.Task) {
 	if p.tasks == nil {
-		p.tasks, p.gids = map[*parking.Task]struct{}{}, map[uint64]*parking.Task{}
+		p.tasks, p.gids = map[*parking.Task]uint64{}, map[uint64]*parking.Task{}
 	}
-	p.tasks[t] = struct{}{}
+	p.tasks[t] = 0
 	p.live.Add(1)
 	p.runningLocked()
 }
 
+// enterLocked: t runs on the goroutine gid, which is where sending finds it.
+func (p *pacer) enterLocked(t *parking.Task, gid uint64) {
+	p.tasks[t] = gid
+	p.gids[gid] = t
+}
+
 // endLocked: t ended, from running (a task ends when it is not parked).
 func (p *pacer) endLocked(t *parking.Task) {
+	delete(p.gids, p.tasks[t])
 	delete(p.tasks, t)
-	delete(p.gids, t.GID())
 	p.live.Add(-1)
 	p.pending--
 	p.quietLocked()

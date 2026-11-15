@@ -4,12 +4,15 @@ import (
 	"context"
 	"sync"
 	"testing"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
@@ -93,4 +96,56 @@ func TestEndingsBehindARunningTeardownAreNoTasks(t *testing.T) {
 	if chain != 0 {
 		t.Fatalf("the host still records %d endings once every teardown finished", chain)
 	}
+}
+
+// endedWork stands for what an ending's work closes over: the sealed attempt and its teardown.
+type endedWork struct{ _ [16]byte }
+
+// returnedHandlerFinishedInline is a section that ends with a handler that returned inside it to finish: the call that the
+// section settling an ending admits, as the section of a link's frame does (Loop.finish adopts the coroutine's goroutine for
+// the task of the goroutine that ended the section: parking.Adopt).
+func returnedHandlerFinishedInline(loop *Loop) {
+	loop.Run(func() {
+		signal := parking.New()
+		loop.Lend(signal, func(bool) { signal.Return() })
+	})
+}
+
+// Nothing of an ending is kept once it ran. In Pi a settled promise holds no reaction, the async `#tearDown` frame is gone with
+// its work (host/object.ts:1623-1640), and `host.ending` drops the identity's entry once its chain emptied (host.ts:1690-1696).
+// Here the host's `endings` has no entry for the identity, the pacer has no record of any paced task (by task or by the
+// goroutine that ran it), and what the endings closed over is collected: the pacer's by-goroutine index was deleted by the
+// task's goroutine id as it is at the task's end, which a coroutine adopted since (parking.Adopt) had changed, so a task whose
+// section finished a handler inline stayed in it with its work, and the attempt the work captured (the reload cycle's
+// `referent 0 was not collected`).
+func TestEndingsOnceRanLeaveNothingOfThemInTheHostNorThePacer(t *testing.T) {
+	const endings = 3
+	const identity = "endings/ran"
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	defer closeHosts(t, host)
+	h := host.(*chordHost)
+	loop := h.loop().(*Loop)
+	refs := make([]weak.Pointer[endedWork], 0, endings)
+	h.enter(func() {
+		for range endings {
+			work := &endedWork{}
+			refs = append(refs, weak.Make(work))
+			torn := awaitAfter(h, h.endingOf(identity), func() (struct{}, error) {
+				*work = endedWork{}
+				returnedHandlerFinishedInline(loop)
+				return struct{}{}, nil
+			})
+			h.ending(identity, torn)
+		}
+	})
+	loop.quiesce()
+	var chain int
+	h.enter(func() { chain = len(h.endings) })
+	if chain != 0 {
+		t.Fatalf("the host still records %d endings once every teardown finished, want none", chain)
+	}
+	if tasks, goroutines := pacerHolds(loop); tasks != 0 || goroutines != 0 {
+		t.Fatalf("the pacer keeps %d paced tasks and %d goroutines of tasks once every ending ran, want none", tasks, goroutines)
+	}
+	nexttest.ExpectCollected(t, refs...)
 }
