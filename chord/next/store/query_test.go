@@ -23,15 +23,15 @@ func queryEdits(t *testing.T) *TableDefinition {
 	})
 }
 
-func byAt(e ColumnRefs) *ColumnRef { return e["at"] }
+func byAt(e, _ ColumnRefs) *ColumnRef { return e["at"] }
 
 func TestQueries(t *testing.T) {
 	T := queryEdits(t)
 
 	t.Run("are immutable; several wheres are and-ed", func(t *testing.T) {
 		base := NewQuery(T)
-		one := (*Query).Where(base, func(e ColumnRefs) Condition { return Eq(e["id"], "a") })
-		two := one.Where(func(e ColumnRefs) Condition { return Gt(e["at"], 1) })
+		one := (*Query).Where(base, func(e, _ ColumnRefs) Condition { return Eq(e["id"], "a") })
+		two := one.Where(func(e, _ ColumnRefs) Condition { return Gt(e["at"], 1) })
 		must(t, base.Err())
 		must(t, one.Err())
 		must(t, two.Err())
@@ -45,19 +45,19 @@ func TestQueries(t *testing.T) {
 	t.Run("order by the key ascending by default and append the key as the tie-break, not repeated", func(t *testing.T) {
 		qEqual(t, NewQuery(T).Order(), Order{Columns: []string{"id", "entry"}, Direction: "asc"})
 		qEqual(t, NewQuery(T).OrderBy(byAt, "desc").Order(), Order{Columns: []string{"at", "id", "entry"}, Direction: "desc"})
-		qEqual(t, NewQuery(T).OrderBy(func(e ColumnRefs) *ColumnRef { return e["entry"] }, "").Order(),
+		qEqual(t, NewQuery(T).OrderBy(func(e, _ ColumnRefs) *ColumnRef { return e["entry"] }, "").Order(),
 			Order{Columns: []string{"entry", "id"}, Direction: "asc"})
 	})
 
 	t.Run("refuse duplicate orderBy columns, two directions and opt columns (rule 17)", func(t *testing.T) {
 		qFails(t, NewQuery(T).OrderBy(byAt, "").OrderBy(byAt, "").Err(), "twice")
-		qFails(t, NewQuery(T).OrderBy(byAt, "").OrderBy(func(e ColumnRefs) *ColumnRef { return e["id"] }, "desc").Err(), "one direction")
-		_ = rejected(t, NewQuery(T).OrderBy(func(e ColumnRefs) *ColumnRef { return e["note"] }, "").Err(), data.CodeInvalid, data.ReasonArgs)
+		qFails(t, NewQuery(T).OrderBy(byAt, "").OrderBy(func(e, _ ColumnRefs) *ColumnRef { return e["id"] }, "desc").Err(), "one direction")
+		_ = rejected(t, NewQuery(T).OrderBy(func(e, _ ColumnRefs) *ColumnRef { return e["note"] }, "").Err(), data.CodeInvalid, data.ReasonArgs)
 	})
 
 	t.Run("a failed where is kept: the chain returns its first error", func(t *testing.T) {
 		failed := NewQuery(T).
-			Where(func(e ColumnRefs) Condition { return Eq(e["at"], "x") }).
+			Where(func(e, _ ColumnRefs) Condition { return Eq(e["at"], "x") }).
 			OrderBy(byAt, "")
 		_ = rejected(t, failed.Err(), data.CodeInvalid, data.ReasonArgs)
 	})
@@ -77,7 +77,7 @@ func TestCursors(t *testing.T) {
 		got, err := DecodeCursor(T, "app:edits", order, cursor)
 		must(t, err)
 		qEqual(t, got, want)
-		other := NewQuery(T).Where(func(e ColumnRefs) Condition { return Eq(e["id"], "x") }).OrderBy(byAt, "desc")
+		other := NewQuery(T).Where(func(e, _ ColumnRefs) Condition { return Eq(e["id"], "x") }).OrderBy(byAt, "desc")
 		must(t, other.Err())
 		got, err = DecodeCursor(T, "app:edits", other.Order(), cursor)
 		must(t, err)

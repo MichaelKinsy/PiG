@@ -88,6 +88,14 @@ func DefineColumns(name string, options ColumnSetOptions) (*ColumnSet, error) {
 	}, nil
 }
 
+// Side is the set as a condition is checked or compiled against it: its name and columns.
+func (set *ColumnSet) Side() Side { return Side{Name: set.Name, ByName: set.ByName} }
+
+// Matched is the set as a match is checked against it: its name, columns, key and declared indexes.
+func (set *ColumnSet) Matched() MatchedSet {
+	return MatchedSet{Side: set.Side(), Key: set.Key, Indexes: set.Indexes}
+}
+
 // ExposingTable is the parts of a table definition CheckExposes reads.
 type ExposingTable struct {
 	Name    string
