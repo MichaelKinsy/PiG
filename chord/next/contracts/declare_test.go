@@ -203,6 +203,9 @@ func TestQueriesMembers(t *testing.T) {
 		if got := keys(variant.State); len(got) != 0 {
 			t.Fatalf("state = %v", got)
 		}
+		if kind := dataOf(t, store).Kinds["notes"]; kind != contracts.MemberKindQueries {
+			t.Fatalf("the kind of notes = %q", kind)
+		}
 		other := args()
 		other[1] = contracts.Prop("one", contracts.Obj(contracts.Prop("id", contracts.Str())))
 		changed := local(t, "app.store", 1, noParams(), contracts.Mem("notes", contracts.Queries(note(), other)), contracts.Mem("add", contracts.NewMethod()))
@@ -231,6 +234,25 @@ func TestQueriesMembers(t *testing.T) {
 			contracts.Mem("notes", contracts.Queries(note(), []contracts.Property{contracts.Prop("one", tbObject())})),
 		}})
 		wantError(t, err, "app.store.members.notes.args.one: argument objects must be closed")
+		_, err = contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("notes", contracts.Queries(raw(t, `{"not":{}}`), []contracts.Property{})),
+		}})
+		wantError(t, err, `app.store.members.notes.item: unsupported keyword "not"`)
+	})
+
+	t.Run("record their kind: a reserved name is refused, and so are a nil member and absent arguments", func(t *testing.T) {
+		_, err := contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("then", contracts.Queries(note(), []contracts.Property{})),
+		}})
+		wantError(t, err, `app.store.members.then: "then" is reserved: a reference has it`)
+		_, err = contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("notes", (*contracts.QueriesMember)(nil)),
+		}})
+		wantError(t, err, "app.store.members.notes: expected a schema, method(...) or keyed(...)")
+		_, err = contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("notes", contracts.Queries(note(), nil)),
+		}})
+		wantError(t, err, "app.store.members.notes.args: expected an object")
 	})
 }
 
