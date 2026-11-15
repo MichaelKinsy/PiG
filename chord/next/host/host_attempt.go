@@ -465,7 +465,7 @@ func (o *attemptQueryOwner) Label() string { return o.attempt.object.text }
 
 // Report reports a run's failure as `query_failed`.
 func (o *attemptQueryOwner) Report(err error) {
-	o.attempt.object.host.report(HostError{Kind: ErrQueryFailed, Object: o.attempt.object.text, Table: o.table, Error: err})
+	o.attempt.object.host.report(HostError{Kind: ErrQueryFailed, Object: o.attempt.object.text, Query: o.table, Error: err})
 }
 
 // Query implements StoreSelf: a live query is run before the object goes live (after its tables are prepared), again in
