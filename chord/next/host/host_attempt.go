@@ -480,7 +480,7 @@ func (a *attempt) Query(given store.Table, q *store.Query, limit int64) chord.Wa
 		declared = declared || (table != nil && each.handle == table)
 	}
 	if !declared {
-		panic(declarationError("%s: self.query: the table is not one this factory declared", object.text))
+		panic(undeclaredTable(object.text, "query"))
 	}
 	if err := store.CheckLiveQuery(table.Definition, q, limit, object.text); err != nil {
 		panic(err)
