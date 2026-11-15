@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"errors"
 	"sync"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -178,7 +177,7 @@ func (read *RegisteredRead) Adopt(run ReadRun) {
 
 // sameRun is whether two runs are one run (Pi compares the objects): the same result, or the same failure.
 func sameRun(a, b ReadRun) bool {
-	return a.Kind == b.Kind && a.Result == b.Result && a.Count == b.Count && errors.Is(a.Err, b.Err)
+	return a.Kind == b.Kind && a.Result == b.Result && a.Count == b.Count && a.Err == b.Err //nolint:errorlint // Pi compares a run's failure by identity (store/read.ts:115 `this.#tentative?.run === run`): a failure that wraps the other is another run
 }
 
 // Probed is the range its probe asks about: the read's own, ending at the row past its limit when there is one.
