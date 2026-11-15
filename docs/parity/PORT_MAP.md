@@ -788,7 +788,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/registries/registry.ts` | `chord/next/registries/registry.go` | ✅ |
 | `packages/chord/src/registries/value.ts` | `chord/next/registries/value.go` | ✅ |
 | `packages/chord/src/state/batch.ts` | `chord/next/state/batch.go` | ✅ |
-| `packages/chord/src/state/derive.ts` | `chord/next/state/derive.go` | ✅ |
+| `packages/chord/src/state/derive.ts` | `chord/next/state/derive.go`; Pi f6600b58f: a watched derive read between two changes of its source in one batch publishes one frame (chord/next/state/derive_test.go TestDeriveReadBetweenTwoChangesInOneBatch) | ✅ |
 | `packages/chord/src/state/index.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/state/internal.ts` | `(re-export barrel)` | n/a |
 | `packages/chord/src/state/native-source.ts` | `chord/next/state/native_source.go` | ✅ |
