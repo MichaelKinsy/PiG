@@ -129113,9 +129113,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(fsys io/fs.FS, dir string, add func(string) error, vanish *VanishTracker) error"
+        "type": "func(fsys io/fs.FS, dir string, add func(name string, data []byte) error, vanish *VanishTracker) error"
       },
-      "shapeHash": "sha256:fd8bc1d2c026dee51859e25205c95ca81004875e3f17960a0e8cf907f61e5f80"
+      "shapeHash": "sha256:703b59f429daa5523f3b6947e073a6c2aa4a5ee455788d94941fda8d5d40d7d2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#hashGoModuleFS",
@@ -152007,6 +152007,17 @@
         "type": "func(dst string) error"
       },
       "shapeHash": "sha256:160c1bb5176ff656e7307ef9d82e3a1934ce49fd5bb0b0c14de536e9b491eebf"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#extractRuntimeArchive",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "extractRuntimeArchive",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(archive string, dst string, mkdirAll func(string, os.FileMode) error) error"
+      },
+      "shapeHash": "sha256:6386029cb4dd6d364d8fa173551c7df6e82209022e10c2260a63c7ee2e809dc1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#factoryAdmission",
