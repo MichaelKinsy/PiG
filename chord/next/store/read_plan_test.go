@@ -377,3 +377,57 @@ func TestReadPlanJoin(t *testing.T) {
 		qEqual(t, joined.Joined.Pairs, []MatchPair{{SetColumn: "team", Column: "a"}, {SetColumn: "session", Column: "b"}})
 	})
 }
+
+// rpBindings are the bindings of a test that has no store: Pi's plain `Map` of set name to bound table.
+type rpBindings map[string]Bound
+
+func (bindings rpBindings) Get(set string) (Bound, bool) {
+	bound, found := bindings[set]
+	return bound, found
+}
+
+func rpDefineColumns(t *testing.T, name string, options ColumnSetOptions) *ColumnSet {
+	t.Helper()
+	set, err := DefineColumns(name, options)
+	must(t, err)
+	return set
+}
+
+func TestReadPlanWrittenFor(t *testing.T) {
+	own := qDefine(t, "own", TableOptions{Version: 1, Columns: []ColumnProp{Col("id", Int()), Col("partner", Str())}, Key: []string{"id"}})
+
+	t.Run("refuses a joined set whose key the bound table has differently: the join would pair a row with several", func(t *testing.T) {
+		// Sol 1, Astra S2.
+		old := rpDefineColumns(t, "partners", ColumnSetOptions{Columns: []ColumnProp{Col("id", Str()), Col("tenant", Str())}, Key: []string{"id"}})
+		next := rpDefineColumns(t, "partners", ColumnSetOptions{Columns: []ColumnProp{Col("id", Str()), Col("tenant", Str())}, Key: []string{"id", "tenant"}})
+		partner := qDefine(t, "partner", TableOptions{Version: 1, Columns: next.Schemas, Key: []string{"id", "tenant"}, Exposes: next})
+		q := NewQuery(own).Join(old, func(row ColumnRefs) Match { return Match{{"id", row["partner"]}} })
+		must(t, q.Err())
+		_, err := NewReadPlan(q, "own", Projection{}, ReadRows, rpBindings{old.Name: {Table: "partner", Definition: partner}})
+		if got, want := rpMessage(t, err), `column set "partners" is joined by (id), its key is (id, tenant): not what this read was written for`; got != want {
+			t.Fatalf("message = %q", got)
+		}
+	})
+
+	t.Run("refuses a column an exists compares that the bound table has with another type; an unused one may change", func(t *testing.T) {
+		// Sol 1: the reader compares `score` as an int; the publisher made it a num.
+		old := rpDefineColumns(t, "scores", ColumnSetOptions{Columns: []ColumnProp{Col("id", Int()), Col("score", Int()), Col("note", Str())}, Key: []string{"id"}})
+		retyped := rpDefineColumns(t, "scores", ColumnSetOptions{Columns: []ColumnProp{Col("id", Int()), Col("score", Num()), Col("note", Str())}, Key: []string{"id"}})
+		unused := rpDefineColumns(t, "scores", ColumnSetOptions{Columns: []ColumnProp{Col("id", Int()), Col("score", Int()), Col("note", Int())}, Key: []string{"id"}})
+		bound := func(set *ColumnSet) rpBindings {
+			definition := qDefine(t, "other", TableOptions{Version: 1, Columns: set.Schemas, Key: []string{"id"}, Exposes: set})
+			return rpBindings{set.Name: {Table: "other", Definition: definition}}
+		}
+		q := NewQuery(own).Where(func(row, _ ColumnRefs) Condition {
+			return Exists(old, Match{{"id", row["id"]}}, func(c ColumnRefs) Condition { return Eq(c["score"], 1) })
+		})
+		must(t, q.Err())
+		_, err := NewReadPlan(q, "own", Projection{}, ReadRows, bound(retyped))
+		if got, want := rpMessage(t, err), `column "score" of column set "scores" is not what this read was written for`; got != want {
+			t.Fatalf("message = %q", got)
+		}
+		if _, err := NewReadPlan(q, "own", Projection{}, ReadRows, bound(unused)); err != nil {
+			t.Fatalf("an unused column that changed: %v", err)
+		}
+	})
+}
