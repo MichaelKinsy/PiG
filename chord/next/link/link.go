@@ -21,17 +21,19 @@ type Link interface {
 }
 
 // LinkEnd is what every link end shares: the one message listener (messages that arrived before it are queued for
-// it), the one close listener, and closing once. A transport moves the bytes: it calls deliver with what arrived and
-// ended when the transport closed, and implements Send and Close. The state is guarded because a transport's events
-// arrive on its own goroutines; listeners run outside the guard.
+// it), the one close listener, and closing once. A transport moves the bytes: it calls deliver with what arrived,
+// ended when the transport closed and closedHere when this side closes it, and implements Send and Close. The state is
+// guarded because a transport's events arrive on its own goroutines; listeners run outside the guard.
 type LinkEnd struct {
 	mu       sync.Mutex
 	closed   bool
 	listener func(message []byte)
 	// queued is the messages that arrived before the listener was set, or while they were handed to it; draining is true
-	// while OnMessage hands them over.
+	// while OnMessage hands them over; ending, that the transport ended during that hand-over: what it delivered before
+	// its end is still handed over, then the hand-over closes this end, and nothing that arrives after its end is taken.
 	queued        [][]byte
 	draining      bool
+	ending        bool
 	closeListener func()
 }
 
@@ -43,7 +45,11 @@ func (end *LinkEnd) Closed() bool {
 }
 
 // OnMessage sets the listener and hands it what was queued. A message that arrives while the queue is handed over is queued
-// behind it, so the listener sees them in arrival order; the goroutine that set the listener hands them over.
+// behind it, so the listener sees them in arrival order; the goroutine that set the listener hands them over. A transport
+// that ends meanwhile (ended, on its own goroutine) ends after what it delivered before: the hand-over closes this end
+// once the queue is handed over, as Pi's one thread finishes the hand-over before it hears of the close. The close is
+// then told when the listener returned, as it is when the transport itself is inside the listener (deliver): a listener
+// that never returns holds a transport's end either way, and never this side's close (closedHere).
 func (end *LinkEnd) OnMessage(listener func(message []byte)) {
 	end.mu.Lock()
 	// A closed end delivers nothing: keeping the listener would keep its owner.
@@ -58,18 +64,57 @@ func (end *LinkEnd) OnMessage(listener func(message []byte)) {
 		return
 	}
 	end.draining = true
+	handedOver := false
+	defer func() {
+		if !handedOver {
+			end.handOverLeft()
+		}
+	}()
 	for {
-		// A listener may close the link: what is still queued then is dropped (ended cleared it).
+		// A listener may close the link: what is still queued then is dropped (closedHere cleared it).
 		if end.closed || end.listener == nil || len(end.queued) == 0 {
+			if len(end.queued) == 0 {
+				// Handed over: the array goes too. What is left of the queue is empty and still points into it, and an end
+				// whose listener is set does not queue again, so nothing would replace it before the close.
+				end.queued = nil
+			}
 			end.draining = false
+			var closeListener func()
+			if end.ending {
+				// The transport ended meanwhile: what it delivered before is handed over, and now this end closes.
+				closeListener = end.closeLocked()
+			}
 			end.mu.Unlock()
+			handedOver = true
+			if closeListener != nil {
+				closeListener()
+			}
 			return
 		}
 		message, current := end.queued[0], end.listener
+		// The slot is cleared as its message goes to the listener: the array would keep it for as long as the queue lives.
+		end.queued[0] = nil
 		end.queued = end.queued[1:]
 		end.mu.Unlock()
 		current(message)
 		end.mu.Lock()
+	}
+}
+
+// handOverLeft ends a hand-over that its listener left by a panic: what it had not handed over goes with it, as Pi's loop
+// over the queue ends at a throw, the listener stays for what arrives later, and a transport's end that waited for the
+// hand-over closes this end.
+func (end *LinkEnd) handOverLeft() {
+	end.mu.Lock()
+	end.draining = false
+	end.queued = nil
+	var closeListener func()
+	if end.ending {
+		closeListener = end.closeLocked()
+	}
+	end.mu.Unlock()
+	if closeListener != nil {
+		closeListener()
 	}
 }
 
@@ -85,10 +130,10 @@ func (end *LinkEnd) OnClose(listener func()) {
 	end.mu.Unlock()
 }
 
-// deliver handles a message that arrived; dropped once closed.
+// deliver handles a message that arrived; dropped once closed, or once the transport ended.
 func (end *LinkEnd) deliver(message []byte) {
 	end.mu.Lock()
-	if end.closed {
+	if end.closed || end.ending {
 		end.mu.Unlock()
 		return
 	}
@@ -102,22 +147,50 @@ func (end *LinkEnd) deliver(message []byte) {
 	listener(message)
 }
 
-// ended closes this end (once): nothing is delivered any more, and nothing the listeners reach is kept.
+// ended closes this end (once) for its transport, which ended: nothing is delivered any more, and nothing the listeners
+// reach is kept. While OnMessage hands the queue over on another goroutine, what the transport delivered before its end
+// is the listener's first: ended returns, and the hand-over closes this end after it (OnMessage).
 func (end *LinkEnd) ended() {
+	end.mu.Lock()
+	if end.closed || end.ending {
+		end.mu.Unlock()
+		return
+	}
+	if end.draining {
+		end.ending = true
+		end.mu.Unlock()
+		return
+	}
+	listener := end.closeLocked()
+	end.mu.Unlock()
+	if listener != nil {
+		listener()
+	}
+}
+
+// closedHere closes this end (once) for this side, which closed the link: at once, also from a listener or beside one
+// during a hand-over, and what is still queued is dropped, as in Pi (`if (this.#closed) return` in onMessage's loop).
+func (end *LinkEnd) closedHere() {
 	end.mu.Lock()
 	if end.closed {
 		end.mu.Unlock()
 		return
 	}
-	end.closed = true
-	listener := end.closeListener
-	end.listener = nil
-	end.closeListener = nil
-	end.queued = nil
+	listener := end.closeLocked()
 	end.mu.Unlock()
 	if listener != nil {
 		listener()
 	}
+}
+
+// closeLocked closes this end under its guard and returns the close listener, for the caller to run outside it.
+func (end *LinkEnd) closeLocked() func() {
+	end.closed, end.ending = true, false
+	listener := end.closeListener
+	end.listener = nil
+	end.closeListener = nil
+	end.queued = nil
+	return listener
 }
 
 // memoryQueue is the pair's microtask queue: jobs run in order, one at a time, on a goroutine started when the queue
@@ -239,18 +312,26 @@ func (end *MemoryLink) Close() {
 	if end.Closed() {
 		return
 	}
-	peer := end.peerEnd()
-	end.end()
+	peer := end.unpeer()
+	end.closedHere()
 	if peer != nil {
 		end.queue.post(peer.end)
 	}
 }
 
+// end closes this end for its peer, which closed: after the messages the peer sent before.
 func (end *MemoryLink) end() {
-	end.peerMu.Lock()
-	end.peer = nil
-	end.peerMu.Unlock()
+	end.unpeer()
 	end.ended()
+}
+
+// unpeer forgets the peer and returns it; nil once forgotten.
+func (end *MemoryLink) unpeer() *MemoryLink {
+	end.peerMu.Lock()
+	defer end.peerMu.Unlock()
+	peer := end.peer
+	end.peer = nil
+	return peer
 }
 
 // Flushed blocks until the pair's queued deliveries and closes ran: the Go form of waiting for a macrotask after
