@@ -106,7 +106,7 @@ const (
 
 var sha256RE = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
-var sourceNames = []string{"pull", "files", "commits", "compare-main", "depends-on", "dependency-graph"}
+var sourceNames = []string{"pull", "files", "commits", "compare-main", "depends-on", "dependency-graph", "reviewed-ledger"}
 
 func loadConfig(data []byte) (config, error) {
 	var cfg config
