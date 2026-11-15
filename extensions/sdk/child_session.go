@@ -401,6 +401,8 @@ func (c Context) CreateAgentSession(options CreateAgentSessionOptions) (*AgentSe
 	if options.Tools != nil {
 		create.Tools = &options.Tools
 	}
+	// The host reads these objects by handle while it creates the session: they stay reachable until it has answered.
+	defer keepAlive(options.SessionManager, options.SettingsManager, options.ResourceLoader, options.ModelRuntime)
 	if options.SessionManager != nil {
 		create.SessionManager = options.SessionManager.Handle()
 	}

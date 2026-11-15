@@ -1890,7 +1890,7 @@ class ModelRegistry:
     def stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None = None) -> ModelEventStream:
         return self._stream(model, request, options, False)
 
-    def _stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None, simple: bool, runtime: str | None = None) -> ModelEventStream:
+    def _stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None, simple: bool, owner: Any = None) -> ModelEventStream:
         stream = ModelEventStream()
         extension = self._context.extension
         with extension._model_stream_lock:
@@ -1909,11 +1909,12 @@ class ModelRegistry:
             with extension._model_stream_lock:
                 extension._model_stream_callbacks[stream_id] = (model, callbacks)
 
+        # The host runs the stream on the runtime's object by handle: this closure keeps the object, whose release names the handle, until the stream's call is answered.
         def run() -> None:
             try:
                 call = {"streamId": stream_id, "model": model, "request": payload, "simple": simple}
-                if runtime:
-                    call["runtime"] = runtime
+                if owner is not None:
+                    call["runtime"] = owner.handle
                 call.update({name: True for name in callbacks})
                 self._context._call("modelStream", call)
             except Exception as exc:  # noqa: BLE001 - transport failure becomes terminal model error

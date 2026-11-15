@@ -852,6 +852,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-860776a](#bf-860776a) | A Google provider built from a model id without catalog metadata now sends its own earlier thinking blocks as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8620e9e](#bf-8620e9e) | The SDK `DefaultResourceLoader` lists a tool or flag that two extensions register as an error of the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-86364b4](#bf-86364b4) | fix(minimatch): case-insensitive patterns compare as a JavaScript RegExp does | PiG's own defect | All platforms | Unreleased |
+| [BF-8644cfc](#bf-8644cfc) | A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded… | PiG's own defect | All platforms | Unreleased |
 | [BF-866c7f9](#bf-866c7f9) | fix(rpc): two prompts of one batch answer in request order | PiG's own defect | All platforms | Unreleased |
 | [BF-869cef8](#bf-869cef8) | A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
@@ -13184,6 +13185,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `86364b4411` (2026-10-10)
 - **Tests:** `internal/minimatch/minimatch_oracle_test.go::TestMatchAgainstNodeMinimatch`
+
+### BF-8644cfc
+
+**A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded extensions, a `ModelRuntime`) in a later call could get "Unknown or released session graph object" from the host, at random and more often under memory pressure.
+- **Root cause:** A Go extension that built session graph objects failed at random under allocation pressure with Unknown or released session graph object: the SDK released an object when its Go value was collected, but a call that put the handle on the wire, a model stream, and a LoadedExtension (which named its loader by string) did not keep the value. Every call that names an object now keeps it until the host has answered (graphMethodCall, the constructors that take objects, the runtime of a loader, createAgentSession, the model stream goroutine), and a LoadedExtension holds its loader object.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `662910ee29` (2026-11-14), `7772dd4849` (2026-11-14), `8644cfc552` (2026-11-14)
+- **Tests:** None recorded.
+- **Release note:** A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded extensions, a `ModelRuntime`) in a later call could get "Unknown or released session graph object" from the host, at random and more often under memory pressure. The SDK released the host's object when its wrapper was collected or dropped, but the later call named the object by a handle string that nothing kept the wrapper alive for: `ExtensionRunner` built from the extensions a loader returned, a method call on the object's last use, and a model stream on a `ModelRuntime` the program had already let go of. An object now stays valid while anything that names its handle is still in use or in flight. Affects 0.5.2 through 0.7.0.
 
 ### BF-866c7f9
 

@@ -193,10 +193,10 @@ class ModelRuntime(_GraphObject):
 
     def stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None = None) -> Any:
         """Stream a model response through the runtime (``request`` and ``options`` as for ``ModelRegistry.stream``)."""
-        return self._registry()._stream(model, request, options, False, self.handle)
+        return self._registry()._stream(model, request, options, False, self)
 
     def stream_simple(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None = None) -> Any:
-        return self._registry()._stream(model, request, options, True, self.handle)
+        return self._registry()._stream(model, request, options, True, self)
 
     def complete(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None = None) -> dict[str, Any] | None:
         return self.stream(model, request, options).result()
