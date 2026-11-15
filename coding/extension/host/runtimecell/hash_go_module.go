@@ -155,6 +155,7 @@ func hashGoModuleDir(fsys fs.FS, dir string, add func(name string, data []byte) 
 		}
 	}
 	addSource := func(s source) error {
+		//portlint:allow pathseparators fsys is an io/fs.FS: dir and s.name are slash-separated fs names on every platform
 		name := path.Join(dir, s.name)
 		if s.loaded {
 			return add(name, s.data)

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // openCountingFS counts the opens of each name: the reads of a file through fs.ReadFile, which uses Open here.
@@ -55,9 +57,7 @@ func writeSyntheticModule(t *testing.T) string {
 		}
 	}
 	if runtime.GOOS != "windows" {
-		if err := os.Symlink("pkg/pkg.go", filepath.Join(root, "linked.go")); err != nil {
-			t.Fatal(err)
-		}
+		testenv.Symlink(t, "pkg/pkg.go", filepath.Join(root, "linked.go"))
 	}
 	return root
 }

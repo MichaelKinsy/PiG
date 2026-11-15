@@ -117,6 +117,8 @@ var fileSymlinkCallers = map[string]string{
 	"coding/packagecontent/packagecontent_test.go::TestValidateRejectsSymlinkedManifest":                                                                       "file link",
 	"durable/env/node/watch_link_alias_test.go::TestNodeFileWatcherReportsALinkedTargetForAnEventNamedByTheResolvedFile":                                       "file link; the watcher follows a link to a file",
 	"durable/env/node/filesystem_test.go::TestFilesystemListsSymlinksAsSymlinks":                                                                               "file link",
+	"coding/extension/host/runtimecell/hash_go_module_single_read_test.go::writeSyntheticModule":                                                               "file link; the golden digest covers a link to a file (the caller skips on Windows)",
+	"internal/atomicfile/atomicfile_windows_test.go::TestWindowsWriteFileFollowsASymbolicLink":                                                                 "file link; the write follows a link to a file and the link stays a link",
 	"durable/env/node/filesystem_test.go::TestFilesystemReturnsFileInfoForFilesDirectoriesAndSymlinksWithoutFollowingSymlinks":                                 "file link; the directory case uses RequireDirectoryLink",
 	"durable/tools/tools_test.go::TestEditEditsRegularFilesThroughSymlinks":                                                                                    "file link",
 	"durable/tools/tools_test.go::TestEditSerializesConcurrentEditsThroughCanonicalAndSymlinkPaths":                                                            "file link",

@@ -23,21 +23,26 @@ import (
 // osc133ZoneMark is the fixed start of every OSC 133 zone mark.
 const osc133ZoneMark = "\x1b]133;"
 
+// osc133ZoneMarks are the six complete marks the upstream pattern matches: zone A, B or C, ended by BEL or by ST (ESC \).
+var osc133ZoneMarks = [...]string{
+	"\x1b]133;A\x07", "\x1b]133;B\x07", "\x1b]133;C\x07",
+	"\x1b]133;A\x1b\\", "\x1b]133;B\x1b\\", "\x1b]133;C\x1b\\",
+}
+
 // stripOsc133ZonePrefix removes a leading run of OSC 133 A/B/C zone marks, each ended by BEL or ST (ESC \), as
-// line.replace(OSC133_ZONE_PREFIX, "") does upstream with /^(?:\x1b\]133;[ABC](?:\x07|\x1b\\))+/. It walks the marks instead
-// of running that pattern, whose ReplaceAllString allocates three times for a line that starts with a mark, and the result is a
-// substring of line. It runs for every line a frame rebuilds.
+// line.replace(OSC133_ZONE_PREFIX, "") does upstream with /^(?:\x1b\]133;[ABC](?:\x07|\x1b\\))+/. It cuts the complete marks off the
+// front instead of running that pattern, whose ReplaceAllString allocates three times for a line that starts with a mark, and the
+// result is a substring of line. It runs for every line a frame rebuilds.
 func stripOsc133ZonePrefix(line string) string {
 	for strings.HasPrefix(line, osc133ZoneMark) {
-		rest := line[len(osc133ZoneMark):]
-		switch {
-		case len(rest) < 2 || rest[0] < 'A' || rest[0] > 'C':
-			return line
-		case rest[1] == '\x07':
-			line = rest[2:]
-		case strings.HasPrefix(rest[1:], "\x1b\\"):
-			line = rest[3:]
-		default:
+		cut := false
+		for _, mark := range osc133ZoneMarks {
+			if rest, ok := strings.CutPrefix(line, mark); ok {
+				line, cut = rest, true
+				break
+			}
+		}
+		if !cut {
 			return line
 		}
 	}

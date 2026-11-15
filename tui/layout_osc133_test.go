@@ -17,6 +17,7 @@ var osc133ZonePrefix = lazyregexp.New("^(?:\x1b\\]133;[ABC](?:\x07|\x1b\\\\))+")
 func TestStripOsc133ZonePrefixMatchesRegexp(t *testing.T) {
 	cases := []struct{ line, want string }{
 		{"", ""},
+		{"\x1b]133;", "\x1b]133;"},
 		{"plain", "plain"},
 		{"\x1b[1mstyled\x1b[0m", "\x1b[1mstyled\x1b[0m"},
 		{"\x1b]133;A\x07prompt", "prompt"},
