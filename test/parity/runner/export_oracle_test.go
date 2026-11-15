@@ -1,5 +1,7 @@
 //go:build parity
 
+// SPDX-License-Identifier: MIT
+
 package runner
 
 import (
