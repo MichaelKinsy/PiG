@@ -77616,6 +77616,17 @@
       "shapeHash": "sha256:583138a63cd66645e1dd71b9308488c797375835d278b0254e2aac1d8db1cb16"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.CompactionStreamedTokens",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.CompactionStreamedTokens",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.ContextUsage",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Session.ContextUsage",
@@ -81959,6 +81970,17 @@
         "type": "func(message *github.com/MichaelKinsy/PiG/agent.AssistantMessage) bool"
       },
       "shapeHash": "sha256:9b6c2b9ead3d9382a29b60c9f01b21508080f1be5eab7a08ff87195d68a0f81d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.withCompactionProgress",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.withCompactionProgress",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) context.Context"
+      },
+      "shapeHash": "sha256:366d096859c2719867db797767571a760dd33d980fb8931079e27bb882464837"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#SessionContextUsage",
@@ -266926,6 +266948,17 @@
       "shapeHash": "sha256:fe9dd2bb88d891dbc1d20d278924ff2f7e7fde515e5d24ba7e2f922bedc6bad9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.compactionRoom",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.compactionRoom",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.completeProviderAuthentication",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.completeProviderAuthentication",
@@ -272974,6 +273007,17 @@
         "type": "func(prefix string) []github.com/MichaelKinsy/PiG/tui.AutocompleteItem"
       },
       "shapeHash": "sha256:4aac63e61a1e2ed24b19100dabaabe923c2b3d4f141f35fe8a014260aab5a18a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.tickCompactionMessage",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.tickCompactionMessage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(now time.Time) bool"
+      },
+      "shapeHash": "sha256:6c32208595034c358fb6e77396782379e47622724cec2b71c81f05f3334054fe"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.tickSpinner",
@@ -289817,6 +289861,28 @@
       "shapeHash": "sha256:0f915e06777c829953e77ec3ad10177c60eb2dfebe1e08b8058e1a7c7cee716a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#appendCompactionElapsed",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "appendCompactionElapsed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf []byte, secs int) []byte"
+      },
+      "shapeHash": "sha256:9a44dd1c54ebf8e3f8e0fd8a4d42a3630da1abb3676a53368dcfad6be4da49ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#appendCompactionTokens",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "appendCompactionTokens",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf []byte, tokens int) []byte"
+      },
+      "shapeHash": "sha256:e9c4099e5dc1c738fcc35e6ef52af53e5431fdedd127e8cecfb3f2f20937f056"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#appendExitLog",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "appendExitLog",
@@ -293733,6 +293799,28 @@
       "shapeHash": "sha256:3af528a2ba91555bb23ee8186a48c3c9201b3cf65594c81b5d32e417b99fd811"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#compactionBorderCells",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "compactionBorderCells",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#compactionCells",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "compactionCells",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf []byte) int"
+      },
+      "shapeHash": "sha256:3c26fdf2aa479de88d1876bbfa8487ec0861c0602aa32f6c0548deb0cda71292"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#compactionEnabled",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "compactionEnabled",
@@ -293841,6 +293929,28 @@
         "type": "func(sm *SettingsManager, provider string, id string) (any, error)"
       },
       "shapeHash": "sha256:b5f1f5f36f497bcd05926f14803c325ecadc478ad57230d7bf98f39760a7f81c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#compactionSpinnerCells",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "compactionSpinnerCells",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#compactionStatusMessage",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "compactionStatusMessage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(label string, secs int, tokens int, hint string, room int) string"
+      },
+      "shapeHash": "sha256:7fb6dd2a6f396eb43844c45afe3b4a7da715505b17c9f59cd03633386613fac1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#compactionSystemMessage",

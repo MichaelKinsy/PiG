@@ -1469,6 +1469,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D648](#bf-d648) | A Rust extension receives U+FFFD for a lone UTF-16 surrogate, and writes it back when it echoes text, where… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D649](#bf-d649) | A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D650](#bf-d650) | A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D652](#bf-d652) | The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -22388,6 +22389,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `50c06c75eb` (2026-11-14), `9794ea1555` (2026-11-14), `e5d8c37f40` (2026-11-14)
 - **Tests:** `coding/cli/interactive_quit_every_runtime_linux_test.go::TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds`, `coding/cli/interactive_quit_every_runtime_linux_test.go::TestInteractiveQuitWaitsForACommandInFlight`, `coding/cli/rpc_held_quit_native_command_signal_test.go::TestRPCHeldQuitOfANativeCommandEndsOnTheSignalsPiEnds`, `coding/extension/host/subprocess/quit_every_runtime_test.go::TestQuitDrainWaitsForANativeCommandInFlight`, `test/extension-conformance/quit_every_runtime_conformance_test.go::TestConformance_QuitWaitsForACommandInFlight`
 
+### BF-D652
+
+**The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D652)
+- **Symptom:** none; Pi's bare label is correct, only silent.
+- **Root cause:** a summary of a long session streams for minutes to tens of minutes behind a spinner that looks hung (owner report, row 175). Measured: the provider's stream is the time; PiG's own work is tens of milliseconds. The size is an estimate of streamed output, not the provider's token count; the label says `~`.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi shows progress for a compaction, or the owner withdraws the display.
+- **Fix commits:** `24a9659012` (2026-11-14)
+- **Tests:** `internal/codingagent/compaction/provider_completer_progress_test.go::TestProviderCompleterProgressChangesNeitherRequestNorResult`, `internal/codingagent/interactive_compaction_progress_test.go::TestCompactionEscapeDuringTheStreamLeavesNothingRunning`, `internal/codingagent/interactive_compaction_progress_test.go::TestCompactionLineShowsElapsedTimeAndStreamedTokens`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionLineInANarrowTerminal`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionProgressAllocations`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionStatusMessage`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageChangesNothingWithinASecond`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageFollowsClockAndCounter` and 1 more in docs/bug-ledger.json
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -33456,6 +33472,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D649 | A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's… | [BF-D649](#bf-d649) |
 | D650 | A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process… | [BF-D650](#bf-d650) |
 | D651 | Credential and state files are replaced through a temporary file where that changes nothing but the inode… | [BF-fbe92b6](#bf-fbe92b6) |
+| D652 | The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label | [BF-D652](#bf-d652) |
 
 ## Fix-titled commits that are not bugs in a release
 

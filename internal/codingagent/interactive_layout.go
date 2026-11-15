@@ -293,6 +293,10 @@ func (m *InteractiveMode) tickStatusIndicators(now time.Time) {
 	if m.statusLine != nil {
 		m.statusLine.Invalidate()
 	}
+	// pig divergence (D652): the compaction line carries the elapsed time and the streamed size; the tick's own clock reading dates it.
+	if m.tickCompactionMessage(now) && m.remoteEditor != nil && m.activeWorkingIndicatorEmbedded {
+		m.reconfigureRemoteEditor()
+	}
 	if indicator := m.activeStatusIndicator; indicator != nil && now.Sub(m.statusLastFrame) >= m.statusFrameInterval() {
 		if len(indicator.Frames) > 1 {
 			indicator.TickStep()

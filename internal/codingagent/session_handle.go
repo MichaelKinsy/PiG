@@ -54,6 +54,8 @@ type InteractiveSessionHandle interface {
 	// reference (*Session) is the same as *icodingagent.Session
 	// from coding/'s point of view.
 	Inner() *Session
+	// pig divergence (D652): CompactionStreamedTokens is the size in tokens of the summary the compaction in flight has streamed so far, 0 when none runs. The interactive compaction line reads it.
+	CompactionStreamedTokens() int64
 	// RecordUserBashResult records a user `!` command result as upstream recordBashResult: appended to the
 	// Session and live context when idle, queued until the run ends while one streams. It returns the immediate
 	// persistence failure.

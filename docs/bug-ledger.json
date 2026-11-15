@@ -40085,6 +40085,37 @@
       ]
     },
     {
+      "id": "BF-D652",
+      "title": "The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label",
+      "symptom": "none; Pi's bare label is correct, only silent.",
+      "rootCause": "a summary of a long session streams for minutes to tens of minutes behind a spinner that looks hung (owner report, row 175). Measured: the provider's stream is the time; PiG's own work is tens of milliseconds. The size is an estimate of streamed output, not the provider's token count; the label says `~`.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D652",
+      "removeWhen": "Pi shows progress for a compaction, or the owner withdraws the display.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "24a9659012",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/compaction/provider_completer_progress_test.go::TestProviderCompleterProgressChangesNeitherRequestNorResult",
+        "internal/codingagent/interactive_compaction_progress_test.go::TestCompactionEscapeDuringTheStreamLeavesNothingRunning",
+        "internal/codingagent/interactive_compaction_progress_test.go::TestCompactionLineShowsElapsedTimeAndStreamedTokens",
+        "internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionLineInANarrowTerminal",
+        "internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionProgressAllocations",
+        "internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionStatusMessage",
+        "internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageChangesNothingWithinASecond",
+        "internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageFollowsClockAndCounter",
+        "internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageFollowsTheWidth"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -64279,6 +64310,11 @@
       "id": "D651",
       "title": "Credential and state files are replaced through a temporary file where that changes nothing but the inode…",
       "entry": "BF-fbe92b6"
+    },
+    {
+      "id": "D652",
+      "title": "The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label",
+      "entry": "BF-D652"
     }
   ],
   "exemptCommits": {

@@ -380,7 +380,14 @@ type InteractiveMode struct {
 	activeWorkingIndicatorEmbedded bool
 	workingIndicatorOptions        *extension.WorkingIndicatorOptions
 	statusLastFrame                time.Time
-	spinnerIntervalCh              chan time.Duration
+	// pig divergence (D652): compactionStartedAt, compactionLabel, compactionHint and compactionShown* are the compaction line's state: the compaction's start and the label and hint around the elapsed time and streamed size, which the status tick rewrites when the seconds, the size or the room for the line changed.
+	compactionStartedAt   time.Time
+	compactionLabel       string
+	compactionHint        string
+	compactionShownSecs   int
+	compactionShownTokens int
+	compactionShownRoom   int
+	spinnerIntervalCh     chan time.Duration
 	// spinnerTickQueued is set while a spinner tick waits in uiTaskCh.
 	spinnerTickQueued atomic.Bool
 	// spinnerWakeCh resumes a parked spinner ticker; spinnerWakeGen counts
