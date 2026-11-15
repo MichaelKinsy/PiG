@@ -182,7 +182,7 @@ type Session struct {
 	compacting            atomic.Bool                              // true while Compact() or runAutoCompaction() is in flight
 	compactMu             sync.Mutex                               // protects compaction and tree-navigation ownership
 	compactCancel         context.CancelFunc                       // non-nil while Compact() or runAutoCompaction() is in flight
-	compactionProgress    atomic.Pointer[compactprogress.Progress] // the streamed-summary counter of the compaction in flight (pig divergence D652)
+	compactionProgress    atomic.Pointer[compactprogress.Progress] // the streamed-summary counter of the compaction in flight
 	compactDone           chan struct{}                            // closed when the current compaction releases ownership
 	compactAbortRequested bool                                     // cancellation arrived before compactCancel was installed
 	branchSumCancel       context.CancelFunc                       // non-nil while tree navigation owns its abortable operation
