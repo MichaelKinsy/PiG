@@ -86,13 +86,13 @@ func runCommand(ctx context.Context, cfg config, args []string, stdout, stderr i
 	o, reports, err := parseRunFlags(args, stderr)
 	if err != nil {
 		if !errors.Is(err, errUsage) {
-			_, _ = fmt.Fprintln(stderr, "preflight run:", err)
+			_, _ = fmt.Fprintln(stderr, "preflight run:", inert(err.Error()))
 		}
 		return 2
 	}
 	hs, err := runBatch(ctx, cfg, o, stdout)
 	if err = errors.Join(err, reports.write(hs, err, o.budget)); err != nil {
-		_, _ = fmt.Fprintln(stderr, "preflight run:", err)
+		_, _ = fmt.Fprintln(stderr, "preflight run:", inert(err.Error()))
 		return 2
 	}
 	return 0
