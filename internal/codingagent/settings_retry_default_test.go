@@ -2,6 +2,20 @@ package codingagent
 
 import "testing"
 
+// With no setter called, a session's retry settings are upstream's defaults: 3 retries (settings-manager.ts:21), 2000 ms base (:22) and the 60000 ms cap, as literals here so a changed built-in cannot pass by comparing with itself.
+// mutation-checked: builtinRetryConfig with MaxRetries 4, or DefaultRetryConfig returning a zero RetryConfig, fails.
+func TestRetrySettingsWithoutASetterAreUpstreamsDefaults(t *testing.T) {
+	t.Cleanup(func() { defaultRetryConfig.Store(nil) })
+	defaultRetryConfig.Store(nil)
+	want := RetryConfig{Enabled: true, MaxRetries: 3, BaseDelayMs: 2000, MaxAgentDelayMs: 60000}
+	if got := DefaultRetryConfig(); got != want {
+		t.Fatalf("DefaultRetryConfig() = %+v, want %+v", got, want)
+	}
+	if got := NewInMemorySettingsManager(Settings{}).GetRetrySettings(); got != want {
+		t.Fatalf("GetRetrySettings() with no setter and no settings = %+v, want %+v", got, want)
+	}
+}
+
 func TestDefaultRetryConfigIsReplaceable(t *testing.T) {
 	t.Cleanup(func() { defaultRetryConfig.Store(nil) })
 	sm := NewInMemorySettingsManager(Settings{})
