@@ -1,0 +1,57 @@
+from = "1.5.2+7f021f0e"
+to = "1.5.2+e67aa1a4"
+# Pi e67aa1a4e5 (2026-11-15): feat(durable): onAbort "keep" keeps a queued input through conversation aborts. It replaces f8a292842 (Conversation.abort() resolved with {withdrawn}), which Pi reverted three minutes after landing (684fddee0b); neither of those is ported, and abort() still resolves with no value.
+# Left out of this range because other lines account for them: 8270d9af6 (chord admission with a typed value, slice 14), 7ce13c086 (the p2 half of this change: apps/p2 subagent and peer messages stay queued through Stop).
+
+[[files]]
+path = "packages/durable/src/harness/inbox.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_input_entries_test.go#TestInputEntries", "test:durable/core/inbox/inbox_test.go#TestWithdrawQueuedKeepsInputsSubmittedWithOnAbortKeep", "test:durable/core/driver/harness_input_entries_core_test.go#TestCoreAKeepInputStaysQueuedThroughAConversationAbortAndTheNextInputPlacesIt", "test:durable/core/driver/harness_input_entries_core_test.go#TestCoreAnAbortInFlightWithdrawsWhatItsCommitFoundQueuedAndStoresOnAbortOnlyForKeep"]
+rationale = "e67aa1a4e5: InboxItem gains the optional `onAbort: \"keep\"` after `entry`; withdrawAbortedInputs (Conversation.abort() and abort cascades) leaves the inputs that carry it queued, withdrawQueuedInputs(tx, id, reason) (a failed run under afterFailedRun withdraw) still withdraws every input, and an item stored with any other value withdraws. harness/inbox.go InboxItem.OnAbort, WithdrawAbortedInputs and WithdrawQueuedInputsFor do the same; the durable core does it in core/inbox (Draft.OnAbort, WithdrawAborted, WithdrawQueuedFor). Pi's tree printed the stored bytes and the order of an abort in flight; both are asserted for both engines."
+oracle = "not carried: the oracle is Pi 1.5.2, which has no onAbort; the expected bytes and order are Pi e67aa1a4e5's own output for the same inputs (a scratch case run in Pi's tree), written into the ported tests"
+
+[[files]]
+path = "packages/durable/src/harness/harness.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_input_entries_test.go#TestInputEntries", "test:durable/core/driver/harness_input_entries_core_test.go#TestCoreAKeepInputStaysQueuedThroughAConversationAbortAndTheNextInputPlacesIt"]
+rationale = "e67aa1a4e5: the scheduler's withdrawInputs is withdrawAbortedInputs. harness.go passes WithdrawAbortedInputs and the core's sched.go passes inbox.WithdrawAborted, the same as Pi, for Conversation.abort() and for abort cascades."
+oracle = "not carried: see inbox.ts"
+
+[[files]]
+path = "packages/durable/src/harness/submissions.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_input_entries_test.go#TestInputEntries", "test:durable/core/inbox/inbox_test.go#TestWithdrawQueuedKeepsInputsSubmittedWithOnAbortKeep", "test:durable/core/submit_on_abort_test.go#TestSubmissionDraftReadsOnAbortKeepOnly"]
+rationale = "e67aa1a4e5: an input draft with `onAbort === \"keep\"` stores `onAbort: \"keep\"` on its inbox item, after the entry, and nothing for any other value. harness/submissions.go and core/inbox/submit.go store it the same way; core/submit.go reads the field of the submit event and of the transaction op, only the string keep."
+oracle = "not carried: see inbox.ts"
+
+[[files]]
+path = "packages/durable/src/harness/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_input_entries_test.go#TestInputEntries", "test:durable/core/driver/wire_test.go#TestSubmissionEventCarriesOnAbortOnlyForKeep", "test:durable/core/host/cf/test/facade.test.ts#a draft's onAbort keep reaches the core in the submit event, and a draft without it sends no field"]
+rationale = "e67aa1a4e5: SubmissionDraft's input arm gains `onAbort?: \"withdraw\" | \"keep\"`. durable.SubmissionDraft.OnAbort (OnAbort, OnAbortWithdraw, OnAbortKeep) is it; the Go driver sends the field in the submit event only for keep, and the Cloudflare facade passes the draft through unchanged. Conversation.abort() keeps its type: Pi's first attempt, which resolved with {withdrawn}, was reverted."
+oracle = "not carried: see inbox.ts"
+
+[[files]]
+path = "packages/durable/test/harness-input-entries.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/harness/harness_input_entries_test.go#TestInputEntries", "test:durable/core/driver/harness_input_entries_core_test.go#TestCoreAKeepInputStaysQueuedThroughAConversationAbortAndTheNextInputPlacesIt"]
+rationale = "e67aa1a4e5: the case \"keeps onAbort: keep inputs queued through a conversation abort; the next input places them\" is ported to the harness with its inputs and results (the harness subtest of that name) and to the core (TestCoreAKeepInputStaysQueuedThroughAConversationAbortAndTheNextInputPlacesIt). Added beyond Pi's file, with the bytes and order Pi's tree printed: the stored items, an item stored with another value, and inputs enqueued while the abort is in flight."
+
+[[files]]
+path = "packages/durable/docs/spec.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "e67aa1a4e5: Pi's spec text of onAbort keep. PiG does not mirror the spec; the behaviour is in the Go doc comments of durable.SubmissionDraft.OnAbort and harness.WithdrawAbortedInputs, and in durable/core/host/PROTOCOL.md."
+
+[[files]]
+path = "packages/durable/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "e67aa1a4e5: Pi's own changelog line; PiG records the change in changelog.d."
