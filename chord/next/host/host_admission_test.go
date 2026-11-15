@@ -644,6 +644,7 @@ func TestAdmissionTheWatchTable(t *testing.T) {
 		// Made while the new attempt admits (the reference is loading): it waits at the gate, never `not_ready`, and
 		// meets the reader the new value selects, not the writer it was sent to.
 		crossed := admStart(t, doc, "write", "y")
+		s.delivered()
 		if got := told(admRejection(t, crossed)); got != [3]string{"invalid", "member", `test.doc(a) (variant reader) has no method "write"`} {
 			t.Fatalf("write rejected with %v", got)
 		}
@@ -1218,9 +1219,18 @@ func admStart(t testing.TB, ref *Reference, method string, args delta.JsonValue)
 	return result
 }
 
-// admRejection is `await rejection(call)`: the call's error, which must exist.
+// admRejection is `await rejection(call)`: the call's error, which must exist. The caller has settled the host (`delivered`)
+// before: a call still unsettled then was never rejected, which the test reports (Errorf: a test that holds a commit goes on to
+// release it) where a wait would hang until the binary's timeout; the error returned then is that report.
 func admRejection(t testing.TB, result *parkedCallResult) error {
 	t.Helper()
+	result.mu.Lock()
+	settled := result.settled
+	result.mu.Unlock()
+	if !settled {
+		t.Errorf("the call is not settled, want a rejection")
+		return errors.New("the call is not settled")
+	}
 	_, err := result.wait(background)
 	if err == nil {
 		t.Fatal("the call resolved, want a rejection")
@@ -1286,6 +1296,9 @@ func TestAdmissionOverALink(t *testing.T) {
 		deliveredOn(server, client)
 		_, err = access.Call("set", jsonObject("who", "owner", "mode", "none"), background)
 		must(t, err)
+		deliveredOn(server)
+		transported(a, b)
+		deliveredOn(client)
 		revokedCall := [3]string{"forbidden", "revoked", "test.doc(a): no access"}
 		for name, call := range map[string]*parkedCallResult{"running": running, "crossing": crossing, "waiting": waiting} {
 			if got := told(admRejection(t, call)); got != revokedCall {
@@ -1424,6 +1437,7 @@ func TestAdmissionOverALink(t *testing.T) {
 		first := writing()
 		admLinkDelivered(l.linkedHosts)
 		l.set("none")
+		admLinkDelivered(l.linkedHosts)
 		if got := told(admRejection(t, first)); got[0] != "forbidden" || got[1] != "revoked" {
 			t.Fatalf("first = %v, want forbidden/revoked", got)
 		}
@@ -1432,6 +1446,7 @@ func TestAdmissionOverALink(t *testing.T) {
 		second := writing()
 		admLinkDelivered(l.linkedHosts)
 		l.set("read")
+		admLinkDelivered(l.linkedHosts)
 		if got := told(admRejection(t, second)); got[0] != "unavailable" {
 			t.Fatalf("second = %v, want unavailable", got)
 		}
