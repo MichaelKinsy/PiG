@@ -404,9 +404,11 @@ func newTransactionGate() *transactionGate {
 	return &transactionGate{entered: make(chan struct{}), release: make(chan struct{})}
 }
 
+// hit holds the transaction until Release: the wait is a park of the task that runs the commit (a test's delivered() does not
+// wait for a commit the test holds: Pi's pending `await held`).
 func (gate *transactionGate) hit() {
 	gate.once.Do(func() { close(gate.entered) })
-	<-gate.release
+	_, _ = chordctx.Receive(context.Background(), gate.release)
 }
 
 // Entered is closed when the held transaction reached its hold.
