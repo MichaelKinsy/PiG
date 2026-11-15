@@ -679,7 +679,8 @@ func TestTilingOneCommitSeveralPages(t *testing.T) {
 }
 
 // tlBare is a world of `facet` on a store of its own, without the sessions' fixture: the filler (when the facet serves it),
-// the commit hooks and the hold of the next commit.
+// and the hold of the next commit. The commit bookkeeping (`install`) is the test's to start, where Pi's test registers its
+// `store.onCommitted`: after its setup.
 func tlBare(t *testing.T, facet Facet) *tlWorld {
 	t.Helper()
 	chordStore, holdNextCommit, faults := tlFaultyStore(t)
@@ -688,11 +689,13 @@ func tlBare(t *testing.T, facet Facet) *tlWorld {
 	must(t, err)
 	w := &tlWorld{t: t, store: chordStore, host: host, probe: &tlProbe{adopted: func() {}}, hold: holdNextCommit, faults: faults,
 		filler: mustGet(t, host, tlFiller, jsonObject())}
-	w.install()
 	return w
 }
 
-// install starts the commit bookkeeping from the store's current seq on (Pi: the lines after the seeding in `hosted`).
+// install starts the commit bookkeeping from the store's current seq on (Pi: the lines after the seeding in `hosted`). The
+// store's listener runs on a goroutine of its own and one notification covers every commit made since the last, so a
+// notification may still be on its way for commits made before install: it carries the baseline seq (or a later one that also
+// covers commits made after install), a jump over no commit of the past. Only commits made after install can form a group.
 func (w *tlWorld) install() {
 	w.commits = newCommitLog(w.store.LastSeq())
 	w.store.OnCommitted(w.commits.onCommitted, func(error) {})
@@ -816,7 +819,10 @@ func TestTilingARowAnotherOwnersCommitLetsInInTheGroupThatMergedItsPages(t *test
 		w.more()
 		listIDs := func() []int { shown, _ := w.value(); return rowIDs(shown) }
 		tlEqual(t, "ids", listIDs(), []int{10, 20, 30, 40})
-		// Commits queued behind a running one are one group: one notification for several sequence numbers.
+		// Commits queued behind a running one are one group: one notification for several sequence numbers. Pi registers its
+		// listener here, after the setup; so does the count (the setup's commits, made one after the other, may be announced
+		// as one notification, which is no group of the commit queue's).
+		w.install()
 		before := w.store.LastSeq()
 		w.queued(
 			func() { mustCall(t, rows, "write", jsonObject("drop", ids(20, 40))) },
