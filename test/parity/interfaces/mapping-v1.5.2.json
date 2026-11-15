@@ -32328,8 +32328,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryNonRetryableError"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -32352,7 +32352,7 @@
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
         "test:ai/provider_closed_connection_test.go#TestRetryAssistantCallOverAGatewayClosedConnection",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -32440,7 +32440,7 @@
       "evidence": [
         "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -32482,8 +32482,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallReportsCappedRetryDelays"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
       ]
     },
     {
@@ -32525,8 +32525,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallReportsCappedRetryDelays"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
       ]
     },
     {
@@ -78422,8 +78422,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryNonRetryableError"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -78446,7 +78446,7 @@
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
         "test:ai/provider_closed_connection_test.go#TestRetryAssistantCallOverAGatewayClosedConnection",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -78534,7 +78534,7 @@
       "evidence": [
         "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -78576,8 +78576,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallReportsCappedRetryDelays"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
       ]
     },
     {
@@ -78619,8 +78619,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallReportsCappedRetryDelays"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
       ]
     },
     {
@@ -102458,8 +102458,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryNonRetryableError"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -102482,7 +102482,7 @@
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
         "test:ai/provider_closed_connection_test.go#TestRetryAssistantCallOverAGatewayClosedConnection",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallDoesNotRetryAbortedMessage"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -102570,7 +102570,7 @@
       "evidence": [
         "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -102612,8 +102612,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallReportsCappedRetryDelays"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
       ]
     },
     {
@@ -102655,8 +102655,8 @@
       ],
       "evidence": [
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallReportsCappedRetryDelays"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
       ]
     },
     {
@@ -181305,7 +181305,7 @@
       "evidence": [
         "test:coding/cli/extension_set_upstream_test.go#TestBuiltInExtensionNamesListsOnlyBuiltinEntries",
         "test:coding/cli/extension_set_upstream_test.go#TestInlineExtensionBareFactoriesAreNamedByPosition",
-        "test:coding/cli/inline_extension_naming_test.go#TestInlineExtensionFactoryErrorIsALoadErrorForItsPath"
+        "test:coding/cli/clihook_test.go#TestClihookChildProgram"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -181328,7 +181328,7 @@
       "evidence": [
         "test:coding/cli/extension_set_upstream_test.go#TestBuiltInExtensionNamesListsOnlyBuiltinEntries",
         "test:coding/cli/extension_set_upstream_test.go#TestInlineExtensionBareFactoriesAreNamedByPosition",
-        "test:coding/cli/inline_extension_naming_test.go#TestInlineExtensionFactoryErrorIsALoadErrorForItsPath"
+        "test:coding/cli/clihook_test.go#TestClihookChildProgram"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -194304,8 +194304,8 @@
       ],
       "evidence": [
         "test:coding/cli/stdout_cleanliness_upstream_test.go#TestStdoutCleanlinessUpstream",
-        "test:coding/cli/deleted_cwd_unix_test.go#TestMainHandlesCwdErrors",
-        "test:coding/cli/deleted_cwd_unix_test.go#TestMainReportsDeletedWorkingDirectory"
+        "test:coding/cli/clihook_test.go#TestClihookChildProgram",
+        "test:coding/cli/deleted_cwd_unix_test.go#TestMainHandlesCwdErrors"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -194327,8 +194327,8 @@
       ],
       "evidence": [
         "test:coding/cli/stdout_cleanliness_upstream_test.go#TestStdoutCleanlinessUpstream",
-        "test:coding/cli/deleted_cwd_unix_test.go#TestMainHandlesCwdErrors",
-        "test:coding/cli/deleted_cwd_unix_test.go#TestMainReportsDeletedWorkingDirectory"
+        "test:coding/cli/clihook_test.go#TestClihookChildProgram",
+        "test:coding/cli/deleted_cwd_unix_test.go#TestMainHandlesCwdErrors"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -194349,9 +194349,9 @@
         "call:coding/cli/main.go#Main"
       ],
       "evidence": [
+        "test:coding/cli/clihook_test.go#TestClihookChildProgram",
         "test:coding/cli/main_options_test.go#TestMainLoadsTheProgramsExtensionFactories",
-        "test:coding/cli/main_options_test.go#TestMainPassesTheProgramsExtensionFactoriesToPackageCommands",
-        "test:coding/cli/main_options_test.go#TestMainRunsAFailingProgramFactoryOnceWithAProjectTrustPass"
+        "test:coding/cli/main_options_test.go#TestMainPassesTheProgramsExtensionFactoriesToPackageCommands"
       ]
     },
     {
@@ -194371,9 +194371,9 @@
         "call:coding/cli/main.go#Main"
       ],
       "evidence": [
+        "test:coding/cli/clihook_test.go#TestClihookChildProgram",
         "test:coding/cli/main_options_test.go#TestMainLoadsTheProgramsExtensionFactories",
-        "test:coding/cli/main_options_test.go#TestMainPassesTheProgramsExtensionFactoriesToPackageCommands",
-        "test:coding/cli/main_options_test.go#TestMainRunsAFailingProgramFactoryOnceWithAProjectTrustPass"
+        "test:coding/cli/main_options_test.go#TestMainPassesTheProgramsExtensionFactoriesToPackageCommands"
       ]
     },
     {
