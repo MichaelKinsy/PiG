@@ -240,6 +240,8 @@ type admDocCode struct {
 	Declare func(self Self, mode string)
 	// Write: what `write` does before it answers.
 	Write func(text string, self Self) error
+	// NoShare: the facet does not serve Share (a plugin of its own does: admShareFacet).
+	NoShare bool
 }
 
 // admDocFacet is a facet serving Doc (as contract) and Share, Panel.
@@ -314,15 +316,17 @@ func admDocFacet(code admDocCode, contract *contracts.Contract, shares *admLog) 
 		if err != nil {
 			return err
 		}
-		if err := host.Serve(admShare, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
-			if shares != nil {
-				shares.Append(params.Value("id").(string))
+		if !code.NoShare {
+			if err := host.Serve(admShare, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
+				if shares != nil {
+					shares.Append(params.Value("id").(string))
+				}
+				return contracts.Implementation{Members: contracts.VariantImplementation{
+					State: map[string]chord.Watchable[delta.JsonValue]{"open": Expose(state_constant("yes"))},
+				}}, nil
+			}, ServeOptions{}); err != nil {
+				return err
 			}
-			return contracts.Implementation{Members: contracts.VariantImplementation{
-				State: map[string]chord.Watchable[delta.JsonValue]{"open": Expose(state_constant("yes"))},
-			}}, nil
-		}, ServeOptions{}); err != nil {
-			return err
 		}
 		return host.Serve(admPanel, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			doc := self.Get(contractOf(contract), jsonObject("id", params.Value("id")))
@@ -365,6 +369,8 @@ type admOptions struct {
 	Loop sectionLoop
 	// Meter makes the host record its counters (Pi's `metered()`).
 	Meter *nexttest.Meter
+	// Shares: the Share served by a plugin of its own, logging each of its factory runs (one id per run).
+	Shares *admLog
 }
 
 func admServed(t *testing.T, code admDocCode, options admOptions) *admServer {
@@ -375,10 +381,14 @@ func admServed(t *testing.T, code admDocCode, options admOptions) *admServer {
 		Address: &address, Principal: serverPrincipal(), ReadyTimeout: options.ReadyTimeout, OnError: errs.push, loop: options.Loop,
 		Telemetry: meterTelemetry(options.Meter),
 	})
-	s := &admServer{t: t, h: h, errors: errs, plugins: map[string]Facet{
-		"access": admAccessFacet(options.Access, admAccess, nil),
-		"doc":    admDocFacet(code, admDoc, nil),
-	}}
+	s := &admServer{t: t, h: h, errors: errs, plugins: map[string]Facet{"access": admAccessFacet(options.Access, admAccess, nil)}}
+	if options.Shares != nil {
+		// Share in a plugin of its own, which a reload of Doc leaves alone: its factory runs are the objects started (Pi counts the
+		// objects that started an attempt, which a restart of an object does not).
+		code.NoShare = true
+		s.plugins["share"] = admShareFacet(options.Shares)
+	}
+	s.plugins["doc"] = admDocFacet(code, admDoc, nil)
 	_, err := h.Load(s.facets(), background)
 	must(t, err)
 	if options.Mode != "" {
@@ -387,8 +397,24 @@ func admServed(t *testing.T, code admDocCode, options admOptions) *admServer {
 	return s
 }
 
+// admShareFacet is the plugin that serves Share, logging each run of its factory.
+func admShareFacet(shares *admLog) Facet {
+	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
+		return host.Serve(admShare, func(params *delta.JsonObject, _ Self) (contracts.Implementation, error) {
+			shares.Append(params.Value("id").(string))
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"open": Expose(state_constant("yes"))},
+			}}, nil
+		}, ServeOptions{})
+	})
+}
+
 func (s *admServer) facets() []HostFacet {
-	return []HostFacet{{Name: "@test/access", Facet: s.plugins["access"]}, {Name: "@test/doc", Facet: s.plugins["doc"]}}
+	facets := []HostFacet{{Name: "@test/access", Facet: s.plugins["access"]}, {Name: "@test/doc", Facet: s.plugins["doc"]}}
+	if share, ok := s.plugins["share"]; ok {
+		facets = append(facets, HostFacet{Name: "@test/share", Facet: share})
+	}
+	return facets
 }
 
 // set is `access.set({ who, mode })` through a getter of Access.
@@ -874,6 +900,86 @@ func TestAdmissionAnAdmissionsRequests(t *testing.T) {
 		must(t, s.h.Close(background))
 	})
 
+	t.Run("are kept across a rebuild until the successor's bound: a source held only by them never ends", func(t *testing.T) {
+		shares := &admLog{}
+		s := admServed(t, admDocCode{Built: &admLog{}, Admit: admitBy(true)}, admOptions{Mode: "read", Shares: shares})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		s.set("write", "server")
+		s.delivered()
+		s.set("none", "server")
+		s.delivered()
+		s.set("read", "server")
+		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
+		// One `Share(a)` through three rebuilds and a denial (it has no linger: a gap would have ended it).
+		expectStrings(t, shares.Items(), "a")
+		doc.Release()
+		s.delivered()
+		// Released with the object: the next holder's admission makes a new one.
+		mustGet(t, s.h, admDoc, jsonObject("id", "a")).Release()
+		expectStrings(t, shares.Items(), "a", "a")
+		expectNoErrors(t, s.errors)
+		must(t, s.h.Close(background))
+	})
+
+	t.Run("stay with a sealed attempt while no later admission bound: a retry finds its source still held", func(t *testing.T) {
+		shares := &admLog{}
+		s := admServed(t, admDocCode{Built: &admLog{}, Admit: admitBy(true)}, admOptions{Mode: "read", Shares: shares})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "kept"))
+		runs := 0
+		// Staging records the first run; the successor's own run throws before it declares anything.
+		flaky := func(params *delta.JsonObject, principal data.Principal, self AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+			runs++
+			if runs == 2 {
+				return nil, errors.New("admit threw")
+			}
+			return admitBy(true)(params, principal, self)
+		}
+		report, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: &admLog{}, Admit: flaky, NoShare: true}, admDoc, nil)})
+		must(t, err)
+		if len(report.Failed) != 0 {
+			t.Fatalf("reload failed %v, want none", report.Failed)
+		}
+		s.delivered()
+		if st := stateOfRef(doc); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureBroken {
+			t.Fatalf("state = %+v, want failed broken", st)
+		}
+		doc.Retry()
+		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
+		// The share was held by the sealed attempt's admission throughout: it never ended, so no second object (Pi counts the
+		// objects started with the label "test.share(kept)": one).
+		expectStrings(t, shares.Items(), "kept")
+		must(t, s.h.Close(background))
+	})
+
+	// Own test: Pi's two cases above never see a source end; this is the other half of the rule (a sealed attempt's admission is
+	// let go once a later one bound its requests, so a source only the sealed one held ends then).
+	t.Run("let go the source only a sealed attempt's admission held once a later admission bound without it", func(t *testing.T) {
+		shares, wants := &admLog{}, &admFlag{}
+		wants.set(true)
+		admit := func(params *delta.JsonObject, principal data.Principal, self AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+			return admitBy(wants.get())(params, principal, self)
+		}
+		s := admServed(t, admDocCode{Built: &admLog{}, Admit: admit}, admOptions{Mode: "read", Shares: shares})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		expectStrings(t, shares.Items(), "a")
+		wants.set(false)
+		s.set("write", "server")
+		s.delivered()
+		// The successor's admission asks for no share: the first's is let go, and the share ends with it.
+		wants.set(true)
+		s.set("read", "server")
+		s.delivered()
+		expectStrings(t, shares.Items(), "a", "a")
+		doc.Release()
+		must(t, s.h.Close(background))
+	})
+
 }
 
 // --- presence, linger, parked_long and retry (Pi 698-797) --------------------------------------------------------------
@@ -972,6 +1078,41 @@ func TestAdmissionPresenceLingerParkedLongAndRetry(t *testing.T) {
 		}
 		doc.Release()
 		panel.Release()
+		must(t, s.h.Close(background))
+	})
+
+	t.Run("ref.retry() on a denied object starts nothing; on one parked on a failed source it passes on", func(t *testing.T) {
+		built, decisions, broken := &admLog{}, &admDecisions{}, &admFlag{}
+		s := admServed(t, admDocCode{Built: built, Admit: decisions.counting(admitBy(false))}, admOptions{})
+		doc := mustHold(t, s.h, admDoc, jsonObject("id", "a"))
+		s.delivered()
+		made := decisions.len()
+		doc.Retry()
+		s.delivered()
+		if st := stateOfRef(doc); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureDenied {
+			t.Fatalf("state = %+v, want failed denied", st)
+		}
+		if n := decisions.len(); n != made {
+			t.Fatalf("decisions = %d, want %d (a retry of a denied object starts nothing)", n, made)
+		}
+		// The source fails (its new code's native does not open): the allowed object waits on it instead.
+		s.set("read", "server")
+		s.delivered()
+		broken.set(true)
+		_, err := s.reload(map[string]Facet{"access": admAccessFacet(admAccessCode{Broken: broken}, admAccess, nil)})
+		must(t, err)
+		s.delivered()
+		if st := stateOfRef(doc); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureWaiting {
+			t.Fatalf("state = %+v, want failed waiting", st)
+		}
+		broken.set(false)
+		doc.Retry()
+		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
+		expectStrings(t, built.Items(), "a:read", "a:read")
+		doc.Release()
 		must(t, s.h.Close(background))
 	})
 
