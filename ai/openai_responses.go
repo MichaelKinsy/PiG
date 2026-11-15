@@ -1871,7 +1871,8 @@ func (p *openAIResponsesProvider) streamResponse(ctx context.Context, httpReq *h
 			if p.api() == APIAzureOpenAIResponses {
 				name = "Azure OpenAI"
 			}
-			return withErrorHeaders(openAIHTTPError(resp.StatusCode, b, name+" API error"), headersToRecord(resp.Header))
+			noteFailureResponse(ctx, resp)
+			return openAIHTTPError(resp.StatusCode, b, name+" API error")
 		}
 		if !p.cfg.Codex {
 			err := observeProviderResponse(ctx, opts, resp, &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: p.api()}})

@@ -1315,7 +1315,8 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 			}
 			retry, err = p.prepareParams(ctx, request.baseURL, request.client, request.params, model, opts)
 		default:
-			return withErrorHeaders(anthHTTPError(resp.StatusCode, b), headersToRecord(resp.Header))
+			noteFailureResponse(ctx, resp)
+			return anthHTTPError(resp.StatusCode, b)
 		}
 		if err != nil {
 			return err
@@ -1327,7 +1328,8 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 		if resp.StatusCode != http.StatusOK {
 			b2, _ := readWebText(resp.Body)
 			_ = resp.Body.Close()
-			return withErrorHeaders(anthHTTPError(resp.StatusCode, b2), headersToRecord(resp.Header))
+			noteFailureResponse(ctx, resp)
+			return anthHTTPError(resp.StatusCode, b2)
 		}
 	}
 	defer func() { _ = resp.Body.Close() }()

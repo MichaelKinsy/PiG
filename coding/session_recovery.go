@@ -332,6 +332,7 @@ func (s *Session) prepareRetry(ctx context.Context, message *agent.AssistantMess
 			return nil, nil
 		}
 		var delayMs int
+		// pig additive (D654): an installed decider chooses the delay in place of the exponential schedule (agent-session.ts:3951).
 		if decider := icodingagent.DefaultRetryDecider(); decider != nil {
 			decision, ok := s.takePendingRetryDecision(message)
 			if !ok {

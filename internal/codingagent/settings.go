@@ -2664,6 +2664,7 @@ var (
 
 // SetDefaultRetryDecider installs the retry classifier and delay hook a fused Piglet member supplies through
 // clihook.Result.Retry. Nil restores PiG's built-in classifier and exponential schedule.
+// pig additive (D654): inert unless a fused member installs a decider.
 func SetDefaultRetryDecider(decider ai.RetryDecider, silent bool) {
 	if decider == nil {
 		defaultRetryDecider.Store(nil)

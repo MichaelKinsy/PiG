@@ -678,9 +678,11 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 		m.tuiInst.Render()
 
 	case agent.AutoRetryStartEvent:
+		// pig additive (D654): a silent retry shows no status line and no final error, and Escape still cancels its delay, as in Pi.
 		if DefaultRetrySilent() {
 			m.clearStatusIndicator("")
 			m.retryCountdownStop = func() {}
+			m.retryEscapeHandler = true
 			break
 		}
 		m.showRetryStatusIndicator(e.Attempt, e.MaxAttempts, e.DelayMs)
@@ -691,6 +693,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 	case agent.AutoRetryEndEvent:
 		if DefaultRetrySilent() {
 			m.retryCountdownStop = nil
+			m.retryEscapeHandler = false
 			break
 		}
 		m.clearStatusIndicator("retry")
@@ -704,6 +707,7 @@ func (m *InteractiveMode) applyAgentEvent(ev agent.AgentEvent) {
 			m.showError(fmt.Sprintf("Retry failed after %d attempts: %s", e.Attempt, finalError))
 		}
 		m.tuiInst.Render()
+
 	case agent.SummarizationRetryScheduledEvent:
 		m.showError(e.ErrorMessage)
 		m.showRetryStatusIndicator(e.Attempt, e.MaxAttempts, e.DelayMs)

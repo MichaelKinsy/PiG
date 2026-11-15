@@ -1052,6 +1052,7 @@ func ReplaceMessageInPlace(target, replacement AgentMessage) {
 	case target.User != nil && replacement.User != nil:
 		*target.User = *replacement.User
 	case target.Assistant != nil && replacement.Assistant != nil:
+		// pig additive (D654): a replacement that names no failure response keeps the one of the message it replaces.
 		failure := target.Assistant.FailureResponse
 		*target.Assistant = *replacement.Assistant
 		if target.Assistant.FailureResponse == nil {

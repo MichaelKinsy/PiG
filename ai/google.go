@@ -1144,6 +1144,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 		if resp.StatusCode != http.StatusOK {
 			b, _ := readWebText(resp.Body)
 			_ = resp.Body.Close()
+			noteFailureResponse(ctx, resp)
 			return nil, googleHTTPError(resp, b)
 		}
 		return resp, nil
@@ -1555,7 +1556,7 @@ func googleHTTPError(resp *http.Response, body []byte) error {
 		message = string(text)
 	}
 	if resp.StatusCode >= 400 && resp.StatusCode < 600 {
-		return withErrorHeaders(&providerError{status: new(resp.StatusCode), message: message}, headersToRecord(resp.Header))
+		return &providerError{status: new(resp.StatusCode), message: message}
 	}
 	return errors.New(message)
 }

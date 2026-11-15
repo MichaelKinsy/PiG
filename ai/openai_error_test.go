@@ -2,6 +2,7 @@ package ai
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -83,7 +84,12 @@ func TestOpenAIHTTPErrorRecordsFailureResponseHeadersWithoutChangingJSON(t *test
 	}))
 	defer server.Close()
 	p := NewOpenAIProvider(OpenAIConfig{BaseURL: server.URL, APIKey: "fake", Model: "test-model", ProviderID: "custom"})
-	result := transportErrorTestResult(t, p)
+	transcript := NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hello")}}})
+	stream, err := p.Stream(WithFailureResponse(context.Background()), transcript, StreamOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := stream.Result()
 	if result.FailureResponse == nil || result.FailureResponse.Status != 429 || result.FailureResponse.Headers["retry-after"] != "3" || result.FailureResponse.StreamStarted {
 		t.Fatalf("FailureResponse = %#v", result.FailureResponse)
 	}

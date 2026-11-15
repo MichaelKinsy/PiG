@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"maps"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Message is the closed provider-facing transcript union.
@@ -193,13 +194,6 @@ func cloneAssistantMessageWith(message AssistantMessage, cloneArguments func(any
 		message.FailureResponse = &copied
 	}
 	return message
-}
-
-// FailureResponse carries non-serialized HTTP status, response headers, and stream-start state for a failed assistant message.
-type FailureResponse struct {
-	Status        int
-	Headers       map[string]string
-	StreamStarted bool
 }
 
 // NestedToolCallStatus is the state of a [NestedToolCallRecord]. `unfinished` means the call was still running when the calling tool finished.

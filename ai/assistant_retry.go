@@ -210,6 +210,7 @@ func RetryAssistantCall(ctx context.Context, produce func() (AssistantMessage, e
 			return response, nil
 		}
 		var delayMs int
+		// pig additive (D654): a decider replaces isRetryableAssistantError and retryDelayMs (retry.ts:238, :149).
 		if policy != nil && policy.Decide != nil {
 			decision := policy.Decide(attempt+1, maxAttempts, response)
 			if attempt >= maxAttempts || !decision.Retry {
