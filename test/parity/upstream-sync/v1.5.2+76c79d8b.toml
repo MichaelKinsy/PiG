@@ -1,0 +1,212 @@
+from = "1.5.2+35679872"
+to = "1.5.2+76c79d8b"
+# Pi 76c79d8bbe (2026-11-14): fix(p2): fit images to the model's limits before they enter the transcript. Its packages/durable half is ported here; its apps/p2 half is ported on the p2 line by lane P2FitImages.
+# Left out of this range because they touch only apps/p2 / apps/p2-mac and are accounted on their own lines: 8cc6d4800 (p2: cross-fade light/dark theme changes), 8636e211e (p2-mac: cross-fade the native views), 17d6ca759 (p2: no unhandled rejection when the browser skips a theme fade), c1d4b0ac3 (p2: the Familiar as a sidebar row).
+
+[[files]]
+path = "packages/durable/src/images/fit.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/images/fit/fit_test.go#TestFitImage", "test:durable/images/fit/fit_test.go#TestFitImages", "test:durable/images/fit/fit_test.go#TestFitImagesExtension", "test:durable/examples/fit_images_example_test.go#TestExample47FitImages"]
+rationale = "76c79d8bbe: fitImage, fitImages and createFitImagesExtension (FittedImage, FittedImages) are durable/images/fit/fit.go FitImage, FitImages, CreateFitImagesExtension; the differences are Go's: a context first, the unions as a Kind field with constants, and Prepare's error (whatever its kind) becomes the omitted image's note as the thrown error does in Pi. No image library is imported. Tests: the 11 cases of images-fit.test.ts (2 fitImage, 7 fitImages, 2 extension) with Pi's inputs and expected results, plus the hook run through a Harness for results without images and for a nested call; mutations of the prepare step, the note's error and MIME, the nested skip and the model limits each turn a test red."
+oracle = "not carried: pi-durable is not an oracle backport package (the oracle is Pi 1.5.2, which has no images/fit); the comparison is by Pi's own literals, which the ported tests assert with Pi's inputs and expected results"
+
+[[files]]
+path = "packages/durable/src/tools/image-processor.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/images/fit/fit_test.go#TestFitImagesExtension", "test:durable/tools/read_images_test.go#TestReadChecksTheBase64SizeAgainstTheModelsImageLimit", "test:durable/tools/read_images_test.go#TestReadGivesTheProcessorsImageAndNotesWhatItDid"]
+rationale = "76c79d8bbe: imageLimits(model), preparedNotes(image) and fromBase64(data) are tools.ImageLimitsOf (forced rename: ImageLimits is the type in Go), tools.PreparedNotes and tools.FromBase64 (atob's decoding, moved from codemode/output.go with its error text). The note strings are byte-equal to the ones read.ts built inline."
+oracle = "not carried: pi-durable is not an oracle backport package (the oracle is Pi 1.5.2, which has no images/fit); the comparison is by Pi's own literals, which the ported tests assert with Pi's inputs and expected results"
+
+[[files]]
+path = "packages/durable/src/tools/read.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/tools/read_images_test.go#TestReadGivesTheProcessorsImageAndNotesWhatItDid", "test:durable/tools/read_images_test.go#TestReadChecksTheBase64SizeAgainstTheModelsImageLimit"]
+rationale = "76c79d8bbe: read's image model reads its limits through imageLimits and its notes through preparedNotes, no behaviour change; durable/tools/read_image.go does the same with ImageLimitsOf and PreparedNotes."
+oracle = "not carried: pi-durable is not an oracle backport package (the oracle is Pi 1.5.2, which has no images/fit); the comparison is by Pi's own literals, which the ported tests assert with Pi's inputs and expected results"
+
+[[files]]
+path = "packages/durable/src/tools/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/images/fit/fit_test.go#TestFitImagesExtension"]
+rationale = "76c79d8bbe: the barrel exports imageLimits; in Go the exported name is tools.ImageLimitsOf of the package surface."
+
+[[files]]
+path = "packages/durable/src/codemode/output.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:durable/codemode/output_tool_test.go"]
+rationale = "76c79d8bbe: saveImages decodes an image's base64 with fromBase64 (atob), no behaviour change; durable/codemode/output.go calls tools.FromBase64, the function it had inline."
+
+[[files]]
+path = "packages/durable/test/images-fit.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/images/fit/fit_test.go#TestFitImage", "test:durable/images/fit/fit_test.go#TestFitImages", "test:durable/images/fit/fit_test.go#TestFitImagesExtension"]
+rationale = "76c79d8bbe: the cases of fitImage, fitImages and the fit-images extension are durable/images/fit/fit_test.go with Pi's inputs and expected results (Photon's encoders are not reproduced, so sizes, types and notes are asserted); the nested-call case is ported as Pi has it, and also run through a Harness."
+
+[[files]]
+path = "packages/durable/test/image-fixtures.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "76c79d8bbe: the helpers tools-images.test.ts had inline, moved to one file Photon-encodes with. Go's tests encode with image/png and image/jpeg in their own fixtures (durable/images/fit/image_fixtures_test.go for the new cases)."
+
+[[files]]
+path = "packages/durable/test/tools-images.test.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "76c79d8bbe: the fixtures moved to image-fixtures.ts and the test imports them: no case, input or expectation changed, so nothing is ported; the Go ports of its cases keep their helpers."
+
+[[files]]
+path = "packages/durable/test/examples/47-fit-images.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:durable/examples/fit_images_example_test.go#TestExample47FitImages"]
+rationale = "76c79d8bbe: example 47 is durable/examples/fit_images_example_test.go: the faux model takes images 1000 pixels wide, the host fits an attached 4000x3000 photo with FitImage, the extension fits a 3000x1000 screenshot, and the test asserts what the transcript holds (sizes, types, notes)."
+
+[[files]]
+path = "packages/durable/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "76c79d8bbe: Pi's changelog entry for images/fit. PiG's user-visible change is its own changelog.d fragment (fit-images-76c79d8bb.md)."
+
+[[files]]
+path = "packages/durable/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "76c79d8bbe: Pi's package README: the section on fitting images and the example-47 row. PiG does not mirror it; the user-visible text is the changelog.d fragment."
+
+[[files]]
+path = "packages/durable/docs/spec.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "76c79d8bbe: Pi's spec paragraph on /images/fit. PiG does not mirror the spec; the behaviour is in the Go doc comments of durable/images/fit."
+
+[[files]]
+path = "packages/durable/package.json"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "76c79d8bbe: the npm subpath export ./images/fit; Go packages are addressed by import path (durable/images/fit)."
+oracle = "not carried: the oracle installs the pin's pi-durable package.json (Pi 1.5.2), which has no ./images/fit subpath export; the export is npm-only and no oracle test imports it"
+
+[[files]]
+path = "scripts/check-entry-graphs.mjs"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "76c79d8bbe: the JavaScript import-graph budget of the ./images/fit entry (100 files, Photon forbidden); Go has no bundle graph, and durable/images/fit imports no image library."
+
+[[files]]
+path = "apps/p2/docs/handoff.md"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/docs/p2-notes.md"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/plugins/chat/worker.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/plugins/coding-tools/worker.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/plugins/fit-images/package.json"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+oracle = "not carried: apps/p2 is not part of the oracle (a new plugin manifest of the app, ported on the p2 line)"
+
+[[files]]
+path = "apps/p2/plugins/fit-images/worker.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/src/hosts/host-packages.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/src/hosts/worker.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/src/runtime/worker.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/test/p2/chat-mode-fixture.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/test/p2/files.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/test/p2/harness-cwd.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/test/p2/harness-requests.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/test/p2/helpers.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."
+
+[[files]]
+path = "apps/p2/test/p2/relocate-worker.test.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "own line follow/p2-preview (76c79d8bbe: fit images to the model's limits, the fit-images plugin): the app p2 is ported on its own line by lane P2FitImages, not on this one."

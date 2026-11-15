@@ -320,7 +320,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
 | `model-resolver-selector` | 30 | 30 | 0 | 0 | 0 | 16 | not run |
 | `model-runtime-store-catalog` | 26 | 26 | 0 | 0 | 0 | 24 | not run |
-| `oauth` | 33 | 33 | 0 | 0 | 0 | 19 | not run |
+| `oauth` | 37 | 37 | 0 | 0 | 0 | 19 | not run |
 | `print` | 13 | 13 | 0 | 0 | 0 | 9 | not run |
 | `project-trust` | 27 | 27 | 0 | 0 | 0 | 19 | not run |
 | `providers-faux-streaming` | 72 | 71 | 0 | 1 | 0 | 49 | not run |

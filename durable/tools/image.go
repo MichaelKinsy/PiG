@@ -19,7 +19,7 @@ type byteSource struct {
 	read func(offset, length int64) ([]byte, error)
 }
 
-// detectSupportedImageMimeTypeOf is detectSupportedImageMimeType of a whole file, reading only its header and, for PNG,
+// detectSupportedImageMimeTypeOf is DetectSupportedImageMimeType of a whole file, reading only its header and, for PNG,
 // the chunk headers up to the first acTL or IDAT.
 func detectSupportedImageMimeTypeOf(source byteSource) (string, error) {
 	header, err := source.read(0, headerBytes)
@@ -27,7 +27,7 @@ func detectSupportedImageMimeTypeOf(source byteSource) (string, error) {
 		return "", err
 	}
 	if !bytes.HasPrefix(header, pngSignature) {
-		return detectSupportedImageMimeType(header), nil
+		return DetectSupportedImageMimeType(header), nil
 	}
 	if !isPng(header) {
 		return "", nil
@@ -76,9 +76,9 @@ func isAnimatedPngOf(source byteSource) (bool, error) {
 	return false, nil
 }
 
-// detectSupportedImageMimeType is the MIME type of a supported still image by
+// DetectSupportedImageMimeType is the MIME type of a supported still image by
 // its content, or "" when the bytes are not one. An animated PNG is not still.
-func detectSupportedImageMimeType(data []byte) string {
+func DetectSupportedImageMimeType(data []byte) string {
 	switch {
 	case bytes.HasPrefix(data, []byte{0xff, 0xd8, 0xff}):
 		if len(data) > 3 && data[3] == 0xf7 {
