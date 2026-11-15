@@ -824,6 +824,15 @@ func TestHostLinkOriginsOnlyFromRelays(t *testing.T) {
 				s.Peer.received = nil
 				s.Peer.mu.Unlock()
 			}
+			// An origin's object ends in the background and its teardown waits for the one before it (all the origins hold the
+			// same object): each pending teardown is a goroutine and the ended object and attempt, work in flight, not a
+			// record of the origin. How many are in flight is how far the link's reading runs ahead of the teardowns (about
+			// 10,000 at the peak once the factory of an ended attempt no longer runs, 16 MiB of heap for a moment), so the
+			// churn lets them run at every mark and the heap is taken once they did.
+			loop, isLoop := s.Server.(*chordHost).events.(*Loop)
+			if !isLoop {
+				t.Fatalf("the host runs on %T, want *Loop", s.Server.(*chordHost).events)
+			}
 			churn := func(from, to int) {
 				for each := from; each <= to; each++ {
 					s.Peer.Send(hold(t, 0, link.Some(each)))
@@ -831,10 +840,12 @@ func TestHostLinkOriginsOnlyFromRelays(t *testing.T) {
 					if each%1_000 == 0 {
 						rhSync(t, s.Peer)
 						forget()
+						loop.Wait()
 					}
 				}
 				rhSync(t, s.Peer)
 				forget()
+				loop.Wait()
 			}
 			// A warm-up first: what a first run allocates for good (compiled code, caches) is no record.
 			churn(1, 2_000)
@@ -851,7 +862,9 @@ func TestHostLinkOriginsOnlyFromRelays(t *testing.T) {
 			if records != 0 {
 				t.Fatalf("the link keeps %d provider sides, want none", records)
 			}
-			if grown := int64(settledHeap()) - int64(before); !raceDetector && grown >= 4*1024*1024 {
+			grown := int64(settledHeap()) - int64(before)
+			t.Logf("the heap grew by %d bytes over 20,000 origins", grown)
+			if !raceDetector && grown >= 4*1024*1024 {
 				t.Fatalf("the heap grew by %d bytes over 20,000 origins, want under 4 MiB", grown)
 			}
 			if s.Peer.Closed() {
