@@ -299,15 +299,21 @@ func RemoveItem(tx *session.Tx, conversationID, id session.ID) error {
 	return nil
 }
 
-// WithdrawQueued is withdrawQueuedInputs, used by Conversation.abort() and abort cascades: each queued input settles
-// unanswered with reason aborted and leaves the inbox; queued writes stay for later placement.
-func WithdrawQueued(tx *session.Tx, conversationID session.ID) error {
-	return WithdrawQueuedFor(tx, conversationID, "aborted")
+// WithdrawAborted is withdrawAbortedInputs, used by Conversation.abort() and abort cascades: each queued input settles
+// unanswered with reason aborted and leaves the inbox, except those submitted with onAbort "keep" (an item that stores any
+// other value withdraws); queued writes stay for later placement.
+func WithdrawAborted(tx *session.Tx, conversationID session.ID) error {
+	return withdrawInputs(tx, conversationID, "aborted", func(item *delta.Obj) bool { return item.Get("onAbort") != OnAbortKeep })
 }
 
-// WithdrawQueuedFor is withdrawQueuedInputs with a reason: each queued input settles unanswered with reason and leaves the
-// inbox; queued writes stay for later placement.
+// WithdrawQueuedFor is withdrawQueuedInputs: every queued input, kept ones too, settles unanswered with reason and leaves the
+// inbox, as a failed run does under afterFailedRun "withdraw"; queued writes stay for later placement.
 func WithdrawQueuedFor(tx *session.Tx, conversationID session.ID, reason string) error {
+	return withdrawInputs(tx, conversationID, reason, func(*delta.Obj) bool { return true })
+}
+
+// withdrawInputs settles and removes the queued inputs withdraws selects, keeping the order of the items that stay.
+func withdrawInputs(tx *session.Tx, conversationID session.ID, reason string, withdraws func(item *delta.Obj) bool) error {
 	inbox, err := tx.Doc(Def, session.DocArgs{Owner: conversationID})
 	if err != nil {
 		return err
@@ -315,7 +321,7 @@ func WithdrawQueuedFor(tx *session.Tx, conversationID session.ID, reason string)
 	items := queued(inbox)
 	for i := items.Len() - 1; i >= 0; i-- {
 		item := items.Obj(i)
-		if itemMode(item) == "write" {
+		if itemMode(item) == "write" || !withdraws(item) {
 			continue
 		}
 		if err := tx.SettleSubmission(itemID(item), Unanswered(reason)); err != nil {

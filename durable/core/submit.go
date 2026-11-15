@@ -18,6 +18,9 @@ import (
 // submissionDraft reads the draft of a submit event or of the transaction operation `submit`.
 func submissionDraft(req *jv.Object) inbox.Draft {
 	draft := inbox.Draft{Type: strOf(req, "type"), WhenBusy: strOf(req, "whenBusy"), WhenIdle: strOf(req, "whenIdle")}
+	if strOf(req, "onAbort") == inbox.OnAbortKeep {
+		draft.OnAbort = inbox.OnAbortKeep
+	}
 	if rid, has := req.Get("requestId"); has {
 		if s, isString := rid.(string); isString {
 			draft.RequestID = &s

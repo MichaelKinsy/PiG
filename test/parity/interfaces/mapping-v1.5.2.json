@@ -233643,7 +233643,7 @@
         "public-api:durable/harness/types.go#Conversation.Abort"
       ],
       "evidence": [
-        "test:durable/core/driver/harness_ownership_core_test.go#TestCoreOwnershipAbortsAConversationWithQueuedInputsWithdrawnWritesKeptForegroundAbortedBackgroundKept"
+        "test:durable/core/driver/harness_input_entries_core_test.go#TestCoreAKeepInputStaysQueuedThroughAConversationAbortAndTheNextInputPlacesIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -233664,7 +233664,7 @@
         "public-api:durable/harness/types.go#Conversation.Abort"
       ],
       "evidence": [
-        "test:durable/core/driver/harness_ownership_core_test.go#TestCoreOwnershipAbortsAConversationWithQueuedInputsWithdrawnWritesKeptForegroundAbortedBackgroundKept"
+        "test:durable/core/driver/harness_input_entries_core_test.go#TestCoreAKeepInputStaysQueuedThroughAConversationAbortAndTheNextInputPlacesIt"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242733,8 +242733,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/core_test.go#TestSubmitAdmitsAnIdleWriteAndReplaysItsRequestID",
-        "test:durable/examples/inbox_override_examples_test.go#TestExample19Inbox",
-        "test:durable/harness/harness_compaction_test.go#TestManualCompactionConcurrency"
+        "test:durable/core/driver/harness_input_entries_core_test.go#TestCoreAKeepInputStaysQueuedThroughAConversationAbortAndTheNextInputPlacesIt",
+        "test:durable/examples/inbox_override_examples_test.go#TestExample19Inbox"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -242756,8 +242756,8 @@
       ],
       "evidence": [
         "test:durable/core/driver/core_test.go#TestSubmitAdmitsAnIdleWriteAndReplaysItsRequestID",
-        "test:durable/examples/inbox_override_examples_test.go#TestExample19Inbox",
-        "test:durable/harness/harness_compaction_test.go#TestManualCompactionConcurrency"
+        "test:durable/core/driver/harness_input_entries_core_test.go#TestCoreAKeepInputStaysQueuedThroughAConversationAbortAndTheNextInputPlacesIt",
+        "test:durable/examples/inbox_override_examples_test.go#TestExample19Inbox"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

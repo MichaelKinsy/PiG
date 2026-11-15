@@ -498,6 +498,9 @@ func AdmitSubmission(tx durable.Tx, conversationId durable.ConversationId, draft
 					return Admission{}, err
 				}
 			}
+			if draft.OnAbort == durable.OnAbortKeep {
+				item.OnAbort = durable.OnAbortKeep
+			}
 		}
 		inbox := live
 		if boundary != nil {

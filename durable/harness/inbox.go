@@ -31,6 +31,9 @@ type InboxItem struct {
 	// Entry is the JSON representation of the entry draft of a write, or of the InputEntry of an input placed as an
 	// application entry; nil for an input placed as pi.user.
 	Entry durable.JsonObject `json:"entry,omitempty"`
+	// OnAbort is "keep" for an input submitted with onAbort keep, which a conversation abort leaves queued; absent
+	// otherwise, and for writes. Any other stored value withdraws like an absent one.
+	OnAbort durable.OnAbort `json:"onAbort,omitempty"`
 }
 
 // InboxState is the built-in queue of one conversation's submissions waiting for a boundary, in ID order.
@@ -273,17 +276,31 @@ func RemoveInboxItem(tx durable.Tx, conversationId durable.ConversationId, id du
 	return nil
 }
 
-// WithdrawQueuedInputs withdraws every queued input of a conversation, as Conversation.Abort and abort cascades do:
-// each settles unanswered with reason (Conversation.Abort uses aborted) and leaves the inbox; queued writes stay for later
-// placement (inbox.ts:127-136).
+// WithdrawAbortedInputs withdraws the queued inputs of a conversation as Conversation.Abort and abort cascades do: each
+// settles unanswered with reason aborted and leaves the inbox, except those submitted with onAbort keep (an item that
+// stores any other value withdraws); queued writes stay for later placement (inbox.ts withdrawAbortedInputs).
+func WithdrawAbortedInputs(tx durable.Tx, conversationId durable.ConversationId) error {
+	return withdrawInputs(tx, conversationId, "aborted", func(item *delta.Object) bool {
+		return item.Get("onAbort") != string(durable.OnAbortKeep)
+	})
+}
+
+// WithdrawQueuedInputsFor withdraws every queued input of a conversation, as a failed run does under afterFailedRun
+// withdraw: each settles unanswered with reason and leaves the inbox, kept ones too; queued writes stay for later
+// placement (inbox.ts withdrawQueuedInputs).
 func WithdrawQueuedInputsFor(tx durable.Tx, conversationId durable.ConversationId, reason string) error {
+	return withdrawInputs(tx, conversationId, reason, func(*delta.Object) bool { return true })
+}
+
+// withdrawInputs settles and removes the queued inputs withdraws selects, keeping the order of the items that stay.
+func withdrawInputs(tx durable.Tx, conversationId durable.ConversationId, reason string, withdraws func(item *delta.Object) bool) error {
 	items, err := inboxItems(tx, conversationId)
 	if err != nil {
 		return err
 	}
 	for index := items.Len() - 1; index >= 0; index-- {
 		item := items.Object(index)
-		if item.Get("mode") == string(InboxWrite) {
+		if item.Get("mode") == string(InboxWrite) || !withdraws(item) {
 			continue
 		}
 		id, _ := item.Get("id").(float64)
@@ -295,11 +312,6 @@ func WithdrawQueuedInputsFor(tx durable.Tx, conversationId durable.ConversationI
 		}
 	}
 	return nil
-}
-
-// WithdrawQueuedInputs is WithdrawQueuedInputsFor with reason aborted, as Conversation.Abort and abort cascades withdraw.
-func WithdrawQueuedInputs(tx durable.Tx, conversationId durable.ConversationId) error {
-	return WithdrawQueuedInputsFor(tx, conversationId, "aborted")
 }
 
 // inboxItems returns the items draft of a conversation's pi.inbox.

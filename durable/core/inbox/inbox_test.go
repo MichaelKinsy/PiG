@@ -304,12 +304,74 @@ func TestWithdrawQueuedKeepsWrites(t *testing.T) {
 	a := r.must(input("a", ""), oneAtATime)
 	w := r.must(write(nil), oneAtATime)
 	b := r.must(input("b", "steer"), oneAtATime)
-	r.commit(func(tx *session.Tx) error { return inbox.WithdrawQueued(tx, r.conv) })
+	r.commit(func(tx *session.Tx) error { return inbox.WithdrawAborted(tx, r.conv) })
 	if got := r.items(); got != `[{"id":`+itoa(w)+`,"mode":"write","entry":{"kind":"note","model":[{"role":"user","content":"w","timestamp":0}]}}]` {
 		t.Fatal(got)
 	}
 	for _, id := range []session.ID{a, b} {
 		if got := r.submission(id); !contains(got, `"status":"unanswered","id":`+itoa(id)+`,"reason":"aborted"`) {
+			t.Fatal(got)
+		}
+	}
+}
+
+// An input submitted with onAbort "keep" stays queued through Conversation.abort() and abort cascades (inbox.ts
+// withdrawAbortedInputs); the stored item is Pi's bytes: the field after the entry, only for keep (never "withdraw", an
+// unknown value or null), and an item stored with another value withdraws like one without the field.
+func TestWithdrawQueuedKeepsInputsSubmittedWithOnAbortKeep(t *testing.T) {
+	r := newRig(t)
+	r.must(input("run", ""), oneAtATime)
+	draft := func(text, whenBusy, onAbort string) inbox.Draft {
+		d := input(text, whenBusy)
+		d.OnAbort = onAbort
+		return d
+	}
+	p := r.must(draft("p", "", ""), oneAtATime)
+	q := r.must(draft("q", "", "withdraw"), oneAtATime)
+	l := r.must(draft("l", "", "later"), oneAtATime)
+	k := r.must(draft("k", "", "keep"), oneAtATime)
+	w := r.must(write(nil), oneAtATime)
+	s := r.must(draft("s", "steer", "keep"), oneAtATime)
+	item := func(id session.ID, mode, content, onAbort string) string {
+		return `{"id":` + itoa(id) + `,"mode":"` + mode + `","content":"` + content + `"` + onAbort + `}`
+	}
+	const keep = `,"onAbort":"keep"`
+	writeItem := `{"id":` + itoa(w) + `,"mode":"write","entry":{"kind":"note","model":[{"role":"user","content":"w","timestamp":0}]}}`
+	if got, want := r.items(), "["+strings.Join([]string{item(p, "followUp", "p", ""), item(q, "followUp", "q", ""), item(l, "followUp", "l", ""), item(k, "followUp", "k", keep), writeItem, item(s, "steer", "s", keep)}, ",")+"]"; got != want {
+		t.Fatalf("stored %s, want %s", got, want)
+	}
+	r.commit(func(tx *session.Tx) error {
+		d, err := tx.Doc(inbox.Def, session.DocArgs{Owner: r.conv})
+		if err != nil {
+			return err
+		}
+		return d.Arr("items").Obj(0).Set("onAbort", "later")
+	})
+	if got, want := r.items(), "["+strings.Join([]string{item(p, "followUp", "p", `,"onAbort":"later"`), item(q, "followUp", "q", ""), item(l, "followUp", "l", ""), item(k, "followUp", "k", keep), writeItem, item(s, "steer", "s", keep)}, ",")+"]"; got != want {
+		t.Fatalf("seeded %s, want %s", got, want)
+	}
+	// A failed run withdraws every input, kept ones too: it follows afterFailedRun alone.
+	failed := newRig(t)
+	failed.must(input("run", ""), oneAtATime)
+	fk := failed.must(draft("k", "", "keep"), oneAtATime)
+	failed.commit(func(tx *session.Tx) error { return inbox.WithdrawQueuedFor(tx, failed.conv, "run_failed") })
+	if got := failed.items(); got != `[]` {
+		t.Fatalf("after a failed run %s, want []", got)
+	}
+	if got := failed.submission(fk); !contains(got, `"status":"unanswered","id":`+itoa(fk)+`,"reason":"run_failed"`) {
+		t.Fatal(got)
+	}
+	r.commit(func(tx *session.Tx) error { return inbox.WithdrawAborted(tx, r.conv) })
+	if got, want := r.items(), "["+strings.Join([]string{item(k, "followUp", "k", keep), writeItem, item(s, "steer", "s", keep)}, ",")+"]"; got != want {
+		t.Fatalf("after abort %s, want %s", got, want)
+	}
+	for _, id := range []session.ID{p, q, l} {
+		if got := r.submission(id); !contains(got, `"status":"unanswered","id":`+itoa(id)+`,"reason":"aborted"`) {
+			t.Fatal(got)
+		}
+	}
+	for _, id := range []session.ID{k, s} {
+		if got := r.submission(id); !contains(got, `"status":"queued"`) {
 			t.Fatal(got)
 		}
 	}

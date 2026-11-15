@@ -19,6 +19,9 @@ const (
 	TypeContinue = "continue"
 )
 
+// OnAbortKeep is the onAbort of an input that Conversation.abort() and abort cascades leave queued (types.ts SubmissionDraft).
+const OnAbortKeep = "keep"
+
 // ErrConversationBusy matches a *BusyError with errors.Is.
 // Read-only: assigned once at initialization.
 var ErrConversationBusy = errors.New("ConversationBusy")
@@ -58,6 +61,9 @@ type Draft struct {
 	WhenBusy string
 	// WhenIdle is "reject" or empty (start a run).
 	WhenIdle string
+	// OnAbort is "keep" for an input a conversation abort leaves queued (stored on its inbox item); any other value
+	// withdraws it, as the default.
+	OnAbort string
 	// Span is the host's handle of the submission's span, which the commit's events go to (TxScope.Span); Trace is the carrier of the submission's span (propagation.inject(span)), stored on its record; nil: none.
 	Trace any
 	Span  uint32
@@ -387,6 +393,9 @@ func queueAndPlace(tx *session.Tx, runs Runs, conversationID session.ID, draft D
 		item.Set("content", jv.Clone(draft.Content))
 		if draft.Entry != nil {
 			item.Set("entry", PickInputEntry(draft.Entry))
+		}
+		if draft.OnAbort == OnAbortKeep {
+			item.Set("onAbort", OnAbortKeep)
 		}
 	}
 	if _, err := queued(inbox).Push(item); err != nil {

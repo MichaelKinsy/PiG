@@ -200,7 +200,7 @@ func runPigAdmission(t *testing.T, program []admitStep) []admitOutcome {
 				return boundaryResult, nil
 			}, session.TransactionScope{})
 		case "withdraw":
-			_, err = line.CommitWith(ctx, func(tx *session.Transaction) (any, error) { return nil, WithdrawQueuedInputs(tx, conv) }, session.TransactionScope{})
+			_, err = line.CommitWith(ctx, func(tx *session.Transaction) (any, error) { return nil, WithdrawAbortedInputs(tx, conv) }, session.TransactionScope{})
 		default:
 			t.Fatalf("unknown op %s", step.Op)
 		}

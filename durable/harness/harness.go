@@ -705,7 +705,7 @@ func newHarness(ctx context.Context, storage durable.Storage, options HarnessOpt
 		KeepsAbandoned: keepsChildren,
 		Gated:          gatedCall,
 		SettleOutcome:  SettleSchedulerOutcome,
-		WithdrawInputs: WithdrawQueuedInputs,
+		WithdrawInputs: WithdrawAbortedInputs,
 		Conversation: func(callCtx context.Context, id durable.ConversationId, binding InvocationBinding) (durable.ConversationHandle, error) {
 			record, err := harness.ReadOnLineCtx(callCtx, func(line durable.Storage) (any, error) { return line.Conversation(callCtx, id) })
 			if err != nil {
