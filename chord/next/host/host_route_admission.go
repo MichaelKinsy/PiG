@@ -237,12 +237,14 @@ func (a *routeAdmission) moved(asked *asked) {
 	}
 }
 
-// settle brings asked to a verdict (its pinned keys loaded, its live queries open) as the settle settling, on an owned task.
+// settle brings asked to a verdict (its pinned keys loaded, its live queries open) as the settle settling, on an owned task
+// that is a joined hop of the loop (Pi's #settle is a chain of microtasks that `transported()` runs to its end: what a settle
+// waits for is in the host, the loads of what the decision reads, never a plugin's gate or a link).
 // **A verdict is told only when nothing it reads changed while it was settled:** a settle is asynchronous, and a denial
 // arriving between its read and its continuation must not be answered with the allow it read before (that would resolve the
 // address, start its host and leave the hold live with nobody left to correct it). It settles again until one is stable.
 func (a *routeAdmission) settle(asked *asked, settling *askedState) {
-	a.host.loop().Go(func() {
+	run := func() {
 		for {
 			// Not in a section: it blocks on the loads of what the decision reads, and ends (a broken verdict) when its decision
 			// is released or this route's context ends.
@@ -275,7 +277,12 @@ func (a *routeAdmission) settle(asked *asked, settling *askedState) {
 				return
 			}
 		}
-	})
+	}
+	if loop, ok := a.host.loop().(*Loop); ok {
+		loop.joined(run)
+		return
+	}
+	a.host.loop().Go(run)
 }
 
 // apply: asked says verdict now. An allow forwards every hold not forwarded yet; a denial takes every hold back (released

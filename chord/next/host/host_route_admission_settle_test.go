@@ -132,7 +132,9 @@ func TestRouteAdmissionTheVerdictOfAReleasedOrCancelledDecisionTellsNobody(t *te
 
 func TestRouteAdmissionAGenuinelyBrokenDecisionIsTold(t *testing.T) {
 	t.Run("an admit that throws fails the hold broken", func(t *testing.T) {
-		r := newSettleRig(t, func(data.Principal, contracts.Address, AdmitSelf) (any, error) { return nil, errors.New("the admit threw") })
+		r := newSettleRig(t, func(data.Principal, contracts.Address, AdmitSelf) (any, error) {
+			return nil, errors.New("the admit threw")
+		})
 		r.join(nil)
 		r.settled()
 		if got := r.told(); !slices.Equal(got, []string{"hold broken"}) {
