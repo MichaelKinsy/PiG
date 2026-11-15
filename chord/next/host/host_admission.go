@@ -547,7 +547,7 @@ func revoked(label string, denial *data.ChordError) *data.ChordError {
 func (a *attempt) runAdmission(admission *servedAdmission, dl *deadline) *keyedPromise[*activation] {
 	result := newKeyedPromise[*activation](a.loop())
 	// `await undefined`.
-	a.loop().Queue(func() {
+	a.admissionHop(func() {
 		if a.abandoned != nil {
 			result.resolve(a.abandoned)
 			return
@@ -570,6 +570,17 @@ func (a *attempt) runAdmission(admission *servedAdmission, dl *deadline) *keyedP
 			func(outcome *activation) { result.resolve(outcome) })
 	})
 	return result
+}
+
+// admissionHop starts job one microtask later (Pi's `await undefined` before `#runAdmission`): `a.loop().Queue(job)`. Test seam
+// (internal/admitseam): while its host's admissionHold is set, the hop is handed to it, which starts it when the test lets it
+// go; no production code sets it, and unset (always, outside tests) this is exactly the Queue call.
+func (a *attempt) admissionHop(job func()) {
+	if hold := a.object.host.admissionHold; hold != nil {
+		hold(func() { a.loop().Queue(job) })
+		return
+	}
+	a.loop().Queue(job)
 }
 
 // decide is one check of its admission while it parks on it (Pi `#decide`): allowed, it goes on; denied, it shows
