@@ -1044,7 +1044,7 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 			expireNow()
 		})
 		// The host's close ends the wait at once, `released/closed` (its timer with it).
-		stopWake = context.AfterFunc(h.routing, func() { expire(h.closedError()) })
+		stopWake = onAbortNow(h.routing, func() { expire(h.closedError()) })
 	})
 	if err != nil {
 		return nil, err

@@ -22,7 +22,7 @@ import (
 // `EventMember.on` returns an already settled Promise (reject with the abort reason of an aborted context, else
 // resolve), so the Go call is blocking and returns (subscription, error) at once; nothing awaits anything else. The
 // flush is a microtask (`Loop.Queue`), the listeners run synchronously inside it, a listener that throws (panics) is
-// reported and ends its subscription. An abort listener on the context is `context.AfterFunc` entering the loop.
+// reported and ends its subscription. An abort listener on the context is onAbort: it queues the stop on the loop at the abort.
 
 // eventListener is an event's listener, as EventMember.On takes it.
 type eventListener = func(contracts.EventDelivery[delta.JsonValue])
@@ -192,13 +192,13 @@ type subscription struct {
 	stopAbort func() bool
 	stopped   func(*subscription)
 	// ctx is the context it was made under, until it stops: an abort ends it at once, as Pi's abort listener runs inside
-	// the abort (Go's AfterFunc only enters the loop later), so a call due after the abort is skipped.
+	// the abort (onAbort queues the stop a microtask later), so a call due after the abort is skipped.
 	ctx context.Context
 }
 
 func newSubscription(order int64, loop eventsLoop, listener eventListener, ctx context.Context, stopped func(*subscription)) *subscription {
 	s := &subscription{order: order, loop: loop, listener: listener, stopped: stopped, ctx: ctx}
-	s.stopAbort = context.AfterFunc(ctx, func() { loop.Run(s.stop) })
+	s.stopAbort = onAbort(loop, ctx, s.stop)
 	return s
 }
 

@@ -255,7 +255,7 @@ func (l *liveRoutine) sleep() {
 			loop.Queue(l.run)
 		})
 	})
-	stopAbort = context.AfterFunc(owner.context, func() {
+	stopAbort = onAbort(loop, owner.context, func() {
 		owner.host.enter(func() { timer.Stop() })
 	})
 }
@@ -503,7 +503,7 @@ func (o *onRoutine) watching(failing failingKind, opened openedWatch, err error)
 		return
 	}
 	// The owner's end ends the watch, from a section.
-	stopAbort := context.AfterFunc(o.owner.context, func() { o.owner.host.enter(opened.stop) })
+	stopAbort := onAbort(loop, o.owner.context, func() { o.owner.host.enter(opened.stop) })
 	// `void watch.closed.then((end) => this.#end(end))`: an owned task waits for the close.
 	startTask(loop, func() {
 		parkedOn(opened.closed)
@@ -605,7 +605,7 @@ func (o *onRoutine) firstValue(source state.SourceHandle, then func(got bool)) {
 		return
 	}
 	source.Subscribe(subscriber)
-	stopAbort = context.AfterFunc(ctx, func() {
+	stopAbort = onAbort(loop, ctx, func() {
 		o.owner.host.enter(func() { subscriber.done(false) })
 	})
 }
