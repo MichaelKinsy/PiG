@@ -512,6 +512,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-41b305d](#bf-41b305d) | Codemode rejects a `// @options:` line that is not the first line of the script with an error before the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-42116f8](#bf-42116f8) | Durable: the system baseline written after a compaction now leads the model context when the kept history… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4219d7a](#bf-4219d7a) | `docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin | PiG's own defect | All platforms | Unreleased |
+| [BF-4246f80](#bf-4246f80) | A ctrl+c, SIGTERM or SIGHUP that arrives as a quit by keys (ctrl+d, ctrl+c twice, `/quit`) hands the terminal… | PiG's own defect | All platforms | Unreleased |
 | [BF-4259631](#bf-4259631) | An extension's direct call into a pi-ai API module (`openAICompletionsApi()` and the other bridged APIs)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4273a6a](#bf-4273a6a) | fix(durable/core): the run's abort resumes on its invocation's own resumer | PiG's own defect | All platforms | Unreleased |
 | [BF-42c059a](#bf-42c059a) | fix(tui): bash block strips ANSI with Pi's utils/ansi.ts rule | PiG's own defect | All platforms | Unreleased |
@@ -9078,6 +9079,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4219d7aa50` (2026-11-09)
 - **Tests:** None recorded.
 - **Release note:** `docs/project/PROVENANCE.md` named an earlier release of Pi, not the pin, as the upstream pin. It now states the pin from `.upstream/pin` (`1.5.1`, the release tag `v1.5.1`), and `make pin-sync` and `make pin-check` keep it current.
+
+### BF-4246f80
+
+**A ctrl+c, SIGTERM or SIGHUP that arrives as a quit by keys (ctrl+d, ctrl+c twice, `/quit`) hands the terminal…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A ctrl+c, SIGTERM or SIGHUP that arrives as a quit by keys (ctrl+d, ctrl+c twice, `/quit`) hands the terminal back now ends PiG at once, as it ends Pi: Pi removes its signal handlers in the same call that restores the terminal, so no signal finds a quit that is still to dispose.
+- **Root cause:** finishInteractiveShutdown held shutdownMu from its first line but set quitDisposing, the mark that interruptShutdown (ctrl+c) and ExitIfQuitting (SIGTERM, SIGHUP) read to skip that lock, only after stopInteractiveTui returned, and the terminal turns cooked inside stopInteractiveTui. A signal between the restore and the mark found the quit unmarked: interruptShutdown waited its second on the lock that the pending quit's dispose holds, ExitIfQuitting returned and the termination hook went on to ShutdownFromSignal, which waits on the same lock for ever. The window is the rest of stopInteractiveTui after the restore (a fullscreen transcript exit, the stop's own work); it was found by reading…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4246f80e83` (2026-11-15)
+- **Tests:** `internal/codingagent/interactive_quit_dispose_after_stop_unix_test.go::TestQuitByKeysIsMarkedDisposingBeforeTheTerminalTurnsCooked`, `internal/codingagent/interactive_quit_dispose_after_stop_unix_test.go::TestQuitByKeysThatEndsInACrashIsNotMarkedDisposing`, `internal/codingagent/interactive_quit_dispose_after_stop_unix_test.go::TestQuitSignalAtTheTerminalHandBackEndsThePendingQuit`
+- **Release note:** A ctrl+c, SIGTERM or SIGHUP that arrives as a quit by keys (ctrl+d, ctrl+c twice, `/quit`) hands the terminal back now ends PiG at once, as it ends Pi: Pi removes its signal handlers in the same call that restores the terminal, so no signal finds a quit that is still to dispose. PiG marked the quit as disposing only after the terminal was restored, so a signal in between waited a second (ctrl+c) or for ever (SIGTERM, SIGHUP) for a lock the pending quit holds. The window was introduced by the unreleased change that made these signals end a pending quit at once; no release has it.
 
 ### BF-4259631
 
