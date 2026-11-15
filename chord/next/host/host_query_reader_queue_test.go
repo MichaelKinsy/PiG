@@ -13,9 +13,10 @@ import (
 )
 
 // Go's own tests (Pi has none: they test the Go form of the promises of query-reader.ts, see the file's header): a reader
-// keeps ONE pending read behind the one running, drained by one owned task (Pi registers each read synchronously, in call
-// order, and an overtaken read is dropped there too). The reader is given a fake Reading, which blocks each read until the
-// test lets it go, and a real OwnQuery over a table nothing reads.
+// opens each read in the section of the move (Pi's `read` registers its query when it is called, in call order) and keeps
+// ONE pending load behind the one running, drained by one owned task (an overtaken read's load does nothing there). The
+// reader is given a fake Reading, which blocks each load until the test lets it go, and a real OwnQuery over a table
+// nothing reads.
 
 // qqArguments are the arguments a reader follows: a source that is no store's (its value is what the test set).
 type qqArguments struct{ n atomic.Int64 }
@@ -26,7 +27,7 @@ func (a *qqArguments) DeriveValue() (any, error)       { return a.Value() }
 // DependentSet is nil: the test moves the reader itself.
 func (a *qqArguments) DependentSet() *state.DependentSet { return nil }
 
-// qqRead is one read the fake reading was asked for, held until release.
+// qqRead is one read whose load the fake reading ran, held until release.
 type qqRead struct {
 	target  store.LiveTarget
 	release chan struct{}
@@ -37,17 +38,22 @@ type qqReading struct {
 	state.DeriveSource
 	reads    chan *qqRead
 	detached atomic.Pointer[error]
-	count    atomic.Int64
+	// opens counts the reads opened (each move opens one); count the loads that ran.
+	opens atomic.Int64
+	count atomic.Int64
 }
 
 func (f *qqReading) Ready() bool   { return true }
 func (f *qqReading) Failure() error { return nil }
 
-func (f *qqReading) Read(target store.LiveTarget, _ context.Context) {
-	read := &qqRead{target: target, release: make(chan struct{})}
-	f.count.Add(1)
-	f.reads <- read
-	<-read.release
+func (f *qqReading) Open(target store.LiveTarget, _ context.Context) func() {
+	f.opens.Add(1)
+	return func() {
+		read := &qqRead{target: target, release: make(chan struct{})}
+		f.count.Add(1)
+		f.reads <- read
+		<-read.release
+	}
 }
 
 func (f *qqReading) Fail(error, context.Context) {}
@@ -126,8 +132,8 @@ func TestQueryReaderQueueTwoMovesWhileAReadRunsReadOnceWithTheLaterTarget(t *tes
 	}
 	close(second.release)
 	f.settled()
-	if got := f.reading.count.Load(); got != 2 {
-		t.Fatalf("%d reads, want 2 (the overtaken one is dropped)", got)
+	if loads, opens := f.reading.count.Load(), f.reading.opens.Load(); loads != 2 || opens != 3 {
+		t.Fatalf("%d loads of %d opened reads, want 2 of 3 (every move opens its read; the overtaken one's load is dropped)", loads, opens)
 	}
 }
 
@@ -143,8 +149,8 @@ func TestQueryReaderQueueACloseDropsTheQueuedReadAndDetachesTheReading(t *testin
 	close(first.release)
 	<-opened
 	f.settled()
-	if got := f.reading.count.Load(); got != 1 {
-		t.Fatalf("%d reads, want 1 (the queued read is dropped by the close)", got)
+	if loads, opens := f.reading.count.Load(), f.reading.opens.Load(); loads != 1 || opens != 2 {
+		t.Fatalf("%d loads of %d opened reads, want 1 of 2 (the move opened its read at once; the close dropped its load)", loads, opens)
 	}
 	if detached := f.reading.detached.Load(); detached == nil || *detached != ended {
 		t.Fatalf("detached with %v, want %v", detached, ended)
@@ -152,8 +158,8 @@ func TestQueryReaderQueueACloseDropsTheQueuedReadAndDetachesTheReading(t *testin
 	// A move after the close reads nothing.
 	f.move(3)
 	f.settled()
-	if got := f.reading.count.Load(); got != 1 {
-		t.Fatalf("%d reads after a move of a closed reader, want 1", got)
+	if loads, opens := f.reading.count.Load(), f.reading.opens.Load(); loads != 1 || opens != 2 {
+		t.Fatalf("%d loads of %d opened reads after a move of a closed reader, want 1 of 2", loads, opens)
 	}
 }
 
@@ -161,7 +167,7 @@ func TestQueryReaderQueueAMoveBeforeTheFirstReadOnlyWakesItsAttempt(t *testing.T
 	f := newQQ(t)
 	f.move(2)
 	f.settled()
-	if f.woken.Load() != 1 || f.reading.count.Load() != 0 {
-		t.Fatalf("woken %d, reads %d; want 1, 0", f.woken.Load(), f.reading.count.Load())
+	if f.woken.Load() != 1 || f.reading.opens.Load() != 0 {
+		t.Fatalf("woken %d, opened reads %d; want 1, 0", f.woken.Load(), f.reading.opens.Load())
 	}
 }
