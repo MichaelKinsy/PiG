@@ -4416,7 +4416,7 @@
       "evidence": [
         "chord/next/surfaces/surfaces_client_test.go"
       ],
-      "rationale": "All 10 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane)."
+      "rationale": "All 10 upstream cases run in the evidence files (every Pi case title appears in a Go test on the lane branches; see rows/chord-*.md for the lane). Pi 34fb59f67 adds `part limits › takes parts from the server within the limits it was given, and none past them` (setup gains `limits`): TestPartLimitsTakesPartsFromTheServerWithinTheLimitsItWasGivenAndNonePastThem with Pi's inputs (part 1 MiB: the set shown arrives; part 32: nothing is fetched and the greeting stays `hello`); the hash is the pin's."
     },
     {
       "path": "packages/chord/test/surfaces/connection.test.ts",

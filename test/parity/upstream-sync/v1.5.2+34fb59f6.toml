@@ -1,0 +1,37 @@
+from = "1.5.2+35679872"
+to = "1.5.2+34fb59f6"
+
+[[files]]
+path = "packages/chord/src/surfaces/client.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_client_test.go#TestPartLimitsTakesPartsFromTheServerWithinTheLimitsItWasGivenAndNonePastThem", "test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeVendoredFilesAreExactlyTheManifests"]
+rationale = "34fb59f67: ClientOptions gains `limits?: PartLimits` (the limits per part of what arrives from the server: `part` on the wire and `decoded` after inflating, in bytes; default an untrusted link's, 16 MiB on the wire and 64 MiB decoded, from link.linkLimits), and connect() hands host.connect `{ principal, limits }` when it is given and `{ principal }` when it is not (undefined and {} are the same to the host). Go: chord/next/surfaces/surfaces_client.go ClientOptions.Limits *link.PartLimits (nil: Pi's undefined) read by connect into host.LinkOptions.Limits, which the host already takes; the part past the limit fails as every part past a link's limit does (the host's, unchanged). No wire change, no new default, no async change. The file is also vendored byte for byte in chord/nextnode/surfaces/client/pi and chord/nextnode/plugins/node/pi (manifest `carried` += 34fb59f67; both copies are Pi's blob at 34fb59f67)."
+
+[[files]]
+path = "packages/chord/src/web/page.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests"]
+rationale = "34fb59f67: PageOptions gains `limits?: PartLimits`, forwarded to startClient when given. The file is vendored byte for byte in chord/nextnode/surfaces/client/pi (PORT_MAP: D601); the copy is Pi's blob at 34fb59f67 through the derived tree (manifest `carried`). The page options exist only in the vendored TypeScript: no Go twin, so no Go option (the Go client's own option is ClientOptions.Limits, the same field as startClient's)."
+
+[[files]]
+path = "packages/chord/test/surfaces/client.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_client_test.go#TestPartLimitsTakesPartsFromTheServerWithinTheLimitsItWasGivenAndNonePastThem"]
+rationale = "34fb59f67: setup gains `limits`; the new case `part limits: takes parts from the server within the limits it was given, and none past them` is ported with Pi's inputs and expectations (part 1 MiB: the client takes the set shown and its greeting becomes `hello again`; part 32: the scripts object's set is past 32 bytes, nothing is fetched and the greeting stays `hello`). Red on the base (ClientOptions had no Limits), green on the port, and red again when connect does not hand the limits to the host."
+
+[[files]]
+path = "packages/chord/src/surfaces/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "34fb59f67: one sentence on the client's `limits`. Pi's chord documents are not ported (chord/README.md); the Go doc comment of surfaces.ClientOptions.Limits says the same."
+
+[[files]]
+path = "packages/chord/src/web/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "34fb59f67: one bullet on the page's `limits` (PartLimits; default an untrusted link's, 16 MiB on the wire and 64 MiB decoded). Pi's chord documents are not ported (chord/README.md); the page is Pi's vendored page.ts, whose doc comment carries it."

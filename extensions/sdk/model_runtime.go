@@ -354,12 +354,12 @@ func (r *ModelRuntime) registry() ModelRegistry { return ModelRegistry{context: 
 
 // Stream streams a model response through the runtime, with the provider's own options (request and options as for [ModelRegistry.Stream]).
 func (r *ModelRuntime) Stream(model, request, options map[string]any) *ModelEventStream {
-	return r.registry().streamOn(r.Handle(), model, request, options, false)
+	return r.registry().streamOn(r.object, model, request, options, false)
 }
 
 // StreamSimple is Stream with the simple options of Pi's streamSimple.
 func (r *ModelRuntime) StreamSimple(model, request, options map[string]any) *ModelEventStream {
-	return r.registry().streamOn(r.Handle(), model, request, options, true)
+	return r.registry().streamOn(r.object, model, request, options, true)
 }
 
 // Complete is the final message of Stream.
