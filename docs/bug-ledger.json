@@ -5979,6 +5979,46 @@
       ]
     },
     {
+      "id": "BF-1f4ce56",
+      "title": "On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes…",
+      "symptom": "On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor of the file as it was, as Pi's in-place write does.",
+      "rootCause": "the helper left the security descriptor of a replaced file to ReplaceFileW and copied only the DACL with its protected flag, and no test compared the whole descriptor before and after a write on Windows",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor of the file as it was, as Pi's in-place write does. The replacement kept the owner-only access of a credential file only as far as `ReplaceFileW` merged it: it always marked the file as auto-inherited and could rewrite the inherited flag of entries or add explicit copies of inherited ones, so a login or token refresh could change who may open `auth.json`. The access (the entries with their flags, and the protected flag) is now put on the temporary file before anything is written to it and read back, and again after the replacement, which puts the old file back and fails if the access still differs; a file system that cannot take it gets the in-place write, as before. Run on NTFS on the GitHub Windows runner by the main-side branch that carries the same files (run 43709055821); no other file system has been run (divergence D651).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1f4ce560a8",
+          "date": "2026-11-15"
+        },
+        {
+          "hash": "950803e7b7",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupFinishesAReplacementThatStoppedHalfWay",
+        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
+        "internal/atomicfile/carry_access_test.go::TestCarryAccessChoosesTheCallsByWhatTheReadBackShows",
+        "internal/atomicfile/carry_access_test.go::TestCarryAccessReturnsAFailedReadBack",
+        "internal/atomicfile/carry_decision_test.go::TestWriteFileWritesInPlaceWhereTheTemporaryFileCannotTakeTheAccess",
+        "internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsInheritanceDoesNotReachAProtectedFileAfterAWrite",
+        "internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsSecurityDescriptorMatrix",
+        "internal/atomicfile/replace_backup_test.go::TestCarryVerdict",
+        "internal/atomicfile/replace_backup_test.go::TestIgnoreOwnerRefusal",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupCarriesTheDescriptorAroundTheMoveOfAHalfWayReplacement",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupCarriesTheOldDescriptorOntoTheNewFile",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenTheOldFileCannotBeRestored",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOldFileWhenTheAccessDiffersAfterTheReplacement",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOldFileWhenTheCarryFails",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupSucceedsWhenOnlyTheAutoInheritedFlagDiffers"
+      ]
+    },
+    {
       "id": "BF-1f7fa2f",
       "title": "In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx…",
       "symptom": "In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx when a later extension's handler awaits a timer or I/O.",
