@@ -169,6 +169,19 @@ func wantKind(t testing.TB, ref *Reference, kind RefStateKind) {
 	}
 }
 
+// tabOf is a client connected to `server` as principal.
+func (g *gatedRelay) tabOf(principal data.Principal) Host {
+	g.t.Helper()
+	tab := newHost(g.t, HostOptions{OnError: func(HostError) {}})
+	mustLoad(g.t)(tab.Load(nil, background))
+	a, b := link.MemoryLinkPair()
+	must(g.t, g.Server.Accept(a, LinkOptions{Principal: principal, Codec: testCodec()}, background))
+	must(g.t, tab.Connect(b, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
+	g.links = append(g.links, a, b)
+	g.tabs = append(g.tabs, tab)
+	return tab
+}
+
 // kindOf is `ref.state.value.kind`.
 func kindOf(ref *Reference) RefStateKind { return stateOfRef(ref).Kind }
 
@@ -208,6 +221,14 @@ func workerCount(rel *relayed) int {
 	count := 0
 	rel.Workers.Range(func(any, any) bool { count++; return true })
 	return count
+}
+
+func workerReferences(rel *relayed, key string) int {
+	worker := rel.Worker(key)
+	if worker == nil {
+		return 0
+	}
+	return activityOf(worker).References
 }
 
 // --- before the first allow ---------------------------------------------------------------------------------------------
@@ -368,6 +389,101 @@ func TestRouteAdmissionADecisionThatChangesWhileItIsSettledIsNotAnsweredWithWhat
 		wantDenied(t, notes)
 		if resolves, workers := rel.Resolves(), workerCount(rel); len(resolves) != 0 || workers != 0 {
 			t.Fatalf("resolves = %v, workers = %d, want none", resolves, workers)
+		}
+	})
+}
+
+// --- a denial -----------------------------------------------------------------------------------------------------------
+
+// Pi: "a denial › unbinds the principal's holds: released at the worker, replicas dropped, calls in flight forbidden/revoked".
+// Covers (part B): relayedHold.withheld (release upstream, `failed{denied}` downstream), providerSide.withheld +
+// rejectRelayed(all) (the call in flight: forbidden/revoked), relayedHold.heldBack/admitted (`loading` after the next allow),
+// relayedHold.unreached via the count read of the denied hold; path.forward behind the fence (the worker answers the ping).
+func TestRouteAdmissionADenialUnbindsThePrincipalsHoldsReleasedAtTheWorkerReplicasDroppedCallsInFlightForbiddenRevoked(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		g := routeGated(t, relayedOptions{}, nil)
+		defer closeHosts(t, g.Tab, g.Server)
+		g.set("yes")
+		notes := mustGet(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+		g.WorkerLoaded(t, "session|S1")
+		worker := g.Worker("session|S1")
+		if references := activityOf(worker).References; references != 1 {
+			t.Fatalf("worker references = %d, want 1", references)
+		}
+		if variant, _, _ := notes.Variant(); variant != "editor" {
+			t.Fatalf("variant = %q, want editor", variant)
+		}
+		waiting := startNotesCall(t, notes, "wait")
+		g.settled()
+		g.set("no")
+		g.settled()
+		_, waitErr := parkedResultOf(t, waiting)
+		if got := toldOf(t, waitErr); got.Code != "forbidden" || got.Reason != "revoked" {
+			t.Fatalf("wait = %+v, want forbidden/revoked", got)
+		}
+		g.settled()
+		wantDenied(t, notes)
+		_, err := notes.Member("count").Value()
+		if got := toldOf(t, err); got != (errorTold{"forbidden", "", "no access"}) {
+			t.Fatalf("count = %+v, want forbidden: no access", got)
+		}
+		if _, bound, _ := notes.Variant(); bound {
+			t.Fatal("a denied hold still has a variant")
+		}
+		if references := activityOf(worker).References; references != 0 {
+			t.Fatalf("worker references = %d, want 0 after the denial", references)
+		}
+		// Allowed again: `loading` at once, not "no access" until the hold is bound; then forwarded behind the fence (the
+		// worker answers the `ping`), under the tab's hold.
+		watch, err := notes.State().Watch(background)
+		must(t, err)
+		states := statesOf(t, watch)
+		g.set("yes")
+		g.settled()
+		wantKind(t, notes, RefStateLive)
+		got := states.All()
+		// The collector reports the state it started on first (the denial): dropped, Pi's lists what changed after.
+		if len(got) > 0 && strings.HasPrefix(got[0], "failed") {
+			got = got[1:]
+		}
+		if len(got) != 2 || got[0] != "loading" || got[1] != "live" {
+			t.Fatalf("states = %v, want loading, live", got)
+		}
+		if count, err := notes.Member("count").Value(); err != nil || count != float64(0) {
+			t.Fatalf("count = %v, %v, want 0", count, err)
+		}
+		if references := activityOf(worker).References; references != 1 {
+			t.Fatalf("worker references = %d, want 1 after the allow", references)
+		}
+	})
+}
+
+// Pi: "a denial › is per principal and address: another principal's holds on the address stay bound". Covers (part B):
+// the withhold of ONE holder (relayedHold.withheld) leaves the other decision's holder bound (path.withhold per holder).
+func TestRouteAdmissionADenialIsPerPrincipalAndAddressAnotherPrincipalsHoldsOnTheAddressStayBound(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		g := routeGated(t, relayedOptions{}, nil)
+		defer closeHosts(t, g.Tab, g.Server)
+		g.set("yes")
+		g.set("yes", "guest")
+		guest := g.tabOf(delta.JsonObjectOf("kind", "guest", "session", "S1"))
+		defer closeHosts(t, guest)
+		owners := mustGet(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+		guests := mustGet(t, guest, PlacedNotes, jsonObject("session", "S1"))
+		ownerVariant, _, _ := owners.Variant()
+		guestVariant, _, _ := guests.Variant()
+		if ownerVariant != "editor" || guestVariant != "reader" {
+			t.Fatalf("variants = %s, %s, want editor, reader", ownerVariant, guestVariant)
+		}
+		g.WorkerLoaded(t, "session|S1")
+		g.set("no", "guest")
+		g.settled()
+		wantDenied(t, guests)
+		if got := kindOf(owners); got != RefStateLive {
+			t.Fatalf("owner state = %s, want live", got)
+		}
+		if references := workerReferences(g.relayed, "session|S1"); references != 1 {
+			t.Fatalf("worker references = %d, want 1", references)
 		}
 	})
 }
