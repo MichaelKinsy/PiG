@@ -14,7 +14,6 @@ import (
 // starts no worker, an allowed one does (slice 14 §2.3)" (@7cc21c24f6b5), with the support.ts helper change (fleet's `admit`
 // option: fleetOptions.admit, passed as WorkersOptions.Admit: see the patch workers-support.patch).
 //
-// WAITS (part C): host.Allow, host.Deny (Admission values). WAITS (part D drop-in): host.RouteAdmit, WorkersOptions.Admit.
 // Covers: workers_workers.go `Admit: options.Admit` in CreateWorkers (mutation: drop the field: the denied fleet starts a worker).
 func TestStartsOnDemandPassesAdmitToItsRouteADeniedPrincipalStartsNoWorkerAnAllowedOneDoes(t *testing.T) {
 	denied := newFleet(t, fleetOptions{admit: func(data.Principal, contracts.Address, host.AdmitSelf) (any, error) {

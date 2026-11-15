@@ -5210,6 +5210,26 @@
       ]
     },
     {
+      "id": "BF-1a00b07",
+      "title": "Chord: the loading and paging of a list and of a tiling are tasks of the host's loop that waiting for the…",
+      "symptom": "They ran on goroutines that only a test helper joined, so a settle could return while a page was still loading.",
+      "rootCause": "Pi's list and tiling continue through promises: `void read.load()` (tiling.ts:211, :259), `void this.read(...)` (list.ts:126), the `more` chain `#loading.then(async () =\u003e { while (...) await #switched.promise; await #current?.more() })` (list.ts:92-99) and `await Promise.all(pages.map((page) =\u003e page.read.load()))` (tiling.ts:127). The Go list and tiling started bare goroutines behind sync.WaitGroups that only a test's `idle()` joined: not counted by the loop's join.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: the loading and paging of a list and of a tiling are tasks of the host's loop that waiting for the host to settle counts. Before, they ran on goroutines that only a test helper joined, so a settle could return while a page was still loading.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1a00b075b6",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-1a6b1ab",
       "title": "A tool whose name, description or parameter schema holds a lone UTF-16 surrogate now reaches the provider…",
       "symptom": "A tool whose name, description or parameter schema holds a lone UTF-16 surrogate now reaches the provider, the session file, RPC output and an HTML export as Pi writes it.",
@@ -11536,6 +11556,33 @@
       ],
       "commitsFrom": "release note",
       "tests": []
+    },
+    {
+      "id": "BF-37dad58",
+      "title": "Chord: a peer that held and released origins faster than the host tore their objects down could make the host…",
+      "symptom": "Chord: a peer that held and released origins faster than the host tore their objects down could make the host keep one pending teardown (a parked goroutine and the object it pinned) for every release: 14,626 pending tasks and 111 MiB at 20,000 origins of one identity, 73,430 and 568 MiB at 100,000, 294,528 and 2,265 MiB at 400,000.",
+      "rootCause": "the endings of one identity each parked a goroutine on the previous ending and the link's reader read the next frame without letting the ending of the last one run, which Pi's microtask checkpoint does",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a peer that held and released origins faster than the host tore their objects down could make the host keep one pending teardown (a parked goroutine and the object it pinned) for every release: 14,626 pending tasks and 111 MiB at 20,000 origins of one identity, 73,430 and 568 MiB at 100,000, 294,528 and 2,265 MiB at 400,000. An ending now waits for the identity's previous one as a reaction (no goroutine parked on it), and a link's reader waits, after each frame it read off the transport, until the teardowns that frame started have ended or wait for something outside the host (Pi runs the microtasks an ending queued before its next frame), so the same churn leaves at most 2 pending at every size. A teardown that waits for something only a later frame releases does not stop the reader, and the endings queued behind it still pile up without bound, as in Pi. Reply order, teardown order per identity and abort and close order do not change; the reply to a ping sent after a release now comes after the teardown that release started.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "37dad5849b",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_endings_order_test.go::TestEndingsOfOneIdentityTearDownInTheOrderTheyWereMadeOneAtATime",
+        "chord/next/host/host_pace_test.go::TestPaceBoundsTheEndingsAPeersUnmarkedChurnLeavesPending",
+        "chord/next/host/host_pace_test.go::TestPaceDoesNotHoldTheReaderForATeardownParkedOnALaterFrame",
+        "chord/next/host/host_pace_test.go::TestPaceInTheLinkReaderReturnsAtOnceWhenTheHostOrTheLinkCloses",
+        "chord/next/host/host_pace_test.go::TestPaceTwoHostsChurningToEachOtherOverABlockingTransportBothFinish",
+        "chord/next/host/host_pace_test.go::TestPaceWakesWhenTheLastRunningPacedTaskParks"
+      ]
     },
     {
       "id": "BF-3804a5a",
@@ -17935,6 +17982,40 @@
       "tests": []
     },
     {
+      "id": "BF-537249a",
+      "title": "Chord: an abort listener of the host (a call's wait, an event subscription's stop, a reference's `until`, a…",
+      "symptom": "The work started on a goroutine of its own after the cancel, in no order against the cancelling section, so a settle could return between a cancel and the work it caused.",
+      "rootCause": "Every registration is ended where it was before the change (each site kept its stop call: completion, stop, seal, release); TestOnAbortStoppedRegistrationsLeaveNothingOnALongLivedContext (20,000 stopped registrations on one context grow the heap under 2 MiB).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: an abort listener of the host (a call's wait, an event subscription's stop, a reference's `until`, a root scope's seal, a routine's sleep and `on` watch, a consumer's outgoing call, the end of a blocked route settle) now runs inside the cancel and hands its work to the host's loop at once, as Pi's abort listener runs inside `abort()`. Before, the work started on a goroutine of its own after the cancel, in no order against the cancelling section, so a settle could return between a cancel and the work it caused.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "537249aa9f",
+          "date": "2026-11-15"
+        },
+        {
+          "hash": "80406e92df",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_loop_abort_test.go::TestALinkedAbortFollowsItsSourcesInsideTheirCancel",
+        "chord/next/host/host_loop_abort_test.go::TestOnAbortFromOutsideASectionIsAHopTheJoinWaitsFor",
+        "chord/next/host/host_loop_abort_test.go::TestOnAbortInASectionQueuesItsWorkAfterTheSection",
+        "chord/next/host/host_loop_abort_test.go::TestOnAbortListensToASourceOfAnotherPackageToo",
+        "chord/next/host/host_loop_abort_test.go::TestOnAbortNowRunsInsideTheCancelThatAbortsTheContext",
+        "chord/next/host/host_loop_abort_test.go::TestOnAbortNowRunsOnceAndNotAfterItsStop",
+        "chord/next/host/host_loop_abort_test.go::TestOnAbortOnAnAbortedContextQueuesAtOnce",
+        "chord/next/host/host_loop_abort_test.go::TestOnAbortStopKeepsItsWorkFromBeingQueued",
+        "chord/next/host/host_loop_abort_test.go::TestOnAbortStoppedRegistrationsLeaveNothingOnALongLivedContext"
+      ]
+    },
+    {
       "id": "BF-5380e0a",
       "title": "fix(extension): load failure shows the extension's own cause; registration edge-case rows",
       "symptom": "fix(extension): load failure shows the extension's own cause; registration edge-case rows",
@@ -19234,6 +19315,30 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-58c30ec",
+      "title": "Chord: a parked call whose caller aborts is rejected inside the abort, and a flush that runs in the same…",
+      "symptom": "Chord: a parked call whose caller aborts is rejected inside the abort, and a flush that runs in the same section no longer sends the cancelled call.",
+      "rootCause": "Pi's listener rejects the parked call and takes it out of the queue inside `abort()`. The call's cancel was context.AfterFunc plus Loop.Run: a goroutine of the runtime's, in no order against the cancelling section and uncounted by the join. It is onAbort now (a microtask of the loop after the cancelling section). A flush that runs before that microtask (the same section) meets a call whose context is aborted: it takes it out and rejects it with the reason, as Pi's synchronous listener had already done, and does not send it (TestParkedCallsAFlushBeforeTheCancelListenerRanDoesNotSendTheCancelledCall: red without the check, 3 of 3).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a parked call whose caller aborts is rejected inside the abort, and a flush that runs in the same section no longer sends the cancelled call.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "58c30eca5c",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_parked_test.go::TestParkedCallsAFlushBeforeTheCancelListenerRanDoesNotSendTheCancelledCall",
+        "chord/next/host/host_parked_test.go::TestParkedCallsKeepTheirOrderAfterManyLeft",
+        "chord/next/host/host_parked_test.go::TestParkedCallsRejectAtOnceWhenTheirCallerCancels"
+      ]
     },
     {
       "id": "BF-58f6697",
@@ -30242,6 +30347,28 @@
         "chord/nextnode/plugins/plugins_cssmodules_node_test.go::TestMappingEvaluatorReportsAModuleThatDoesNotEvaluateAndGoesOn",
         "chord/nextnode/plugins/plugins_cssmodules_pi_test.go::TestScopeCSSModuleGivesWhatPisScopeCssModuleGivesForEveryGoldenCase",
         "chord/nextnode/plugins/plugins_cssmodules_test.go::TestEsbuildBuildsThatShareAnEvaluatorStartOneNodeSubprocessBetweenThem"
+      ]
+    },
+    {
+      "id": "BF-7e9a4bc",
+      "title": "Chord: an abort listener that ran leaves every source it listened to, and an emptied listener set is dropped",
+      "symptom": "A context that outlived its waits (a link's or a host's) kept every wait that had ended by an abort, and the memory of its busiest moment.",
+      "rootCause": "OnAbort registers a listener on every cancel that can abort its context: the context itself and each parent and signal behind it. A cancel clears the set of its own source only, so a listener that ran stayed in the sets of the others until its waiter called stop, and a set emptied by stop kept the buckets it grew to. A source that outlives its waits (a link's or a host's context) kept every wait that ended by an abort, and the size of its busiest moment.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: an abort listener that ran leaves every source it listened to, and an emptied listener set is dropped. Before, a context that outlived its waits (a link's or a host's) kept every wait that had ended by an abort, and the memory of its busiest moment.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7e9a4bc8f5",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/context/abort_listener_leak_test.go::TestOnAbortLeavesNothingHeldByALongLivedContext"
       ]
     },
     {
@@ -63492,6 +63619,35 @@
         "durable/core/jv/split_pair_test.go::TestAppendStringJoinsASplitSurrogatePair",
         "extensions/sdk/json/surrogate_test.go::TestSplitSurrogatePairEncodesAsItsCharacter",
         "internal/jsstring/unescape_stringify_test.go::TestUnescapeForStringifyRewritesOnlyRealEscapes"
+      ]
+    },
+    {
+      "id": "BF-fe0d5a3",
+      "title": "Chord: waiting for a host to settle now waits for the rest of a handler that parked (a method handler's or a…",
+      "symptom": "The rest of such a handler ran on a goroutine the settle did not count, so a check made right after the settle could see a state from before it.",
+      "rootCause": "Lifetimes are unchanged: each task started as a Loop.Go task before (the loop's WaitGroup, which the host's close does not call: Loop.Wait has no production caller) and ends when what it waits for ends at close (the watch, the turn, the ending, the store's refusal of an ended object); the ones that run plugin code (a root fn, a job's Run, an `Awaiting` work) end when the plugin returns, as before, with their context aborted at the seal. Nothing here makes a task outlive its owner that did not.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: waiting for a host to settle now waits for the rest of a handler that parked (a method handler's or a route's `resolve` after its first wait), for the continuations of every unawaited promise of the host (the close tail, host-data turns, flushes and retries of an object, a reference's follow and release, a root scope's handler, a routine's wait, a job's record) and of the documents. Before, the rest of such a handler ran on a goroutine the settle did not count, so a check made right after the settle could see a state from before it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f0020ca3a4",
+          "date": "2026-11-15"
+        },
+        {
+          "hash": "fe0d5a32ce",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_loop_join_test.go::TestLoopJoinDoesNotWaitForAHandlerInSleepAndItResumesAtTheDeadlineAndAtAnAbort",
+        "chord/next/host/host_loop_join_test.go::TestLoopJoinDoesNotWaitForAHandlerInUntilAbortedAndWaitsForItsRestOnceItIsAborted",
+        "chord/next/host/host_loop_join_test.go::TestLoopJoinDoesNotWaitForAHandlerParkedOnAGateAndWaitsForItsRestOnceTheGateIsReleased",
+        "chord/next/host/host_loop_join_test.go::TestLoopJoinWaitsForWhatIsLeftOfAHandlerThatParked"
       ]
     },
     {

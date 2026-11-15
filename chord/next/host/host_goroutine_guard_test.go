@@ -56,10 +56,6 @@ var uncountedSites = []uncountedSite{
 		reason: "thenWithContext's listener for a source chordctx.OnAbort cannot listen to (a deadline, a stdlib cancel): the runtime's goroutine, which enters the loop with Run",
 	},
 	{
-		file: "host_parked.go", code: "call.cancel = context.AfterFunc(ctx, func() {", count: 1,
-		reason: "OPEN (a class P site left on purpose): a parked call's caller abort. Its cases drive a virtual-time loop whose Queue is flushed by the test and assert the order of a Run on the abort's own goroutine; an onAbort that queues deadlocks them (TestParkedCallsRejectAtOnceWhenTheirCallerCancels, ...KeepTheirOrderAfterManyLeft). Convert with those cases rewritten to flush",
-	},
-	{
 		file: "host_host_data.go", code: "loop.Go(func() {", count: 1,
 		reason: "acquireLine's wait for the documents line, a lock held by a commit: a wait on something outside the loop (a mutex Pi's `await line.acquire()` is), raced against ctx; its caller waits for the line itself, not a continuation a test's `delivered()` can overtake",
 	},
@@ -91,7 +87,7 @@ func TestProductionStartsNoGoroutineTheJoinDoesNotCount(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, line := range strings.Split(string(source), "\n") {
+		for line := range strings.SplitSeq(string(source), "\n") {
 			code := strings.TrimSpace(withoutComment(line))
 			if code != "" && startsGoroutine.MatchString(code) {
 				found[file+"\x00"+code]++

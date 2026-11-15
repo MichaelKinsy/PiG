@@ -1,6 +1,7 @@
 package app
 
 // pi: packages/chord/src/node/app/ephemeral-sign-ins.ts
+// pi: packages/chord/src/node/app/ephemeral-sessions.ts
 
 import (
 	"sync"

@@ -63,17 +63,15 @@ func listOf(handle *ListHandle) *list { return handle.list }
 // "waits until every pending promise callback has run"): it resolves once every microtask chain the code under test started has
 // run, the reads and loads of the lists and readers (`void this.read`, `load()`, the re-reads of a moved source) and the frames
 // they publish; Pi's memory store does no I/O, so those chains end in microtasks. lsSettled awaits the same set: the reads the
-// readers queued for a source that moved (qrSettled), the loads of the lists' pages and the reads a rebound started
-// (`list.idle`), then the host's turn queue (flushed) and the watch deliveries (deliveredOn). A call a test made has settled
-// when it returned, as Pi's awaited call has: lsSettled waits for what the lists started on their own after it.
+// readers queued for a source that moved (qrSettled), the host's loop's tasks (deliveredOn: the loads of the lists' pages and the
+// reads a rebound started are tasks of that loop), then the host's turn queue (flushed) and the watch deliveries (deliveredOn).
+// A call a test made has settled when it returned, as Pi's awaited call has: lsSettled waits for what the lists started on their
+// own after it.
 func lsSettled(host Host) {
-	// First the tasks of the loop (a reload's successor starts in one and makes its lists and reads): the lists below are those
-	// that exist once they ran.
+	// First the tasks of the loop (a reload's successor starts in one and makes its lists and reads, a list's loads are tasks):
+	// what the reads below wait for exists once they ran.
 	deliveredOn(host)
 	qrSettled(host)
-	for _, l := range listsOf(host) {
-		l.idle()
-	}
 	flushed(host)
 	deliveredOn(host)
 }
@@ -125,11 +123,9 @@ func (l *list) describe() string {
 func parallel(calls ...func()) {
 	var group sync.WaitGroup
 	for _, call := range calls {
-		group.Add(1)
-		go func() {
-			defer group.Done()
+		group.Go(func() {
 			call()
-		}()
+		})
 	}
 	group.Wait()
 }
@@ -186,15 +182,13 @@ func (c *commitLog) grouped() int { c.mu.Lock(); defer c.mu.Unlock(); return c.g
 // order, and the queue adopts in the order of the enlisting, so the truth a test tracks call by call is the store's.
 func (c *commitLog) start(group *sync.WaitGroup, commits bool, call func()) {
 	before, finished := c.count(), false
-	group.Add(1)
-	go func() {
-		defer group.Done()
+	group.Go(func() {
 		call()
 		c.mu.Lock()
 		finished = true
 		c.changed.Broadcast()
 		c.mu.Unlock()
-	}()
+	})
 	if !commits {
 		return
 	}

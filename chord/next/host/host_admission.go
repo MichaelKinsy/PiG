@@ -378,8 +378,11 @@ func (d *Decision) settleWait(long blocked, ctx context.Context) *verdict {
 	if promise == nil {
 		return &verdict{kind: verdictBroken, err: data.AsChordError(context.Cause(waiting), d.owner.label)}
 	}
-	// Released: its requests are let go and what it waits for may never come.
-	defer context.AfterFunc(d.lifetime, func() { stop(d.endedError()) })()
+	// Released: its requests are let go and what it waits for may never come. The decision's end ends this wait inside the cancel
+	// that releases it (Go-only: Pi's settle promise of a released decision never settles, admission.ts:238-258, release at :279
+	// `#following.abort(ended)`); onAbortNow only cancels `waiting`, and its stop ends the registration when the wait is over.
+	stopEnding := onAbortNow(d.lifetime, func() { stop(d.endedError()) })
+	defer stopEnding()
 	parking.Park(waiting)
 	select {
 	case <-promise.done:

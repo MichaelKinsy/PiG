@@ -971,7 +971,7 @@ func (o *chordObject) failLive(a *attempt, cause liveFailure) {
 	// included), then stop. A retry's factory and hydration wait for both (its ending), so no old commit lands in a new
 	// attempt.
 	loop := o.host.loop()
-	settled := awaitTask(o.host, func() (struct{}, error) {
+	settled := awaitEnding(o.host, func() (struct{}, error) {
 		o.documents.Settled()
 		return struct{}{}, nil
 	})
@@ -980,7 +980,7 @@ func (o *chordObject) failLive(a *attempt, cause liveFailure) {
 		o.stopFollowing(a)
 		frozen.resolve(struct{}{})
 	})
-	closing := promiseAll2(loop, awaitTask(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil }), frozen)
+	closing := promiseAll2(loop, awaitEnding(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil }), frozen)
 	done := newKeyedPromise[[]*closeFailed](loop)
 	closing.then(func(failures []*closeFailed, _ error) {
 		a.detach()
@@ -1170,7 +1170,7 @@ func (o *chordObject) end(err *data.ChordError) {
 	if td.kind == teardownNone {
 		return
 	}
-	torn := awaitTask(o.host, func() ([]*closeFailed, error) { return o.tearDown(td, closeEnd), nil })
+	torn := awaitAfter(o.host, td.previous, func() ([]*closeFailed, error) { return o.tearDownAfter(td, closeEnd), nil })
 	o.host.ending(o.identity, o.reported(torn))
 }
 
@@ -1190,7 +1190,7 @@ func (o *chordObject) remove(cause data.FailureCause) {
 	if td.kind == teardownNone {
 		return
 	}
-	torn := awaitTask(o.host, func() ([]*closeFailed, error) { return o.tearDown(td, closeEnd), nil })
+	torn := awaitAfter(o.host, td.previous, func() ([]*closeFailed, error) { return o.tearDownAfter(td, closeEnd), nil })
 	o.host.ending(o.identity, o.reported(torn))
 }
 
@@ -1281,12 +1281,12 @@ func (o *chordObject) endOld(old *attempt, ready *readiness, due int64) *keyedPr
 			// slot unbinds now, before an `ack` could bind it to nothing; bound holds and references follow it on until it
 			// stopped changing.
 			o.notify()
-			awaitTask(host, func() (struct{}, error) {
+			awaitEnding(host, func() (struct{}, error) {
 				o.documents.Settled()
 				return struct{}{}, nil
 			}).then(func(struct{}, error) {
 				o.stopFollowing(old)
-				awaitTask(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
+				awaitEnding(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
 					func(failures []*closeFailed, _ error) {
 						old.detach()
 						ended.resolve(failures)
@@ -1395,7 +1395,7 @@ func (o *chordObject) retryReloaded() *attempt {
 	}
 	closing := newKeyedPromise[[]*closeFailed](loop)
 	closeOld := func(struct{}, error) {
-		awaitTask(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
+		awaitEnding(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
 			func(failures []*closeFailed, _ error) {
 				old.detach()
 				old.releaseReferences()
@@ -1614,7 +1614,7 @@ func (o *chordObject) failedAttempt(a *attempt, cause data.FailureCause) {
 	o.failure = cause.Error
 	a.seal(o.ended(), cutRestart)
 	loop := o.host.loop()
-	closing := awaitTask(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil })
+	closing := awaitEnding(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil })
 	done := newKeyedPromise[[]*closeFailed](loop)
 	closing.then(func(failures []*closeFailed, _ error) {
 		a.detach()
@@ -1840,10 +1840,9 @@ func (o *chordObject) stopLingering() {
 	o.host.count(activityLingering, -1)
 }
 
-// tearDown, once the previous teardowns finished (a failed attempt's closes may read the documents): drains and closes a
-// sealed attempt, then releases its references (after the closes, which may use them), then waits for an admitted commit
-// step to adopt and drops the documents and job runs. It returns the closes that threw. It blocks: it is called outside a
-// section.
+// tearDown, once the previous teardowns finished (a failed attempt's closes may read the documents): see tearDownAfter. It
+// blocks, outside a section, for those teardowns: it is `host.close`'s (stop). A background ending (end, remove) does not
+// block for them: awaitAfter starts it once they finished.
 func (o *chordObject) tearDown(td teardown, reason NativeCloseReason) []*closeFailed {
 	if td.kind == teardownNone {
 		return nil
@@ -1851,6 +1850,45 @@ func (o *chordObject) tearDown(td teardown, reason NativeCloseReason) []*closeFa
 	if td.previous != nil {
 		// An ending never rejects.
 		_, _ = td.previous.await(chordctx.Background())
+	}
+	return o.tearDownAfter(td, reason)
+}
+
+// awaitAfter is `await teardown.previous; await work()` of Pi's #tearDown (object.ts:1625-1626) as control flow: the work
+// of an ending starts, as a counted task, in the section that settles previous (a promise reaction: the count never falls
+// to zero between the previous ending's last step and this one's first), and until then it is a reaction of previous (a
+// closure), not a goroutine parked on it. previous is nil when no ending of the identity runs: the work starts at once.
+// Its outcome settles the returned promise in a section, as awaitTask's. The task is paced (Loop.pace): the reader of a link
+// does not read the next frame while it can run.
+func awaitAfter[T any](host *chordHost, previous *keyedPromise[struct{}], work func() (T, error)) *keyedPromise[T] {
+	promise := newKeyedPromise[T](host.loop())
+	endingMade(host.loop())
+	start := func() {
+		goPacedTask(host.loop(), work, func() {
+			value, err := work()
+			host.enter(func() { promise.settle(value, err) })
+		})
+	}
+	if previous == nil {
+		start()
+	} else {
+		previous.then(func(struct{}, error) { start() })
+	}
+	return promise
+}
+
+// awaitEnding is awaitTask for the work of an ending that waits for no predecessor (a failed attempt's close, a restart's old
+// attempt's): a paced task, as an ending that does.
+func awaitEnding[T any](host *chordHost, work func() (T, error)) *keyedPromise[T] {
+	return awaitAfter(host, nil, work)
+}
+
+// tearDownAfter drains and closes a sealed attempt, then releases its references (after the closes, which may use them),
+// then waits for an admitted commit step to adopt and drops the documents and job runs. It returns the closes that threw.
+// It blocks: it is called outside a section, after the teardowns that came before it finished.
+func (o *chordObject) tearDownAfter(td teardown, reason NativeCloseReason) []*closeFailed {
+	if td.kind == teardownNone {
+		return nil
 	}
 	var failures []*closeFailed
 	if td.kind == teardownClose {

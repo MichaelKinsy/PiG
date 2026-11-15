@@ -52,6 +52,8 @@ type Loop struct {
 	parked   map[*parking.Parked]struct{}
 	// stall is how long a join waits for a running task before it reports it; zero: joinStall (host_loop_seam.go).
 	stall time.Duration
+	// pacing is the bookkeeping of the paced ending tasks, guarded by mu (host_loop_seam.go).
+	pacing pacer
 
 	// idle are the coroutines of finished handlers; pending the handlers that parked or returned in the running section,
 	// whose rest runs when it ends (host_loop_lend.go). idle is guarded by mu, pending by the section.
