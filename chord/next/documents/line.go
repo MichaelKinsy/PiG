@@ -54,10 +54,27 @@ func (line *Line) reserve() linePlace {
 	return linePlace{line: line, previous: previous, done: done}
 }
 
-// wait parks a handler's ctx, blocks until every earlier holder released and returns this holder's release.
+// wait parks a handler's ctx, blocks until every earlier holder released and returns this holder's release. A task of the host's
+// loop (awaitTask: `await documents.settled()` of the teardown, a cold load) that has to wait for the holder before it waits for
+// something the loop does not run (a commit a test holds, a step still writing): it is parked, which a test's join does not
+// wait for (Pi's `setTimeout(0)` does not wait for a promise still pending on the line either); the wait is read without
+// being consumed, since a closed channel stays closed.
 func (place linePlace) wait(ctx context.Context) (release func()) {
 	parking.Park(ctx)
-	<-place.previous
+	select {
+	case <-place.previous:
+	default:
+		resume := parking.Idle(func() bool {
+			select {
+			case <-place.previous:
+				return true
+			default:
+				return false
+			}
+		})
+		<-place.previous
+		resume()
+	}
 	place.line.mu.Lock()
 	place.line.waiting--
 	place.line.mu.Unlock()

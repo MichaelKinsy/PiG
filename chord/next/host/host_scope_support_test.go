@@ -38,23 +38,34 @@ var _ sectionLoop = (*scopeLoop)(nil)
 var (
 	awaitTaskName       = strings.TrimSuffix(runtime.FuncForPC(reflect.ValueOf(awaitTask[int]).Pointer()).Name(), "[...]")
 	afterDeliveriesName = runtime.FuncForPC(reflect.ValueOf((*onRoutine).afterDeliveries).Pointer()).Name()
+	goTaskName          = runtime.FuncForPC(reflect.ValueOf(goTask).Pointer()).Name()
 )
 
 func newScopeLoop() *scopeLoop { return &scopeLoop{fakeLoop: newFakeLoop(), real: NewLoop()} }
 
 func (l *scopeLoop) Run(work func()) { l.real.Run(work) }
 
+// starterOf is the function that called scopeLoop.Go, goTask (the host's counted start of a task) not counting as a caller.
+func starterOf() string {
+	pcs := make([]uintptr, 8)
+	frames := runtime.CallersFrames(pcs[:runtime.Callers(3, pcs)])
+	for {
+		frame, more := frames.Next()
+		if frame.Function != goTaskName || !more {
+			return frame.Function
+		}
+	}
+}
+
 // Go starts fn as the real loop does, counting it when the host starts it as an awaitTask or a settle task: the starter
 // is told by its function, so the host keeps no counter for the test.
 func (l *scopeLoop) Go(fn func()) {
 	var running *atomic.Int64
-	if pc, _, _, ok := runtime.Caller(1); ok {
-		switch name := runtime.FuncForPC(pc).Name(); {
-		case strings.HasPrefix(name, awaitTaskName+"["):
-			running = &l.awaiting
-		case name == afterDeliveriesName:
-			running = &l.settling
-		}
+	switch name := starterOf(); {
+	case strings.HasPrefix(name, awaitTaskName+"["):
+		running = &l.awaiting
+	case name == afterDeliveriesName:
+		running = &l.settling
 	}
 	if running == nil {
 		l.real.Go(fn)
