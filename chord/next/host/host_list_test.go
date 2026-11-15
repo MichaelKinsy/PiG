@@ -14,13 +14,16 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
+	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
-// Ports packages/chord/test/host/list.test.ts (Pi 0db9861ec018, 473 lines): 16 cases (invariant x4, pages x6, arguments x1,
-// reload x3, declaration and memory x2). Subtest names are Pi's `it` texts.
+// Ports packages/chord/test/host/list.test.ts (Pi 0db9861ec018, 473 lines; two pages cases added by Pi 36c709e720b6): 18
+// cases (invariant x4, pages x8, arguments x1, reload x3, declaration and memory x2). Subtest names are Pi's `it` texts.
 //
 // Go forms: `await Promise.all([...])` is `parallel(...)`, or, where the calls make commits that Pi's call order enlists in
 // order (the invariant's groups), `commitLog.start` per call: each commit enlisted before the next call starts;
@@ -62,7 +65,31 @@ var (
 			contracts.Mem("show", contracts.NewMethod(contracts.Str())),
 		},
 	}))
+	// lsBoard is Pi's `Board`, the screen as a client holds it over a link (the variant is `v` as remoteOneVariant's).
+	lsBoard = remoteOneVariant("app.board", contracts.Params{}, contracts.VariantDeclaration{
+		State:   []contracts.Property{contracts.Prop("list", contracts.Obj(contracts.Prop("rows", contracts.Arr(lsItem)), contracts.Prop("moreAfter", contracts.Bool())))},
+		Methods: []contracts.MethodEntry{contracts.Meth("more", contracts.NewMethod())},
+	})
 )
+
+// lsSubscriber is Pi's test Subscriber: the calls it was advanced with, none folded.
+type lsSubscriber struct {
+	mu    sync.Mutex
+	calls []chord.WatchCall[delta.JsonValue]
+}
+
+func (s *lsSubscriber) Advance(call chord.WatchCall[delta.JsonValue], _ context.Context) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.calls = append(s.calls, call)
+}
+func (s *lsSubscriber) End(chord.WatchEnd) {}
+func (s *lsSubscriber) EndAfterDelivery()  {}
+func (s *lsSubscriber) all() []chord.WatchCall[delta.JsonValue] {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.calls)
+}
 
 // lsProbe is what the tests count: how often the screen's factory ran, and the lists it made (Pi's `Probe`, and
 // `instancesOf(List, "read")`).
@@ -406,6 +433,94 @@ func TestListPages(t *testing.T) {
 		}
 		_, _ = watch.Stop()
 		w.close()
+	})
+
+	// Pi (36c709e720b6): "a row moving between two pages sets the list once per page and publishes one frame, diffed from the value before
+	// the commit". Go forms: `resolveWatchable(screen.list) as Source` is the member's source (subscribed on the loop, where
+	// the batch runs); Pi's Subscriber is a mutex-guarded recorder; `applyImmutable` is delta.ApplyImmutable.
+	t.Run("a row moving between two pages sets the list once per page and publishes one frame, diffed from the value before the commit", func(t *testing.T) {
+		w := lsHosted(t, 3, 9, nil, nil)
+		w.more()
+		w.more()
+		before, err := w.screen.Member("list").Value()
+		must(t, err)
+		// As a link's provider side follows it: every frame in its batch, none folded (a watch folds them).
+		var source state.SourceHandle
+		sub := &lsSubscriber{}
+		w.screen.binding.loop.Run(func() {
+			resolved, err := resolveWatchable(w.screen.Member("list"))
+			must(t, err)
+			source = resolved.(state.SourceHandle)
+			source.Subscribe(sub)
+		})
+		// Row 2 leaves the third page and enters the first: both pages adopt in one commit.
+		w.touch(2, 100)
+		lsSettled(w.host)
+		calls := sub.all()
+		if len(calls) != 1 {
+			t.Fatalf("calls = %d, want 1", len(calls))
+		}
+		if calls[0].Kind != chord.WatchCallValue {
+			t.Fatalf("call = %+v, want a value call", calls[0])
+		}
+		lsExpect(t, "ids", rowIDs(calls[0].Value.(*delta.JsonObject).Value("rows").([]any)), []int{2, 9, 8, 7, 6, 5, 4, 3, 1})
+		applied, err := delta.ApplyImmutable(before, calls[0].Ops)
+		must(t, err)
+		lsExpect(t, "applyImmutable(before, ops)", applied, calls[0].Value)
+		w.screen.binding.loop.Run(func() { source.Unsubscribe(sub) })
+		w.close()
+	})
+
+	// Pi (36c709e720b6): "over a link, the last row of a second page moving to the top is one state message: no protocol error, the
+	// link stays open".
+	t.Run("over a link, the last row of a second page moving to the top is one state message: no protocol error, the link stays open", func(t *testing.T) {
+		chordStore := memoryStore(t)
+		serverErrors, clientErrors := &hostErrors{}, &hostErrors{}
+		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), Store: chordStore, OnError: serverErrors.push})
+		board := HostFacet{Name: "@test/board", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(lsBoard, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+				args := self.Derive([]any{self.Writable("a")}, func(values []any) (delta.JsonValue, error) { return jsonObject("group", values[0]), nil })
+				handle := self.List("rows", []ListSource{{Query: self.Get(lsStoreContract, jsonObject()).Queries("rows")["ofGroup"], Args: args}}, ListOptions{First: 3})
+				return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+					State: map[string]chord.Watchable[delta.JsonValue]{"list": handle.Value()},
+					Methods: map[string]contracts.MethodFunction{
+						"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, handle.More(ctx) },
+					},
+				}}, nil
+			}, ServeOptions{})
+		})}
+		_, err := server.Load([]HostFacet{lsStorePlugin("desc", nil), board}, background)
+		must(t, err)
+		rows := mustGet(t, server, lsStoreContract, jsonObject())
+		puts := []any{}
+		for _, id := range []int{1, 2, 3, 4} {
+			puts = append(puts, jsonObject("put", jsonObject("id", float64(id), "group", "a", "touched", float64(id))))
+		}
+		mustCall(t, rows, "write", puts)
+		client := newHost(t, HostOptions{OnError: clientErrors.push})
+		_, err = client.Load(nil, background)
+		must(t, err)
+		up, down := link.MemoryLinkPair()
+		must(t, server.Accept(up, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+		must(t, client.Connect(down, LinkOptions{Principal: serverPrincipal(), Codec: testCodec()}, background))
+		held := mustGet(t, client, lsBoard, jsonObject())
+		mustCall(t, held, "more", nil)
+		transported(up, down)
+		shown, _ := mustListValue(t, held)
+		lsExpect(t, "ids", rowIDs(shown), []int{4, 3, 2, 1})
+		// The one row of the second page becomes the first row of the first.
+		mustCall(t, rows, "touch", jsonObject("id", float64(1), "at", float64(100)))
+		transported(up, down)
+		if serverErrors.Len() != 0 || clientErrors.Len() != 0 {
+			t.Fatalf("errors = server %v, client %v; want none", serverErrors.All(), clientErrors.All())
+		}
+		if kind := stateOfRef(held).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
+		shown, _ = mustListValue(t, held)
+		lsExpect(t, "ids after", rowIDs(shown), []int{1, 4, 3, 2})
+		held.Release()
+		closeHosts(t, client, server)
 	})
 
 	t.Run("keeps the last page open while no row is behind it: empty, short and exactly full lists take a new row", func(t *testing.T) {
