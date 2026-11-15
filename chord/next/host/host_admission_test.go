@@ -96,11 +96,6 @@ var admDoc = mustContract(contracts.Remote("test.doc", contracts.RemoteDeclarati
 	},
 }))
 
-// admDocV2: Doc with another admission schema (the same wire fingerprint): a reload does not rehearse across it.
-var admDocV2 = mustContract(contracts.Evolve(admDoc, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
-	return e.Admission(contracts.Obj(contracts.Prop("mode", contracts.OneOf("read", "write")), contracts.Prop("since", contracts.Int())))
-}))
-
 // admPanel: a consumer of a document on the same host: a derive over its text.
 var admPanel = mustContract(contracts.Local("test.panel", contracts.LocalDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
@@ -496,14 +491,6 @@ func mustValue(t *testing.T, ref *Reference, member string) delta.JsonValue {
 	return value
 }
 
-// admLive waits until ref is live: Pi's `await delivered()` also lets the microtasks of a rebuild run to the end, where a Go
-// rebuild's activation ends on its own goroutines after the delivery scheduler is idle.
-func admLive(t *testing.T, ref *Reference) {
-	t.Helper()
-	until(t, "the reference is live", func() bool { return stateOfRef(ref).Kind == RefStateLive })
-}
-
-// admDenied is `toMatchObject({ kind: "failed", cause: { kind: "denied", error: { code: "forbidden", message } } })`.
 func admDenied(t *testing.T, state *RefState, message string) {
 	t.Helper()
 	if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureDenied || state.Cause.Error.Code != data.CodeForbidden ||
@@ -547,7 +534,6 @@ func TestAdmissionDenyThenAllow(t *testing.T) {
 		}
 		s.set("read", "server")
 		s.delivered()
-		admLive(t, doc)
 		if kind, variant, text := stateOfRef(doc).Kind, admVariant(doc), mustValue(t, doc, "text"); kind != RefStateLive || variant != "reader" || text != "t" {
 			t.Fatalf("[%v %v %v], want [live reader t]", kind, variant, text)
 		}
@@ -579,7 +565,6 @@ func TestAdmissionDenyThenAllow(t *testing.T) {
 		admDenied(t, stateOfRef(panel), "no access")
 		s.set("read", "server")
 		s.delivered()
-		admLive(t, panel)
 		if kind, shout := stateOfRef(panel).Kind, mustValue(t, panel, "shout"); kind != RefStateLive || shout != "T" {
 			t.Fatalf("[%v %v], want [live T]", kind, shout)
 		}
@@ -651,7 +636,6 @@ func TestAdmissionTheWatchTable(t *testing.T) {
 		}
 		s.set("write", "server")
 		s.delivered()
-		admLive(t, doc)
 		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
 			t.Fatalf("state = %v, want live", kind)
 		}
@@ -685,7 +669,6 @@ func TestAdmissionTheWatchTable(t *testing.T) {
 		watch, err := refStateWatch(doc, background)
 		must(t, err)
 		states := statesOf(t, watch)
-		live := admWatchStates(t, doc)
 		frames := admChanges(t, doc, "text")
 		writing := admStart(t, doc, "write", "x")
 		s.set("read", "server")
@@ -702,7 +685,7 @@ func TestAdmissionTheWatchTable(t *testing.T) {
 			t.Fatalf("state = %v, want loading while the drain is held", kind)
 		}
 		close(drain)
-		live.until(t, admIsLive)
+		s.delivered()
 		s.delivered()
 		if kind, variant := stateOfRef(doc).Kind, admVariant(doc); kind != RefStateLive || variant != "reader" {
 			t.Fatalf("[%v %v], want [live reader]", kind, variant)
@@ -719,7 +702,6 @@ func TestAdmissionTheWatchTable(t *testing.T) {
 		built, selves := &admLog{}, &attemptList{}
 		s := admServed(t, admDocCode{Built: built}, admOptions{Mode: "read", Access: admAccessCode{Selves: selves}})
 		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
-		live := admWatchStates(t, doc)
 		// Pi's `failLive` and the assertion after it are one synchronous block of its event loop: no microtask runs between them.
 		// Here they are one section of the host's loop (as failLiveThen is), where the successor has not admitted yet.
 		var shown *RefState
@@ -738,7 +720,7 @@ func TestAdmissionTheWatchTable(t *testing.T) {
 		access.Retry()
 		s.delivered()
 		s.set("read", "server")
-		live.until(t, admIsLive)
+		s.delivered()
 		expectStrings(t, built.Items(), "a:read", "a:read")
 		access.Release()
 		must(t, s.h.Close(background))
@@ -831,7 +813,6 @@ func TestAdmissionAFailedAdmittedObject(t *testing.T) {
 		expectStrings(t, built.Items(), "a:write")
 		s.set("read", "server")
 		s.delivered()
-		admLive(t, doc)
 		if kind, variant := stateOfRef(doc).Kind, admVariant(doc); kind != RefStateLive || variant != "reader" {
 			t.Fatalf("[%v %v], want [live reader]", kind, variant)
 		}
@@ -844,7 +825,6 @@ func TestAdmissionAFailedAdmittedObject(t *testing.T) {
 		built, selves, decisions := &admLog{}, &attemptList{}, &admDecisions{}
 		s := admServed(t, admDocCode{Built: built, Declare: func(self Self, _ string) { selves.add(self) }, Admit: decisions.counting(admitBy(false))}, admOptions{Mode: "read"})
 		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
-		live := admWatchStates(t, doc)
 		failLive(selves.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "broke live"}, nil))
 		s.delivered()
 		// Failed: its last value stays readable, its holder listed.
@@ -868,8 +848,7 @@ func TestAdmissionAFailedAdmittedObject(t *testing.T) {
 		}
 		// Allowed again: another decision than the denial, so the object is retried.
 		s.set("read", "server")
-		// The retry's new attempt activates on tasks `delivered()` does not join: wait for the state the host delivers.
-		live.until(t, admIsLive)
+		s.delivered()
 		if kind, text := stateOfRef(doc).Kind, mustValue(t, doc, "text"); kind != RefStateLive || text != "t" {
 			t.Fatalf("[%v %v], want [live t]", kind, text)
 		}
@@ -1391,15 +1370,6 @@ func TestAdmissionOverALink(t *testing.T) {
 	})
 }
 
-// admActivity is `host.activity.value[field]`.
-func admActivity(h Host, field string) float64 {
-	var value delta.JsonValue
-	h.(*chordHost).enter(func() { value, _ = h.Activity().Value() })
-	n, _ := value.(*delta.JsonObject).Value(field).(float64)
-	return n
-}
-
-// admChanges is `changesOf(await ref.<member>.watch(context))`: the calls its watch delivers.
 func admChanges(t testing.TB, ref *Reference, member string) *nexttest.Collector[chord.WatchCall[delta.JsonValue]] {
 	t.Helper()
 	var watch chord.WatchHandle[delta.JsonValue]
@@ -1444,51 +1414,6 @@ func admWaiting(t *testing.T, doc *Reference) *RefState {
 	return st
 }
 
-// admStates is a reference's state watch a test waits on: it blocks until the state the host delivers is one it names. This is
-// the Go form of an `await` that settles when the state changes, for a chain `delivered()` cannot join: its tasks resume only
-// once the test has let go of a gate of its own (a drain it holds). It waits on the host's own delivery, never polls and
-// never sleeps; a state that is never reached ends the run with the go test timeout.
-type admStates struct {
-	ref   *Reference
-	mu    sync.Mutex
-	moved chan struct{}
-}
-
-func admWatchStates(t *testing.T, ref *Reference) *admStates {
-	t.Helper()
-	w := &admStates{ref: ref, moved: make(chan struct{})}
-	watch, err := refStateWatch(ref, background)
-	must(t, err)
-	watch.Start(func(_ context.Context, call chord.NativeWatchCall[*RefState]) error {
-		w.mu.Lock()
-		close(w.moved)
-		w.moved = make(chan struct{})
-		w.mu.Unlock()
-		return nil
-	})
-	return w
-}
-
-// until returns once the reference shows a state is accepts: the state it shows now, else the next one the watch delivers.
-func (w *admStates) until(t *testing.T, accepts func(*RefState) bool) {
-	t.Helper()
-	for {
-		w.mu.Lock()
-		moved := w.moved
-		w.mu.Unlock()
-		if st := stateOfRef(w.ref); accepts(st) {
-			return
-		}
-		<-moved
-	}
-}
-
-func admIsLive(st *RefState) bool { return st.Kind == RefStateLive }
-
-func admIsWaiting(st *RefState) bool {
-	return st.Kind == RefStateFailed && st.Cause.Kind == data.FailureWaiting
-}
-
 func TestAdmissionAReloadOfAnAdmissionsSource(t *testing.T) {
 	t.Run("whose successor parks seals its readers, which rebuild once it is back", func(t *testing.T) {
 		built := &admLog{}
@@ -1503,7 +1428,6 @@ func TestAdmissionAReloadOfAnAdmissionsSource(t *testing.T) {
 		_, err = s.reload(map[string]Facet{"access": admAccessFacet(admAccessCode{}, admAccess, nil)})
 		must(t, err)
 		s.delivered()
-		admLive(t, doc)
 		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
 			t.Fatalf("state = %v, want live", kind)
 		}
@@ -1514,19 +1438,6 @@ func TestAdmissionAReloadOfAnAdmissionsSource(t *testing.T) {
 }
 
 // --- a reload of the admitted type (Pi 1113-1288; "2.5, test 20") ---------------------------------------------------------
-
-// admReports is Pi's `reports(errors)`: `activation_failed: <message>` for an activation failure, the kind for the rest.
-func admReports(errs *hostErrors) []string {
-	out := []string{}
-	for _, e := range errs.All() {
-		if e.Kind == ErrActivationFailed {
-			out = append(out, string(e.Kind)+": "+e.Failure.Error.Message)
-			continue
-		}
-		out = append(out, string(e.Kind))
-	}
-	return out
-}
 
 func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 	t.Run("records the new admit without effects and rehearses the new factory with an equal admission fingerprint", func(t *testing.T) {
@@ -1544,7 +1455,6 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		}
 		// The recorded `admit` declared a share: nothing was made for it.
 		expectStrings(t, shares.Items())
-		admLive(t, doc)
 		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
 			t.Fatalf("state = %v, want live", kind)
 		}
@@ -1595,7 +1505,6 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		gate, drain := make(chan struct{}), make(chan struct{})
 		s := admServed(t, admDocCode{Built: &admLog{}, Gate: gate, Drain: drain}, admOptions{Mode: "write"})
 		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
-		shown := admWatchStates(t, doc)
 		writing := admStart(t, doc, "write", "x")
 		// The new admission also needs a type nobody serves: the successor parks on it and decides nothing.
 		waits := func(params *delta.JsonObject, principal data.Principal, self AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
@@ -1624,7 +1533,7 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		// shows what that parks on. Pi settles there too (probed: waiting after one `delivered()`, for good), its text still
 		// denied.
 		close(drain)
-		shown.until(t, admIsWaiting)
+		s.delivered()
 		if message := admWaiting(t, doc).Cause.Error.Message; !strings.Contains(message, "test.missing") {
 			t.Fatalf("message = %q, want it to name test.missing", message)
 		}
@@ -1639,7 +1548,6 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		built, gate, drain := &admLog{}, make(chan struct{}), make(chan struct{})
 		s := admServed(t, admDocCode{Built: &admLog{}, Gate: gate, Drain: drain}, admOptions{Mode: "write"})
 		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
-		live := admWatchStates(t, doc)
 		writing := admStart(t, doc, "write", "x")
 		_, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: built}, admDoc, nil)})
 		must(t, err)
@@ -1657,7 +1565,7 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		}
 		close(gate)
 		close(drain)
-		live.until(t, admIsLive)
+		s.delivered()
 		if kind, variant := stateOfRef(doc).Kind, admVariant(doc); kind != RefStateLive || variant != "reader" {
 			t.Fatalf("[%v %v], want [live reader]", kind, variant)
 		}
@@ -1732,11 +1640,9 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		built := &admLog{}
 		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "read"})
 		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
-		live := admWatchStates(t, doc)
 		_, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: built}, admDoc, nil)})
 		must(t, err)
-		// The new attempt activates on tasks `delivered()` does not join: wait for the state the host delivers.
-		live.until(t, admIsLive)
+		s.delivered()
 		s.delivered()
 		expectStrings(t, built.Items(), "a:read", "a:read")
 		s.set("none", "server")
@@ -1753,7 +1659,6 @@ func TestAdmissionWhatADenialRemoves(t *testing.T) {
 	t.Run("references hold no value, a watch gets one failed call and keeps what it delivered, a derive over a member fails until the next allow", func(t *testing.T) {
 		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "write"})
 		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
-		live := admWatchStates(t, doc)
 		panel := mustGet(t, s.h, admPanel, jsonObject("id", "a"))
 		var watch chord.WatchHandle[delta.JsonValue]
 		var err error
@@ -1783,9 +1688,7 @@ func TestAdmissionWhatADenialRemoves(t *testing.T) {
 			t.Fatalf("shout.value threw %v, want forbidden no access", err)
 		}
 		s.set("read", "server")
-		// The allow rebuilds the object on tasks `delivered()` does not join: wait for the state the host delivers, then for the
-		// frames that follow it.
-		live.until(t, admIsLive)
+		s.delivered()
 		s.delivered()
 		expectValues(t, frames.Items(), failedFrame("no access"), "t")
 		expectValues(t, shouts.Items(), failedFrame("no access"), "T")

@@ -25,7 +25,6 @@ func TestAdmissionRecordsItsDecisionOnItsActivationSpan(t *testing.T) {
 	admDenied(t, stateOfRef(doc), "no access")
 	s.set("read", "server")
 	s.delivered()
-	admLive(t, doc)
 	var outcomes []any
 	for _, span := range spansNamed(recorder, "chord.activate") {
 		for _, event := range span.Events {

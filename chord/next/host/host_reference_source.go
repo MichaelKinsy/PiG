@@ -288,7 +288,7 @@ func (s *referenceSource) vanish(err *data.ChordError, ctx context.Context) {
 // derives over it fail until the next allow brings a value (`[["r", value]]`). What application code already took from it
 // stays with that code.
 func (s *referenceSource) deny(err *data.ChordError, ctx context.Context) {
-	if s.state.kind == sourceEnded || (s.state.kind == sourceFailed && s.state.err == error(err)) {
+	if s.state.kind == sourceEnded || (s.state.kind == sourceFailed && s.state.err == error(err)) { //nolint:errorlint // Pi compares by identity (reference-source.ts:235 `state.error === error`): a wrapping error is another denial
 		return
 	}
 	s.failWith(err, nil, false, ctx)
