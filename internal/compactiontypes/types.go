@@ -62,7 +62,7 @@ type CompactionPreparation struct {
 	FileOps             FileOperations       `json:"fileOps"`
 	Settings            CompactionSettings   `json:"settings"`
 	// tokenRatio is the provider's real token count over the four-characters-per-token estimate, measured on the session's latest assistant usage; 0
-	// when the session has none. It sizes the summary requests (pig divergence D167). It is unexported, so Pi's field set is all the extension API
+	// when the session has none. It sizes the summary requests (D167). It is unexported, so Pi's field set is all the extension API
 	// type shows; SetTokenRatio and TokenRatioOf are the compaction pipeline's only way to it.
 	tokenRatio float64
 }

@@ -8,8 +8,8 @@ import (
 )
 
 // CompactionPreparation is what an extension receives in session_before_compact, and coding/extension aliases it as an SDK type: its exported fields
-// and its JSON keys are Pi's (compaction.ts:600) and nothing else, whatever the compaction pipeline carries beside them (pig divergence D167 carries a
-// token ratio).
+// and its JSON keys are Pi's (compaction.ts:600) and nothing else, whatever the compaction pipeline carries beside them (D167 carries a token
+// ratio).
 func TestCompactionPreparationShowsOnlyPisFields(t *testing.T) {
 	pi := []string{"fileOps", "firstKeptEntryId", "isSplitTurn", "messagesToSummarize", "previousSummary", "settings", "tokensBefore", "turnPrefixMessages"}
 
