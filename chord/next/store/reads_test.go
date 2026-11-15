@@ -350,6 +350,24 @@ func TestReadsIndexAndRefresh(t *testing.T) {
 		o.query.Close()
 	})
 
+	// Go-only: Pi's `load` tests `closed` before it looks at what the query compiled to (open-query.ts:194, then :195): a closed read
+	// has nothing to load, and no failed run reaches its sink, though its query does not compile.
+	t.Run("a closed read whose query does not compile loads nothing and adopts no failed run", func(t *testing.T) {
+		w := newReadsWorld(t)
+		o := w.opened(t, w.notes, w.tagged)
+		if runs := o.runs.len(); runs != 1 {
+			t.Fatalf("runs = %d, want the one failed run of the open", runs)
+		}
+		o.query.Close()
+		if run := o.open.Load(); run != nil {
+			t.Fatalf("a closed read loaded %#v", run)
+		}
+		o.open.Reload()
+		if runs := o.runs.len(); runs != 1 {
+			t.Fatalf("runs = %d after a load and a reload of the closed read, want the one", runs)
+		}
+	})
+
 	t.Run("run no read over a held table, and one run when it is ready", func(t *testing.T) {
 		w := newReadsWorld(t)
 		w.bind(t)

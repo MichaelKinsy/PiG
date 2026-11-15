@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
@@ -149,6 +150,19 @@ func TestQueryReaderQueueACloseDropsTheQueuedReadAndDetachesTheReading(t *testin
 	f.move(2)
 	ended := context.Canceled
 	f.host.batch.Section(func() { f.reader.Close(ended) })
+	// The close dropped the queued read: none is left to run (kept, it would run, and block on the test's gate below).
+	var queued bool
+	f.host.batch.Section(func() { queued = f.reader.pending != nil })
+	t.Cleanup(func() {
+		select {
+		case <-first.release:
+		default:
+			close(first.release)
+		}
+	})
+	if queued {
+		t.Fatal("a read is still queued after the close, which drops it")
+	}
 	close(first.release)
 	<-opened
 	f.settled()
@@ -172,5 +186,121 @@ func TestQueryReaderQueueAMoveBeforeTheFirstReadOnlyWakesItsAttempt(t *testing.T
 	f.settled()
 	if f.woken.Load() != 1 || f.reading.opens.Load() != 0 {
 		t.Fatalf("woken %d, opened reads %d; want 1, 0", f.woken.Load(), f.reading.opens.Load())
+	}
+}
+
+// qqSourced is a followed source with a dependent set of its own: what the reader's given query registers with.
+type qqSourced struct {
+	*qqArguments
+	deps state.DependentSet
+}
+
+func (s *qqSourced) DependentSet() *state.DependentSet { return &s.deps }
+
+// qqHandle counts the follows of the provider's other live instances the reader makes and releases.
+type qqHandle struct {
+	NamedQueryHandle
+	follows, releases atomic.Int64
+}
+
+func (h *qqHandle) Follow(func()) func() {
+	h.follows.Add(1)
+	return func() { h.releases.Add(1) }
+}
+
+// Go-only (Pi's query-reader.ts `close` is `this.#closed = true; this.#given.release(); this.#reading.detach(error)`, line 98): a
+// reader's close lets go of what its arguments follow: the source's dependent set no longer holds the given query, and the
+// provider's instances are no longer followed, while the source itself lives on and keeps changing.
+func TestQueryReaderQueueACloseReleasesTheSourceItFollowedAndTheProvidersInstances(t *testing.T) {
+	f := newQQ(t)
+	source := &qqSourced{qqArguments: f.args}
+	handle := &qqHandle{NamedQueryHandle: f.reader.given.Handle}
+	reader := newReader(NewGivenQuery(handle, GivenArguments{Kind: GivenFollowing, Source: source}, f.host.batch), f.reading, func() {}, f.host.loop().Go)
+	f.args.n.Store(1)
+	opened := make(chan Opened, 1)
+	go func() { opened <- reader.Open(background) }()
+	first := <-f.reading.reads
+	close(first.release)
+	if got := <-opened; got.Kind != OpenedReady {
+		t.Fatalf("Open = %+v, want ready", got)
+	}
+	if holds, follows := source.deps.Len(), handle.follows.Load(); holds != 1 || follows != 1 {
+		t.Fatalf("while open: the source holds %d dependents and the provider %d follows, want 1 and 1", holds, follows)
+	}
+	f.host.batch.Section(func() { reader.Close(context.Canceled) })
+	if holds, released := source.deps.Len(), handle.releases.Load(); holds != 0 || released != 1 {
+		t.Fatalf("after the close: the source holds %d dependents and the provider's follows released %d, want 0 and 1", holds, released)
+	}
+}
+
+// Go-only: query-reader.ts `#value` turns only `not_ready` into the reader's own refusal (line 211: `error.code !== "not_ready"`
+// rethrows); any other failure of the source, a chord error of another code or a plain one, is the read's failure as it is (Pi's
+// case for the arguments without a value covers the `not_ready` side).
+func TestQueryReaderArgumentsThatFailWithAnythingButNotReadyFailTheReadWithThatErrorAsItIs(t *testing.T) {
+	f := newQQ(t)
+	given := func(err error) *GivenQuery {
+		return NewGivenQuery(f.reader.given.Handle, GivenArguments{Kind: GivenFollowing, Source: &qqFailing{err: err}}, f.host.batch)
+	}
+	for name, err := range map[string]error{
+		"another code": data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "the source is down"}, nil),
+		"a plain one":  errors.New("boom"),
+	} {
+		if _, got := given(err).value(); got != err {
+			t.Fatalf("%s: value failed with %v, want %v as it is", name, got, err)
+		}
+	}
+	notReady := data.NewChordError(data.ChordErrorInit{Code: data.CodeNotReady, Message: "no value yet"}, nil)
+	_, got := given(notReady).value()
+	var refused *data.ChordError
+	if !errors.As(got, &refused) || refused.Code != data.CodeInvalid || refused.Reason != data.ReasonArgs {
+		t.Fatalf("not_ready: value failed with %v, want invalid/args", got)
+	}
+}
+
+// qqFailing is a followed source whose value fails with err.
+type qqFailing struct{ err error }
+
+func (s *qqFailing) Value() (delta.JsonValue, error)   { return nil, s.err }
+func (s *qqFailing) DeriveValue() (any, error)         { return nil, s.err }
+func (s *qqFailing) DependentSet() *state.DependentSet { return nil }
+
+// Go-only: Pi's `#awaitReaders` `finally { reader.source.dependents.delete(this.#readerWake) }` (attempt.ts:1606). The attempt of a
+// page whose set is not served is parked on its reader (`failed { waiting }`) and follows the reader with its wake; the set bound
+// again, the read runs, the reader is ready, the attempt builds. Pi's read-declarations.test.ts reads `openReaders` alone (it
+// adds the wake and never takes it away): what takes the wake off the readers the attempt waited on is the attempt, which
+// no later close does while the object lives; a wake left behind would flag the finished attempt at every run of the query.
+func TestNamedQueryAnAttemptThatWaitedOnAReaderDoesNotFollowItOnceItIsBuilt(t *testing.T) {
+	chordStore := memoryStore(t)
+	club := nqClubPlugin(&nqProbe{})
+	host := newHost(t, HostOptions{Store: chordStore})
+	_, err := host.Load([]HostFacet{nqBareSessions(), club}, background)
+	must(t, err)
+	page := mustHold(t, host, nqTeamPage, jsonObject("team", "u12"))
+	flushed(host)
+	deliveredOn(host)
+	if got := kindOf(page); got == RefStateLive {
+		t.Fatalf("state = %s before the set is served, want the page waiting on its reader", got)
+	}
+	reloadMust(t)(host.Reload([]HostFacet{nqPublisher(nqRows), club}, background, ReloadOptions{}))
+	flushed(host)
+	deliveredOn(host)
+	wantKind(t, page, RefStateLive)
+	var following []string
+	hostTurn(host, func() {
+		for _, object := range host.(*chordHost).objectList() {
+			for _, each := range []*attempt{object.phase.attempt, object.exposed, object.old, object.kept, object.showsReadiness} {
+				if each == nil {
+					continue
+				}
+				for _, reader := range each.readers {
+					if reader.source().DependentSet().Delete(each.readerWake) {
+						following = append(following, object.text)
+					}
+				}
+			}
+		}
+	})
+	if len(following) != 0 {
+		t.Fatalf("built attempts of %v still follow the readers they waited on", following)
 	}
 }
