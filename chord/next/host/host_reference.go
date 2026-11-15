@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"time"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -65,6 +66,9 @@ func (r *Reference) Member(name string) *ReferenceMember { return r.binding.memb
 
 // Keyed is the keyed member `name`, nil when the contract has none.
 func (r *Reference) Keyed(name string) *ReferenceKeyed { return r.binding.keyed[name] }
+
+// Queries is the named queries of the queries member `member` by name, nil when the contract has no such member.
+func (r *Reference) Queries(member string) map[string]*ReferenceQuery { return r.binding.queries[member] }
 
 // Events is the event member `name`, nil when the contract has none.
 func (r *Reference) Events(name string) *ReferenceEvents { return r.binding.events[name] }
@@ -162,6 +166,9 @@ type target interface {
 	instance() any
 	// keyedMember is the keyed member's ultimate slot (slice 6a §12; only local objects have any).
 	keyedMember(member string) (*documents.KeyedSlot, error)
+	// queryMember is the named query `name` of queries member `member` of the live object (slice 14 §3.1; only local
+	// objects have any).
+	queryMember(member, name string) (*OwnQuery, error)
 	// keyedMapping is how a consumer of version reads keyed member's documents: mapped back to its version when older
 	// (slice 7b §7), nil when as they are; `contract_mismatch` when the provider refuses it.
 	keyedMapping(member string, version int) (contracts.Mapping, error)
@@ -336,6 +343,13 @@ type binding struct {
 	// unseen are the state members it has not seen since it joined a shared remote object, each with its replica's count
 	// of values then (decision "References share one wire hold"); one is seen once that count passes. Made at the join.
 	unseen map[string]int
+	// followers are who reads its object's named queries, each told when another instance is live (followInstance), in the
+	// order they asked.
+	followers []*instanceFollower
+	// followedInstance is the instance its followers were told of last, held weakly: an ended instance is kept by nothing
+	// here; followedSet is whether there is one (Pi's undefined).
+	followedInstance weak.Pointer[attempt]
+	followedSet      bool
 	// events are its event members, by name.
 	events map[string]*ReferenceEvents
 	// unlisted is whether presence lists leave it out: a restart's readiness bindings (`unlist`).
@@ -344,6 +358,8 @@ type binding struct {
 	members map[string]*ReferenceMember
 	keyed   map[string]*ReferenceKeyed
 	methods map[string]struct{}
+	// queries are its queries members' named queries, by member and name; made by the first variant with one.
+	queries map[string]map[string]*ReferenceQuery
 }
 
 var (
@@ -387,6 +403,16 @@ func newBinding(
 		}
 		for member, declared := range variant.Keyed.All() {
 			b.keyed[member] = &ReferenceKeyed{binding: b, member: member, kind: declared.Key}
+		}
+		for member, listed := range variant.Queries.All() {
+			if b.queries == nil {
+				b.queries = map[string]map[string]*ReferenceQuery{}
+			}
+			named := make(map[string]*ReferenceQuery, listed.Args.Len())
+			for _, name := range listed.Args.Keys() {
+				named[name] = &ReferenceQuery{binding: b, member: member, name: name}
+			}
+			b.queries[member] = named
 		}
 		for _, member := range variant.Methods.Keys() {
 			b.methods[member] = struct{}{}
@@ -656,6 +682,42 @@ func (b *binding) retarget() {
 	if b.heldKeys != nil {
 		b.heldKeys.follow(chordctx.Background())
 	}
+	b.toldOfInstance(goal.instance())
+}
+
+// instanceFollower is one follower of the instances of a binding's object.
+type instanceFollower struct{ moved func() }
+
+// toldOfInstance tells the readers of its object's named queries of another live instance (not of none: they keep their rows).
+func (b *binding) toldOfInstance(instance any) {
+	if len(b.followers) == 0 {
+		return
+	}
+	// A live instance is an attempt (a remote object has none).
+	live, ok := instance.(*attempt)
+	if !ok || live == nil || (b.followedSet && b.followedInstance.Value() == live) {
+		return
+	}
+	b.followedInstance, b.followedSet = weak.Make(live), true
+	for _, follower := range slices.Clone(b.followers) {
+		follower.moved()
+	}
+}
+
+// followInstance calls moved whenever its object has another live instance than the one it was told of last (a restart's
+// successor: the readers of its named queries read that one's, slice 14 §3.2), until the returned release. It runs in a
+// section.
+func (b *binding) followInstance(moved func()) (release func()) {
+	follower := &instanceFollower{moved: moved}
+	b.followers = append(b.followers, follower)
+	if goal := b.target(); goal != nil && !b.followedSet {
+		if live, ok := goal.instance().(*attempt); ok && live != nil {
+			b.followedInstance, b.followedSet = weak.Make(live), true
+		}
+	}
+	return func() {
+		b.followers = slices.DeleteFunc(b.followers, func(each *instanceFollower) bool { return each == follower })
+	}
 }
 
 // removed: its object left it (slice 7b §6): its type was removed, or its provider no longer binds its version. The
@@ -889,6 +951,15 @@ func (b *binding) keyedSlot(member string) (*documents.KeyedSlot, error) {
 		return nil, err
 	}
 	return goal.keyedMember(member)
+}
+
+// queryMember is the named query of the live object, as keyedSlot resolves a keyed member's slot.
+func (b *binding) queryMember(member, name string) (*OwnQuery, error) {
+	goal, err := b.boundTarget()
+	if err != nil {
+		return nil, err
+	}
+	return goal.queryMember(member, name)
 }
 
 // keyedMapping is how this reference reads keyed member's documents (`target.keyedMapping`), as keyedSlot resolves.

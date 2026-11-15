@@ -439,6 +439,38 @@ func (r *recordingSelf) Query(_ store.Table, q *store.Query, limit int64) chord.
 	return state.ConstantOf[delta.JsonValue](nil)
 }
 
+// inertNamed is what a recording's `self.queries` returns for each name: what readers take, and `self.query` does not (Pi's
+// INERT_NAMED). A page of it reads nothing.
+type inertNamed struct{}
+
+func (inertNamed) Page(delta.JsonValue, int64, context.Context, contracts.QueryPageOptions) (contracts.QueryPage[delta.JsonValue], error) {
+	return contracts.QueryPage[delta.JsonValue]{}, errInert
+}
+
+// Queries implements StoreSelf: the checks an attempt makes on its declarations (`read-declarations.ts`), then inert named
+// queries. Staging has no effects: nothing is compiled, read or bound.
+func (r *recordingSelf) Queries(given store.Table, _ QueriesOptions, builders map[string]QueryBuilder) map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue] {
+	r.assertDeclaring("queries")
+	label := r.object.text
+	handle, _ := given.(*store.TableHandle)
+	// A recorded handle says what it stands for: a table this recording declared.
+	if handle == nil {
+		panic(undeclaredTable(label, "queries"))
+	}
+	if _, recorded := handle.Owner.(inertTableOwner); !recorded || !r.tables.has(handle.Definition.Name) {
+		panic(undeclaredTable(label, "queries"))
+	}
+	checked, err := namedBuilders(label, builders)
+	if err != nil {
+		panic(err)
+	}
+	named := make(map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue], len(checked))
+	for _, each := range checked {
+		named[each.name] = inertNamed{}
+	}
+	return named
+}
+
 // Derive implements Self.
 func (r *recordingSelf) Derive([]any, func(values []any) (delta.JsonValue, error)) chord.Watchable[delta.JsonValue] {
 	r.assertDeclaring("derive")

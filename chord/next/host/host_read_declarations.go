@@ -1,10 +1,18 @@
 package host
 
+import (
+	"sort"
+
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/store"
+)
+
 // Ports packages/chord/src/host/read-declarations.ts, its pure checks (slice 14 §3, §4): what `self.queries`,
 // `self.liveQuery`, `self.count` and `self.list` check, so an attempt and staging's recording `self` make the same ones
-// (a reload whose new code declares a read wrongly keeps the plugin on its old code). Pi's checks of the builders' and
-// the list's sources' shapes (`namedBuilders`' object of functions, `oneSource`'s `[[query, args]]`) check what Go's
-// types state, and have no Go form.
+// (a reload whose new code declares a read wrongly keeps the plugin on its old code). Pi's checks of the list's sources'
+// shape (`oneSource`'s `[[query, args]]`) and of the builders' being an object of functions check what Go's types state,
+// and have no Go form.
 
 // maxSafeInteger is JavaScript's Number.MAX_SAFE_INTEGER: Pi's `Number.isSafeInteger` bound of a page size.
 const maxSafeInteger = 1<<53 - 1
@@ -44,4 +52,39 @@ func tableExpected(label string) error {
 // not declare.
 func undeclaredTable(label, declaration string) error {
 	return declarationError("%s: self.%s: the table is not one this factory declared", label, declaration)
+}
+
+// namedBuilder is one entry of `self.queries`' builders, checked: its builder, and its argument schema when it brings one.
+type namedBuilder struct {
+	name    string
+	builder func(args delta.JsonValue) *store.Query
+	args    *contracts.Snapshot
+}
+
+// namedBuilders is the builders `self.queries` was given, checked (each has a builder; a private query's schema is closed),
+// in name order.
+func namedBuilders(label string, builders map[string]QueryBuilder) ([]namedBuilder, error) {
+	names := make([]string, 0, len(builders))
+	for name := range builders {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	checked := make([]namedBuilder, 0, len(names))
+	for _, name := range names {
+		entry := builders[name]
+		if entry.Build == nil {
+			return nil, declarationError(`%s: self.queries: "%s" has no builder`, label, name)
+		}
+		var args *contracts.Snapshot
+		if entry.Args.Node != nil {
+			snapshot, err := contracts.SnapshotArguments(entry.Args, label+`: query "`+name+`": args`)
+			if err != nil {
+				return nil, err
+			}
+			args = snapshot
+		}
+		// The builder is plugin code: what it returns is checked when a read opens.
+		checked = append(checked, namedBuilder{name: name, builder: entry.Build, args: args})
+	}
+	return checked, nil
 }
