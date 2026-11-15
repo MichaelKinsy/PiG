@@ -28,6 +28,17 @@ A member the pin has and the published release lacks exists only in PiG: an
 extension that uses it does not run on that Pi release. The comment at the top
 of `pi-pin.d.ts` lists those members, and `make test-sdk-ts` prints them.
 
+The model catalog is one of those members. `MODELS` in `pi-pin.d.ts` is typed
+by the models Pi's catalog generator makes from the recording PiG commits
+(`automation/gen/catalog-source`), as a Pi built from source at the pin types
+it; the published `@earendil-works/pi-ai` release carries the frozen snapshot
+of the day it was built, so its `MODELS` type has fewer (and a few other) model
+keys, and a few models of the published list are gone from the recording. A
+`getModel` call whose model id exists only in one of the two catalogs
+type-checks against the pin and not against the release, or the reverse.
+`make test-sdk-ts` prints the difference as a report; it does not fail, because
+the pin is compared with the build and not with the release.
+
 `pi-pin.d.ts` imports Pi's other dependencies (`typebox`,
 `@earendil-works/pi-mcp`, the provider SDKs) by name, and the compiler resolves
 them from this package's directory. The package therefore declares them as peer

@@ -13,3 +13,21 @@ globalThis.fetch = async (input) => {
 	if (!entry) throw new Error(`Unexpected fetch: ${url}`);
 	return new Response(readFileSync(join(dir, entry.file)), { status: entry.status, headers: { "content-type": "application/json" } });
 };
+
+// CATALOG_FETCHED_AT: the instant `new Date()` and Date.now() give, the fetch time of the committed recording, so the generator writes the
+// manifest `generatedAt` the recording says and not the clock's.
+const fetchedAt = process.env.CATALOG_FETCHED_AT;
+if (fetchedAt) {
+	const fixed = Date.parse(fetchedAt);
+	if (Number.isNaN(fixed)) throw new Error(`CATALOG_FETCHED_AT is not a time: ${fetchedAt}`);
+	const RealDate = Date;
+	globalThis.Date = class extends RealDate {
+		constructor(...args) {
+			if (args.length === 0) super(fixed);
+			else super(...args);
+		}
+		static now() {
+			return fixed;
+		}
+	};
+}

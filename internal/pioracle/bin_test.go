@@ -105,6 +105,13 @@ func TestCheckBinRefusesABackportedOracleWhosePiRunsAnotherBundleThanItsBuildSta
 			return "{" + commit + `,"backports":"b","bundle_sha256":"` + digest + `"}`
 		}, ""},
 		{"backports in the compiled output only", func(string) string { return "{" + commit + `,"backports":"b"}` }, "compiled output only"},
+		{"catalog data and the bundle the build stamped", func(digest string) string {
+			return "{" + commit + `,"catalog":"c","bundle_sha256":"` + digest + `"}`
+		}, ""},
+		{"catalog data in the compiled output only", func(string) string { return "{" + commit + `,"catalog":"c"}` }, "compiled output only"},
+		{"catalog data and another bundle than the build stamped", func(string) string {
+			return "{" + commit + `,"catalog":"c","bundle_sha256":"` + strings.Repeat("0", 64) + `"}`
+		}, "its build stamped " + strings.Repeat("0", 64)},
 		{"backports and another bundle than the build stamped", func(string) string {
 			return "{" + commit + `,"backports":"b","bundle_sha256":"` + strings.Repeat("0", 64) + `"}`
 		}, "its build stamped " + strings.Repeat("0", 64)},

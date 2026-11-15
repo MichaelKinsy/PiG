@@ -60,10 +60,10 @@ func TestBasetenModels(t *testing.T) {
 }
 
 func TestTogetherModels(t *testing.T) {
-	// .upstream/v0.99.1/packages/ai/test/together-models.test.ts:16
+	// .upstream/v0.99.1/packages/ai/test/together-models.test.ts:16; Pi main 7cc21c24f6b5 together-models.test.ts:27 expects maxTokens 1048576 (row 188).
 	t.Run("registers the default Kimi K3 model via OpenAI-compatible Chat Completions API", func(t *testing.T) {
 		m := mustGeneratedModel(t, "together", "moonshotai/Kimi-K3")
-		if m.API != APIOpenAICompletions || m.Provider != "together" || m.BaseURL != "https://api.together.ai/v1" || !m.Reasoning || m.ContextWindow != 1048576 || m.MaxOutputTokens != 131072 {
+		if m.API != APIOpenAICompletions || m.Provider != "together" || m.BaseURL != "https://api.together.ai/v1" || !m.Reasoning || m.ContextWindow != 1048576 || m.MaxOutputTokens != 1048576 {
 			t.Fatalf("model = %+v", m)
 		}
 		assertCatalogJSON(t, m.Capabilities, `["text","image"]`)

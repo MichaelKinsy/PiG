@@ -79,10 +79,10 @@ def entry(pin: Pin) -> Path:
 #   .lock-<identity>       serializes the builders of one identity.
 
 
-def identity(data_sha: str, closure_sha: str, backports: str = "") -> str:
+def identity(data_sha: str, closure_sha: str, backports: str = "", catalog: str = "") -> str:
     # "bundle": the backports are in the bundle `pi` runs too (rebuild_bundle). A build made before the bundle was rebuilt has the key
     # without the word, and stays the oracle of the trees that still ask for that key.
-    return hashlib.sha256((f"{data_sha}\n{closure_sha}" + (f"\n{backports}\nbundle" if backports else "")).encode()).hexdigest()[:12]
+    return hashlib.sha256((f"{data_sha}\n{closure_sha}" + (f"\n{backports}\nbundle" if backports else "") + (f"\ncatalog {catalog}" if catalog else "")).encode()).hexdigest()[:12]
 
 
 # The release line's Pi is the pinned release plus the post-release Pi fixes its Go and vendored-Node ports carry
@@ -107,6 +107,71 @@ def backports_digest(pin: Pin) -> str:
     if pin != pinlib.committed() or not backport_ids():
         return ""
     return hashlib.sha256(BACKPORTS.read_bytes()).hexdigest()
+
+
+# The catalog data the release line carries: Pi's own generator (packages/ai/catalog/generate.ts of the pinned build, with the catalog files of the
+# later Pi commits the line carries, CATALOG_OVERLAY, in place of the pin's) run over the committed recording of the upstream responses
+# (automation/gen/catalog-source), the recording `cmd/gen-models -replay-source` ports the generator over. A Pi build of the line's Pi main commit
+# makes data like this when it builds (`generate-models` before `build`); the pinned build's frozen data is the day its release was built.
+# The data replaces the installed pi-ai's dist/providers/data and the copy of it the oracle's bundle is made of.
+CATALOG_SOURCE = ROOT / "automation" / "gen" / "catalog-source"
+CATALOG_OVERLAY = CATALOG_SOURCE / "pi-overlay"
+CATALOG_REPLAY = ROOT / "test" / "parity" / "testdata" / "catalog-generation" / "replay.mjs"
+
+
+def catalog_digest(pin: Pin) -> str:
+    """The digest of the inputs of the oracle's catalog data (the recording, its meta and the overlay files), "" for a pin that carries none."""
+    if pin != pinlib.committed() or not (CATALOG_SOURCE / "meta.json").is_file():
+        return ""
+    digest = hashlib.sha256()
+    files = [CATALOG_SOURCE / "meta.json", CATALOG_SOURCE / "responses.tar.gz"] + sorted(p for p in CATALOG_OVERLAY.rglob("*") if p.is_file())
+    for path in files:
+        digest.update(path.relative_to(CATALOG_SOURCE).as_posix().encode() + b"\0" + hashlib.sha256(path.read_bytes()).digest())
+    return digest.hexdigest()
+
+
+def catalog_fetched_at() -> str:
+    return json.loads((CATALOG_SOURCE / "meta.json").read_text(encoding="utf-8"))["fetchedAt"]
+
+
+def generate_catalog_data(source: Path, work: Path) -> Path:
+    """Run Pi's catalog generator of the source build over the committed recording and return the data directory it wrote. The generator runs in a
+    copy of the build's packages/ai inside packages/ (so it resolves the build's node_modules); the build is left as built."""
+    node = shutil.which("node")
+    if node is None:
+        raise PinError("node is required to generate the oracle's catalog data")
+    meta = json.loads((CATALOG_SOURCE / "meta.json").read_text(encoding="utf-8"))
+    fixtures = work / "fixtures"
+    fixtures.mkdir(parents=True)
+    with tarfile.open(CATALOG_SOURCE / "responses.tar.gz") as archive:
+        archive.extractall(fixtures, filter="data")
+    ai = source / "packages" / "ai"
+    copy = source / "packages" / f".catalog-data-{os.getpid()}"
+    try:
+        copy.mkdir()
+        for name in ("package.json", "catalog", "scripts", "src"):
+            if (ai / name).is_dir():
+                shutil.copytree(ai / name, copy / name)
+            else:
+                shutil.copy2(ai / name, copy / name)
+        shutil.copytree(CATALOG_OVERLAY, copy, dirs_exist_ok=True)
+        shutil.rmtree(copy / "src" / "providers" / "data")
+        env = {**os.environ, "CATALOG_FIXTURES": str(fixtures), "CATALOG_FETCHED_AT": meta["fetchedAt"]}
+        done = subprocess.run([node, "--import", str(CATALOG_REPLAY), "catalog/generate.ts", "--strict"], cwd=copy, env=env, capture_output=True, text=True, check=False, timeout=600)
+        if done.returncode != 0:
+            raise PinError(f"Pi's catalog generator failed over the committed recording:\n{(done.stderr or done.stdout).strip()[-2000:]}")
+        data = work / "data"
+        shutil.copytree(copy / "src" / "providers" / "data", data)
+    finally:
+        shutil.rmtree(copy, ignore_errors=True)
+    return data
+
+
+def install_catalog_data(package: Path, data: Path) -> None:
+    """Make the pi-ai `package`'s dist/providers/data (installed, or in the source build for the bundler's run) the generated `data`."""
+    target = package / "dist" / "providers" / "data"
+    shutil.rmtree(target)
+    shutil.copytree(data, target)
 
 
 def backport_places(modules: Path) -> dict[str, Path]:
@@ -273,7 +338,7 @@ def run_bundler(source: Path) -> None:
         raise PinError(f"Pi's bundler ({BUNDLER.as_posix()}) failed:\n{(done.stderr or done.stdout).strip()}")
 
 
-def rebuild_bundle(source: Path, modules: Path) -> str:
+def rebuild_bundle(source: Path, modules: Path, catalog: Path | None = None) -> str:
     """Replace the installed bundle with the one Pi's bundler makes of the compiled output plus the backports, and return its digest
     ("" for a Pi without a bundle). The bundler reads the source build's packages, so the backports are applied there for the run and
     taken out again: the packs, the mirror and the Durable oracle need the source build as built. A carried dependency is bundled too:
@@ -302,6 +367,10 @@ def rebuild_bundle(source: Path, modules: Path) -> str:
         if tree_digest(built) != tree_digest(installed):
             raise PinError(f"Pi's bundler does not reproduce the installed bundle from the compiled output as built ({built} differs from {installed}): a bundle rebuilt with the backports would differ from Pi's by more than the backports")
         patch_packages(places, "the source build")
+        if catalog is not None:
+            data_place = places["pi-ai"] / "dist" / "providers" / "data"
+            shutil.move(str(data_place), str(source.parent / "catalog-data-as-built"))
+            shutil.copytree(catalog, data_place)
         for dep in carried:
             place = source_dependency(source, dep)
             shelf.mkdir(exist_ok=True)
@@ -319,6 +388,11 @@ def rebuild_bundle(source: Path, modules: Path) -> str:
                 shutil.rmtree(place, ignore_errors=True)
                 shutil.move(str(held), str(place))
         shutil.rmtree(shelf, ignore_errors=True)
+        held_data = source.parent / "catalog-data-as-built"
+        if held_data.exists():
+            data_place = places["pi-ai"] / "dist" / "providers" / "data"
+            shutil.rmtree(data_place, ignore_errors=True)
+            shutil.move(str(held_data), str(data_place))
         shutil.rmtree(built, ignore_errors=True)
         shutil.move(str(kept), str(built))
     if [tree_digest(part) for part in parts] != as_built:
@@ -329,13 +403,13 @@ def rebuild_bundle(source: Path, modules: Path) -> str:
 def bundle_problem(modules: Path, stamp: dict) -> str:
     """Why the bundle the installed `pi` bin runs is not the one the build of `stamp` made from the patched compiled output, "" when it
     is (or when the oracle carries no backports, or its bin is compiled output)."""
-    if not stamp.get("backports"):
+    if not stamp.get("backports") and not stamp.get("catalog"):
         return ""
     bundle = bundle_of(modules)
     if bundle is None:
         return ""
     if not stamp.get("bundle_sha256"):
-        return "the installed Pi carries the post-release backports in its compiled output only: the bundle its `pi` bin runs is the pinned release's"
+        return "the installed Pi carries the post-release backports and the catalog data in its compiled output only: the bundle its `pi` bin runs is the pinned release's"
     got = tree_digest(bundle)
     return "" if got == stamp["bundle_sha256"] else f"the bundle the installed `pi` bin runs has the digest {got}, its build stamped {stamp['bundle_sha256']}"
 
@@ -862,7 +936,7 @@ def reusable(pin: Pin, build: Path | None) -> bool:
     if build is None or not (build / STAMP).is_file() or not installed(build / "node_modules", pin):
         return False
     data = json.loads((build / STAMP).read_text())
-    return data.get("commit") == pin.commit and data.get("package_version") == pin.package_version and data.get("source") == "build" and data.get("provider_data_sha256", "") == (frozen_digest(pin) or data.get("provider_data_sha256", "")) and data.get("closure_sha256", "") == (oracle_closure_digest(pin) or data.get("closure_sha256", "")) and data.get("backports", "") == backports_digest(pin) and not bundle_problem(build / "node_modules", data)
+    return data.get("commit") == pin.commit and data.get("package_version") == pin.package_version and data.get("source") == "build" and data.get("provider_data_sha256", "") == (frozen_digest(pin) or data.get("provider_data_sha256", "")) and data.get("closure_sha256", "") == (oracle_closure_digest(pin) or data.get("closure_sha256", "")) and data.get("backports", "") == backports_digest(pin) and data.get("catalog", "") == catalog_digest(pin) and not bundle_problem(build / "node_modules", data)
 
 
 def ensure(pin: Pin, *, force: bool = False) -> Path:
@@ -870,7 +944,7 @@ def ensure(pin: Pin, *, force: bool = False) -> Path:
     directory and is published by an atomic ref write after its stamp, so a published oracle is never rewritten or removed:
     a forced rebuild publishes another directory, and a build that fails part-way publishes nothing."""
     home = entry(pin)
-    key = identity(frozen_digest(pin) or "", oracle_closure_digest(pin) or "", backports_digest(pin))
+    key = identity(frozen_digest(pin) or "", oracle_closure_digest(pin) or "", backports_digest(pin), catalog_digest(pin))
     candidates = (f"oracle-{key}", "current")
     if not force:
         for name in candidates:
@@ -911,21 +985,33 @@ def build_into(pin: Pin, build: Path) -> str:
     if problems:
         raise PinError("the installed tree differs from the frozen closure:\n  " + "\n  ".join(problems[:20]))
     backports = backports_digest(pin)
+    catalog = catalog_digest(pin)
+    catalog_data = None
+    if catalog:
+        recorded_for = json.loads((CATALOG_SOURCE / "meta.json").read_text(encoding="utf-8")).get("piCommit")
+        if recorded_for != pin.commit:
+            raise PinError(f"the recording in {CATALOG_SOURCE} names the Pi generator of commit {recorded_for}, the pin is {pin.commit}: re-record with `make model-catalogs-live` and review the overlay")
+        catalog_data = generate_catalog_data(source, build / "catalog")
+        install_catalog_data(backport_places(modules)["pi-ai"], catalog_data)
     bundle = ""
-    if backports:
-        apply_backports(modules)
-        bundle = rebuild_bundle(source, modules)
+    if backports or catalog:
+        if backports:
+            apply_backports(modules)
+        bundle = rebuild_bundle(source, modules, catalog_data)
     for scratch in ("flat", "packs", "closure"):
         shutil.rmtree(build / scratch, ignore_errors=True)
     closure_sha = closure_digest(closure)
     stamp = {"commit": pin.commit, "package_version": pin.package_version, "version": pin.version, "source": "build", "provider_data_sha256": data_sha, "closure_sha256": closure_sha}
     if backports:
         stamp["backports"] = backports
+    if catalog:
+        stamp["catalog"] = catalog
+        stamp["catalog_data_sha256"] = data_digest(catalog_data)
     if bundle:
         stamp["bundle_sha256"] = bundle
     write_replacing(build / STAMP, (json.dumps(stamp) + "\n").encode())
     protect(modules)
-    return f"oracle-{identity(data_sha, closure_sha, backports)}"
+    return f"oracle-{identity(data_sha, closure_sha, backports, catalog)}"
 
 
 def pi_version(modules: Path) -> str:

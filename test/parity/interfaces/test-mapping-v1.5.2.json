@@ -116,11 +116,11 @@
         "ai/port_wave_13_anthropic_eager_tool_input_e2e_test.go#TestPortWave13AnthropicEagerToolInputE2E",
         "ai/provider_live_helpers_test.go",
         "ai/provider_payload_helpers_test.go",
-        "ai/testdata/port-wave-13/anthropic_e2e_cases.json",
+        "test/parity/testdata/generate-anthropic-e2e-cases.mjs",
         "ai/testdata/port-wave-13/README.md",
         "ai/anthropic_e2e_catalog_test.go#TestAnthropicEagerToolInputCatalogDenominator"
       ],
-      "rationale": "All 3 upstream sites are present (:127,:136,:146). The catalog-denominator case (untagged, ai/anthropic_e2e_catalog_test.go) checks the reviewed 347-model fixture in normal runs. The 11 configured and 10 forced-eager endpoint probes keep the original tools, prompts, thinkingEnabled=false, 128-token limit and success assertions; each resolves its provider key through liveProviderKey (testenv.RequireLiveEnv) and skips without it. The probes are behind the live build tag and skip without keys under -tags live. No live endpoint was called, so remote acceptance is unverified."
+      "rationale": "All 3 upstream sites are present (:127,:136,:146). The catalog-denominator case (untagged, ai/anthropic_e2e_catalog_test.go) checks the oracle Pi's Anthropic Messages models (test/parity/testdata/generate-anthropic-e2e-cases.mjs reads the oracle's catalog at run time) in normal runs. The 11 configured and 10 forced-eager endpoint probes keep the original tools, prompts, thinkingEnabled=false, 128-token limit and success assertions; each resolves its provider key through liveProviderKey (testenv.RequireLiveEnv) and skips without it. The probes are behind the live build tag and skip without keys under -tags live. No live endpoint was called, so remote acceptance is unverified."
     },
     {
       "path": "packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts",
@@ -180,10 +180,10 @@
       "evidence": [
         "ai/anthropic_test.go#TestAnthropicStreamProviderScopedCacheRetention",
         "ai/port_wave_13_anthropic_long_cache_retention_e2e_test.go#TestPortWave13AnthropicLongCacheRetentionE2E",
-        "ai/testdata/port-wave-13/anthropic_e2e_cases.json",
+        "test/parity/testdata/generate-anthropic-e2e-cases.mjs",
         "ai/anthropic_e2e_catalog_test.go#TestAnthropicLongCacheRetentionCatalogDenominator"
       ],
-      "rationale": "Both upstream sites are present (:111,:122). The 347-model denominator case is untagged (ai/anthropic_e2e_catalog_test.go) and runs in normal runs. The 11 selected provider probes keep forced supportsLongCacheRetention=true, cacheRetention=long, maxTokens=128, thinkingEnabled=false and both success assertions; each resolves its key through liveProviderKey (testenv.RequireLiveEnv) and skips without it. The probes are behind the live build tag. No live endpoint was called."
+      "rationale": "Both upstream sites are present (:111,:122). The catalog-denominator case (the oracle Pi's models, read at run time) is untagged (ai/anthropic_e2e_catalog_test.go) and runs in normal runs. The 11 selected provider probes keep forced supportsLongCacheRetention=true, cacheRetention=long, maxTokens=128, thinkingEnabled=false and both success assertions; each resolves its key through liveProviderKey (testenv.RequireLiveEnv) and skips without it. The probes are behind the live build tag. No live endpoint was called."
     },
     {
       "path": "packages/ai/test/anthropic-message-threads.test.ts",
@@ -1963,7 +1963,7 @@
       "evidence": [
         "ai/catalog_options_upstream_test.go#TestTogetherModels"
       ],
-      "rationale": "All three upstream cases are ported: exact default Kimi metadata and compat, GPT OSS/DeepSeek/MiniMax reasoning maps, and TOGETHER_API_KEY discovery and resolution. Pi 0.99.2 review: 0.99.1 moves the default to Kimi K3 (together-models.test.ts:16-31: context 1048576, max tokens 131072, cost 3/15/0.3), ported at catalog_options_upstream_test.go:80-81. All three cases are ported. Pi e5fe9777 deletes the MiniMaxAI/MiniMax-M2.7 assertions (and the generator's reasoning-only Together model list) because Together retired the model; the Go 'models Together reasoning controls' case drops the same assertions (437d51c5). The three cases remain ported."
+      "rationale": "All three upstream cases are ported: exact default Kimi metadata and compat, GPT OSS/DeepSeek/MiniMax reasoning maps, and TOGETHER_API_KEY discovery and resolution. Pi 0.99.2 review: 0.99.1 moves the default to Kimi K3 (together-models.test.ts:16-31: context 1048576, max tokens 131072, cost 3/15/0.3), ported at catalog_options_upstream_test.go:80-81. All three cases are ported. Pi e5fe9777 deletes the MiniMaxAI/MiniMax-M2.7 assertions (and the generator's reasoning-only Together model list) because Together retired the model; the Go 'models Together reasoning controls' case drops the same assertions (437d51c5). The three cases remain ported. Pi main 7cc21c24f6b5 changes the Kimi K3 maxTokens expectation to 1048576 (together-models.test.ts:27, upstream hash sha256:1ea6e1f715ef...); the Go case asserts that value (row 188), while upstreamTestHash stays the pin's (the inventory is generated from the pin)."
     },
     {
       "path": "packages/ai/test/tokens.test.ts",
@@ -2188,10 +2188,9 @@
       "evidence": [
         "ai/zen_upstream_test.go#TestOpenCodeModelsSmokeUpstream",
         "ai/zen_live_upstream_test.go#TestOpenCodeModelsLiveUpstream",
-        "ai/testdata/zen-models.json",
         "test/parity/testdata/generate-zen-models.mjs"
       ],
-      "rationale": "Every case is ported against a 103-model snapshot generated from Pi's MODELS and checked against the pinned package on each run. The offline matrix checks model and prompt serialization, response content and stopReason through production provider parsers; a stop-to-length mutation fails it. The live counterparts (build tag live) keep the Say hello. input and response assertions for every OpenCode Zen and OpenCode Go model and skip through testenv.RequireLiveEnv without OPENCODE_API_KEY."
+      "rationale": "Every case is ported against the OpenCode Zen and OpenCode Go models of the oracle Pi's MODELS, read at run time (test/parity/testdata/generate-zen-models.mjs). The offline matrix checks model and prompt serialization, response content and stopReason through production provider parsers; a stop-to-length mutation fails it. The live counterparts (build tag live) keep the Say hello. input and response assertions for every OpenCode Zen and OpenCode Go model and skip through testenv.RequireLiveEnv without OPENCODE_API_KEY."
     },
     {
       "path": "packages/chord/test/boundary.test.ts",

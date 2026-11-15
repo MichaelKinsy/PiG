@@ -263,7 +263,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "091d30e2bf6220973ab87ddc7869e211ae718e9963bde47f47bd91165efeb508"
+      "sha256": "0e20eb7639b437b06a6751c8b8f381fd3c64eae9c4a95a520908153fdf09fc1b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -279,7 +279,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/azure.json",
-      "sha256": "7a427b902bafd502dd52442768ad1f41fa9cdfe0bc1f136eae53029816390a24"
+      "sha256": "be272463577772c18c2c02df0d1b4acdc8cd32a704ee24952964bfbe889d51c5"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/baseten.json",
@@ -291,11 +291,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-ai-gateway.json",
-      "sha256": "fabc979d62c7c8503d5b186e5fb7267e3d008d7b5a3091d62c3decd6baa8972b"
+      "sha256": "6b89615b60383a068d92f64a9de544730d0cbfc381d01232017d76f79960e614"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/cloudflare-workers-ai.json",
-      "sha256": "0dc5eda87ff6de3ee75ee6d547a60162319bb2d51ed09b1e7d47d8ae9ef8548e"
+      "sha256": "2ef8c6ccb217a574efcd562da45f59966b07a52d7f0ce92de01523513e92753b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/deepseek.json",
@@ -303,19 +303,19 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/fireworks.json",
-      "sha256": "d955cb73bb7fbab137f9d5532cf865999484b7a43d0e06cdc4561c90e9048476"
+      "sha256": "1b6fab632f1c7b06b3e83b6710a978165a9f2424a4a39c0e6f5174d97ceb91b5"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/github-copilot.json",
-      "sha256": "16d0f6c940a6795e87f09e6e817d082abcc1624225196ce33f842876ce505a88"
+      "sha256": "f51be058d6c8dcd9818b0b043f6cc8aec5e88f42c6ddd8bc870c481f4dfd6b0d"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google-vertex.json",
-      "sha256": "bc32e24bfd8ab0caedda4c11a7527a1dcc7f783ff5326ce4c72a13bd7ab47d9b"
+      "sha256": "b08fb62457a8249a6b048d12f7938ead609cb88290d952eddb6939a59c97e3e5"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/google.json",
-      "sha256": "32b760a0b75e98208ba633456234f3cf733331e4b7b7f1d756d4341917d287f9"
+      "sha256": "015612cee82776423c059c859314e18f1ae4beeedb16b369974a538ddfe2be1d"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/groq.json",
@@ -323,11 +323,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/huggingface.json",
-      "sha256": "cf34e226723c542afc4d024a1b1270b911738410dc5cf706fef5d9d4a0e08171"
+      "sha256": "4b56edd06e620e02d7d78c114b10ca2e28ab419f6ca2ec56f2a9f4d69c436533"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/kimi-coding.json",
-      "sha256": "04e7914391e8e986d04b5cc8f84c49267d148a53a2d92bf968b7570dd8ff09b9"
+      "sha256": "47ed9d0c7dc6913bd54210e267da6a4863affa6d19221f9f731c7c1e4a050521"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/meta.json",
@@ -343,7 +343,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/mistral.json",
-      "sha256": "013b34618e8f9a3968e0442e7e1339cc2a1bbad467f04bab0b8589a9c451b780"
+      "sha256": "8d55ee40805775b6f3cf7af58644dde3d210f5b6740d26bb92e2cf4c29c1dc8b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/moonshotai-cn.json",
@@ -355,7 +355,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/nvidia.json",
-      "sha256": "2a6a5fa3c0e256ce19878daf4f0ba1166dbd4ab418d9e2d1076d23ab8996a3b7"
+      "sha256": "6a2d45ee83dc9f7f387555fc2ce89172672868bb798e354a3263f41daa60648b"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai-codex.json",
@@ -363,23 +363,23 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai.json",
-      "sha256": "df2fe1f312051bbe29801ef903ab370c701a74a680f1370e96eb465eacd1d82d"
+      "sha256": "13556fa4d845912544cda76e3f7d6a44567c5fa77c7857df8f337616422120e2"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode-go.json",
-      "sha256": "2e8f20182913cec36586a84ea6392f998e4f5897e1a824a36b3ea8a943d21639"
+      "sha256": "3744b21134dcbfe39a59f9756c7378ccaf34221e6991990644453792bc3678de"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode.json",
-      "sha256": "b47c72fcf7f07c783051361f2835f2217f16cc342275acfc13cfa8d667426fbf"
+      "sha256": "4401aea98f2dc03abb0bf0ccb3686190ecd2ea083409bf124ce1f7c37597b7b9"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openrouter.json",
-      "sha256": "396e04f68cf1502077b5610dbd02867100206e3eae70e18a4f58eb633bdc0e95"
+      "sha256": "d737f497e480b69783903e8c66781862d1b3223f4c9cac5fa90cf761b3b44b56"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-cn.json",
-      "sha256": "89f9e9614e1ea369f849ed3386c6cdcebb37e838f9432e0b94d6b2932874a7d7"
+      "sha256": "1cd79061444c1a7fa4ca3a5277c73c2dc379d8fc0e4a884b6bc2669fd7c31695"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan-individual-cn.json",
@@ -391,15 +391,15 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/qwen-token-plan.json",
-      "sha256": "54b2ec9adf8086e5c96845af2059c3335f89ddae8090f345aba0c283e3b1d74e"
+      "sha256": "1c995ea119775a510f50bb8d26cd2e8f8fc42bea076a05cbe850e00da6d76f3d"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/radius.json",
-      "sha256": "9440f8090f9b147cab029692890a536b9cf432cfe6700afa68ddebe7b0277440"
+      "sha256": "f0c71a61b7321580a977c5ebf9df629408fb7b3405d53abb0cbd75402d23b522"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/together.json",
-      "sha256": "e421d8042975509d5b73eb3bb8f1612b9ee6b7c3764a3a6aa4866bc1ba661bd0"
+      "sha256": "6d928a41ea64549539c32c7cc090d628ee3b11621604781375b8c477326d862e"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/typesafe.json",
@@ -407,7 +407,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/vercel-ai-gateway.json",
-      "sha256": "a90d060732f3eb184aaabce38de955898782d2d2c6a28ece404c5544131d6ce7"
+      "sha256": "59cc3a9cc1582ec1da00521934bc31c1ef2468e1de5a45070b80448c65371f70"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/xai.json",

@@ -158,14 +158,15 @@ func checkStamp(path, install string) error {
 func BundleProblem(bin string, stamp []byte) string {
 	var named struct {
 		Backports string `json:"backports"`
+		Catalog   string `json:"catalog"`
 		Bundle    string `json:"bundle_sha256"`
 	}
 	bundle := filepath.Dir(bin)
-	if json.Unmarshal(stamp, &named) != nil || named.Backports == "" || filepath.Base(bundle) != "bundle" {
+	if json.Unmarshal(stamp, &named) != nil || named.Backports == "" && named.Catalog == "" || filepath.Base(bundle) != "bundle" {
 		return ""
 	}
 	if named.Bundle == "" {
-		return fmt.Sprintf("the Pi at %s carries the post-release backports in its compiled output only: the bundle its pi bin runs is the pinned release's (make parity-deps rebuilds the oracle)", bin)
+		return fmt.Sprintf("the Pi at %s carries the post-release backports and the catalog data in its compiled output only: the bundle its pi bin runs is the pinned release's (make parity-deps rebuilds the oracle)", bin)
 	}
 	got, err := treeDigest(bundle)
 	if err != nil {

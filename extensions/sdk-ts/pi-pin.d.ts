@@ -16273,6 +16273,41 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:gpt-6-cyber": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+xhigh: string;
+max: string;
+};
+compat: {
+supportsOpenAIGrammarTools: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:gpt-6-luna": {
 id: string;
 name: string;
@@ -17545,6 +17580,43 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:claude-fable-5-2": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+sendSessionAffinityHeaders: boolean;
+forceAdaptiveThinking: boolean;
+};
+thinkingLevelMap: {
+off: null;
+xhigh: string;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:claude-haiku-4-5": {
 id: string;
 name: string;
@@ -18428,6 +18500,42 @@ sendSessionAffinityHeaders: boolean;
 type: string;
 };
 "chat:workers-ai/@cf/qwen/qwen3.8-27b": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStore: boolean;
+supportsDeveloperRole: boolean;
+supportsReasoningEffort: boolean;
+maxTokensField: string;
+supportsLongCacheRetention: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:workers-ai/@cf/thinkingmachines/inkling-2-small": {
 id: string;
 name: string;
 api: string;
@@ -20259,6 +20367,50 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:@cf/thinkingmachines/inkling-2-small": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStore: boolean;
+supportsDeveloperRole: boolean;
+supportsStrictMode: boolean;
+supportsLongCacheRetention: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+thinkingLevelMap: {
+off: string;
+minimal: string;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:@cf/zai-org/glm-4.7-flash": {
 id: string;
 name: string;
@@ -21722,6 +21874,49 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:claude-fable-5.2": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+headers: {
+"User-Agent": string;
+"Editor-Version": string;
+"Editor-Plugin-Version": string;
+"Copilot-Integration-Id": string;
+};
+thinkingLevelMap: {
+off: null;
+xhigh: string;
+max: string;
+};
+compat: {
+forceAdaptiveThinking: boolean;
+supportsMidConvoSystemMessages: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:claude-haiku-4.5": {
 id: string;
 name: string;
@@ -22157,6 +22352,104 @@ low: string;
 medium: string;
 high: string;
 xhigh: null;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gemini-4-carbon": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+headers: {
+"User-Agent": string;
+"Editor-Version": string;
+"Editor-Plugin-Version": string;
+"Copilot-Integration-Id": string;
+};
+compat: {
+supportsStrictMode: boolean;
+supportsStore: boolean;
+supportsDeveloperRole: boolean;
+supportsReasoningEffort: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gemini-4-hydrogen": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+headers: {
+"User-Agent": string;
+"Editor-Version": string;
+"Editor-Plugin-Version": string;
+"Copilot-Integration-Id": string;
+};
+compat: {
+supportsStrictMode: boolean;
+supportsStore: boolean;
+supportsDeveloperRole: boolean;
+supportsReasoningEffort: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
 max: null;
 };
 inputLimits: {
@@ -23433,6 +23726,117 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:gemini-4-carbon": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gemini-4-hydrogen": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gemini-robotics-er-2-preview": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: string;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 };
 };
 export default value;
@@ -23527,13 +23931,6 @@ input: number;
 output: number;
 cacheRead: number;
 cacheWrite: number;
-tiers: {
-inputTokensAbove: number;
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-}[];
 };
 contextWindow: number;
 maxTokens: number;
@@ -24075,6 +24472,84 @@ low: string;
 medium: string;
 high: string;
 xhigh: null;
+max: null;
+};
+inputLimits: {
+maxRequestBytes: number;
+images: {
+maxPerRequest: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gemini-4-carbon": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: null;
+};
+inputLimits: {
+maxRequestBytes: number;
+images: {
+maxPerRequest: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gemini-4-hydrogen": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
 max: null;
 };
 inputLimits: {
@@ -25514,6 +25989,47 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:moonshotai/Kimi-K3.1-Pro": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+supportsDeveloperRole: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: null;
+high: string;
+xhigh: null;
+max: string;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:openai/gpt-oss-120b": {
 id: string;
 name: string;
@@ -26390,6 +26906,47 @@ medium: string;
 high: string;
 xhigh: null;
 max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:thinkingmachines/Inkling-2-Small": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+supportsDeveloperRole: boolean;
+};
+thinkingLevelMap: {
+off: string;
+minimal: string;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: string;
 };
 inputLimits: {
 images: {
@@ -27651,6 +28208,16 @@ high: string;
 xhigh: null;
 max: string;
 };
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
 type: string;
 };
 "chat:devstral-2512": {
@@ -28094,6 +28661,15 @@ cacheWrite: number;
 };
 contextWindow: number;
 maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: null;
+};
 inputLimits: {
 images: {
 resize: {
@@ -29126,45 +29702,6 @@ low: null;
 medium: null;
 high: string;
 max: string;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-type: string;
-};
-"chat:google/diffusiongemma-26b-a4b-it": {
-id: string;
-name: string;
-api: string;
-provider: string;
-baseUrl: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-headers: {
-"NVCF-POLL-SECONDS": string;
-};
-compat: {
-supportsStore: boolean;
-supportsDeveloperRole: boolean;
-supportsReasoningEffort: boolean;
-maxTokensField: string;
-supportsLongCacheRetention: boolean;
-supportsStrictMode: boolean;
 };
 inputLimits: {
 images: {
@@ -31548,6 +32085,50 @@ supportsToolSearch: boolean;
 supportsMidConvoSystemMessages: boolean;
 supportsExplicitPromptCacheMode: boolean;
 supportsMidConvoEffort: boolean;
+};
+inputLimits: {
+maxRequestBytes: number;
+images: {
+maxPerRequest: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gpt-6-cyber": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+compat: {
+supportsStrictMode: boolean;
+supportsOpenAIGrammarTools: boolean;
+supportsExplicitPromptCacheMode: boolean;
 };
 inputLimits: {
 maxRequestBytes: number;
@@ -34252,6 +34833,80 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:gemini-4-carbon": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gemini-4-hydrogen": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 };
 "openai-completions": {
 "chat:beam-free": {
@@ -36451,6 +37106,13 @@ input: number;
 output: number;
 cacheRead: number;
 cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
 };
 contextWindow: number;
 maxTokens: number;
@@ -37550,7 +38212,7 @@ minimal: null;
 low: string;
 medium: string;
 high: string;
-xhigh: null;
+xhigh: string;
 max: null;
 };
 input: string[];
@@ -39075,7 +39737,7 @@ jpegQuality: number;
 };
 type: string;
 };
-"chat:bytedance-seed/seed-1.6": {
+"chat:baidu/ernie-5.5-flash-preview:free": {
 type: string;
 id: string;
 name: string;
@@ -39083,19 +39745,21 @@ api: string;
 baseUrl: string;
 provider: string;
 reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: null;
+medium: null;
+high: string;
+xhigh: null;
+max: null;
+};
 input: string[];
 cost: {
 input: number;
 output: number;
 cacheRead: number;
 cacheWrite: number;
-tiers: {
-inputTokensAbove: number;
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-}[];
 };
 contextWindow: number;
 maxTokens: number;
@@ -39105,18 +39769,8 @@ thinkingFormat: string;
 supportsStrictMode: boolean;
 sendSessionAffinityHeaders: boolean;
 };
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
 };
-};
-};
-};
-"chat:bytedance-seed/seed-1.6-flash": {
+"chat:baidu/ernie-light-dt-1.0-intl": {
 type: string;
 id: string;
 name: string;
@@ -39124,19 +39778,21 @@ api: string;
 baseUrl: string;
 provider: string;
 reasoning: boolean;
+thinkingLevelMap: {
+off: string;
+minimal: null;
+low: string;
+medium: null;
+high: string;
+xhigh: null;
+max: string;
+};
 input: string[];
 cost: {
 input: number;
 output: number;
 cacheRead: number;
 cacheWrite: number;
-tiers: {
-inputTokensAbove: number;
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-}[];
 };
 contextWindow: number;
 maxTokens: number;
@@ -39145,16 +39801,6 @@ supportsDeveloperRole: boolean;
 thinkingFormat: string;
 supportsStrictMode: boolean;
 sendSessionAffinityHeaders: boolean;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
 };
 };
 "chat:bytedance-seed/seed-2-1-turbo": {
@@ -39171,56 +39817,6 @@ input: number;
 output: number;
 cacheRead: number;
 cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsDeveloperRole: boolean;
-thinkingFormat: string;
-supportsStrictMode: boolean;
-sendSessionAffinityHeaders: boolean;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-};
-"chat:bytedance-seed/seed-2.0-code": {
-type: string;
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-thinkingLevelMap: {
-off: string;
-minimal: null;
-low: string;
-medium: string;
-high: string;
-xhigh: null;
-max: null;
-};
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-tiers: {
-inputTokensAbove: number;
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-}[];
 };
 contextWindow: number;
 maxTokens: number;
@@ -41241,6 +41837,178 @@ jpegQuality: number;
 };
 };
 };
+"chat:google/gemini-4-carbon": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: null;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsDeveloperRole: boolean;
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:google/gemini-4-carbon:batch": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: null;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsDeveloperRole: boolean;
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:google/gemini-4-hydrogen": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: null;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsDeveloperRole: boolean;
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:google/gemini-4-hydrogen:batch": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: null;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsDeveloperRole: boolean;
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
 "chat:google/gemini-nano-banana-2.1": {
 type: string;
 id: string;
@@ -41627,7 +42395,7 @@ supportsStrictMode: boolean;
 sendSessionAffinityHeaders: boolean;
 };
 };
-"chat:liquid/lfm-2.5-2.6b": {
+"chat:inclusionai/ling-3.2-flash:free": {
 type: string;
 id: string;
 name: string;
@@ -41635,9 +42403,6 @@ api: string;
 baseUrl: string;
 provider: string;
 reasoning: boolean;
-thinkingLevelMap: {
-off: null;
-};
 input: string[];
 cost: {
 input: number;
@@ -41653,8 +42418,18 @@ thinkingFormat: string;
 supportsStrictMode: boolean;
 sendSessionAffinityHeaders: boolean;
 };
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
 };
-"chat:liquid/lfm-2.5-2.6b:free": {
+};
+};
+};
+"chat:kt/midm-k-3.0-pro": {
 type: string;
 id: string;
 name: string;
@@ -41662,9 +42437,6 @@ api: string;
 baseUrl: string;
 provider: string;
 reasoning: boolean;
-thinkingLevelMap: {
-off: null;
-};
 input: string[];
 cost: {
 input: number;
@@ -41763,6 +42535,30 @@ sendSessionAffinityHeaders: boolean;
 };
 };
 "chat:meituan/longcat-2.0": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsDeveloperRole: boolean;
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+};
+"chat:meta-llama/llama-3.1-70b-instruct": {
 type: string;
 id: string;
 name: string;
@@ -43441,6 +44237,30 @@ maxBytes: number;
 jpegQuality: number;
 };
 };
+};
+};
+"chat:motif-technologies/motif-3": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsDeveloperRole: boolean;
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
 };
 };
 "chat:nex-agi/nex-n2.5-pro": {
@@ -47970,6 +48790,49 @@ jpegQuality: number;
 };
 };
 };
+"chat:particle-ai/particle-1:free": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: string;
+minimal: string;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsDeveloperRole: boolean;
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
 "chat:perceptron/perceptron-mk1.5": {
 type: string;
 id: string;
@@ -48091,30 +48954,6 @@ jpegQuality: number;
 };
 };
 "chat:qwen/qwen-2.5-72b-instruct": {
-type: string;
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsDeveloperRole: boolean;
-thinkingFormat: string;
-supportsStrictMode: boolean;
-sendSessionAffinityHeaders: boolean;
-};
-};
-"chat:qwen/qwen-2.5-7b-instruct": {
 type: string;
 id: string;
 name: string;
@@ -48485,43 +49324,6 @@ api: string;
 baseUrl: string;
 provider: string;
 reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsDeveloperRole: boolean;
-thinkingFormat: string;
-supportsStrictMode: boolean;
-sendSessionAffinityHeaders: boolean;
-};
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-};
-"chat:qwen/qwen3-vl-30b-a3b-thinking": {
-type: string;
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-thinkingLevelMap: {
-off: null;
-};
 input: string[];
 cost: {
 input: number;
@@ -49802,33 +50604,6 @@ jpegQuality: number;
 };
 };
 };
-"chat:stepfun/step-3.5-flash": {
-type: string;
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-thinkingLevelMap: {
-off: null;
-};
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsDeveloperRole: boolean;
-thinkingFormat: string;
-supportsStrictMode: boolean;
-sendSessionAffinityHeaders: boolean;
-};
-};
 "chat:stepfun/step-3.7-flash": {
 type: string;
 id: string;
@@ -50100,6 +50875,49 @@ jpegQuality: number;
 };
 };
 };
+"chat:thinkingmachines/inkling-2-small": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: string;
+low: string;
+medium: string;
+high: string;
+xhigh: null;
+max: string;
+};
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsDeveloperRole: boolean;
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
 "chat:thinkingmachines/inkling-2-small:free": {
 type: string;
 id: string;
@@ -50264,6 +51082,40 @@ jpegQuality: number;
 };
 };
 "chat:unbiased/pareto-26.10": {
+type: string;
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsDeveloperRole: boolean;
+thinkingFormat: string;
+supportsStrictMode: boolean;
+sendSessionAffinityHeaders: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"chat:unbiased/pareto-26.10-preview": {
 type: string;
 id: string;
 name: string;
@@ -50992,30 +51844,6 @@ jpegQuality: number;
 };
 };
 };
-"chat:xingchen-agi/xing4.0-29b-a4b:free": {
-type: string;
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsDeveloperRole: boolean;
-thinkingFormat: string;
-supportsStrictMode: boolean;
-sendSessionAffinityHeaders: boolean;
-};
-};
 "chat:z-ai/glm-4.5": {
 type: string;
 id: string;
@@ -51277,39 +52105,6 @@ sendSessionAffinityHeaders: boolean;
 };
 };
 "chat:z-ai/glm-5.2": {
-type: string;
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-thinkingLevelMap: {
-off: string;
-minimal: null;
-low: null;
-medium: null;
-high: string;
-xhigh: string;
-max: null;
-};
-input: string[];
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-compat: {
-supportsDeveloperRole: boolean;
-thinkingFormat: string;
-supportsStrictMode: boolean;
-sendSessionAffinityHeaders: boolean;
-};
-};
-"chat:z-ai/glm-5.2:batch": {
 type: string;
 id: string;
 name: string;
@@ -51909,6 +52704,32 @@ jpegQuality: number;
 };
 };
 };
+"image:bytedance-seed/seedream-5-5": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+output: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
 "image:google/gemini-2.5-flash-image": {
 type: string;
 id: string;
@@ -52300,6 +53121,58 @@ jpegQuality: number;
 };
 };
 "image:microsoft/mai-image-2.6-flash": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+output: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"image:minimax/minimax-h3-image": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+output: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+};
+"image:minimax/minimax-h3-image-highspeed": {
 type: string;
 id: string;
 name: string;
@@ -53043,6 +53916,38 @@ cacheRead: number;
 cacheWrite: number;
 };
 };
+"image:recraft/recraft-v4.1-flash-v2": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+output: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+};
+"image:recraft/recraft-v4.1-flash-v2:free": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+output: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+};
 "image:recraft/recraft-v4.1-pro": {
 type: string;
 id: string;
@@ -53329,6 +54234,22 @@ jpegQuality: number;
 };
 };
 };
+"image:tencent/hy-world-2.1-panorama": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+output: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+};
 "image:x-ai/grok-imagine-image-2.0": {
 type: string;
 id: string;
@@ -53597,6 +54518,66 @@ imageInput: string;
 sendImageOptInHeader: boolean;
 };
 };
+"classifier:google/gemini-decision-1": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+compat: {
+imageInput: string;
+sendImageOptInHeader: boolean;
+};
+};
+"classifier:heygen/heygen-decision-1": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+compat: {
+imageInput: string;
+sendImageOptInHeader: boolean;
+};
+};
+"classifier:heygen/heygen-decision-1-turbo": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+compat: {
+imageInput: string;
+sendImageOptInHeader: boolean;
+};
+};
 "classifier:jaredpalmer/kev-4b": {
 type: string;
 id: string;
@@ -53817,7 +54798,7 @@ imageInput: string;
 sendImageOptInHeader: boolean;
 };
 };
-"classifier:parallel/decisions-fast:free": {
+"classifier:parallel/decisions-fast": {
 type: string;
 id: string;
 name: string;
@@ -53857,7 +54838,47 @@ imageInput: string;
 sendImageOptInHeader: boolean;
 };
 };
+"classifier:perplexity/pplx-decider-flash-v1.3:free": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+compat: {
+imageInput: string;
+sendImageOptInHeader: boolean;
+};
+};
 "classifier:perplexity/pplx-decider-v1.2": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+compat: {
+imageInput: string;
+sendImageOptInHeader: boolean;
+};
+};
+"classifier:perplexity/pplx-decider-v1.3:free": {
 type: string;
 id: string;
 name: string;
@@ -54713,6 +55734,50 @@ jpegQuality: number;
 type: string;
 };
 "chat:qwen3.8-max": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+thinkingFormat: string;
+supportsDeveloperRole: boolean;
+supportsStore: boolean;
+supportsReasoningEffort: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: null;
+xhigh: string;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:qwen4-max-preview": {
 id: string;
 name: string;
 api: string;
@@ -56331,6 +57396,50 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:qwen4-max-preview": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+compat: {
+supportsStrictMode: boolean;
+thinkingFormat: string;
+supportsDeveloperRole: boolean;
+supportsStore: boolean;
+supportsReasoningEffort: boolean;
+};
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: null;
+xhigh: string;
+max: null;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 };
 };
 export default value;
@@ -57057,6 +58166,51 @@ low: string;
 medium: string;
 high: string;
 xhigh: null;
+max: null;
+};
+input: string[];
+contextWindow: number;
+maxTokens: number;
+lab: string;
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+enabled: boolean;
+providers: {
+id: string;
+name: string;
+credential: string;
+source: string;
+}[];
+api: string;
+provider: string;
+baseUrl: string;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gemini-4-hydrogen": {
+id: string;
+name: string;
+reasoning: boolean;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
 max: null;
 };
 input: string[];
@@ -58940,6 +60094,37 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:alibaba/qwen3.6-35b-a3b": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:alibaba/qwen3.6-plus": {
 id: string;
 name: string;
@@ -60648,82 +61833,6 @@ jpegQuality: number;
 };
 type: string;
 };
-"chat:bytedance/seed-1.6": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-tiers: {
-inputTokensAbove: number;
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-}[];
-};
-contextWindow: number;
-maxTokens: number;
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-type: string;
-};
-"chat:bytedance/seed-1.8": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-tiers: {
-inputTokensAbove: number;
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-}[];
-};
-contextWindow: number;
-maxTokens: number;
-inputLimits: {
-images: {
-resize: {
-maxWidth: number;
-maxHeight: number;
-maxBytes: number;
-jpegQuality: number;
-};
-};
-};
-type: string;
-};
 "chat:bytedance/seed-2.1-turbo": {
 id: string;
 name: string;
@@ -61854,6 +62963,68 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:google/gemini-4-carbon": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:google/gemini-4-hydrogen": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:google/gemma-4-26b-a4b-it": {
 id: string;
 name: string;
@@ -61937,70 +63108,7 @@ contextWindow: number;
 maxTokens: number;
 type: string;
 };
-"chat:inception/mercury-2": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-type: string;
-};
-"chat:inception/mercury-2.5": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-type: string;
-};
 "chat:inception/mercury-3": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
-type: string;
-};
-"chat:inception/mercury-coder-small": {
 id: string;
 name: string;
 api: string;
@@ -62807,6 +63915,13 @@ input: number;
 output: number;
 cacheRead: number;
 cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
 };
 contextWindow: number;
 maxTokens: number;
@@ -63400,27 +64515,6 @@ jpegQuality: number;
 };
 };
 };
-type: string;
-};
-"chat:nvidia/nemotron-3-nano-30b-a3b": {
-id: string;
-name: string;
-api: string;
-baseUrl: string;
-provider: string;
-reasoning: boolean;
-input: string[];
-compat: {
-allowEmptySignature: boolean;
-};
-cost: {
-input: number;
-output: number;
-cacheRead: number;
-cacheWrite: number;
-};
-contextWindow: number;
-maxTokens: number;
 type: string;
 };
 "chat:nvidia/nemotron-3-super-120b-a12b": {
@@ -66458,7 +67552,7 @@ jpegQuality: number;
 };
 type: string;
 };
-"chat:particle/particle-1": {
+"chat:paperinstruments/ultramarine-1-flash": {
 id: string;
 name: string;
 api: string;
@@ -66489,7 +67583,7 @@ jpegQuality: number;
 };
 type: string;
 };
-"chat:poolside/laguna-s-2.1": {
+"chat:particle/particle-1": {
 id: string;
 name: string;
 api: string;
@@ -66508,6 +67602,16 @@ cacheWrite: number;
 };
 contextWindow: number;
 maxTokens: number;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
 type: string;
 };
 "chat:quiverai/arrow-2": {
@@ -67530,6 +68634,37 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:thinkingmachines/inkling-2-small": {
+id: string;
+name: string;
+api: string;
+baseUrl: string;
+provider: string;
+reasoning: boolean;
+input: string[];
+compat: {
+allowEmptySignature: boolean;
+};
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+maxTokens: number;
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:thinkingmachines/inkling-small": {
 id: string;
 name: string;
@@ -68148,6 +69283,22 @@ cacheWrite: number;
 };
 contextWindow: number;
 };
+"classifier:google/gemini-decision-1": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+};
 "classifier:liquid/d1": {
 type: string;
 id: string;
@@ -68292,7 +69443,39 @@ cacheWrite: number;
 };
 contextWindow: number;
 };
+"classifier:perplexity/pplx-decider-flash-v1.3": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+};
 "classifier:perplexity/pplx-decider-v1.2": {
+type: string;
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+};
+contextWindow: number;
+};
+"classifier:perplexity/pplx-decider-v1.3": {
 type: string;
 id: string;
 name: string;
