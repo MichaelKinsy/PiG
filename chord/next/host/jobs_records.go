@@ -1,7 +1,7 @@
 package host
 
 import (
-	"container/list"
+	containerlist "container/list"
 	"context"
 	"fmt"
 
@@ -129,11 +129,11 @@ const (
 
 // runSet is a set of runs in insertion order (Pi's `Set`).
 type runSet struct {
-	items map[*jobRun]*list.Element
-	order list.List
+	items map[*jobRun]*containerlist.Element
+	order containerlist.List
 }
 
-func newRunSet() *runSet { return &runSet{items: map[*jobRun]*list.Element{}} }
+func newRunSet() *runSet { return &runSet{items: map[*jobRun]*containerlist.Element{}} }
 
 func (set *runSet) add(run *jobRun) {
 	if _, found := set.items[run]; !found {

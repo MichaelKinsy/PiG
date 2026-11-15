@@ -229,6 +229,8 @@ type chordObject struct {
 	// jobs are its job runs by job name, across its attempts, in the order they were declared.
 	jobs     map[string]*jobRecords
 	jobOrder []string
+	// lists is what its lists keep across its attempts, by name; made by the first.
+	lists map[string]*ListMemory
 	// instanceID is this instance's id (uuidv7), minted at its first attempt: a restarted object is a new instance (D4);
 	// empty is Pi's undefined.
 	instanceID string
@@ -784,6 +786,20 @@ func (o *chordObject) keyedMember(member string) (*documents.KeyedSlot, error) {
 		return nil, err
 	}
 	return live.keyedMember(member)
+}
+
+// listMemory is what its list `name` keeps across its attempts: its bookmarks, so a reload's successor opens the pages the
+// list had. It goes with the object.
+func (o *chordObject) listMemory(name string) *ListMemory {
+	if o.lists == nil {
+		o.lists = map[string]*ListMemory{}
+	}
+	memory, found := o.lists[name]
+	if !found {
+		memory = &ListMemory{open: true}
+		o.lists[name] = memory
+	}
+	return memory
 }
 
 // queryMember is the named query `name` of queries member `member` of the live object (slice 14 §3.1).
