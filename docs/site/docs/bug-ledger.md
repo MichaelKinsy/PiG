@@ -925,6 +925,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-66db311](#bf-66db311) | The login dialog now holds TUI focus while it is shown, so the prompt cursor appears in the right place for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6708fbb](#bf-6708fbb) | When a Go, Rust or Python extension that shares a process registers under a different name than the one it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-672bed7](#bf-672bed7) | A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up… | PiG's own defect | All platforms | Unreleased |
+| [BF-674e3b9](#bf-674e3b9) | Chord: the reloads of a changed binding are owned tasks of the store's reads index, so a binding that changes… | PiG's own defect | All platforms | Unreleased |
 | [BF-6753e9c](#bf-6753e9c) | fix(chord): tui scope ends its watches in Dispose; settle the test's change counter | PiG's own defect | All platforms | Unreleased |
 | [BF-677ded1](#bf-677ded1) | An indented line after a quoted heading, rule or fence in a blockquote renders as the code block Pi shows | PiG's own defect | All platforms | 0.5.0 |
 | [BF-67eccd7](#bf-67eccd7) | Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor`… | PiG's own defect | All platforms | 0.7.0 |
@@ -989,6 +990,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6d0ec02](#bf-6d0ec02) | Durable (Pi eb2fce43): a wait that closes a cycle through waits and held owners now fails the task's commit… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6d3043e](#bf-6d3043e) | The startup prompts (the project-trust and extension selectors, the extension text input and first-time… | PiG's own defect | All platforms | Unreleased |
 | [BF-6d3cfc8](#bf-6d3cfc8) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | 0.5.2 |
+| [BF-6d4e10c](#bf-6d4e10c) | Chord: a query reader opens its read in the section of the move that created it, as Pi does, so what it reads… | PiG's own defect | All platforms | Unreleased |
 | [BF-6d9b403](#bf-6d9b403) | The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6da170c](#bf-6da170c) | `pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-6debb12](#bf-6debb12) | fix(train): gate repairs after merging train 3 and the ordering stack | PiG's own defect | All platforms | Unreleased |
@@ -14793,6 +14795,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpKeepsItsUnitsWhileTheCallStreams`, `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsAfterTheDrawOfTheCompleteCall`, `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenAnIdleCardIsDisposed`, `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenTheCallCompletesDuringAStep`, `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpReleasesItsUnitsWhenTheCardEndsDuringAStep`, `internal/codingagent/write_highlight_warm_release_test.go::TestWriteWarmUpThatCannotResumeReleasesNothing`, `tui/highlight_warm_release_test.go::TestReleaseWarmHighlightDropsTheUnitsOfALateWarmUp`, `tui/highlight_warm_release_test.go::TestReleaseWarmHighlightDropsTheUnitsOfEveryWarmUpOfFilesThatBeginAlike` and 2 more in docs/bug-ledger.json
 - **Release note:** A `write` tool call that streams a large file no longer leaves the UTF-16 units of its last highlight warm-up in memory after the call is done: each finished card held up to 1.7 MB (a 400 KB file) in the highlighter until later warm-ups pushed it out. The units are released when the call completes, when its card is disposed, and by a warm-up that ends after either; the lines the card draws are unchanged.
 
+### BF-674e3b9
+
+**Chord: the reloads of a changed binding are owned tasks of the store's reads index, so a binding that changes…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: the reloads of a changed binding are owned tasks of the store's reads index, so a binding that changes while a query is made is reloaded in order and waiting for the host to settle waits for them.
+- **Root cause:** Pi's `void open.load()` after a changed binding is an unawaited promise: the repository's async rule maps it to an owned task (cancelled and joined at the close, its error surfaced where Pi surfaces a failed reload: the read's failed run), not to a naked `go read.Load()`.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `674e3b9869` (2026-11-15)
+- **Tests:** `chord/next/store/open_query_binding_test.go::TestOpenQueryABindingChangingWhileTheQueryIsMadeLeavesItCompiledForTheBindingThatStays`, `chord/next/store/reads_tasks_test.go::TestOpenReadReload`, `chord/next/store/reads_tasks_test.go::TestReadsTasks`
+- **Release note:** Chord: the reloads of a changed binding are owned tasks of the store's reads index, so a binding that changes while a query is made is reloaded in order and waiting for the host to settle waits for them.
+
 ### BF-6753e9c
 
 **fix(chord): tui scope ends its watches in Dispose; settle the test's change counter**
@@ -15682,6 +15698,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6d3cfc863d` (2026-10-21, #278)
 - **Tests:** `coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsAreNotReleasedWhileAnExecRuns`
 - **Release note:** A user_bash `operations` object from an extension is no longer released while a command is running through it. The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.
+
+### BF-6d4e10c
+
+**Chord: a query reader opens its read in the section of the move that created it, as Pi does, so what it reads…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: a query reader opens its read in the section of the move that created it, as Pi does, so what it reads follows the move in the same section.
+- **Root cause:** Store: an open query whose set is unbound hands its read a failed run, the live query adopts it as a failed member (tests in the previous commit; reads.test.ts and its Go port were right, no case was missing there). The faults: 1. TEST PORT: the Go case reloaded a NEW club plugin value (nqClubPlugin per call); Pi reloads the same club, so only the sessions restart. A new value is new code: the club and the page restart too, and the page's value then depends on the order of the restarts' ends, which are fixed by microtasks in Pi and run on tasks here. The cases now hand the same club back (nqHostedWith); the unchanged-code and moved-set cases too. 2. READER (real divergence, Pi…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6d4e10cfcf` (2026-11-15)
+- **Tests:** `chord/next/host/host_named_query_test.go::TestNamedQueryAClubThatRestartsWithTheSessionsGivesItsPagesWatchTheUnservedSet`, `chord/next/host/host_named_query_test.go::TestNamedQueryAPageFailsWhenItsSetIsUnboundAndHealsWhenItIsBoundAgain`, `chord/next/host/host_named_query_test.go::TestNamedQueryAPublisherWhoseNewCodeDeclaresNoTableServesItsSetNoMore`, `chord/next/host/host_named_query_test.go::TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth`, `chord/next/host/host_named_query_test.go::TestNamedQueryAUsedColumnDroppedFailsExactlyTheReadsUsingItBeforeAnySQLRestoredTheyHeal`, `chord/next/host/host_query_reader_queue_test.go::TestQueryReaderQueueACloseDropsTheQueuedReadAndDetachesTheReading`, `chord/next/host/host_query_reader_queue_test.go::TestQueryReaderQueueAMoveBeforeTheFirstReadOnlyWakesItsAttempt`, `chord/next/host/host_query_reader_queue_test.go::TestQueryReaderQueueTwoMovesWhileAReadRunsReadOnceWithTheLaterTarget`
+- **Release note:** Chord: a query reader opens its read in the section of the move that created it, as Pi does, so what it reads follows the move in the same section.
 
 ### BF-6d9b403
 
