@@ -201,7 +201,7 @@ func listReader(at ReaderSite, name string, source ListSource, first int, memory
 	if err != nil {
 		return nil, nil, err
 	}
-	l := newList(at.Site, readerOwnerOf(at, given), first, memory)
+	l := newList(at.Site, readerOwnerOf(at, given), first, memory, at.Go)
 	return newReader(given, l, at.Wake, at.Go), l, nil
 }
 

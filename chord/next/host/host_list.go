@@ -20,7 +20,7 @@ import (
 //
 // Go forms: Pi's `#loading` promise chain is `tail`, a channel closed when the last queued `more` ended; `#switched` is a
 // channel closed (and replaced) on every `show`; Pi's `awaitWithContext` is `chordctx.Receive` (it parks a method handler where it waits); Pi's `void this.read`
-// in `#rebound` opens at once (`Open`) and runs its load on a goroutine counted by `rebinding`, which `idle` waits for. A tiling's owner is the list (Pi's object literal over the
+// in `#rebound` (list.ts:126) opens at once (`Open`) and runs its load as a task of the host's loop (`spawn`). A tiling's owner is the list (Pi's object literal over the
 // tiling): it is given the tiling at each call.
 
 // ListOptions is what `self.list` takes besides its name and sources.
@@ -86,7 +86,8 @@ type list struct {
 	memory *ListMemory
 	rows   store.DecodedRows
 
-	rebinding sync.WaitGroup
+	// spawn runs a task of the host's loop (the reader site's Go): Pi's `void` calls and awaited chains of the list.
+	spawn func(task func())
 
 	mu sync.Mutex
 	// current is the tiling its value is of, and next the one that replaces it once every page of it ran.
@@ -108,8 +109,8 @@ func closedChannel() chan struct{} {
 	return done
 }
 
-func newList(site store.ReadSite, owner state.FramedOwner, first int, memory *ListMemory) *list {
-	l := &list{site: site, first: first, memory: memory, tail: closedChannel(), switched: make(chan struct{})}
+func newList(site store.ReadSite, owner state.FramedOwner, first int, memory *ListMemory, spawn func(task func())) *list {
+	l := &list{site: site, first: first, memory: memory, spawn: spawn, tail: closedChannel(), switched: make(chan struct{})}
 	l.Init(site.Batch, owner)
 	return l
 }
@@ -124,7 +125,7 @@ func (l *list) Open(target store.LiveTarget, ctx context.Context) (load func()) 
 	if detached {
 		return func() {}
 	}
-	tiling := newTiling(l.site, target, l.first, l, ctx)
+	tiling := newTiling(l.site, target, l.first, l, ctx, l.spawn)
 	l.mu.Lock()
 	previous := l.next
 	l.next = tiling
@@ -164,10 +165,12 @@ func (l *list) more(ctx context.Context) error {
 	l.tail = finished
 	l.mu.Unlock()
 	loaded := make(chan struct{})
-	go func() {
+	// list.ts:92-99: `this.#loading.then(async () => { while (...) await this.#switched.promise; await this.#current?.more() })`
+	// is a task of the loop that waits parked for the `more` before it and for a switch.
+	l.spawn(func() {
 		defer close(finished)
 		defer close(loaded)
-		<-previous
+		parkedOn(previous)
 		for {
 			l.mu.Lock()
 			current, pending, switched := l.current, l.next, l.switched
@@ -178,26 +181,11 @@ func (l *list) more(ctx context.Context) error {
 				}
 				return
 			}
-			<-switched
+			parkedOn(switched)
 		}
-	}()
+	})
 	_, err := chordctx.Receive(ctx, loaded)
 	return err
-}
-
-// idle waits for the reads a rebound started (Pi's `void this.read`) and for the loads its tilings started (`void
-// read.load()`): what a test waits on instead of a sleep.
-func (l *list) idle() {
-	l.rebinding.Wait()
-	l.mu.Lock()
-	current, next := l.current, l.next
-	l.mu.Unlock()
-	if current != nil {
-		current.idle()
-	}
-	if next != nil {
-		next.idle()
-	}
 }
 
 func (l *list) closeAll() {
@@ -241,8 +229,7 @@ func (l *list) rebound(tiling *tiling) {
 		// pending one at once. A failed page fails the list, as any read's failure does; nothing awaits the loads.
 		var load func()
 		l.site.Batch.Section(func() { load = l.Open(tiling.target, tiling.context()) })
-		l.rebinding.Add(1)
-		go func() { defer l.rebinding.Done(); load() }()
+		l.spawn(load)
 	}
 }
 

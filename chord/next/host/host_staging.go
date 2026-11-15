@@ -216,19 +216,20 @@ func stageEntry(plugin string, entry servedEntry, types *namedMap[*served], regi
 	var remote RemoteFactory
 	var admitted AdmittedFactory
 	kind := servedLocal
-	if contract.Kind == contracts.KindLocal {
+	switch {
+	case contract.Kind == contracts.KindLocal:
 		factory, ok := entry.factory.(LocalFactory)
 		if !ok {
 			return fmt.Errorf("%s: a local type is served with a LocalFactory, not %T", contract.Name, entry.factory)
 		}
 		local = factory
-	} else if admission != nil {
+	case admission != nil:
 		factory, ok := entry.factory.(AdmittedFactory)
 		if !ok {
 			return fmt.Errorf("%s: an admitted type is served with an AdmittedFactory, not %T", contract.Name, entry.factory)
 		}
 		kind, admitted = servedRemote, factory
-	} else {
+	default:
 		factory, ok := entry.factory.(RemoteFactory)
 		if !ok {
 			return fmt.Errorf("%s: a remote type is served with a RemoteFactory, not %T", contract.Name, entry.factory)

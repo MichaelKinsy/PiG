@@ -25,15 +25,13 @@ import (
 // with the sends of a reference replaced by a recording function, each naming the case whose queue behavior it checks.
 
 // parkedTestLoop is a fake loop for the queue: fakeLoop's timers and microtasks, a clock a test can set apart from the
-// timers (`vi.setSystemTime`), and sections and owned tasks of a real Loop (the abort listener of a caller's context runs on a
-// goroutine of its own and enters a section).
+// timers (`vi.setSystemTime`), and sections and owned tasks of a real Loop (the abort listener of a caller's context queues on the
+// fake loop's microtasks, which a test flushes where Pi awaits).
 type parkedTestLoop struct {
 	*fakeLoop
 	real *Loop
 	// skew is what `vi.setSystemTime` added to the clock: no timer fires for it.
 	skew atomic.Int64
-	// ran counts the sections that ended.
-	ran atomic.Int64
 }
 
 var _ sectionLoop = (*parkedTestLoop)(nil)
@@ -42,12 +40,9 @@ func newParkedTestLoop() *parkedTestLoop {
 	return &parkedTestLoop{fakeLoop: newFakeLoop(), real: NewLoop()}
 }
 
-func (l *parkedTestLoop) Now() int64 { return l.fakeLoop.Now() + l.skew.Load() }
-func (l *parkedTestLoop) Run(work func()) {
-	l.real.Run(work)
-	l.ran.Add(1)
-}
-func (l *parkedTestLoop) Go(fn func()) { l.real.Go(fn) }
+func (l *parkedTestLoop) Now() int64      { return l.fakeLoop.Now() + l.skew.Load() }
+func (l *parkedTestLoop) Run(work func()) { l.real.Run(work) }
+func (l *parkedTestLoop) Go(fn func())    { l.real.Go(fn) }
 func (l *parkedTestLoop) Lend(signal *parking.Signal, fn func(abandoned bool)) {
 	l.real.Lend(signal, fn)
 }
@@ -261,6 +256,7 @@ func TestParkedCallsRejectAtOnceWhenTheirCallerCancels(t *testing.T) {
 	kept := h.park("b", chordctx.Background())
 	reason := errors.New("user cancelled")
 	cancel(reason)
+	h.loop.Flush() // the listener is a microtask of the loop (onAbort); Pi's `await expect(cancelled).rejects` lets it run
 	if _, err := cancelled.wait(background); !errors.Is(err, reason) {
 		t.Fatalf("cancelled call error = %v, want the user's reason", err)
 	}
@@ -276,6 +272,28 @@ func TestParkedCallsRejectAtOnceWhenTheirCallerCancels(t *testing.T) {
 	}
 	if want := []string{"b"}; !reflect.DeepEqual(h.log, want) {
 		t.Fatalf("log = %v, want %v", h.log, want)
+	}
+}
+
+// Go-only order of the same listener: Pi's runs inside `abort()`, the host's as a microtask after the cancelling section, so a flush
+// that comes first meets a call whose caller cancelled: it rejects it with the reason and does not send it (parked.ts:46-51).
+func TestParkedCallsAFlushBeforeTheCancelListenerRanDoesNotSendTheCancelledCall(t *testing.T) {
+	h := newParkedHarness(t, time.Second)
+	ctx, cancel := chordctx.WithCancel(chordctx.Background())
+	cancelled := h.park("a", ctx)
+	kept := h.park("b", chordctx.Background())
+	reason := errors.New("user cancelled")
+	cancel(reason)
+	h.flush()
+	if _, err := parkedResultOf(t, cancelled); !errors.Is(err, reason) {
+		t.Fatalf("cancelled call error = %v, want the user's reason", err)
+	}
+	h.loop.Flush() // the queued listener finds the call gone
+	if want := []string{"b"}; !reflect.DeepEqual(h.log, want) {
+		t.Fatalf("log = %v, want %v", h.log, want)
+	}
+	if value, err := parkedResultOf(t, kept); err != nil || value != 1 {
+		t.Fatalf("kept = %v, %v; want 1, nil", value, err)
 	}
 }
 
@@ -389,6 +407,7 @@ func TestParkedCallsKeepTheirOrderAfterManyLeft(t *testing.T) {
 	}
 	for _, result := range cancelled {
 		cancels[result](errors.New("cancelled"))
+		h.loop.Flush() // the listener is a microtask of the loop (onAbort); Pi's await lets it run
 		if _, err := result.wait(background); err == nil {
 			t.Fatal("a cancelled call was not rejected")
 		}
@@ -870,20 +889,17 @@ func TestParkedCallResultAnAlreadySettledResultTakesReactionsAndKeepsNoneItRan(t
 	}
 }
 
-// Own test of the abort listener of a parked call: `cancel` is Pi's `signal.addEventListener("abort", ...)`, which runs in
-// a task of its own after the abort. A call that was sent in the meantime (the abort came while the loop ran the section
-// that sent it) is no longer in the queue: the listener changes nothing, and the queue's count stays right.
+// Own test of the abort listener of a parked call (parked.ts:46-51, `removeEventListener` in `#take`): a call that was sent is no
+// longer in the queue and its listener is stopped: a caller that cancels after the send, in the same section, leaves the queue as it
+// was, and the count of the queue stays right.
 func TestParkedCallsACallerThatCancelsWhileItsCallIsBeingSentLeavesTheQueueAsItWas(t *testing.T) {
 	h := newParkedHarness(t, time.Second)
 	ctx, cancel := chordctx.WithCancel(chordctx.Background())
 	sent := h.park("a", ctx)
-	before := h.loop.ran.Load()
 	h.in(func() {
-		// The abort starts the listener, which waits for this section to end; the call is sent in it.
-		cancel(errors.New("left"))
 		h.calls.flush(h.send, func() bool { return true })
+		cancel(errors.New("left"))
 	})
-	scopeEventually(t, "the abort listener to run its section", func() bool { return h.loop.ran.Load() >= before+2 })
 	h.loop.Flush()
 	if value, err := parkedResultOf(t, sent); err != nil || value != 1 {
 		t.Fatalf("the call = %v, %v; want it sent: 1, nil", value, err)

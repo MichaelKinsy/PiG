@@ -485,8 +485,9 @@ func b14Persons(scale int) []b14Person {
 	var all []b14Person
 	for copy := range scale {
 		for index := range 10 {
-			all = append(all, b14Person{fmt.Sprintf("f%d-%d", copy, index), "family", nil})
-			all = append(all, b14Person{fmt.Sprintf("c%d-%d", copy, index), "club", []string{b14Teams[index], b14Teams[(index+1)%10]}})
+			all = append(all,
+				b14Person{fmt.Sprintf("f%d-%d", copy, index), "family", nil},
+				b14Person{fmt.Sprintf("c%d-%d", copy, index), "club", []string{b14Teams[index], b14Teams[(index+1)%10]}})
 		}
 		guest := "guest"
 		if copy != 0 {
@@ -530,8 +531,6 @@ type b14Mix struct {
 	closed  bool
 	queries struct{ sessions, teams, shares map[string]*ReferenceQuery }
 }
-
-func (m *b14Mix) counter(name string) float64 { return m.meter.Counts()[name] }
 
 func (m *b14Mix) call(method string, args *delta.JsonObject) {
 	m.tb.Helper()
