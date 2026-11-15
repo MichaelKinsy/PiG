@@ -46,7 +46,7 @@ func newFed(t *testing.T, initial delta.JsonValue) *fed {
 	t.Helper()
 	h := newHarness(t, nil)
 	f := &fed{h: h, source: &fedSource{}, owner: &framedOwner{}, sub: &recorder{}}
-	f.source.FramedSource.Init(h.batch, f.owner)
+	f.source.Init(h.batch, f.owner)
 	f.source.Source.Init(h.batch, f.source)
 	if initial != nil {
 		f.commit(t, func() { f.source.Set(initial) })
