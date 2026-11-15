@@ -1,5 +1,7 @@
 //go:build unix
 
+// SPDX-License-Identifier: MIT
+
 package workers
 
 import (

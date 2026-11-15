@@ -1,5 +1,7 @@
 //go:build windows
 
+// SPDX-License-Identifier: MIT
+
 package workers
 
 import "io"
