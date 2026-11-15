@@ -78,8 +78,7 @@ func TestReplaceKeepingBackupLeavesTheFileWhereBothKeepTheirNames(t *testing.T) 
 			if !errors.Is(err, failure) {
 				t.Fatalf("error = %v, want %v", err, failure)
 			}
-			var kept *keptFilesError
-			if errors.As(err, &kept) {
+			if _, ok := errors.AsType[*keptFilesError](err); ok {
 				t.Fatal("files are kept where both still have their names")
 			}
 			if got := content(path); got != "old" {
@@ -142,8 +141,7 @@ func TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish(t *testing.T)
 func TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved(t *testing.T) {
 	path, temp := replacementFiles(t)
 	err := replaceKeepingBackup(path, temp, steps(errUnableToMoveReplacement2, func(string, string) error { return errors.New("sharing violation") }))
-	var kept *keptFilesError
-	if !errors.As(err, &kept) {
+	if _, ok := errors.AsType[*keptFilesError](err); !ok {
 		t.Fatalf("error = %v, want a keptFilesError", err)
 	}
 	if got := content(temp); got != "new" {
@@ -186,8 +184,7 @@ func TestWriteFileKeepsTheTemporaryFileOfAReplacementThatKeptFiles(t *testing.T)
 	}
 	t.Cleanup(func() { replaceTemp = previous })
 	err := WriteFile(path, []byte("new"), 0o600)
-	var kept *keptFilesError
-	if !errors.As(err, &kept) {
+	if _, ok := errors.AsType[*keptFilesError](err); !ok {
 		t.Fatalf("WriteFile = %v, want the keptFilesError", err)
 	}
 	if got := content(temporary); got != "new" {
