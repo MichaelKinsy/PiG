@@ -11,7 +11,28 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
+
+// releaseReaderOnClose makes master.Close close the descriptor in the kernel while a goroutine is blocked reading it. openHangupPTY calls master.Fd, which
+// puts the descriptor in blocking mode; Close of a blocking file only marks it closed and leaves the descriptor open until the blocked Read returns, so on a
+// Piglet Binary that is idle and writes nothing the terminal was never hung up and the process went on. With the descriptor non-blocking again the Read waits in
+// the poller, which Close wakes.
+func releaseReaderOnClose(t *testing.T, master *os.File) {
+	t.Helper()
+	raw, err := master.SyscallConn()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var setErr error
+	if err := raw.Control(func(fd uintptr) { setErr = unix.SetNonblock(int(fd), true) }); err != nil {
+		t.Fatal(err)
+	}
+	if setErr != nil {
+		t.Fatal(setErr)
+	}
+}
 
 // listTemp is the names in dir, sorted.
 func listTemp(t *testing.T, dir string) []string {
@@ -54,24 +75,26 @@ func TestFusedExtensionLogInTempDirectory(t *testing.T) {
 	binary := uiViewPigletBinary(t, "fused.yaml")
 	ends := []struct {
 		name string
+		// exit is the status the session ends with, or -1 where the cell does not check it.
+		exit int
 		end  func(t *testing.T, cmd *exec.Cmd, master *os.File)
 	}{
-		{"hung-up terminal", func(t *testing.T, _ *exec.Cmd, master *os.File) {
+		{"hung-up terminal", 129, func(t *testing.T, _ *exec.Cmd, master *os.File) {
 			if err := master.Close(); err != nil {
 				t.Fatal(err)
 			}
 		}},
-		{"SIGINT", func(t *testing.T, cmd *exec.Cmd, _ *os.File) {
+		{"SIGINT", -1, func(t *testing.T, cmd *exec.Cmd, _ *os.File) {
 			if err := cmd.Process.Signal(syscall.SIGINT); err != nil {
 				t.Fatal(err)
 			}
 		}},
-		{"SIGTERM", func(t *testing.T, cmd *exec.Cmd, _ *os.File) {
+		{"SIGTERM", -1, func(t *testing.T, cmd *exec.Cmd, _ *os.File) {
 			if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
 				t.Fatal(err)
 			}
 		}},
-		{"/quit", func(t *testing.T, _ *exec.Cmd, master *os.File) {
+		{"/quit", -1, func(t *testing.T, _ *exec.Cmd, master *os.File) {
 			if _, err := master.WriteString("/quit\r"); err != nil {
 				t.Fatal(err)
 			}
@@ -95,6 +118,7 @@ func TestFusedExtensionLogInTempDirectory(t *testing.T) {
 			if err != nil {
 				t.Fatalf("open pseudo-terminal: %v", err)
 			}
+			releaseReaderOnClose(t, master)
 			defer func() { _ = master.Close() }()
 			out := &syncBuffer{}
 			readerDone := make(chan struct{})
@@ -176,6 +200,9 @@ func TestFusedExtensionLogInTempDirectory(t *testing.T) {
 			case <-waited:
 			case <-time.After(30 * time.Second):
 				t.Fatal("the Piglet Binary still running 30s after the session was ended")
+			}
+			if tc.exit >= 0 && cmd.ProcessState.ExitCode() != tc.exit {
+				t.Errorf("the Piglet Binary exited with status %d, want %d", cmd.ProcessState.ExitCode(), tc.exit)
 			}
 			if after := listTemp(t, scratch); !slices.Equal(after, before) {
 				t.Errorf("the temporary directory held %q before the session and %q after it", before, after)
