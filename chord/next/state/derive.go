@@ -56,7 +56,8 @@ type Derive struct {
 	// value is the clean value; err is the failure of a failed or detached derive.
 	value delta.JsonValue
 	err   error
-	// framed is the value this derive's watches have, kept from its marking to its frame in the batch.
+	// framed is the value this derive's watches have, kept from its first marking in a batch to that batch's frame: framedNone
+	// is not listed in the batch.
 	framed    framedKind
 	framedVal delta.JsonValue
 	// retired is whether a source's document was retired in the current batch while this derive is watched (rule 21).
@@ -141,20 +142,26 @@ func (d *Derive) Detach(err error) {
 
 // Invalidate is a source changed: mark this derive and its dependents dirty, flags only; a failed one too, which
 // recomputes on its next read and heals when its sources give a value it can compute. An already dirty derive has dirty
-// dependents (every read recomputes its sources first), so marking stops there.
+// dependents (every read recomputes its sources first), so marking stops there. A watched derive is listed for the batch's
+// frame by its first marking in the batch only, which keeps what its watches have: one read between two changes of a batch
+// (clean again, then marked again) is not listed twice (two frames of one member in one commit, which a link refuses) and
+// its frame still diffs from the value before the batch.
 func (d *Derive) Invalidate() {
 	if d.kind == deriveDirty || d.kind == deriveDetached {
 		return
 	}
-	if d.Watched() {
+	if d.Watched() && d.framed == framedNone {
 		if d.kind == deriveClean {
 			d.framed, d.framedVal = framedValue, d.value
 		} else {
 			d.framed, d.framedVal = framedNoValue, nil
 		}
+		d.batch.Changed(d)
 	}
 	d.kind = deriveDirty
-	d.Changed()
+	for _, dependent := range d.dependents.Snapshot() {
+		dependent.Invalidate()
+	}
 }
 
 // SourceRetired is a source's document was retired in this batch (Source.RetiredInBatch): a watched derive's frame carries
@@ -173,7 +180,8 @@ func (d *Derive) SourceRetired(visited map[Dependent]struct{}) {
 	}
 }
 
-// Deliver delivers the frame: the diff from the watches' value, a retirement even without ops (rule 21). A compute that
+// Deliver delivers the batch's one frame: the diff from the value its watches had before the batch, a retirement even
+// without ops (rule 21). A compute that
 // fails gives one failure call when the watches had a value (one per failure episode), the watches stay open; a
 // retirement waits for the next value. A value that is no JSON cannot be diffed (Pi's `{ a: undefined }` makes
 // diffRevisions throw): the delivery fails and the batch reports it as delivery_failed, as it does for a throwing diff.
