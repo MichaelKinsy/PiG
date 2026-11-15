@@ -290,6 +290,8 @@ type closing struct {
 type ChordStore struct {
 	// Claims are the claims of its tables and documents (slice 6b).
 	Claims *Claims
+	// Reads are its reads by table and its column-set bindings (slice 14).
+	Reads *Reads
 
 	db     sqlite.SqliteDatabase
 	ids    *IdAllocator
@@ -418,6 +420,7 @@ func NewChordStore(db sqlite.SqliteDatabase, meta MetaRow, catalog map[string]*T
 	close(closed)
 	store := &ChordStore{
 		Claims:          NewClaims(),
+		Reads:           NewReads(),
 		db:              db,
 		ids:             NewIdAllocator(meta.NextID),
 		lastSeq:         meta.LastSeq,
