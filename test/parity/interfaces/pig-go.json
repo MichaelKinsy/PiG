@@ -178943,6 +178943,17 @@
       "shapeHash": "sha256:a90395a87f8efc9176fa2cdc3c1f860e99205c21679307ce0fe2f6f9da173cc8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#buildLispCell",
+      "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
+      "name": "buildLispCell",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, cell github.com/MichaelKinsy/PiG/coding/extension/host/subprocess.CellSpec, cacheRoot string, host Target) (stagedCell, error)"
+      },
+      "shapeHash": "sha256:ffcc7c406131e031e23d360d7073006a74fa78792b576f340a94661a2dc323b5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/pigletbuild#buildLock",
       "package": "github.com/MichaelKinsy/PiG/coding/pigletbuild",
       "name": "buildLock",
