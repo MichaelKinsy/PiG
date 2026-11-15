@@ -1745,6 +1745,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c8a90a6](#bf-c8a90a6) | Pressing the login dialog's cancel key again cancels again, and Enter after a cancelled prompt leaves the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c8e3d86](#bf-c8e3d86) | Settings submenus: the type-to-filter box no longer shows a hardware cursor marker (Pi never focuses it), and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c910f98](#bf-c910f98) | fix(photonimage): decode Radiance HDR as Photon does | PiG's own defect | All platforms | Unreleased |
+| [BF-c96c624](#bf-c96c624) | A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the… | PiG's own defect | All platforms | Unreleased |
 | [BF-c98be55](#bf-c98be55) | The renderer's width and height are read through one atomic snapshot | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c98e9f9](#bf-c98e9f9) | Without `HOME` set, the project trust check takes the home directory from the user database, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c9acbea](#bf-c9acbea) | A Session listener that queues more messages than the Session's event buffer holds (64 by default), while it… | PiG's own defect | All platforms | 0.5.0 |
@@ -26199,6 +26200,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `c910f98660` (2026-10-29)
 - **Tests:** `internal/photonimage/hdrdecode_test.go::TestDecodeHDRReadsBothRunLengthEncodingsAndFlatPixels`, `internal/photonimage/hdrdecode_test.go::TestDecodeHDRRefusesWhatImageRefuses`, `internal/photonimage/hdrdecode_test.go::TestDecodeRoutesHDR`, `internal/photonimage/hdrdecode_test.go::TestExp2fIsExactForTheExponentsOfRGBE`, `internal/photonimage/hdrdecode_test.go::TestHDRConversionTableIsLibms`
+
+### BF-c96c624
+
+**A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the session ends, and creates none unless an extension handler fails.
+- **Root cause:** A Piglet Binary with a fused extension put pig-ext-fused-N.log into the temporary directory for the whole session and left it behind when the process ended through TerminateHostProcesses (a hung-up terminal, SIGINT, the crash exit, the end of print and rpc mode). Pi writes no such file.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c96c624b89` (2026-11-15)
+- **Tests:** `coding/extension/host/subprocess/ext_log_test.go::TestFusedExtLogIsExportedAndRemoved`, `coding/extension/host/subprocess/fused_ext_log_test.go::TestFusedExtLogEndsWithTheProcess`, `coding/extension/host/subprocess/fused_ext_log_test.go::TestFusedExtLogIsCreatedByTheFirstDiagnostic`, `coding/extension/host/subprocess/fused_ext_log_test.go::TestWithExtLogDropsThePermissionToCreate`, `extensions/sdk/diagnostic_create_test.go::TestDiagnosticCreatesTheLogOnlyWithThePermission`, `extensions/sdk/diagnostic_create_test.go::TestDiagnosticDoesNotCreateThroughASymbolicLink`, `test/integration/fused_ext_log_exit_test.go::TestFusedExtensionLogInTempDirectory`
+- **Release note:** A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the session ends, and creates none unless an extension handler fails.
 
 ### BF-c98be55
 
