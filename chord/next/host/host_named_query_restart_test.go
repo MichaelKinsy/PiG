@@ -232,12 +232,15 @@ func TestNamedQueryProvidersRestartARemovedProvidersReadsLeaveTheIndexItsReaders
 		t.Fatalf("%d reads of the removed provider's table stay in the index", len(reads))
 	}
 	// Mine (Go-only): the same check on the real tables the view's read uses (the provider's own and the gates', which its
-	// `exists` joins), over which it was registered before the reload.
-	for _, table := range []string{"app.provider:texts", "app.gates:gate"} {
-		if reads := chordStore.Reads.On(table); len(reads) != 0 {
-			t.Fatalf("%d reads over %s stay in the index after the provider was removed", len(reads), table)
-		}
-	}
+	// `exists` joins), over which it was registered before the reload. The read leaves the index a few scheduler turns after
+	// `flushed` and `deliveredOn` return (probe, 60 runs under race: still registered at that point in 28, gone after 1 to 5
+	// `Gosched`, never kept): a hop of the old attempt's end that no join of the helpers covers (Pi's one microtask chain
+	// has ended by `await flushed()`), so the check waits for the index to drop it.
+	scopeEventually(t, "the removed provider's reads left the index", func() bool {
+		flushed(h.Host)
+		deliveredOn(h.Host)
+		return len(chordStore.Reads.On("app.provider:texts")) == 0 && len(chordStore.Reads.On("app.gates:gate")) == 0
+	})
 	runsBefore := h.runs()
 	h.gate(t, h.meter, 1)
 	h.gate(t, h.meter, 3)
