@@ -237,8 +237,11 @@ type admDocCode struct {
 	Natives *admLog
 	// Closing: what the native's close waits for.
 	Closing chan struct{}
-	Linger  *time.Duration
-	Admit   Admit
+	// OpenIgnoresAbandon: the native's open waits for Opened alone, as Pi's (it takes no context): an attempt abandoned while it
+	// opens still gets its open to the end, then closes the native. Without it the open also ends with its context.
+	OpenIgnoresAbandon bool
+	Linger             *time.Duration
+	Admit              Admit
 	// Declare: a declaration only the factory makes (a job: refused; a throw).
 	Declare func(self Self, mode string)
 	// Write: what `write` does before it answers.
@@ -266,16 +269,22 @@ func admDocFacet(code admDocCode, contract *contracts.Contract, shares *admLog) 
 			text := self.State(admText).(*documents.Singleton)
 			if code.Opened != nil {
 				self.Open(func(ctx context.Context) (any, error) {
-					select {
-					case <-code.Opened:
-					case <-ctx.Done():
-						return nil, ctx.Err()
+					if code.OpenIgnoresAbandon {
+						// Pi's open takes no context: `await code.opened`, an abandoned attempt's open still ends.
+						_, _ = chordctx.Receive(context.WithoutCancel(ctx), code.Opened)
+					} else {
+						select {
+						case <-code.Opened:
+						case <-ctx.Done():
+							return nil, ctx.Err()
+						}
 					}
 					code.Natives.Append("open")
 					return nil, nil
-				}, func(any, NativeCloseReason, context.Context) error {
+				}, func(_ any, _ NativeCloseReason, ctx context.Context) error {
 					if code.Closing != nil {
-						<-code.Closing
+						// `await code.closing`: parked through the host's primitive (the join treats the close's task as idle).
+						_, _ = chordctx.Receive(context.WithoutCancel(ctx), code.Closing)
 					}
 					code.Natives.Append("close")
 					return nil
@@ -1575,6 +1584,26 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		must(t, s.h.Close(background))
 	})
 
+	t.Run("a decision change while the attempt opens a native abandons it: the native closes, the next attempt admits", func(t *testing.T) {
+		built, natives, opened := &admLog{}, &admLog{}, make(chan struct{})
+		s := admServed(t, admDocCode{Built: built, Opened: opened, Natives: natives, OpenIgnoresAbandon: true}, admOptions{Mode: "read"})
+		doc := mustHold(t, s.h, admDoc, jsonObject("id", "a"))
+		s.delivered()
+		expectStrings(t, built.Items(), "a:read")
+		if kind := stateOfRef(doc).Kind; kind != RefStateLoading {
+			t.Fatalf("state = %v, want loading", kind)
+		}
+		s.set("none", "server")
+		admDenied(t, stateOfRef(doc), "no access")
+		close(opened)
+		s.delivered()
+		// Opened after its attempt was abandoned: closed at once, and nothing went live.
+		expectStrings(t, natives.Items(), "open", "close")
+		admDenied(t, stateOfRef(doc), "no access")
+		doc.Release()
+		must(t, s.h.Close(background))
+	})
+
 	t.Run("a denial between staging and activation: the new factory never runs", func(t *testing.T) {
 		built := &admLog{}
 		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "read"})
@@ -1679,6 +1708,30 @@ func TestAdmissionWhatADenialRemoves(t *testing.T) {
 		s.delivered()
 		expectValues(t, frames.Items(), failedFrame("no access"), "t")
 		expectValues(t, shouts.Items(), failedFrame("no access"), "T")
+		must(t, s.h.Close(background))
+	})
+
+	t.Run("shows the denial before the sealed attempt's teardown finished", func(t *testing.T) {
+		natives, closing, opened := &admLog{}, make(chan struct{}), make(chan struct{})
+		close(opened)
+		s := admServed(t, admDocCode{Built: &admLog{}, Opened: opened, Natives: natives, Closing: closing}, admOptions{Mode: "read"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		s.set("none", "server")
+		admDenied(t, stateOfRef(doc), "no access")
+		s.delivered()
+		expectStrings(t, natives.Items(), "open")
+		// Allowed again while the old native still closes: the factory waits for that teardown, the admission did not.
+		s.set("read", "server")
+		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLoading {
+			t.Fatalf("state = %v, want loading", kind)
+		}
+		close(closing)
+		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
+		expectStrings(t, natives.Items(), "open", "close", "open")
 		must(t, s.h.Close(background))
 	})
 }
