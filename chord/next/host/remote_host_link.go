@@ -164,12 +164,12 @@ func (l *hostLink) tick(now, paused int64, ping, close time.Duration) {
 // Opened implements link.ChannelHandler: the peer's `hello` arrived.
 func (l *hostLink) Opened() {
 	l.host.loop().Run(func() {
-		// First: whoever asked knows the peer before anything else it sent is handled, and before this host sends.
-		l.consumer.opened(l.channel.PeerCalls())
-		l.host.linkOpened(l)
+		// First: whoever asked knows the peer before anything else it sent is handled, and before this host sends (host-link.ts `opened`).
 		if l.opened != nil {
 			l.opened(l.channel.Peer())
 		}
+		l.consumer.opened(l.channel.PeerCalls())
+		l.host.linkOpened(l)
 	})
 }
 

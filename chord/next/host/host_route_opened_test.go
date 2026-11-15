@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -91,6 +92,56 @@ func TestRouteResolvesOpenedIsToldThePeersIncarnationAtTheHandshakeBeforeThePeer
 		r.Transported()
 		if got := len(recorded()); got != 3 {
 			t.Fatalf("events = %v, want no event for a link closed before its handshake", recorded())
+		}
+	})
+}
+
+// lateLink is a link whose listener is set on a goroutine of its own: what arrives on it is handled after the section that made the link
+// ended, with the link registered on its host (a peer's `hello` that arrived first is handled while the link is made, before that).
+type lateLink struct{ link.Link }
+
+func (l lateLink) OnMessage(listener func(message []byte)) { go l.Link.OnMessage(listener) }
+
+// Go-only; the order of Pi's host-link.ts `opened()` at f57cd9484: `this.#opened?.(this.#channel.peer)` first, then `consumer.opened(...)`,
+// then `host.linkOpened`. "First: whoever asked knows the peer before anything else it sent is handled, and before this host sends": the
+// route's `opened` is told before this host's own side of the link is opened, so before the calls that waited for the peer's `hello`
+// go out. Read in the section that opens the link, where the consumer side learns the peer's call window right after `opened`.
+func TestRouteResolvesOpenedIsToldBeforeThisHostsOwnSideOfTheLinkIsOpened(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		var mu sync.Mutex
+		var events []string
+		told := make(chan struct{})
+		var r *relayed
+		r = relay(t, relayedOptions{
+			Resolve: func(_ contracts.Address, made func() resolved, _ context.Context) (resolved, error) {
+				worker := made()
+				worker.Link = lateLink{worker.Link}
+				worker.Opened = func(string) {
+					defer close(told)
+					mu.Lock()
+					defer mu.Unlock()
+					for _, l := range r.Server.(*chordHost).links {
+						if l.role == linkRoleRoute {
+							events = append(events, fmt.Sprintf("opened, the peer's call window known to this host: %t", l.consumer.greeted != nil))
+						}
+					}
+				}
+				return worker, nil
+			},
+		})
+		_, err := r.Server.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
+		must(t, err)
+		// The worker's `hello` goes out once its host loaded; its arrival is what `opened` is told at.
+		r.WorkerLoaded(t, "session|S1")
+		select {
+		case <-told:
+		case <-time.After(10 * time.Second):
+			t.Fatal("never happened: the route's opened was told")
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		if want := []string{"opened, the peer's call window known to this host: false"}; !reflect.DeepEqual(events, want) {
+			t.Fatalf("events = %v, want %v", events, want)
 		}
 	})
 }
