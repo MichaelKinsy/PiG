@@ -3,10 +3,12 @@
 package codingagent
 
 import (
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/compactprogress"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // pig divergence (D652): the compaction line's text for each elapsed time and streamed size.
@@ -42,14 +44,14 @@ func TestTickCompactionMessageFollowsClockAndCounter(t *testing.T) {
 	if m.tickCompactionMessage(base.Add(300 * time.Millisecond)) {
 		t.Fatal("the line changed within the first second with no tokens")
 	}
-	if !m.tickCompactionMessage(base.Add(7*time.Second)) || line() != "Compacting context... 7s (escape to cancel)" {
+	if !m.tickCompactionMessage(base.Add(7 * time.Second)) || line() != "Compacting context... 7s (escape to cancel)" {
 		t.Fatalf("line %q", line())
 	}
 	if m.tickCompactionMessage(base.Add(7*time.Second + 400*time.Millisecond)) {
 		t.Fatal("the line was rewritten with neither seconds nor tokens changed")
 	}
 	progress.Add(56_800)
-	if !m.tickCompactionMessage(base.Add(8*time.Second)) || line() != "Compacting context... 8s · ~14k tokens (escape to cancel)" {
+	if !m.tickCompactionMessage(base.Add(8 * time.Second)) || line() != "Compacting context... 8s · ~14k tokens (escape to cancel)" {
 		t.Fatalf("line %q", line())
 	}
 	// a retry of the summary shows the indicator again; the compaction's start is kept
@@ -85,4 +87,44 @@ func TestCompactionProgressAllocations(t *testing.T) {
 		t.Fatalf("compactionStatusMessage allocates %v times, want 1", got)
 	}
 	_ = sink
+}
+
+// Ticks within one second that bring no new tokens change nothing: no rewrite, so no render is asked for and nothing is allocated.
+func TestTickCompactionMessageChangesNothingWithinASecond(t *testing.T) {
+	m, _, _ := newFrontendEditorProbe(t)
+	m.opts.SessionHandle = &recordingCompactHandle{progress: new(compactprogress.Progress)}
+	m.showCompactionStatusIndicator("manual")
+	base := m.statusLastFrame
+	m.tickCompactionMessage(base.Add(2 * time.Second))
+	changed := 0
+	for i := range 10 {
+		if m.tickCompactionMessage(base.Add(2*time.Second + time.Duration(i)*80*time.Millisecond)) {
+			changed++
+		}
+	}
+	if changed != 0 {
+		t.Fatalf("%d of 10 ticks within one second rewrote the line", changed)
+	}
+	if got := testing.AllocsPerRun(100, func() { m.tickCompactionMessage(base.Add(2 * time.Second)) }); got != 0 {
+		t.Fatalf("an unchanged tick allocates %v times, want 0", got)
+	}
+	m.clearStatusIndicator("")
+}
+
+// In a 40-column terminal the border row is 40 cells and cuts the line before "(escape to cancel)": it reads `── ⠋ Compacting context... 1m 12s ──────` (observed). The old line, 40 cells long, did not fit the 35 cells the border gives a status either; its row at 40 columns was not measured here.
+func TestCompactionLineInANarrowTerminal(t *testing.T) {
+	m, _, _ := newFrontendEditorProbe(t)
+	m.editor.EmbedWorkingStatus = true
+	m.opts.SessionHandle = &recordingCompactHandle{progress: new(compactprogress.Progress)}
+	m.showCompactionStatusIndicator("manual")
+	m.tickCompactionMessage(m.statusLastFrame.Add(72 * time.Second))
+	row := m.editor.Render(40)[0]
+	if got := widthx.VisibleWidth(row); got != 40 {
+		t.Fatalf("border row %q is %d cells, want 40", row, got)
+	}
+	if !strings.Contains(row, "Compacting context... 1m 12s") || strings.Contains(row, "(escape") {
+		t.Fatalf("border row %q at 40 columns", row)
+	}
+	t.Logf("40-column border row: %q", row)
+	m.clearStatusIndicator("")
 }
