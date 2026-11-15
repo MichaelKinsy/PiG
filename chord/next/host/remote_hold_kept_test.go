@@ -3,10 +3,12 @@ package host
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
 	"time"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -662,6 +664,90 @@ func TestHoldCallsCrossingAFailedOrABoundOnTheWire(t *testing.T) {
 		if k.peer.Closed() {
 			t.Fatalf("the link closed")
 		}
+	})
+
+	// hold.test.ts: calls in flight across a `loading` unbind › fences each unacknowledged bound: A, B, C before any ack, a call between is decoded by what its consumer had applied (slice 14 §2.4)
+	t.Run("fences each unacknowledged bound: A, B, C before any ack, a call between is decoded by what its consumer had applied (slice 14 §2.4)", func(t *testing.T) {
+		ran := &keptRan{}
+		k := keptServer(t, keptCode{n: 1, ran: ran}, keptOptions{noAck: true})
+		k.peer.Ack(link.Optional[int]{})
+		// A (variant a, acknowledged), then B (variant b) and C (variant a again), neither acknowledged.
+		k.reload(keptCode{n: 2, variant: "b", ran: ran})
+		if bound := k.peer.Next("bound").(*link.BoundMessage); bound.Holds[0].Variant != wireNames(t, keptContract, "b").Variant {
+			t.Fatalf("variant = %d, want b's", bound.Holds[0].Variant)
+		}
+		k.reload(keptCode{n: 3, variant: "a", ran: ran})
+		if bound := k.peer.Next("bound").(*link.BoundMessage); bound.Holds[0].Variant != wireNames(t, keptContract, "a").Variant {
+			t.Fatalf("variant = %d, want a's", bound.Holds[0].Variant)
+		}
+		// Sent before B was applied: index 0 is A's `bump`.
+		k.peer.Send(&link.CallMessage{Call: 0, Hold: 0, Method: 0})
+		if call, value := k.result(); call != 0 || value != 3.0 {
+			t.Fatalf("result = %d %v, want 0 3", call, value)
+		}
+		keptWant(t, "ran", ran.all(), []string{"bump"})
+		// B applied and acknowledged, C not yet: index 0 is B's `ping` (one fence would still decode it by A's names).
+		k.peer.Ack(link.Optional[int]{})
+		k.peer.Send(&link.CallMessage{Call: 1, Hold: 0, Method: 0})
+		if call, value := k.result(); call != 1 || value != 3.0 {
+			t.Fatalf("result = %d %v, want 1 3", call, value)
+		}
+		keptWant(t, "ran", ran.all(), []string{"bump", "ping"})
+		// C acknowledged: index 0 is `bump` again.
+		k.peer.Ack(link.Optional[int]{})
+		k.peer.Send(&link.CallMessage{Call: 2, Hold: 0, Method: 0})
+		if call, value := k.result(); call != 2 || value != 3.0 {
+			t.Fatalf("result = %d %v, want 2 3", call, value)
+		}
+		keptWant(t, "ran", ran.all(), []string{"bump", "ping", "bump"})
+		if k.peer.Closed() {
+			t.Fatalf("the link closed")
+		}
+	})
+
+	// hold.test.ts: calls in flight across a `loading` unbind › drops a fence with the ack of its bound: a consumer that never calls keeps none (GC)
+	t.Run("drops a fence with the ack of its bound: a consumer that never calls keeps none (GC)", func(t *testing.T) {
+		// The live attempt alone: a sealed one keeps the error it was sealed with.
+		var mu sync.Mutex
+		var self Self
+		server := newHost(t, HostOptions{Address: new(Server.Address(nil)), Principal: serverPrincipal(), OnError: func(HostError) {}})
+		facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(keptContract, func(_ *delta.JsonObject, _ data.Principal, declared Self) (contracts.Implementation, error) {
+				mu.Lock()
+				self = declared
+				mu.Unlock()
+				ping := func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return 1.0, nil }
+				return contracts.Implementation{Variant: "a", Members: contracts.VariantImplementation{
+					State:   map[string]chord.Watchable[delta.JsonValue]{"label": constant("v1")},
+					Methods: map[string]contracts.MethodFunction{"bump": ping, "ping": ping},
+				}}, nil
+			}, ServeOptions{})
+		})
+		mustLoad(t)(server.Load([]HostFacet{{Name: "@test/app", Facet: facet}}, background))
+		a, b := link.MemoryLinkPair()
+		must(t, server.Accept(a, LinkOptions{Principal: ownerPrincipal(), Codec: testCodec()}, background))
+		// It acknowledges every `bound` and sends no call.
+		peer := newRawPeer(t, b, rawPeerOptions{})
+		peer.Next("hello")
+		rhHold(peer, 0, keptContract)
+		peer.Next("bound")
+		// Each failure it is told is what the fence of the next `bound` keeps for calls sent before it.
+		var failures []weak.Pointer[data.ChordError]
+		for round := range 4 {
+			failure := data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: fmt.Sprintf("failure %d", round)}, nil)
+			failures = append(failures, weak.Make(failure))
+			mu.Lock()
+			current := self
+			mu.Unlock()
+			failLive(current, failure)
+			peer.Next("failed")
+			peer.Send(&link.RetryMessage{Hold: 0, Hops: 16})
+			peer.Next("bound")
+			rhSync(t, peer)
+		}
+		// Every `bound` was acknowledged: no fence is left to keep what the consumer was told before it. (The last failure
+		// is still reachable from this test's own frame, fences or not.)
+		expectCollected(t, failures[:len(failures)-1]...)
 	})
 
 	// hold.test.ts: a call crossing a removal's failed gets the removal's cause, never not_ready (audit F3)

@@ -286,7 +286,7 @@ func deleteFrom(site hostDataSite, address contracts.Address, ctx context.Contex
 				return err
 			}
 			counts, err = coordinated(site, owners, key, ctx, func(commit hostdata.Commit) (store.HostDataCounts, error) {
-				return hostdata.Delete(site.store, key, commit, ctx)
+				return hostdata.Delete(site.store, key, commit, nil, ctx)
 			})
 			return err
 		})

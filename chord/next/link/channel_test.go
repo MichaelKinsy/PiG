@@ -381,6 +381,80 @@ func TestTrustedLinks(t *testing.T) {
 	})
 }
 
+// TestAFence ports `a fence (slice 14 §2.3)` of channel.test.ts. The callbacks run on the link's delivery goroutine when
+// the peer's `pong` is read, so each case settles the pair (`transported`) before it looks; nothing sleeps.
+func TestAFence(t *testing.T) {
+	var mu sync.Mutex
+	var ran []string
+	record := func(name string) func() {
+		return func() {
+			mu.Lock()
+			defer mu.Unlock()
+			ran = append(ran, name)
+		}
+	}
+	ranNow := func() []string {
+		mu.Lock()
+		defer mu.Unlock()
+		return append([]string{}, ran...)
+	}
+	want := func(t *testing.T, expected ...string) {
+		t.Helper()
+		if got := ranNow(); !slices.Equal(got, expected) && (len(got) != 0 || len(expected) != 0) {
+			t.Fatalf("ran %v, want %v", got, expected)
+		}
+	}
+	eachCodec(t, func(t *testing.T, codec link.Codec) {
+		mu.Lock()
+		ran = nil
+		mu.Unlock()
+		t.Run("runs after the pong of its own ping: a liveness pong in transit does not end it", func(t *testing.T) {
+			setup := openChannel(t, codec, true, true)
+			// A liveness `ping` goes out (the link was silent); its `pong` is still in transit when the fence starts.
+			setup.channel.Tick(20_000, 0, 15_000, 30_000)
+			setup.channel.Fence(record("first"))
+			setup.channel.Fence(record("second"))
+			transported(setup.ends, setup.peerEnd)
+			pings := 0
+			for _, kind := range setup.peer.kinds() {
+				if kind == "ping" {
+					pings++
+				}
+			}
+			if pings != 3 {
+				t.Fatalf("pings = %d, want 3", pings)
+			}
+			setup.peer.send(&link.PongMessage{})
+			transported(setup.ends, setup.peerEnd)
+			want(t)
+			setup.peer.send(&link.PongMessage{})
+			transported(setup.ends, setup.peerEnd)
+			want(t, "first")
+			setup.peer.send(&link.PongMessage{})
+			transported(setup.ends, setup.peerEnd)
+			want(t, "first", "second")
+		})
+
+		t.Run("is cancelled by what it returned, and runs nothing once the link closed", func(t *testing.T) {
+			mu.Lock()
+			ran = nil
+			mu.Unlock()
+			setup := openChannel(t, codec, true, true)
+			cancel := setup.channel.Fence(record("cancelled"))
+			setup.channel.Fence(record("kept"))
+			cancel()
+			setup.peer.send(&link.PongMessage{})
+			setup.peer.send(&link.PongMessage{})
+			transported(setup.ends, setup.peerEnd)
+			want(t, "kept")
+			setup.channel.Fence(record("closed"))
+			setup.channel.Close()
+			transported(setup.ends, setup.peerEnd)
+			want(t, "kept")
+		})
+	})
+}
+
 // holding is a channel whose handler handles `release` of hold 0 asynchronously (until finished), every other message
 // at once.
 type holding struct {
