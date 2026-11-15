@@ -41,6 +41,19 @@ type RouteOptions struct {
 	// order: the synchronous part runs while RouteHandle.Retry's caller is inside the host's loop, so it must not enter a
 	// loop or lock that the caller of Retry or Suspend may hold; see the package doc, "Lock order".
 	Resolve func(address contracts.Address, ctx context.Context) (ResolvedLink, error)
+	// Admit is the route's admission (slice 14 §2.3): asked once per principal and address with holds on the route, after
+	// `Authorize`, before anything is resolved or forwarded for that principal. It declares what it reads (references,
+	// registries, derives, live queries, acting as this host) and returns a watchable of `Allow(nil)` or `Deny(reason)`:
+	// until its first allow a hold is `loading`; a denial fails the principal's holds to the address `failed { denied }`,
+	// releases them at the address's host and rejects their calls `forbidden/revoked`; a later allow shows them `loading`
+	// and forwards them again. While what it reads has failed, the holds bound on the address's link stay, new ones wait,
+	// and a new link of the address holds nothing until it can be read again (fail closed). **It reads only contracts the
+	// app's API owns**: a route is base code, it never reloads and keeps the contract tokens it was built with. It may hold
+	// nothing placed behind this route (`invalid/cycle`). **With Admit, Resolve must return the link to the final provider
+	// that serves the address**, never to another relay: a hold released by a denial is forwarded again under its id once a
+	// `ping` sent on the allow was answered, which proves the released hold's replies have all arrived only when the peer
+	// that answers is the one that sent them. Nil: no admission.
+	Admit RouteAdmit
 }
 
 // ResolvedLink is the link a route's Resolve made, and what it says of it.
@@ -112,6 +125,8 @@ type route struct {
 	addresses map[string]*routed
 	// links are the addresses' links, which tell their address when they close, and whether each completed its handshake.
 	links map[*hostLink]*routeLinkEntry
+	// admission is its admission's decisions, when it has an Admit; nil otherwise.
+	admission *routeAdmission
 }
 
 // newRoute makes the route of kind. It returns the error `kindParams` throws for a kind not declared by hostKind.
@@ -124,11 +139,15 @@ func newRoute(kind *contracts.HostKind, options RouteOptions, host *chordHost, c
 		kind: kind.Kind, params: params, options: options, host: host, context: ctx,
 		addresses: map[string]*routed{}, links: map[*hostLink]*routeLinkEntry{},
 	}
+	if options.Admit != nil {
+		r.admission = newRouteAdmission(host, r, options.Admit, ctx)
+	}
 	return r, nil
 }
 
 // path is the path to the address with params, for a hold acting as principal: the params checked against the kind
-// (`invalid/host_address`), then `authorize` (`forbidden` when it refuses; an error is the hold's failure).
+// (`invalid/host_address`), then `authorize` (`forbidden` when it refuses; an error is the hold's failure). A hold this
+// route's own admission makes is refused `invalid/cycle`: it would wait on itself.
 func (r *route) path(params any, principal data.Principal, ctx context.Context) (*path, error) {
 	address, err := data.CheckAddress(r.kind, r.params, params, ctx)
 	if err != nil {
@@ -144,10 +163,17 @@ func (r *route) path(params any, principal data.Principal, ctx context.Context) 
 	if !admitted {
 		return nil, data.Forbidden(address.Key + ": not authorized")
 	}
+	if r.admission != nil && r.admission.admitting(ctx) {
+		return nil, data.Invalid(data.ReasonCycle, address.Key+": a route's admission holds a type placed behind its own route")
+	}
 	existing := r.addresses[address.Key]
 	if existing == nil {
 		made := &routed{address: address}
-		made.path = newPath(func(event pathEvent) { r.changed(made, event) }, func() bool { return made.suspended }, nil)
+		var gate pathGate
+		if r.admission != nil {
+			gate = r.admission.gate(address, func() *path { return made.path })
+		}
+		made.path = newPath(func(event pathEvent) { r.changed(made, event) }, func() bool { return made.suspended }, gate)
 		existing = made
 		r.keys = append(r.keys, address.Key)
 		r.addresses[address.Key] = made
@@ -240,6 +266,9 @@ func (r *route) changed(routed *routed, event pathEvent) {
 		switch {
 		case !routed.path.held():
 			r.forget(routed.address.Key)
+		case !routed.path.wanted():
+			// Held only by holds its admission holds back: nothing resolves for them.
+			return
 		case routed.suspended:
 			routed.path.unreachable(suspendedError(routed))
 		case routed.failure != nil:
@@ -257,10 +286,10 @@ func (r *route) forget(key string) {
 	}
 }
 
-// resolveIfHeld resolves the address if it has holders, no link, no running `resolve` and no suspension, and reports
-// whether it did.
+// resolveIfHeld resolves the address if a holder wants its link (one the route's admission allows; any without an
+// admission) and it has no link, no running `resolve` and no suspension, and reports whether it did.
 func (r *route) resolveIfHeld(routed *routed) bool {
-	if !routed.path.held() || routed.path.link() != nil || routed.resolving || r.host.closing() {
+	if !routed.path.wanted() || routed.path.link() != nil || routed.resolving || r.host.closing() {
 		return false
 	}
 	r.resolve(routed, nil)

@@ -180,6 +180,9 @@ func (r *remoteObject) endHold(outcome string, err error) {
 
 func (*remoteObject) kind() string { return "remote" }
 
+// principal is the principal its reference acts for (Pi's `caller.principal`).
+func (r *remoteObject) principal() data.Principal { return r.caller.principal }
+
 func (r *remoteObject) label() string { return r.name }
 
 func (r *remoteObject) state() *RefState { return r.refState }

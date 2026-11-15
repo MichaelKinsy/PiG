@@ -143,6 +143,9 @@ func (h *relayedHold) kind() string { return "relayed" }
 // caller is whom the hold acts for.
 func (h *relayedHold) caller() caller { return h.from }
 
+// principal is the principal the hold acts for (Pi's `caller.principal`).
+func (h *relayedHold) principal() data.Principal { return h.from.principal }
+
 // start takes the pending hold's place downstream and holds upstream (now, or when the path has a link).
 func (h *relayedHold) start() {
 	h.downstream.relayed(h)

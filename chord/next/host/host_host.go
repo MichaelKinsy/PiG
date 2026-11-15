@@ -1824,6 +1824,12 @@ func (h *chordHost) isOwn(principal data.Principal, ctx context.Context) bool {
 	return data.PrincipalKey(own, ctx, h.principalKey) == data.PrincipalKey(principal, ctx, h.principalKey)
 }
 
+// principalKeyOf is the principal key of principal (`HostOptions.PrincipalKey`): a route's admission keeps one decision per
+// key. Principals on this host are its own and the ones its links stamp.
+func (h *chordHost) principalKeyOf(principal data.Principal, ctx context.Context) string {
+	return data.PrincipalKey(principal, ctx, h.principalKey)
+}
+
 // linkOf is a new link of role, registered with the heartbeat while open.
 func (h *chordHost) linkOf(l link.Link, role linkRole, options LinkOptions, ctx context.Context) *hostLink {
 	codec := options.Codec

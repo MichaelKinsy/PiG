@@ -23,6 +23,7 @@ type recordingHolder struct {
 
 func (*recordingHolder) kind() string                  { return "recording" }
 func (*recordingHolder) span() telemetry.TelemetrySpan { return nil }
+func (*recordingHolder) principal() data.Principal     { return nil }
 func (h *recordingHolder) attach(l *hostLink) {
 	*h.log = append(*h.log, h.name+"@"+h.names[l])
 }

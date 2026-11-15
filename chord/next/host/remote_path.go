@@ -17,6 +17,9 @@ import (
 type upstream interface {
 	// kind is "remote" for a remote object, "relayed" for a relayed hold.
 	kind() string
+	// principal is the principal it acts for (Pi's `caller.principal`): what a route's admission decides about. A hold routed
+	// over a route acts for one (route.path refused a hold without).
+	principal() data.Principal
 	// attach holds it on link, the path's link now (a first hold, or a re-hold on a new link).
 	attach(link *hostLink)
 	// dropped: the path's link closed; it goes loading until the next link's hold is bound.
