@@ -7074,6 +7074,30 @@
       ]
     },
     {
+      "id": "BF-23b801c",
+      "title": "The model catalog is now the live one",
+      "symptom": "The model catalog is now the live one.",
+      "rootCause": "The catalog is Pi's own generator over a committed recording of the live sources (automation/gen/catalog-source: responses.tar.gz, meta.json, the three pi-overlay files; fetched once at 2026-11-15T15:26:04.771Z by make model-catalogs-live, never fetched again by a build). Owner decision 2026-11-15T15:19:41Z. A refresh is: replace the recording, make model-catalogs, make generate; no test edit.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The model catalog is now the live one. It was the snapshot the published Pi 1.5.2 package shipped on its build day (1643 chat, 66 image and 64 classifier models); it is Pi's own catalog generator over a committed recording of the live sources taken on 2026-11-15 (1663 chat, 72 image and 72 classifier models: 38 chat models added and 18 removed, 71 records with a changed limit, price or capability), so models released since 1.5.2 can be selected and priced. The recording is data in `automation/gen/catalog-source`; `make model-catalogs` replays it offline and `make model-catalogs-live` is the only target that fetches, so a refresh is a reviewed data change that needs no test edit.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "23b801cc09",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "ai/catalog_options_upstream_test.go::TestTogetherModels",
+        "ai/zen_upstream_test.go::TestOpenCodeModelsSmokeUpstream",
+        "cmd/gen-models/catalog_recording_test.go::TestGeneratorMatchesPisGeneratorOnTheCommittedRecording"
+      ]
+    },
+    {
       "id": "BF-23ee6e1",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",
@@ -18144,7 +18168,6 @@
         "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData",
         "ai/catalog_oracle_data_test.go::TestGeneratedCatalogsMatchOraclePi",
         "ai/radius_default_options_test.go::TestNewRadiusProviderMatchesPiForOptionalOptions",
-        "ai/registry_test.go::TestCatalogPin100",
         "ai/registry_test.go::TestRegistryHasModels",
         "ai/registry_test.go::TestRuntimeDiscoveryIncludesRadiusCatalog",
         "automation/pin/test_pin.py",

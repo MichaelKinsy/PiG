@@ -273,6 +273,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-234664c](#bf-234664c) | With `codemode.mode: "on"`, a tool whose output schema is a union of objects or any other multi-line type no… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-2359a0a](#bf-2359a0a) | In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty… | A Pi defect that PiG fixed first | macOS | 0.7.0 |
 | [BF-23841dc](#bf-23841dc) | The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-23b801c](#bf-23b801c) | The model catalog is now the live one | PiG's own defect | All platforms | Unreleased |
 | [BF-23ee6e1](#bf-23ee6e1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-243927e](#bf-243927e) | Fix the lint reds the batch 6 group 1 merges carried: rustfmt for the Rust SDK and its fixture, box the large… | PiG's own defect | All platforms | Unreleased |
 | [BF-24872ab](#bf-24872ab) | Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models… | PiG's own defect | All platforms | 0.5.0 |
@@ -5774,6 +5775,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/evals/evalsuites/audit_tool_test.go::TestSubmitAuditParametersKeepTheirAuthoredOrder`
 - **Release note:** The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{"type":"string","const":...}`), where PiG sent a string enum; the whole schema is exactly what Pi's TypeBox writes.
 
+### BF-23b801c
+
+**The model catalog is now the live one**
+
+- **Source:** PiG's own defect
+- **Symptom:** The model catalog is now the live one.
+- **Root cause:** The catalog is Pi's own generator over a committed recording of the live sources (automation/gen/catalog-source: responses.tar.gz, meta.json, the three pi-overlay files; fetched once at 2026-11-15T15:26:04.771Z by make model-catalogs-live, never fetched again by a build). Owner decision 2026-11-15T15:19:41Z. A refresh is: replace the recording, make model-catalogs, make generate; no test edit.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `23b801cc09` (2026-11-15)
+- **Tests:** `ai/catalog_options_upstream_test.go::TestTogetherModels`, `ai/zen_upstream_test.go::TestOpenCodeModelsSmokeUpstream`, `cmd/gen-models/catalog_recording_test.go::TestGeneratorMatchesPisGeneratorOnTheCommittedRecording`
+- **Release note:** The model catalog is now the live one. It was the snapshot the published Pi 1.5.2 package shipped on its build day (1643 chat, 66 image and 64 classifier models); it is Pi's own catalog generator over a committed recording of the live sources taken on 2026-11-15 (1663 chat, 72 image and 72 classifier models: 38 chat models added and 18 removed, 71 records with a changed limit, price or capability), so models released since 1.5.2 can be selected and priced. The recording is data in `automation/gen/catalog-source`; `make model-catalogs` replays it offline and `make model-catalogs-live` is the only target that fetches, so a refresh is a reviewed data change that needs no test edit.
+
 ### BF-23ee6e1
 
 **Fix in shipped code**
@@ -11215,7 +11230,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `433d232815` (2026-10-09), `86fe3dc28b` (2026-10-09), `f1d3eec6de` (2026-10-09), `014c014e74` (2026-10-10), `2de6fe21b8` (2026-10-10), `30ca7fcf7f` (2026-10-10), `5443b6c4d5` (2026-10-10), `691e3e1536` (2026-10-10), `76d1a85e45` (2026-10-10), `90b48897e1` (2026-10-10), `98c1299067` (2026-10-10), `af1289d2d7` (2026-10-10), `b7199a2ba1` (2026-10-10), `c87dea7287` (2026-10-10)
-- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData` and 68 more in docs/bug-ledger.json
+- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData` and 67 more in docs/bug-ledger.json
 - **Release note:** `durable/images` is the image processor of pi-durable: `images.CreatePhotonImages()` (also `images/node` and `images/cloudflare`) is a `tools.ImageProcessor` that turns an image upright by its EXIF orientation, scales it to the limits with a Lanczos3 filter, converts BMP to PNG, and re-encodes PNG or JPEG at falling qualities until it fits. `tools.CreateReadTool(&tools.ReadToolOptions{Images: p})` and `tools.CreateCodingTools(...)` pass it to `read`; `tools.CreateReadTool` now takes its options (nil for none), as `CreateBashTool` does.
 
 ### BF-54660cf
