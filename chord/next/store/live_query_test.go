@@ -167,6 +167,22 @@ func TestLiveQueryReadTakesAnotherTargetAndTheOnePreviousLeavesTheIndex(t *testi
 	qEqual(t, w.value(t), []delta.JsonValue{"B:a", "B:b"})
 }
 
+func TestLiveQueryARunOfAReadItClosedIsDroppedWhenItsCommitAdoptsItAfterwards(t *testing.T) {
+	w := newLiveWorld(t, rowsShape(5))
+	must(t, w.query.Load(w.target(""), background))
+	// A commit's step runs the read; before the commit adopts that run, the query fails (its arguments were refused) and
+	// closes its reads.
+	release, committed := w.pausedPut(t, w.notes, Row{"id": int64(1), "text": "a"}, w.batch)
+	cause := errors.New("arguments refused")
+	w.query.Fail(cause, background)
+	release()
+	must(t, <-committed)
+	// The run is neither the current read's nor a pending one's: it cannot heal the failure.
+	if _, err := w.query.Value(); err != cause {
+		t.Fatalf("Value error = %v, want the failure still", err)
+	}
+}
+
 func TestLiveQueryDetachEndsItsReadsAndItsValueIsTheEnd(t *testing.T) {
 	w := newLiveWorld(t, rowsShape(5))
 	must(t, w.query.Load(w.target(""), background))
