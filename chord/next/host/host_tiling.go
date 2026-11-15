@@ -17,7 +17,8 @@ import (
 //
 // Go forms: `after` and `through` are nil Positions where Pi has `undefined`; a page's `failure` is the error, nil where Pi
 // has `undefined`; Pi's one thread is `mu` over the pages (never held across a call to the owner); Pi's `void read.load()`
-// is a goroutine counted by `loading`, which `Idle` waits for; Pi's `await Promise.all(loads)` is a goroutine per load.
+// is a task of the list's loop (`spawn`: the reader site's Go), which the loop's join counts; Pi's `await Promise.all(loads)` is a
+// task per load, the caller parked until the last ended.
 
 // tilingPage is one page: the rows after `after` through `through` (the last page has none: it is open at its end).
 type tilingPage struct {
@@ -50,12 +51,13 @@ type tilingOwner interface {
 
 // tiling is the pages of a list for one target.
 type tiling struct {
-	target  store.LiveTarget
-	query   *store.OpenQuery
-	first   int
-	order   store.Order
-	owner   tilingOwner
-	loading sync.WaitGroup
+	target store.LiveTarget
+	query  *store.OpenQuery
+	first  int
+	order  store.Order
+	owner  tilingOwner
+	// spawn runs a task of the loop the list lives on (the reader site's Go).
+	spawn func(task func())
 
 	// mu guards pages. Lock order, where this lock meets the store's: mu first, then the reads index (`Reads.mu`, a leaf the
 	// calls a page makes under mu take: `read.Close`, `Know`, `Forget`, the reads a retile opens), never the reverse: the
@@ -65,8 +67,8 @@ type tiling struct {
 	pages []*tilingPage
 }
 
-func newTiling(site store.ReadSite, target store.LiveTarget, first int, owner tilingOwner, ctx context.Context) *tiling {
-	t := &tiling{target: target, first: first, order: target.Spec.Query.Order(), owner: owner}
+func newTiling(site store.ReadSite, target store.LiveTarget, first int, owner tilingOwner, ctx context.Context, spawn func(task func())) *tiling {
+	t := &tiling{target: target, first: first, order: target.Spec.Query.Order(), owner: owner, spawn: spawn}
 	t.query = store.NewOpenQuery(site, target.Spec, store.ReadRows, func() { owner.rebound(t) }, ctx)
 	return t
 }
@@ -177,30 +179,39 @@ func (t *tiling) openPages(bookmarks []store.Position, open bool) (load func()) 
 	pages := slices.Clone(t.pages)
 	t.mu.Unlock()
 	return func() {
-		// `await Promise.all(pages.map((page) => page.read.load()))`: a page's load that panics rejects the whole, which is the
+		// `await Promise.all(pages.map((page) => page.read.load()))` (tiling.ts:127): a task of the loop per page's load; the caller
+		// waits parked (parkedOn: the join counts the loads itself). A page's load that panics rejects the whole, which is the
 		// panic again in the caller, once every load ended.
-		var loads sync.WaitGroup
+		if len(pages) == 0 {
+			return
+		}
+		done := make(chan struct{})
 		var mu sync.Mutex
-		var panicked any
+		remaining, panicked := len(pages), any(nil)
 		for _, page := range pages {
-			loads.Add(1)
-			go func() {
-				defer loads.Done()
+			t.spawn(func() {
 				defer func() {
-					if recovered := recover(); recovered != nil {
-						mu.Lock()
-						defer mu.Unlock()
-						if panicked == nil {
-							panicked = recovered
-						}
+					recovered := recover()
+					mu.Lock()
+					if recovered != nil && panicked == nil {
+						panicked = recovered
+					}
+					remaining--
+					last := remaining == 0
+					mu.Unlock()
+					if last {
+						close(done)
 					}
 				}()
 				page.read.Load()
-			}()
+			})
 		}
-		loads.Wait()
-		if panicked != nil {
-			panic(panicked)
+		parkedOn(done)
+		mu.Lock()
+		failure := panicked
+		mu.Unlock()
+		if failure != nil {
+			panic(failure)
 		}
 	}
 }
@@ -226,14 +237,9 @@ func (t *tiling) close() {
 	t.mu.Unlock()
 }
 
-// idle waits for the loads a cut, a patch or a retile started (Pi's `void read.load()`): what a test waits on instead of
-// a sleep.
-func (t *tiling) idle() { t.loading.Wait() }
-
-// load starts read's first run on its own goroutine, counted by `loading`.
+// load is Pi's `void read.load()` (tiling.ts:211, :259): a task of the loop the list lives on, which the loop's join waits for.
 func (t *tiling) load(read *store.OpenRead) {
-	t.loading.Add(1)
-	go func() { defer t.loading.Done(); read.Load() }()
+	t.spawn(func() { read.Load() })
 }
 
 // page is a page of `(after, through]` that has not run: its read is registered, a load or a commit runs it. Called with
