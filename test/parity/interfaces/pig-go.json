@@ -290697,6 +290697,17 @@
       "shapeHash": "sha256:ede0766011515fc2e8045d8d095bcc352791ce60a0f6ab9a38e2254196288bc5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#beforeSignalExit",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "beforeSignalExit",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#bestFuzzyMatch",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "bestFuzzyMatch",
@@ -292356,6 +292367,17 @@
         "type": "func() string"
       },
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#claimSignalExit",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "claimSignalExit",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#clamp01",
@@ -321847,6 +321869,61 @@
         "type": "func(sc *SlashContext, msg string)"
       },
       "shapeHash": "sha256:12900129f8060c840809a8d2f2f67407be184594d890df38e1b25642a9b3d3ca"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#signalExiting",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "signalExiting",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Bool"
+      },
+      "shapeHash": "sha256:f85422bad8786dcb0ba9a5557ded76dd8411dfb9c02231e59bde3817cf6948dc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#signalExiting.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "signalExiting.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old bool, new bool) (swapped bool)"
+      },
+      "shapeHash": "sha256:1cfabc521fb500e8a2e1bfca48e5d5851f97c691d716d043f3c28146ba2e839a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#signalExiting.Load",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "signalExiting.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#signalExiting.Store",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "signalExiting.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val bool)"
+      },
+      "shapeHash": "sha256:b08db92408a3bb28c5b974a4a4029369f5547ecf4936f9912b657a447ab723c9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#signalExiting.Swap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "signalExiting.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new bool) (old bool)"
+      },
+      "shapeHash": "sha256:af3587a09350ff36e1c8dc05a1555e4ccd20b6d006c06d30aceed17653d9d42e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#skillBlockRe",
