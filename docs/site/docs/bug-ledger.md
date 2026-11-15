@@ -383,6 +383,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4916f14](#bf-4916f14) | A streamed answer's partial commits cost the new text, not the length of the message so far, as in Pi… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-495f017](#bf-495f017) | A `bashExecution` entry records `excludeFromContext: false` when the caller passed `false`, as Pi does; an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-495f017-2](#bf-495f017-2) | A branch-summary entry writes `fromHook: false` in Pi's member order, and the summary has its Spacer | PiG's own defect | All platforms | 0.5.0 |
+| [BF-49f1228](#bf-49f1228) | tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an… | PiG's own defect | All platforms | Unreleased |
 | [BF-4a0bc3d](#bf-4a0bc3d) | The footer context percentage is refreshed after a `!` command is recorded, as Pi's footer asks the session… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4a0d619](#bf-4a0d619) | fix(durable/core): drop the reportWrap the RPT and TKS merges both declared | PiG's own defect | All platforms | Unreleased |
 | [BF-4a70ed5](#bf-4a70ed5) | `coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell… | PiG's own defect | All platforms | 0.7.0 |
@@ -6682,6 +6683,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `495f01780d` (2026-10-09), `6935d5ecea` (2026-10-09), `eb6ae90e7d` (2026-10-09)
 - **Tests:** `internal/codingagent/interactive_compaction_notice_test.go::TestSessionCompactedStatusIsShownByInitialRenderOnly`, `internal/codingagent/output_pad_blocks_test.go::TestResumedBranchSummaryHasPiSpacingAboveItsLabel`, `internal/sessionentry/entry_test.go::TestBashExecutionEntryKeepsExcludeFromContextFalseAndOmitsUnset`, `internal/sessionentry/entry_test.go::TestBranchSummaryEntryWritesFromHookFalseInPiMemberOrder`
 - **Release note:** A branch-summary entry writes `fromHook: false` in Pi's member order, and the summary has its Spacer. "Session compacted N time(s)" is shown only when a session is opened or its transcript is rebuilt.
+
+### BF-49f1228
+
+**tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an…**
+
+- **Source:** PiG's own defect
+- **Symptom:** tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an extension, a program that embeds the package) wrote a frame from the timer goroutine while `ShowOverlay`, `HideCursor`, `ShowCursor`, `WriteRaw` or a stop wrote from the caller: two goroutines were in the terminal writer at once, and a cursor or raw sequence could land among the bytes of a frame, between its rows and its cursor placement.
+- **Root cause:** A frame holds the render lock for all of its writes, so two frames never ran together. HideCursor, ShowCursor, WriteRaw and QueryCellSize held nothing, and through them ShowOverlay, the hide of the last overlay, SetShowHardwareCursor and Start: on a renderer that keeps its own frame timer the caller wrote while a frame of the timer goroutine was in the writer. Pi writes from one event loop (tui.ts showOverlay: terminal.hideCursor(), then requestRender()): a cursor write is before a frame or after it.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `49f12281f3` (2026-11-13)
+- **Tests:** `tui/terminal_writer_ownership_test.go::TestAFrameRequestedDuringAFrameIsDrawnOnceAfterIt`, `tui/terminal_writer_ownership_test.go::TestASecondFrameStartsWhenTheFrameThatIsWritingHasReturned`, `tui/terminal_writer_ownership_test.go::TestOneGoroutineAtATimeIsInTheTerminalWriter`, `tui/terminal_writer_ownership_test.go::TestWritesFromARenderGoBeforeTheBytesOfTheFrame`
+- **Release note:** tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an extension, a program that embeds the package) wrote a frame from the timer goroutine while `ShowOverlay`, `HideCursor`, `ShowCursor`, `WriteRaw` or a stop wrote from the caller: two goroutines were in the terminal writer at once, and a cursor or raw sequence could land among the bytes of a frame, between its rows and its cursor placement. Every write of a renderer now holds its writer lock and a frame keeps it from its first write to its last, so such a write is before the frame or after it, as on the one event loop of Pi; a write a component makes from its `Render` still goes before the bytes of its frame. The interactive mode of pig draws and calls from one loop and showed no fault.
 
 ### BF-4a0bc3d
 
