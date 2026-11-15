@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"reflect"
 	"strings"
@@ -57,7 +58,7 @@ func TestAReviewedCorrectionReplacesTheRootCauseOfItsEntryAndNoOther(t *testing.
 	if err := run(r.root, "0.4.1", false, false); err != nil {
 		t.Fatal(err)
 	}
-	if _, again, _ := readCommitted(r.root); string(again) != string(beforeJSON) {
+	if _, again, _ := readCommitted(r.root); !bytes.Equal(again, beforeJSON) {
 		t.Fatal("regenerating without a corrections file changed the ledger")
 	}
 
