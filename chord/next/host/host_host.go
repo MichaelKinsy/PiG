@@ -467,6 +467,9 @@ type chordHost struct {
 	plugins *namedMap[*loadedPlugin]
 	// reloading is the last reload's end, which the next one waits for (slice 7b section 1); nil before the first.
 	reloading *keyedPromise[struct{}]
+	// admissionHold is the test seam of an attempt's admission hop (internal/admitseam): set, it is handed the hop instead of the
+	// host's queue; nil outside tests. Read and written in sections.
+	admissionHold func(start func())
 	// objects are by identity, in the order they went live (the others where they were created).
 	objects     map[string]*chordObject
 	objectOrder []string

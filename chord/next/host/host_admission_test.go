@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -15,9 +16,11 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/admitseam"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
@@ -240,6 +243,9 @@ type admDocCode struct {
 	Declare func(self Self, mode string)
 	// Write: what `write` does before it answers.
 	Write func(text string, self Self) error
+	// WriteIn: what `write` does before it answers, given the handler's ctx: a handler that waits for another goroutine's work
+	// (Pi `await h.root(...)`) suspends first (chordctx.Suspend), as every wait of a Go handler does.
+	WriteIn func(text string, ctx context.Context) error
 }
 
 // admDocFacet is a facet serving Doc (as contract) and Share, Panel.
@@ -298,6 +304,11 @@ func admDocFacet(code admDocCode, contract *contracts.Contract, shares *admLog) 
 				}
 				if code.Write != nil {
 					if err := code.Write(next, self); err != nil {
+						return nil, err
+					}
+				}
+				if code.WriteIn != nil {
+					if err := code.WriteIn(next, ctx); err != nil {
 						return nil, err
 					}
 				}
@@ -1423,6 +1434,68 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		must(t, s.h.Close(background))
 	})
 
+	t.Run("a denial between staging and activation: the new factory never runs", func(t *testing.T) {
+		built := &admLog{}
+		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "read"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		// Pi's order: the reload stages and commits, the test's `set("none")` is made before the microtask that runs the new
+		// attempt's admission. A Go transaction of a source lands on a later hop than the host's microtask, so the test holds
+		// that hop (internal/admitseam) until the denial has landed; the reload waits for the new attempt's first outcome
+		// and runs on a goroutine. What waits: the hop being handed over (the commit started the attempt).
+		var mu sync.Mutex
+		var starts []func()
+		handed := make(chan struct{}, 8)
+		admitseam.Hold(s.h, func(start func()) {
+			mu.Lock()
+			starts = append(starts, start)
+			mu.Unlock()
+			handed <- struct{}{}
+		})
+		done := make(chan error, 1)
+		go func() {
+			_, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: built}, admDoc, nil)})
+			done <- err
+		}()
+		receive(t, handed)
+		s.set("none", "server")
+		admitseam.Hold(s.h, nil)
+		mu.Lock()
+		held := slices.Clone(starts)
+		mu.Unlock()
+		for _, start := range held {
+			start()
+		}
+		must(t, <-done)
+		s.delivered()
+		if st := stateOfRef(doc); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureDenied {
+			t.Errorf("state = %+v, want failed denied", st)
+		}
+		// Staging rehearsed it once; no attempt ran it.
+		expectStrings(t, built.Items(), "a:read")
+		must(t, s.h.Close(background))
+	})
+
+	// Go only: the other order a caller can get. The denial lands after the new attempt's factory ran: the attempt is sealed
+	// and the object shows the denial; the rehearsal and the run were both built (Pi's "a decision change while settled").
+	t.Run("a denial made after the new factory ran seals its attempt: the rehearsal and the run are both built", func(t *testing.T) {
+		built := &admLog{}
+		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "read"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		live := admWatchStates(t, doc)
+		_, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: built}, admDoc, nil)})
+		must(t, err)
+		// The new attempt activates on tasks `delivered()` does not join: wait for the state the host delivers.
+		live.until(t, admIsLive)
+		s.delivered()
+		expectStrings(t, built.Items(), "a:read", "a:read")
+		s.set("none", "server")
+		s.delivered()
+		if st := stateOfRef(doc); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureDenied {
+			t.Fatalf("state = %+v, want failed denied", st)
+		}
+		expectStrings(t, built.Items(), "a:read", "a:read")
+		must(t, s.h.Close(background))
+	})
 }
 
 func TestAdmissionWhatADenialRemoves(t *testing.T) {
@@ -1466,5 +1539,101 @@ func TestAdmissionWhatADenialRemoves(t *testing.T) {
 		expectValues(t, frames.Items(), failedFrame("no access"), "t")
 		expectValues(t, shouts.Items(), failedFrame("no access"), "T")
 		must(t, s.h.Close(background))
+	})
+}
+
+// admTable is a store table of one string column that is its key.
+func admTable(name, column string) *store.TableDefinition {
+	definition, err := store.DefineTable(name, store.TableOptions{Version: 1, Columns: []store.ColumnProp{store.Col(column, store.Str())}, Key: []string{column}})
+	if err != nil {
+		panic(err)
+	}
+	return definition
+}
+
+var admLogTable = admTable("log", "line")
+
+// admJournal is Journal (Pi's `journal` local type of the commit-in-flight case): `append` puts a line into the `log` table in
+// one transaction, `has` is 1 once the line is in it.
+var admJournal = mustContract(contracts.Local("test.journal", contracts.LocalDeclaration{
+	Version: 1, Params: contracts.Params{},
+	Members: []contracts.LocalEntry{
+		contracts.Mem("append", contracts.NewMethod(contracts.Str())),
+		contracts.Mem("has", contracts.NewMethod(contracts.Str(), contracts.Int())),
+	},
+}))
+
+func admJournalServe(host FacetHost) error {
+	return host.Serve(admJournal, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		self := plain.(StoreSelf)
+		log := self.Table(admLogTable)
+		return contracts.Implementation{Members: contracts.VariantImplementation{Methods: map[string]contracts.MethodFunction{
+			"append": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+				_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, tx.Put(log, jsonObject("line", args)) }, ctx)
+				return nil, err
+			},
+			"has": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+				row, err := log.Get(ctx, jsonObject("line", args))
+				if err != nil || row == nil {
+					return 0.0, err
+				}
+				return 1.0, nil
+			},
+		}}}, nil
+	}, ServeOptions{})
+}
+
+func TestAdmissionACommitInFlightAtTheCut(t *testing.T) {
+	t.Run("stays durable; the sealed attempt publishes nothing after it", func(t *testing.T) {
+		chordStore, _, holdNext := faultyStore(t)
+		errs := &hostErrors{}
+		address := Server.Address(nil)
+		h := newHost(t, HostOptions{Address: &address, Principal: serverPrincipal(), Store: chordStore, OnError: errs.push})
+		// Pi `await h.root(..., context)` inside the handler: Host.Root with a ctx that has the handler's parking signal (it
+		// suspends the handler where it waits: chord/next/DESIGN-go-layout.md, "The handler author's contract") and not its
+		// cancellation (the test's `context`: the seal of the attempt does not abort the root; the handler ran on past the cut).
+		write := func(text string, ctx context.Context) error {
+			_, err := h.Root(func(root Ctx) (any, error) {
+				journal, err := root.Get(admJournal, jsonObject(), GetOptions{})
+				if err != nil {
+					return nil, err
+				}
+				return journal.Call("append", text, root)
+			}, context.WithoutCancel(ctx), RootOptions{})
+			return err
+		}
+		journal := DefineFacet(func(host FacetHost, _ FacetSelf) error { return admJournalServe(host) })
+		mustLoad(t)(h.Load([]HostFacet{
+			{Name: "@test/access", Facet: admAccessFacet(admAccessCode{}, admAccess, nil)},
+			{Name: "@test/doc", Facet: admDocFacet(admDocCode{Built: &admLog{}, WriteIn: write}, admDoc, nil)},
+			{Name: "@test/journal", Facet: journal},
+		}, background))
+		access := mustGet(t, h, admAccess, jsonObject())
+		set := func(mode string) {
+			_, err := access.Call("set", jsonObject("who", "server", "mode", mode), background)
+			must(t, err)
+		}
+		set("write")
+		doc := mustGet(t, h, admDoc, jsonObject("id", "a"))
+		frames := admChanges(t, doc, "text")
+		held := holdNext()
+		writing := admStart(t, doc, "write", "kept")
+		receive(t, held.Entered())
+		// The cut, with the journal's commit admitted and its step running.
+		set("none")
+		// Errorf, not Fatalf: the held commit must be released below whatever the answer was (a failed assertion must not hang).
+		if got := told(admRejection(t, writing)); got[0] != "forbidden" || got[1] != "revoked" {
+			t.Errorf("write = %v, want forbidden/revoked", got)
+		}
+		held.Release()
+		deliveredOn(h)
+		journalRef := mustGet(t, h, admJournal, jsonObject())
+		if has, err := journalRef.Call("has", "kept", background); err != nil || has != 1.0 {
+			t.Fatalf("has(kept) = %v, %v, want 1", has, err)
+		}
+		// The handler ran on past the commit; its own change was refused, and the denied holder got the denial alone.
+		expectValues(t, frames.Items(), failedFrame("no access"))
+		must(t, h.Close(background))
+		must(t, chordStore.Close(background))
 	})
 }
