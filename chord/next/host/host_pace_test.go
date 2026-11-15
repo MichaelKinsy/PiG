@@ -103,9 +103,10 @@ func syncWhileReading(t testing.TB, peer *RawPeer, loop *Loop, frames *atomic.In
 				}
 			}
 			late.Store(true)
+			// The broadcast under the lock: a waiter between its check of late and its Wait cannot miss it.
 			peer.mu.Lock()
-			peer.mu.Unlock()
 			peer.cond.Broadcast()
+			peer.mu.Unlock()
 			return
 		}
 	}()
