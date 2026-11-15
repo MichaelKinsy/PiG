@@ -5,6 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
@@ -42,9 +43,15 @@ type Loop struct {
 	scheduled bool
 
 	tasks sync.WaitGroup
-	// hops counts the joined hops in flight, quiet is closed when it falls to zero (host_loop_seam.go); both guarded by mu.
-	hops  int
-	quiet chan struct{}
+	// hops counts what the join waits for (host_loop_seam.go): the joined hops in flight and the tasks (awaitTask) that run,
+	// not the ones parked on a wait the loop does not run. quiet is closed when it falls to zero. inflight are the tasks that
+	// have not ended and parked those of them that wait, by the wait. All guarded by mu.
+	hops     int
+	quiet    chan struct{}
+	inflight map[*parking.Task]struct{}
+	parked   map[*parking.Parked]struct{}
+	// stall is how long a join waits for a running task before it reports it; zero: joinStall (host_loop_seam.go).
+	stall time.Duration
 
 	// idle are the coroutines of finished handlers; pending the handlers that parked or returned in the running section,
 	// whose rest runs when it ends (host_loop_lend.go). idle is guarded by mu, pending by the section.

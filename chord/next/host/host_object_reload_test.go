@@ -15,6 +15,7 @@ import (
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -1146,10 +1147,8 @@ func TestANativeRestartReferencesTakeTheirLastValuesAfterTheAdmittedCommitsKeeps
 	}()
 	receive(t, held.Entered())
 	reloadMust(t)(host.Reload([]HostFacet{{Name: "@app/restart", Facet: facet(func(ctx context.Context) error {
-		select {
-		case <-opening:
-		case <-ctx.Done():
-		}
+		// The new native stays opening on purpose: the wait is the host's (the open's task is parked, not one a join waits for).
+		_, _ = chordctx.Receive(ctx, (<-chan struct{})(opening))
 		return nil
 	})}}, background, ReloadOptions{}))
 	deliveredOn(host)

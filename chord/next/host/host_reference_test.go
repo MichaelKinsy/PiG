@@ -447,7 +447,11 @@ func TestGCAReleasedHoldKeepsNeitherItsObjectNorItsStatesWatchesNorARemoteObject
 			mu.Lock()
 			objects = append(objects, weak.Make(self.(*attempt)))
 			mu.Unlock()
-			self.Open(func(ctx context.Context) (any, error) { <-ctx.Done(); return nil, context.Cause(ctx) },
+			self.Open(func(ctx context.Context) (any, error) {
+				// Never opens: the wait for the end of ctx is the host's (a join does not wait for the open's task).
+				_, err := chordctx.Receive(ctx, (<-chan struct{})(nil))
+				return nil, err
+			},
 				func(any, NativeCloseReason, context.Context) error { return nil })
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": refConstant(params.Value("id"))},
