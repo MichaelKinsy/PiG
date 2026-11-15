@@ -969,3 +969,200 @@ func DecodeSetNode(raw any) (SetNode, error) {
 	}
 	return set, nil
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Conditions handed over as data (slice 14 §6).
+
+// NodeDepth is how deep a condition handed over as data may nest (`and`, `or`, `not`, `exists`).
+const NodeDepth = 16
+
+// Side is the parts of a table or a column set a condition is checked against: its name and columns.
+type Side struct {
+	Name   string
+	ByName map[string]Column
+}
+
+// isHostKey reports whether key is the canonical stored key of an address of host's kind.
+func isHostKey(host *HostColumn, key string) bool {
+	address, err := host.Address(key)
+	if err != nil {
+		return false
+	}
+	canonical, err := host.Key(address, "")
+	return err == nil || canonical == key
+}
+
+// CheckNode checks a condition handed over as data (a decoded *delta.JsonObject, as WhereNode.JSON writes it) against
+// side's columns (a trust boundary): one known kind per node, operand shapes and types (a `host(...)` column's operands
+// are stored keys), every column in side, a depth bound. A nil side checks the structure only: the inner condition of
+// a nested `exists` is over another set, its columns checked when the read opens and the set's table is known.
+// `invalid/args` otherwise.
+func CheckNode(node any, side *Side, what string) error { return checkNode(node, side, what, 0) }
+
+func checkNode(node any, side *Side, what string, depth int) error {
+	refuse := func(message string) error { return invalidArgs("%s: %s", what, message) }
+	if depth > NodeDepth {
+		return refuse(fmt.Sprintf("nested deeper than %d", NodeDepth))
+	}
+	object, isObject := node.(*delta.JsonObject)
+	if !isObject || object == nil {
+		return refuse("a condition node is an object")
+	}
+	if object.Len() != 1 {
+		return refuse("a condition node has one kind")
+	}
+	var kind string
+	var value any
+	for key, each := range object.All() {
+		kind, value = key, each
+	}
+	column := func(name any) (*Column, error) {
+		text, isText := name.(string)
+		if !isText {
+			return nil, refuse("a column is named by a string")
+		}
+		if side == nil {
+			return nil, nil
+		}
+		found, ok := side.ByName[text]
+		if !ok {
+			return nil, refuse(fmt.Sprintf("no column %s in %s", quote(text), side.Name))
+		}
+		if found.Type == ColJson {
+			return nil, refuse(fmt.Sprintf("json(...) column %s is not queryable", quote(text)))
+		}
+		return &found, nil
+	}
+	operand := func(of *Column, each any) error {
+		_, isText := each.(string)
+		_, isFlag := each.(bool)
+		number, isNumber := numberOf(each)
+		if !isText && !isFlag && !(isNumber && isFinite(number)) {
+			return refuse("an operand is a string, a number or a boolean")
+		}
+		if of == nil {
+			return nil
+		}
+		if _, err := CheckScalar(of.Type, each, what); err != nil {
+			return err
+		}
+		// A `host(...)` column holds canonical address keys: anything else would silently match nothing.
+		if of.Type == ColStr && of.Host != nil && !isHostKey(of.Host, each.(string)) {
+			return refuse(fmt.Sprintf("%s is no address key of %s (column %s)", quote(each.(string)), of.Host.Kind.Kind, quote(of.Name)))
+		}
+		return nil
+	}
+	// A `host(...)` column compares only with eq, ne and inArray, as `compile` has it.
+	ordered := func(of *Column) error {
+		if of != nil && of.Type == ColStr && of.Host != nil {
+			return refuse(fmt.Sprintf("%s on host(...) column %s", kind, quote(of.Name)))
+		}
+		return nil
+	}
+	pair := func() ([]any, error) {
+		list, ok := value.([]any)
+		if !ok || len(list) != 2 {
+			return nil, refuse(kind + " takes [column, operand]")
+		}
+		return list, nil
+	}
+	switch kind {
+	case "and", "or":
+		list, ok := value.([]any)
+		if !ok {
+			return refuse(kind + " takes an array")
+		}
+		for _, each := range list {
+			if err := checkNode(each, side, what, depth+1); err != nil {
+				return err
+			}
+		}
+		return nil
+	case "not":
+		return checkNode(value, side, what, depth+1)
+	case "isNull":
+		of, err := column(value)
+		if err != nil {
+			return err
+		}
+		return ordered(of)
+	case "inArray":
+		parts, err := pair()
+		if err != nil {
+			return err
+		}
+		of, err := column(parts[0])
+		if err != nil {
+			return err
+		}
+		values, ok := parts[1].([]any)
+		if !ok {
+			return refuse("inArray takes an array of operands")
+		}
+		for _, each := range values {
+			if err := operand(of, each); err != nil {
+				return err
+			}
+		}
+		return nil
+	case "prefix":
+		parts, err := pair()
+		if err != nil {
+			return err
+		}
+		of, err := column(parts[0])
+		if err != nil {
+			return err
+		}
+		if err := ordered(of); err != nil {
+			return err
+		}
+		if _, isText := parts[1].(string); !isText || (of != nil && of.Type != ColStr) {
+			return refuse("prefix takes a str() column and a string")
+		}
+		return nil
+	case "eq", "ne", "lt", "lte", "gt", "gte":
+		parts, err := pair()
+		if err != nil {
+			return err
+		}
+		of, err := column(parts[0])
+		if err != nil {
+			return err
+		}
+		if kind != "eq" && kind != "ne" {
+			if err := ordered(of); err != nil {
+				return err
+			}
+		}
+		return operand(of, parts[1])
+	case "exists":
+		parts, ok := value.([]any)
+		if !ok || len(parts) != 3 {
+			return refuse("exists takes [set, pairs, inner]")
+		}
+		_, isText := parts[0].(string)
+		pairs, isList := parts[1].([]any)
+		if !isText || !isList || len(pairs) == 0 {
+			return refuse("exists takes a set name and its matched pairs")
+		}
+		for _, each := range pairs {
+			entry, ok := each.([]any)
+			if !ok || len(entry) != 2 {
+				return refuse("an exists pair is [setColumn, column]")
+			}
+			if _, isText := entry[0].(string); !isText {
+				return refuse("an exists pair is [setColumn, column]")
+			}
+			if _, err := column(entry[1]); err != nil {
+				return err
+			}
+		}
+		if parts[2] != nil {
+			return checkNode(parts[2], nil, what, depth+1)
+		}
+		return nil
+	default:
+		return refuse(fmt.Sprintf("unknown kind %s", quote(kind)))
+	}
+}
