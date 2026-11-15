@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+
 //! A session graph object stays alive on the host while a later call still names its handle (Rust SDK, against a fake host).
 //!
 //! The host frees an object when the extension's `Drop` tells it to, and handles travel on the wire as strings: a value that

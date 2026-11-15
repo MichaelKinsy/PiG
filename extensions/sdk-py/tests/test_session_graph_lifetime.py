@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT
 """A session graph object the extension no longer refers to is released, and the host then refuses every call that names its handle.
 
 ``_GraphObject.__del__`` releases the host's object when the Python value is collected, but a handle is a string on the
