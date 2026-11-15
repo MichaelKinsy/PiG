@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -12,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
 )
 
 // Ports packages/chord/test/host/route-admission.test.ts @7cc21c24f6b5 (slice 14 §2.3; test list 15): nothing is resolved or
@@ -309,6 +311,63 @@ func TestRouteAdmissionBeforeTheFirstAllowAnAdmissionHoldingATypePlacedBehindIts
 		}
 		if resolves := throwing.Resolves(); len(resolves) != 0 {
 			t.Fatalf("resolves = %v, want none", resolves)
+		}
+	})
+}
+
+// --- a decision that changes while it is settled ------------------------------------------------------------------------
+
+// deniedAfterItsRead is a decision that allows when first read and is denied by a commit queued in that very read.
+type deniedAfterItsRead struct {
+	state.Source
+	host     *chordHost
+	decision delta.JsonValue
+	queued   bool
+}
+
+func newDeniedAfterItsRead(host *chordHost) *deniedAfterItsRead {
+	source := &deniedAfterItsRead{host: host, decision: Allow(nil)}
+	source.Init(host.batch, source)
+	return source
+}
+
+func (s *deniedAfterItsRead) Value() (delta.JsonValue, error) {
+	if !s.queued {
+		s.queued = true
+		s.host.loop().Queue(func() {
+			_ = s.Batch().Within(func() error {
+				s.decision = Deny("withdrawn")
+				s.Changed()
+				return nil
+			}, background)
+		})
+	}
+	return s.decision, nil
+}
+
+func (s *deniedAfterItsRead) Deliver(context.Context) error { return nil }
+
+// Pi: "a decision that changes while it is settled › is not answered with what the settle read before: a denial between the
+// read and its continuation starts nothing". Covers (host_route_admission.go): the `moved` flag of a settling decision, the settle
+// loop; (part B) none: nothing is forwarded.
+func TestRouteAdmissionADecisionThatChangesWhileItIsSettledIsNotAnsweredWithWhatTheSettleReadBeforeADenialBetweenTheReadAndItsContinuationStartsNothing(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		var source atomic.Pointer[deniedAfterItsRead]
+		var rel *relayed
+		rel = relay(t, relayedOptions{Admit: func(data.Principal, contracts.Address, AdmitSelf) (any, error) {
+			// The server is a `chordHost`: its batch is what its sources commit in.
+			if source.Load() == nil {
+				source.Store(newDeniedAfterItsRead(rel.Server.(*chordHost)))
+			}
+			return source.Load(), nil
+		}})
+		defer closeHosts(t, rel.Tab, rel.Server)
+		notes := mustHold(t, rel.Tab, PlacedNotes, jsonObject("session", "S1"))
+		settledOn(rel)
+		wantKind(t, notes, RefStateFailed)
+		wantDenied(t, notes)
+		if resolves, workers := rel.Resolves(), workerCount(rel); len(resolves) != 0 || workers != 0 {
+			t.Fatalf("resolves = %v, workers = %d, want none", resolves, workers)
 		}
 	})
 }
