@@ -2241,3 +2241,10 @@ commit = "de06601f21cc584acb111488445e19c3de3923ae"
 class = "CITE"
 cite = "packages/coding-agent/src/core/auth-storage.ts:188"
 reason = "Pi flags a lock as compromised only from proper-lockfile onCompromised, i.e. its heartbeat (auth-storage.ts:176-179 sets lockCompromised in that callback); throwIfCompromised (181, 185, 190) throws only after the flag is set. withLockAsync reads the file (183), awaits fn (184) and, when the flag is not raised, writes `next` with writeFileSync (188) and returns success. A lock removed inside the modifier before the heartbeat reports it therefore ends in a write and no error in Pi. The commit renames TestAuthStorageCompromisedModifierDoesNotWrite (which expected an error and the old value `stored`) to TestAuthStorageModifierPersistsItsCredentialAfterTheLockWasTaken, which expects Modify to succeed with the modifier credential `refreshed` persisted and the other provider kept; the case with the heartbeat's report stays an error and is covered by TestAuthStorageLockCompromisedDuringModifyUpstream. PiG writes the one provider entry as it is in the file where Pi writes its whole stale read back (a PiG-only narrowing: it cannot clobber other providers)."
+
+[[entry]]
+path = "internal/codingagent/interactive_compaction_progress_unit_test.go"
+commit = "ab90d4621240fde95855b563f742c6b8e429e3ef"
+class = "DIVERGENCE"
+cite = "D652"
+reason = "Pi shows a bare `Compacting context... (escape to cancel)` line; D652 records that PiG's line carries the elapsed time and the streamed size. The test file is PiG-owned and was added by the D652 lane's earlier commit; this commit rewrites four expected lines of it together with the production code that builds them: the line is built from a plain-value accessor, and in a narrow terminal the elapsed time and the size give way before the cancel hint does (down to Pi's own line), so the width rows expect those forms. No expectation of Pi's own behavior changed: Pi's line is the fallback form."
