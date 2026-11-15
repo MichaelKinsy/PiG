@@ -1,0 +1,3 @@
+### Fixed
+
+- A ctrl+c, SIGTERM or SIGHUP that arrives as a quit by keys (ctrl+d, ctrl+c twice, `/quit`) hands the terminal back now ends PiG at once, as it ends Pi: Pi removes its signal handlers in the same call that restores the terminal, so no signal finds a quit that is still to dispose. PiG marked the quit as disposing only after the terminal was restored, so a signal in between waited a second (ctrl+c) or for ever (SIGTERM, SIGHUP) for a lock the pending quit holds. The window was introduced by the unreleased change that made these signals end a pending quit at once; no release has it. <!-- fix: 4246f80e83 -->
