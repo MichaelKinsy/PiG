@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -17,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/storeseam"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
+	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
 // Ports packages/chord/test/host/tiling.test.ts (Pi 0db9861ec018, 762 lines): 29 cases (commit group x4, one commit several
@@ -33,8 +35,10 @@ import (
 //     (faultyStore's holdNextCommit) until the two others enlisted behind it, then released: no timing.
 //   - calls Pi makes in one tick (the rollback case's three) enlist in call order and form one group: the commit queue is held
 //     (ChordStore.Take) while they start, each once its commit took its place behind the hold, then released (`inOneGroup`).
-//   - `store.reads.on(set)[i].run = ...` (a run that fails) is `storeseam.FailRuns(read, fail)`: the read's runs in a
-//     commit's step fail with the error `fail` returns (nil restores the real run).
+//   - `store.reads.on(set)[i].run = ...` (a run that fails) is `tlReadFaults.failRuns(read, fail)`: the faulty backend fails the
+//     SELECT that read runs in a commit's step with the error `fail` returns (`restore` lets it run for real). The read's run
+//     returns a failed run as it does for any backend error (Pi's `run` catches the executor's throw, read.ts:83-87): the
+//     cause is a real one, no store seam is needed.
 //   - `await flushed()` after a group is `flushed(host)` then waiting for the store's OnCommitted listener to report the
 //     last seq (`commitLog.reported`): the listener runs on a goroutine of the store.
 //   - `screen.list.value` thrown is the error of Member("list").Value().
@@ -266,6 +270,88 @@ func (p *tlProbe) shift() func() {
 	return wrote
 }
 
+// tlReadFaults is a backend whose commit steps can fail the SELECT of one read: what Pi's tests get by assigning `read.run`
+// (a page's run in a commit's step fails while another page's runs well, "a failed page ..."). The statement fails as a storage
+// error in the step does: the read's run is a failed run, the commit and the store go on. A read's first load runs outside a
+// commit's step and is not touched.
+type tlReadFaults struct {
+	sqlite.SqliteDatabase
+	mu   sync.Mutex
+	fail func(sql string, params []sqlite.SqliteValue) error
+}
+
+func (db *tlReadFaults) Transaction(callback func(transaction sqlite.SqliteExecutor) error) error {
+	return db.SqliteDatabase.Transaction(func(transaction sqlite.SqliteExecutor) error {
+		return callback(&tlFaultingExecutor{SqliteExecutor: transaction, db: db})
+	})
+}
+
+func (db *tlReadFaults) set(fail func(sql string, params []sqlite.SqliteValue) error) {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	db.fail = fail
+}
+
+func (db *tlReadFaults) asked(sql string, params []sqlite.SqliteValue) error {
+	db.mu.Lock()
+	fail := db.fail
+	db.mu.Unlock()
+	if fail == nil {
+		return nil
+	}
+	return fail(sql, params)
+}
+
+// failRuns makes the statement read runs in a commit's step fail with the error fail returns (nil: it runs for real), each
+// time it is asked; fail may restore. The statement is the one `RegisteredRead.Fetch` asks of its plan: one row more than the
+// range's limit.
+func (db *tlReadFaults) failRuns(read *store.RegisteredRead, fail func() error) {
+	rng := read.What.Range
+	rng.Limit++
+	want := read.Plan.Select(rng)
+	db.set(func(sql string, params []sqlite.SqliteValue) error {
+		if sql != want.SQL || !reflect.DeepEqual(params, want.Params) {
+			return nil
+		}
+		return fail()
+	})
+}
+
+// restore lets every run go for real again.
+func (db *tlReadFaults) restore() { db.set(nil) }
+
+type tlFaultingExecutor struct {
+	sqlite.SqliteExecutor
+	db *tlReadFaults
+}
+
+func (e *tlFaultingExecutor) All(sql string, params ...sqlite.SqliteValue) ([]sqlite.SqliteRow, error) {
+	if err := e.db.asked(sql, params); err != nil {
+		return nil, err
+	}
+	return e.SqliteExecutor.All(sql, params...)
+}
+
+// tlFaultyStore is faultyStore (host_next_support_test.go) with the read faults of tlReadFaults: its holdNextCommit, and the
+// faults a test sets on a page's read.
+func tlFaultyStore(t testing.TB) (*store.ChordStore, func() *transactionGate, *tlReadFaults) {
+	t.Helper()
+	var db *faultyDatabase
+	faults := &tlReadFaults{}
+	chordStore := openMemoryStore(t, func(inner sqlite.SqliteDatabase) sqlite.SqliteDatabase {
+		faults.SqliteDatabase = inner
+		db = &faultyDatabase{SqliteDatabase: faults, failing: map[string]bool{}}
+		return db
+	}, nil)
+	return chordStore, func() *transactionGate {
+		gate := newTransactionGate()
+		db.mu.Lock()
+		db.gate = gate
+		db.mu.Unlock()
+		return gate
+	}, faults
+}
+
 type tlWorld struct {
 	t        *testing.T
 	store    *store.ChordStore
@@ -277,6 +363,7 @@ type tlWorld struct {
 	probe    *tlProbe
 	commits  *commitLog
 	hold     func() *transactionGate
+	faults   *tlReadFaults
 }
 
 // tlHosted is `hosted(first, seed)`: a host with the three owners and a screen of team "t" in pages of `first`; sessions s1 to
@@ -284,11 +371,11 @@ type tlWorld struct {
 // of `probe.pending` (what that commit wrote) ran.
 func tlHosted(t *testing.T, first, seed int) *tlWorld {
 	t.Helper()
-	chordStore, _, holdNextCommit := faultyStore(t)
+	chordStore, holdNextCommit, faults := tlFaultyStore(t)
 	host := newHost(t, HostOptions{Store: chordStore, OnError: (&hostErrors{}).push})
 	_, err := host.Load([]HostFacet{{Name: "@test/team", Facet: tlFacetOf(first)}}, background)
 	must(t, err)
-	w := &tlWorld{t: t, store: chordStore, host: host, probe: &tlProbe{adopted: func() {}}, hold: holdNextCommit,
+	w := &tlWorld{t: t, store: chordStore, host: host, probe: &tlProbe{adopted: func() {}}, hold: holdNextCommit, faults: faults,
 		sessions: mustGet(t, host, tlSessions, jsonObject()), club: mustGet(t, host, tlClub, jsonObject()), filler: mustGet(t, host, tlFiller, jsonObject())}
 	ids := []string{}
 	for index := range seed {
@@ -595,11 +682,11 @@ func TestTilingOneCommitSeveralPages(t *testing.T) {
 // the commit hooks and the hold of the next commit.
 func tlBare(t *testing.T, facet Facet) *tlWorld {
 	t.Helper()
-	chordStore, _, holdNextCommit := faultyStore(t)
+	chordStore, holdNextCommit, faults := tlFaultyStore(t)
 	host := newHost(t, HostOptions{Store: chordStore, OnError: (&hostErrors{}).push})
 	_, err := host.Load([]HostFacet{{Name: "@test/facet", Facet: facet}}, background)
 	must(t, err)
-	w := &tlWorld{t: t, store: chordStore, host: host, probe: &tlProbe{adopted: func() {}}, hold: holdNextCommit,
+	w := &tlWorld{t: t, store: chordStore, host: host, probe: &tlProbe{adopted: func() {}}, hold: holdNextCommit, faults: faults,
 		filler: mustGet(t, host, tlFiller, jsonObject())}
 	w.install()
 	return w
@@ -920,14 +1007,14 @@ func TestTilingSwitchesAndFailures(t *testing.T) {
 		w.more()
 		w.more()
 		first := w.store.Reads.On("app.club:team-rows")[0]
-		storeseam.FailRuns(first, func() error { return errors.New("page failure") })
+		w.faults.failRuns(first, func() error { return errors.New("page failure") })
 		rename := func(title string) { w.sessionsWrite(jsonObject("rename", tlRenames(title, "s6", "s4", "s2"))) }
 		rename("x")
 		w.throws("page failure")
 		// A run of the other pages alone changes nothing about that.
 		w.sessionsWrite(jsonObject("rename", tlRenames("y", "s1")))
 		w.throws("page failure")
-		storeseam.FailRuns(first, nil)
+		w.faults.restore()
 		rename("z")
 		tlEqual(t, "shown", w.shown(), "s6:z s5:old s5 s4:z s3:old s3 s2:z s1:y")
 		w.close()
@@ -940,8 +1027,8 @@ func TestTilingSwitchesAndFailures(t *testing.T) {
 		w := tlHosted(t, 4, 6)
 		w.more()
 		tail := w.store.Reads.On("app.club:team-rows")[1]
-		storeseam.FailRuns(tail, func() error {
-			storeseam.FailRuns(tail, nil) // fails once: the next run is the real one
+		w.faults.failRuns(tail, func() error {
+			w.faults.restore() // fails once: the next run is the real one
 			return errors.New("page failure")
 		})
 		w.group(

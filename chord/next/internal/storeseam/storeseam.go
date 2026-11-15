@@ -21,13 +21,6 @@ type Adopt = func(seq int64, ids []int64, rows int) error
 // group's commits. A nil wrap restores the store's own.
 var WrapAdopt func(store any, wrap func(adopt Adopt) Adopt)
 
-// FailRuns makes the runs of a `*store.RegisteredRead` (given as any) fail from then on: each time the read runs in a commit's
-// step, fail is called, and a non-nil error is the run's failure (a failed run, as a read that cannot run gives); a nil error
-// lets the read run for real. A nil fail restores the read's own runs. What Pi's tests get by assigning `read.run`
-// (test/host/tiling.test.ts, "a failed page ..."): a page of a list's query fails while another page of it runs well, which
-// no builder or decoder can make happen.
-var FailRuns func(read any, fail func() error)
-
 // ReadTasks is a barrier on the reloads a changed binding of a `*store.ChordStore` started (the store's reads index owns them,
 // Pi's unawaited `void open.load()`): the channel (the store given as any) is closed once the tasks running now ended, and
 // already closed when none runs. A test that changes a binding joins the read it started through it, as Pi's `await flushed()`
