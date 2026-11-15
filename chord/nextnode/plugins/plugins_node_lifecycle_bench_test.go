@@ -104,9 +104,10 @@ func benchLoad() RuntimeLoad {
 	return RuntimeLoad{Kind: "worker", Principal: workerPrincipal, Peer: serverPrincipal}
 }
 
-// loadBenchNode sends the load of benchLoad to a started node and waits for its report.
+// loadBenchNode sends the load of benchLoad to a started node and waits for its report. host.mjs iterates the request's
+// goPackages, which Load always sends (an empty list when the app offers no Go package).
 func loadBenchNode(node *NodeHost) error {
-	request := &loadRequest{Kind: "worker", Core: []coreWire{}, Scripts: scriptsWire(nil), Modules: map[string]string{}, Principal: workerPrincipal, Peer: serverPrincipal}
+	request := &loadRequest{Kind: "worker", Core: []coreWire{}, Scripts: scriptsWire(nil), Modules: map[string]string{}, Principal: workerPrincipal, Peer: serverPrincipal, GoPackages: []goPackageWire{}}
 	call, err := node.send("load", request)
 	if err != nil {
 		return err
