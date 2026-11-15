@@ -286,7 +286,7 @@ func commentBody(cfg config, d *data, ev evaluation, report string, st state) (s
 		v.Warnings, v.Notices = nil, nil
 		bare.Checks[name] = v
 	}
-	st.Checks = bare.Checks
+	st.Checks, st.Shortened = bare.Checks, true
 	body = withState(markdown(cfg, d, bare)+shortened, st)
 	if !fits(body) {
 		return "", fmt.Errorf("the comment would be %d characters even without its warnings, more than the %d GitHub takes", len(body), maxCommentLength)

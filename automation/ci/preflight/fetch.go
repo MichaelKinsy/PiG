@@ -31,6 +31,9 @@ type state struct {
 	Body    string             `json:"body"`
 	Status  string             `json:"status,omitempty"`
 	Alerted []string           `json:"alerted,omitempty"`
+	// Shortened is set when the comment was too long and the checks above are stored without their warnings and
+	// notices: such a state is not a verdict to reuse.
+	Shortened bool `json:"shortened,omitempty"`
 }
 
 type verdict struct {
@@ -121,6 +124,8 @@ func decideMode(prev *state, version, head, base, body string) (mode, reason str
 		return modeFull, "the head or main moved since the previous run"
 	case prev.Body != body:
 		return modeFull, "the description changed since the previous run"
+	case prev.Shortened:
+		return modeFull, "the previous comment was too long and left out the warnings and notices"
 	}
 	for _, v := range prev.Checks {
 		if v.Result == resultError || v.Result == resultPending {

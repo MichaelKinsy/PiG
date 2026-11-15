@@ -61,7 +61,7 @@ func cheapInputHash(d *data, c check) string {
 func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 	ev := evaluation{Repo: d.Repo, PR: d.PR, Head: d.Pull.Head.SHA, Base: d.BaseTip, Version: d.Version, Engine: cfg.EngineRevision, Checks: map[string]verdict{}}
 	var prev map[string]verdict
-	if d.Previous != nil && d.Previous.Engine == cfg.EngineRevision {
+	if d.Previous != nil && d.Previous.Engine == cfg.EngineRevision && !d.Previous.Shortened {
 		prev = d.Previous.Checks
 	}
 	if d.Mode == modeReuse && prev != nil {
