@@ -44,6 +44,21 @@ func TestApplyRulesAcceptsCurrentBehaviorAndDurableCompatibility(t *testing.T) {
 	}
 }
 
+// A string literal is program output: its marker is the upper-case `TODO:`, and a lower-case program name before a colon is not one.
+func TestApplyRulesTreatsOnlyUpperCaseTodoInStringsAsMarker(t *testing.T) {
+	for _, text := range []string{`"todo:"`, `"chord-todo: failed"`} {
+		if findings := applyRules("x.go", 1, text, true); len(findings) != 0 {
+			t.Fatalf("string %s findings = %+v, want none", text, findings)
+		}
+	}
+	if findings := applyRules("x.go", 1, `"TODO: later"`, true); len(findings) == 0 || findings[0].code != "SH004" {
+		t.Fatalf("string TODO findings = %+v, want SH004", findings)
+	}
+	if findings := applyRules("x.go", 1, "// todo: x", false); len(findings) == 0 || findings[0].code != "SH003" {
+		t.Fatalf("comment todo findings = %+v, want SH003", findings)
+	}
+}
+
 func TestChangedLinesAcceptsLargeGeneratedDiffLines(t *testing.T) {
 	root := t.TempDir()
 	for _, args := range [][]string{
