@@ -343,3 +343,53 @@ func stalledJoinTest(t *testing.T) {
 	deliveredOn(h)
 	t.Error("deliveredOn returned though a task blocks on a bare channel")
 }
+
+// Go-only (no Pi case): the count's channel is closed when the count falls to zero, and the next rise makes a new one; what was
+// closed is taken out of its owner, so a second release of it (a second path to zero) never closes it again.
+func TestQuietChannelIsClosedOnce(t *testing.T) {
+	loop := NewLoop()
+	loop.mu.Lock()
+	loop.hopStartLocked()
+	first := loop.quiet
+	loop.hopStartLocked()
+	loop.hopEndLocked()
+	select {
+	case <-first:
+		t.Fatal("the count's channel was closed while a hop is still running")
+	default:
+	}
+	loop.hopEndLocked()
+	select {
+	case <-first:
+	default:
+		t.Fatal("the count's channel was not closed when the count fell to zero")
+	}
+	if loop.quiet != nil {
+		t.Fatal("the closed channel is still the loop's")
+	}
+	loop.hopStartLocked()
+	second := loop.quiet
+	loop.mu.Unlock()
+	if second == nil || second == first {
+		t.Fatal("the next rise from zero did not make a new channel")
+	}
+	select {
+	case <-second:
+		t.Fatal("the new channel is closed while a hop is running")
+	default:
+	}
+
+	// A second release of the same channel: no panic.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("a second release of the count's channel panicked: %v", r)
+		}
+	}()
+	owner := make(chan struct{})
+	releaseQuiet(&owner)
+	releaseQuiet(&owner)
+	var pace pacer
+	pace.runningLocked()
+	pace.quietLocked()
+	releaseQuiet(&pace.quiet)
+}

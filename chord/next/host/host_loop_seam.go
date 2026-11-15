@@ -44,7 +44,16 @@ func (l *Loop) hopStartLocked() {
 func (l *Loop) hopEndLocked() {
 	l.hops--
 	if l.hops == 0 {
-		close(l.quiet)
+		releaseQuiet(&l.quiet)
+	}
+}
+
+// releaseQuiet closes the count's channel and takes it out of its owner, so what is closed is never closed again: the owner
+// makes the next one when its count rises from zero (hopStartLocked, runningLocked). Called with the lock of the count held.
+func releaseQuiet(quiet *chan struct{}) {
+	if *quiet != nil {
+		close(*quiet)
+		*quiet = nil
 	}
 }
 
@@ -210,7 +219,7 @@ func (p *pacer) runningLocked() {
 func (p *pacer) quietLocked() {
 	p.running--
 	if p.running == 0 {
-		close(p.quiet)
+		releaseQuiet(&p.quiet)
 	}
 }
 
@@ -254,7 +263,7 @@ func (l *Loop) endingMade() {
 
 // pace blocks until no paced task is running, or until a stop channel (the link's close, the host's) is closed. It is called
 // outside a section, by the goroutine that reads a link, after the section of a frame.
-func (l *Loop) pace(link, host <-chan struct{}) {
+func (l *Loop) pace(linkClosed, hostClosed <-chan struct{}) {
 	if l.onLoop() {
 		return
 	}
@@ -270,9 +279,9 @@ func (l *Loop) pace(link, host <-chan struct{}) {
 		stopped := false
 		select {
 		case <-quiet:
-		case <-link:
+		case <-linkClosed:
 			stopped = true
-		case <-host:
+		case <-hostClosed:
 			stopped = true
 		}
 		l.mu.Lock()

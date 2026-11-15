@@ -503,7 +503,8 @@ type child struct {
 	// reloading is closed when its outstanding reload settled; reloads queue behind it, one outstanding at a time.
 	reloading chan struct{}
 	// gone is closed once its exit was published (left): its address's next start may go on.
-	gone chan struct{}
+	gone     chan struct{}
+	goneOnce sync.Once
 	// reloaded is the waiter of its outstanding reload.
 	reloaded func(reply FromWorker)
 	// ended is set once its link is gone or it exited: every reload queued behind settles with it.
@@ -1157,7 +1158,7 @@ func (c *Workers) exited(record *routed, child *child, exit Exit) {
 	// this component runs in between).
 	if c.store == nil {
 		c.left(record, child, exit, failure)
-		close(child.gone)
+		child.publish()
 		return
 	}
 	settled := c.store.Settled()
@@ -1165,10 +1166,13 @@ func (c *Workers) exited(record *routed, child *child, exit Exit) {
 		<-settled
 		c.loop.Run(func() {
 			c.left(record, child, exit, failure)
-			close(child.gone)
+			child.publish()
 		})
 	})
 }
+
+// publish closes gone, once for a child however many paths publish its exit (Pi's `gone` is a Promise, which settles once).
+func (c *child) publish() { c.goneOnce.Do(func() { close(c.gone) }) }
 
 // left publishes child's exit: a stop's exit (no failure) forgets it, as does a lost link the address recovers from
 // (`worker_link_lost`: its holders' route resolves again, a start after this); any other is a crash that fails the address
