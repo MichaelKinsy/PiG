@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 	"slices"
+	"strings"
 	"sync/atomic"
 	"testing"
 
@@ -53,12 +54,12 @@ func TestAWorkersExitAWorkerThatReportsAndExitsInTheSameTurnItsLinkIsClosedBefor
 	f.behaviours.set("S1", workerBehaviour{HoldsChannel: true})
 	journal := f.journalOf()
 	defer journal.Release()
-	control := f.get(fixtureControl, "S1")
-	defer control.Release()
+	reporter := f.get(fixtureReporter, "S1")
+	defer reporter.Release()
 	// One report whose handler waits when the worker exits, one sent in the turn of the exit.
-	reportsCall(t, control, "report", "waiting")
+	reportsCall(t, reporter, "report", "waiting")
 	until(t, func() bool { return slices.Contains(log.received.all(), "waiting") })
-	go func() { _, _ = control.Call("reportAndExit", "last", background) }()
+	go func() { _, _ = reporter.Call("reportAndExit", "last", background) }()
 	until(t, func() bool { state := f.stateOf("S1"); return state != nil && state.Status == WorkerFailed })
 	// The exit is published: no frame is handled from now on, so what was received is all there will be; each of those ended.
 	until(t, func() bool { return len(log.outcomes.all()) == len(log.received.all()) })
@@ -93,10 +94,12 @@ func TestAWorkersExitACommitAReportQueuedInTheStoreBeforeTheExitLandsBeforeTheEx
 	defer notes.Release()
 	control := f.get(fixtureControl, "S1")
 	defer control.Release()
+	reporter := f.get(fixtureReporter, "S1")
+	defer reporter.Release()
 	running := f.stateOf("S1")
 	child := f.childOf("S1")
 	held := hold()
-	reportsCall(t, control, "report", "queued")
+	reportsCall(t, reporter, "report", "queued")
 	<-held.Entered()
 	queued := lastSeq()
 	if _, err := control.Call("crash", 7.0, background); err != nil {
@@ -133,11 +136,11 @@ func TestAWorkersExitAStopResolvesOnceTheExitWasPublishedAfterTheCommitsItsWorke
 	f, hold, lastSeq := reportingFleet(t, log, nil)
 	journal := f.journalOf()
 	defer journal.Release()
-	control := f.get(fixtureControl, "S1")
-	defer control.Release()
+	reporter := f.get(fixtureReporter, "S1")
+	defer reporter.Release()
 	child := f.childOf("S1")
 	held := hold()
-	reportsCall(t, control, "report", "queued")
+	reportsCall(t, reporter, "report", "queued")
 	<-held.Entered()
 	queued := lastSeq()
 	// What the stop's caller saw at the instant its stop resolved, read by the stop's own goroutine right after the stop returned (an
@@ -189,9 +192,11 @@ func TestAWorkersExitCloseDuringTheSettleWaitReturnsWithItsContextAndTheExitIsPu
 	defer journal.Release()
 	control := f.get(fixtureControl, "S1")
 	defer control.Release()
+	reporter := f.get(fixtureReporter, "S1")
+	defer reporter.Release()
 	child := f.childOf("S1")
 	held := hold()
-	reportsCall(t, control, "report", "queued")
+	reportsCall(t, reporter, "report", "queued")
 	<-held.Entered()
 	if _, err := control.Call("crash", 7.0, background); err != nil {
 		t.Fatal(err)
@@ -210,6 +215,70 @@ func TestAWorkersExitCloseDuringTheSettleWaitReturnsWithItsContextAndTheExitIsPu
 	until(t, func() bool { return f.stateOf("S1") == nil })
 	if errs := f.kinds(); len(errs) != 0 {
 		t.Fatalf("errors = %q, want none: a closing component publishes no failure", errs)
+	}
+	if lines := linesOf(t, journal); !slices.Equal(lines, []string{"queued"}) {
+		t.Fatalf("journal = %q", lines)
+	}
+}
+
+// Go-only (no Pi case): the start of a worker that fails waits for the exit to be published too. Pi's `#start` catch: `child.process.kill();
+// await child.gone.promise; if (this.#closing.signal.aborted) throw closed(); throw uncrossed(routed.failure?.error ?? START_FAILED);`
+// (workers.ts:542-544 at f57cd9484), and `gone` resolves when the exit is published, after the commits queued in the store settled. The
+// commit held is not a report of the failing worker's own (a start fails before the server adopts its link, so no call of it is ever
+// handled): the journal's append, queued by the test, is in the store's queue when the worker exits before it connects. The start
+// rejects, and the failure is published, only once the held commit landed, not at the process's exit.
+func TestAWorkersExitAFailedStartRejectsOnceTheExitWasPublishedAfterTheCommitsQueuedInTheStore(t *testing.T) {
+	log := &reportLog{}
+	f, hold, lastSeq := reportingFleet(t, log, nil)
+	journal := f.journalOf()
+	defer journal.Release()
+	// The start is the route's `resolve`, called here: nothing of the host's lies between its return and what the caller reads.
+	held := hold()
+	appended := make(chan error, 1)
+	go func() {
+		_, err := journal.Call("append", "queued", background)
+		appended <- err
+	}()
+	<-held.Entered()
+	queued := lastSeq()
+	three := 3
+	f.behaviours.set("S1", workerBehaviour{Exit: &three})
+	// What the start's caller saw at the instant its start rejected, read by its own goroutine right after the call returned (an event
+	// of the start's end, not a poll): the state's entry and the store's last seq.
+	type resolution struct {
+		err   error
+		state *WorkerState
+		seq   int64
+	}
+	result := make(chan resolution, 1)
+	go func() {
+		_, err := f.workers.resolve(session("S1"), background)
+		result <- resolution{err: err, state: f.stateOf("S1"), seq: lastSeq()}
+	}()
+	var failing *child
+	until(t, func() bool { failing = f.childOf("S1"); return failing != nil })
+	handled(t, failing)
+	select {
+	case <-result:
+		t.Fatal("the start rejected before the exit was published")
+	default:
+	}
+	if got := f.stateOf("S1"); got == nil || got.Status != WorkerStarting {
+		t.Fatalf("state = %+v, want starting: the exit is not published yet", got)
+	}
+	held.Release()
+	resolved := <-result
+	if resolved.err == nil || !strings.Contains(resolved.err.Error(), "worker failed to start") {
+		t.Fatalf("start = %v, want the start's public failure", resolved.err)
+	}
+	if resolved.state == nil || resolved.state.Status != WorkerFailed {
+		t.Fatalf("state when the start rejected = %+v, want failed: the exit is published before the start rejects", resolved.state)
+	}
+	if resolved.seq <= queued {
+		t.Fatalf("the store's last seq when the start rejected = %d, want after the held commit (%d)", resolved.seq, queued)
+	}
+	if err := <-appended; err != nil {
+		t.Fatalf("append = %v", err)
 	}
 	if lines := linesOf(t, journal); !slices.Equal(lines, []string{"queued"}) {
 		t.Fatalf("journal = %q", lines)

@@ -14,9 +14,10 @@ import (
 )
 
 // Ports `memoryStore` and `holdNextCommit` of packages/chord/test/support.ts, which Pi's workers test imports from its shared
-// test support. A copy, reduced to what the workers tests use, of chord/next/host/host_next_support_test.go (`faultyStore`:
-// transactionGate, gatedExecutor, closesWrites and faultyDatabase's hold): that file is a _test file of another package, so it
-// cannot be imported, and moving it would touch every host test that uses it. A change to the hold there is to be made here too.
+// test support. A copy, reduced to what the workers tests use, of chord/next/host/host_next_support_test.go as of commit 5b150924c
+// (`faultyStore`: transactionGate, gatedExecutor, closesWrites and faultyDatabase's hold): that file is a _test file of another package
+// (17 test files use it, 73 times), so it cannot be imported, and moving it would rewrite those tests. A change to the hold there is
+// to be made here too.
 
 // heldCommit is Pi's `{ entered, release }` of `holdNextCommit(store)`: Entered is closed when the held commit step reached its
 // hold inside its backend transaction, Release lets it finish.

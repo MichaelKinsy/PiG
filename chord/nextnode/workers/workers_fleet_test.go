@@ -54,9 +54,7 @@ type fleetOptions struct {
 	execArgv []string
 	// compileCache is WorkersOptions.CompileCache.
 	compileCache string
-	// facets are the server's facets: by default a `reporting` one that keeps nothing durable, because the fixture's `Control` holds the
-	// server's `Reports` with itself (the NodeHost's module takes it at its activation; Pi's worker holds it at the first report), so
-	// no `Control` is served without a server that serves `Reports`.
+	// facets are the server's facets (none by default).
 	facets []host.HostFacet
 	// store is the server's store, given to its host and to the workers component.
 	store store.Store
@@ -210,11 +208,7 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 		t.Fatal(err)
 	}
 	f.workers = workers
-	facets := options.facets
-	if facets == nil {
-		facets = []host.HostFacet{reporting(&reportLog{}, reportOptions{})}
-	}
-	if _, err := server.Load(facets, background); err != nil {
+	if _, err := server.Load(options.facets, background); err != nil {
 		t.Fatal(err)
 	}
 	// The worker kind's set made now (discovery, builds): the watcher marks edits from then on.
@@ -262,11 +256,17 @@ func session(id string) contracts.Address {
 	return fixtureSession.Address(delta.JsonObjectOf("id", id))
 }
 
+// entryOf is the raw state entry of id: nil when none.
+func (f *fleet) entryOf(id string) *delta.JsonObject {
+	object, _ := f.workers.State().Value().(*delta.JsonObject)
+	entry, _ := object.Value("session|" + id).(*delta.JsonObject)
+	return entry
+}
+
 // stateOf is the state entry of id: nil when none.
 func (f *fleet) stateOf(id string) *WorkerState {
-	object, _ := f.workers.State().Value().(*delta.JsonObject)
-	entry, ok := object.Value("session|" + id).(*delta.JsonObject)
-	if !ok {
+	entry := f.entryOf(id)
+	if entry == nil {
 		return nil
 	}
 	state := &WorkerState{Status: WorkerStatus(entry.Value("status").(string))}

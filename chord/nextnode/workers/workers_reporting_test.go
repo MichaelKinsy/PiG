@@ -165,10 +165,11 @@ func handled(t testing.TB, child *child) {
 	}
 }
 
-// reportsCall is `control.report(text, context)`: the call returns once the worker sent the report.
-func reportsCall(t testing.TB, control *host.Reference, method, text string) {
+// reportsCall is `control.report(text, context)` of Pi (here on the reporter: fixtureReporter): the call returns once the worker sent the
+// report.
+func reportsCall(t testing.TB, reporter *host.Reference, method, text string) {
 	t.Helper()
-	if _, err := control.Call(method, text, background); err != nil {
+	if _, err := reporter.Call(method, text, background); err != nil {
 		t.Fatalf("%s %q: %v", method, text, err)
 	}
 }

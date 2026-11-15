@@ -73,18 +73,15 @@ var (
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
 			contracts.Meth("crash", contracts.NewMethod(contracts.Int())),
 			contracts.Meth("busy", contracts.NewMethod(contracts.Int())),
+			contracts.Meth("block", contracts.NewMethod(contracts.Str())),
 			contracts.Meth("localCalls", contracts.NewMethod(contracts.Int(), contracts.Int())),
-			// Sends the server a report and returns without waiting for its answer.
-			contracts.Meth("report", contracts.NewMethod(contracts.Str())),
-			// Sends the server a report and exits (code 7) in the same turn.
-			contracts.Meth("reportAndExit", contracts.NewMethod(contracts.Str())),
 		}})},
 	}))
 
-	// fixtureBlocker is what the worker's own fixture code calls to block its NodeHost's event loop until a file exists (`BlockNode`):
-	// a type of its own, because `fixtureControl` holds the server's `Reports` with itself and a worker of a test with no server that
-	// serves them has no `fixtureControl`.
-	fixtureBlocker = mustFixture(contracts.Remote("test.blocker", contracts.RemoteDeclaration{
+	// fixtureReporter is Pi's `Control.report` and `Control.reportAndExit`, a type of its own at the same address: the module of the
+	// worker's NodeHost holds the server's `Reports` with the object (taken at its activation), where Pi's worker holds them from its
+	// first report, so a `Control` that had them would not be served without a server that serves `Reports` (Pi's default fleet has none).
+	fixtureReporter = mustFixture(contracts.Remote("test.reporter", contracts.RemoteDeclaration{
 		Version: 1,
 		Params:  contracts.Params{contracts.Prop("id", contracts.Str())},
 		HostAddress: func(params *delta.JsonObject) (contracts.Address, error) {
@@ -92,7 +89,10 @@ var (
 			return fixtureSession.Address(delta.JsonObjectOf("id", id)), nil
 		},
 		Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
-			contracts.Meth("block", contracts.NewMethod(contracts.Str())),
+			// Sends the server a report and returns without waiting for its answer.
+			contracts.Meth("report", contracts.NewMethod(contracts.Str())),
+			// Sends the server a report and exits (code 7) in the same turn.
+			contracts.Meth("reportAndExit", contracts.NewMethod(contracts.Str())),
 		}})},
 	}))
 
@@ -558,7 +558,7 @@ func runWorkerFixture() {
 		}
 		if release := behaviour.BlockNode; release != "" {
 			time.AfterFunc(300*time.Millisecond, func() {
-				control, err := worker.Get(chordctx.Background(), fixtureBlocker, delta.JsonObjectOf("id", id), host.GetOptions{})
+				control, err := worker.Get(chordctx.Background(), fixtureControl, delta.JsonObjectOf("id", id), host.GetOptions{})
 				if err != nil {
 					fmt.Fprintln(os.Stderr, err)
 					return
