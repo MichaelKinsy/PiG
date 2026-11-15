@@ -1146,6 +1146,15 @@ func (a *attempt) keyedMember(member string) (*documents.KeyedSlot, error) {
 	return keyed.binding.keyedSlot(keyed.member)
 }
 
+// queryMember is the named query `name` of its queries member `member`; an unknown one fails `invalid/member`.
+func (a *attempt) queryMember(member, name string) (*OwnQuery, error) {
+	query := a.members.queries[member][name]
+	if query == nil {
+		return nil, data.Invalid(data.ReasonMember, a.object.text+` has no query "`+member+`.`+name+`"`)
+	}
+	return query, nil
+}
+
 // memberAt is state member `member` as a consumer of version follows it: its own member at its version, else its shared
 // mapping for that version (`adaptedMembers`); `invalid/member` outside the variant, `contract_mismatch` for a version or
 // member its provider refuses.
@@ -1510,6 +1519,13 @@ func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 	}
 	afterDocuments := func() {
 		if len(a.tables) == 0 {
+			// An attempt that declares no table drops the sets its object had bound.
+			if chordStore := host.store; chordStore != nil {
+				if err := a.bindSets(nil, chordStore); err != nil {
+					failedLoading(err)
+					return
+				}
+			}
 			loaded()
 			return
 		}
@@ -1940,6 +1956,15 @@ func (a *attempt) prepareTables(dl *deadline) *keyedPromise[struct{}] {
 		},
 		Adopt: func(int64, []int64, int) error { return nil },
 	}
+	chordStore := a.tables[0].handle.Store
+	// Every read over a table that is created or migrated now waits until it is ready (slice 14 §5): a migration's chunks
+	// are not one commit, and a failed one leaves the table held.
+	for _, each := range a.tables {
+		recorded := chordStore.Table(each.handle.Sql.Table)
+		if recorded == nil || recorded.Version != each.handle.Definition.Version || recorded.State != store.StateReady {
+			chordStore.Reads.Hold(each.handle.Sql.Table)
+		}
+	}
 	dl.pause()
 	prepared := awaitTask(a.object.host, func() (struct{}, error) {
 		return struct{}{}, store.PrepareTables(declared, a.tables[0].handle.Store, fence, a.object.text, a.opening)
@@ -1947,9 +1972,40 @@ func (a *attempt) prepareTables(dl *deadline) *keyedPromise[struct{}] {
 	result := newKeyedPromise[struct{}](a.loop())
 	prepared.then(func(_ struct{}, err error) {
 		dl.resume()
+		if err == nil {
+			err = a.bindSets(a.tables, chordStore)
+		}
 		result.settle(struct{}{}, err)
 	})
 	return result
+}
+
+// bindSets makes the bindings of column sets follow this attempt's declarations (the committed code, slice 14 §5): each set
+// a table exposes is bound to it, a set its object bound before and no table exposes now is dropped; then the tables are
+// ready, and the reads over them compile again and run once. An attempt that declares no table drops what its object had
+// bound. A set another table exposes is refused, naming both (the tables stay held).
+func (a *attempt) bindSets(tables []declaredTable, chordStore *store.ChordStore) error {
+	reads := chordStore.Reads
+	exposed := map[string]struct{}{}
+	for _, each := range tables {
+		set := each.handle.Definition.Exposes
+		if set == nil {
+			continue
+		}
+		exposed[set.Name] = struct{}{}
+		if err := reads.Bind(set.Name, store.Bound{Table: each.handle.Sql.Table, Definition: each.handle.Definition}, a.object); err != nil {
+			return err
+		}
+	}
+	for _, set := range reads.BoundBy(a.object) {
+		if _, kept := exposed[set]; !kept {
+			reads.Unbind(set, a.object)
+		}
+	}
+	for _, each := range tables {
+		reads.Ready(each.handle.Sql.Table)
+	}
+	return nil
 }
 
 // declare runs the factory with declarations open; the member check establishes what it returned. A throwing factory

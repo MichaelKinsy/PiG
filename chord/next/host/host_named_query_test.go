@@ -2,12 +2,19 @@ package host
 
 import (
 	"context"
+	"slices"
+	"sort"
+	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/documents"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
@@ -160,5 +167,358 @@ func TestNamedQueryStagingRefusesTheQueriesAnAttemptRefusesTheNamedBuildersAndTh
 				}
 			}
 		})
+	}
+}
+
+// --- the sessions' column set and the club ---------------------------------------------------------------------------------
+
+func nqMust[T any](value T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return value
+}
+
+var (
+	nqSessionColumns = nqMust(store.DefineColumns("sessions.columns", store.ColumnSetOptions{
+		Columns: []store.ColumnProp{store.Col("id", store.Host(Session)), store.Col("app", store.Str()), store.Col("title", store.Str()), store.Col("lastTouch", store.Int())},
+		Key:     []string{"id"},
+	}))
+	nqRows     = nqTableWith(nqSessionColumns, store.Col("cwd", store.Str(contracts.Default("/"))))
+	nqSessions = exLocal("app.sessions", contracts.Params{},
+		contracts.Mem("put", contracts.NewMethod(exObj(exProp("id", exStr()), exProp("app", exStr()), exProp("title", exStr()), exProp("lastTouch", exInt())))),
+		contracts.Mem("touch", contracts.NewMethod(exObj(exProp("id", exStr()), exProp("at", exInt())))))
+)
+
+// nqTableWith is the sessions' table: the column set's columns and extra, exposing the set.
+func nqTableWith(set *store.ColumnSet, extra ...store.ColumnProp) *store.TableDefinition {
+	return nqMust(store.DefineTable("rows", store.TableOptions{
+		Version: 1, Columns: append(append([]store.ColumnProp{}, set.Schemas...), extra...), Key: []string{"id"}, Exposes: set,
+	}))
+}
+
+func nqSession(id string) contracts.Address { return Session.Address(jsonObject("id", id)) }
+
+// nqServeSessions is the sessions' store: the publisher of the column set. table is the version its code declares.
+func nqServeSessions(h FacetHost, table *store.TableDefinition) error {
+	return h.Serve(nqSessions, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		self := plain.(StoreSelf)
+		rows := self.Table(table)
+		tx := func(ctx context.Context, write func(tx documents.Tx) error) (delta.JsonValue, error) {
+			_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, write(tx) }, ctx)
+			return nil, err
+		}
+		return exImpl(nil, map[string]contracts.MethodFunction{
+			"put": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
+				return tx(ctx, func(tx documents.Tx) error {
+					return tx.Put(rows, store.Row{"id": nqSession(args.Value("id").(string)), "app": args.Value("app"), "title": args.Value("title"), "lastTouch": int64(args.Value("lastTouch").(float64))})
+				})
+			}),
+			"touch": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
+				return tx(ctx, func(tx documents.Tx) error {
+					return tx.Update(rows, store.Row{"id": nqSession(args.Value("id").(string))}, store.Row{"lastTouch": int64(args.Value("at").(float64))})
+				})
+			}),
+		}), nil
+	}, ServeOptions{})
+}
+
+// nqProbe is what the club's mapping was handed, by call: the sorted names of the partner's columns.
+type nqProbe struct {
+	mu       sync.Mutex
+	partners [][]string
+}
+
+func (p *nqProbe) add(names []string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.partners = append(p.partners, names)
+}
+
+func (p *nqProbe) last() []string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if len(p.partners) == 0 {
+		return nil
+	}
+	return p.partners[len(p.partners)-1]
+}
+
+func nqKeys(row map[string]any) []string {
+	names := make([]string, 0, len(row))
+	for name := range row {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// nqServeClub is the club: its team rows joined with the sessions' column set, a query per team.
+func nqServeClub(h FacetHost, probe *nqProbe, set *store.ColumnSet) error {
+	return h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		self := plain.(StoreSelf)
+		table := self.Table(nqTeamRows)
+		teams := self.Queries(table, QueriesOptions{
+			Map: func(row store.Row, session PartnerRow) (delta.JsonValue, error) {
+				probe.add(nqKeys(session))
+				return jsonObject("session", row["session"].(contracts.Address).Params.Value("id"), "title", session["title"], "touched", float64(session["lastTouch"].(int64))), nil
+			},
+			PartnerReads: []string{"title", "lastTouch"},
+		}, map[string]QueryBuilder{"ofTeam": {Build: func(args delta.JsonValue) *store.Query {
+			team := args.(*delta.JsonObject).Value("team").(string)
+			return store.NewQuery(nqTeamRows).
+				Where(func(t, _ store.ColumnRefs) store.Condition { return store.Eq(t["team"], team) }).
+				Join(set, func(t store.ColumnRefs) store.Match { return store.Match{{Column: "id", Ref: t["session"]}} }).
+				Where(func(_, session store.ColumnRefs) store.Condition { return store.Eq(session["app"], "club") }).
+				OrderBy(func(_, session store.ColumnRefs) *store.ColumnRef { return session["lastTouch"] }, "desc")
+		}}})
+		return contracts.Implementation{Members: contracts.VariantImplementation{
+			Queries: map[string]nqNamed{"teams": teams},
+			Methods: map[string]contracts.MethodFunction{"add": exMethod(func(args *delta.JsonObject, ctx context.Context) (delta.JsonValue, error) {
+				_, err := self.Tx(func(tx documents.Tx) (any, error) {
+					return nil, tx.Put(table, store.Row{"team": args.Value("team"), "session": nqSession(args.Value("session").(string))})
+				}, ctx)
+				return nil, err
+			})},
+		}}, nil
+	}, ServeOptions{})
+}
+
+// nqPublisher is the sessions' plugin at a table version: only the publisher's code changes in these reloads.
+func nqPublisher(table *store.TableDefinition) HostFacet {
+	return HostFacet{Name: "@test/sessions", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return nqServeSessions(h, table) })}
+}
+
+// nqClubPlugin is the club's plugin.
+func nqClubPlugin(probe *nqProbe) HostFacet {
+	return HostFacet{Name: "@test/club", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return nqServeClub(h, probe, nqSessionColumns) })}
+}
+
+// nqHosted is a host with both plugins, three sessions (two of the club) and a team of the three.
+func nqHosted(t *testing.T, chordStore *store.ChordStore, probe *nqProbe) (Host, *hostErrors) {
+	t.Helper()
+	errs := &hostErrors{}
+	host := newHost(t, HostOptions{Store: chordStore, OnError: errs.push})
+	_, err := host.Load([]HostFacet{nqPublisher(nqRows), nqClubPlugin(probe)}, background)
+	must(t, err)
+	sessions, teams := mustGet(t, host, nqSessions, jsonObject()), mustGet(t, host, nqClub, jsonObject())
+	for index, app := range []string{"club", "club", "family"} {
+		id := "s" + strconv.Itoa(index)
+		_, err := sessions.Call("put", jsonObject("id", id, "app", app, "title", "t"+strconv.Itoa(index), "lastTouch", float64(index)), background)
+		must(t, err)
+		_, err = teams.Call("add", jsonObject("team", "u12", "session", id), background)
+		must(t, err)
+	}
+	return host, errs
+}
+
+// nqItems is the sessions of a page's items, in order, each with its title and touch.
+func nqItems(items []delta.JsonValue) []string {
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		row := item.(*delta.JsonObject)
+		out = append(out, row.Value("session").(string)+"/"+row.Value("title").(string)+"/"+strconv.Itoa(int(row.Value("touched").(float64))))
+	}
+	return out
+}
+
+func TestNamedQueryAJoinedQueryReadsAPageAtATimeWithoutALiveRead(t *testing.T) {
+	host, _ := nqHosted(t, memoryStore(t), &nqProbe{})
+	teams := mustGet(t, host, nqClub, jsonObject()).Queries("teams")["ofTeam"]
+	args := jsonObject("team", "u12")
+	first, err := teams.Page(args, 1, background, contracts.QueryPageOptions{})
+	must(t, err)
+	if !slices.Equal(nqItems(first.Items), []string{"s1/t1/1"}) || first.Next == nil {
+		t.Fatalf("first = %v next %v", nqItems(first.Items), first.Next)
+	}
+	second, err := teams.Page(args, 1, background, contracts.QueryPageOptions{After: first.Next})
+	must(t, err)
+	if !slices.Equal(nqItems(second.Items), []string{"s0/t0/0"}) || second.Next != nil {
+		t.Fatalf("second = %v next %v", nqItems(second.Items), second.Next)
+	}
+	nope := "nope"
+	_, err = teams.Page(args, 1, background, contracts.QueryPageOptions{After: &nope})
+	wantChordError(t, err, data.CodeInvalid, data.ReasonArgs, "")
+}
+
+func TestNamedQueryTheMappingsProjectionGetsOnlyTheColumnsReadsAndPartnerReadsListAlsoWhenTheQueryOrdersOrMatchesByOthers(t *testing.T) {
+	// Review round 1 (Sol 7): the statement selects the key, the order and the match columns for the store; the mapping does
+	// not see them.
+	var seen [][]string
+	var mu sync.Mutex
+	plain := nqMust(store.DefineTable("plain", store.TableOptions{
+		Version: 1, Key: []string{"id"},
+		Columns: []store.ColumnProp{store.Col("id", store.Int()), store.Col("group", store.Str()), store.Col("text", store.Str()), store.Col("session", store.Host(Session))},
+	}))
+	projected := exLocal("app.projected", contracts.Params{},
+		contracts.Mem("rows", contracts.Queries(exObj(exProp("text", exStr())), []contracts.Property{exProp("all", exObj())})),
+		contracts.Mem("put", contracts.NewMethod(exInt())))
+	host := newHost(t, HostOptions{Store: memoryStore(t)})
+	_, err := host.Load([]HostFacet{nqPublisher(nqRows), {Name: "@test/projected", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(projected, func(_ *delta.JsonObject, plainSelf Self) (contracts.Implementation, error) {
+			self := plainSelf.(StoreSelf)
+			table := self.Table(plain)
+			rows := self.Queries(table, QueriesOptions{
+				Map: func(row store.Row, session PartnerRow) (delta.JsonValue, error) {
+					mu.Lock()
+					defer mu.Unlock()
+					seen = append(seen, append(append(nqKeys(row), "|"), nqKeys(session)...))
+					return jsonObject("text", row["text"]), nil
+				},
+				Reads:        []string{"text"},
+				PartnerReads: []string{"title"},
+			}, map[string]QueryBuilder{"all": {Build: func(delta.JsonValue) *store.Query {
+				return store.NewQuery(plain).
+					Join(nqSessionColumns, func(row store.ColumnRefs) store.Match { return store.Match{{Column: "id", Ref: row["session"]}} }).
+					OrderBy(func(row, _ store.ColumnRefs) *store.ColumnRef { return row["group"] }, "asc").
+					OrderBy(func(_, session store.ColumnRefs) *store.ColumnRef { return session["lastTouch"] }, "asc")
+			}}})
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				Queries: map[string]nqNamed{"rows": rows},
+				Methods: map[string]contracts.MethodFunction{"put": func(arg delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					row := store.Row{"id": int64(arg.(float64)), "group": "g", "text": "t", "session": nqSession("s0")}
+					_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, tx.Put(table, row) }, ctx)
+					return nil, err
+				}},
+			}}, nil
+		}, ServeOptions{})
+	})}}, background)
+	must(t, err)
+	_, err = mustGet(t, host, nqSessions, jsonObject()).Call("put", jsonObject("id", "s0", "app", "club", "title", "t0", "lastTouch", float64(1)), background)
+	must(t, err)
+	rows := mustGet(t, host, projected, jsonObject())
+	_, err = rows.Call("put", float64(1), background)
+	must(t, err)
+	page, err := rows.Queries("rows")["all"].Page(jsonObject(), 5, background, contracts.QueryPageOptions{})
+	must(t, err)
+	if len(page.Items) != 1 || page.Items[0].(*delta.JsonObject).Value("text") != "t" {
+		t.Fatalf("items = %v", page.Items)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if !slices.EqualFunc(seen, [][]string{{"text", "|", "title"}}, slices.Equal) {
+		t.Fatalf("the mapping saw %q, want [[text | title]]", seen)
+	}
+}
+
+func TestNamedQueryAPublisherWhoseNewCodeDeclaresNoTableServesItsSetNoMore(t *testing.T) {
+	// Sol 2, Astra S1: the binding must not outlive the last table. (The reader's half of the case, its page's value
+	// failing `column set ... is not served`, is with the reader.)
+	chordStore := memoryStore(t)
+	host, _ := nqHosted(t, chordStore, &nqProbe{})
+	if _, bound := chordStore.Reads.Get(nqSessionColumns.Name); !bound {
+		t.Fatal("the set is not bound while its publisher serves it")
+	}
+	bare := HostFacet{Name: "@test/sessions", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(nqSessions, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			noop := func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }
+			return exImpl(nil, map[string]contracts.MethodFunction{"put": noop, "touch": noop}), nil
+		}, ServeOptions{})
+	})}
+	report := reloadMust(t)(host.Reload([]HostFacet{bare, nqClubPlugin(&nqProbe{})}, background, ReloadOptions{}))
+	if len(report.Failed) != 0 {
+		t.Fatalf("failed = %+v", report.Failed)
+	}
+	// The caller waits on the new attempt being live: a call to the sessions parks until it is, and runs on it.
+	_, err := mustGet(t, host, nqSessions, jsonObject()).Call("touch", jsonObject("id", "s0", "at", float64(1)), background)
+	must(t, err)
+	if _, bound := chordStore.Reads.Get(nqSessionColumns.Name); bound {
+		t.Fatal("the set is bound after its publisher declared no table")
+	}
+}
+
+func TestNamedQueryAnUnknownQueryOfAMemberIsInvalidAndARemoteObjectHasNone(t *testing.T) {
+	// Mine (Pi has no case of its own): a reference's member resolves to the object's own query; none of that name is
+	// `invalid/member`, and a remote object has no `queries` member at all.
+	host, _ := nqHosted(t, memoryStore(t), &nqProbe{})
+	_, err := mustGet(t, host, nqClub, jsonObject()).binding.queryMember("teams", "nope")
+	wantChordError(t, err, data.CodeInvalid, data.ReasonMember, `app.club has no query "teams.nope"`)
+	_, err = (&remoteObject{name: "app.far"}).queryMember("teams", "ofTeam")
+	wantChordError(t, err, data.CodeInvalid, data.ReasonMember, `app.far has no queries member "teams": named queries are local`)
+}
+
+func TestNamedQueryAPageChecksItsArgumentsByTheContractsSchemaAndWhatTheBuilderReturns(t *testing.T) {
+	// Mine (Pi has no case of its own): the arguments are a trust boundary (`invalid/args`), and the builder is plugin code.
+	built := func(table *store.TableDefinition) *store.Query { return store.NewQuery(table) }
+	for _, each := range []struct {
+		what    string
+		args    delta.JsonValue
+		table   *store.TableDefinition
+		message string
+	}{
+		{"arguments that are not the schema's", jsonObject("team", float64(3)), nqTeamRows, ""},
+		{"a builder returning a query of another table", jsonObject("team", "u12"), nqPlain, `app.club: query "ofTeam": the builder returns a query of table "team-rows"`},
+	} {
+		t.Run(each.what, func(t *testing.T) {
+			host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+				return h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+					self := plain.(StoreSelf)
+					teams := self.Queries(self.Table(nqTeamRows), QueriesOptions{}, map[string]QueryBuilder{"ofTeam": {Build: func(delta.JsonValue) *store.Query { return built(each.table) }}})
+					noop := func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }
+					return contracts.Implementation{Members: contracts.VariantImplementation{
+						Queries: map[string]nqNamed{"teams": teams}, Methods: map[string]contracts.MethodFunction{"add": noop},
+					}}, nil
+				}, ServeOptions{})
+			}, loadedOptions{Store: memoryStore(t)})
+			_, err := mustGet(t, host, nqClub, jsonObject()).Queries("teams")["ofTeam"].Page(each.args, 1, background, contracts.QueryPageOptions{})
+			if each.message == "" {
+				wantChordError(t, err, data.CodeInvalid, data.ReasonArgs, "")
+				return
+			}
+			if err == nil || err.Error() != each.message {
+				t.Fatalf("err = %v, want %q", err, each.message)
+			}
+		})
+	}
+}
+
+func TestNamedQueryATargetIsWhatReadingItReadsAndDecodesAStoredRowAsItsPageDoes(t *testing.T) {
+	// Mine: the reader's contract (Pi's query-reader.ts takes `provided().target(args, context)`): its spec names the query,
+	// the table's SQL name and its owner, and its decode is the page's.
+	host, _ := nqHosted(t, memoryStore(t), &nqProbe{})
+	own, err := mustGet(t, host, nqClub, jsonObject()).binding.queryMember("teams", "ofTeam")
+	must(t, err)
+	target, err := own.Target(jsonObject("team", "u12"), background)
+	must(t, err)
+	spec := target.Spec
+	if spec.Table != own.Handle.Sql.Table || spec.Owner != own.Handle || spec.Query.Table != nqTeamRows || spec.Query.Joined == nil {
+		t.Fatalf("spec = %+v", spec)
+	}
+	title, touch := store.PartnerName(nqSessionColumns.Name, "title"), store.PartnerName(nqSessionColumns.Name, "lastTouch")
+	item, err := target.Decode(store.StoredRead{"team": "u12", "session": nqSession("s1").Key, title: "t1", touch: int64(1)}, background)
+	must(t, err)
+	if got := nqItems([]delta.JsonValue{item}); !slices.Equal(got, []string{"s1/t1/1"}) {
+		t.Fatalf("decoded = %v", got)
+	}
+	_, err = own.Target(jsonObject("team", float64(3)), background)
+	wantChordError(t, err, data.CodeInvalid, data.ReasonArgs, "")
+}
+
+func TestNamedQueryAReferenceTellsItsFollowersOfEveryOtherInstanceOfItsObject(t *testing.T) {
+	// Mine (Pi's reference.ts `followInstance` is covered through query-reader.test.ts): a restart's successor is told of
+	// once, and a released follower is told no more. The caller waits on each new instance being live: a call to the club
+	// parks until it is.
+	host, _ := nqHosted(t, memoryStore(t), &nqProbe{})
+	club := mustGet(t, host, nqClub, jsonObject())
+	var moved atomic.Int32
+	release := club.Queries("teams")["ofTeam"].Follow(func() { moved.Add(1) })
+	restart := func() {
+		t.Helper()
+		reloadMust(t)(host.Reload([]HostFacet{nqPublisher(nqRows), nqClubPlugin(&nqProbe{})}, background, ReloadOptions{}))
+		_, err := club.Call("add", jsonObject("team", "u13", "session", "s0"), background)
+		must(t, err)
+	}
+	restart()
+	if got := moved.Load(); got != 1 {
+		t.Fatalf("told %d times after one restart, want 1", got)
+	}
+	restart()
+	if got := moved.Load(); got != 2 {
+		t.Fatalf("told %d times after two restarts, want 2", got)
+	}
+	release()
+	restart()
+	if got := moved.Load(); got != 2 {
+		t.Fatalf("told %d times after the release, want 2", got)
 	}
 }

@@ -786,6 +786,15 @@ func (o *chordObject) keyedMember(member string) (*documents.KeyedSlot, error) {
 	return live.keyedMember(member)
 }
 
+// queryMember is the named query `name` of queries member `member` of the live object (slice 14 §3.1).
+func (o *chordObject) queryMember(member, name string) (*OwnQuery, error) {
+	live, err := o.live()
+	if err != nil {
+		return nil, err
+	}
+	return live.queryMember(member, name)
+}
+
 // pinKey pins `key` of keyed member `member` on the live instance, as a consumer of version reads it (`attempt.pinKey`). It
 // blocks, outside a section.
 func (o *chordObject) pinKey(member, key string, version int, ctx context.Context) (pinnedKey, error) {

@@ -84,6 +84,22 @@ func (q *OwnQuery) Page(args delta.JsonValue, limit int64, ctx context.Context, 
 	return q.PageOf(args, limit, ctx, options.After)
 }
 
+// Target is what reading this query for args reads: args checked (a trust boundary), the query built and checked, and how
+// a stored row of it decodes.
+func (q *OwnQuery) Target(args delta.JsonValue, ctx context.Context) (store.LiveTarget, error) {
+	query, err := q.build(args, ctx)
+	if err != nil {
+		return store.LiveTarget{}, err
+	}
+	handle := q.Handle
+	return store.LiveTarget{
+		Spec: store.QuerySpec{Query: query, Table: handle.Sql.Table, Projection: q.projection, Owner: handle},
+		Decode: func(stored store.StoredRead, decoding context.Context) (delta.JsonValue, error) {
+			return q.decode(query, stored, decoding)
+		},
+	}, nil
+}
+
 // PageOf is up to limit items for args after the cursor after, and the cursor of the next page when there is one.
 func (q *OwnQuery) PageOf(args delta.JsonValue, limit int64, ctx context.Context, after *string) (contracts.QueryPage[delta.JsonValue], error) {
 	handle := q.Handle
@@ -227,4 +243,66 @@ func ownQueryNames(queries map[string]*OwnQuery) []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// NamedQueryHandle is a named query as readers hold it: its owner's declaration (OwnQuery), or a reference's member
+// (ReferenceQuery).
+type NamedQueryHandle interface {
+	contracts.NamedQuery[delta.JsonValue, delta.JsonValue]
+	// Label is the query in errors and reports: its name, with its member for a reference's.
+	Label() string
+	// Provided is the provider's declaration; an error while the provider is not live (a reference's state says why).
+	Provided() (*OwnQuery, error)
+	// Follow calls moved whenever another instance of the provider is live, until the returned release.
+	Follow(moved func()) (release func())
+}
+
+// Label implements NamedQueryHandle.
+func (q *OwnQuery) Label() string { return q.label }
+
+// Provided implements NamedQueryHandle: itself.
+func (q *OwnQuery) Provided() (*OwnQuery, error) { return q, nil }
+
+// Follow implements NamedQueryHandle: an own query's provider is the one declaring it, which never moves.
+func (q *OwnQuery) Follow(func()) (release func()) { return func() {} }
+
+// ReferenceQuery is a named query of a reference's `queries` member: the provider's declaration of that name, while it is
+// live.
+type ReferenceQuery struct {
+	binding *binding
+	member  string
+	name    string
+}
+
+var _ NamedQueryHandle = (*ReferenceQuery)(nil)
+
+// Label implements NamedQueryHandle: read on the host's loop, where the binding's state lives.
+func (q *ReferenceQuery) Label() string {
+	var label string
+	q.binding.loop.Run(func() { label = q.binding.label() })
+	return label + `: query "` + q.member + "." + q.name + `"`
+}
+
+// Follow implements NamedQueryHandle: its binding tells of every other live instance of the provider, on the host's loop.
+func (q *ReferenceQuery) Follow(moved func()) (release func()) {
+	var unfollow func()
+	q.binding.loop.Run(func() { unfollow = q.binding.followInstance(moved) })
+	return func() { q.binding.loop.Run(unfollow) }
+}
+
+// Provided implements NamedQueryHandle: the provider's declaration, resolved on the host's loop as a keyed member's slot is.
+func (q *ReferenceQuery) Provided() (*OwnQuery, error) {
+	var own *OwnQuery
+	var err error
+	q.binding.loop.Run(func() { own, err = q.binding.queryMember(q.member, q.name) })
+	return own, err
+}
+
+// Page implements contracts.NamedQuery: up to limit items for args (after options.After) of the provider's query.
+func (q *ReferenceQuery) Page(args delta.JsonValue, limit int64, ctx context.Context, options contracts.QueryPageOptions) (contracts.QueryPage[delta.JsonValue], error) {
+	own, err := q.Provided()
+	if err != nil {
+		return contracts.QueryPage[delta.JsonValue]{}, err
+	}
+	return own.PageOf(args, limit, ctx, options.After)
 }
