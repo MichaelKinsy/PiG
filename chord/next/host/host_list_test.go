@@ -555,8 +555,7 @@ func TestListReload(t *testing.T) {
 		lsExpect(t, "before", shown, []int{10, 9, 8, 7, 6, 5, 4, 3, 2})
 		must(t, reload(w, w.plugins["store"], lsScreenPlugin(3, probe)))
 		// The first activation, staging's recording run, and the successor: it starts once the old attempt's work ended (the
-		// reload returns before), so the test waits for its factory, then for the reads it started.
-		until(t, "the successor's factory", func() bool { return probe.factories.Load() >= 3 })
+		// reload returns before): that work is a task of the host's loop, which deliveredOn joins, then the reads it started.
 		lsSettled(w.host)
 		if n := probe.factories.Load(); n != 3 {
 			t.Fatalf("factories = %d, want 3", n)

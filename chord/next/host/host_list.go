@@ -101,9 +101,15 @@ type list struct {
 var _ tilingOwner = (*list)(nil)
 var _ Reading = (*list)(nil)
 
+// closedChannel is a channel that is closed: the tail of a list no `more` is queued on.
+func closedChannel() chan struct{} {
+	done := make(chan struct{})
+	close(done)
+	return done
+}
+
 func newList(site store.ReadSite, owner state.FramedOwner, first int, memory *ListMemory) *list {
-	l := &list{site: site, first: first, memory: memory, tail: make(chan struct{}), switched: make(chan struct{})}
-	close(l.tail)
+	l := &list{site: site, first: first, memory: memory, tail: closedChannel(), switched: make(chan struct{})}
 	l.Init(site.Batch, owner)
 	return l
 }

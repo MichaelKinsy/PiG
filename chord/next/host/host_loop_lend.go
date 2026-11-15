@@ -27,6 +27,8 @@ type lendRun struct {
 	busy bool
 	// yield gives control back to whoever resumed the coroutine: at the handler's park, and when it is idle.
 	yield func()
+	// gid is the ID of the coroutine's goroutine.
+	gid uint64
 }
 
 // exec runs the call: fn is the handler and its settlement.
@@ -59,6 +61,7 @@ func (r *lendRun) exec() {
 		r.finish()
 	}()
 	id := goroutineid.Current()
+	r.gid = id
 	signal.Bind(id, r.yield)
 	if r.lent {
 		loop.owner.Store(id)
@@ -145,8 +148,8 @@ func (l *Loop) recycle(c *coroutine) {
 // goroutine, which switches to it and waits until fn returns or raises signal (a Park of its ctx). Meanwhile the loop's
 // owner is fn's goroutine: its calls to Run run inline, as nested synchronous calls do in Pi, and the rest of the section
 // does not run. Raise gives the loop back to the section. What is left of fn runs after the section, as one of Pi's later
-// microtasks: on the goroutine that ended the section when fn returned (Signal.Return), on a goroutine of its own when it
-// parked. fn is an owned background task as Go's. Lend called outside a section lends nothing: the calls of fn to Run wait
+// microtasks: on the goroutine that ended the section when fn returned (Signal.Return), on a counted task of its own when it
+// parked (resume). fn is an owned background task as Go's. Lend called outside a section lends nothing: the calls of fn to Run wait
 // for the loop as any goroutine's do, and Lend returns when fn raises signal or returns.
 //
 // fn that ends its goroutine (runtime.Goexit, as testing.T.FailNow does) before it returns is a throw that nobody catches:
@@ -174,7 +177,7 @@ func (l *Loop) Lend(signal *parking.Signal, fn func(abandoned bool)) {
 		return
 	}
 	if !lent {
-		l.Go(func() { l.finish(c) })
+		l.resume(c)
 		return
 	}
 	l.pending = append(l.pending, resumption{c: c, inline: signal.Returned()})
@@ -192,7 +195,10 @@ func (l *Loop) switchTo(c *coroutine) {
 // cancelled first (it holds the coroutine, so it has not run): the runtime's cleanup goroutine must not stop it as well, with
 // the Goexit landing there and two stops of one iter.Pull at once.
 func (l *Loop) finish(c *coroutine) {
+	// A handler that waits through a host primitive parks the task that runs it: its coroutine's goroutine runs that task.
+	end := parking.Adopt(c.run.gid)
 	c.next()
+	end()
 	if c.run.goexited {
 		c.cleanup.Stop()
 		l.Go(func() { c.stop() })
@@ -208,6 +214,14 @@ func (l *Loop) resumeAfter(resumed []resumption) {
 			l.finish(each.c)
 			continue
 		}
-		l.Go(func() { l.finish(each.c) })
+		l.resume(each.c)
 	}
+}
+
+// resume runs what is left of a handler that parked on a task of the loop that is counted until the handler ends or waits parked
+// (Pi's continuation of an `await`, a microtask a test's `delivered()` waits for), where finish runs it. The count starts here, in
+// the section that ended.
+func (l *Loop) resume(c *coroutine) {
+	work := c.run.fn
+	l.task(work, func() { l.finish(c) })
 }

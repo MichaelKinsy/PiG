@@ -934,8 +934,7 @@ func TestTilingAPublishersMigrationThatChangesTheOrder(t *testing.T) {
 		_, err = host.Reload([]HostFacet{readers, publisher(turned)}, background, ReloadOptions{})
 		must(t, err)
 		// The reload returns before the publisher's successor migrates its table (it starts once the old attempt's work
-		// ended): the frame is waited for, then every read the switch started.
-		until(t, "the list's switch frame", func() bool { return len(frames.Items()) > 0 })
+		// ended, a task of the host's loop): deliveredOn joins it, then every read the switch started.
 		lsSettled(host)
 		tlEqual(t, "frames", callsIDs(frames.Items()), []any{[]int{1, 2, 3, 4, 5, 6}})
 		if _, moreAfter := mustListValue(t, screen); moreAfter {
