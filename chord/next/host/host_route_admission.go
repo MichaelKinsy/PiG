@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -250,10 +251,10 @@ func (a *routeAdmission) settle(asked *asked, settling *askedState) {
 			a.host.enter(func() {
 				// Released meanwhile (`left` marks the state before it releases), or the route's context ended with the host: the
 				// verdict of a released or cancelled decision is no decision, so nobody is told (Pi's settle of a released
-				// decision never settles, and the host's close ends the route's holds). Read from the decision and the context,
-				// not from the verdict's error: a genuinely broken one (an ended source) carries the same `released` code, and
-				// that one IS told (`held`).
-				if asked.state != settling || asked.decision.released || a.context.Err() != nil {
+				// decision never settles, and the host's close ends the route's holds). A released decision is known by its
+				// verdict's cause (ErrDecisionReleased), not by its code: a genuinely broken one (an ended source) carries the same
+				// `released` code, and that one IS told (`held`).
+				if asked.state != settling || (verdict.kind == verdictBroken && errors.Is(verdict.err, ErrDecisionReleased)) || a.context.Err() != nil {
 					ended = true
 					return
 				}
