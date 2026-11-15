@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -486,4 +487,191 @@ func TestRouteAdmissionADenialIsPerPrincipalAndAddressAnotherPrincipalsHoldsOnTh
 			t.Fatalf("worker references = %d, want 1", references)
 		}
 	})
+}
+
+// --- one decision per principal and address -----------------------------------------------------------------------------
+
+// decisionTracker is Pi's `instancesOf(Decision, "declare")`: every decision of the route seen so far, weakly (a snapshot of
+// the route's decisions: no hook in the code under test).
+type decisionTracker struct {
+	g     *gatedRelay
+	seen  []weak.Pointer[Decision]
+	known map[weak.Pointer[Decision]]bool
+}
+
+// route is the server's route of `Session`.
+func (g *gatedRelay) route() *route { return g.Server.(*chordHost).routes["session"] }
+
+func trackDecisions(g *gatedRelay) *decisionTracker {
+	return &decisionTracker{g: g, known: map[weak.Pointer[Decision]]bool{}}
+}
+
+// count snapshots the route's decisions into the tracker and returns how many were seen so far.
+func (d *decisionTracker) count() int {
+	d.g.Server.(*chordHost).enter(func() {
+		for _, asked := range d.g.route().admission.asked {
+			made := weak.Make(asked.decision)
+			if !d.known[made] {
+				d.known[made] = true
+				d.seen = append(d.seen, made)
+			}
+		}
+	})
+	return len(d.seen)
+}
+
+// Pi: "one decision per principal and address › is shared by its holds and released with the last (GC)". Covers
+// (host_route_admission.go): joined's shared decision, left's release. Mutation target: decision.release not called at the last holder.
+func TestRouteAdmissionOneDecisionPerPrincipalAndAddressIsSharedByItsHoldsAndReleasedWithTheLastGC(t *testing.T) {
+	g := routeGated(t, relayedOptions{}, nil)
+	defer closeHosts(t, g.Tab, g.Server)
+	g.set("yes")
+	second := g.tabOf(ownerPrincipal())
+	defer closeHosts(t, second)
+	tracked := trackDecisions(g)
+	before := tracked.count()
+	a := mustGet(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+	b := mustGet(t, second, PlacedNotes, jsonObject("session", "S1"))
+	// Two holds of one principal on one address: one decision. Another address: another.
+	if made := tracked.count() - before; made != 1 {
+		t.Fatalf("decisions = %d, want 1", made)
+	}
+	other := mustGet(t, g.Tab, PlacedNotes, jsonObject("session", "S2"))
+	if made := tracked.count() - before; made != 2 {
+		t.Fatalf("decisions = %d, want 2", made)
+	}
+	a.Release()
+	g.settled()
+	// Still held by the second tab: denied with it.
+	g.set("no")
+	g.settled()
+	wantDenied(t, b)
+	b.Release()
+	other.Release()
+	g.settled()
+	expectCollected(t, tracked.seen[before:]...)
+}
+
+// Pi: "one decision per principal and address › a failed source leaves bound holds alone and fails new ones waiting; it heals
+// with the source". Covers (part B): relayedHold.withheld for a new hold with `waiting`, relayedHold.admitted after it.
+func TestRouteAdmissionOneDecisionPerPrincipalAndAddressAFailedSourceLeavesBoundHoldsAloneAndFailsNewOnesWaitingItHealsWithTheSource(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		g := routeGated(t, relayedOptions{}, nil)
+		defer closeHosts(t, g.Tab, g.Server)
+		g.set("yes")
+		bound := mustGet(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+		g.set("throw")
+		g.settled()
+		if got := kindOf(bound); got != RefStateLive {
+			t.Fatalf("bound state = %s, want live", got)
+		}
+		second := g.tabOf(ownerPrincipal())
+		defer closeHosts(t, second)
+		late := mustHold(t, second, PlacedNotes, jsonObject("session", "S1"))
+		g.settled()
+		cause := failedWith(t, late)
+		if cause.Kind != data.FailureWaiting || !strings.Contains(cause.Error.Message, "the gate threw") {
+			t.Fatalf("cause = %s %q, want waiting: the gate threw", cause.Kind, cause.Error.Message)
+		}
+		g.set("yes")
+		g.settled()
+		wantKind(t, late, RefStateLive)
+		if kindOf(bound) != RefStateLive || kindOf(late) != RefStateLive {
+			t.Fatalf("states = %s, %s, want live, live", kindOf(bound), kindOf(late))
+		}
+	})
+}
+
+// Pi: "one decision per principal and address › a source that fails again, and again, still leaves the holds forwarded under
+// the last allow alone". Covers (host_route_admission.go): apply's `again` branch (same failure: nothing new to tell); (part B)
+// path.withhold NOT called for a forwarded holder.
+func TestRouteAdmissionOneDecisionPerPrincipalAndAddressASourceThatFailsAgainAndAgainStillLeavesTheHoldsForwardedUnderTheLastAllowAlone(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		g := routeGated(t, relayedOptions{}, nil)
+		defer closeHosts(t, g.Tab, g.Server)
+		g.set("yes")
+		bound := mustGet(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+		g.WorkerLoaded(t, "session|S1")
+		g.set("throw")
+		g.settled()
+		// The source changes for another principal: this one's decision is read again, and throws again.
+		g.set("no", "guest")
+		g.set("yes", "guest")
+		g.settled()
+		if got := kindOf(bound); got != RefStateLive {
+			t.Fatalf("bound state = %s, want live", got)
+		}
+		if references := workerReferences(g.relayed, "session|S1"); references != 1 {
+			t.Fatalf("worker references = %d, want 1", references)
+		}
+		// A denial is what takes them back.
+		g.set("no")
+		g.settled()
+		wantDenied(t, bound)
+	})
+}
+
+// Pi: "one decision per principal and address › a new link of the address holds nothing while the source is failed:
+// forwarded holds wait until it recovers (fail closed)". Covers (host_route_admission.go): gate.unlinked/routeAdmission.unlinked;
+// (part B) path.disconnected's gate.unlinked call, path.withhold on a path without a link, path.connected skipping withheld.
+func TestRouteAdmissionOneDecisionPerPrincipalAndAddressANewLinkOfTheAddressHoldsNothingWhileTheSourceIsFailedForwardedHoldsWaitUntilItRecoversFailClosed(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		raw := newRawWorkers(t, rawWorkerOptions{})
+		g := routeGated(t, relayedOptions{Resolve: raw.Resolve}, raw)
+		defer closeHosts(t, g.Tab, g.Server)
+		g.set("yes")
+		notes := mustHold(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+		first := raw.At(t, 0)
+		g.settled()
+		g.set("throw")
+		g.settled()
+		// Still held on its link: left alone.
+		if releases := peerKindCount(first, "release"); releases != 0 {
+			t.Fatalf("releases = %d, want 0", releases)
+		}
+		first.Close()
+		g.settled()
+		// A new link is new work at the address's host: nothing is resolved without an allow that can be read.
+		if peers := len(raw.Peers()); peers != 1 {
+			t.Fatalf("raw workers = %d, want 1", peers)
+		}
+		cause := failedWith(t, notes)
+		if cause.Kind != data.FailureWaiting || !strings.Contains(cause.Error.Message, "the gate threw") {
+			t.Fatalf("cause = %s %q, want waiting: the gate threw", cause.Kind, cause.Error.Message)
+		}
+		g.set("yes")
+		g.settled()
+		// The source is back with its allow: resolved, and held once.
+		second := raw.At(t, 1)
+		g.settled()
+		if kinds := second.Kinds(); !kindsEqual(kinds, "hello", "hold") {
+			t.Fatalf("second worker kinds = %v, want hello, hold", kinds)
+		}
+		if got := kindOf(notes); got != RefStateLoading {
+			t.Fatalf("state = %s, want loading", got)
+		}
+	})
+}
+
+// peerKindCount is how many messages of kind peer received.
+func peerKindCount(peer *RawPeer, kind string) int {
+	count := 0
+	for _, got := range peer.Kinds() {
+		if got == kind {
+			count++
+		}
+	}
+	return count
+}
+
+func kindsEqual(got []string, want ...string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }
