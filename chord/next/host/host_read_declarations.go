@@ -55,11 +55,6 @@ func namedQueryExpected(label, declaration string) error {
 	return declarationError("%s: self.%s reads a named query; a table of this object is read with self.query", label, declaration)
 }
 
-// tableExpected is the refusal of a named query given to `self.query` as its table.
-func tableExpected(label string) error {
-	return declarationError("%s: self.query reads a table of this object; a named query is read with self.liveQuery", label)
-}
-
 // undeclaredTable is the refusal of a table given to `self.query` or `self.queries` (declaration) that the factory did
 // not declare.
 func undeclaredTable(label, declaration string) error {
@@ -241,4 +236,6 @@ func (o readerOwner) Label() string { return o.at.Label }
 // Report implements state.FramedOwner.
 func (o readerOwner) Report(err error) { o.at.Report(o.given.Handle.Label(), err) }
 
-func readerOwnerOf(at ReaderSite, given *GivenQuery) state.FramedOwner { return readerOwner{at: at, given: given} }
+func readerOwnerOf(at ReaderSite, given *GivenQuery) state.FramedOwner {
+	return readerOwner{at: at, given: given}
+}
