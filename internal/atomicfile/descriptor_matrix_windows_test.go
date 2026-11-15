@@ -322,20 +322,38 @@ type route struct {
 	run      func(t testing.TB, path, data string, rec *recording) error
 }
 
-// privateTemp is what replaceThroughTemp hands to replace: a private owner-only file beside path that holds data.
-func privateTemp(t testing.TB, path, data string) string {
+// replacementFor is what replaceThroughTemp hands to replace: a private owner-only file beside path that holds data. When carried is set the access of path
+// is carried onto it before the data is written, as replaceThroughTemp does through carryAttributes; an error is a temporary file that cannot take the
+// access, where WriteFile would have written in place.
+func replacementFor(t testing.TB, path, data string, carried bool) (string, error) {
 	t.Helper()
 	file, err := createTemp(filepath.Dir(path), filepath.Base(path)+".tmp-*", 0o600, true)
 	if err != nil {
-		t.Fatal(err)
+		return "", err
+	}
+	if carried {
+		if err := carryAttributes(file, path); err != nil {
+			_ = file.Close()
+			return "", fmt.Errorf("the temporary file cannot take the access of the file (WriteFile writes in place then): %w", err)
+		}
 	}
 	if _, err := file.WriteString(data); err != nil {
-		t.Fatal(err)
+		_ = file.Close()
+		return "", err
 	}
 	if err := file.Close(); err != nil {
-		t.Fatal(err)
+		return "", err
 	}
-	return file.Name()
+	return file.Name(), nil
+}
+
+// noteReplaceFile is ReplaceFileW with the file at path recorded after it.
+func noteReplaceFile(rec *recording) func(replaced, replacement, backup string) error {
+	return func(replaced, replacement, backup string) error {
+		err := replaceFile(replaced, replacement, backup)
+		rec.note("path after ReplaceFileW", replaced)
+		return err
+	}
 }
 
 func routes() []route {
@@ -344,21 +362,27 @@ func routes() []route {
 			return WriteFile(path, []byte(data), 0o600)
 		}},
 		{"ReplaceFileW and the steps of replace", true, func(t testing.TB, path, data string, rec *recording) error {
-			temp := privateTemp(t, path, data)
-			rec.note("replacement as created", temp)
+			temp, err := replacementFor(t, path, data, true)
+			if err != nil {
+				return err
+			}
+			rec.note("replacement after the carry onto it", temp)
 			return replaceKeepingBackup(path, temp, replaceSteps{
-				replaceFile: func(replaced, replacement, backup string) error {
-					err := replaceFile(replaced, replacement, backup)
-					rec.note("path after ReplaceFileW", replaced)
+				replaceFile: noteReplaceFile(rec),
+				moveFile:    moveFile,
+				carry: func(from, to string) error {
+					err := carryDescriptor(from, to)
+					rec.note("path after the carry from the backup", to)
 					return err
 				},
-				moveFile: moveFile,
-				copyDACL: copyDACL,
 			})
 		}},
 		{"ReplaceFileW that stops half way (1177)", true, func(t testing.TB, path, data string, rec *recording) error {
-			temp := privateTemp(t, path, data)
-			rec.note("replacement as created", temp)
+			temp, err := replacementFor(t, path, data, true)
+			if err != nil {
+				return err
+			}
+			rec.note("replacement after the carry onto it", temp)
 			return replaceKeepingBackup(path, temp, replaceSteps{
 				replaceFile: func(replaced, replacement, backup string) error {
 					if err := os.Rename(replaced, backup); err != nil {
@@ -368,33 +392,34 @@ func routes() []route {
 					return &os.LinkError{Op: "replace", Old: replacement, New: replaced, Err: errUnableToMoveReplacement2}
 				},
 				moveFile: moveFile,
-				copyDACL: func(from, to string) error {
-					err := copyDACL(from, to)
-					rec.note("replacement after the access of the backup", to)
+				carry: func(from, to string) error {
+					err := carryDescriptor(from, to)
+					rec.note("file after the carry from the backup", to)
 					return err
 				},
 			})
 		}},
-		{"the file system without ReplaceFileW (copy, then MoveFileEx)", true, func(t testing.TB, path, data string, rec *recording) error {
-			temp := privateTemp(t, path, data)
-			rec.note("replacement as created", temp)
-			if err := copyDACL(path, temp); err != nil {
+		{"the file system without ReplaceFileW (carry, then MoveFileEx)", true, func(t testing.TB, path, data string, rec *recording) error {
+			temp, err := replacementFor(t, path, data, true)
+			if err != nil {
 				return err
 			}
-			rec.note("replacement after the copy", temp)
+			if err := carryDescriptor(path, temp); err != nil && !errors.Is(err, errAutoInheritedDiffers) {
+				return err
+			}
+			rec.note("replacement after the second carry", temp)
 			return moveFile(temp, path)
 		}},
 		{"ReplaceFileW alone (nothing carried, through the steps)", false, func(t testing.TB, path, data string, rec *recording) error {
-			temp := privateTemp(t, path, data)
+			temp, err := replacementFor(t, path, data, false)
+			if err != nil {
+				return err
+			}
 			rec.note("replacement as created", temp)
-			err := replaceKeepingBackup(path, temp, replaceSteps{
-				replaceFile: func(replaced, replacement, backup string) error {
-					err := replaceFile(replaced, replacement, backup)
-					rec.note("path after ReplaceFileW", replaced)
-					return err
-				},
-				moveFile: moveFile,
-				copyDACL: func(string, string) error { return nil },
+			err = replaceKeepingBackup(path, temp, replaceSteps{
+				replaceFile: noteReplaceFile(rec),
+				moveFile:    moveFile,
+				carry:       func(string, string) error { return nil },
 			})
 			if err != nil {
 				_ = os.Remove(temp)
@@ -402,6 +427,16 @@ func routes() []route {
 			return err
 		}},
 	}
+}
+
+// uncuredRoute is the route that carries nothing: what ReplaceFileW does to a descriptor by itself.
+func uncuredRoute() route {
+	for _, r := range routes() {
+		if strings.HasPrefix(r.name, "ReplaceFileW alone") {
+			return r
+		}
+	}
+	panic("no uncured route")
 }
 
 // cellReport is one row of the table printed when a cell differs.
@@ -500,7 +535,7 @@ func TestWindowsWriteFileOfANewFileGivesTheStoresDescriptor(t *testing.T) {
 // SetNamedSecurityInfo, the call that propagates inheritance to existing children. The file's entries must not change and Everyone must get nothing.
 // The first route is the store's; the second is ReplaceFileW alone, which leaves the flag as ReplaceFileW sets it.
 func TestWindowsInheritanceDoesNotReachAProtectedFileAfterAWrite(t *testing.T) {
-	for _, r := range []route{routes()[0], routes()[4]} {
+	for _, r := range []route{routes()[0], uncuredRoute()} {
 		t.Run(r.name, func(t *testing.T) {
 			dir := t.TempDir()
 			path := filepath.Join(dir, "auth.json")
@@ -605,6 +640,7 @@ func carryProbes() []carryProbe {
 			}
 			return windows.SetNamedSecurityInfo(to, windows.SE_FILE_OBJECT, info, nil, nil, dacl, nil)
 		}},
+		{"carryDescriptor (what the cure calls: SetKernelObjectSecurity with the protected flag named, owner and group where they differ, read back)", carryDescriptor},
 	}
 }
 

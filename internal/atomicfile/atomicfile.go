@@ -38,17 +38,20 @@ func SetInPlaceReporter(report func(path string, cause error)) {
 // it (writeFileSync), once, and the in-place write is reported to [SetInPlaceReporter]. A symbolic link is followed to its target, as writeFileSync does,
 // also to a target that does not exist yet (a chain of links ends at the file the last one names, which is created; a loop is ELOOP), so the rename
 // replaces the target and the link stays; the mode and, where the process may set them, the owner and group are kept, and so are the
-// extended attributes of the file (on Linux they hold POSIX ACLs; on macOS the user's attributes), and on Windows the replaced file's DACL, attributes
-// and streams. In place is the answer where
+// extended attributes of the file (on Linux they hold POSIX ACLs; on macOS the user's attributes), and on Windows the replaced file's DACL entries with
+// their flags and SE_DACL_PROTECTED (and its owner and group where the token may set them), attributes and streams, and its SE_DACL_AUTO_INHERITED flag
+// where the file system takes it back (D651). In place is the answer where
 //   - the file has more than one hard link (a rename would leave the other names with the old bytes);
-//   - an extended attribute cannot be copied for a reason other than a file system that keeps none (never dropped silently);
+//   - an extended attribute, or on Windows the DACL's entries or SE_DACL_PROTECTED, cannot be given to the temporary file for a reason other than a file
+//     system that keeps none (never dropped silently);
 //   - the temporary file cannot be created in the directory because it refuses the process (EACCES, EROFS, EPERM: a directory the process cannot
 //     write, holding a file it can); or the rename is refused (EBUSY, EXDEV, ETXTBSY: a file mounted into a container on its own is a mount point).
 //   - the file is not a regular file (a device such as /dev/null, a named pipe): a rename would replace the node itself with an ordinary file that has its mode.
 //
 // A file the caller may not write (a read-only file) is refused as an in-place write would refuse it, and a write that fails for a real reason (a
 // full disk, an I/O error) is an error, in place or not. On Windows a rename another process's open handle refuses is retried for
-// [fsretry.RenameBudget] before its error is returned, and a refusal is never turned into an in-place write there.
+// [fsretry.RenameBudget] before its error is returned, and a rename that fails is never turned into an in-place write there; a replacement that left
+// other access than the file had is undone from the backup and is an error.
 func WriteFile(path string, data []byte, perm os.FileMode) error {
 	// pig divergence (D651): replaced through a private temporary file and a rename, in place where that is refused; Pi writes the file in place.
 	path, err := followLinks(path)
@@ -114,7 +117,7 @@ func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.
 			return nil, err
 		}
 		if err = copyAttributes(temp, path); err != nil {
-			return fmt.Errorf("an extended attribute cannot be carried over: %w", err), nil
+			return fmt.Errorf("an attribute of the file cannot be carried over: %w", err), nil
 		}
 		// The mode comes last: an ACL set before it fixes the group bits, and chown can clear set-id bits. A new file already has the mode open gave it.
 		if err = temp.Chmod(mode); err != nil {
