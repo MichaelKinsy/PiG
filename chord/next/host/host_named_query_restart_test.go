@@ -142,8 +142,8 @@ type prHosted struct {
 
 func prHost(t *testing.T, chordStore *store.ChordStore) *prHosted {
 	t.Helper()
-	telemetry, ctx, counts := meteredHost(t)
-	host := newHost(t, HostOptions{Store: chordStore, Telemetry: telemetry, OnError: func(HostError) {}})
+	_, ctx, counts := meteredHost(t)
+	host := newHost(t, HostOptions{Store: chordStore, OnError: func(HostError) {}})
 	declared := &instances[OwnQuery]{}
 	_, err := host.Load([]HostFacet{prProviderPlugin(false, declared), prOthers}, background)
 	must(t, err)
@@ -254,15 +254,19 @@ func TestNamedQueryProvidersRestartARemovedProvidersReadsLeaveTheIndexItsReaders
 		t.Fatalf("%d reads of the removed provider's table stay in the index", len(reads))
 	}
 	// Mine (Go-only): the same check on the real tables the view's read uses (the provider's own and the gates', which its
-	// `exists` joins), over which it was registered before the reload. The read leaves the index a few scheduler turns after
-	// `flushed` and `deliveredOn` return (probe, 60 runs under race: still registered at that point in 28, gone after 1 to 5
-	// `Gosched`, never kept): a hop of the old attempt's end that no join of the helpers covers (Pi's one microtask chain
-	// has ended by `await flushed()`), so the check waits for the index to drop it.
-	scopeEventually(t, "the removed provider's reads left the index", func() bool {
-		flushed(h.Host)
-		deliveredOn(h.Host)
-		return len(chordStore.Reads.On("app.provider:texts")) == 0 && len(chordStore.Reads.On("app.gates:gate")) == 0
-	})
+	// `exists` joins), over which it was registered before the reload. Pi's probe (the case with the real table names, Pi
+	// 7cc21c24f6b5): both reads are gone when `await host.reload()` resolves, after `await flushed()` and after
+	// `await delivered()`: Pi's `remove` (object.ts:1093) starts `#tearDown` in the background and its `attempt.detach()`
+	// (`reads.retire`, attempt.ts:1421) runs after the awaits of `#tearDown` (object.ts:1625-1628), a microtask chain with no
+	// gate in it, which `setTimeout(0)` ends. The same chain here is the remove's teardown task (awaitTask): deliveredOn
+	// joins it, so the check is strict.
+	deliveredOn(h.Host)
+	if reads := chordStore.Reads.On("app.provider:texts"); len(reads) != 0 {
+		t.Fatalf("%d reads of the removed provider's table stay in the index", len(reads))
+	}
+	if reads := chordStore.Reads.On("app.gates:gate"); len(reads) != 0 {
+		t.Fatalf("%d reads over the gates' table stay in the index", len(reads))
+	}
 	runsBefore := h.runs()
 	h.gate(t, h.meter, 1)
 	h.gate(t, h.meter, 3)
@@ -286,7 +290,8 @@ func TestNamedQueryProvidersRestartRunsNoStatementCompiledForTheTableAsItWasNoFa
 	watch, err := view.Member("items").Watch(background)
 	must(t, err)
 	calls := nexttest.ChangesOf(watch)
-	before := h.runs()
+	// Pi's `meter.counts()` is undefined here: the meter counts the runs under its context only (the other owner's commit
+	// below), and Pi's host has no telemetry, so the successor's own first read is not counted (prHost).
 	held := holdNextCommit()
 	reloaded := h.reload(prProviderPlugin(true, nil), prOthers)
 	<-held.Entered()
@@ -304,7 +309,7 @@ func TestNamedQueryProvidersRestartRunsNoStatementCompiledForTheTableAsItWasNoFa
 	if !h.migrated() {
 		t.Fatal("the provider did not migrate")
 	}
-	if runs := h.runs() - before; runs != 0 {
+	if runs := h.runs(); runs != 0 {
 		t.Fatalf("the other owner's commit ran %v reads", runs)
 	}
 	if got := calls.Items(); len(got) != 0 {

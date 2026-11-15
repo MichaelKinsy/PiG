@@ -629,10 +629,12 @@ func (a *attempt) List(name string, sources []ListSource, options ListOptions) *
 	return &ListHandle{value: Expose(list), more: list.more, list: list}
 }
 
-// readerSite is where this attempt's readers live.
+// readerSite is where this attempt's readers live. A reader's drain is `void this.#reading.read(...)` (query-reader.ts:123): a
+// chain of awaits of store reads, so it is a task the loop counts (goTask), which a test's join waits for.
 func (a *attempt) readerSite() ReaderSite {
 	object := a.object
-	at, err := readerSite(object.host, object.text, a.dependencyMoved, a.loop().Go)
+	spawn := func(task func()) { goTask(a.loop(), task, task) }
+	at, err := readerSite(object.host, object.text, a.dependencyMoved, spawn)
 	if err != nil {
 		panic(err)
 	}
@@ -2322,10 +2324,12 @@ func (a *attempt) assertDeclaring(declaration string) {
 }
 
 // awaitTask is `await work()` for work that blocks (a store, a native, a followed runtime): work runs on an owned task of the
-// host's loop, outside a section, and its outcome settles the returned promise in a section (the resumption).
+// host's loop, outside a section, and its outcome settles the returned promise in a section (the resumption). The loop counts
+// the task from here to the end of the section that resumes the promise (a test's join waits for it, host_loop_seam.go),
+// unless it waits parked on something the loop does not run (chordctx.Receive, a native's work still running).
 func awaitTask[T any](host *chordHost, work func() (T, error)) *keyedPromise[T] {
 	promise := newKeyedPromise[T](host.loop())
-	host.loop().Go(func() {
+	goTask(host.loop(), work, func() {
 		value, err := work()
 		host.enter(func() { promise.settle(value, err) })
 	})
