@@ -96,6 +96,11 @@ var admDoc = mustContract(contracts.Remote("test.doc", contracts.RemoteDeclarati
 	},
 }))
 
+// admDocV2: Doc with another admission schema (the same wire fingerprint): a reload does not rehearse across it.
+var admDocV2 = mustContract(contracts.Evolve(admDoc, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+	return e.Admission(contracts.Obj(contracts.Prop("mode", contracts.OneOf("read", "write")), contracts.Prop("since", contracts.Int())))
+}))
+
 // admPanel: a consumer of a document on the same host: a derive over its text.
 var admPanel = mustContract(contracts.Local("test.panel", contracts.LocalDeclaration{
 	Version: 1, Params: contracts.Params{contracts.Prop("id", contracts.Str())},
@@ -1679,6 +1684,19 @@ func TestAdmissionAReloadOfAnAdmissionsSource(t *testing.T) {
 
 // --- a reload of the admitted type (Pi 1113-1288; "2.5, test 20") ---------------------------------------------------------
 
+// admReports is Pi's `reports(errors)`: `activation_failed: <message>` for an activation failure, the kind for the rest.
+func admReports(errs *hostErrors) []string {
+	out := []string{}
+	for _, e := range errs.All() {
+		if e.Kind == ErrActivationFailed {
+			out = append(out, string(e.Kind)+": "+e.Failure.Error.Message)
+			continue
+		}
+		out = append(out, string(e.Kind))
+	}
+	return out
+}
+
 func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 	t.Run("records the new admit without effects and rehearses the new factory with an equal admission fingerprint", func(t *testing.T) {
 		built, shares := &admLog{}, &admLog{}
@@ -1890,12 +1908,12 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		built := &admLog{}
 		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "read"})
 		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
-		live := admWatchStates(t, doc)
 		_, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: built}, admDoc, nil)})
 		must(t, err)
-		// The new attempt activates on tasks `delivered()` does not join: wait for the state the host delivers.
-		live.until(t, admIsLive)
 		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
 		expectStrings(t, built.Items(), "a:read", "a:read")
 		s.set("none", "server")
 		s.delivered()
@@ -1905,6 +1923,92 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		expectStrings(t, built.Items(), "a:read", "a:read")
 		must(t, s.h.Close(background))
 	})
+	t.Run("does not rehearse across another admission fingerprint, or without a value: the factory's error is its activation's", func(t *testing.T) {
+		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "read"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		rehearsed := &admLog{}
+		job := func(self Self, _ string) {
+			self.Job(admWork, JobImplementation{Run: func(any, JobCtx) (any, error) { return 1.0, nil }})
+		}
+		// Another fingerprint: the plugin applies, and the refused job fails the restarted object.
+		// Pi's order: the new attempt's admission runs a microtask after the commit: its factory has not run when the reload
+		// returns, so it holds only what staging rehearsed.
+		held := admHoldHops(s.h)
+		type reloaded struct {
+			report ReloadReport
+			err    error
+		}
+		done := make(chan reloaded, 1)
+		go func() {
+			report, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: rehearsed, Declare: job}, admDocV2, nil)})
+			done <- reloaded{report, err}
+		}()
+		receive(t, held.handed)
+		if rehearsed.Len() != 0 {
+			t.Errorf("rehearsed = %v, want none", rehearsed.Items())
+		}
+		held.release(s.h)
+		other := receive(t, done)
+		err := other.err
+		must(t, err)
+		if len(other.report.Failed) != 0 {
+			t.Fatalf("failed = %v, want none", other.report.Failed)
+		}
+		s.delivered()
+		if st := stateOfRef(doc); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureBroken {
+			t.Fatalf("state = %+v, want failed broken", st)
+		}
+		if n := admJobCount(admReports(s.errors)); n != 1 {
+			t.Fatalf("job reports = %d, want 1", n)
+		}
+		// No value (the object is denied): not rehearsed either, reported when it is allowed.
+		_, err = s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: &admLog{}}, admDoc, nil)})
+		must(t, err)
+		s.set("none", "server")
+		s.delivered()
+		if st := stateOfRef(doc); st.Kind != RefStateFailed || st.Cause.Kind != data.FailureDenied {
+			t.Fatalf("state = %+v, want failed denied", st)
+		}
+		mark := s.errors.Len() // Pi `errors.length = 0`: the reports below are those after the mark
+		ran := &admLog{}
+		denied, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: ran, Declare: job}, admDoc, nil)})
+		must(t, err)
+		if len(denied.Failed) != 0 || ran.Len() != 0 || len(admReports(s.errors)[mark:]) != 0 {
+			t.Fatalf("failed = %v, ran = %v, reports = %v, want none", denied.Failed, ran.Items(), admReports(s.errors)[mark:])
+		}
+		s.set("read", "server")
+		s.delivered()
+		expectStrings(t, ran.Items(), "a:read")
+		if n := admJobCount(admReports(s.errors)[mark:]); n != 1 {
+			t.Fatalf("job reports = %d, want 1", n)
+		}
+		must(t, s.h.Close(background))
+	})
+
+	t.Run("a dependency only the newly admitted branch declares parks the object after the commit", func(t *testing.T) {
+		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "read"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		declare := func(self Self, mode string) {
+			if mode == "write" {
+				self.Get(admMissing, jsonObject())
+			}
+		}
+		// Rehearsed as a reader: the writer's request is not recorded.
+		report, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: &admLog{}, Declare: declare}, admDoc, nil)})
+		must(t, err)
+		if len(report.Failed) != 0 {
+			t.Fatalf("failed = %v", report.Failed)
+		}
+		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
+		s.set("write", "server")
+		s.delivered()
+		admWaiting(t, doc)
+		must(t, s.h.Close(background))
+	})
+
 }
 
 func TestAdmissionWhatADenialRemoves(t *testing.T) {
@@ -2073,4 +2177,145 @@ func TestAdmissionACommitInFlightAtTheCut(t *testing.T) {
 
 func admAccepts1() contracts.AcceptsTable {
 	return contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{}}}
+}
+
+func TestAdmissionANamedQuery(t *testing.T) {
+	t.Run("parked on a read that failed is its attempt's first check: a reload of its type reports it and does not wait for the read", func(t *testing.T) {
+		failing := &admFlag{}
+		chordStore := memoryStore(t)
+		address := Server.Address(nil)
+		h := newHost(t, HostOptions{Address: &address, Principal: serverPrincipal(), Store: chordStore, OnError: func(HostError) {}})
+		shelf := DefineFacet(func(host FacetHost, _ FacetSelf) error {
+			return host.Serve(admShelf, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+				self := plain.(StoreSelf)
+				rows := self.Table(admItemsTable)
+				mapped := func(row store.Row, _ PartnerRow) (delta.JsonValue, error) {
+					if failing.get() {
+						return nil, errors.New("the mapping is unavailable")
+					}
+					return row, nil
+				}
+				return contracts.Implementation{Members: contracts.VariantImplementation{
+					Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"items": self.Queries(rows, QueriesOptions{Map: mapped},
+						map[string]QueryBuilder{"all": {Build: func(delta.JsonValue) *store.Query {
+							return store.NewQuery(admItemsTable).OrderBy(func(e, _ store.ColumnRefs) *store.ColumnRef { return e["id"] }, "")
+						}}})},
+					Methods: map[string]contracts.MethodFunction{"put": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+						_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, tx.Put(rows, jsonObject("id", args)) }, ctx)
+						return nil, err
+					}},
+				}}, nil
+			}, ServeOptions{})
+		})
+		plugins := func(reader Facet) []HostFacet {
+			return []HostFacet{{Name: "@test/shelf", Facet: shelf}, {Name: "@test/reader", Facet: reader}}
+		}
+		mustLoad(t)(h.Load(plugins(admReaderFacet()), background))
+		api := mustGet(t, h, admShelf, jsonObject())
+		put := func(id string) {
+			_, err := api.Call("put", id, background)
+			must(t, err)
+		}
+		put("a")
+		held := mustGet(t, h, admReader, jsonObject())
+		// The read's next run fails: the decision cannot be read, so the object is sealed and parks on the read.
+		failing.set(true)
+		put("b")
+		deliveredOn(h)
+		admWaiting(t, held)
+		// Pi races the reload against a 200 ms timer: it must settle without waiting for the read. Go: the reload runs on a
+		// goroutine and must be done once its first check ran (it cannot wait for the read: the read recovers only below).
+		reported := make(chan ReloadReport, 1)
+		go func() {
+			report, err := h.Reload(plugins(admReaderFacet()), background, ReloadOptions{})
+			must(t, err)
+			reported <- report
+		}()
+		report := receive(t, reported) // receive: the host support's bounded wait (hangGuard), no sleep
+		if len(report.Objects) != 1 || report.Objects[0].Object != "test.reader" || report.Objects[0].Kind != ReloadParked ||
+			report.Objects[0].Cause.Kind != data.FailureWaiting {
+			t.Fatalf("report.objects = %+v, want [test.reader parked waiting]", report.Objects)
+		}
+		// The read recovers: the parked attempt goes on.
+		failing.set(false)
+		put("c")
+		deliveredOn(h)
+		if kind := stateOfRef(held).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
+		must(t, h.Close(background))
+		must(t, chordStore.Close(background))
+	})
+}
+
+func admJobCount(reports []string) int {
+	n := 0
+	for _, r := range reports {
+		if strings.Contains(r, "self.job") {
+			n++
+		}
+	}
+	return n
+}
+
+var (
+	admItemsTable = admTable("items", "id")
+	admItem       = contracts.Obj(contracts.Prop("id", contracts.Str()))
+	admShelf      = mustContract(contracts.Local("test.shelf", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{},
+		Members: []contracts.LocalEntry{
+			contracts.Mem("items", contracts.Queries(admItem, contracts.Params{contracts.Prop("all", contracts.Obj())})),
+			contracts.Mem("put", contracts.NewMethod(contracts.Str())),
+		},
+	}))
+	admReader = mustContract(contracts.Remote("test.reader", contracts.RemoteDeclaration{
+		Version: 1, Params: contracts.Params{},
+		HostAddress: func(*delta.JsonObject) (contracts.Address, error) { return Server.Address(nil), nil },
+		Admission:   func() *contracts.Schema { s := contracts.Str(); return &s }(),
+		Variants:    []contracts.VariantEntry{contracts.Var("one", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("label", contracts.Str())}})},
+	}))
+)
+
+// admReaderFacet is a facet serving Reader, whose admission reads the shelf's items live.
+func admReaderFacet() Facet {
+	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
+		return host.Serve(admReader, func(*delta.JsonObject, data.Principal, delta.JsonValue, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Variant: "one", Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"label": Expose(state_constant("x"))},
+			}}, nil
+		}, ServeOptions{Admit: func(_ *delta.JsonObject, _ data.Principal, self AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+			items := self.LiveQuery(self.Get(admShelf, jsonObject()).Queries("items")["all"], jsonObject(), 3)
+			return self.Derive([]any{items}, func([]any) (delta.JsonValue, error) { return Allow("yes"), nil }), nil
+		}})
+	})
+}
+
+// admHeldHops holds the admission hop of every attempt that starts (internal/admitseam): Pi's order of microtasks, where what a
+// reload's commit starts has not run its admission when the commit returns.
+type admHeldHops struct {
+	mu     sync.Mutex
+	starts []func()
+	handed chan struct{}
+}
+
+func admHoldHops(h Host) *admHeldHops {
+	x := &admHeldHops{handed: make(chan struct{}, 8)}
+	admitseam.Hold(h, func(start func()) {
+		x.mu.Lock()
+		x.starts = append(x.starts, start)
+		x.mu.Unlock()
+		x.handed <- struct{}{}
+	})
+	return x
+}
+
+// release ends the seam and starts the held hops.
+func (x *admHeldHops) release(h Host) {
+	admitseam.Hold(h, nil)
+	x.mu.Lock()
+	held := slices.Clone(x.starts)
+	x.mu.Unlock()
+	for _, start := range held {
+		start()
+	}
 }
