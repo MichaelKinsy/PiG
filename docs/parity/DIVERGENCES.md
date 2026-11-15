@@ -4238,3 +4238,29 @@ Call-site markers: `internal/atomicfile/atomicfile.go` (`WriteFile`, `writeInPla
 Evidence: `internal/atomicfile` tests: `TestWriteFileWritesInPlaceWhereTheRenameIsRefused`, `TestWriteFileKeepsTheFileWhenTheRenameFailsForAnotherReason`, `TestWriteFileWritesInPlaceInADirectoryItCannotWrite`, `TestWriteFileCannotCreateAFileInADirectoryItCannotWrite`, `TestWriteFileReportsARealFailureOfTheInPlaceWrite`, `TestWriteFileWritesInPlaceThroughAHardLink`, `TestWriteFileReplacesAPlainFileAndReportsNothing`, `TestWriteFileWritesInPlaceWhenAnAttributeCannotBeCarried`, `TestWriteFileCarriesExtendedAttributesOver`, `TestWriteFileKeepsAPosixACL`, `TestWriteFileFollowsSymlink`, `TestWriteFileRefusesReadOnlyFile`, `TestWriteFileCreatesPrivateAndKeepsMode`; the three-way table above (lane CredStore3, `fs-before.log`, `fs-stamped.log`, `fs-after.log`, `fs-pi.log`); part C: `internal/pilock` `TestAsyncLockHeldPastTheSyncStaleWindowIsNotTaken` and the table of part C (`hb2-before.log`, `hb2-after.log`, `hb2-pi.log`).
 
 Parity allowance: observable only where a write is interrupted (the old file survives where Pi's is truncated), in the inode of the file after a write, and on Windows in a file another program holds open without delete sharing; no other file content, mode or location differs. Part C: observable only in a refresh longer than 10 s with a second process opening the store (the opener waits 180 ms; the lock is not taken). The Windows case has no run on this tip.
+
+## D652 The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label
+
+What: Pi shows `Compacting context... (escape to cancel)` for the whole summary request (`status-indicator.ts:88-91`; the key text comes from the keybinding, and `fullscreen/09` asserts it on both sides). PiG shows the same line for the first second, then `Compacting context... 12s (escape to cancel)`, and once the summary streams `Compacting context... 1m 12s · ~14k tokens (escape to cancel)`. The auto-compaction and overflow labels (`Auto-compacting...`, `Context overflow detected, Auto-compacting...`) get the same suffix. The branch-summary indicator does not.
+
+The size is the characters of text and thinking streamed by the request in flight, divided by 4 and rounded up, shown through the footer's token formatter (1.0k to 9.9k, then whole thousands). It restarts at 0 for each request of one compaction (a history chunk of D167, the turn prefix, a retry). The elapsed time spans the whole compaction.
+
+No event is added. RPC, print and JSON output are unchanged. The request bytes are unchanged.
+
+Why: a summary of a long session streams for minutes to tens of minutes behind a spinner that looks hung (owner report, row 175). Measured: the provider's stream is the time; PiG's own work is tens of milliseconds. The size is an estimate of streamed output, not the provider's token count; the label says `~`.
+
+Pi bug: none; Pi's bare label is correct, only silent.
+
+Scope: `internal/compactprogress` (the counter), `ProviderCompleter` (counts stream deltas only when the context carries a counter; returns what it returned before), `Session.compact` and `runAutoCompaction`, the interactive status tick (`tickCompactionMessage`, which sets the existing `Loader.SetMessage` only when the text changed). One additive exported accessor: `coding.Session.CompactionStreamedTokens() int64`, the streamed size in tokens of the compaction in flight (0 when none runs); no `tui` type gains a member.
+
+Owner decision: owner approved 2026-11-15 (OWNER-DECISIONS.md 2026-11-15T00:39:25Z).
+
+SCRUTINIZED:approved 2026-11-15
+
+Remove when: Pi shows progress for a compaction, or the owner withdraws the display.
+
+Call-site markers: `internal/compactprogress/progress.go` (`Progress`), `internal/codingagent/compaction/provider_completer.go` (`CompleteSimple`), `coding/session.go` (`CompactionStreamedTokens`, `withCompactionProgress`), `internal/codingagent/session_handle.go` (`InteractiveSessionHandle.CompactionStreamedTokens`), `internal/codingagent/interactive_status.go` (`showCompactionStatusIndicator`, `compactionStatusMessage`, `tickCompactionMessage`), `internal/codingagent/interactive_layout.go` (`tickStatusIndicators`), `internal/codingagent/interactive_events.go` (`CompactionEndEvent`).
+
+Evidence: `internal/codingagent/interactive_compaction_progress_test.go` (`TestCompactionLineShowsElapsedTimeAndStreamedTokens`, `TestCompactionEscapeDuringTheStreamLeavesNothingRunning`), `internal/codingagent/interactive_compaction_progress_unit_test.go` (`TestCompactionStatusMessage`, `TestTickCompactionMessageFollowsClockAndCounter`, `TestTickCompactionMessageChangesNothingWithinASecond`, `TestTickCompactionMessageFollowsTheWidth`, `TestCompactionLineInANarrowTerminal`, `TestCompactionProgressAllocations`), `internal/codingagent/compaction/provider_completer_progress_test.go` (`TestProviderCompleterProgressChangesNeitherRequestNorResult`).
+
+Parity allowance: the compaction line's text after the first second. The settled screen, the session entry and the request bytes are Pi's.

@@ -37,23 +37,43 @@ capture_end = "faux-1"
 
 [[tmux.steps]]
 keys = ["/compact", "Enter"]
-wait_contains = ["Compacting context... (escape to cancel)"]
+wait_contains = ["Compacting context... "]
 wait_timeout_seconds = 15
 # wait_contains also matches scrollback and the raw output transcript, which
 # can run ahead of the painted screen; the capture reads the visible screen.
-wait_visible_contains = ["How do goroutines work internally?", "Compacting context... (escape to cancel)"]
+# pig divergence (D652): PiG shows Pi's line for the first second and then the elapsed time, so the label is waited for in
+# the transcript on both sides, Pi's line is waited for on screen on Pi, and PiG is waited for until its line shows two
+# seconds: the capture is taken with the PiG line in the form D652 describes, not in the first second's form.
+wait_visible_contains = ["How do goroutines work internally?"]
+wait_visible_contains_pi = ["Compacting context... (escape to cancel)"]
+wait_visible_contains_pig = ["Compacting context... 2s (escape to cancel)"]
 
 [assert]
 both_reach_ready = true
-both_contain = ["Compacting context... (escape to cancel)"]
+# Both sides keep the cancel hint (the owner's rule: the elapsed time never replaces it). Pi's line has no elapsed time; PiG's has it (D652).
+both_contain = ["(escape to cancel)"]
+pi_contains = ["Compacting context... (escape to cancel)"]
+# The capture is taken a second or more after the wait saw two seconds, so only the unit and the hint are asserted; the digits are the normalization rules' pattern.
+pi_not_contain = ["s (escape to cancel)"]
+pig_contains = ["s (escape to cancel)"]
 both_not_contain = ["[compaction]", "panic:", "goroutine "]
 output_normalized_equal = true
 runtime_ratio_max = 2.0
 runs = 3
 
-# normalize-rationale: Only the spinner phase varies with capture timing. All conversation rows, footer counters and border cells remain compared.
+# normalize-rationale: Only the spinner phase varies with capture timing, and (pig divergence D652) the PiG label's elapsed time, which is a digit the capture time sets. All conversation rows, footer counters and border cells remain compared: the first rule keeps Pi's label, spacing and full border width; the D652 rules accept only PiG's exact form `Compacting context... Ns (escape to cancel)` and give back, as dashes, the cells the elapsed time takes from the border, so the full row width is still compared; a PiG row without the elapsed time, without the hint or with another suffix matches no rule and differs from Pi's.
 
 [[assert.normalize_replace]]
 pattern = '(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Compacting context\.\.\. \(escape to cancel\) ─*)$'
 with = '${1}<SPINNER>${2}'
 reason = "Pi renders an animated spinner in the editor border; preserve its label, spacing and full border width."
+
+[[assert.normalize_replace]]
+pattern = '(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Compacting context\.\.\. )[0-9]s (\(escape to cancel\) ─*)$'
+with = '${1}<SPINNER>${2}${3}───'
+reason = "D652: PiG's line carries the seconds the compaction has run, which the capture time sets; the spinner phase is normalized as for Pi and the three cells of 'Ns ' are returned as dashes so the border width stays compared."
+
+[[assert.normalize_replace]]
+pattern = '(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Compacting context\.\.\. )[0-9]{2}s (\(escape to cancel\) ─*)$'
+with = '${1}<SPINNER>${2}${3}────'
+reason = "D652: as the one-digit rule, for a capture taken after ten seconds: the four cells of 'NNs ' are returned as dashes."

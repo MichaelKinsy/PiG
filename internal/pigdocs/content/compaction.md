@@ -59,6 +59,8 @@ An empty or small session reports `Error: Compaction failed: Nothing to compact 
 
 Press Escape during a compaction to abort it. When the autocomplete list is open, Escape closes the list and the compaction continues, as in Pi.
 
+While a compaction runs, the line above the editor reads `Compacting context... (escape to cancel)` for the first second, then adds how long it has run and, once the summary streams, its size so far, for example `Compacting context... 1m 12s · ~14k tokens (escape to cancel)`. Pi shows the first form for the whole compaction (D652); the size is an estimate of the streamed text, and in a narrow terminal the elapsed time and the size give way before the cancel hint does. Automatic compaction and overflow recovery show the same suffix.
+
 In RPC mode, `compact` commands of one input batch run one after another. Pi 1.5.2 starts them at the same time, so a Session with enough history gets two overlapping compactions (D147). A Session replacement in the same batch aborts a running compaction, which answers one error and writes no entry (D148).
 
 ## What you lose
