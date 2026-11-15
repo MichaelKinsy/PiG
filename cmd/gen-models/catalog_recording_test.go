@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -57,7 +58,7 @@ func TestGeneratorMatchesPisGeneratorOnTheCommittedRecording(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if string(got) != string(want) {
+		if !bytes.Equal(got, want) {
 			t.Errorf("%s: %d bytes from this generator, %d from Pi's", name, len(got), len(want))
 		}
 	}
