@@ -11,11 +11,11 @@ import (
 	"testing"
 )
 
-// pinnedCatalogIDs reads providers/data/<provider>.json in document order and returns the model ids per model type in the
+// oracleCatalogIDs reads the oracle Pi's providers/data/<provider>.json (readOracleProviderData) in document order and returns the model ids per model type in the
 // order flattenModelCatalog in packages/ai/src/model-catalog.ts visits them: groups in key order, then models in key order.
-func pinnedCatalogIDs(t *testing.T, provider string) map[string][]string {
+func oracleCatalogIDs(t *testing.T, provider string) map[string][]string {
 	t.Helper()
-	raw := readPinnedMirror(t, "../.upstream/current/packages/ai/src/providers/data/"+provider+".json")
+	raw := readOracleProviderData(t, provider)
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	expect := func(want json.Delim) {
 		t.Helper()
@@ -52,13 +52,13 @@ func pinnedCatalogIDs(t *testing.T, provider string) map[string][]string {
 
 // Each <ID>_MODELS, <ID>_IMAGE_MODELS and <ID>_CLASSIFIER_MODELS export of the pinned providers/*.models.ts is a record of
 // the provider's models of one type by id, in data-file order (providers/*.models.ts, model-catalog.ts flattenModelCatalog).
-func TestProviderCatalogExportsMatchPinnedData(t *testing.T) {
+func TestProviderCatalogExportsMatchOracleData(t *testing.T) {
 	if len(providerCatalogCases()) == 0 {
 		t.Fatal("no provider catalog cases")
 	}
 	for _, tc := range providerCatalogCases() {
 		t.Run(tc.provider, func(t *testing.T) {
-			want := pinnedCatalogIDs(t, tc.provider)
+			want := oracleCatalogIDs(t, tc.provider)
 			if slices.Contains(BuiltStrippedProviders(), tc.provider) {
 				// A build with the pig_strip tag of this provider's API exports its chat catalog empty.
 				want["chat"] = nil

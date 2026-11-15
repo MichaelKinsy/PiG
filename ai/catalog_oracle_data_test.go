@@ -12,18 +12,19 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
-// publishedCatalogScript imports the published pi-ai barrel (dist/models.generated.js) and lists every provider's chat,
+// oracleCatalogScript imports the oracle Pi's pi-ai barrel (dist/models.generated.js) and lists every provider's chat,
 // image and classifier models in the order JavaScript enumerates them: the export upstream tests and callers see.
-const publishedCatalogScript = `import { pathToFileURL } from "node:url";
+const oracleCatalogScript = `import { pathToFileURL } from "node:url";
 const mod = await import(pathToFileURL(process.argv[1]).href);
 const list = (catalog) => Object.entries(catalog).flatMap(([provider, models]) => Object.values(models));
 process.stdout.write(JSON.stringify({ chat: list(mod.MODELS), image: list(mod.IMAGE_MODELS), classifier: list(mod.CLASSIFIER_MODELS) }));`
 
-type publishedCatalog map[string][]map[string]any
+type oracleCatalog map[string][]map[string]any
 
-// loadPublishedCatalog is the independent denominator for the generated catalogs: the exact pinned pi-ai package that
-// `make model-catalogs` reads, evaluated by Node. It skips when the package is not installed.
-func loadPublishedCatalog(t *testing.T) publishedCatalog {
+// loadOracleCatalog is the independent denominator for the generated catalogs: the catalog of the installed oracle Pi (the pinned
+// pi-ai source built with the catalog Pi's own generator makes from the recording in automation/gen/catalog-source), evaluated by Node.
+// It skips when the oracle is not installed.
+func loadOracleCatalog(t *testing.T) oracleCatalog {
 	t.Helper()
 	dist, err := filepath.Abs(filepath.Join("..", "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent", "node_modules", "@earendil-works", "pi-ai", "dist"))
 	if err != nil {
@@ -31,7 +32,7 @@ func loadPublishedCatalog(t *testing.T) publishedCatalog {
 	}
 	source := filepath.Join(dist, "models.generated.js")
 	if _, err := os.Stat(source); err != nil {
-		pioracle.Missing(t, "published pi-ai "+UpstreamVersionString(), err)
+		pioracle.Missing(t, "the oracle Pi's pi-ai "+UpstreamVersionString(), err)
 	}
 	manifest, err := os.ReadFile(filepath.Join(dist, "..", "package.json"))
 	if err != nil {
@@ -44,14 +45,14 @@ func loadPublishedCatalog(t *testing.T) publishedCatalog {
 	if pkg.Version != upstreamPackageVersion() {
 		t.Fatalf("installed pi-ai is %s, want the pinned %s", pkg.Version, upstreamPackageVersion())
 	}
-	command := exec.Command("node", "--input-type=module", "-e", publishedCatalogScript, source)
+	command := exec.Command("node", "--input-type=module", "-e", oracleCatalogScript, source)
 	var stderr bytes.Buffer
 	command.Stderr = &stderr
 	out, err := command.Output()
 	if err != nil {
-		t.Fatalf("import published catalog: %v\n%s", err, stderr.String())
+		t.Fatalf("import the oracle catalog: %v\n%s", err, stderr.String())
 	}
-	var catalog publishedCatalog
+	var catalog oracleCatalog
 	if err := json.Unmarshal(out, &catalog); err != nil {
 		t.Fatal(err)
 	}
@@ -103,10 +104,10 @@ func generatedModelJSON(model GeneratedModel) map[string]any {
 	return out
 }
 
-// TestGeneratedCatalogsMatchPublishedPackage compares every generated chat, image and classifier model, in order and field
-// by field, with the published pinned pi-ai catalog. It fails when the generator drops, reorders or alters catalog data.
-func TestGeneratedCatalogsMatchPublishedPackage(t *testing.T) {
-	published := loadPublishedCatalog(t)
+// TestGeneratedCatalogsMatchOraclePi compares every generated chat, image and classifier model, in order and field
+// by field, with the catalog of the oracle Pi (Pi's generator run over the recording). It fails when the generator drops, reorders or alters catalog data.
+func TestGeneratedCatalogsMatchOraclePi(t *testing.T) {
+	oracle := loadOracleCatalog(t)
 	var chat, image, classifier []any
 	for _, model := range GeneratedModels {
 		chat = append(chat, generatedModelJSON(model))
@@ -135,14 +136,14 @@ func TestGeneratedCatalogsMatchPublishedPackage(t *testing.T) {
 		classifier = append(classifier, entry)
 	}
 	for name, got := range map[string][]any{"chat": chat, "image": image, "classifier": classifier} {
-		want := published[name]
+		want := oracle[name]
 		if len(got) != len(want) {
-			t.Errorf("%s catalog has %d models, published %s has %d", name, len(got), UpstreamVersionString(), len(want))
+			t.Errorf("%s catalog has %d models, the oracle Pi %s has %d", name, len(got), UpstreamVersionString(), len(want))
 			continue
 		}
 		for i := range want {
 			if !reflect.DeepEqual(canonicalJSON(t, got[i]), canonicalJSON(t, want[i])) {
-				t.Errorf("%s model %d (%v/%v) differs from the published catalog:\n got %v\nwant %v", name, i, want[i]["provider"], want[i]["id"], canonicalJSON(t, got[i]), canonicalJSON(t, want[i]))
+				t.Errorf("%s model %d (%v/%v) differs from the oracle Pi catalog:\n got %v\nwant %v", name, i, want[i]["provider"], want[i]["id"], canonicalJSON(t, got[i]), canonicalJSON(t, want[i]))
 				break
 			}
 		}

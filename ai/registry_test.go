@@ -16,9 +16,9 @@ import (
 
 // TestImageCatalogPin binds the image catalog to @earendil-works/pi-ai's IMAGE_MODELS at the pinned version.
 func TestImageCatalogPin(t *testing.T) {
-	published := loadPublishedCatalog(t)
+	published := loadOracleCatalog(t)
 	if got, want := len(GeneratedImageModels), len(published["image"]); got != want {
-		t.Fatalf("image catalog size = %d, want published pi-ai %s image-catalog count %d", got, UpstreamVersionString(), want)
+		t.Fatalf("image catalog size = %d, want the oracle Pi %s image-catalog count %d", got, UpstreamVersionString(), want)
 	}
 	model, ok := GetImageModel("openrouter", "microsoft/mai-image-2.5-pro")
 	if !ok {
@@ -38,7 +38,7 @@ func TestImageCatalogPin(t *testing.T) {
 }
 
 func TestRegistryHasModels(t *testing.T) {
-	want := len(loadPublishedCatalog(t)["chat"]) // Count of the exact published @earendil-works/pi-ai MODELS export.
+	want := len(loadOracleCatalog(t)["chat"]) // Count of the oracle Pi's @earendil-works/pi-ai MODELS export.
 	if got := len(GeneratedModels); got != want {
 		t.Fatalf("catalog size = %d want %d", got, want)
 	}
@@ -47,7 +47,7 @@ func TestRegistryHasModels(t *testing.T) {
 // TestCatalogPin100 binds the generated catalog to the exact pinned Pi build. The expected values come from
 // @earendil-works/pi-ai providers/data, not from the Go generator output.
 func TestCatalogPin100(t *testing.T) {
-	loadPublishedCatalog(t) // fails unless the installed pi-ai is the pin's package version
+	loadOracleCatalog(t) // fails unless the installed pi-ai is the pin's package version
 	opus, ok := LookupModelExact("anthropic/claude-opus-5-5")
 	if !ok || opus.API != APIAnthropicMessages || opus.ContextWindow != 1000000 {
 		t.Fatalf("1.0.0 Claude Opus 5.5 model = %+v, %t", opus, ok)
@@ -169,13 +169,13 @@ func TestRuntimeDiscoveryIncludesRadiusCatalog(t *testing.T) {
 		}
 	}
 	publishedRadius := 0
-	for _, model := range loadPublishedCatalog(t)["chat"] {
+	for _, model := range loadOracleCatalog(t)["chat"] {
 		if model["api"] == "pi-messages" {
 			publishedRadius++
 		}
 	}
 	if generatedRadius != publishedRadius || publishedRadius == 0 {
-		t.Fatalf("generated pi-messages models = %d, want published pi-ai %s count %d", generatedRadius, UpstreamVersionString(), publishedRadius)
+		t.Fatalf("generated pi-messages models = %d, want the oracle Pi %s count %d", generatedRadius, UpstreamVersionString(), publishedRadius)
 	}
 	if providers := ListProviders(); !slices.Contains(providers, "radius") {
 		t.Fatalf("ListProviders() omits radius: %v", providers)

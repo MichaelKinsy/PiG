@@ -3908,9 +3908,9 @@
         }
       ],
       "tests": [
-        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
-        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
-        "ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData",
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData",
+        "ai/catalog_oracle_data_test.go::TestGeneratedCatalogsMatchOraclePi",
+        "ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchOracleData",
         "ai/registry_test.go::TestRegistryHasModels"
       ]
     },
@@ -18141,8 +18141,8 @@
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow",
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow",
         "agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses",
-        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
-        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData",
+        "ai/catalog_oracle_data_test.go::TestGeneratedCatalogsMatchOraclePi",
         "ai/radius_default_options_test.go::TestNewRadiusProviderMatchesPiForOptionalOptions",
         "ai/registry_test.go::TestCatalogPin100",
         "ai/registry_test.go::TestRegistryHasModels",
@@ -29359,8 +29359,8 @@
       ],
       "tests": [
         "ai/anthropic_test.go::TestAnthropicTemperatureCompatibility",
-        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
-        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage",
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData",
+        "ai/catalog_oracle_data_test.go::TestGeneratedCatalogsMatchOraclePi",
         "internal/modelgen/family_test.go::TestApplyClaudeFamilyRules"
       ]
     },
@@ -56387,8 +56387,8 @@
         }
       ],
       "tests": [
-        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules",
-        "ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage"
+        "ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData",
+        "ai/catalog_oracle_data_test.go::TestGeneratedCatalogsMatchOraclePi"
       ]
     },
     {

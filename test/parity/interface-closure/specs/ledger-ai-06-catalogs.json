@@ -51,9 +51,9 @@
    "call:coding/cli/diagnose.go#runDiagnose"
   ],
   "evidence": [
-   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
   ],
-  "rationale": "Chat model catalog: the Go catalog (GeneratedModels, listed per provider by ListModels) is generated from the same providers/data/<provider>.json as the upstream module; TestBuiltinCatalogsMatchPinnedProviderDataModules compares every provider's chat model keys, identity, endpoint, capability, price, input, inputLimits and header fields with the pinned data and was shown red when a price in the Go catalog changed."
+  "rationale": "Chat model catalog: the Go catalog (GeneratedModels, listed per provider by ListModels) is generated from the same providers/data/<provider>.json as the upstream module; TestBuiltinCatalogsMatchOracleProviderData compares every provider's chat model keys, identity, endpoint, capability, price, input, inputLimits and header fields with the pinned data and was shown red when a price in the Go catalog changed."
  },
  {
   "ids": [
@@ -107,9 +107,9 @@
    "call:internal/codingagent/model_typed_provider.go#builtinImageModelsOf"
   ],
   "evidence": [
-   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
   ],
-  "rationale": "Image model catalog: GetImageModels lists the generated image models of one provider; TestBuiltinCatalogsMatchPinnedProviderDataModules compares them with the image entries of the pinned providers/data/<provider>.json (identity, endpoint, input, output, price, inputLimits)."
+  "rationale": "Image model catalog: GetImageModels lists the generated image models of one provider; TestBuiltinCatalogsMatchOracleProviderData compares them with the image entries of the pinned providers/data/<provider>.json (identity, endpoint, input, output, price, inputLimits)."
  },
  {
   "ids": [
@@ -163,8 +163,8 @@
    "call:internal/codingagent/model_typed_provider.go#builtinClassifierModelsOf"
   ],
   "evidence": [
-   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+   "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
   ],
-  "rationale": "Classifier model catalog: GetBuiltinClassifierModels lists the generated classifier models of one provider; TestBuiltinCatalogsMatchPinnedProviderDataModules compares them with the classifier entries of the pinned providers/data/<provider>.json (identity, endpoint, input, price, context window)."
+  "rationale": "Classifier model catalog: GetBuiltinClassifierModels lists the generated classifier models of one provider; TestBuiltinCatalogsMatchOracleProviderData compares them with the classifier entries of the pinned providers/data/<provider>.json (identity, endpoint, input, price, context window)."
  }
 ]

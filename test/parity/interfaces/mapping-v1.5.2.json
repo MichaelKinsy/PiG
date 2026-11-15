@@ -11594,7 +11594,7 @@
       "evidence": [
         "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream",
         "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream",
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage"
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi"
       ]
     },
     {
@@ -11658,7 +11658,7 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage",
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/models_typed_regression_test.go#TestModelsCatalogCodecRoundTripsEveryModelType"
       ]
     },
@@ -18556,9 +18556,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage",
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/models_typed_regression_test.go#TestModelsCatalogCodecRoundTripsEveryModelType",
-        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
       ]
     },
     {
@@ -56257,7 +56257,7 @@
       "evidence": [
         "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream",
         "test:coding/model_runtime_classifiers_upstream_test.go#TestModelRuntimeClassifiersUpstream",
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage"
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi"
       ]
     },
     {
@@ -56321,7 +56321,7 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage",
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/models_typed_regression_test.go#TestModelsCatalogCodecRoundTripsEveryModelType"
       ]
     },
@@ -64003,9 +64003,9 @@
         "call:ai/models_catalog_codec.go#anyModelRecord"
       ],
       "evidence": [
-        "test:ai/catalog_published_test.go#TestGeneratedCatalogsMatchPublishedPackage",
+        "test:ai/catalog_oracle_data_test.go#TestGeneratedCatalogsMatchOraclePi",
         "test:ai/models_typed_regression_test.go#TestModelsCatalogCodecRoundTripsEveryModelType",
-        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchPinnedProviderDataModules"
+        "test:ai/builtin_catalog_upstream_test.go#TestBuiltinCatalogsMatchOracleProviderData"
       ]
     },
     {
@@ -96732,7 +96732,7 @@
       ],
       "evidence": [
         "test:ai/provider_catalogs_test.go#TestProviderCatalogCasesCoverEveryModelsFile",
-        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchPinnedData",
+        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchOracleData",
         "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsReturnCopies"
       ]
     },
@@ -96754,7 +96754,7 @@
       ],
       "evidence": [
         "test:ai/provider_catalogs_test.go#TestProviderCatalogCasesCoverEveryModelsFile",
-        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchPinnedData",
+        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchOracleData",
         "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsReturnCopies"
       ]
     },
@@ -96776,7 +96776,7 @@
       ],
       "evidence": [
         "test:ai/provider_catalogs_test.go#TestProviderCatalogCasesCoverEveryModelsFile",
-        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchPinnedData",
+        "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsMatchOracleData",
         "test:ai/provider_catalogs_test.go#TestProviderCatalogExportsReturnCopies"
       ]
     },

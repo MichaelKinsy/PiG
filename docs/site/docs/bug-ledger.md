@@ -4323,7 +4323,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `13f7697f6c` (2026-10-30, #11368)
-- **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchPinnedData`, `ai/registry_test.go::TestRegistryHasModels`
+- **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData`, `ai/catalog_oracle_data_test.go::TestGeneratedCatalogsMatchOraclePi`, `ai/provider_catalogs_test.go::TestProviderCatalogExportsMatchOracleData`, `ai/registry_test.go::TestRegistryHasModels`
 - **Release note:** The model catalog no longer offers models.dev's realtime and image models as chat models: `gpt-realtime-2.1` (Azure and OpenAI), `gemini-3.1-flash-live-preview` and `gemini-3.1-flash-lite-image` (Google and Google Vertex). Carried forward, as the row removal only, from Pi 2e0f175b (earendil-works/pi#11368), past the 1.4.0+b3a29f11 pin.
 
 ### BF-1407bdf
@@ -11215,7 +11215,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
 - **Fix commits:** `433d232815` (2026-10-09), `86fe3dc28b` (2026-10-09), `f1d3eec6de` (2026-10-09), `014c014e74` (2026-10-10), `2de6fe21b8` (2026-10-10), `30ca7fcf7f` (2026-10-10), `5443b6c4d5` (2026-10-10), `691e3e1536` (2026-10-10), `76d1a85e45` (2026-10-10), `90b48897e1` (2026-10-10), `98c1299067` (2026-10-10), `af1289d2d7` (2026-10-10), `b7199a2ba1` (2026-10-10), `c87dea7287` (2026-10-10)
-- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules` and 68 more in docs/bug-ledger.json
+- **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData` and 68 more in docs/bug-ledger.json
 - **Release note:** `durable/images` is the image processor of pi-durable: `images.CreatePhotonImages()` (also `images/node` and `images/cloudflare`) is a `tools.ImageProcessor` that turns an image upright by its EXIF orientation, scales it to the limits with a Lanczos3 filter, converts BMP to PNG, and re-encodes PNG or JPEG at falling qualities until it fits. `tools.CreateReadTool(&tools.ReadToolOptions{Images: p})` and `tools.CreateCodingTools(...)` pass it to `read`; `tools.CreateReadTool` now takes its options (nil for none), as `CreateBashTool` does.
 
 ### BF-54660cf
@@ -17016,7 +17016,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `787c3547c4` (2026-11-05)
-- **Tests:** `ai/anthropic_test.go::TestAnthropicTemperatureCompatibility`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`, `internal/modelgen/family_test.go::TestApplyClaudeFamilyRules`
+- **Tests:** `ai/anthropic_test.go::TestAnthropicTemperatureCompatibility`, `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData`, `ai/catalog_oracle_data_test.go::TestGeneratedCatalogsMatchOraclePi`, `internal/modelgen/family_test.go::TestApplyClaudeFamilyRules`
 - **Release note:** Requests to Claude Sonnet 5 no longer send `temperature`, as in Pi: the catalog marks the Sonnet 5 models on an Anthropic-messages provider as not supporting it.
 
 ### BF-78c4c6c
@@ -29944,7 +29944,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** 0.7.0
 - **Fix commits:** `e4f8e35773` (2026-10-30, #9534)
-- **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchPinnedProviderDataModules`, `ai/catalog_published_test.go::TestGeneratedCatalogsMatchPublishedPackage`
+- **Tests:** `ai/builtin_catalog_upstream_test.go::TestBuiltinCatalogsMatchOracleProviderData`, `ai/catalog_oracle_data_test.go::TestGeneratedCatalogsMatchOraclePi`
 - **Release note:** OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and `-sonnet-latest`) no longer lose Claude's earlier thinking after each tool call. They used the Chat Completions API, where the thinking signature was dropped and OpenRouter then ignored the unsigned thinking; they now use the Anthropic Messages API with adaptive thinking, like the versioned Claude models. Carried forward from Pi 44f6851b (earendil-works/pi#9534), past the 1.4.0+b3a29f11 pin.
 
 ### BF-e516ccd
