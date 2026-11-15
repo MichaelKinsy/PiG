@@ -30,6 +30,8 @@ type TableOptions struct {
 	Key []string
 	// Indexes are the secondary indexes by name (`[a-z0-9_]+`); each ends with the primary key.
 	Indexes IndexRecords
+	// Exposes is the column set other plugins read this table through (slice 14 §5): its columns spread into Columns.
+	Exposes *ColumnSet
 }
 
 // IndexDef is an index declaration: its name and columns.
@@ -77,6 +79,8 @@ type TableDefinition struct {
 	Refs ColumnRefs
 	// Evolution is the version before this one and the migration from it; nil for a base.
 	Evolution *Evolution
+	// Exposes is the column set this version exposes to other plugins, if any (not part of the fingerprint).
+	Exposes *ColumnSet
 	// HostColumn is its `host(...)` column, if it has one: its rows belong to hosts of that column's kind.
 	HostColumn *Column
 }
@@ -133,6 +137,11 @@ func NewTableDefinition(name string, options TableOptions, evolution *Evolution)
 	if err != nil {
 		return nil, err
 	}
+	if options.Exposes != nil {
+		if err := CheckExposes(ExposingTable{Name: name, ByName: byName, Key: key, Indexes: indexes}, options.Exposes); err != nil {
+			return nil, err
+		}
+	}
 	return &TableDefinition{
 		Name:        name,
 		Version:     options.Version,
@@ -146,6 +155,7 @@ func NewTableDefinition(name string, options TableOptions, evolution *Evolution)
 		Rows:        NewRowCodec(columns, key, name),
 		Refs:        columnRefs(columns),
 		Evolution:   evolution,
+		Exposes:     options.Exposes,
 		HostColumn:  host,
 	}, nil
 }

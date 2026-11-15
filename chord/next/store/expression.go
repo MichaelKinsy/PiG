@@ -162,9 +162,13 @@ type undefinedValue struct{}
 type Expression struct {
 	Op   ExprOp
 	Args []any
+	// Set is a ColumnRef's column set (`Set.refs`); empty for a reference of a table's own columns.
+	Set string
 }
 
-// ColumnRef is a reference to a column of the row, as `(t) => …` callbacks get them.
+// ColumnRef is a reference to a column of the row, as `(t) => …` callbacks get them. One of a column set
+// (ColumnSet.Refs) carries the set's name in Set: a condition names the side it means by it (a query's own table, a
+// joined set, an `exists`).
 type ColumnRef = Expression
 
 // ColumnRefs are the column references a table's callbacks get, by column name: `t["path"]`.
@@ -172,6 +176,11 @@ type ColumnRefs map[string]*ColumnRef
 
 // NewColumnRef is the reference to column.
 func NewColumnRef(column string) *ColumnRef { return &Expression{Op: ExprCol, Args: []any{column}} }
+
+// NewSetColumnRef is the reference to column of the column set named set.
+func NewSetColumnRef(column, set string) *ColumnRef {
+	return &Expression{Op: ExprCol, Args: []any{column}, Set: set}
+}
 
 // isRef reports whether e is a column reference, and its column.
 func (e *Expression) isRef() (string, bool) {
@@ -250,31 +259,31 @@ func conditionArgs(conditions []Condition) []any {
 }
 
 // Add is `a + b` over integers; a result outside ±(2^53 - 1) fails (rule 10).
-func Add(a, b any) *Expression { return &Expression{ExprAdd, []any{a, b}} }
+func Add(a, b any) *Expression { return &Expression{Op: ExprAdd, Args: []any{a, b}} }
 
 // Sub is `a - b` over integers; a result outside ±(2^53 - 1) fails (rule 10).
-func Sub(a, b any) *Expression { return &Expression{ExprSub, []any{a, b}} }
+func Sub(a, b any) *Expression { return &Expression{Op: ExprSub, Args: []any{a, b}} }
 
 // Max is the larger of a and b (`int` or `num`).
-func Max(a, b any) *Expression { return &Expression{ExprMax, []any{a, b}} }
+func Max(a, b any) *Expression { return &Expression{Op: ExprMax, Args: []any{a, b}} }
 
 // Min is the smaller of a and b (`int` or `num`).
-func Min(a, b any) *Expression { return &Expression{ExprMin, []any{a, b}} }
+func Min(a, b any) *Expression { return &Expression{Op: ExprMin, Args: []any{a, b}} }
 
 // Concat is a followed by b.
-func Concat(a, b any) *Expression { return &Expression{ExprConcat, []any{a, b}} }
+func Concat(a, b any) *Expression { return &Expression{Op: ExprConcat, Args: []any{a, b}} }
 
 // ReplacePrefix is value with its prefix from replaced by to; a value without the prefix stays as it is.
 func ReplacePrefix(value any, from, to string) *Expression {
-	return &Expression{ExprReplacePrefix, []any{value, from, to}}
+	return &Expression{Op: ExprReplacePrefix, Args: []any{value, from, to}}
 }
 
 // Coalesce is a unless it is `NULL`, else b.
-func Coalesce(a, b any) *Expression { return &Expression{ExprCoalesce, []any{a, b}} }
+func Coalesce(a, b any) *Expression { return &Expression{Op: ExprCoalesce, Args: []any{a, b}} }
 
 // When is a where condition holds for the row, else b.
 func When(condition Condition, a, b any) *Expression {
-	return &Expression{ExprWhen, []any{condition, a, b}}
+	return &Expression{Op: ExprWhen, Args: []any{condition, a, b}}
 }
 
 // columnRefs is one ColumnRef per column, for a definition's `(t) => …` callbacks.
