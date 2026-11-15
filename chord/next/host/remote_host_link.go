@@ -131,6 +131,25 @@ func (l *hostLink) close() {
 	}
 }
 
+// fence runs then once everything the peer sent before it saw a `ping` sent now has arrived (see link.Channel.Fence). The
+// channel runs it on the link's delivery goroutine with no lock held: it enters a section of the host there, so then runs as
+// every handler of the link does. It returns what cancels the fence, to be called inside a section: a cancelled fence never
+// runs then, also when its `pong` was read already and its section is still waiting.
+func (l *hostLink) fence(then func()) (cancel func()) {
+	cancelled := false
+	cancelChannel := l.channel.Fence(func() {
+		l.host.loop().Run(func() {
+			if !cancelled {
+				then()
+			}
+		})
+	})
+	return func() {
+		cancelled = true
+		cancelChannel()
+	}
+}
+
 // tick is the heartbeat (see Channel.Tick).
 func (l *hostLink) tick(now, paused int64, ping, close time.Duration) {
 	if l.channel != nil {

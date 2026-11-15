@@ -106,6 +106,15 @@ func (query *LiveQuery) Load(target LiveTarget, ctx context.Context) error {
 // Read reads target from now on (its shape's range of it, or its count). It returns its first run once adopted (nil: a
 // commit's run came first, a table it reads is held, or the query was detached or given another read meanwhile).
 func (query *LiveQuery) Read(target LiveTarget, ctx context.Context) *ReadRun {
+	return query.Open(target, ctx)()
+}
+
+// Open is the part of Read that Pi's `read` runs when it is called, before its first await: the read's query is open and
+// registered (it follows its sets' bindings, and replaces the previous pending read), nothing is loaded. It returns the
+// load, which blocks on the store and returns what Read returns; nothing of the read happens before it runs, and a read
+// the query closed meanwhile loads nothing. A reader opens in the section of the move that gave it the target and runs
+// the load on a task later: the load must not decide whether the read exists.
+func (query *LiveQuery) Open(target LiveTarget, ctx context.Context) (load func() *ReadRun) {
 	var opened *reading
 	query.site.Batch.Section(func() {
 		if query.Detached() {
@@ -117,7 +126,7 @@ func (query *LiveQuery) Read(target LiveTarget, ctx context.Context) *ReadRun {
 		shape := query.shape
 		// A binding changed: its one read runs again (a failure is a failed run handed to it; nothing waits for the run).
 		var each *reading
-		rebound := func() { go each.read.Load() }
+		rebound := func() { each.read.Reload() }
 		each = &reading{target: target}
 		each.query = NewOpenQuery(query.site, target.Spec, ReadShape(shape.Kind), rebound, ctx)
 		what := ReadKind{Kind: "rows", Range: shape.Range}
@@ -129,9 +138,9 @@ func (query *LiveQuery) Read(target LiveTarget, ctx context.Context) *ReadRun {
 		opened = each
 	})
 	if opened == nil {
-		return nil
+		return func() *ReadRun { return nil }
 	}
-	return opened.read.Load()
+	return opened.read.Load
 }
 
 // Fail is: what it should read cannot be read (its arguments threw, its provider refused them): a failed member, as a failed

@@ -65,6 +65,14 @@ func EditWith[E comparable](editor E, edit func(E) E, what string) error {
 	return nil
 }
 
+// Admission replaces the schema of the admission's value (slice 14 §2.5), or gives the contract one: the last edit of a
+// version. The wire fingerprint is untouched; a reload rehearses the new factory only with a value of an equal
+// admission schema.
+func (e *RemoteEditor) Admission(schema Schema) *RemoteEditor {
+	e.d.run(func() error { return e.d.setAdmission(schema) })
+	return e
+}
+
 // RemoteEditor edits a remote contract.
 type RemoteEditor struct{ d *draft }
 
@@ -235,6 +243,8 @@ type draft struct {
 	variants *NamedMap[*VariantData]
 	kinds    map[string]MemberKind
 	changes  []Change
+	// admission is the admission of the next version: the previous one's unless Admission(schema) replaced it.
+	admission *AdmissionData
 }
 
 func newDraft(data *ContractData) *draft {
@@ -252,6 +262,8 @@ func newDraft(data *ContractData) *draft {
 		version:  version,
 		variants: variants,
 		kinds:    maps.Clone(data.Kinds),
+		// The admission of the previous version, unless Admission(schema) replaces it.
+		admission: data.Admission,
 	}
 }
 
@@ -260,6 +272,16 @@ func (d *draft) run(edit func() error) {
 	if d.err == nil {
 		d.err = edit()
 	}
+}
+
+// setAdmission replaces the admission of the next version (slice 14 §2.5).
+func (d *draft) setAdmission(schema Schema) error {
+	admission, err := ReadAdmission(schema, d.path+".admission")
+	if err != nil {
+		return err
+	}
+	d.admission = admission
+	return nil
 }
 
 // next is the contract data with this version appended.
@@ -271,6 +293,7 @@ func (d *draft) next() (ContractData, error) {
 	next := *d.data
 	next.Versions = append(slices.Clone(d.data.Versions), version)
 	next.Kinds = d.kinds
+	next.Admission = d.admission
 	return next, nil
 }
 

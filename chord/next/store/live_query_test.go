@@ -3,10 +3,12 @@ package store
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
 	"github.com/MichaelKinsy/PiG/telemetry"
@@ -251,6 +253,85 @@ func TestLiveQueryFailWithoutAReadIsAFailedMemberAndClosesItsReads(t *testing.T)
 	}
 	if got := w.owner.told(); got != 1 {
 		t.Fatalf("owner told %d times, want 1", got)
+	}
+}
+
+// told is a live query's owner that signals each failure it is told of: the one thing a test can wait on after a binding
+// changed (the read it starts again runs on a goroutine of its own).
+type told struct {
+	*liveOwner
+	failed chan error
+}
+
+func (o told) Report(err error) {
+	o.liveOwner.Report(err)
+	o.failed <- err
+}
+
+func TestLiveQueryASetUnboundFailsItsMember(t *testing.T) {
+	// Pi: the open query's rebound reads again; its failed run (`column set ... is not served`) is the member's failure.
+	w := newLiveWorld(t, rowsShape(5))
+	owner := told{&liveOwner{}, make(chan error, 4)}
+	// The batch has the host's one-at-a-time sections: the read a binding starts runs on a goroutine of its own.
+	var section sync.Mutex
+	w.batch.UseSection(func(work func()) { section.Lock(); defer section.Unlock(); work() }, nil)
+	w.query = NewLiveQuery(ReadSite{Store: w.store, Batch: w.batch}, owner, rowsShape(5))
+	w.bind(t)
+	target := w.target("")
+	target.Spec.Query = w.tagged
+	must(t, w.query.Load(target, background))
+	w.readsWorld.put(t, w.tags, Row{"note": int64(1), "tag": "red"}, w.batch)
+	w.put(t, 1, "a")
+	qEqual(t, w.value(t), []delta.JsonValue{"a"})
+	w.store.Reads.Unbind(w.set.Name, w.tags)
+	err := <-owner.failed
+	if got := rejected(t, err, data.CodeUnavailable, "").Message; got != `column set "tags.columns" is not served` {
+		t.Fatalf("reported %q", got)
+	}
+	// The read ran on a goroutine of its own, in a section of the batch: read the value in one.
+	var failure error
+	w.batch.Section(func() { _, failure = w.query.Value() })
+	if failure == nil || !strings.Contains(failure.Error(), `column set "tags.columns" is not served`) {
+		t.Fatalf("Value error = %v, want the unserved set", failure)
+	}
+}
+
+func TestLiveQueryOpenOpensItsReadAtOnceAndABindingThatChangedBeforeItsLoadFailsItThen(t *testing.T) {
+	// Pi's `read` runs up to its first await when it is called: the open query is registered and follows its set's binding.
+	// A reader's move opens its read in the section of the move and loads it on a task later; the set unbound in between
+	// fails the member at the unbinding, not when that task runs (the reader's attempt may have ended by then, and a
+	// closed query fails nothing).
+	w := newLiveWorld(t, rowsShape(5))
+	owner := told{&liveOwner{}, make(chan error, 4)}
+	var section sync.Mutex
+	w.batch.UseSection(func(work func()) { section.Lock(); defer section.Unlock(); work() }, nil)
+	w.query = NewLiveQuery(ReadSite{Store: w.store, Batch: w.batch}, owner, rowsShape(5))
+	w.bind(t)
+	target := w.target("")
+	target.Spec.Query = w.tagged
+	load := w.query.Open(target, background)
+	w.store.Reads.Unbind(w.set.Name, w.tags)
+	select {
+	case err := <-owner.failed:
+		if got := rejected(t, err, data.CodeUnavailable, "").Message; got != `column set "tags.columns" is not served` {
+			t.Fatalf("reported %q", got)
+		}
+	default:
+		t.Fatal("the member did not fail when its set was unbound: the read was not registered by Open")
+	}
+	// The load that runs later finds the failure its query compiled to, and the member's failure stays.
+	if run := load(); run == nil || run.Kind != "failed" {
+		t.Fatalf("load = %+v, want a failed run", run)
+	}
+	var failure error
+	w.batch.Section(func() { _, failure = w.query.Value() })
+	if failure == nil || !strings.Contains(failure.Error(), `column set "tags.columns" is not served`) {
+		t.Fatalf("Value error = %v, want the unserved set", failure)
+	}
+	// Detached before a load: nothing to load.
+	w.batch.Section(func() { w.query.Detach(errors.New("ended")) })
+	if run := w.query.Open(target, background)(); run != nil {
+		t.Fatalf("a detached query loaded %+v", run)
 	}
 }
 

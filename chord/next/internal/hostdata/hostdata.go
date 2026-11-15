@@ -53,8 +53,9 @@ type Operations struct {
 	Owners func(store any, key string, archive any, ctx context.Context) (map[string]struct{}, error)
 	// Import imports archive into store in one commit.
 	Import func(store, archive any, plan Plan, commit Commit, ctx context.Context) (Counts, error)
-	// Delete deletes the data of host key from store in one commit.
-	Delete func(store any, key string, commit Commit, ctx context.Context) (Counts, error)
+	// Delete deletes the data of host key from store in one commit; with owners (object types; nil: all), only the
+	// records and tables of those owners.
+	Delete func(store any, key string, commit Commit, owners map[string]struct{}, ctx context.Context) (Counts, error)
 }
 
 var registered *Operations
@@ -91,6 +92,6 @@ func Import(store, archive any, plan Plan, commit Commit, ctx context.Context) (
 }
 
 // Delete is Operations.Delete.
-func Delete(store any, key string, commit Commit, ctx context.Context) (Counts, error) {
-	return operations().Delete(store, key, commit, ctx)
+func Delete(store any, key string, commit Commit, owners map[string]struct{}, ctx context.Context) (Counts, error) {
+	return operations().Delete(store, key, commit, owners, ctx)
 }

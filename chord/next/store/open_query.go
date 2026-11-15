@@ -269,23 +269,11 @@ func (read *OpenRead) Forget() {
 // overtook it, a table it reads is held (it runs when the table is ready), or it was closed. Nothing fails: a query that
 // does not compile and a run that fails are failed runs.
 func (read *OpenRead) Load() *ReadRun {
+	if run, settled := read.failCompile(); settled {
+		return run
+	}
 	query := read.query
 	site, ctx := query.Site, query.Ctx
-	compiled := query.Compiled()
-	read.mu.Lock()
-	closed := read.closed
-	read.mu.Unlock()
-	if closed {
-		return nil
-	}
-	if compiled.Err != nil {
-		failed := ReadRun{Kind: "failed", Err: compiled.Err}
-		// The adoption has no error to return; it runs in a section of the host (a first run is read outside them).
-		site.Batch.Section(func() {
-			_ = site.Batch.Within(func() error { read.sink.Adopt(failed); return nil }, ctx)
-		})
-		return &failed
-	}
 	read.mu.Lock()
 	registered := read.read
 	generation := read.generation
@@ -310,6 +298,37 @@ func (read *OpenRead) Load() *ReadRun {
 		_ = site.Batch.Within(func() error { registered.Adopt(run); return nil }, ctx)
 	})
 	return &run
+}
+
+// failCompile is what Pi's `load` does before its first await: a closed read has nothing to load (settled, no run); a query
+// that does not compile hands its sink a failed run (settled, that run). Otherwise the read has to run: not settled.
+func (read *OpenRead) failCompile() (run *ReadRun, settled bool) {
+	query := read.query
+	compiled := query.Compiled()
+	read.mu.Lock()
+	closed := read.closed
+	read.mu.Unlock()
+	if closed {
+		return nil, true
+	}
+	if compiled.Err == nil {
+		return nil, false
+	}
+	failed := ReadRun{Kind: "failed", Err: compiled.Err}
+	// The adoption has no error to return; it runs in a section of the host (a first run is read outside them).
+	query.Site.Batch.Section(func() {
+		_ = query.Site.Batch.Within(func() error { read.sink.Adopt(failed); return nil }, query.Ctx)
+	})
+	return &failed, true
+}
+
+// Reload is Pi's `void open.load()` of a binding that changed: a read of a query that no longer compiles fails at once, as
+// `load` does before its first await (its owner may end before any task runs); a read that runs, runs on a task of its own,
+// and nothing waits for it.
+func (read *OpenRead) Reload() {
+	if _, settled := read.failCompile(); !settled {
+		go read.Load()
+	}
 }
 
 // Close takes it out of the index: no commit runs it again. A run a commit made already still reaches its sink.

@@ -7,19 +7,22 @@ import (
 )
 
 // Ports packages/chord/src/data/failure.ts: failure causes. Transient (the object's own effect failed: retry
-// later), broken (its own code, a cycle or authority: retry by hand) or waiting (not its fault: no provider, no fitting
-// version, a dependency that failed; woken by an event). The failing stage decides, never the error code.
+// later), broken (its own code, a cycle or authority: retry by hand), waiting (not its fault: no provider, no fitting
+// version, a dependency that failed; woken by an event) or denied (an admission refused the caller: woken by the
+// decision). The failing stage decides, never the error code.
 
 // FailureKind is the kind of a FailureCause, from the failing stage, never from the error code.
 type FailureKind string
 
 // The kinds of FailureCause: transient (the object's own effect failed: retry later), broken (its own code, a cycle or
-// authority: retry by hand) or waiting (not its fault: no provider, no fitting version, a dependency that failed; woken
-// by an event).
+// authority: retry by hand), waiting (not its fault: no provider, no fitting version, a dependency that failed; woken
+// by an event) or denied (its admission, a dependency's or a route's refused the caller (slice 14): no backoff, woken by
+// the decision).
 const (
 	FailureTransient FailureKind = "transient"
 	FailureBroken    FailureKind = "broken"
 	FailureWaiting   FailureKind = "waiting"
+	FailureDenied    FailureKind = "denied"
 )
 
 // FailureCause is why an object, or a request, is failed.
