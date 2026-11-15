@@ -1056,3 +1056,168 @@ func TestRouteAdmissionTheFenceAfterADenialTheLinkLostBeforeThePongTheNextLinkHo
 		}
 	})
 }
+
+// --- across reloads (test 21) -------------------------------------------------------------------------------------------
+
+// againFacets is the server's facet again, as a new value: a reload restarts the gate's store.
+func againFacets(setup func(facet FacetHost) error) []HostFacet {
+	return []HostFacet{{Name: "@test/server", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return setup(h) })}}
+}
+
+// Pi: "across reloads (test 21) › the source's plugin reloaded to an equal allow: no resolve, no new upstream hold, the call
+// across it completes". Covers (host_route_admission.go): the settled decision's `moved` -> `now` returning the same verdict (apply's
+// identity early return); (part B) no withheld/admitted call.
+func TestRouteAdmissionAcrossReloadsTheSourcesPluginReloadedToAnEqualAllowNoResolveNoNewUpstreamHoldTheCallAcrossItCompletes(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		g := routeGated(t, relayedOptions{}, nil)
+		defer closeHosts(t, g.Tab, g.Server)
+		g.set("yes")
+		notes := mustGet(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+		g.WorkerLoaded(t, "session|S1")
+		worker := g.Worker("session|S1")
+		adding := startCallWith(t, notes, "add", jsonObject("text", "x"))
+		_, err := g.Server.Reload(againFacets(serveGate), background, ReloadOptions{})
+		must(t, err)
+		g.settled()
+		if value, err := adding.wait(background); err != nil || value != float64(1) {
+			t.Fatalf("add = %v, %v, want 1", value, err)
+		}
+		wantKind(t, notes, RefStateLive)
+		if count, err := notes.Member("count").Value(); err != nil || count != float64(1) {
+			t.Fatalf("count = %v, %v, want 1", count, err)
+		}
+		if resolves, references := g.Resolves(), activityOf(worker).References; len(resolves) != 1 || resolves[0] != "session|S1" || references != 1 {
+			t.Fatalf("resolves = %v, references = %d, want [session|S1], 1", resolves, references)
+		}
+	})
+}
+
+// Pi: "across reloads (test 21) › the source removed leaves bound holds alone and fails new ones; restored, its new store
+// decides again". Covers (part B): relayedHold.withheld for the bound hold when the new store denies (`denied`),
+// relayedHold.admitted + path.forward behind the fence when the new store allows.
+func TestRouteAdmissionAcrossReloadsTheSourceRemovedLeavesBoundHoldsAloneAndFailsNewOnesRestoredItsNewStoreDecidesAgain(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		g := routeGated(t, relayedOptions{}, nil)
+		defer closeHosts(t, g.Tab, g.Server)
+		g.set("yes")
+		bound := mustGet(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+		_, err := g.Server.Reload(againFacets(func(FacetHost) error { return nil }), background, ReloadOptions{})
+		must(t, err)
+		g.settled()
+		if got := kindOf(bound); got != RefStateLive {
+			t.Fatalf("bound state = %s, want live", got)
+		}
+		second := g.tabOf(ownerPrincipal())
+		defer closeHosts(t, second)
+		late := mustHold(t, second, PlacedNotes, jsonObject("session", "S1"))
+		g.settled()
+		if cause := failedWith(t, late); cause.Kind != data.FailureWaiting {
+			t.Fatalf("late cause = %s, want waiting", cause.Kind)
+		}
+		_, err = g.Server.Reload(againFacets(serveGate), background, ReloadOptions{})
+		must(t, err)
+		g.settled()
+		// A new store object: its modes start over, so the principal is denied until allowed again (the fence).
+		wantDenied(t, bound)
+		wantDenied(t, late)
+		gate := mustGet(t, g.Server, Gate, jsonObject())
+		_, err = gate.Call("set", jsonObject("who", "owner", "mode", "yes"), background)
+		must(t, err)
+		g.settled()
+		wantKind(t, bound, RefStateLive)
+		wantKind(t, late, RefStateLive)
+	})
+}
+
+// Pi: "across reloads (test 21) › the source reloaded while a resolve is pending: the hold binds once the link is there".
+// Covers (host_route_admission.go): a decision change while the route's resolve runs does not resolve twice.
+func TestRouteAdmissionAcrossReloadsTheSourceReloadedWhileAResolveIsPendingTheHoldBindsOnceTheLinkIsThere(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		pending := make(chan struct{})
+		var resolving atomic.Int32
+		g := routeGated(t, relayedOptions{Resolve: func(_ contracts.Address, worker func() resolved, ctx context.Context) (resolved, error) {
+			resolving.Add(1)
+			_, _ = chordctx.Receive(ctx, pending)
+			return worker(), nil
+		}}, nil)
+		defer closeHosts(t, g.Tab, g.Server)
+		g.set("yes")
+		notes := mustHold(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+		g.settled()
+		_, err := g.Server.Reload(againFacets(serveGate), background, ReloadOptions{})
+		must(t, err)
+		g.settled()
+		if got := kindOf(notes); got != RefStateLoading {
+			t.Fatalf("state = %s, want loading", got)
+		}
+		close(pending)
+		g.settled()
+		wantKind(t, notes, RefStateLive)
+		// One resolve, not one per decision change.
+		if resolves := g.Resolves(); len(resolves) != 1 || resolves[0] != "session|S1" {
+			t.Fatalf("resolves = %v, want one session|S1", resolves)
+		}
+	})
+}
+
+// Pi: "across reloads (test 21) › an object behind the route reloaded is an ordinary rebind: no decision is asked, nothing
+// resolved". Covers: nothing of the route's admission is called again (decisions tracker).
+func TestRouteAdmissionAcrossReloadsAnObjectBehindTheRouteReloadedIsAnOrdinaryRebindNoDecisionIsAskedNothingResolved(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		g := routeGated(t, relayedOptions{}, nil)
+		defer closeHosts(t, g.Tab, g.Server)
+		g.set("yes")
+		notes := mustGet(t, g.Tab, PlacedNotes, jsonObject("session", "S1"))
+		g.WorkerLoaded(t, "session|S1")
+		tracked := trackDecisions(g)
+		before := tracked.count()
+		worker := g.Worker("session|S1")
+		_, err := worker.Reload([]HostFacet{{Name: "@test/worker", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			_, err := serveNotes(h, PlacedNotes)
+			return err
+		})}}, background, ReloadOptions{})
+		must(t, err)
+		g.settled()
+		wantKind(t, notes, RefStateLive)
+		if made, resolves := tracked.count()-before, g.Resolves(); made != 0 || len(resolves) != 1 || resolves[0] != "session|S1" {
+			t.Fatalf("decisions asked = %d, resolves = %v, want 0, [session|S1]", made, resolves)
+		}
+	})
+}
+
+// EXTRA (no Pi case): the server's own reference to an address of its gated route is a `remoteObject` holder, which no case
+// above reaches (every hold there is a relayed one). Covers (part B): remoteObject.withheld (a denial: `failed{denied}`, the
+// held replica dropped: its members fail `forbidden`), remoteObject.admitted (startOver: `loading` again), and the same
+// through path.forward / path.withhold. Pi's own cover is admission.test.ts (part C, "over a link").
+func TestRouteAdmissionAServersOwnReferenceToAGatedAddressIsWithheldAndAdmittedAsARemoteObject(t *testing.T) {
+	forEachCodec(t, func(t *testing.T) {
+		g := routeGated(t, relayedOptions{}, nil)
+		defer closeHosts(t, g.Tab, g.Server)
+		// The server acts as itself (kind `server`): its decision is its own, apart from the owner's.
+		own := mustHold(t, g.Server, PlacedNotes, jsonObject("session", "S1"))
+		g.settled()
+		wantDenied(t, own)
+		if resolves := g.Resolves(); len(resolves) != 0 {
+			t.Fatalf("resolves = %v, want none", resolves)
+		}
+		g.set("yes", "server")
+		g.settled()
+		wantKind(t, own, RefStateLive)
+		g.set("no", "server")
+		g.settled()
+		wantDenied(t, own)
+		if _, err := own.Member("count").Value(); err == nil {
+			t.Fatal("a denied remote reference still reads its replica")
+		}
+		g.WorkerLoaded(t, "session|S1")
+		if references := workerReferences(g.relayed, "session|S1"); references != 0 {
+			t.Fatalf("worker references = %d, want 0 after the denial", references)
+		}
+		g.set("yes", "server")
+		g.settled()
+		wantKind(t, own, RefStateLive)
+		if references := workerReferences(g.relayed, "session|S1"); references != 1 {
+			t.Fatalf("worker references = %d, want 1 after the allow", references)
+		}
+	})
+}
