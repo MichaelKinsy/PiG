@@ -34,12 +34,27 @@ func deliveredOn(hosts ...Host) {
 				<-storeseam.ReadTasks(h.store)
 			}
 			h.scheduler.Wait()
-			loopseam.Quiesce(h.loop())
+			quiesce(h.loop())
 			if !h.scheduler.Busy() && storeIdle(h) {
 				break
 			}
 		}
 	}
+}
+
+// quiesce is loopseam.Quiesce for deliveredOn. A join that stalled (a task blocked where the loop cannot see it) ends the binary at
+// once with the join's report: the report is a panic, and a panic in the test's own goroutine is printed only after the test's
+// deferred calls returned, which a test that holds a gate on purpose (a held commit, a native that stays opening) never lets them
+// do: closeHosts waits for what the gate holds. So the panic is raised from a goroutine no deferred call waits for, as the handler
+// stall reporter's is (TestMain).
+func quiesce(loop any) {
+	defer func() {
+		if report := recover(); report != nil {
+			go func() { panic(report) }()
+			select {}
+		}
+	}()
+	loopseam.Quiesce(loop)
 }
 
 // storeIdle is whether the reloads a changed binding started in the host's store (its reads index owns them: Pi's unawaited
