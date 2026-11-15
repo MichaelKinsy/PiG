@@ -49,7 +49,7 @@ var todos = func() *contracts.Contract {
 	return contract
 }()
 
-// todo is a to-do as the steps read it.
+// A to-do as the steps read it.
 type todo struct {
 	ID   int
 	Text string
