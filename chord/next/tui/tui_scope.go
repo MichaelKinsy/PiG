@@ -1,7 +1,8 @@
 // Package tui ports packages/chord/src/tui: Chord's terminal client side. TuiScope (scope.ts) is a terminal
 // component's Chord resources, the counterpart of the React bindings for terminal UI libraries (slice 11 §4, decision
 // "Slice 11, P9"; p2's `TuiScope`): it holds references, follows watchables and registries, calls one `changed` callback
-// (the app's redraw) on every change, subscribes to event members, and releases everything at Dispose.
+// (the app's redraw) on every change, reads a reference in one variant, subscribes to event members, and releases everything
+// at Dispose.
 //
 // Forced Go differences from upstream (language mechanics):
 //   - Methods cannot have type parameters and Go has no union of the watchable shapes Pi's `watch` takes: Watch is
@@ -22,6 +23,7 @@ import (
 	"context"
 	"runtime"
 	"sync"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
@@ -47,6 +49,8 @@ type TuiScope struct {
 
 	mu       sync.Mutex
 	releases []func()
+	// states: the references whose state the scope follows, weakly (Pi's `WeakSet`).
+	states map[weak.Pointer[host.Reference]]struct{}
 
 	// Deliveries of `changed` in flight, by the goroutine running each (a count, as a `changed` may nest), and the goroutines
 	// in Dispose. Pi's scope is one thread, so `changed` never runs while or after `dispose` does, and a `changed` may call
@@ -119,8 +123,41 @@ func (s *TuiScope) Hold(typ *contracts.Contract, params any) (*host.Reference, e
 		return nil, err
 	}
 	s.release(held.Release)
-	WatchNative(s, held.State())
+	s.follow(held)
 	return held, nil
+}
+
+// Variant is a reader of ref narrowed to variant while it is live in it, else nil (loading, failed or denied, ended,
+// another variant), as React's `useVariant`: ref's state is followed until Dispose, so a change of its variant calls changed
+// (an admission's other allowed value binds another variant while it is held). True of the redraw that read it: a call made
+// after a wait may find another variant. A reference the scope's caller released ends its own watch and is not kept by the
+// scope (see followedStates).
+func (s *TuiScope) Variant(ref *host.Reference, variant string) func() *host.Reference {
+	s.follow(ref)
+	return func() *host.Reference { return surfaces.LiveIn(ref, variant) }
+}
+
+// follow follows the state of ref until Dispose, once however often Hold and Variant ask. Pi's `WeakSet` of the followed
+// states: here a set of weak pointers to the references (a Go reference's State is a new value at each call, the reference is
+// what is identified), whose entries of collected references go at the next follow and all at Dispose.
+func (s *TuiScope) follow(ref *host.Reference) {
+	key := weak.Make(ref)
+	s.mu.Lock()
+	if _, followed := s.states[key]; followed {
+		s.mu.Unlock()
+		return
+	}
+	if s.states == nil {
+		s.states = map[weak.Pointer[host.Reference]]struct{}{}
+	}
+	for each := range s.states {
+		if each.Value() == nil {
+			delete(s.states, each)
+		}
+	}
+	s.states[key] = struct{}{}
+	s.mu.Unlock()
+	WatchNative(s, ref.State())
 }
 
 // On subscribes listener to event member member (a reference's, decision "Events: fire-and-forget members") until
@@ -408,6 +445,7 @@ func (s *TuiScope) Dispose() {
 	s.mu.Lock()
 	releases := s.releases
 	s.releases = nil
+	s.states = nil
 	s.mu.Unlock()
 	for _, release := range releases {
 		release()
