@@ -55,10 +55,18 @@ type Reads struct {
 	watchers map[string][]*watcher
 	// offered are the open queries by who offers them (`QuerySpec.owner`): closed when that one retires.
 	offered map[any][]Retirable
+	// lifetime is the context every task of the index runs under (with its parent's): `Close` cancels it. tasks counts the
+	// tasks running, idle is closed when the last of them ended (nil while none runs), closed is that `Close` was called.
+	lifetime context.Context
+	stop     context.CancelFunc
+	tasks    int
+	idle     chan struct{}
+	closed   bool
 }
 
 // NewReads is an empty index.
 func NewReads() *Reads {
+	lifetime, stop := context.WithCancel(chordctx.Background())
 	return &Reads{
 		byTable:  map[string][]*RegisteredRead{},
 		sets:     map[string]*binding{},
@@ -66,7 +74,81 @@ func NewReads() *Reads {
 		held:     map[string]bool{},
 		watchers: map[string][]*watcher{},
 		offered:  map[any][]Retirable{},
+		lifetime: lifetime,
+		stop:     stop,
 	}
+}
+
+// closedChan is the barrier of an index with no task running.
+var closedChan = func() chan struct{} {
+	done := make(chan struct{})
+	close(done)
+	return done
+}()
+
+// Go runs task as a task the index owns (Pi's unawaited `void open.load()`: nothing waits for its result, but it must not
+// outlive its owner): under a context that ends with parent's and with `Close`, joined by `Close`; a task offered after
+// `Close` does not run. The task's error is its own to report (a read's is its failed run).
+func (reads *Reads) Go(parent context.Context, task func(ctx context.Context)) {
+	reads.mu.Lock()
+	if reads.closed {
+		reads.mu.Unlock()
+		return
+	}
+	reads.tasks++
+	if reads.idle == nil {
+		reads.idle = make(chan struct{})
+	}
+	reads.mu.Unlock()
+	ctx, cancel := context.WithCancel(parent)
+	unwatch := context.AfterFunc(reads.lifetime, cancel)
+	go func() {
+		defer func() {
+			unwatch()
+			cancel()
+			reads.ended()
+		}()
+		task(ctx)
+	}()
+}
+
+// ended is one task of the index ended: the barrier closes with the last.
+func (reads *Reads) ended() {
+	reads.mu.Lock()
+	defer reads.mu.Unlock()
+	reads.tasks--
+	if reads.tasks == 0 {
+		close(reads.idle)
+		reads.idle = nil
+	}
+}
+
+// idleChan is a barrier: closed once the tasks running now ended (and any that started meanwhile), already closed when none
+// runs. What a test waits on where Pi's `await flushed()` lets the unawaited loads of a changed binding settle.
+func (reads *Reads) idleChan() <-chan struct{} {
+	reads.mu.Lock()
+	defer reads.mu.Unlock()
+	if reads.idle == nil {
+		return closedChan
+	}
+	return reads.idle
+}
+
+// Close ends the index's tasks: none starts from now on, the running ones are cancelled and joined. Closing again is the same
+// close.
+func (reads *Reads) Close() {
+	reads.mu.Lock()
+	reads.closed = true
+	reads.mu.Unlock()
+	reads.stop()
+	<-reads.idleChan()
+}
+
+// isClosed is whether `Close` was called: nothing a task read is adopted after it.
+func (reads *Reads) isClosed() bool {
+	reads.mu.Lock()
+	defer reads.mu.Unlock()
+	return reads.closed
 }
 
 // Add enters read under every table it uses: every commit writing one of them tests it from now on.
