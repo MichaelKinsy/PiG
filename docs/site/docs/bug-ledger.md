@@ -2045,6 +2045,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e84bbf2](#bf-e84bbf2) | The components of an extension's own `TuiAltScreen` in the Go, Rust, Python and Lisp SDKs were invalidated… | PiG's own defect | All platforms | Unreleased |
 | [BF-e88f858](#bf-e88f858) | Windows: a connection reset before the response headers, or a response body reset, is reported as Pi reports… | PiG's own defect | Windows | Unreleased |
 | [BF-e8a5d2e](#bf-e8a5d2e) | The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-e8c1e17](#bf-e8c1e17) | Chord: a list over another owner's set could lose the rows of a page for good when the first read of its… | PiG's own defect | All platforms | Unreleased |
 | [BF-e90ac19](#bf-e90ac19) | Very long streamed answers no longer slow down with their length: each streamed frame renders only the last… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e90f6c8](#bf-e90f6c8) | Windows paths are compared case-insensitively | A fix Pi shipped that PiG ported | Windows | 0.7.0 |
 | [BF-e90f6c8-2](#bf-e90f6c8-2) | Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -30358,6 +30359,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e8a5d2ef7e` (2026-11-02)
 - **Tests:** `ai/opencode_dropblock_catalog_test.go::TestOpencodeClaudeCatalogCompatReachesTheAnthropicPayload`, `internal/modelgen/providers/opencode_dropblock_test.go::TestOpencodeClaudeMidConvoEffort`
 - **Release note:** The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954). Their `anthropic-messages` requests then carry per-message effort markers and `thinking.block_binding: drop_block` like the Anthropic provider. OpenCode Go rejected replayed thinking with a 400 because the requests carried no `drop_block` binding after the tool list or system prompt changed. The bundled catalog is converted from the published Pi package and carries the flag once the pin moves to a Pi version that includes that commit. Until then the remote catalog overlay can deliver the flag: pi-in-go.dev (D64) serves the overlay that `withRemoteCatalog` reads, as pi.dev does for released Pi.
+
+### BF-e8c1e17
+
+**Chord: a list over another owner's set could lose the rows of a page for good when the first read of its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Chord: a list over another owner's set could lose the rows of a page for good when the first read of its query was slow: the read of the first load was made before a commit, the commit's run was adopted, and the load's older run was then adopted over it, so a page that held 10 and 20 showed neither (a list of 10, 20, 30, 40 showed 30, 40; seen as 9 failures in 42,000 runs of one test under load, and none in 36,000 after the fix).
+- **Root cause:** OpenRead.load tested its generation before it waited for a section of the host to adopt in, so a commit's adoption of the same read could run in between and the older first-load run was adopted after the commit's; Pi's load checks and adopts in one turn (open-query.ts:202-207)
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e8c1e17c8f` (2026-11-15)
+- **Tests:** `chord/next/store/reads_test.go::TestReadsLoadIsOvertakenByACommitThatAdoptsWhileItWaitsForItsSection`
+- **Release note:** Chord: a list over another owner's set could lose the rows of a page for good when the first read of its query was slow: the read of the first load was made before a commit, the commit's run was adopted, and the load's older run was then adopted over it, so a page that held 10 and 20 showed neither (a list of 10, 20, 30, 40 showed 30, 40; seen as 9 failures in 42,000 runs of one test under load, and none in 36,000 after the fix). The load now checks that no commit's run overtook it in the same section it adopts in, as Pi's `load` does in one turn.
 
 ### BF-e90ac19
 
