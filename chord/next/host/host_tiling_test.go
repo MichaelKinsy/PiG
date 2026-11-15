@@ -31,6 +31,8 @@ import (
 //     the commit it was queued for.
 //   - "the filler's runs alone, the other two as one group": the filler's commit is held in its backend transaction
 //     (faultyStore's holdNextCommit) until the two others enlisted behind it, then released: no timing.
+//   - calls Pi makes in one tick (the rollback case's three) enlist in call order and form one group: the commit queue is held
+//     (ChordStore.Take) while they start, each once its commit took its place behind the hold, then released (`inOneGroup`).
 //   - `store.reads.on(set)[i].run = ...` (a run that fails) is `storeseam.FailRuns(read, fail)`: the read's runs in a
 //     commit's step fail with the error `fail` returns (nil restores the real run).
 //   - `await flushed()` after a group is `flushed(host)` then waiting for the store's OnCommitted listener to report the
@@ -341,6 +343,21 @@ func (w *tlWorld) queued(calls ...func()) {
 	w.commits.waitReported(w.store.LastSeq())
 }
 
+// inOneGroup is what Pi's calls of one tick are: their commits enlist in call order before the commit queue's turn comes, so
+// they form ONE group (a refused one in it rolls the group back). Go: the commit queue is taken (ChordStore.Take, an export's
+// hold: the commit of no owner stands in for it), the calls start in order, each once its commit took its place behind the
+// hold, then the queue is released.
+func (w *tlWorld) inOneGroup(calls ...func()) {
+	w.t.Helper()
+	release := <-w.store.Take(func() {})
+	defer release()
+	wait := w.startInOrder(calls...)
+	release()
+	wait()
+	flushed(w.host)
+	w.commits.waitReported(w.store.LastSeq())
+}
+
 // group queues the two owners' commits behind the filler's and checks they formed one group.
 func (w *tlWorld) group(first, second func()) {
 	w.t.Helper()
@@ -500,12 +517,14 @@ func TestTilingACommitGroupOfTwoOwners(t *testing.T) {
 		w.more()
 		w.more()
 		// The sessions' commit refuses in its step (an integer past its range): the group rolls back, each commit runs
-		// again alone, and the club's stands. Go: the filler is held and queued first, then the club's and the refused one
-		// (Pi starts the refused one first; the group of the other two is what the case is about).
+		// again alone, and the club's stands. Pi makes the three calls in one tick: the refused one first, then the filler's,
+		// then the club's, and their commits enlist in that order and form one group (Pi's probe: three enlists, three
+		// admissions, the refused one rejected, the other two adopted one by one). Go: `inOneGroup`.
 		var refused error
-		w.queued(
-			func() { w.clubWrite(jsonObject("remove", tlMembers("t", "s3"))) },
+		w.inOneGroup(
 			func() { refused = w.call(w.sessions, jsonObject("overflow", tlStringsAny("s1"))) },
+			func() { mustCall(w.t, w.filler, "write", 1.0) },
+			func() { w.clubWrite(jsonObject("remove", tlMembers("t", "s3"))) },
 		)
 		if refused == nil {
 			t.Fatal("the overflow commit was not refused")
