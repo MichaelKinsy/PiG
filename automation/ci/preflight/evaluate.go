@@ -10,6 +10,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"unicode"
 )
 
 type evaluation struct {
@@ -173,15 +174,15 @@ func report(w io.Writer, cfg config, ev evaluation) {
 	var open []string
 	for _, c := range cfg.Checks {
 		v := ev.Checks[c.Name]
-		logf(w, "%s %-20s %s", resultMark[v.Result], c.Name, v.Reason)
+		logf(w, "%s %-20s %s", resultMark[v.Result], c.Name, flatten(v.Reason))
 	}
 	for _, c := range cfg.Checks {
 		for _, x := range ev.Checks[c.Name].Warnings {
 			if x.Acknowledged {
-				logf(w, "ACK   %-20s %s", c.Name, x.where())
+				logf(w, "ACK   %-20s %s", c.Name, flatten(x.where()))
 				continue
 			}
-			logf(w, "WARN  %-20s %s", c.Name, x.where())
+			logf(w, "WARN  %-20s %s", c.Name, flatten(x.where()))
 			if x.File != "" {
 				open = append(open, ackEntry(c.Name, x))
 			}
@@ -189,7 +190,7 @@ func report(w io.Writer, cfg config, ev evaluation) {
 	}
 	for _, c := range cfg.Checks {
 		for _, n := range ev.Checks[c.Name].Notices {
-			logf(w, "NOTE  %-20s %s", c.Name, n)
+			logf(w, "NOTE  %-20s %s", c.Name, flatten(n))
 		}
 	}
 	if len(open) > 0 {
@@ -242,6 +243,18 @@ func clip(s string, n int) string {
 		return string(r[:n-1]) + "…"
 	}
 	return s
+}
+
+// flatten is s with every control character and line separator replaced by a space. Text of a pull request goes
+// through it into the job log: a line break would let that text start a line of its own, and a line that starts with
+// "::" is a workflow command.
+func flatten(s string) string {
+	return strings.Map(func(r rune) rune {
+		if unicode.IsControl(r) || unicode.In(r, unicode.Zl, unicode.Zp) {
+			return ' '
+		}
+		return r
+	}, s)
 }
 
 func perFile(ws []warning) []warning {

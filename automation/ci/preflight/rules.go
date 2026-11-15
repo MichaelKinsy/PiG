@@ -551,7 +551,7 @@ func admitByLedger(d *data, ledger []reviewed.Entry, known map[string]bool, reco
 				problems = append(problems, fmt.Sprintf("ledger row %s %s", row, err))
 			default:
 				admitted = true
-				notices = append(notices, fmt.Sprintf("%s: expected-value change admitted by reviewed ledger row %s, class %s%s: %s", e.name, short10(r.Commit), r.Class, citeOf(r), clip(strings.Join(strings.Fields(r.Reason), " "), maxNotice)))
+				notices = append(notices, fmt.Sprintf("%s: expected-value change admitted by reviewed ledger row %s, class %s%s: %s", e.name, short10(r.Commit), r.Class, citeOf(r), ledgerText(r.Reason)))
 			}
 		}
 		if !admitted {
@@ -561,11 +561,16 @@ func admitByLedger(d *data, ledger []reviewed.Entry, known map[string]bool, reco
 	return open, notices, problems
 }
 
+// ledgerText is a text of a ledger row as a notice prints it: on one line, cut at maxNotice characters.
+func ledgerText(s string) string {
+	return clip(strings.Join(strings.Fields(s), " "), maxNotice)
+}
+
 func citeOf(r reviewed.Entry) string {
 	if r.Cite == "" {
 		return ""
 	}
-	return " " + r.Cite
+	return " " + ledgerText(r.Cite)
 }
 
 func short10(sha string) string { return sha[:min(len(sha), 10)] }

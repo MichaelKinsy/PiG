@@ -49,8 +49,25 @@ func markdown(cfg config, d *data, ev evaluation) string {
 	return b.String()
 }
 
+// cell is s as a table cell that cannot be anything else: one code span on one line. Text of a pull request (a file
+// name, a ledger reason) goes through it into the comment, so that it becomes no further cell, no mention, no HTML tag,
+// no link and no fence. The span is fenced with one backtick more than the longest run in s, and a pipe is escaped.
 func cell(s string) string {
-	return strings.NewReplacer("|", `\|`, "\n", " ").Replace(s)
+	s = strings.ReplaceAll(flatten(s), "|", `\|`)
+	if strings.TrimSpace(s) == "" {
+		return ""
+	}
+	longest, run := 0, 0
+	for _, r := range s {
+		if r == '`' {
+			run++
+			longest = max(longest, run)
+		} else {
+			run = 0
+		}
+	}
+	fence := strings.Repeat("`", longest+1)
+	return fence + " " + s + " " + fence
 }
 
 func statusFor(cfg config, ev evaluation) (state, description string) {
