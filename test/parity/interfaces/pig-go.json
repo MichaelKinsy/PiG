@@ -328955,6 +328955,28 @@
       "shapeHash": "sha256:08281059dc8390a32f26e18c4886f15b43a475bede41fd586b17daefd7bd22ae"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#tokenRatioFromContext",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
+      "name": "tokenRatioFromContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) float64"
+      },
+      "shapeHash": "sha256:1e154b5292567a22a213e4a9319755d39e631f379193e59c7fa29f853d569beb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#tokenRatioKey",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
+      "name": "tokenRatioKey",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tokenRatioKey"
+      },
+      "shapeHash": "sha256:1dbfe87b6949469547366ffbaf384e67f6e69aa3bd5579706c0f7091379a9a2d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#tokenRatioMargin",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
       "name": "tokenRatioMargin",
@@ -328997,6 +329019,17 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/compaction#withTokenRatio",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent/compaction",
+      "name": "withTokenRatio",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, ratio float64) context.Context"
+      },
+      "shapeHash": "sha256:26812fb1673d5a3441a20cc8916de9ba6d7dde7bc0cc4ec3c897b61afb9bb5a1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent/configschema#AnthropicAllowedFallbackModelSchema",
