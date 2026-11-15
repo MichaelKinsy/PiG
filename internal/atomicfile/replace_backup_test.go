@@ -141,7 +141,8 @@ func TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish(t *testing.T)
 func TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved(t *testing.T) {
 	path, temp := replacementFiles(t)
 	err := replaceKeepingBackup(path, temp, steps(errUnableToMoveReplacement2, func(string, string) error { return errors.New("sharing violation") }))
-	if _, ok := errors.AsType[*keptFilesError](err); !ok {
+	var kept *keptFilesError
+	if !errors.As(err, &kept) {
 		t.Fatalf("error = %v, want a keptFilesError", err)
 	}
 	if got := content(temp); got != "new" {

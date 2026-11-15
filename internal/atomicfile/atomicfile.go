@@ -131,8 +131,7 @@ func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.
 		return nil, err
 	}
 	if err = replaceTemp(temp.Name(), path, existing != nil); err != nil {
-		var kept *keptFilesError
-		if errors.As(err, &kept) {
+		if _, ok := errors.AsType[*keptFilesError](err); ok {
 			keepTemp = true // the temporary file holds data that exists nowhere else
 			return nil, err
 		}
