@@ -283,6 +283,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-24a9b69](#bf-24a9b69) | fix(hljs): a resumed run counts the scan iterations before its checkpoint | PiG's own defect | All platforms | Unreleased |
 | [BF-24b67cc](#bf-24b67cc) | Typing a space or a letter such as `é` right after a slash command whose arguments have completions no… | PiG's own defect | All platforms | Unreleased |
 | [BF-2544a44](#bf-2544a44) | A user `!` command whose earlier output was discarded from the rolling window, but whose remaining tail fits… | PiG's own defect | All platforms | Unreleased |
+| [BF-257263d](#bf-257263d) | Cancelling the context of `tui.StartTerminal` now ends the terminal client as `Stop` does, as its… | PiG's own defect | All platforms | Unreleased |
 | [BF-25a90ea](#bf-25a90ea) | fix(tui): scroll regions only where the terminal is trusted with them (D205 approved) | PiG's own defect | All platforms | Unreleased |
 | [BF-25aa7fd](#bf-25aa7fd) | A subprocess extension's markdown transform that was busy past the five-second renderer inactivity boundary… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-25c854d](#bf-25c854d) | Session directories (the agent directory, `sessions` and each project's directory) are created owner-only… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -403,6 +404,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-33fe10d](#bf-33fe10d) | `ModelsError` appends the cause detail the way Pi does: an Error cause with an empty message contributes its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-33fe10d-2](#bf-33fe10d-2) | Live-Pi oracles `TestExtensionSelectorMatchesPi` (4,320 probes) and `TestExtensionInputMatchesPi` (1,144… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3452432](#bf-3452432) | Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-347671f](#bf-347671f) | A terminal client no longer handles a message of its sandbox before it has installed the sandbox: a socket… | PiG's own defect | All platforms | Unreleased |
 | [BF-348a3a8](#bf-348a3a8) | Markdown no longer shows HTML comments (`<!-- ... -->`) as text in Extension Updates, What's New… | PiG's own defect | All platforms | Unreleased |
 | [BF-349684c](#bf-349684c) | A Chord host's IPC or WebSocket link no longer hands its listener a message that arrived while earlier queued… | PiG's own defect | All platforms | Unreleased |
 | [BF-34aa421](#bf-34aa421) | fix(agent): hand the stream function Pi's messages; repair the tool flow in the provider path | PiG's own defect | All platforms | Unreleased |
@@ -5904,6 +5906,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/tools/bash_executor_oracle_test.go::TestExecuteBashWithOperationsMatchesPi`, `internal/codingagent/tools/bash_executor_truncation_test.go::TestExecuteBashWithOperationsReportsDiscardedChunks10164`
 - **Release note:** A user `!` command whose earlier output was discarded from the rolling window, but whose remaining tail fits the limits, was reported as not truncated, so the model got no truncation notice and no path to the complete log that PiG had already saved. It now reports `truncated` and the path, for a completed and for a cancelled command (D244).
 
+### BF-257263d
+
+**Cancelling the context of `tui.StartTerminal` now ends the terminal client as `Stop` does, as its…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Cancelling the context of `tui.StartTerminal` now ends the terminal client as `Stop` does, as its documentation says: the loop used to stop on the cancelled context and nothing else, so the sandbox's Node child process kept running, the link sockets stayed open and the terminal was not given back (the child outlived the client until the embedding program ended).
+- **Root cause:** the terminal launcher's loop returned on its cancelled context without running the client's end, and Stop reaches the sandbox and the link sockets only through that end, so a cancelled context ended the loop and nothing else
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `257263d016` (2026-11-15)
+- **Tests:** `chord/nextnode/tui/tui_launcher_end_test.go::TestCancellingTheContextEndsTheClientItsSandboxProcessAndItsSockets`
+- **Release note:** Cancelling the context of `tui.StartTerminal` now ends the terminal client as `Stop` does, as its documentation says: the loop used to stop on the cancelled context and nothing else, so the sandbox's Node child process kept running, the link sockets stayed open and the terminal was not given back (the child outlived the client until the embedding program ended). `Stop` and the exit code now wait for the client's end whoever began it.
+
 ### BF-25a90ea
 
 **fix(tui): scroll regions only where the terminal is trusted with them (D205 approved)**
@@ -7566,6 +7582,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ba9c37b247` (2026-10-06, #171), `3094ee00ca` (2026-10-07, #185), `3499c2bea7` (2026-10-07, #181), `9b63b2bc4e` (2026-10-07, #176), `3452432f8b` (2026-10-08, #190), `4610c9f4a1` (2026-10-08, #189)
 - **Tests:** `coding/cli/extension_cache_gc_binary_test.go::TestEverySessionModeStartsTheAutomaticExtensionCacheCollection`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledAtTheLastEntryWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCCancelledWritesNoMarker`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCMarkerSuppressesTheNextRunWithinTheInterval`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCRecordsFailureInsteadOfPrinting`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy`, `coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure`, `coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure` and 34 more in docs/bug-ledger.json
 - **Release note:** Escape cancels a running `!` or `!!` command again, as in Pi: the command stops and its block ends with `(cancelled)`. Escape had left the command running until it finished on its own. While an agent run streams, Escape still aborts the run and leaves a command started during it running, as Pi does.
+
+### BF-347671f
+
+**A terminal client no longer handles a message of its sandbox before it has installed the sandbox: a socket…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal client no longer handles a message of its sandbox before it has installed the sandbox: a socket the sandbox opened in its first moments made the launcher post to a nil sandbox (a nil pointer panic that ended the embedding program), and a request it made then was dropped unanswered.
+- **Root cause:** the launcher installed its sandbox on the loop after the sandbox had begun passing its child's messages to the loop, so a message could be handled with no sandbox installed, where Pi's launcher assigns the sandbox before any of its output is delivered
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `347671fef8` (2026-11-15)
+- **Tests:** `chord/nextnode/tui/tui_launcher_end_test.go::TestASandboxsFirstMessageThatComesBeforeItIsInstalledIsHandledWithItInstalled`, `chord/nextnode/tui/tui_launcher_end_test.go::TestAtMostAQueuesWorthOfMessagesAreHeldForASandboxThatIsNotInstalledYet`, `chord/nextnode/tui/tui_launcher_end_test.go::TestWhatASandboxSentBeforeARestartReplacedItIsNotHandledForTheNext`
+- **Release note:** A terminal client no longer handles a message of its sandbox before it has installed the sandbox: a socket the sandbox opened in its first moments made the launcher post to a nil sandbox (a nil pointer panic that ended the embedding program), and a request it made then was dropped unanswered. The launcher holds what a sandbox sends while it is being started and handles it in order once installed, as Pi's `Sandbox.start` continuation does.
 
 ### BF-348a3a8
 
