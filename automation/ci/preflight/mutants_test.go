@@ -523,7 +523,7 @@ func TestUncoveredEdges(t *testing.T) {
 	if !strings.Contains(out.String(), "ACK   licenses") || !strings.Contains(out.String(), "WARN  licenses") || !strings.Contains(out.String(), "file = \"g\"") || strings.Count(out.String(), "::warning") != 1 {
 		t.Fatalf("report:\n%s", out.String())
 	}
-	if md := markdown(cfg, &data{}, ev); !strings.Contains(md, "☑️ | licenses | acknowledged") || !strings.Contains(md, "🔶 | licenses | ` g") {
+	if md := markdown(cfg, &data{}, ev); !strings.Contains(md, "☑️ | licenses | acknowledged") || !strings.Contains(md, "🔶 | licenses | g") {
 		t.Fatalf("markdown:\n%s", md)
 	}
 
