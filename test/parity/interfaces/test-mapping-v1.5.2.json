@@ -3927,7 +3927,7 @@
       "evidence": [
         "chord/next/host/remote_provider_test.go"
       ],
-      "rationale": "All 55 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the cases the t6 lane added are TestProviderTelemetryRunsACallsMethodUnderItsCarrier…, TestProviderTelemetryCountsHoldsPlacedHere…, TestProviderTelemetryRecordsHowLongStateWaitedForASlotOfTheWindow (remote_provider_test.go))."
+      "rationale": "All 55 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the cases the t6 lane added are TestProviderTelemetryRunsACallsMethodUnderItsCarrier…, TestProviderTelemetryCountsHoldsPlacedHere…, TestProviderTelemetryRecordsHowLongStateWaitedForASlotOfTheWindow (remote_provider_test.go)). Pi f6600b58f adds the case `a derive read between two changes of its source in one commit travels once`: TestProviderOneMessagePerLinkPerCommit (remote_provider_test.go, both codecs)."
     },
     {
       "path": "packages/chord/test/remote/relay.test.ts",
@@ -4056,7 +4056,7 @@
         "chord/next/state/derive_test.go",
         "chord/next/host/host_state_sources_test.go"
       ],
-      "rationale": "All 18 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 18 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi f6600b58f adds the 5 cases of `a watched derive read between two changes of its source in one batch`: TestDeriveReadBetweenTwoChangesInOneBatch (derive_test.go)."
     },
     {
       "path": "packages/chord/test/state/native-source.test.ts",

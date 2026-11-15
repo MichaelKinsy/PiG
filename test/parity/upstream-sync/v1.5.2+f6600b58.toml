@@ -1,0 +1,77 @@
+from = "1.5.2+f57cd948"
+to = "1.5.2+f6600b58"
+
+# The range f57cd9484..f6600b58f347 under packages/chord (10 files; two commits, 36c709e72 and f6600b58f): a framed source set several
+# times in one commit, and a watched derive changed twice in one commit, publish one frame (over a link two entries for one member in one
+# state message were a protocol error). The Go chord ports it on follow/pi-main-39-chord-frames (eb077fb27afc). `designed-out` rows are
+# Pi's chord documents.
+
+[[files]]
+path = "packages/chord/CHANGELOG.md"
+change = "modified"
+disposition = "ported"
+evidence = []
+rationale = "36c709e72, f6600b58f: Pi's two Fixed entries (a framed source set several times in one commit, and a watched derive changed twice in one commit, publish one frame). Ported as PiG's own fragments changelog.d/followmain39frames-94a2516ddeb8.md and changelog.d/followmain39frames-6acd45c40ca1.md."
+
+[[files]]
+path = "packages/chord/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "36c709e72, f6600b58f: the decision of one frame per batch for a framed source and a watched derive. The repository mirrors no chord decisions document (Pi's chord documents are not ported: chord/README.md)."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "36c709e72, f6600b58f: the design text of the framed source's batch rule. The repository mirrors no chord design document (Pi's chord documents are not ported: chord/README.md)."
+
+[[files]]
+path = "packages/chord/docs/slices.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "36c709e72, f6600b58f: the slice list notes the state frames. The repository mirrors no chord slices document (Pi's chord documents are not ported: chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/state/framed.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/state/framed_test.go#TestFramedSourceSetSeveralTimesInOneBatch", "test:chord/next/state/framed_test.go#TestFramedSourceFailingAndRecoveringInOneBatch"]
+rationale = "36c709e72: a framed source set several times in one batch publishes one frame, its last value diffed from the value before the batch (nothing when the batch ends where it started; a failure and the value after it are one frame; a value and the failure after it, or two failures, are one failure call; a dependent is marked with every change). Ported: chord/next/state/framed.go (94a2516dd); the 8 cases of test/state/framed.test.ts run as the subtests of the two evidence tests."
+
+[[files]]
+path = "packages/chord/src/state/derive.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/state/derive_test.go#TestDeriveReadBetweenTwoChangesInOneBatch", "test:chord/next/state/framed_test.go#TestFramedSourceSetSeveralTimesInOneBatch", "test:chord/next/state/framed_test.go#TestFramedSourceFailingAndRecoveringInOneBatch"]
+rationale = "f6600b58f: a watched derive read between two changes of its source in one batch publishes one frame (its last value, one diff), and a derive over it is one frame too. Ported: chord/next/state/derive.go (6acd45c40); the 5 cases of test/state/derive.test.ts run as the subtests of TestDeriveReadBetweenTwoChangesInOneBatch."
+
+[[files]]
+path = "packages/chord/test/state/framed.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/state/framed_test.go#TestFramedSourceSetSeveralTimesInOneBatch", "test:chord/next/state/framed_test.go#TestFramedSourceFailingAndRecoveringInOneBatch"]
+rationale = "36c709e72: the 8 new cases (5 of `a framed source set several times in one batch`, 3 of `a framed source failing and recovering in one batch`). Ported: all 8, as the subtests of TestFramedSourceSetSeveralTimesInOneBatch and TestFramedSourceFailingAndRecoveringInOneBatch (framed_test.go), under the Pi titles."
+
+[[files]]
+path = "packages/chord/test/state/derive.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/state/derive_test.go#TestDeriveReadBetweenTwoChangesInOneBatch"]
+rationale = "f6600b58f: the 5 new cases of `a watched derive read between two changes of its source in one batch`. Ported: all 5, as the subtests of TestDeriveReadBetweenTwoChangesInOneBatch (derive_test.go), under the Pi titles."
+
+[[files]]
+path = "packages/chord/test/host/list.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_list_test.go#TestListPages"]
+rationale = "36c709e72: the two cases `a row moving between two pages sets the list once per page and publishes one frame, diffed from the value before the commit` and `over a link, the last row of a second page moving to the top is one state message: no protocol error, the link stays open`. Ported: both, as subtests of TestListPages (host_list_test.go), under the Pi titles."
+
+[[files]]
+path = "packages/chord/test/remote/provider.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/remote_provider_test.go#TestProviderOneMessagePerLinkPerCommit"]
+rationale = "f6600b58f: the case `a derive read between two changes of its source in one commit travels once: no protocol error, the link stays open`. Ported: a subtest of TestProviderOneMessagePerLinkPerCommit (remote_provider_test.go), run in both codecs (forEachCodec)."
