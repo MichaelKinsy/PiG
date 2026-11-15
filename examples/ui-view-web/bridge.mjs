@@ -13,13 +13,27 @@
 //       files theme.css names (images, fonts) are served from the same directory under /theme/. Without it the page
 //       is index.html as it is.
 //
-// It listens on 127.0.0.1 only and prints the page's address, which carries a token every request must repeat.
+// It listens on 127.0.0.1 only. The address is good for ONE load. It holds a one-time code in its fragment
+// (`http://127.0.0.1:<port>/#<code>`), which no browser sends to a server, in a request line or in a Referer. The page
+// posts the code to /exchange (in the body, never in an address) and is answered with a session secret, which it keeps in
+// sessionStorage (one tab, one origin, so one port) and sends in an Authorization header with every request. A request
+// but the page's own files and /exchange without that secret is refused; no address holds a secret after the load and the
+// bridge sets no cookie (a cookie of 127.0.0.1:<port> would go to every other port of the host).
+// The address is not printed, so a log, a recording or a shared screen holds no live address: the first line is
+// `ui-view-web: http://127.0.0.1:<port>/ (open: <dir>/open.html)`, and open.html (mode 0600, in a directory of mode 0700,
+// removed when the bridge ends) sends a browser to the address. Open that file, never the address: no argument list then
+// holds the code. The file `address` beside it holds the address for a script. A code is good for ten minutes and one
+// exchange; a use or the ten minutes make the next code, written to both files at once. --print-token, or
+// UI_VIEW_WEB_PRINT_TOKEN=1, prints `ui-view-web: http://127.0.0.1:<port>/#<code>` instead and makes no file: that one
+// code is good for one exchange and ten minutes, and there is no next one. With `-- <pig arguments>` the secret lets a
+// process of this machine prompt the pig the bridge starts, as this user: it is in the tab's sessionStorage and nowhere else.
 import { spawn } from "node:child_process";
-import { randomBytes } from "node:crypto";
-import { readdirSync, statSync } from "node:fs";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { mkdtempSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createConnection } from "node:net";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -58,7 +72,17 @@ if (argv.includes("--theme") && (option("--theme") === undefined || !statSync(jo
   console.error("usage: node bridge.mjs --theme <directory> ...\nthe directory must hold a theme.css");
   process.exit(2);
 }
-const token = randomBytes(16).toString("hex");
+// --print-token, or UI_VIEW_WEB_PRINT_TOKEN=1 (exactly 1), prints the address with its code. Without either the address
+// is written to a private file and the printed line names the file.
+const printToken = argv.includes("--print-token") || process.env.UI_VIEW_WEB_PRINT_TOKEN === "1";
+// A code lasts ten minutes and one use, as the owner link of examples/chord-todo does (chord/nextnode/app/owner.go,
+// ownerLinkMs): the same one-time secret in a fragment, posted by the page.
+const CODE_MS = 10 * 60_000;
+// A body of /exchange is {"code": "<32 hex digits>"}.
+const MAX_EXCHANGE_BYTES = 4096;
+// The session secrets the bridge keeps are the newest 64: a local caller that holds codes cannot grow the map, and the oldest
+// secret is dropped (a page that holds it is told to open the address again) when one more is made.
+const MAX_SECRETS = 64;
 const files = { "/": ["index.html", "text/html; charset=utf-8"], "/client.js": ["client.js", "text/javascript; charset=utf-8"] };
 // Where the lines of a page go, by the session it was told: deliver(line) passes one line on or returns the refusal
 // [status, text], and close() ends the session.
@@ -298,8 +322,90 @@ function send(req, res, session) {
   });
 }
 
+// The page open.html is: it sends the browser on to the address and is not kept in its history. For a browser that does
+// not follow a script from a local file, it also shows a link to click; the code is then in the page of a private file
+// and in no argument list.
+function openPage(address) {
+  const escaped = address.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const script = JSON.stringify(address).replace(/</g, "\\u003c");
+  return `<!doctype html>\n<meta charset="utf-8">\n<meta name="referrer" content="no-referrer">\n<title>ui-view-web</title>\n<script>location.replace(${script});</script>\n<p><a href="${escaped}" rel="noreferrer">Open the page</a></p>\n`;
+}
+
+const sha256 = (text) => createHash("sha256").update(text).digest("hex");
+// The session secrets, by their digest: a lookup then compares hashes, not the secret. The Map keeps its order, so the
+// first key is the oldest.
+const secrets = new Map();
+function newSecret() {
+  const secret = randomBytes(32).toString("hex");
+  secrets.set(sha256(secret), true);
+  if (secrets.size > MAX_SECRETS) secrets.delete(secrets.keys().next().value);
+  return secret;
+}
+function holdsSecret(req) {
+  const given = /^Bearer ([0-9a-f]{64})$/.exec(req.headers.authorization ?? "");
+  return given !== null && secrets.has(sha256(given[1]));
+}
+
+// The one live code, or none (after --print-token's one use). publish writes it where an author reads it.
+let live = null;
+let publish = () => {};
+let renewal;
+function mint() {
+  live = { code: randomBytes(16).toString("hex"), expires: Date.now() + CODE_MS };
+}
+// renew makes the next code and writes it; the timer makes another if nobody used this one. It is not kept by the
+// process: the server is what keeps the bridge running.
+function renew() {
+  mint();
+  publish(live.code);
+  clearTimeout(renewal);
+  renewal = setTimeout(renew, CODE_MS);
+  renewal.unref();
+}
+// consume says whether given is the live code and it had not expired. A code that matches is used up either way, and its
+// check and its use are one synchronous step, so of two requests for one code only one is answered with a secret. A
+// request with a wrong code uses nothing. The next code is written before the answer: a script that reads the file
+// after it has been answered reads a live code.
+function consume(given) {
+  if (live === null) return false;
+  const want = Buffer.from(live.code);
+  const got = Buffer.from(given);
+  if (got.length !== want.length || !timingSafeEqual(got, want)) return false;
+  const fresh = Date.now() < live.expires;
+  live = null;
+  if (!printToken) renew();
+  return fresh;
+}
+
+// exchange trades the live code, posted in the body by the page, for a session secret.
+function exchange(req, res) {
+  const chunks = [];
+  let size = 0;
+  req.on("data", (chunk) => {
+    size += chunk.length;
+    if (size <= MAX_EXCHANGE_BYTES) chunks.push(chunk);
+  });
+  req.on("end", () => {
+    if (size > MAX_EXCHANGE_BYTES) return refuse(res, 413, "the body is at most 4 KiB");
+    let given;
+    try {
+      given = JSON.parse(Buffer.concat(chunks).toString("utf8"))?.code;
+    } catch {
+      given = undefined;
+    }
+    if (typeof given !== "string") return refuse(res, 400, 'the body is {"code": "<the code>"}');
+    if (!consume(given)) return refuse(res, 403, "the code is used up, expired or wrong");
+    res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+    res.end(JSON.stringify({ secret: newSecret() }) + "\n");
+  });
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, "http://127.0.0.1");
+  // No page of the bridge is kept, and none is a referrer: a link a view draws or a resource a theme names is not told
+  // the address of the page.
+  res.setHeader("cache-control", "no-store");
+  res.setHeader("referrer-policy", "no-referrer");
   if (!own(req)) return refuse(res, 403, "not this page's request");
   if (req.method === "GET" && files[url.pathname]) {
     const [name, type] = files[url.pathname];
@@ -316,7 +422,8 @@ const server = createServer(async (req, res) => {
     res.writeHead(200, { "content-type": THEME_TYPES[name[2]], "cache-control": "no-store" });
     return res.end(body);
   }
-  if (url.searchParams.get("token") !== token) return refuse(res, 403, "the token is missing or wrong");
+  if (req.method === "POST" && url.pathname === "/exchange") return exchange(req, res);
+  if (!holdsSecret(req)) return refuse(res, 403, "the secret is missing or wrong");
   if (req.method === "GET" && url.pathname === "/events") return target ? follow(req, res) : events(req, res);
   if (req.method === "POST" && url.pathname === "/send") {
     const session = sessions.get(url.searchParams.get("session"));
@@ -333,11 +440,37 @@ const server = createServer(async (req, res) => {
 });
 
 server.listen(port, "127.0.0.1", () => {
-  console.log(`ui-view-web: http://127.0.0.1:${server.address().port}/?token=${token}`);
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  if (printToken) {
+    mint();
+    return console.log(`ui-view-web: ${origin}/#${live.code}`);
+  }
+  // A log, a terminal recording or a shared screen must not hold a live address: the line names a file to open instead.
+  // The directory is made private (mkdtemp: mode 0700) and the files in it are 0600; all are removed when the process
+  // ends, by any path that runs code ('exit' follows a signal handler's process.exit and an uncaught error). On Windows
+  // the mode bits do not apply: what protects the files is the ACL the user's temporary directory gives what is made in it.
+  const dir = mkdtempSync(join(tmpdir(), "ui-view-web-"));
+  process.on("exit", () => rmSync(dir, { recursive: true, force: true }));
+  const open = join(dir, "open.html");
+  // address holds the address and nothing else, for a script that reads it. It is never an argument of a command: a
+  // command that gave the browser the address would put the code in the argument list of the opener and of the browser,
+  // which every user of a Linux machine can read (/proc/<pid>/cmdline). open.html is what an author opens: its path holds
+  // no code, and the file is as private as address. Each is written to a temporary file and renamed over the old one, so
+  // a reader sees a whole file, and the directory holds those two files and nothing else.
+  publish = (code) => {
+    const address = `${origin}/#${code}`;
+    for (const [name, text] of [["address", address], ["open.html", openPage(address)]]) {
+      const temporary = join(dir, `.${name}.new`);
+      writeFileSync(temporary, text, { mode: 0o600 });
+      renameSync(temporary, join(dir, name));
+    }
+  };
+  renew();
+  console.log(`ui-view-web: ${origin}/ (open: ${open})`);
 });
 // A signal ends the sessions and then waits for the pigs it started: a pig's own teardown (it removes the files it made in
 // the temporary directory) runs after its stdin or its signal, and the bridge's exit must not outrun it.
-for (const signal of ["SIGINT", "SIGTERM"]) {
+for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
   process.on(signal, () => {
     for (const session of sessions.values()) session.close();
     const killer = setTimeout(() => children.forEach((child) => child.kill("SIGKILL")), 10000);

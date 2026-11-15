@@ -19,7 +19,18 @@ const ABILITIES = {
   drawing: { profiles: ["scene", "pixels"], shapes: 4096, pixels: 1 << 20 },
 };
 
-const token = new URLSearchParams(location.search).get("token");
+// The address carries a one-time code in its fragment (`/#<code>`), which a browser never sends to a server. The page takes
+// it out of the address bar at once and posts it to /exchange (in a body, so in no request address). It keeps the secret
+// it is answered with for this tab (sessionStorage: one tab, one origin, so one port; a reload keeps it) and sends it in an
+// Authorization header with every request. The secret is in no address and in no cookie: a cookie of this host would go to
+// every other port of it.
+const SECRET_KEY = "ui-view-web-secret";
+const USED = "This address was used or has expired. Open the file the bridge named again; if there is none, restart the bridge.";
+const RESTARTED = "The bridge does not know this tab any more: it was restarted. Open the file the new bridge named.";
+const SIGNED_OUT = "This tab is not signed in. Open the file the bridge named.";
+const code = /^#([0-9a-f]{32})$/.exec(location.hash)?.[1];
+if (code) history.replaceState(null, "", location.pathname + location.search);
+let secret = sessionStorage.getItem(SECRET_KEY);
 const state = document.getElementById("state");
 const chat = document.getElementById("chat");
 let session = "";
@@ -49,7 +60,13 @@ function say(text, kind = "note") {
 }
 
 function post(command) {
-  return fetch(`/send?token=${token}&session=${session}`, { method: "POST", body: JSON.stringify(command) });
+  // A tab without a secret (the bridge refused it, or it never had one) asks the bridge for nothing.
+  if (!secret) return Promise.resolve();
+  // A refusal means the bridge forgot this tab's secret (it was restarted, or newer secrets pushed it out).
+  return fetch(`/send?session=${session}`, { method: "POST", headers: authorization(), body: JSON.stringify(command) }).then((res) => {
+    if (res.status === 403) signedOut(RESTARTED);
+    return res;
+  });
 }
 
 // request sends a command with a fresh id and resolves with its response.
@@ -1484,32 +1501,124 @@ function lost(why) {
   state.textContent = why;
 }
 
-const source = new EventSource(`/events?token=${token}`);
-source.addEventListener("session", (event) => {
-  session = event.data;
-  attach();
-});
-source.addEventListener("message", (event) => onLine(JSON.parse(event.data)));
-// With --connect the bridge says what it does about the session's socket. The page is then a client of a running
-// session's view endpoint, which serves the carrier and nothing else: the prompt goes and one line says why.
-source.addEventListener("endpoint", (event) => {
-  if (!attached) {
-    attached = true;
-    const form = document.getElementById("prompt");
-    form.hidden = true;
-    for (const control of form.elements) control.disabled = true;
-    document.getElementById("attached").hidden = false;
-    // The page has no chat of its own: the session's panels take it (index.html, body.attached).
-    document.body.classList.add("attached");
+// signIn trades the address's code for this tab's secret, and says whether the tab holds one. A code that is refused leaves
+// a secret the tab already holds in place: the stream says whether the bridge still knows it.
+async function signIn() {
+  if (code) {
+    try {
+      const res = await fetch("/exchange", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code }) });
+      if (res.ok) {
+        secret = (await res.json()).secret;
+        sessionStorage.setItem(SECRET_KEY, secret);
+      }
+    } catch {
+      // The bridge did not answer: the code may be used up, and the tab holds what it held.
+    }
   }
-  state.textContent = JSON.parse(event.data).reason;
-});
-source.addEventListener("end", (event) => {
-  const end = JSON.parse(event.data);
-  // With --connect the session closed the connection and the bridge opens the next one: the stream stays.
-  if (end.retry) return lost(end.reason);
-  state.textContent = end.reason ?? "pig ended";
-  source.close();
-});
-// The stream broke: the bridge cut a page that did not read, or the bridge ended. The browser connects again by itself.
-source.addEventListener("error", () => lost("the stream from the bridge broke; connecting again"));
+  if (!secret) state.textContent = code ? USED : SIGNED_OUT;
+  return Boolean(secret);
+}
+
+function authorization() {
+  return { authorization: `Bearer ${secret}` };
+}
+
+// The bridge refused the secret: forget it, close the stream and say what to do. Nothing is asked of the bridge again.
+let stopped = false;
+let finished = false;
+let stream = null;
+function signedOut(message) {
+  stopped = true;
+  secret = null;
+  sessionStorage.removeItem(SECRET_KEY);
+  stream?.abort();
+  lost(message);
+}
+
+// What the bridge's events do, by their name.
+const handlers = {
+  session(data) {
+    session = data;
+    attach();
+  },
+  message(data) {
+    onLine(JSON.parse(data));
+  },
+  // With --connect the bridge says what it does about the session's socket. The page is then a client of a running
+  // session's view endpoint, which serves the carrier and nothing else: the prompt goes and one line says why.
+  endpoint(data) {
+    if (!attached) {
+      attached = true;
+      const form = document.getElementById("prompt");
+      form.hidden = true;
+      for (const control of form.elements) control.disabled = true;
+      document.getElementById("attached").hidden = false;
+      // The page has no chat of its own: the session's panels take it (index.html, body.attached).
+      document.body.classList.add("attached");
+    }
+    state.textContent = JSON.parse(data).reason;
+  },
+  end(data) {
+    const end = JSON.parse(data);
+    // With --connect the session closed the connection and the bridge opens the next one: the stream stays.
+    if (end.retry) return lost(end.reason);
+    state.textContent = end.reason ?? "pig ended";
+    finished = true;
+  },
+};
+
+// read dispatches the Server-Sent Events of a response body as the browser's EventSource does: `event:` names the next
+// event, `data:` lines are its data, a blank line ends it.
+async function read(body) {
+  const reader = body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  let name = "message";
+  let data = [];
+  for (;;) {
+    const chunk = await reader.read();
+    if (chunk.done) return;
+    buffer += chunk.value;
+    for (let at = buffer.indexOf("\n"); at >= 0; at = buffer.indexOf("\n")) {
+      const line = buffer.slice(0, at);
+      buffer = buffer.slice(at + 1);
+      if (line === "") {
+        if (data.length > 0 && Object.hasOwn(handlers, name)) handlers[name](data.join("\n"));
+        name = "message";
+        data = [];
+      } else if (line.startsWith("event:")) {
+        name = line.slice(6).replace(/^ /, "");
+      } else if (line.startsWith("data:")) {
+        data.push(line.slice(5).replace(/^ /, ""));
+      }
+    }
+  }
+}
+
+// The stream from the bridge is a fetch with the Authorization header: an EventSource cannot send one, and the secret must
+// not be in the stream's address. When it breaks (the bridge cut a page that did not read, or the bridge ended) the page
+// connects again after a second, with the same secret, as the browser's EventSource did by itself.
+async function follow() {
+  while (!stopped && !finished) {
+    stream = new AbortController();
+    let response = null;
+    try {
+      response = await fetch("/events", { headers: authorization(), cache: "no-store", signal: stream.signal });
+    } catch {
+      // The bridge is not there: try again.
+    }
+    if (stopped) return;
+    if (response?.status === 403) return signedOut(RESTARTED);
+    if (response?.ok && response.body) {
+      try {
+        await read(response.body);
+      } catch {
+        // The connection broke.
+      }
+    }
+    if (stopped || finished) return;
+    lost("the stream from the bridge broke; connecting again");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+}
+
+if (await signIn()) follow();

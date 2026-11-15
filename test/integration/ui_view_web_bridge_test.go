@@ -20,14 +20,15 @@ import (
 // bridge runs with --connect on the session's view-endpoint directory, and a page in headless Chromium is its client
 // beside the terminal that tmux drives.
 
-// uiViewWebBridge runs the reference bridge connected to the run's view endpoint and returns the page's address.
+// uiViewWebBridge runs the reference bridge connected to the run's view endpoint and returns the page's address. It
+// passes --print-token, so the line it parses is the whole address; the default, a file, is the examples' own tests'.
 func uiViewWebBridge(t *testing.T, node string, run *uiViewRun) string {
 	t.Helper()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command(node, filepath.Join(root, "examples", "ui-view-web", "bridge.mjs"), "--port", "0", "--connect", filepath.Join(run.home, "agent", "view-endpoint"))
+	cmd := exec.Command(node, filepath.Join(root, "examples", "ui-view-web", "bridge.mjs"), "--port", "0", "--print-token", "--connect", filepath.Join(run.home, "agent", "view-endpoint"))
 	cmd.Stderr = os.Stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

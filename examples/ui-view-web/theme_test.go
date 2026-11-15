@@ -23,8 +23,8 @@ func TestPageIsIndexHTMLWithoutATheme(t *testing.T) {
 	if status, _ := get(t, b.base+"/theme/theme.css"); status != 403 {
 		t.Errorf("GET /theme/theme.css without --theme = %d, want 403", status)
 	}
-	if status, _ := get(t, b.base+"/theme/theme.css?token="+b.token); status != 404 {
-		t.Errorf("GET /theme/theme.css without --theme, with the token = %d, want 404", status)
+	if status, _ := get(t, b.base+"/theme/theme.css", "Authorization", b.auth(t)); status != 404 {
+		t.Errorf("GET /theme/theme.css without --theme, with the secret = %d, want 404", status)
 	}
 }
 
