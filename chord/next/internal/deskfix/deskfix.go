@@ -47,13 +47,14 @@ func UntilState(t testing.TB, ref *host.Reference, check func() bool) {
 		}
 		return nil
 	})
-	timeout := time.NewTimer(30 * time.Second)
-	defer timeout.Stop()
+	// The wait ends with the test (its context) or after 30 s: a failure either way.
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
 	for !check() {
 		select {
 		case <-changed:
-		case <-timeout.C:
-			t.Fatal("condition not reached")
+		case <-ctx.Done():
+			t.Fatalf("condition not reached: %v", ctx.Err())
 		}
 	}
 }
