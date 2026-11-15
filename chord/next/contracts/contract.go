@@ -14,7 +14,7 @@ import (
 // Forced Go differences. The WeakMap brand is the Contract itself: a *Contract holds its ContractData and a pointer to
 // itself, so a copy of the struct (upstream: a spread copy) or a hand-built value is refused by ContractDataOf; the
 // data is collected with the contract. The type-level ContractShape, ShapeOf, CurrentVariants<C>, ParamsOf<C>,
-// Implementation<C> and VariantImplementation<V> are designed out: a variant's members are Go values keyed by name
+// Implementation<C> and VariantImplementation<V> (NamedQueriesOf included) are designed out: a variant's members are Go values keyed by name
 // (VariantImplementation) and params are a *delta.JsonObject. `LOCAL` is LocalVariant, because Local declares a local
 // contract.
 
@@ -65,6 +65,8 @@ const (
 	MemberKindMethod MemberKind = "method"
 	MemberKindKeyed  MemberKind = "keyed"
 	MemberKindEvent  MemberKind = "event"
+	// MemberKindQueries is a local contract's queries member (slice 14 §3.1).
+	MemberKindQueries MemberKind = "queries"
 )
 
 // HostAddress is a `hostAddress` as Chord calls it: with checked params (a *delta.JsonObject of the param fields).
@@ -88,6 +90,15 @@ type VariantData struct {
 	Keyed *NamedMap[*KeyedSnapshot]
 	// Events holds event members: their values' schemas (JSON only).
 	Events *NamedMap[*Snapshot]
+	// Queries holds queries members (slice 14 §3.1): only a local contract has any. Nil and empty are one: contracts
+	// without a queries member add nothing to their fingerprint.
+	Queries *NamedMap[*QueriesData]
+}
+
+// QueriesData is a queries member's snapshots: its items' schema, and each named query's arguments, in declaration order.
+type QueriesData struct {
+	Item *Snapshot
+	Args *NamedMap[*Snapshot]
 }
 
 // KeyedSnapshot is a keyed member's schema snapshot and, for a host-keyed one, the host kind its keys are addresses of
@@ -193,12 +204,34 @@ type MethodFunction func(args delta.JsonValue, ctx context.Context) (delta.JsonV
 
 // VariantImplementation is one variant's members: a Watchable per state member, a function per method, an EventMember
 // per event member (an object's own EventSource, or a reference's member it re-exposes) and, in a local contract, a
-// KeyedWatchable per keyed member.
+// KeyedWatchable per keyed member and, per queries member, the named queries it lists (upstream's `NamedQueriesOf`: its
+// NamedQuery per listed name), by member name and then query name.
 type VariantImplementation struct {
 	State   map[string]chord.Watchable[delta.JsonValue]
 	Methods map[string]MethodFunction
 	Keyed   map[string]KeyedWatchable[delta.JsonValue]
 	Events  map[string]EventMember[delta.JsonValue]
+	Queries map[string]map[string]NamedQuery[delta.JsonValue, delta.JsonValue]
+}
+
+// QueryPage is a page of a named query's items and, when more follow, the cursor to continue after it (Next; nil: none).
+type QueryPage[T any] struct {
+	Items []T
+	Next  *string
+}
+
+// QueryPageOptions are the options of NamedQuery.Page.
+type QueryPageOptions struct {
+	// After is the cursor to continue after (a previous page's Next); nil: from the start.
+	After *string
+}
+
+// NamedQuery is a named query (slice 14 §3.1): a query a store offers under a name, with arguments of A and items of T.
+// Read live with `self.liveQuery`, counted with `self.count`, shown as a list with `self.list`, or read a page at a time.
+// (Upstream's type-only `~args` member is designed out with the other type-level machinery.)
+type NamedQuery[T, A any] interface {
+	// Page is up to limit items for args (after options.After), and the cursor of the next page when there is one.
+	Page(args A, limit int64, ctx context.Context, options QueryPageOptions) (QueryPage[T], error)
 }
 
 // EventSubscription is a subscription to an event member (EventMember.On): it lives until Stop, its context's abort or
