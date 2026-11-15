@@ -138,6 +138,7 @@ func (c *renderProxyComponent) Render(width int) []string {
 	}
 	lines := c.lines
 	if len(lines) == 0 {
+		// pig divergence (D647): until the extension first answers, the message draws its placeholder [<customType>] where Pi draws the component, because the render loop never waits on extension IPC.
 		lines = c.fallback
 	} else {
 		// A response for an earlier width is never painted (whatever its rows)
@@ -426,6 +427,7 @@ func (c *renderProxyComponent) holdEarlyClick(event tui.TuiMouseEvent) bool {
 	if len(c.early) == 0 && (c.answered || !c.requesting) {
 		return false
 	}
+	// pig divergence (D647): a click on the placeholder row is kept for the frame that paints the component, where Pi's component has its regions from its first frame.
 	c.early = append(c.early, event)
 	return true
 }

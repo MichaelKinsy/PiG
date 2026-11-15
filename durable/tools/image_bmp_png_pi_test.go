@@ -65,7 +65,7 @@ func TestDetectSupportedImageMimeTypeAcceptsABMPOnlyWhenItsHeaderIsConsistent(t 
 		}{"bits per pixel " + string(rune('0'+bpp/10)) + string(rune('0'+bpp%10)), bmpHeader(100, 100, 54, 40, 1, bpp), "image/bmp"})
 	}
 	for _, c := range cases {
-		if got := detectSupportedImageMimeType(c.data); got != c.want {
+		if got := DetectSupportedImageMimeType(c.data); got != c.want {
 			t.Errorf("%s: detectSupportedImageMimeType = %q, want %q", c.name, got, c.want)
 		}
 		if got, err := detectSupportedImageMimeTypeOf(memorySource(c.data)); err != nil || got != c.want {
@@ -88,7 +88,7 @@ func TestAnimatedPngChunkWalkReadsAHeaderThatEndsTheFile(t *testing.T) {
 		{"IDAT header ending the file", "image/png", truncatedIdat},
 		{"seven bytes after IHDR are not a header", "image/png", append(pngWith(), []byte{0, 0, 0, 8, 'a', 'c', 'T'}...)},
 	} {
-		if got := detectSupportedImageMimeType(c.data); got != c.want {
+		if got := DetectSupportedImageMimeType(c.data); got != c.want {
 			t.Errorf("%s: detectSupportedImageMimeType = %q, want %q", c.name, got, c.want)
 		}
 		if got, err := detectSupportedImageMimeTypeOf(memorySource(c.data)); err != nil || got != c.want {

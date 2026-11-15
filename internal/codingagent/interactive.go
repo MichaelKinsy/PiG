@@ -739,6 +739,8 @@ type InteractiveMode struct {
 	// activeSelectorToken identifies the model selector still shown while its change settles, and activeSelectorDispose closes it (interactive-mode.ts:469-470).
 	activeSelectorToken   *int
 	activeSelectorDispose func()
+	// reloadTailInput holds the keys the owner loop took after the last awaited step of a /reload had completed (awaitReloadStep). The input loop dispatches them to the editor in order before any chunk routed later. Owner loop only.
+	reloadTailInput [][]byte
 }
 
 // loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then, when a highlight lookup made before the load answers differently now (D618), repaints on the owner loop so code highlighted with the startup grammars picks up the rest. A mode that has stopped repaints nothing.

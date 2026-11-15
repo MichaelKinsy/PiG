@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
-	"sync/atomic"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -425,7 +425,7 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 	}
 
 	authPath := auth.Path()
-	var failed atomic.Bool
+	var rejection loginRejection
 	go func() {
 		defer loginCancel()
 
@@ -438,8 +438,7 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 				return
 			}
 			if loginCtx.Err() == nil {
-				failed.Store(true)
-				dlg.ShowProgress(fmt.Sprintf("Login failed: %v", err))
+				rejection.reject(dlg, err)
 				notify()
 			}
 			return
@@ -455,8 +454,7 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 			}
 		}
 		if err != nil {
-			failed.Store(true)
-			dlg.ShowProgress(fmt.Sprintf("Failed to store credentials: %v", err))
+			rejection.reject(dlg, err)
 			notify()
 			return
 		}
@@ -474,18 +472,21 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 		return errLoginCancelled
 	default:
 	}
-	if ok {
-		if m.synchronizeLoginCredential(m.loginContext(), provider.ID(), providerName, ai.CredentialOAuth, dlg.Redact) {
-			return nil
-		}
-		m.completeProviderAuthentication(provider.ID(), providerName, ai.CredentialOAuth, previousModel, authPath, dlg.Redact)
-		// Pi offers the Radius MCP server after a Radius sign-in (interactive-mode.ts:6276).
-		if provider.ID() == RadiusProviderID {
-			m.offerRadiusMcpServer(provider.ID(), providerName)
-		}
+	if err := rejection.outcome(dlg, providerName); err != nil {
+		return err
+	}
+	if !ok {
 		return nil
 	}
-	return loginDialogOutcome(dlg, &failed, providerName)
+	if m.synchronizeLoginCredential(m.loginContext(), provider.ID(), providerName, ai.CredentialOAuth, dlg.Redact) {
+		return nil
+	}
+	m.completeProviderAuthentication(provider.ID(), providerName, ai.CredentialOAuth, previousModel, authPath, dlg.Redact)
+	// Pi offers the Radius MCP server after a Radius sign-in (interactive-mode.ts:6276).
+	if provider.ID() == RadiusProviderID {
+		m.offerRadiusMcpServer(provider.ID(), providerName)
+	}
+	return nil
 }
 
 // awaitLoginDialogInput waits for a login dialog answer. A prompt whose own context ends, as a flow's manual code prompt
@@ -505,15 +506,37 @@ func awaitLoginDialogInput(ctx, loginCtx context.Context, answer <-chan string) 
 	}
 }
 
-// loginDialogOutcome reports a login dialog the user closed before the login failed. Pi's dialog cancel aborts the
-// login signal first, so the login fails with the abort error and Pi shows "Failed to login to <name>: This operation
-// was aborted" instead of reopening a menu (login-dialog.ts:83-90, interactive-mode.ts:6287-6288; probed against Pi
-// 1.0.0 with Escape at the Anthropic browser login).
-func loginDialogOutcome(dlg *tui.LoginDialogComponent, failed *atomic.Bool, providerName string) error {
-	if dlg.Cancelled() && !failed.Load() {
-		return fmt.Errorf("Failed to login to %s: %w", providerName, errLoginAborted)
+// loginRejection carries the error a login ended with from the login goroutine to the code that ran the dialog, as a
+// rejected login promise reaches the catch of Pi's showLoginDialog (interactive-mode.ts:6564-6573).
+type loginRejection struct {
+	mu  sync.Mutex
+	err error
+}
+
+// reject keeps err and closes the dialog without cancelling it: Pi restores the editor before it reports a failed
+// login (interactive-mode.ts:6564), so the failure is not shown inside the dialog.
+func (r *loginRejection) reject(dlg *tui.LoginDialogComponent, err error) {
+	r.mu.Lock()
+	r.err = err
+	r.mu.Unlock()
+	dlg.Close()
+}
+
+// outcome is what Pi's showLoginDialog reports once the dialog is gone: a login that rejected shows "Failed to login to
+// <name>: <message>" (interactive-mode.ts:6573); a dialog the user closed first aborted the login signal, so the login
+// fails with the abort error (login-dialog.ts:83-90, probed against Pi 1.0.0 with Escape at the Anthropic browser
+// login); otherwise there is nothing to report.
+func (r *loginRejection) outcome(dlg *tui.LoginDialogComponent, providerName string) error {
+	r.mu.Lock()
+	err := r.err
+	r.mu.Unlock()
+	if err == nil && dlg.Cancelled() {
+		err = errLoginAborted
 	}
-	return nil
+	if err == nil {
+		return nil
+	}
+	return fmt.Errorf("Failed to login to %s: %w", providerName, err)
 }
 
 // loginOpenAICodex is the Codex flow runLoginOpenAICodex starts; tests replace it to observe the callbacks.
@@ -589,15 +612,14 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 		},
 	}
 
-	var failed atomic.Bool
+	var rejection loginRejection
 	go func() {
 		defer loginCancel()
 
 		cred, err := loginOpenAICodex(loginCtx, cb)
 		if err != nil {
 			if loginCtx.Err() == nil {
-				failed.Store(true)
-				dlg.ShowProgress(fmt.Sprintf("Login failed: %v", err))
+				rejection.reject(dlg, err)
 				notify()
 			}
 			return
@@ -608,8 +630,7 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 			err = saveLoginCredential(loginCtx, auth, "openai-codex", codexCred)
 		}
 		if err != nil {
-			failed.Store(true)
-			dlg.ShowProgress(fmt.Sprintf("Failed to store credentials: %v", err))
+			rejection.reject(dlg, err)
 			notify()
 			return
 		}
@@ -626,15 +647,18 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 	// here rather than from the login goroutine: during the dialog the main
 	// goroutine ran runEditorSlotLoginDialog's own loop, not the inputLoop
 	// select, so it did not drain uiTaskCh and a runOnMain post would deadlock.
-	// ok == !Cancelled() is true only when the goroutine reached dlg.Success().
-	if ok {
-		if m.synchronizeLoginCredential(m.loginContext(), "openai-codex", buildAuthProviderName("openai-codex"), ai.CredentialOAuth, dlg.Redact) {
-			return nil
-		}
-		m.completeProviderAuthentication("openai-codex", buildAuthProviderName("openai-codex"), ai.CredentialOAuth, previousModel, auth.Path(), dlg.Redact)
+	// ok is true only when the goroutine reached dlg.Success() or rejected the login.
+	if err := rejection.outcome(dlg, buildAuthProviderName("openai-codex")); err != nil {
+		return err
+	}
+	if !ok {
 		return nil
 	}
-	return loginDialogOutcome(dlg, &failed, buildAuthProviderName("openai-codex"))
+	if m.synchronizeLoginCredential(m.loginContext(), "openai-codex", buildAuthProviderName("openai-codex"), ai.CredentialOAuth, dlg.Redact) {
+		return nil
+	}
+	m.completeProviderAuthentication("openai-codex", buildAuthProviderName("openai-codex"), ai.CredentialOAuth, previousModel, auth.Path(), dlg.Redact)
+	return nil
 }
 
 // runLoginGitHubCopilotDialog runs the GitHub Copilot login flow in the editor slot.
@@ -681,23 +705,21 @@ func (m *InteractiveMode) runLoginGitHubCopilotDialog(loginCtx context.Context) 
 		},
 	}
 
-	var failed atomic.Bool
+	var rejection loginRejection
 	go func() {
 		defer loginCancel()
 
 		cred, err := loginGitHubCopilotForParity(loginCtx, cb)
 		if err != nil {
 			if loginCtx.Err() == nil {
-				failed.Store(true)
-				dlg.ShowProgress(fmt.Sprintf("Login failed: %v", err))
+				rejection.reject(dlg, err)
 				notify()
 			}
 			return
 		}
 
 		if err := saveLoginCredential(loginCtx, auth, "github-copilot", cred); err != nil {
-			failed.Store(true)
-			dlg.ShowProgress(fmt.Sprintf("Failed to store credentials: %v", err))
+			rejection.reject(dlg, err)
 			notify()
 			return
 		}
@@ -709,14 +731,17 @@ func (m *InteractiveMode) runLoginGitHubCopilotDialog(loginCtx context.Context) 
 	}()
 
 	ok := m.runEditorSlotLoginDialog(dlg, renderNotify)
-	if ok {
-		if m.synchronizeLoginCredential(m.loginContext(), "github-copilot", buildAuthProviderName("github-copilot"), ai.CredentialOAuth, dlg.Redact) {
-			return nil
-		}
-		m.completeProviderAuthentication("github-copilot", buildAuthProviderName("github-copilot"), ai.CredentialOAuth, previousModel, auth.Path(), dlg.Redact)
+	if err := rejection.outcome(dlg, buildAuthProviderName("github-copilot")); err != nil {
+		return err
+	}
+	if !ok {
 		return nil
 	}
-	return loginDialogOutcome(dlg, &failed, buildAuthProviderName("github-copilot"))
+	if m.synchronizeLoginCredential(m.loginContext(), "github-copilot", buildAuthProviderName("github-copilot"), ai.CredentialOAuth, dlg.Redact) {
+		return nil
+	}
+	m.completeProviderAuthentication("github-copilot", buildAuthProviderName("github-copilot"), ai.CredentialOAuth, previousModel, auth.Path(), dlg.Redact)
+	return nil
 }
 
 // runOAuthLogout removes stored OAuth credentials for a provider.

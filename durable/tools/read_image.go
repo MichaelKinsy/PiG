@@ -10,7 +10,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
-	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // Ports packages/durable/src/tools/read.ts (readImage, imageModel, imageError) and the limits of image-processor.ts.
@@ -22,8 +21,8 @@ type imageModel struct {
 	imageUnsupportedByModel *string
 }
 
-// imageModelOf is the conversation model's image limits, the defaults overridden by its inputLimits.images.resize, and its id
-// if it has no image input. Without a resolvable model, the defaults and no id.
+// imageModelOf is the conversation model's image limits (ImageLimitsOf), and its id if it has no image input. Without a
+// resolvable model, the defaults and no id.
 func imageModelOf(ctx context.Context, api durable.ToolExecutionApi) (imageModel, error) {
 	agent, err := api.Agent(ctx)
 	if err != nil {
@@ -33,25 +32,13 @@ func imageModelOf(ctx context.Context, api durable.ToolExecutionApi) (imageModel
 	if agent.Model != nil {
 		model = api.Models().GetModel(agent.Model.Provider, agent.Model.ModelId)
 	}
-	out := imageModel{limits: DEFAULT_IMAGE_LIMITS}
+	out := imageModel{limits: ImageLimitsOf(model)}
 	if model == nil {
 		return out, nil
 	}
 	if !slices.Contains(model.Input, "image") {
 		id := model.ID
 		out.imageUnsupportedByModel = &id
-	}
-	if model.InputLimits != nil && model.InputLimits.Images != nil && model.InputLimits.Images.Resize != nil {
-		resize := model.InputLimits.Images.Resize
-		if resize.MaxWidth != 0 {
-			out.limits.MaxWidth = resize.MaxWidth
-		}
-		if resize.MaxHeight != 0 {
-			out.limits.MaxHeight = resize.MaxHeight
-		}
-		if resize.MaxBytes != 0 {
-			out.limits.MaxBytes = resize.MaxBytes
-		}
 	}
 	return out, nil
 }
@@ -76,14 +63,7 @@ func readImage(ctx context.Context, reader env.BinaryReader, info env.FileInfo, 
 			return imageError(fmt.Sprintf("%s is an image (%s) that cannot be prepared for the model", path, mimeType)), nil
 		}
 		image = ai.ImageContent{Data: prepared.Data, MimeType: prepared.MimeType}
-		if prepared.ConvertedFrom != "" {
-			notes = append(notes, fmt.Sprintf("Converted from %s to %s.", prepared.ConvertedFrom, prepared.MimeType))
-		}
-		if prepared.Resized != nil {
-			from, to := prepared.Resized.From, prepared.Resized.To
-			scale := jsstring.ToFixed(float64(from.Width)/float64(to.Width), 2)
-			notes = append(notes, fmt.Sprintf("Resized from %dx%d to %dx%d. Multiply coordinates by %s to map them to the original.", from.Width, from.Height, to.Width, to.Height, scale))
-		}
+		notes = append(notes, PreparedNotes(prepared)...)
 	} else {
 		if !INLINE_IMAGE_TYPES[mimeType] {
 			return imageError(fmt.Sprintf("%s is an image (%s) that needs converting, and no image processor is configured", path, mimeType)), nil
