@@ -53,6 +53,9 @@ func buildModelFromRef(ctx context.Context, providerID, modelID string, services
 // default model under the requested id (buildFallbackModel), else the
 // registry entry.
 func resolveStartupModelEntry(providerID, modelID string, registry *codingagent.ModelRegistry) codingagent.ModelEntry {
+	if remote, ok := registry.ResolveRemoteCatalogModel(providerID, modelID); ok {
+		return remote
+	}
 	spec := providerID + "/" + modelID
 	if generated, ok := ai.LookupModelExact(spec); ok {
 		return registry.ResolveGeneratedModel(providerID, modelID, generated)
