@@ -53,6 +53,10 @@ type RemoteDeclaration struct {
 	// HostAddress is the address of the host serving an object for these params; never part of the fingerprint.
 	HostAddress HostAddress
 	Variants    []VariantEntry
+	// Admission is the schema of the value the type's admission hands its factory: small, about the caller (a mode, a
+	// role). It selects the variant and the members. Never part of the fingerprint, never validated at runtime; nil for a
+	// contract without one.
+	Admission *Schema
 }
 
 // LocalDeclaration is the declaration of a local contract.
@@ -88,7 +92,31 @@ func Remote(name string, declaration RemoteDeclaration) (*Contract, error) {
 		}
 		read.Set(entry.Name, data)
 	}
-	return declare(KindRemote, name, declaration.Version, declaration.Params, read, declaration.HostAddress)
+	var admitted *AdmissionData
+	if declaration.Admission != nil {
+		var err error
+		if admitted, err = ReadAdmission(*declaration.Admission, name+".admission"); err != nil {
+			return nil, err
+		}
+	}
+	return declare(KindRemote, name, declaration.Version, declaration.Params, read, declaration.HostAddress, admitted)
+}
+
+// ReadAdmission is an admission schema as Chord-owned data, with its fingerprint: JSON only (declaration policy: no
+// `bytes()` leaf). Upstream's `admissionData`; the Go type of that name is AdmissionData.
+func ReadAdmission(schema Schema, path string) (*AdmissionData, error) {
+	snapshot, err := SnapshotSchema(schema, path)
+	if err != nil {
+		return nil, err
+	}
+	if snapshot.Bytes {
+		return nil, fail("%s: an admission's value is JSON only (no bytes())", path)
+	}
+	fingerprint, err := FingerprintOf(snapshot.Normal)
+	if err != nil {
+		return nil, err
+	}
+	return &AdmissionData{Schema: snapshot, Fingerprint: fingerprint}, nil
 }
 
 // Local declares a local contract: one flat map of members, where a schema is state, `method(...)` a method,
@@ -153,7 +181,7 @@ func Local(name string, declaration LocalDeclaration) (*Contract, error) {
 	}
 	variants := NewNamedMap[*VariantData](1)
 	variants.Set(LocalVariant, variant)
-	return declare(KindLocal, name, declaration.Version, declaration.Params, variants, nil)
+	return declare(KindLocal, name, declaration.Version, declaration.Params, variants, nil, nil)
 }
 
 func notAMember(path string) error {
@@ -265,7 +293,7 @@ func readMethod(method *Method, path string) (*MethodData, error) {
 	return &MethodData{Args: args, Result: result}, nil
 }
 
-func declare(kind Kind, name string, version float64, params Params, variants *NamedMap[*VariantData], hostAddress HostAddress) (*Contract, error) {
+func declare(kind Kind, name string, version float64, params Params, variants *NamedMap[*VariantData], hostAddress HostAddress, admission *AdmissionData) (*Contract, error) {
 	if version != math.Trunc(version) || math.Abs(version) > 1<<53-1 || version < 1 {
 		return nil, fail("%s.version: expected a positive integer", name)
 	}
@@ -289,7 +317,7 @@ func declare(kind Kind, name string, version float64, params Params, variants *N
 	if err != nil {
 		return nil, err
 	}
-	return CreateContract(ContractData{Kind: kind, Name: name, Params: paramsData, HostAddress: hostAddress, Versions: []VersionData{first}, Kinds: kinds}), nil
+	return CreateContract(ContractData{Kind: kind, Name: name, Params: paramsData, HostAddress: hostAddress, Versions: []VersionData{first}, Kinds: kinds, Admission: admission}), nil
 }
 
 // checkMembers checks the members of every variant: a name keeps one kind across variants and the whole history
