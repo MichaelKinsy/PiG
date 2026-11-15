@@ -25626,6 +25626,30 @@
       ]
     },
     {
+      "id": "BF-69c19c3",
+      "title": "After ctrl+c, SIGINT, SIGTERM or SIGHUP while a quit was held by a native extension command (a Go, Rust…",
+      "symptom": "After ctrl+c, SIGINT, SIGTERM or SIGHUP while a quit was held by a native extension command (a Go, Rust, Python or Lisp command still running when you quit with ctrl+d, beside another extension whose shutdown never finishes), pig could exit with status 0 instead of the signal's status (130, 130, 143, 129), as Pi's process does; in about one run in 120 of the held-quit tests the shell saw 0 while `exit.log` said `received SIGINT (exit 130)`.",
+      "rootCause": "exitAtSignal ended the extension processes before its os.Exit, which made the host run the exit of a drained quit (exitProcess(0)) on a goroutine of its own; the two exits raced to os.Exit, and the 0 won when the scheduler ran it first",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After ctrl+c, SIGINT, SIGTERM or SIGHUP while a quit was held by a native extension command (a Go, Rust, Python or Lisp command still running when you quit with ctrl+d, beside another extension whose shutdown never finishes), pig could exit with status 0 instead of the signal's status (130, 130, 143, 129), as Pi's process does; in about one run in 120 of the held-quit tests the shell saw 0 while `exit.log` said `received SIGINT (exit 130)`. The signal's exit ends the extension processes, the host read the end of the process that held the quit as an empty event loop and started the exit of a drained quit (status 0) beside it, and whichever of the two reached `os.Exit` first ended pig. The signal's exit now claims the end of the process before it touches the extension processes, and every other exit waits behind it (D102); the wait for the extension processes to end is the one it was (D56). No release has this: the held quit of a native command is not in 0.7.0 or earlier.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "69c19c3161",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_quit_every_runtime_linux_test.go::TestInteractiveHeldQuitOfANativeCommandEndsOnTheKeyAndTheSignalsPiEnds",
+        "internal/codingagent/exit_ending_test.go::TestSecondSignalExitBlocksBehindTheFirst",
+        "internal/codingagent/exit_ending_test.go::TestSignalExitAtAHeldQuitIsNotOvertakenByTheDrainedQuitExit"
+      ]
+    },
+    {
       "id": "BF-69cd9d2",
       "title": "PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the…",
       "symptom": "PageUp and PageDown (`tui.select.pageUp` and `tui.select.pageDown`) move the selection by one page in the select list, settings list, editor autocomplete, and the model, OAuth, scoped-models, user-message and settings-submenu selectors.",

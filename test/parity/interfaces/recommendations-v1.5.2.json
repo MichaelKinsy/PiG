@@ -155526,7 +155526,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "89 normalized-name Pig candidates are ambiguous."
+        "90 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -155594,6 +155594,7 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#encodableTypes.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#extensionKeybindingDefinitions.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionLinesEncoded.Store",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#signalExiting.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#stdoutTTY.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#toolCardSeq.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#uncaughtGoroutineHandler.Store",
