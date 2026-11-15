@@ -57,7 +57,7 @@ The path holds no code, and the file is readable by you only. Beside it is `addr
 
 ### The address works once
 
-The code after the `#` is good for one load of the page and for ten minutes. The page takes the code out of the address bar at once, hands it to the bridge and is given a session secret in exchange. After that the address in the address bar is plain `http://127.0.0.1:<port>/`, and the code is dead: the same address opened again, from a bookmark, the browser's history, a copy of the file or another browser, is refused. This is how long it lives and what to do next:
+The code after the `#` is good for one load of the page and for ten minutes. The page takes the code out of the address bar at once, hands it to the bridge and is given a session secret in exchange. After that the address in the address bar is plain `http://127.0.0.1:<port>/`, and the code is dead: the same address opened again, from a bookmark, the browser's history, a copy of the file or another browser, is refused. The browser's history may keep the address you opened, and that used address opens nothing. This is how long it lives and what to do next:
 
 - When the code is used, and when its ten minutes are over unused, the bridge writes the next code into `open.html` and `address` (a new file is renamed over the old one, so a reader never sees half a file, and the new code is there before the first page is answered). Open `open.html` again for another tab or after the ten minutes: it always holds a code that works.
 - With `--print-token` there is no file and no next code: the printed address is good for one load and ten minutes, and then you start the bridge again.
