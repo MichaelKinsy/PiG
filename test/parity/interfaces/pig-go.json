@@ -400246,6 +400246,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#osc133ZoneMarks",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "osc133ZoneMarks",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "[6]string"
+      },
+      "shapeHash": "sha256:8119ef39d01eda7a8bee50e7ef8a6c068f551b7eb5e60f8127f48bd9f724f5f1"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#oscColorResponsePattern",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "oscColorResponsePattern",
