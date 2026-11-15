@@ -55,9 +55,11 @@ func buildPig(t *testing.T) string {
 	return pigBinary.path
 }
 
-// bridge is a running bridge: the page's base address, its token and the page open.html that sends a browser to it.
+// bridge is a running bridge: the page's base address, the page open.html that sends a browser to it (the file `address`
+// is beside it) and the session secret its tests share (auth).
 type bridge struct {
-	base, token, openFile string
+	base, openFile string
+	signIn         *signIn
 }
 
 // startBridge runs bridge.mjs over a pig with the demo extension and the faux model, and returns the page's address.
@@ -111,8 +113,7 @@ func runBridge(t *testing.T, node string, env []string, args ...string) bridge {
 	if err != nil {
 		t.Fatalf("the bridge printed no address: %v", err)
 	}
-	base, token, path := tokenFile(t, line)
-	return bridge{base: base, token: token, openFile: filepath.Join(filepath.Dir(path), "open.html")}
+	return bridgeFrom(t, line)
 }
 
 type page struct {
@@ -128,7 +129,8 @@ func (b bridge) open(t *testing.T) *page {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, b.base+"/events?token="+b.token, nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, b.base+"/events", nil)
+	req.Header.Set("Authorization", b.auth(t))
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -176,7 +178,10 @@ func (p *page) relay(res *http.Response, session chan<- string) {
 
 func (p *page) post(line string) int {
 	p.t.Helper()
-	res, err := http.Post(p.b.base+"/send?token="+p.b.token+"&session="+p.session, "text/plain", strings.NewReader(line))
+	req, _ := http.NewRequest(http.MethodPost, p.b.base+"/send?session="+p.session, strings.NewReader(line))
+	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Authorization", p.b.auth(p.t))
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		p.t.Fatal(err)
 	}
@@ -252,9 +257,9 @@ func TestBridgeRelaysTheCarrier(t *testing.T) {
 		t.Fatalf("GET /client.js = %d", status)
 	}
 	if status, _ := get(t, b.base+"/events"); status != 403 {
-		t.Errorf("GET /events without the token = %d, want 403", status)
+		t.Errorf("GET /events without the secret = %d, want 403", status)
 	}
-	if status, _ := get(t, b.base+"/events?token="+b.token, "Origin", "http://example.com"); status != 403 {
+	if status, _ := get(t, b.base+"/events", "Authorization", b.auth(t), "Origin", "http://example.com"); status != 403 {
 		t.Errorf("GET /events from another origin = %d, want 403", status)
 	}
 	if status, _ := get(t, b.base+"/bridge.mjs"); status != 403 {
@@ -348,7 +353,7 @@ func TestBridgeRelaysTheCarrier(t *testing.T) {
 func TestPageDrawsFocusesAndRaisesIntents(t *testing.T) {
 	b := startBridge(t)
 	browser := browsertest.Start(t)
-	browser.Open(b.base + "/?token=" + b.token)
+	b.openIn(t, browser, "")
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
 	browser.Run(`(() => { const form = document.getElementById("prompt"); form.elements.message.focus(); form.elements.message.value = "/ui-demo"; form.requestSubmit(); })()`)
 	browser.Wait(`document.querySelector('[data-key="demo"]') !== null`)
@@ -408,7 +413,7 @@ func openWith(t *testing.T, extensions ...string) (*browsertest.Browser, func(li
 	}
 	b := startBridge(t, load...)
 	browser := browsertest.Start(t)
-	browser.Open(b.base + "/?token=" + b.token)
+	b.openIn(t, browser, "")
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
 	return browser, func(line string) {
 		t.Helper()

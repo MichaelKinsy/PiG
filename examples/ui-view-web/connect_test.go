@@ -334,7 +334,7 @@ func count(list []string, item string) int {
 
 func (b bridge) state(t *testing.T) bridgeState {
 	t.Helper()
-	status, body := get(t, b.base+"/state?token="+b.token)
+	status, body := get(t, b.base+"/state", "Authorization", b.auth(t))
 	var s bridgeState
 	if err := json.Unmarshal([]byte(body), &s); status != 200 || err != nil {
 		t.Fatalf("GET /state = %d %s: %v", status, body, err)
@@ -361,7 +361,8 @@ func (b bridge) follow(t *testing.T) *stream {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, b.base+"/events?token="+b.token, nil)
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, b.base+"/events", nil)
+	req.Header.Set("Authorization", b.auth(t))
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
@@ -494,7 +495,10 @@ func (s *stream) line(what string, match func(record map[string]any) bool) map[s
 
 func (s *stream) post(line string) int {
 	s.t.Helper()
-	res, err := http.Post(s.b.base+"/send?token="+s.b.token+"&session="+s.session, "text/plain", strings.NewReader(line))
+	req, _ := http.NewRequest(http.MethodPost, s.b.base+"/send?session="+s.session, strings.NewReader(line))
+	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Authorization", s.b.auth(s.t))
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		s.t.Fatal(err)
 	}
@@ -541,9 +545,12 @@ func titleOf(snapshot any) (title, digest string) {
 }
 
 // request sends method to url the way no page of the bridge does, and returns the status.
-func request(t *testing.T, method, url, host, origin string) int {
+func request(t *testing.T, method, url, host, origin string, header ...string) int {
 	t.Helper()
 	req, _ := http.NewRequest(method, url, strings.NewReader(connectAttach))
+	for i := 0; i+1 < len(header); i += 2 {
+		req.Header.Set(header[i], header[i+1])
+	}
 	if host != "" {
 		req.Host = host
 	}
@@ -558,28 +565,33 @@ func request(t *testing.T, method, url, host, origin string) int {
 	return res.StatusCode
 }
 
-// TestConnectOpensNoConnectionForARefusedRequest: the token and the origin rule come before the session's socket. A
-// request without the token, with a wrong one, from another origin or for another host is refused and opens no
-// connection; the page's own request opens exactly one. And the bridge listens on 127.0.0.1 only.
+// TestConnectOpensNoConnectionForARefusedRequest: the secret and the origin rule come before the session's socket. A
+// request without the secret, with a wrong one, with the secret in its address, from another origin or for another host
+// is refused and opens no connection; the page's own request opens exactly one. And the bridge listens on 127.0.0.1 only.
 func TestConnectOpensNoConnectionForARefusedRequest(t *testing.T) {
 	session := listenAt(t, filepath.Join(shortDir(t), "1.sock"), nil)
 	b := connectBridge(t, session.path)
-	good := "?token=" + b.token
+	good := b.auth(t)
 	refused := []struct {
-		what, method, url, host, origin string
-		want                            int
+		what, method, url, host, origin, authorization string
+		want                                           int
 	}{
-		{"the stream without the token", http.MethodGet, "/events", "", "", 403},
-		{"the stream with a wrong token", http.MethodGet, "/events?token=" + strings.Repeat("0", len(b.token)), "", "", 403},
-		{"the stream from another origin", http.MethodGet, "/events" + good, "", "http://example.com", 403},
-		{"the stream for another host", http.MethodGet, "/events" + good, "example.com", "", 403},
-		{"a line without the token", http.MethodPost, "/send?session=x", "", "", 403},
-		{"a line from another origin", http.MethodPost, "/send" + good + "&session=x", "", "http://example.com", 403},
-		{"a line for no session", http.MethodPost, "/send" + good + "&session=x", "", "", 404},
-		{"the state without the token", http.MethodGet, "/state", "", "", 403},
+		{"the stream without the secret", http.MethodGet, "/events", "", "", "", 403},
+		{"the stream with a wrong secret", http.MethodGet, "/events", "", "", "Bearer " + strings.Repeat("0", 64), 403},
+		{"the stream with the secret in its address", http.MethodGet, "/events?token=" + strings.TrimPrefix(good, "Bearer "), "", "", "", 403},
+		{"the stream from another origin", http.MethodGet, "/events", "", "http://example.com", good, 403},
+		{"the stream for another host", http.MethodGet, "/events", "example.com", "", good, 403},
+		{"a line without the secret", http.MethodPost, "/send?session=x", "", "", "", 403},
+		{"a line from another origin", http.MethodPost, "/send?session=x", "", "http://example.com", good, 403},
+		{"a line for no session", http.MethodPost, "/send?session=x", "", "", good, 404},
+		{"the state without the secret", http.MethodGet, "/state", "", "", "", 403},
 	}
 	for _, r := range refused {
-		if status := request(t, r.method, b.base+r.url, r.host, r.origin); status != r.want {
+		var header []string
+		if r.authorization != "" {
+			header = []string{"Authorization", r.authorization}
+		}
+		if status := request(t, r.method, b.base+r.url, r.host, r.origin, header...); status != r.want {
 			t.Errorf("%s = %d, want %d", r.what, status, r.want)
 		}
 	}
@@ -997,7 +1009,7 @@ func (b bridge) stall(t *testing.T) net.Conn {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = c.Close() })
-	if _, err := fmt.Fprintf(c, "GET /events?token=%s HTTP/1.1\r\nHost: %s\r\n\r\n", b.token, strings.TrimPrefix(b.base, "http://")); err != nil {
+	if _, err := fmt.Fprintf(c, "GET /events HTTP/1.1\r\nHost: %s\r\nAuthorization: %s\r\n\r\n", strings.TrimPrefix(b.base, "http://"), b.auth(t)); err != nil {
 		t.Fatal(err)
 	}
 	_ = c.SetReadDeadline(time.Now().Add(30 * time.Second))
@@ -1012,7 +1024,10 @@ func (b bridge) stall(t *testing.T) net.Conn {
 	_ = c.SetReadDeadline(time.Time{})
 	lines := strings.Split(strings.TrimSuffix(string(head), "\n\n"), "\n")
 	session := strings.TrimPrefix(lines[len(lines)-1], "data: ")
-	res, err := http.Post(b.base+"/send?token="+b.token+"&session="+session, "text/plain", strings.NewReader(connectAttach))
+	req, _ := http.NewRequest(http.MethodPost, b.base+"/send?session="+session, strings.NewReader(connectAttach))
+	req.Header.Set("Content-Type", "text/plain")
+	req.Header.Set("Authorization", b.auth(t))
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1088,7 +1103,7 @@ func TestPageFollowsARunningSession(t *testing.T) {
 	s.serve(first)
 	b := connectBridge(t, s.dir)
 	browser := browsertest.Start(t)
-	browser.Open(b.base + "/?token=" + b.token)
+	b.openIn(t, browser, "")
 	browser.Wait(`window.uiView && window.uiView.attachment > 0 && document.querySelectorAll(".mount").length === 2`)
 	abilities := browser.String(`JSON.stringify(window.uiView.abilities)`)
 	// shows compares the mounts on the page, each with the digest it was drawn from and its first text, with the mounts
@@ -1191,7 +1206,7 @@ func TestPageSaysNothingOfAMountItsExtensionEndedOrMountedAgain(t *testing.T) {
 	s.serve(h)
 	b := connectBridge(t, s.dir)
 	browser := browsertest.Start(t)
-	browser.Open(b.base + "/?token=" + b.token)
+	b.openIn(t, browser, "")
 	browser.Wait(`window.uiView && window.uiView.attachment > 0 && document.querySelectorAll(".mount").length === 2`)
 	lines := func() string {
 		return browser.String(`[...document.querySelectorAll(".line.note")].map((line) => line.textContent).join("|")`)

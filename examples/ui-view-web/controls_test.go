@@ -72,7 +72,7 @@ func TestPageIntentFramesAreTheTextClientsFrames(t *testing.T) {
 	}
 	b := startBridge(t)
 	browser := browsertest.Start(t)
-	browser.Open(b.base + "/?token=" + b.token)
+	b.openIn(t, browser, "")
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
 	browser.Run(recordFrames)
 	browser.Run(`(() => { const form = document.getElementById("prompt"); form.elements.message.focus(); form.elements.message.value = "/ui-demo"; form.requestSubmit(); })()`)
@@ -560,7 +560,7 @@ func TestPageHasAColourForEveryThemeToken(t *testing.T) {
 func TestPageDrawsASceneAndItsRegions(t *testing.T) {
 	b := startBridge(t, "-e", "testdata/scene.mjs")
 	browser := browsertest.Start(t)
-	browser.Open(b.base + "/?token=" + b.token)
+	b.openIn(t, browser, "")
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
 	browser.Run(recordFrames)
 	browser.Run(`(() => { const form = document.getElementById("prompt"); form.elements.message.value = "/scene mount 5000"; form.requestSubmit(); })()`)
@@ -865,10 +865,10 @@ func TestPageShowsNoCountersAndOneColumnUntilThereIsATranscript(t *testing.T) {
 		}
 	}
 	window(800)
-	browser.Open(b.base + "/?token=" + b.token)
+	b.openIn(t, browser, "")
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
 	// The command is sent without a line in the chat, as an extension's own trigger would mount the panel.
-	browser.Run(`fetch("/send?token=` + b.token + `&session=" + window.uiView.session, { method: "POST", body: JSON.stringify({ id: "t1", type: "prompt", message: "/scene mount 10" }) })`)
+	browser.Run(`fetch("/send?session=" + window.uiView.session, { method: "POST", headers: { Authorization: ` + strconv.Quote(b.auth(t)) + ` }, body: JSON.stringify({ id: "t1", type: "prompt", message: "/scene mount 10" }) })`)
 	browser.Wait(`document.querySelector('[data-key="scene"] svg') !== null`)
 	layout := `(() => { const state = document.getElementById("state"), panels = document.getElementById("panels").getBoundingClientRect(), prompt = document.getElementById("prompt").getBoundingClientRect();
 		return JSON.stringify({ state: state.textContent + "/" + getComputedStyle(state).display, width: panels.width, centred: Math.abs(panels.left + panels.right - document.documentElement.clientWidth) < 2, promptUnder: prompt.top >= panels.bottom, beside: prompt.right <= panels.left }); })()`
@@ -894,7 +894,8 @@ func TestPageShowsNoCountersAndOneColumnUntilThereIsATranscript(t *testing.T) {
 	if got, want := browser.String(`JSON.stringify(JSON.parse(`+layout+`).beside)`), "true"; got != want {
 		t.Errorf("with a line in the chat the prompt stands beside the panels: %s, want %s", got, want)
 	}
-	browser.Open(b.base + "/?debug&token=" + b.token)
+	// The same tab holds the session secret already: no second address is needed.
+	browser.Open(b.base + "/?debug")
 	browser.Wait(`window.uiView && window.uiView.attachment === 1`)
 	if got := browser.String(`document.getElementById("state").textContent`); got != "attachment 1, event 0, 0 mounts" {
 		t.Errorf("with ?debug the status line reads %q, want the carrier's numbers", got)
