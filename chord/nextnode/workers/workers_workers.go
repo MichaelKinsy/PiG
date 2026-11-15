@@ -24,6 +24,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
+	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
 )
@@ -86,7 +87,11 @@ type WorkersOptions struct {
 	// Lock is the lock one live worker of address holds (across processes).
 	Lock func(address contracts.Address) (string, error)
 	// IdleMs is how long a worker idles before it is stopped: 5 minutes by default.
-	IdleMs  func() time.Duration
+	IdleMs func() time.Duration
+	// Store is the server host's store, the one its `CreateHost` got: a worker's exit is published once the commits queued in it
+	// before the exit settled. Pi's `store` is required (`Store | undefined`), so it is not forgotten: nil only for a host without a
+	// store (nothing is waited for then).
+	Store   store.Store
 	Plugins *plugins.Plugins
 	// OnOutput is a worker's output; without it, mirrored to this process's own.
 	OnOutput func(address contracts.Address, stream string, chunk []byte)

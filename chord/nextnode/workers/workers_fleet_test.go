@@ -19,6 +19,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/store"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/build"
 	"github.com/MichaelKinsy/PiG/chord/nextnode/plugins/model"
@@ -29,8 +30,7 @@ import (
 
 var background = chordctx.Background()
 
-// fixtureServer is the server's own kind: `hostKind("server")`.
-var fixtureServer = mustFixture(contracts.NewHostKind("server"))
+// (fixtureServer, the server's own kind, is in workers_fixture_worker_test.go: control.ts `Server`.)
 
 // fleetOptions are the options of fleet; the zero value is the defaults of support.ts.
 type fleetOptions struct {
@@ -54,6 +54,12 @@ type fleetOptions struct {
 	execArgv []string
 	// compileCache is WorkersOptions.CompileCache.
 	compileCache string
+	// facets are the server's facets (none by default).
+	facets []host.HostFacet
+	// store is the server's store, given to its host and to the workers component.
+	store store.Store
+	// onError is called with each error of the component as it is reported (also collected in `errors`).
+	onError func(err WorkersError)
 }
 
 // collector collects values from callbacks on other goroutines.
@@ -132,6 +138,9 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 	if options.heartbeat != nil {
 		serverOptions.Heartbeat = options.heartbeat
 	}
+	if options.store != nil {
+		serverOptions.Store = options.store
+	}
 	server, err := host.CreateHost(serverOptions)
 	if err != nil {
 		t.Fatal(err)
@@ -185,15 +194,23 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 				f.output.add(address.Key + " " + string(trimSpace(chunk)))
 			}
 		},
-		OnError:   f.errors.add,
+		OnError: func(err WorkersError) {
+			f.errors.add(err)
+			if options.onError != nil {
+				options.onError(err)
+			}
+		},
 		Forgotten: func(address contracts.Address) { f.forgotten.add(address.Key) },
+		Store:     options.store,
 		clock:     f.clock,
 	}, background)
 	if err != nil {
 		t.Fatal(err)
 	}
 	f.workers = workers
-	loadHost(t, server)
+	if _, err := server.Load(options.facets, background); err != nil {
+		t.Fatal(err)
+	}
 	// The worker kind's set made now (discovery, builds): the watcher marks edits from then on.
 	if _, err := f.plugins.Scripts("worker", background); err != nil {
 		t.Fatal(err)

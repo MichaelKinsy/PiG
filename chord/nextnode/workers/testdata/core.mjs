@@ -1,17 +1,38 @@
 // The fixture worker's JavaScript core facet (test/next-node/fixtures/workers/worker.ts `core`, with `Control` of control.ts), as the
-// module the worker's Node host imports: `Control` (crash, busy, local calls), the remote type served at the worker's address. `Busy` (the
+// module the worker's Node host imports: `Control` (crash, busy, local calls, report, report and exit), the remote type served at the worker's address. `Busy` (the
 // app's keep-alive counts) and `Echo` are served by the worker's Go core facet (workers_fixture_worker_test.go `fixtureGoCore`) and
 // reach this host through its proxy facet (plugins.BridgedFacet): `Control` binds to them as it binds to any type of the closure.
 import { existsSync } from "node:fs";
 import { defineFacet, hostKind, int, local, map, method, remote, str } from "@earendil-works/chord";
+import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 
 const Session = hostKind("session", { id: str() });
+const Server = hostKind("server");
 
 const Control = remote("test.control", {
 	version: 1,
 	params: { id: str() },
 	hostAddress: ({ id }) => Session({ id }),
-	variants: { main: { methods: { crash: method(int()), busy: method(int()), block: method(str()), localCalls: method(int(), int()) } } },
+	variants: {
+		main: {
+			methods: {
+				crash: method(int()),
+				busy: method(int()),
+				block: method(str()),
+				localCalls: method(int(), int()),
+				report: method(str()),
+				reportAndExit: method(str()),
+			},
+		},
+	},
+});
+
+// What a worker reports to the server (control.ts `Reports`).
+const Reports = remote("test.reports", {
+	version: 1,
+	params: {},
+	hostAddress: () => Server(),
+	variants: { main: { methods: { report: method(str()) } } },
 });
 
 const Busy = local("test.busy", { version: 1, params: {}, members: { counts: map(int()), set: method(int()), pulse: method(int()) } });
@@ -21,6 +42,8 @@ export default defineFacet((facet) => {
 	facet.serve(Control, (_params, _principal, self) => {
 		const busy = self.get(Busy, {});
 		const echo = self.get(Echo, {});
+		// The server's `Reports`, held with this object: a report goes out in the turn that sends it.
+		const reports = self.get(Reports, {});
 		return {
 			variant: "main",
 			members: {
@@ -51,6 +74,16 @@ export default defineFacet((facet) => {
 					for (let i = 0; i < n; i++) await echo.echo(i, ctx);
 					console.log("local calls end");
 					return n;
+				},
+				// Sends the server a report and returns without waiting for its answer (the worker may be gone by then).
+				report: async (text) => {
+					reports.report(text, BACKGROUND_CONTEXT).catch(() => {});
+					return null;
+				},
+				// Sends the server a report and exits (code 7) in the same turn.
+				reportAndExit: async (text) => {
+					reports.report(text, BACKGROUND_CONTEXT).catch(() => {});
+					process.exit(7);
 				},
 			},
 		};
