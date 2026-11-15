@@ -398,7 +398,7 @@ func TestGeneratorRecordAndReplay(t *testing.T) {
 
 	t.Run("record and replay cannot be combined", func(t *testing.T) {
 		status, stdout, stderr := runGeneratorSubprocess(t, root, idOrderCatalog(), "--record", fixtures, "--replay", fixtures, "--json-only", "--json-output", filepath.Join(root, "x"))
-		if want := "Error: -record and -replay cannot be combined\n"; status != 1 || stderr != want {
+		if want := "Error: -record, -replay, -record-source and -replay-source cannot be combined\n"; status != 1 || stderr != want {
 			t.Errorf("status = %d, stderr = %q, want status 1 and %q\nstdout=%s", status, stderr, want, stdout)
 		}
 	})

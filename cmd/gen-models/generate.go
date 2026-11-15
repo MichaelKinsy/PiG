@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring/localecompare"
 	"github.com/MichaelKinsy/PiG/internal/modelgen"
@@ -159,7 +158,7 @@ func generateModels(options generatorOptions) error {
 		files[id+".json"] = content
 	}
 
-	generatedAt := time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+	generatedAt := generationTime()
 	if !options.jsonOnly {
 		if err := options.writeData(structure, files, generatedAt); err != nil {
 			return err

@@ -10,7 +10,11 @@ Port of Pi's `packages/ai/catalog/**` (the catalog generation model that replace
   `providers.json`, `providers/<id>.json`, `providers/<id>.all.json`);
 - `-strict` fails instead of degrading when upstream data is unexpected, `-data-only` regenerates only the providers already in
   `-data-output`, `-pretty` indents, `-record <dir>` stores every upstream response, `-replay <dir>` serves recorded responses
-  instead of fetching.
+  instead of fetching;
+- `-record-source <dir>` fetches live and, when the run succeeds, replaces the catalog source in `<dir>` (`responses.tar.gz` and
+  `meta.json`: the committed recording the repository's catalogs are made of, `automation/gen/catalog-source`);
+  `-replay-source <dir>` runs offline over a catalog source and writes the manifest `generatedAt` the source's fetch time
+  (`make model-catalogs-live` records, `make model-catalogs` replays).
 
 `go run ./cmd/gen-models -src <models.generated.ts or .js> -out ai/models_generated.go` is the other job: it turns Pi's generated
 catalog into the Go catalogs of package `ai` (`make model-catalogs`, run by `make pin-bump`).

@@ -145,9 +145,9 @@ func TestGeneratorModeDispatchRejectsMixedAndMissingModes(t *testing.T) {
 		want string
 	}{
 		{"neither", nil, "gen-models: -src is required\n"},
-		{"src with strict", []string{"-src", "x.ts", "-strict"}, "gen-models: -strict, -data-only, -json-only, -json-output, -data-output, -record and -replay generate catalog data and cannot be combined with -src\n"},
-		{"src with data-output", []string{"-src", "x.ts", "-data-output", "d"}, "gen-models: -strict, -data-only, -json-only, -json-output, -data-output, -record and -replay generate catalog data and cannot be combined with -src\n"},
-		{"src with replay", []string{"-src", "x.ts", "-replay", "d"}, "gen-models: -strict, -data-only, -json-only, -json-output, -data-output, -record and -replay generate catalog data and cannot be combined with -src\n"},
+		{"src with strict", []string{"-src", "x.ts", "-strict"}, "gen-models: -strict, -data-only, -json-only, -json-output, -data-output, -record, -replay, -record-source and -replay-source generate catalog data and cannot be combined with -src\n"},
+		{"src with data-output", []string{"-src", "x.ts", "-data-output", "d"}, "gen-models: -strict, -data-only, -json-only, -json-output, -data-output, -record, -replay, -record-source and -replay-source generate catalog data and cannot be combined with -src\n"},
+		{"src with replay", []string{"-src", "x.ts", "-replay", "d"}, "gen-models: -strict, -data-only, -json-only, -json-output, -data-output, -record, -replay, -record-source and -replay-source generate catalog data and cannot be combined with -src\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			status, stdout, stderr := runGenerator(t, providerCatalog("opencode"), tc.args...)
