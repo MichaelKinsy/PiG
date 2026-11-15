@@ -11,10 +11,9 @@ package host
 // The package-level names are prefixed `qr`.
 //
 // Forced differences (Go): a builder that throws is a panic of Build (ASSUMED: the host lane's OwnQuery.Target recovers it,
-// as Pi's try/catch around `builder(args)`); `self.query(named.all, ...)` / `self.liveQuery(table, ...)` with the wrong
-// kind of argument cannot be written (types state it: Pi's three refusal texts are in host_read_declarations_test.go, the
-// pure checks), so the second failures case keeps only what Go can express: `{ first: n }` refused (first = 0) and the
-// owner's own private query counted.
+// as Pi's try/catch around `builder(args)`); `self.query(named.all, ...)` (a named query given as a table) cannot be
+// written (Self.Query takes a store.Table: types state it, see the second failures case); its other two arms are written
+// with a foreign query for the table and a first of 0.
 
 import (
 	"context"
@@ -504,9 +503,14 @@ func TestQueryReaderFailures(t *testing.T) {
 	})
 
 	t.Run("the wrong form of each call throws naming the other; a private query needs its schema", func(t *testing.T) {
-		// Go keeps what its types do not state: `{ first: n }` is required, and the owner's own private query is counted,
-		// read in its own activation, with no dependency on itself. The other two refusals (a named query given to
-		// self.query, a table given to self.liveQuery) cannot be written: host_read_declarations_test.go has their texts.
+		// Pi's three refusals, in Pi's order (query-reader.test.ts:359-390). The first (`self.query(named.all, ...)`, a named
+		// query given as a table) cannot be written in Go: `Self.Query` takes a store.Table, which no named query is (a table
+		// that is none of the factory's is refused as undeclared), and no other path hands the host a named query as a table
+		// (nextnode calls no Self method; it is the plugin API in process): the compiler states the refusal, Pi's run-time
+		// check of a JavaScript call (read-declarations.ts) has no Go counterpart. The second (a table given to
+		// `self.liveQuery`) is a value that is no named query of this object (`nqForeign`, as in the staging case); the third
+		// is the first of 0 (`{}` for Pi's `{ first: n }`). The owner's own private query is then counted, read in its own
+		// activation, with no dependency on itself.
 		chordStore := memoryStore(t)
 		errs := &hostErrors{}
 		host := newHost(t, HostOptions{Store: chordStore, OnError: errs.push})
@@ -517,20 +521,26 @@ func TestQueryReaderFailures(t *testing.T) {
 				table := plain.(StoreSelf).Table(qrNotes)
 				named := plain.(StoreSelf).Queries(table, QueriesOptions{Map: func(row store.Row, _ PartnerRow) (delta.JsonValue, error) { return float64(qrInt(row["id"])), nil }},
 					map[string]QueryBuilder{"all": {Args: contracts.Obj(), Build: func(delta.JsonValue) *store.Query { return store.NewQuery(qrNotes) }}})
-				func() {
+				attempt := func(work func()) {
 					defer func() {
 						if r := recover(); r != nil {
 							thrown = append(thrown, r.(error).Error())
 						}
 					}()
-					plain.LiveQuery(named["all"], jsonObject(), 0)
-				}()
+					work()
+				}
+				attempt(func() { plain.LiveQuery(nqForeign{}, jsonObject(), 1) })
+				attempt(func() { plain.LiveQuery(named["all"], jsonObject(), 0) })
 				return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": plain.Count(named["all"], jsonObject())}}}, nil
 			}, ServeOptions{})
 		})}}, background)
 		must(t, err)
-		if len(thrown) != 1 || thrown[0] != "app.own: self.liveQuery: { first: n } is required, a positive integer" {
-			t.Fatalf("thrown = %v", thrown)
+		want := []string{
+			"app.own: self.liveQuery reads a named query; a table of this object is read with self.query",
+			"app.own: self.liveQuery: { first: n } is required, a positive integer",
+		}
+		if !slices.Equal(thrown, want) {
+			t.Fatalf("thrown = %q, want %q", thrown, want)
 		}
 		ownRef := mustGet(t, host, own, jsonObject())
 		qrWant(t, "n", qrValue(t, ownRef, "n"), `0`)

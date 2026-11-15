@@ -2,10 +2,10 @@ package host
 
 // pi: packages/chord/src/host/named-query.ts, attempt.ts
 // Ports the group "a provider's restart under its readers (code review rounds 1 and 2)" of
-// packages/chord/test/host/named-query.test.ts @0db9861ec018 that does not use `self.list` (PART 3: the list's `more`
-// during the migration, and the screen that collects the old query): a write admitted before the provider's seal and paused
-// across it, and a removed provider's reads. The case of another owner's commit between the migration's commits waits for
-// an observable of the commit queue (Pi wraps `store.commit`; the migration's commits call the concrete store here).
+// packages/chord/test/host/named-query.test.ts @0db9861ec018: another owner's commit between the migration's commits, a list's
+// `more` during the migration, a write admitted before the provider's seal and paused across it, a removed provider's reads,
+// and the old code's query that nothing keeps. The cases that act between the migration's commits (Pi wraps `store.commit`
+// and acts after the commit that records the table `migrating`) hold the first commit the reload starts instead.
 //
 // Forced differences (Go): Pi's `store.commit` pause (a write of order `write` that waits) is the faulty store's held
 // commit step (`holdNextCommit`: the step stops at the statement that closes its writes); `migrated()` is the table record's
@@ -40,12 +40,16 @@ var (
 		contracts.Mem("put", contracts.NewMethod(prItem)),
 		// As put, without waiting for its commit: a write that is no running call's.
 		contracts.Mem("later", contracts.NewMethod(prItem)))
-	prGates = exLocal("app.gates", contracts.Params{}, contracts.Mem("put", contracts.NewMethod(exInt())))
-	prView  = exLocal("app.view", contracts.Params{}, contracts.Mem("items", exObj(exProp("rows", exArr(prItem)), exProp("more", exBool()))))
+	prGates  = exLocal("app.gates", contracts.Params{}, contracts.Mem("put", contracts.NewMethod(exInt())))
+	prView   = exLocal("app.view", contracts.Params{}, contracts.Mem("items", exObj(exProp("rows", exArr(prItem)), exProp("more", exBool()))))
+	prScreen = exLocal("app.screen", contracts.Params{},
+		contracts.Mem("items", exObj(exProp("rows", exArr(prItem)), exProp("moreAfter", exBool()))),
+		contracts.Mem("more", contracts.NewMethod()))
 )
 
-// prProviderPlugin is the provider at the old code or the migrated one.
-func prProviderPlugin(migrated bool) HostFacet {
+// prProviderPlugin is the provider at the old code or the migrated one; declared, when given, gets the old code's named
+// queries, as each factory run declared them.
+func prProviderPlugin(migrated bool, declared *instances[OwnQuery]) HostFacet {
 	return HostFacet{Name: "@test/provider", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(prProvider, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
 			self := plain.(StoreSelf)
@@ -63,6 +67,10 @@ func prProviderPlugin(migrated bool) HostFacet {
 					return store.Exists(prGateSet, store.Match{{Column: "id", Ref: r["id"]}}, nil)
 				})
 			}}})
+			if declared != nil && !migrated {
+				own, _ := ownQueries(rows)
+				declared.add(own["all"])
+			}
 			tx := func(ctx context.Context, row store.Row) error {
 				_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, tx.Put(table, row) }, ctx)
 				return err
@@ -91,7 +99,7 @@ func prProviderPlugin(migrated bool) HostFacet {
 	})}
 }
 
-// prOthers is the other owner: the gates' commits and the view reading the provider's query.
+// prOthers is the other owner: the gates' commits, the view reading the provider's query and the screen listing it.
 var prOthers = HostFacet{Name: "@test/others", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 	if err := h.Serve(prGates, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
 		self := plain.(StoreSelf)
@@ -103,10 +111,19 @@ var prOthers = HostFacet{Name: "@test/others", Facet: DefineFacet(func(h FacetHo
 	}, ServeOptions{}); err != nil {
 		return err
 	}
-	return h.Serve(prView, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	if err := h.Serve(prView, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
 		self := plain.(StoreSelf)
 		all := self.Get(prProvider, jsonObject()).Queries("rows")["all"]
 		return exImpl(map[string]chord.Watchable[delta.JsonValue]{"items": self.LiveQuery(all, jsonObject(), 10)}, nil), nil
+	}, ServeOptions{}); err != nil {
+		return err
+	}
+	return h.Serve(prScreen, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+		all := self.Get(prProvider, jsonObject()).Queries("rows")["all"]
+		handle := self.List("rows", []ListSource{{Query: all, Args: jsonObject()}}, ListOptions{First: 1})
+		return exImpl(map[string]chord.Watchable[delta.JsonValue]{"items": handle.Value()}, map[string]contracts.MethodFunction{
+			"more": func(_ delta.JsonValue, ctx context.Context) (delta.JsonValue, error) { return nil, handle.More(ctx) },
+		}), nil
 	}, ServeOptions{})
 })}
 
@@ -118,15 +135,18 @@ type prHosted struct {
 	provider *Reference
 	meter    context.Context
 	counts   func() map[string]float64
+	// declared are the old code's named queries (Pi's `declared`).
+	declared *instances[OwnQuery]
 }
 
 func prHost(t *testing.T, chordStore *store.ChordStore) *prHosted {
 	t.Helper()
 	_, ctx, counts := meteredHost(t)
 	host := newHost(t, HostOptions{Store: chordStore, OnError: func(HostError) {}})
-	_, err := host.Load([]HostFacet{prProviderPlugin(false), prOthers}, background)
+	declared := &instances[OwnQuery]{}
+	_, err := host.Load([]HostFacet{prProviderPlugin(false, declared), prOthers}, background)
 	must(t, err)
-	hosted := &prHosted{Host: host, store: chordStore, gates: mustGet(t, host, prGates, jsonObject()), provider: mustGet(t, host, prProvider, jsonObject()), meter: ctx, counts: counts}
+	hosted := &prHosted{Host: host, store: chordStore, gates: mustGet(t, host, prGates, jsonObject()), provider: mustGet(t, host, prProvider, jsonObject()), meter: ctx, counts: counts, declared: declared}
 	for id, text := range map[float64]string{1: "first", 2: "second"} {
 		hosted.gate(t, background, id)
 		if _, err := hosted.provider.Call("put", jsonObject("id", id, "text", text), background); err != nil {
@@ -180,7 +200,7 @@ func TestNamedQueryProvidersRestartAWriteAdmittedBeforeTheSealAndPausedAcrossItP
 	}
 	<-held.Entered()
 	// No call is running: the reload seals the provider at once, with the write still in its step.
-	reloaded := h.reload(prProviderPlugin(true), prOthers)
+	reloaded := h.reload(prProviderPlugin(true, nil), prOthers)
 	deliveredOn(h.Host)
 	if h.migrated() {
 		t.Fatal("the provider migrated while its admitted write was in its step")
@@ -216,9 +236,11 @@ func TestNamedQueryProvidersRestartARemovedProvidersReadsLeaveTheIndexItsReaders
 	view := mustGet(t, h.Host, prView, jsonObject())
 	before, err := view.Member("items").Value()
 	must(t, err)
+	// Two reads over each table: the view's live query and the first page of the screen's list (an object of empty params
+	// lives from the load, the screen of `others` included, as in Pi).
 	for _, table := range []string{"app.provider:texts", "app.gates:gate"} {
-		if reads := chordStore.Reads.On(table); len(reads) != 1 {
-			t.Fatalf("the view's read is registered over %s %d times before the reload, want once", table, len(reads))
+		if reads := chordStore.Reads.On(table); len(reads) != 2 {
+			t.Fatalf("the view's and the screen's reads are registered over %s %d times before the reload, want twice", table, len(reads))
 		}
 	}
 	if _, err := h.Reload([]HostFacet{prOthers}, background, ReloadOptions{}); err != nil {
@@ -270,7 +292,7 @@ func TestNamedQueryProvidersRestartRunsNoStatementCompiledForTheTableAsItWasNoFa
 	// Pi's `meter.counts()` is undefined here: the meter counts the runs under its context only (the other owner's commit
 	// below), and Pi's host has no telemetry, so the successor's own first read is not counted (prHost).
 	held := holdNextCommit()
-	reloaded := h.reload(prProviderPlugin(true), prOthers)
+	reloaded := h.reload(prProviderPlugin(true, nil), prOthers)
 	<-held.Entered()
 	if !chordStore.Reads.IsHeld("app.provider:texts") {
 		t.Fatal("the table's reads are not held at the migration's first commit")
@@ -294,6 +316,91 @@ func TestNamedQueryProvidersRestartRunsNoStatementCompiledForTheTableAsItWasNoFa
 	}
 	qrWant(t, "rows", qrValue(t, view, "items"), `{"rows":[{"id":1,"text":"first"},{"id":2,"text":"second"}],"more":false}`)
 	_, _ = watch.Stop()
+	closeHosts(t, h.Host)
+}
+
+// texts are the `text`s of the rows of a screen's list (`screen.items.value.rows.map((row) => row.text)`).
+func prTexts(t *testing.T, screen *Reference) []string {
+	t.Helper()
+	value, err := screen.Member("items").Value()
+	must(t, err)
+	texts := []string{}
+	for _, row := range value.(*delta.JsonObject).Value("rows").([]any) {
+		texts = append(texts, row.(*delta.JsonObject).Value("text").(string))
+	}
+	return texts
+}
+
+func TestNamedQueryProvidersRestartAListsMoreDuringTheMigrationWaitsForTheSuccessorNoReadOfTheOldStatementIsRegistered(t *testing.T) {
+	// Round 2 (Sol): `more` on the retired query registered a read of the old plan, which stayed in the index and failed
+	// "no such column" on the next commit. Pi acts after the commit that records the table `migrating`: here the commit step
+	// the reload starts is held; the other owner's commit and the `more` come behind it.
+	chordStore, _, holdNextCommit := faultyStore(t)
+	h := prHost(t, chordStore)
+	screen := mustGet(t, h.Host, prScreen, jsonObject())
+	qrWant(t, "items", qrValue(t, screen, "items"), `{"rows":[{"id":1,"text":"first"}],"moreAfter":true}`)
+	held := holdNextCommit()
+	reloaded := h.reload(prProviderPlugin(true, nil), prOthers)
+	<-held.Entered()
+	if !chordStore.Reads.IsHeld("app.provider:texts") {
+		t.Fatal("the table's reads are not held at the migration's first commit")
+	}
+	other := startQueued(t, chordStore, func() { h.gate(t, background, 1) })
+	// Not awaited here: it ends when the successor is live, which waits for the migration's commits.
+	more := make(chan error, 1)
+	go func() { _, err := screen.Call("more", nil, background); more <- err }()
+	held.Release()
+	<-other
+	if err := <-reloaded; err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	if err := <-more; err != nil {
+		t.Fatalf("more: %v", err)
+	}
+	lsSettled(h.Host)
+	if got := prTexts(t, screen); fmt.Sprint(got) != "[first second]" {
+		t.Fatalf("texts = %v, want [first second]", got)
+	}
+	reads := chordStore.Reads.On("app.provider:texts")
+	if len(reads) == 0 {
+		t.Fatal("no read of the provider's table is registered")
+	}
+	for _, read := range reads {
+		if read.Plan.Query.Table != prNew {
+			t.Fatal("a read of the old code's statement stayed registered")
+		}
+	}
+	// A later commit of the other owner runs the list's pages: none fails.
+	h.gate(t, background, 2)
+	lsSettled(h.Host)
+	if got := prTexts(t, screen); fmt.Sprint(got) != "[first second]" {
+		t.Fatalf("texts after the gate = %v, want [first second]", got)
+	}
+	// Nothing of the handover keeps the old code's query.
+	expectCollected(t, h.declared.at(0))
+	closeHosts(t, h.Host)
+}
+
+func TestNamedQueryProvidersRestartKeepsNothingOfTheOldCodesNamedQueryOnceItsReadersReadTheSuccessors(t *testing.T) {
+	h := prHost(t, memoryStore(t))
+	view := mustGet(t, h.Host, prView, jsonObject())
+	screen := mustGet(t, h.Host, prScreen, jsonObject())
+	if err := <-h.reload(prProviderPlugin(true, nil), prOthers); err != nil {
+		t.Fatalf("reload: %v", err)
+	}
+	// The reload returns with the old code sealed; the successor migrates behind it, and its readers read it once it is live.
+	until(t, "the view reads the successor's query", func() bool {
+		lsSettled(h.Host)
+		value, err := view.Member("items").Value()
+		return err == nil && len(value.(*delta.JsonObject).Value("rows").([]any)) == 2
+	})
+	if got := prTexts(t, screen); len(got) != 1 {
+		t.Fatalf("screen rows = %v, want 1", got)
+	}
+	if n := h.declared.count(); n != 1 {
+		t.Fatalf("declared = %d, want 1", n)
+	}
+	expectCollected(t, h.declared.at(0))
 	closeHosts(t, h.Host)
 }
 

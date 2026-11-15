@@ -360,6 +360,8 @@ type recordingSelf struct {
 	jobs          *namedMap[*JobDefinition]
 	contributions *namedMap[registries.Registry[any, any]]
 	requests      []request
+	// listed are the names of the lists the factory declared; made by the first.
+	listed map[string]struct{}
 	// inert are the documents of the handles State returns and token their seal token; made by the first.
 	inert *documents.Documents
 	token *documents.SealToken
@@ -539,6 +541,28 @@ func (r *recordingSelf) Count(query contracts.NamedQuery[delta.JsonValue, delta.
 	r.assertDeclaring("count")
 	r.checkNamed(query, "count")
 	return state.ConstantOf[delta.JsonValue](nil)
+}
+
+// List implements Self: the checks an attempt makes on its declaration (the page size, the one source, the name, the query
+// given), no read, no bookmark touched.
+func (r *recordingSelf) List(name string, sources []ListSource, options ListOptions) *ListHandle {
+	r.assertDeclaring("list")
+	label := r.object.text
+	if err := firstOf(label, "list", int64(options.First)); err != nil {
+		panic(err)
+	}
+	source, err := oneSource(label, sources)
+	if err != nil {
+		panic(err)
+	}
+	if r.listed == nil {
+		r.listed = map[string]struct{}{}
+	}
+	if err := listName(label, name, r.listed); err != nil {
+		panic(err)
+	}
+	r.checkNamed(source.Query, `list "`+name+`"`)
+	return &ListHandle{value: state.ConstantOf[delta.JsonValue](nil), more: func(context.Context) error { return errInert }}
 }
 
 // checkNamed refuses what a reader was given when it cannot be a named query: a table, or no handle of this recording (a

@@ -235,7 +235,8 @@ func (n *nativeHandle[T]) closeValue(value T, reason NativeCloseReason) *closeFa
 		closeCtx = chordctx.WithTelemetry(closeCtx, span.Span())
 	}
 	closing := newNativeWork()
-	owner.loop.Go(func() {
+	// An owned task the loop counts (a test's join waits for a close that runs, not for one parked on something outside).
+	goTask(owner.loop, n.closer, func() {
 		closing.settle(nativeTry(func() error { return n.closer(value, reason, closeCtx) }))
 	})
 	result, err := within(owner.loop, closing, n.closeTimeout)

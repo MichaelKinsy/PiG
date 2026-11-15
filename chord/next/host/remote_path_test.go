@@ -23,6 +23,7 @@ type recordingHolder struct {
 
 func (*recordingHolder) kind() string                  { return "recording" }
 func (*recordingHolder) span() telemetry.TelemetrySpan { return nil }
+func (*recordingHolder) principal() data.Principal     { return nil }
 func (h *recordingHolder) attach(l *hostLink) {
 	*h.log = append(*h.log, h.name+"@"+h.names[l])
 }
@@ -64,7 +65,7 @@ func expectLog(t *testing.T, got []string, want ...string) {
 func TestPathAsksForALinkAndHoldsEveryHolderOnEachLink(t *testing.T) {
 	rig := newPathRig()
 	changes := 0
-	p := newPath(func(pathEvent) { changes++ }, nil)
+	p := newPath(func(pathEvent) { changes++ }, nil, nil)
 	p.attach(rig.holder("a"))
 	p.attach(rig.holder("b"))
 	if changes != 2 {
@@ -86,7 +87,7 @@ func TestPathAsksForALinkAndHoldsEveryHolderOnEachLink(t *testing.T) {
 func TestPathTellsHoldersWhenItsLinkDrops(t *testing.T) {
 	rig := newPathRig()
 	changes := 0
-	p := newPath(func(pathEvent) { changes++ }, nil)
+	p := newPath(func(pathEvent) { changes++ }, nil, nil)
 	first, second := rig.linkOf("1"), rig.linkOf("2")
 	p.connected(first)
 	p.attach(rig.holder("a"))
@@ -113,7 +114,7 @@ func TestPathTellsHoldersWhenItsLinkDrops(t *testing.T) {
 func TestPathReportsItsLastHoldersDetach(t *testing.T) {
 	rig := newPathRig()
 	changes := 0
-	p := newPath(func(pathEvent) { changes++ }, nil)
+	p := newPath(func(pathEvent) { changes++ }, nil, nil)
 	a, b := rig.holder("a"), rig.holder("b")
 	p.connected(rig.linkOf("1"))
 	p.attach(a)
@@ -137,7 +138,7 @@ func TestPathReportsItsLastHoldersDetach(t *testing.T) {
 func TestPathSaysWhatChangedAHolderAttachedWithoutALinkADropTheLastReleaseFailsItsHoldersWaiting(t *testing.T) {
 	rig := newPathRig()
 	var events []pathEventKind
-	p := newPath(func(event pathEvent) { events = append(events, event.kind) }, nil)
+	p := newPath(func(event pathEvent) { events = append(events, event.kind) }, nil, nil)
 	a := rig.holder("a")
 	p.attach(a)
 	p.unreachable(data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "no worker"}, nil))
@@ -156,7 +157,7 @@ func TestPathSaysWhatChangedAHolderAttachedWithoutALinkADropTheLastReleaseFailsI
 func TestPathCountsAJoinToAHeldHolderAsARequestWithoutALinkNoneWithOne(t *testing.T) {
 	rig := newPathRig()
 	var events []pathEventKind
-	p := newPath(func(event pathEvent) { events = append(events, event.kind) }, nil)
+	p := newPath(func(event pathEvent) { events = append(events, event.kind) }, nil, nil)
 	a := rig.holder("a")
 	p.attach(a)
 	p.requested(a)
@@ -173,10 +174,10 @@ func TestPathCountsAJoinToAHeldHolderAsARequestWithoutALinkNoneWithOne(t *testin
 // path.test.ts: a path › tells whether its route suspended it; a path without a route never is (Pi main 47e9d74f9)
 func TestPathTellsWhetherItsRouteSuspendedItAPathWithoutARouteNeverIs(t *testing.T) {
 	suspended := false
-	if newPath(func(pathEvent) {}, nil).suspended() {
+	if newPath(func(pathEvent) {}, nil, nil).suspended() {
 		t.Fatal("a path without a route is suspended")
 	}
-	routed := newPath(func(pathEvent) {}, func() bool { return suspended })
+	routed := newPath(func(pathEvent) {}, func() bool { return suspended }, nil)
 	if routed.suspended() {
 		t.Fatal("suspended() before its route suspended it")
 	}
@@ -207,7 +208,7 @@ func gatedPathRig(t *testing.T, admitted ...string) *gatedRig {
 	for _, name := range admitted {
 		g.admitted[name] = true
 	}
-	g.path = newGatedPath(func(event pathEvent) {
+	g.path = newPath(func(event pathEvent) {
 		g.events = append(g.events, [...]string{pathAttached: "attached", pathDropped: "dropped", pathReleased: "released"}[event.kind])
 	}, nil, g)
 	return g

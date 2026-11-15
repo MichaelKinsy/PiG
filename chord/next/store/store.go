@@ -312,6 +312,8 @@ type ChordStore struct {
 	tail <-chan struct{}
 	// open is the group the next commit joins: queued last, its turn not yet come; nil once anything queued after it.
 	open *commitGroup
+	// wrapAdopt is what the adoption of a commit that takes its place in the queue passes through; nil: none.
+	wrapAdopt func(adopt func(seq int64, ids []int64, rows int) error) func(seq int64, ids []int64, rows int) error
 	// underway counts reads and maintenance writes underway, which Close waits for.
 	underway int
 	// drained is closed, once, when no read is underway: Close's wait.
@@ -649,6 +651,10 @@ func (store *ChordStore) enlist(writes []StagedWrite, fence CommitFence, ctx con
 	}
 	store.mu.Lock()
 	defer store.mu.Unlock()
+	// wrapAdopt runs under the store's mutex, in the order the commits take their place, and must not call the store.
+	if wrap := store.wrapAdopt; wrap != nil {
+		queued.fence.Adopt = wrap(queued.fence.Adopt)
+	}
 	if len(writes) > 0 && store.open != nil {
 		queued.ready = make(chan struct{})
 		store.open.commits = append(store.open.commits, queued)
