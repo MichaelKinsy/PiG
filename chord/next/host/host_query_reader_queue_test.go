@@ -2,6 +2,7 @@ package host
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -21,8 +22,10 @@ import (
 // qqArguments are the arguments a reader follows: a source that is no store's (its value is what the test set).
 type qqArguments struct{ n atomic.Int64 }
 
-func (a *qqArguments) Value() (delta.JsonValue, error) { return jsonObject("n", float64(a.n.Load())), nil }
-func (a *qqArguments) DeriveValue() (any, error)       { return a.Value() }
+func (a *qqArguments) Value() (delta.JsonValue, error) {
+	return jsonObject("n", float64(a.n.Load())), nil
+}
+func (a *qqArguments) DeriveValue() (any, error) { return a.Value() }
 
 // DependentSet is nil: the test moves the reader itself.
 func (a *qqArguments) DependentSet() *state.DependentSet { return nil }
@@ -43,7 +46,7 @@ type qqReading struct {
 	count atomic.Int64
 }
 
-func (f *qqReading) Ready() bool   { return true }
+func (f *qqReading) Ready() bool    { return true }
 func (f *qqReading) Failure() error { return nil }
 
 func (f *qqReading) Open(target store.LiveTarget, _ context.Context) func() {
@@ -152,7 +155,7 @@ func TestQueryReaderQueueACloseDropsTheQueuedReadAndDetachesTheReading(t *testin
 	if loads, opens := f.reading.count.Load(), f.reading.opens.Load(); loads != 1 || opens != 2 {
 		t.Fatalf("%d loads of %d opened reads, want 1 of 2 (the move opened its read at once; the close dropped its load)", loads, opens)
 	}
-	if detached := f.reading.detached.Load(); detached == nil || *detached != ended {
+	if detached := f.reading.detached.Load(); detached == nil || !errors.Is(*detached, ended) {
 		t.Fatalf("detached with %v, want %v", detached, ended)
 	}
 	// A move after the close reads nothing.

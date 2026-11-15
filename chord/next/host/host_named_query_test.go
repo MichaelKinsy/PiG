@@ -564,7 +564,7 @@ func TestNamedQueryAClubThatRestartsWithTheSessionsGivesItsPagesWatchTheUnserved
 	case nexttest.JSONText(t, value) != last:
 		t.Fatalf("the page's value = %s, want its last rows %s or the failure", nexttest.JSONText(t, value), last)
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 }
 
 // nqFailedMessages is the failure messages of the failed calls of a watch.
@@ -590,7 +590,7 @@ func TestNamedQueryAnUnknownQueryOfAMemberIsInvalidAndARemoteObjectHasNone(t *te
 
 func TestNamedQueryAPageChecksItsArgumentsByTheContractsSchemaAndWhatTheBuilderReturns(t *testing.T) {
 	// Mine (Pi has no case of its own): the arguments are a trust boundary (`invalid/args`), and the builder is plugin code.
-	built := func(table *store.TableDefinition) *store.Query { return store.NewQuery(table) }
+	built := store.NewQuery
 	for _, each := range []struct {
 		what    string
 		args    delta.JsonValue
@@ -806,7 +806,7 @@ func TestNamedQueryStagingAcceptsTheOwnNamedQueryCountedAsAnAttemptDoes(t *testi
 	for value != float64(0) {
 		value = <-values
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 }
 
 // nqTitles is the titles of the page's rows, in order.
@@ -858,7 +858,7 @@ func TestNamedQueryAUsedColumnDroppedFailsExactlyTheReadsUsingItBeforeAnySQLRest
 		deliveredOn(host)
 		return slices.Equal(nqTitles(t, page), []string{"restored", "restored"})
 	})
-	watch.Stop()
+	_, _ = watch.Stop()
 }
 
 func TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth(t *testing.T) {
@@ -974,6 +974,6 @@ func TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedC
 	if calls.Len() != 1 {
 		t.Fatalf("calls = %d, want 1", calls.Len())
 	}
-	watch.Stop()
+	_, _ = watch.Stop()
 	closeHosts(t, host)
 }

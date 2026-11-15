@@ -241,4 +241,6 @@ func (o readerOwner) Label() string { return o.at.Label }
 // Report implements state.FramedOwner.
 func (o readerOwner) Report(err error) { o.at.Report(o.given.Handle.Label(), err) }
 
-func readerOwnerOf(at ReaderSite, given *GivenQuery) state.FramedOwner { return readerOwner{at: at, given: given} }
+func readerOwnerOf(at ReaderSite, given *GivenQuery) state.FramedOwner {
+	return readerOwner{at: at, given: given}
+}

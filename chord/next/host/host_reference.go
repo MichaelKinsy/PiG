@@ -68,7 +68,9 @@ func (r *Reference) Member(name string) *ReferenceMember { return r.binding.memb
 func (r *Reference) Keyed(name string) *ReferenceKeyed { return r.binding.keyed[name] }
 
 // Queries is the named queries of the queries member `member` by name, nil when the contract has no such member.
-func (r *Reference) Queries(member string) map[string]*ReferenceQuery { return r.binding.queries[member] }
+func (r *Reference) Queries(member string) map[string]*ReferenceQuery {
+	return r.binding.queries[member]
+}
 
 // Events is the event member `name`, nil when the contract has none.
 func (r *Reference) Events(name string) *ReferenceEvents { return r.binding.events[name] }

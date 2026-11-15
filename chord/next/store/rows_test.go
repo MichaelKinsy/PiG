@@ -219,7 +219,7 @@ func TestDecodeScalar(t *testing.T) {
 	})
 	decode := func(name string, value sqlite.SqliteValue) any {
 		t.Helper()
-		var column ScalarColumn = pins.ByName[name]
+		column := pins.ByName[name]
 		got, err := DecodeScalar(column, value)
 		must(t, err)
 		return got

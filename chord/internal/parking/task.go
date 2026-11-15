@@ -55,6 +55,18 @@ func (t *Task) Enter() (leave func()) {
 	return func() { tasks.Delete(id) }
 }
 
+// Adopt makes the goroutine gid, a coroutine the calling goroutine switches to and waits for (a handler's), run the calling
+// goroutine's task as well, so its waits park the task. The returned function ends the adoption. Outside a task it does nothing.
+func Adopt(gid uint64) (end func()) {
+	task := current()
+	if task == nil {
+		return nothing
+	}
+	task.gid.Store(gid)
+	tasks.Store(gid, task)
+	return func() { tasks.CompareAndDelete(gid, task) }
+}
+
 // current is the task the calling goroutine runs, if any.
 func current() *Task {
 	found, ok := tasks.Load(goroutineid.Current())

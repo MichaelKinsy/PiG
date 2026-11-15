@@ -81,18 +81,18 @@ func TestFramedSource(t *testing.T) {
 		first, second := errors.New("first"), errors.New("second")
 		rows.feed(t, h, func() { rows.FailWith(first) })
 		h.delivered()
-		if failure := rows.Failure(); failure != first {
+		if failure := rows.Failure(); !errors.Is(failure, first) {
 			t.Fatalf("Failure = %v", failure)
 		}
-		if _, err := rows.Value(); err != first {
+		if _, err := rows.Value(); !errors.Is(err, first) {
 			t.Fatalf("Value error = %v, want first", err)
 		}
 		rows.feed(t, h, func() { rows.FailWith(second) })
 		h.delivered()
-		if got := owner.reported(); len(got) != 1 || got[0] != first {
+		if got := owner.reported(); len(got) != 1 || !errors.Is(got[0], first) {
 			t.Fatalf("reports = %v, want only the first of the episode", got)
 		}
-		if start := rows.Start(); !start.HasLast || !reflect.DeepEqual(start.Last, any(num(1))) || start.Error != second {
+		if start := rows.Start(); !start.HasLast || !reflect.DeepEqual(start.Last, any(num(1))) || !errors.Is(start.Error, second) {
 			t.Fatalf("Start after a second failure = %+v, want the last good value and the second failure", start)
 		}
 		rows.feed(t, h, func() { rows.Set(num(2)) })
@@ -112,7 +112,7 @@ func TestFramedSource(t *testing.T) {
 		rows.feed(t, h, func() { rows.Set(num(5)) })
 		rows.feed(t, h, func() { rows.FailWith(boom) })
 		start := rows.Start()
-		if start.Kind != state.StartFailed || start.Error != boom || !start.HasLast || !reflect.DeepEqual(start.Last, any(num(5))) {
+		if start.Kind != state.StartFailed || !errors.Is(start.Error, boom) || !start.HasLast || !reflect.DeepEqual(start.Last, any(num(5))) {
 			t.Fatalf("Start = %+v", start)
 		}
 		watch := watchOf(t, rows)
@@ -131,7 +131,7 @@ func TestFramedSource(t *testing.T) {
 		if got := owner.reported(); len(got) != 0 {
 			t.Fatalf("reports = %v, want none after Quiet", got)
 		}
-		if _, err := rows.Watch(background); err != boom {
+		if _, err := rows.Watch(background); !errors.Is(err, boom) {
 			t.Fatalf("Watch error = %v, want boom", err)
 		}
 	})
@@ -147,11 +147,11 @@ func TestFramedSource(t *testing.T) {
 		if end := watch.End(); end.Kind != chord.WatchEnded {
 			t.Fatalf("end = %+v, want ended", end)
 		}
-		if _, err := rows.Value(); err != gone || !rows.Detached() || rows.Ready() {
+		if _, err := rows.Value(); !errors.Is(err, gone) || !rows.Detached() || rows.Ready() {
 			t.Fatalf("Value error = %v, detached %v, ready %v", err, rows.Detached(), rows.Ready())
 		}
 		rows.feed(t, h, func() { rows.Set(num(2)); rows.FailWith(errors.New("late")) })
-		if _, err := rows.Value(); err != gone {
+		if _, err := rows.Value(); !errors.Is(err, gone) {
 			t.Fatalf("Value error after Set = %v, want the end's", err)
 		}
 	})
