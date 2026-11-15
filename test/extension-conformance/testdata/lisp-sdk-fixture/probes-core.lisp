@@ -835,6 +835,15 @@
                                    (if (equal name "session_before_compact")
                                        (pig:obj "compaction" (pig:obj "summary" state "firstKeptEntryId" "k" "tokensBefore" 1))
                                        (pig:obj "label" state))))))))
+      ;; tool_call_abort_probe: a tool_call handler that answers from a dialog it opened (TestConformance_ToolCallHandlerIsAwaitedThroughTheAbort).
+      (pig:command ext "tool_call_abort_probe" "Subscribe to tool_call with a handler that answers from a dialog it opened"
+                   (lambda (ctx args) (declare (ignore ctx args))
+                     (pig:on ext "tool_call"
+                             (lambda (hctx data)
+                               (let* ((mode (let ((m (pig:jget (pig:jget data "input") "mode"))) (if (stringp m) m "")))
+                                      (answer (handler-case (let ((text (pig:ctx-input hctx (format nil "tool_call_abort:~A:pending" mode) :placeholder "p"))) (if (stringp text) text ""))
+                                                (error (e) (format nil "failed: ~A" e)))))
+                                 (pig:obj "block" t "reason" (format nil "tool_call_abort:~A:~A" mode answer)))))))
       (pig:command ext "event_ordered_result_probe" "Subscribe to an event with a handler that returns the given JSON, members in written order"
                    (lambda (ctx args) (declare (ignore ctx))
                      (multiple-value-bind (name raw) (split-first args)

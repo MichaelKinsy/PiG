@@ -3200,6 +3200,20 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_signal_probe", "Subscribe to session_before_compact or session_before_tree with a handler that returns the state of its event signal", event_signal_probe)
 
+    def tool_call_abort_probe(ctx, args):
+        # Subscribe to tool_call with a handler that answers from a dialog it opened (TestConformance_ToolCallHandlerIsAwaitedThroughTheAbort).
+        def handler(hctx, data):
+            mode = (data.get("input") or {}).get("mode", "")
+            try:
+                answer = hctx.input("tool_call_abort:%s:pending" % mode, "p")[0]
+            except Exception as error:
+                answer = "failed: %s" % error
+            return {"block": True, "reason": "tool_call_abort:%s:%s" % (mode, answer)}
+
+        ext.on_event("tool_call", handler)
+
+    ext.command("tool_call_abort_probe", "Subscribe to tool_call with a handler that answers from a dialog it opened", tool_call_abort_probe)
+
     def event_ordered_result_probe(ctx, args):
         # A Python dict keeps its members in the order they were written, so this is event_result_probe.
         name, _, raw = args.strip().partition(" ")

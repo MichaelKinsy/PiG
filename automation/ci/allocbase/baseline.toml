@@ -2526,7 +2526,7 @@ allocs = 36566
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeToolCallEvent"
-allocs = 39
+allocs = 43
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"

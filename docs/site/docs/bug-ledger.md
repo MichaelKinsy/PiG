@@ -1409,6 +1409,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9be5765](#bf-9be5765) | Pressing Escape while an extension tool runs now lets the tool finish: a tool that stops on its abort signal… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-9be7181](#bf-9be7181) | Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the… | PiG's own defect | Linux | 0.5.2 |
 | [BF-9c1a0e9](#bf-9c1a0e9) | An OpenAI Responses stream event or output item with a member of an unexpected type is read as Pi's… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9c2edf7](#bf-9c2edf7) | fix(extension-host): tool_call, tool_result and context handlers are awaited through an abort and a quit; the… | PiG's own defect | All platforms | Unreleased |
 | [BF-9c98038](#bf-9c98038) | An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-9ca3b94](#bf-9ca3b94) | fix(chord/nextnode/browsertest): Close of a browser whose Start failed before its connection kills Chromium… | PiG's own defect | All platforms | Unreleased |
 | [BF-9cf54d7](#bf-9cf54d7) | fix(extensions): a Node message_end event carries the message object the session entry holds, as in Pi | PiG's own defect | All platforms | Unreleased |
@@ -21512,6 +21513,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `366969bbae` (2026-10-11), `5078f73100` (2026-10-11), `5932542c21` (2026-10-11), `71e9d13eb9` (2026-10-11), `82414338e7` (2026-10-11), `8eb1202528` (2026-10-11), `9c1a0e938d` (2026-10-11), `b6afa7be1a` (2026-10-11), `db9a761dd8` (2026-10-11), `e098463b19` (2026-10-11), `e1abc6c615` (2026-10-11), `f1a59f9161` (2026-10-11)
 - **Tests:** `ai/anthropic_event_member_type_oracle_test.go::TestAnthropicEventMistypedMembersMatchPi`, `ai/google_chunk_member_type_oracle_test.go::TestGoogleChunkMistypedMembersMatchPi`, `ai/mistral_chunk_member_type_oracle_test.go::TestMistralChunkMistypedMembersMatchPi`, `ai/openai_completions_member_type_oracle_test.go::TestOpenAICompletionsMistypedMembersMatchPi`, `ai/openai_responses_member_type_oracle_test.go::TestOpenAIResponsesItemPiStoresRawEndsTheTurnWithTheDecodeError`, `ai/openai_responses_member_type_oracle_test.go::TestOpenAIResponsesMistypedMembersMatchPi`, `ai/openai_responses_response_oracle_test.go::TestProcessResponsesStreamEdgeEventsMatchPi`, `ai/utils_exports_upstream_test.go::TestTextSignatureV1WireShapeAndParsing` and 7 more in docs/bug-ledger.json
 - **Release note:** An OpenAI Responses stream event or output item with a member of an unexpected type is read as Pi's JavaScript reads it instead of ending the turn with `openai-responses: invalid SSE JSON` or silently skipping the item: a delta appends its string form (`null` and a missing delta append `null` and `undefined`), a finished message or reasoning item joins its parts' string forms and ends the turn with `item.content?.map is not a function` (or `item.summary?...`) when they are not an array, a function call's id interpolates a non-string `call_id`, non-string function-call arguments end the turn with Pi's `partialJson.trim is not a function` or `startsWith` error, a usage that is not an object reads as zeros, a status that is not a string ends the turn with `Unhandled stop reason: <its string form>`, and a failed response's non-string error code and message are written in their string form. OpenAI Codex streams read their events the same way. A missing or `null` output item ends the turn with Pi's `Cannot read properties of ... (reading 'type')` error, a message's text signature records its id and any non-empty phase as Pi's `JSON.stringify` writes them, and an output item whose mistyped member Pi keeps as-is ends the turn with the decode error instead of being dropped from an otherwise successful answer.
+
+### BF-9c2edf7
+
+**fix(extension-host): tool_call, tool_result and context handlers are awaited through an abort and a quit; the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extension-host): tool_call, tool_result and context handlers are awaited through an abort and a quit; the Node runtime reports a drained loop for an unanswered run-event request (rows 112, 113a)
+- **Root cause:** Pi awaits these handlers with no abort race: the run's tool_call hook is agent-loop.ts:738 (await config.beforeToolCall) = agent-session.ts:719-729 = runner.ts:1256-1274 emitToolCall, which awaits each handler. An abort (agent-session.ts:2601-2611: agent.abort(); await waitForIdle()) and a quit (agent-session-runtime.ts:415-424 dispose; interactive-mode.ts:4476-4513, rpc-mode.ts:745-755) therefore both wait for the handler. PiG abandoned the request at the cancel and went on (RPC tool_call timer3: Pi 3020 ms, PiG 20 ms; interactive quit 2410 / 95 ms).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9c2edf72d9` (2026-11-14)
+- **Tests:** `coding/extension/host/subprocess/quit_event_handlers_test.go::TestToolCallEventAwaitedAfterTheAbortEndsWhenTheExtensionProcessDies`, `test/extension-conformance/tool_call_abort_test.go::TestConformance_ToolCallHandlerIsAwaitedThroughTheAbort`
 
 ### BF-9c98038
 

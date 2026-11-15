@@ -160996,6 +160996,17 @@
       "shapeHash": "sha256:b942351c3e098a41db99157c8258f538ec1b18babf795eb15b0933e94ffd3e6f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#runAwaitsEvent",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "runAwaitsEvent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event string) bool"
+      },
+      "shapeHash": "sha256:a069791dad0ceff3a47995491e721a05a5d7bba95738665aefc05fa7ba426f02"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#runSignalFrame",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "runSignalFrame",
@@ -161687,6 +161698,61 @@
         "type": "func(method string) bool"
       },
       "shapeHash": "sha256:d60ece4b65b59f6c1c650107e0968b4f85db0c9923a48e6c67869ebcdc977bf9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#signalOnlyCtx",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "signalOnlyCtx",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "signalOnlyCtx"
+      },
+      "shapeHash": "sha256:76dd388cccc0cd842c56563f05c12e8adacdc8ce877335dbb8420212c48cfaf1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#signalOnlyCtx.Deadline",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "signalOnlyCtx.Deadline",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (time.Time, bool)"
+      },
+      "shapeHash": "sha256:6028444fa17f34ecc3870115f2064a702208bc8992417dc99cdcf1ce8d27cce9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#signalOnlyCtx.Done",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "signalOnlyCtx.Done",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() \u003c-chan struct{}"
+      },
+      "shapeHash": "sha256:abf75cdd06446e4f2096decc25f9a3b8a701a6dd8afd11fe16223fb0b76991c3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#signalOnlyCtx.Err",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "signalOnlyCtx.Err",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#signalOnlyCtx.Value",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "signalOnlyCtx.Value",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(key any) any"
+      },
+      "shapeHash": "sha256:397c4d8e2232fca2d6b8846e8c5975bdea6fa4061c978494562927bbc6031732"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#slotCall",

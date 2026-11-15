@@ -38184,6 +38184,28 @@
       ]
     },
     {
+      "id": "BF-9c2edf7",
+      "title": "fix(extension-host): tool_call, tool_result and context handlers are awaited through an abort and a quit; the…",
+      "symptom": "fix(extension-host): tool_call, tool_result and context handlers are awaited through an abort and a quit; the Node runtime reports a drained loop for an unanswered run-event request (rows 112, 113a)",
+      "rootCause": "Pi awaits these handlers with no abort race: the run's tool_call hook is agent-loop.ts:738 (await config.beforeToolCall) = agent-session.ts:719-729 = runner.ts:1256-1274 emitToolCall, which awaits each handler. An abort (agent-session.ts:2601-2611: agent.abort(); await waitForIdle()) and a quit (agent-session-runtime.ts:415-424 dispose; interactive-mode.ts:4476-4513, rpc-mode.ts:745-755) therefore both wait for the handler. PiG abandoned the request at the cancel and went on (RPC tool_call timer3: Pi 3020 ms, PiG 20 ms; interactive quit 2410 / 95 ms).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9c2edf72d9",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/quit_event_handlers_test.go::TestToolCallEventAwaitedAfterTheAbortEndsWhenTheExtensionProcessDies",
+        "test/extension-conformance/tool_call_abort_test.go::TestConformance_ToolCallHandlerIsAwaitedThroughTheAbort"
+      ]
+    },
+    {
       "id": "BF-9c98038",
       "title": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it",
       "symptom": "An unclosed `$$` or `\\[` display-math block no longer swallows or corrupts every Markdown table after it.",

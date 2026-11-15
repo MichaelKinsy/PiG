@@ -1403,15 +1403,8 @@ func (m *InteractiveMode) settleRunAtQuit() {
 	if settled != nil || session != nil && !session.IsIdle() {
 		m.abortRun(m.runCtx)
 	} else {
-		// No run is active. One whose goroutine has not returned yet is still joined.
-		if ended == nil {
-			return
-		}
-		select {
-		case <-ended:
-			return
-		default:
-		}
+		// No run is active: the Session is idle, which Pi's waitForIdle resolves at once (agent-session.ts:1549 isIdle; _emitAgentSettled clears _isAgentRunActive before it emits agent_settled, agent-session.ts:1139-1161). A run whose goroutine is still in its agent_settled handlers is not joined: Pi's dispose does not await them either.
+		return
 	}
 	_ = m.serveOwnerLoopUntil(func(ctx context.Context) error {
 		if err := waitForSessionIdle(ctx, settled, session); err != nil {
