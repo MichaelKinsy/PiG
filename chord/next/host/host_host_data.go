@@ -111,8 +111,8 @@ func (g *hostDataGate) turn(work func(exclusive func(section func() error) error
 	previous, done := g.queue()
 	if _, err := chordctx.Receive(ctx, previous); err != nil {
 		// Given up while waiting for its turn: the next one waits for the earlier ones still.
-		g.loop.Go(func() {
-			<-previous
+		startTask(g.loop, func() {
+			parkedOn(previous)
 			close(done)
 		})
 		return err

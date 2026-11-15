@@ -367,6 +367,9 @@ func (d *objectDocuments) Do(work func()) { d.object.host.enter(work) }
 // InSection implements documents.DocumentsOwner.
 func (d *objectDocuments) InSection() bool { return d.object.host.batch.InSection() }
 
+// Task implements documents.DocumentsOwner: an owned task of the host's loop, which its join counts (startTask).
+func (d *objectDocuments) Task(fn func()) { startTask(d.object.host.loop(), fn) }
+
 // refState is the object's state as its references show it (Pi's `state` getter).
 func (o *chordObject) refState() *RefState {
 	st := o.phase
@@ -984,12 +987,12 @@ func (o *chordObject) flushHeld() {
 	now := o.host.loop().Now()
 	records := o.jobRecordsInOrder()
 	loop := o.host.loop()
-	loop.Go(func() {
+	startTask(loop, func() {
 		var wait []func()
 		for _, each := range records {
 			wait = append(wait, func() { each.flushHeld(now) })
 		}
-		runParallel(wait)
+		runParallel(loop, wait)
 		o.host.enter(func() {
 			next := int64(math.MaxInt64)
 			for _, each := range records {
@@ -1469,7 +1472,7 @@ func (o *chordObject) takeJobs(a *attempt) {
 		} else if reloaded {
 			// Pi filters synchronously inside the call, before its first await: the task gets the runs taken now.
 			if retried := records.blockedToRetry(); len(retried) != 0 {
-				o.host.loop().Go(func() { records.retryBlocked(retried, o.ctx) })
+				startTask(o.host.loop(), func() { records.retryBlocked(retried, o.ctx) })
 			}
 		}
 	}

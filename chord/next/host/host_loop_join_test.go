@@ -69,8 +69,13 @@ func TestLoopJoinWaitsForTheTasksATaskStartsInTheSectionOfItsContinuation(t *tes
 // lendParked runs rest as what a handler does after its first park, lent the section h.enter runs: Pi's async function, whose
 // continuation after its first `await` is a microtask (a method handler, `route.resolve`).
 func lendParked(h *chordHost, rest func(ctx context.Context)) {
+	lendParkedUnder(h, context.Background(), rest)
+}
+
+// lendParkedUnder is lendParked for a handler whose context is a child of base (a test aborts it through base).
+func lendParkedUnder(h *chordHost, base context.Context, rest func(ctx context.Context)) {
 	signal := parking.New()
-	ctx := context.WithValue(context.Background(), parking.Key, signal)
+	ctx := context.WithValue(base, parking.Key, signal)
 	h.enter(func() {
 		h.loop().Lend(signal, func(bool) {
 			parking.Park(ctx)
@@ -107,6 +112,57 @@ func TestLoopJoinDoesNotWaitForAHandlerParkedOnAGateAndWaitsForItsRestOnceTheGat
 	if !rest.Load() {
 		t.Fatal("the join returned before the handler, whose gate was released just before, went on")
 	}
+}
+
+func TestLoopJoinDoesNotWaitForAHandlerInUntilAbortedAndWaitsForItsRestOnceItIsAborted(t *testing.T) {
+	h := joinHost(t)
+	base, abort := context.WithCancel(context.Background())
+	var rest atomic.Bool
+	lendParkedUnder(h, base, func(ctx context.Context) {
+		UntilAborted(ctx)
+		rest.Store(true)
+	})
+	// Waiting for its abort is what the handler does until then: Pi's pending `await untilAborted(ctx)`, which `delivered()` does
+	// not wait for.
+	loopseam.Quiesce(h.loop())
+	if rest.Load() {
+		t.Fatal("the handler went on before its abort")
+	}
+	abort()
+	loopseam.Quiesce(h.loop())
+	if !rest.Load() {
+		t.Fatal("the join returned before the handler, whose context was aborted just before, went on")
+	}
+}
+
+func TestLoopJoinDoesNotWaitForAHandlerInSleepAndItResumesAtTheDeadlineAndAtAnAbort(t *testing.T) {
+	h := joinHost(t)
+	t.Run("deadline", func(t *testing.T) {
+		slept := make(chan error, 1)
+		lendParked(h, func(ctx context.Context) { slept <- sleepOn(h.loop(), 20*time.Millisecond, ctx) })
+		// The handler is counted until it parks in the sleep; the timer's section then wakes it, and the test waits for that.
+		loopseam.Quiesce(h.loop())
+		if err := <-slept; err != nil {
+			t.Fatalf("a sleep that reached its deadline returned %v", err)
+		}
+	})
+	t.Run("abort", func(t *testing.T) {
+		base, abort := context.WithCancel(context.Background())
+		slept := make(chan error, 1)
+		lendParkedUnder(h, base, func(ctx context.Context) { slept <- sleepOn(h.loop(), time.Hour, ctx) })
+		// An hour is a wait for something the loop does not run: the join does not wait for it.
+		loopseam.Quiesce(h.loop())
+		select {
+		case err := <-slept:
+			t.Fatalf("a sleep of an hour returned %v before its abort", err)
+		default:
+		}
+		abort()
+		loopseam.Quiesce(h.loop())
+		if err := <-slept; !errors.Is(err, context.Canceled) {
+			t.Fatalf("a sleep aborted returned %v, want its abort's cause", err)
+		}
+	})
 }
 
 func TestLoopJoinDoesNotWaitForATaskParkedOnAGateAndWaitsForItsContinuationOnceTheWaitIsOver(t *testing.T) {

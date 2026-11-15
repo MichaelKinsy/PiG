@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
@@ -2276,15 +2277,24 @@ func awaitTask[T any](host *chordHost, work func() (T, error)) *keyedPromise[T] 
 	return promise
 }
 
-// runParallel runs every work at once and returns when all returned (`Promise.all` of promises that never reject).
-func runParallel(works []func()) {
+// runParallel runs every work at once and returns when all returned (`Promise.all` of promises that never reject). Each work
+// is a task of the loop of its own (a test's `delivered()` waits for it as for any), and the caller, a task as well, waits parked
+// for them.
+func runParallel(loop sectionLoop, works []func()) {
 	var wait sync.WaitGroup
+	var running atomic.Int64
+	wait.Add(len(works))
+	running.Store(int64(len(works)))
 	for _, work := range works {
-		wait.Go(func() {
+		goTask(loop, work, func() {
+			defer wait.Done()
+			defer running.Add(-1)
 			work()
 		})
 	}
+	resume := parking.Idle(func() bool { return running.Load() == 0 })
 	wait.Wait()
+	resume()
 }
 
 // joinArrow joins labels with ` → ` (a dependency cycle's message).

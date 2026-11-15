@@ -1169,8 +1169,8 @@ func (b *binding) follow(watch *chord.Watch[delta.JsonValue]) (*chord.Watch[delt
 		return nil, b.state.ended.Error
 	}
 	b.watches = append(b.watches, watch)
-	b.loop.Go(func() {
-		<-watch.Closed()
+	startTask(b.loop, func() {
+		parkedOn(watch.Closed())
 		b.loop.Run(func() {
 			if at := slices.Index(b.watches, watch); at >= 0 {
 				b.watches = slices.Delete(b.watches, at, at+1)
@@ -1203,7 +1203,7 @@ func (b *binding) pinKeys(ctx context.Context) *keyedPromise[struct{}] {
 	}
 	done := newKeyedPromise[struct{}](b.loop)
 	ats := slices.Clone(b.ats)
-	b.loop.Go(func() {
+	startTask(b.loop, func() {
 		var err error
 		for _, at := range ats {
 			if err = at.pin(b, ctx); err != nil {
@@ -1610,8 +1610,8 @@ func (k *ReferenceKeyed) Watch(ctx context.Context, raw any) (chord.WatchHandle[
 			err = openErr
 			return
 		}
-		b.loop.Go(func() {
-			<-opened.Closed()
+		startTask(b.loop, func() {
+			parkedOn(opened.Closed())
 			b.loop.Run(held.release)
 		})
 		watch, err = b.follow(opened)

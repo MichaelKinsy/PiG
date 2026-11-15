@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/loopseam"
 )
@@ -96,6 +97,14 @@ func goTask(loop sectionLoop, work any, fn func()) {
 	}
 	loop.Go(fn)
 }
+
+// startTask is Pi's unawaited async call (`void work()`, a `.then` that nobody awaits): fn runs as a task of the loop that a
+// test's `delivered()` waits for until it ends or waits parked (parkedOn), as Pi's chain of microtasks to its next wait for
+// something outside the host. The repository's rule is the same: an unawaited promise is an owned task, joined at close.
+func startTask(loop sectionLoop, fn func()) { goTask(loop, fn, fn) }
+
+// parkedOn waits for done to close, as a task that waits parked: the join does not wait for it until the wait is over.
+func parkedOn(done <-chan struct{}) { _, _ = chordctx.Receive(chordctx.Background(), done) }
 
 // taskCounter is the Loop as the parking package's Counter: the methods are not the Loop's own API.
 type taskCounter Loop

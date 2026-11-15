@@ -288,18 +288,16 @@ func (set *waiters) wait(ctx context.Context) (AnyOutcome, error) {
 		return immediate.outcome, immediate.err
 	}
 	parking.Park(ctx)
+	if settled, err := parking.Recv(ctx, each.settled); err == nil {
+		return settled.outcome, settled.err
+	}
+	set.loop.Run(func() { delete(set.waiting, each) })
 	select {
 	case settled := <-each.settled:
 		return settled.outcome, settled.err
-	case <-ctx.Done():
-		set.loop.Run(func() { delete(set.waiting, each) })
-		select {
-		case settled := <-each.settled:
-			return settled.outcome, settled.err
-		default:
-		}
-		return AnyOutcome{}, context.Cause(ctx)
+	default:
 	}
+	return AnyOutcome{}, context.Cause(ctx)
 }
 
 // join is one wait for an invocation to be over.
@@ -352,16 +350,14 @@ func (set *joins) wait(ctx context.Context) error {
 		return nil
 	}
 	parking.Park(ctx)
+	if _, err := parking.Recv(ctx, each.over); err == nil {
+		return nil
+	}
+	set.loop.Run(func() { delete(set.waiting, each) })
 	select {
 	case <-each.over:
 		return nil
-	case <-ctx.Done():
-		set.loop.Run(func() { delete(set.waiting, each) })
-		select {
-		case <-each.over:
-			return nil
-		default:
-		}
-		return context.Cause(ctx)
+	default:
 	}
+	return context.Cause(ctx)
 }

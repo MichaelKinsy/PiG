@@ -55,7 +55,7 @@ func (r *parkedCallResult) settle(value any, err error) {
 // that waits parks (its call's section goes on) before it blocks.
 func (r *parkedCallResult) wait(ctx context.Context) (any, error) {
 	parking.Park(ctx)
-	<-r.done
+	parkedOn(r.done)
 	return r.value, r.err
 }
 

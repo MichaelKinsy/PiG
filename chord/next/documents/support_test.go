@@ -227,6 +227,10 @@ func (o *object) Metrics() *chordtelemetry.Instruments {
 func (o *object) Do(work func())  { o.loop.do(work) }
 func (o *object) InSection() bool { return o.loop.holder.Load() == goroutineID() }
 func (o *object) Now() int64      { return o.clock.Now() }
+
+// Task runs fn on a goroutine of its own: the harness has no join, its tests wait for what the task does.
+func (o *object) Task(fn func()) { go fn() }
+
 func (o *object) AfterFunc(d time.Duration, job func()) func() {
 	return o.clock.AfterFunc(d, func() { job() })
 }

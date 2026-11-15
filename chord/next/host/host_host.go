@@ -1058,10 +1058,8 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 	}
 	defer finish()
 	parking.Park(ctx)
-	select {
-	case <-h.publication:
-	case <-waiting.context.Done():
-		return nil, context.Cause(waiting.context)
+	if _, err := parking.Recv(waiting.context, h.publication); err != nil {
+		return nil, err
 	}
 	var value *registries.RegistryValueSource
 	h.enter(func() {
@@ -2038,9 +2036,9 @@ func (h *chordHost) runClose() *closePromise {
 	for _, ending := range h.endings {
 		pending = append(pending, ending)
 	}
-	h.events.Go(func() {
+	startTask(h.events, func() {
 		for _, ending := range pending {
-			<-ending.done
+			parkedOn(ending.done)
 		}
 		var failures []*closeFailed
 		for _, tearDown := range teardowns {
@@ -2213,12 +2211,19 @@ func untilUsable(loop sectionLoop, value *registries.RegistryValueSource, usable
 			return context.Cause(ctx)
 		}
 		parking.Park(ctx)
+		resume := parking.Idle(func() bool { return len(wake.changed) > 0 || len(wake.closed) > 0 || ctx.Err() != nil })
+		var result error
+		finished := true
 		select {
 		case <-wake.changed:
-		case err := <-wake.closed:
-			return err
+			finished = false
+		case result = <-wake.closed:
 		case <-ctx.Done():
-			return context.Cause(ctx)
+			result = context.Cause(ctx)
+		}
+		resume()
+		if finished {
+			return result
 		}
 	}
 }
@@ -2308,7 +2313,7 @@ func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options Relo
 	defer h.enter(func() { mine.resolve(struct{}{}) })
 	if previous != nil {
 		parking.Park(ctx)
-		<-previous.done
+		parkedOn(previous.done)
 	}
 	var plan *reloadPlan
 	var started []startedFate
@@ -2740,9 +2745,7 @@ func (h *chordHost) reloadReport(started []startedFate, committed CommittedReloa
 			objects = append(objects, ReloadedObject{Object: fate.object, Kind: fate.kind})
 			continue
 		}
-		select {
-		case <-fate.checked.done:
-		case <-ctx.Done():
+		if _, err := parking.Recv(ctx, fate.checked.done); err != nil {
 			return nil, committedAborted(committed)
 		}
 		cause := fate.checked.value
