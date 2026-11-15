@@ -137,6 +137,12 @@ func nqRefused(t *testing.T, declare func(self StoreSelf)) (attempt, staged stri
 	return attempt, staged
 }
 
+// nqListed is a named query of this object, as a list or a live query reads it.
+func nqListed(self StoreSelf) contracts.NamedQuery[delta.JsonValue, delta.JsonValue] {
+	named := self.Queries(self.Table(nqPlain), QueriesOptions{}, map[string]QueryBuilder{"all": {Args: contracts.Obj(), Build: func(delta.JsonValue) *store.Query { return store.NewQuery(nqPlain) }}})
+	return named["all"]
+}
+
 func TestNamedQueryStagingRefusesTheQueriesAnAttemptRefusesTheNamedBuildersAndTheTable(t *testing.T) {
 	for _, each := range []struct {
 		what    string
@@ -167,6 +173,19 @@ func TestNamedQueryStagingRefusesTheQueriesAnAttemptRefusesTheNamedBuildersAndTh
 			named := self.Queries(self.Table(nqPlain), QueriesOptions{}, map[string]QueryBuilder{"all": {Args: contracts.Obj(), Build: func(delta.JsonValue) *store.Query { return store.NewQuery(nqPlain) }}})
 			self.LiveQuery(named["all"], jsonObject(), 0)
 		}, "self.liveQuery: { first: n } is required"},
+		// Pi's staging case 1, the two arms of `self.list`: the list has a name, and one list per name.
+		{"a list without a name", func(self StoreSelf) {
+			self.List("", []ListSource{{Query: nqListed(self), Args: jsonObject()}}, ListOptions{First: 2})
+		}, "a list has a name"},
+		{"a second list of a name", func(self StoreSelf) {
+			sources := []ListSource{{Query: nqListed(self), Args: jsonObject()}}
+			self.List("a", sources, ListOptions{First: 2})
+			self.List("a", sources, ListOptions{First: 2})
+		}, `list "a" is declared twice`},
+		// Pi's staging case 2, its arm of `self.list` (a table cannot be given in Go: a foreign query stands for it).
+		{"a list of what is no named query of this object", func(self StoreSelf) {
+			self.List("l", []ListSource{{Query: nqForeign{}, Args: jsonObject()}}, ListOptions{First: 1})
+		}, `self.list "l" reads a named query`},
 		// Mine: Pi's namedBuilders check has no case of its own.
 		{"a builder that is none", func(self StoreSelf) {
 			self.Queries(self.Table(nqPlain), QueriesOptions{}, map[string]QueryBuilder{"all": {}})
