@@ -5,13 +5,6 @@ import "github.com/MichaelKinsy/PiG/chord/next/internal/storeseam"
 func init() {
 	storeseam.QueueTail = func(chordStore any) <-chan struct{} { return chordStore.(*ChordStore).queueTail() }
 	storeseam.ReadTasks = func(chordStore any) <-chan struct{} { return chordStore.(*ChordStore).Reads.idleChan() }
-	storeseam.FailRuns = func(read any, fail func() error) {
-		if fail == nil {
-			read.(*RegisteredRead).failRuns.Store(nil)
-			return
-		}
-		read.(*RegisteredRead).failRuns.Store(&fail)
-	}
 	storeseam.WrapAdopt = func(chordStore any, wrap func(adopt storeseam.Adopt) storeseam.Adopt) {
 		store := chordStore.(*ChordStore)
 		store.mu.Lock()

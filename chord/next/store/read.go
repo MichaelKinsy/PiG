@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/sqlite"
@@ -64,8 +63,6 @@ type RegisteredRead struct {
 	What ReadKind
 	Sink ReadSink
 	mu   sync.Mutex
-	// failRuns, when set, is asked at every run in a step whether it fails.
-	failRuns atomic.Pointer[func() error]
 	// adopted is the last adopted run; nil while loading or failed: such a read is never skipped.
 	adopted *ReadRun
 	// tentative is a step's run not adopted yet, with the backend transaction it ran in (a rolled-back group's is stale).
@@ -111,11 +108,6 @@ func (read *RegisteredRead) Latest(transaction sqlite.SqliteExecutor) *ReadRun {
 
 // Run runs the read inside a commit step, after its writes: the run, or the failure; it never fails.
 func (read *RegisteredRead) Run(step ReadExecutor, ctx context.Context) ReadRun {
-	if fail := read.failRuns.Load(); fail != nil {
-		if err := (*fail)(); err != nil {
-			return ReadRun{Kind: "failed", Err: err}
-		}
-	}
 	run, err := read.Fetch(step, ctx)
 	if err != nil {
 		return ReadRun{Kind: "failed", Err: err}
