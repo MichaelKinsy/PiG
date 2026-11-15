@@ -305,8 +305,8 @@ func subtestName(name string) string {
 }
 
 // typeScriptCase resolves a case title of a vitest or node:test file: the title is the string-literal first argument of an it,
-// test or describe call (with any modifier, such as it.each(...) or it.skipIf(...)), and at least one such call is not
-// it.skip or it.todo.
+// test or describe call (with any modifier, such as it.each(...) or it.skipIf(...)), and at least one such call is neither
+// skipped (it.skip) nor declared pending.
 func typeScriptCase(file, text, title string) (class, reason string) {
 	quoted := regexp.QuoteMeta(title)
 	call := regexp.MustCompile(`(?m)(?:^|[\s;{(])(it|test|describe)((?:\.[A-Za-z]+(?:\([^()\n]*\))?)*)\s*\(\s*` +
