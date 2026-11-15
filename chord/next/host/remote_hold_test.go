@@ -15,6 +15,7 @@ import (
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -850,8 +851,8 @@ func rhServeTally(closing <-chan struct{}) func(FacetHost) error {
 			return err
 		}
 		return host.Serve(rhFresh, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
-			self.Open(func(context.Context) (any, error) { return nil, nil }, func(any, NativeCloseReason, context.Context) error {
-				<-closing
+			self.Open(func(context.Context) (any, error) { return nil, nil }, func(_ any, _ NativeCloseReason, ctx context.Context) error {
+				_, _ = chordctx.Receive(context.WithoutCancel(ctx), closing)
 				return nil
 			})
 			return serve(self), nil

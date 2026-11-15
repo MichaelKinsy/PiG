@@ -12,6 +12,7 @@ import (
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -654,9 +655,9 @@ func TestProviderRaces(t *testing.T) {
 					self.Open(func(context.Context) (any, error) {
 						events.add("open")
 						return nil, nil
-					}, func(any, NativeCloseReason, context.Context) error {
+					}, func(_ any, _ NativeCloseReason, ctx context.Context) error {
 						events.add("closing")
-						<-finish
+						_, _ = chordctx.Receive(context.WithoutCancel(ctx), finish)
 						events.add("closed")
 						return nil
 					})

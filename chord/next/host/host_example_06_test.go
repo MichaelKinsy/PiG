@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -94,8 +95,8 @@ func TestExample06Natives(t *testing.T) {
 				return errors.New("socket close failed")
 			})
 			closeTimeout := 50 * time.Millisecond
-			self.Open(func(context.Context) (any, error) { return "worker", nil }, func(any, NativeCloseReason, context.Context) error {
-				<-hungClose // never settles
+			self.Open(func(context.Context) (any, error) { return "worker", nil }, func(_ any, _ NativeCloseReason, ctx context.Context) error {
+				_, _ = chordctx.Receive(context.WithoutCancel(ctx), hungClose) // never settles
 				return nil
 			}, NativeOptions{CloseTimeout: &closeTimeout})
 			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": exConstant(float64(1))}, nil), nil

@@ -935,7 +935,10 @@ func TestHostCloseEndsEveryObjectAtOnceCallsFailReleasedBeforeAnyCloseRan(t *tes
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(hostCounter, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			self.Open(func(context.Context) (any, error) { return nil, nil },
-				func(any, NativeCloseReason, context.Context) error { <-closing; return nil })
+				func(_ any, _ NativeCloseReason, ctx context.Context) error {
+					_, _ = chordctx.Receive(context.WithoutCancel(ctx), closing)
+					return nil
+				})
 			implementation := impl("count", constant(float64(1)))
 			implementation.Members.Methods = map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }}
 			return implementation, nil
@@ -982,7 +985,10 @@ func TestHostCloseJoinsAnEndingRunningInTheBackground(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(hostSvc, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			self.Open(func(context.Context) (any, error) { return nil, nil },
-				func(any, NativeCloseReason, context.Context) error { <-closing; return nil })
+				func(_ any, _ NativeCloseReason, ctx context.Context) error {
+					_, _ = chordctx.Receive(context.WithoutCancel(ctx), closing)
+					return nil
+				})
 			return impl("n", constant(params.Value("id"))), nil
 		}, ServeOptions{})
 	}, loadedOptions{})
@@ -1080,9 +1086,9 @@ func TestHostCloseTearsDownWhatAFailedDependentHoldsWithCloseAndWaitsForIt(t *te
 	var closes seenList[string]
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(hostSvc, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			self.Open(func(context.Context) (any, error) { return nil, nil }, func(_ any, reason NativeCloseReason, _ context.Context) error {
+			self.Open(func(context.Context) (any, error) { return nil, nil }, func(_ any, reason NativeCloseReason, ctx context.Context) error {
 				closes.add("svc " + string(reason.Kind))
-				<-closing
+				_, _ = chordctx.Receive(context.WithoutCancel(ctx), closing)
 				return nil
 			})
 			return impl("n", constant(params.Value("id"))), nil
