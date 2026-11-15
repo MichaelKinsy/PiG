@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/fsretry"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The Windows job of CI selects the packages that have a Windows-only test file: this file makes it run internal/atomicfile, whose other tests are
@@ -222,9 +223,7 @@ func TestWindowsWriteFileFollowsASymbolicLink(t *testing.T) {
 	if err := os.WriteFile(target, []byte("old"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(target, link); err != nil {
-		t.Skipf("no symbolic links here: %v", err)
-	}
+	testenv.Symlink(t, target, link)
 	if err := WriteFile(link, []byte("new"), 0o600); err != nil {
 		t.Fatal(err)
 	}
