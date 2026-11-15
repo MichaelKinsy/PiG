@@ -88,13 +88,10 @@ type path struct {
 	shared map[string]*remoteObject
 }
 
-// newPath makes a path; suspended nil is Pi's absent argument (never suspended).
-func newPath(changed func(pathEvent), suspended func() bool) *path {
-	return &path{changed: changed, suspended_: suspended}
-}
-
-// newGatedPath makes a path with a gate (Pi's third argument of `new Path`): a route with an admission gates its paths.
-func newGatedPath(changed func(pathEvent), suspended func() bool, gate pathGate) *path {
+// newPath makes a path (Pi's `new Path(changed, suspended?, gate?)`): suspended nil is Pi's absent argument (never
+// suspended), gate nil a path without a gate (the parent's, the host's unplaced one, a route without an admission: it
+// admits every holder).
+func newPath(changed func(pathEvent), suspended func() bool, gate pathGate) *path {
 	return &path{changed: changed, suspended_: suspended, gate: gate}
 }
 
