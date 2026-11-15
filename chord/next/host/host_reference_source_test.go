@@ -1542,3 +1542,30 @@ func TestReferenceSourceUnseenOnceSeenStartsAtTheMembersLastValueAndStaysSeen(t 
 		t.Fatalf("start after seen = %+v, want failed with last 7 still", start)
 	}
 }
+
+// Own test, mirrors reference-source.ts:235 (`deny`: `state.error === error`): a denial the source is already failed with is not
+// delivered again, a wrapping error or an equal one is another denial and is.
+func TestReferenceSourceADenialIsComparedByIdentityAsPiDoes(t *testing.T) {
+	h := newMemberHarness(t)
+	doc := newMemberDoc(h.batch, memberCount(1))
+	count, _ := h.counting(t, doc, -1)
+	m := h.member(count)
+	calls := nexttest.ChangesOf(h.watch(t, m))
+	init := data.ChordErrorInit{Code: data.CodeForbidden, Reason: data.ReasonRevoked, Message: "no access"}
+	denial := data.NewChordError(init, nil)
+	h.within(t, func() { m.deny(denial, memberBackground) })
+	h.within(t, func() { m.deny(denial, memberBackground) })
+	h.delivered()
+	expectEqual(t, "frames after the same denial twice", nexttest.ValuesOf(calls.Items()), []any{nexttest.FailedValue{Failed: "no access"}})
+	h.within(t, func() { m.deny(data.NewChordError(init, denial), memberBackground) })
+	h.within(t, func() { m.deny(data.NewChordError(init, nil), memberBackground) })
+	h.delivered()
+	expectEqual(t, "frames after a wrapping and an equal denial", nexttest.ValuesOf(calls.Items()), []any{
+		nexttest.FailedValue{Failed: "no access"}, nexttest.FailedValue{Failed: "no access"}, nexttest.FailedValue{Failed: "no access"},
+	})
+	// And the other way round: the source failed with the wrapping error, then denied with what it wraps.
+	h.within(t, func() { m.deny(data.NewChordError(init, denial), memberBackground) })
+	h.within(t, func() { m.deny(denial, memberBackground) })
+	h.delivered()
+	expectEqual(t, "frames after the wrapped denial", len(nexttest.ValuesOf(calls.Items())), 5)
+}
