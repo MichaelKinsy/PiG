@@ -20,3 +20,11 @@ type Adopt = func(seq int64, ids []int64, rows int) error
 // included), and may tell a test so; the function it returns runs where the fence's adoption did, between the adoptions of one
 // group's commits. A nil wrap restores the store's own.
 var WrapAdopt func(store any, wrap func(adopt Adopt) Adopt)
+
+// FailRuns makes the runs of a `*store.RegisteredRead` (given as any) fail from then on: each time the read runs in a commit's
+// step, fail is called, and a non-nil error is the run's failure (a failed run, as a read that cannot run gives); a nil error
+// lets the read run for real. A nil fail restores the read's own runs. What Pi's tests get by assigning `read.run`
+// (test/host/tiling.test.ts, "a failed page ..."): a page of a list's query fails while another page of it runs well, which
+// no builder or decoder can make happen.
+var FailRuns func(read any, fail func() error)
+
