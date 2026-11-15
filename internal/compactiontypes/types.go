@@ -61,4 +61,7 @@ type CompactionPreparation struct {
 	PreviousSummary     string               `json:"previousSummary,omitempty"`
 	FileOps             FileOperations       `json:"fileOps"`
 	Settings            CompactionSettings   `json:"settings"`
+	// TokenRatio is the provider's real token count over the four-characters-per-token estimate, measured on the session's latest assistant usage; 0 when
+	// the session has none. It sizes the summary requests (pig divergence D167) and is not part of the extension event.
+	TokenRatio float64 `json:"-"`
 }
