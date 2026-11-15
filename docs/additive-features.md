@@ -2375,3 +2375,37 @@ Remove when: the Go runtime stops allocating the profile table and touching its 
 
 Approval: owner, 2026-11-12T20:58Z, through the maintainer ("D627 APPROVED"), after being told that the runtime samples heap allocations in every normal run, that nothing in PiG reads the samples unless a profile is asked for, that D627 turns the sampling off by default, and that a user who wants a heap profile must ask for it.
 SCRUTINIZED:approved
+
+## D653 A fused Piglet member's CLI hook owns the command line, a print run's output and exit status, and the default retry config
+
+Summary: A Piglet Binary with a fused Go member can run code before PiG parses its arguments, to serve the invocation or rewrite it, to own a print run's output and exit status, and to set the retry defaults.
+
+Audience: author
+
+Stock disposition: inert capability. Stock PiG links no member, so no hook is registered, `clihook.Registered` returns nil and every path below it is the path of Pi. A fused member selects the seam by calling `clihook.Register` from its `init`; nothing else turns it on.
+
+What: the package `github.com/MichaelKinsy/PiG/extensions/sdk/clihook` exports `Register`, the types `Hook`, `Env`, `Result` and `RetryPolicy`, and `Stdout` and `SetExitCode` for the member's extension. `Registered`, `SetStdout` and `ExitCode` are PiG's own wiring and are documented as such: `coding/cli` is another package, so they cannot be unexported, and no member calls them. A second `Register` replaces the first, and `Register(nil)` removes the hook.
+
+`Main` calls the hook once, after the Piglet Binary is verified and its strip is recorded, and before any command dispatch (the auth, login, package and `--version` or `--help` handling all come after it). The hook receives `Env`: the arguments (`os.Args[1:]`), stdin, stdout and stderr, `Getenv`, `Chdir`, and whether stdin and stdout are terminals. It returns `Result`:
+
+- `Handled`: the hook served the invocation (its own help, version or subcommands, a protocol on stdio). PiG parses nothing and exits through `exitProcess` with `Exit`, so the usual shutdown runs.
+- `Args`: what PiG parses when the hook did not serve the invocation. A nil `Args` is an empty command line, not "unchanged": a hook that wants no rewrite returns `Env.Args`.
+- `Retry`: the retry defaults of a session run in place of the built-in 3 retries, 2000 ms first delay and 60000 ms cap (`RetryPolicy`; the retry stays enabled). A `retry` member of settings.json still overrides each field it names, as it overrides the built-in value.
+- `OwnPrintOutput`: the run is a print run whose stdout the member's extension writes itself. PiG's print mode then hands the member the raw stdout writer (`Stdout`, nil in every other run), writes nothing to stdout in text or JSON mode, and does not write the stderr line that a failed text run ends with (the error message of the last assistant message), because the member words that itself. The run's status stays PiG's: 1 for a failed run, whatever the member recorded.
+- `SetExitCode`: the status the process exits with after a print run that succeeded in PiG's terms, when it is not 0. A recorded 0 changes nothing.
+
+Scope: Go only, in the host. The seam is not on the extension wire (`coding/extension/host/subprocess/protocol.go` is untouched) and not on `sdk.Context`: a fused member runs in the host's process before any extension process exists, like the D91 frontend member. So the rule that a capability lands in every SDK does not apply, and no conformance row exists. The owner is asked to confirm this reading once.
+
+Pi source: none. Pi's `main.ts` parses `process.argv` itself and has no member that may serve, rewrite or replace the command line, own a print run's output or status, or set the retry defaults. The built-in defaults the hook replaces stay as `builtinRetryConfig` records them (`settings-manager.ts:21-22`).
+
+Why a Piglet cannot supply it itself: the hook needs `os.Args` before PiG parses them, and a fused extension runs after parsing; it may not write `os.Stdout` (PiG's print mode takes it over and sends stray writes to stderr), call `os.Exit` or `os.Chdir`, and PiG's print mode decides the status and the stderr line of a failed run. A Piglet that ships its own command line (its own flags, help and version, a protocol on stdio, its own output format and status codes) can do it in no other place.
+
+Stock behavior: with no hook registered, `Main`, `runPrintModeIn` and `GetRetrySettings` do what they did: the same arguments, the same stdout, the same stderr line, the same status, and the retry defaults 3 / 2000 / 60000. `TestClihookOnTheProductionPath` compares a run through a hook that changes nothing with a run without one, for a success and a failure in text and JSON mode; the parity families `print` and `json` pass against the Pi oracle.
+
+Call-site markers: `coding/cli/main.go` (the hook call and the retry defaults it sets in `Main`, the `clihook.ExitCode` read after a print run), `coding/cli/print_mode.go` (`runPrintModeIn`: the stdout handed to the member, and the stderr of the result line), `internal/codingagent/settings.go` (`GetRetrySettings`, `SetDefaultRetryConfig`, `DefaultRetryConfig`) and `extensions/sdk/clihook/clihook.go` (the contract).
+
+Locked by: `TestClihookOnTheProductionPath` (`coding/cli/clihook_test.go`: a child process that registered the hook runs the real command line; rows for the baseline, a pass-through hook, serving the invocation, rewriting the command line, owning the print output in text and JSON mode, the exit status, a failed run's stderr line and the retry policy), `TestRegisteredIsNilWithoutAHook`, `TestRegisterReplacesThePreviousHook`, `TestHookSeesTheEnvAndReturnsItsResult`, `TestStdoutIsNilUntilPrintModeSetsIt`, `TestExitCodeRecordsTheLastStatus` and `TestStateIsSafeAcrossGoroutines` (`extensions/sdk/clihook`), `TestRetrySettingsWithoutASetterAreUpstreamsDefaults` and `TestDefaultRetryConfigIsReplaceable` (`internal/codingagent`).
+
+Remove when: Pi accepts a hook of its own for the command line, a print run's output and status, and the retry defaults, or no Piglet fuses a member that registers one. Then the package, the three call sites, `SetDefaultRetryConfig` and this record go.
+
+Approval: pending. Whether the seam rides 0.8.0 is the owner's decision (verdict `handoffs/0.8.0/evidence/COPIG-FIVE-VERDICT.md`, commits 2 and 3).

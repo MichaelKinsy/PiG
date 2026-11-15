@@ -820,6 +820,32 @@ Conformance: `TestConformance_UIViewMounts`, `TestConformance_UIViewExtras`, `Te
 `TestConformance_UIViewBindings` run the same probes in every SDK against the host, and `docs/additive-features.md` D614 lists the
 records.
 
+## Own the command line of a Piglet Binary (D653)
+
+A Piglet Binary fuses Go members into the `pig` command. A fused member that ships its own command line (its own flags, help and version, subcommands, a protocol on stdio, its own output format and status codes) registers a hook from its `init`. PiG calls it once, before it parses a word of the arguments:
+
+```go
+import "github.com/MichaelKinsy/PiG/extensions/sdk/clihook"
+
+func init() {
+	clihook.Register(func(env clihook.Env) clihook.Result {
+		if len(env.Args) > 0 && env.Args[0] == "doctor" {
+			fmt.Fprintln(env.Stdout, "all good")
+			return clihook.Result{Handled: true, Exit: 0}
+		}
+		return clihook.Result{Args: env.Args}
+	})
+}
+```
+
+- `Handled` serves the invocation: PiG parses nothing and exits with `Exit`.
+- `Args` is what PiG parses otherwise. A nil `Args` is an empty command line, so return `env.Args` to leave it as it is.
+- `Retry` replaces the built-in retry defaults of 3 retries, a 2000 ms first delay and a 60000 ms cap. A `retry` member of settings.json still overrides each field it names.
+- `OwnPrintOutput` says the run is a print run whose output your extension writes. PiG then writes nothing to stdout and leaves the stderr line of a failed run to you. Write the output on `clihook.Stdout()` (nil in every other run) from an extension handler such as `agent_end`.
+- `clihook.SetExitCode(n)` sets the status of a print run that succeeded in PiG's terms. A failed run exits with 1, and a recorded 0 changes nothing.
+
+A second `Register` replaces the first, and `Register(nil)` removes the hook. `Registered`, `SetStdout` and `ExitCode` are PiG's own wiring: do not call them. The hook is Go only and host-side; it is not part of the extension wire, so Node, Python, Rust and Lisp extensions have no counterpart. Stock PiG registers none, so a build without a member behaves as before. `docs/additive-features.md` D653 is the record.
+
 ## Adding a new extension API surface
 
 1. Read upstream Pi behavior in Pi's `packages/coding-agent/docs/extensions.md` and the upstream source under `.upstream/current/`.
