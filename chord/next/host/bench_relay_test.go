@@ -839,7 +839,7 @@ func runThrottled(b *testing.B, relayed bool, pause relayPause, throttle *thrott
 		settle()
 	}
 	b.ReportAllocs()
-	if b.Loop() {
+	for b.Loop() {
 		for range 2000 / relayStep {
 			step(true, false)
 		}
@@ -936,7 +936,7 @@ func BenchmarkRelayCalls(b *testing.B) {
 		b.ReportMetric(float64(len(alone)), "calls")
 	})
 	b.Run("tab B while tab A has 10,000 calls in flight or queued; tab A until the last result", func(b *testing.B) {
-		if b.Loop() {
+		for b.Loop() {
 			var done sync.WaitGroup
 			finished := make(chan struct{})
 			start := time.Now()
