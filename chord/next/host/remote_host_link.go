@@ -35,6 +35,8 @@ type hostLinkOptions struct {
 	trusted bool
 	codec   link.Codec
 	limits  link.Limits
+	// opened is a route's `opened` (`RouteOptions.resolve`): the peer's incarnation once its `hello` arrived.
+	opened func(incarnation string)
 }
 
 // inflatePart is a deflated part an owner admitted, with its decoded limit.
@@ -67,6 +69,8 @@ type hostLink struct {
 	// only from relays").
 	providers orderedTable[int, *providerSide]
 	channel   *link.Channel
+	// opened is told the peer's incarnation first thing when its `hello` arrived; nil: none.
+	opened func(incarnation string)
 	// closing is cancelled when the link closes: stops its asynchronous inflates at once.
 	closing       context.Context
 	closingCancel func(cause error)
@@ -78,7 +82,7 @@ var _ link.ChannelHandler = (*hostLink)(nil)
 func newHostLink(host *chordHost, made link.Link, options hostLinkOptions, ctx context.Context) *hostLink {
 	l := &hostLink{
 		host: host, role: options.role, principal: options.principal, trusted: options.trusted, limits: options.limits,
-		context: ctx,
+		context: ctx, opened: options.opened,
 	}
 	if !options.trusted {
 		l.calls = host.callWindow
@@ -164,6 +168,10 @@ func (l *hostLink) tick(now, paused int64, ping, close time.Duration) {
 // Opened implements link.ChannelHandler: the peer's `hello` arrived.
 func (l *hostLink) Opened() {
 	l.host.loop().Run(func() {
+		// First: whoever asked knows the peer before anything else it sent is handled, and before this host sends (host-link.ts `opened`).
+		if l.opened != nil {
+			l.opened(l.channel.Peer())
+		}
 		l.consumer.opened(l.channel.PeerCalls())
 		l.host.linkOpened(l)
 	})

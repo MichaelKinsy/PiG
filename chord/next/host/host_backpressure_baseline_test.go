@@ -20,7 +20,7 @@ func bpList(name, fallback string) []int {
 		text = fallback
 	}
 	var out []int
-	for _, each := range strings.Split(text, ",") {
+	for each := range strings.SplitSeq(text, ",") {
 		n, err := strconv.Atoi(strings.TrimSpace(each))
 		if err == nil {
 			out = append(out, n)
@@ -59,9 +59,7 @@ func bpRun(t *testing.T, n, ids int) {
 		peakTasks, peakParked, peakG, peakHeap int
 		sample                                 = []metrics.Sample{{Name: "/memory/classes/heap/objects:bytes"}}
 	)
-	done.Add(1)
-	go func() {
-		defer done.Done()
+	done.Go(func() {
 		for {
 			select {
 			case <-stop:
@@ -77,7 +75,7 @@ func bpRun(t *testing.T, n, ids int) {
 			peakTasks, peakParked, peakG, peakHeap = max(peakTasks, tasks), max(peakParked, parked), max(peakG, g), max(peakHeap, heap)
 			s.Peer.discard()
 		}
-	}()
+	})
 	var before, after runtime.MemStats
 	runtime.ReadMemStats(&before)
 	started := time.Now()

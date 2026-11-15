@@ -1408,11 +1408,13 @@ type resolved struct {
 	Trusted   bool
 	Codec     link.Codec
 	Limits    link.PartLimits
+	// Opened is `resolve`'s `opened`: told the peer's incarnation at the handshake.
+	Opened func(incarnation string)
 }
 
 // link is the ResolvedLink of r: Limits nil when none are set.
 func (r resolved) link() ResolvedLink {
-	resolvedLink := ResolvedLink{Link: r.Link, Principal: r.Principal, Trusted: r.Trusted, Codec: r.Codec}
+	resolvedLink := ResolvedLink{Link: r.Link, Principal: r.Principal, Trusted: r.Trusted, Codec: r.Codec, Opened: r.Opened}
 	if r.Limits.Part != nil || r.Limits.Decoded != nil {
 		limits := r.Limits
 		resolvedLink.Limits = &limits

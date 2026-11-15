@@ -281,7 +281,7 @@ func TestListTheInvariant(t *testing.T) {
 					t.Fatalf("%s: the whole order: %d rows, want %d", step, len(shown), len(expected))
 				}
 			}
-			for step := 0; step < 300; step++ {
+			for step := range 300 {
 				type call struct {
 					run     func()
 					commits bool // the call makes a commit
@@ -351,7 +351,7 @@ func TestListTheInvariant(t *testing.T) {
 				check(fmt.Sprintf("seed %d, step %d", seed, step))
 			}
 			// Loading to the end shows the whole order.
-			for page := 0; page < 200; page++ {
+			for range 200 {
 				if _, moreAfter := w.state(); !moreAfter {
 					break
 				}
@@ -498,7 +498,7 @@ func TestListPages(t *testing.T) {
 		if shown, _ := w.state(); len(shown) != 40 {
 			t.Fatalf("rows = %d, want 40", len(shown))
 		}
-		for touch := 0; touch < 400; touch++ {
+		for touch := range 400 {
 			w.touch(1+((touch*7)%40), 1000+touch)
 		}
 		if shown, _ := w.state(); len(shown) != 40 {

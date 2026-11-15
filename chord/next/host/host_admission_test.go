@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"errors"
+	"maps"
 	"slices"
 	"strings"
 	"sync"
@@ -436,9 +437,7 @@ func (s *admServer) set(mode, who string) {
 
 // reload swaps plugins and reloads the host.
 func (s *admServer) reload(next map[string]Facet) (ReloadReport, error) {
-	for name, facet := range next {
-		s.plugins[name] = facet
-	}
+	maps.Copy(s.plugins, next)
 	return s.h.Reload(s.facets(), background, ReloadOptions{})
 }
 
