@@ -257,11 +257,13 @@ func TestListTheInvariant(t *testing.T) {
 				})
 				return ids
 			}
+			lastStep := ""
 			check := func(step string) {
 				t.Helper()
 				shown, moreAfter := w.state()
 				expected := order()
 				if fmt.Sprint(shown) != fmt.Sprint(expected[:len(shown)]) {
+					t.Log(lastStep, "expected top", expected[:8])
 					for _, l := range listsOf(w.host) {
 						t.Log(l.describe())
 					}
@@ -273,8 +275,10 @@ func TestListTheInvariant(t *testing.T) {
 			}
 			for step := 0; step < 300; step++ {
 				pending := []func(){}
+				described := []string{}
 				// Go: the commits of a group start on goroutines in no fixed order, so a group never holds two writes of one
-				// id (a touch and a drop of it commute; two touches would not): the truth does not depend on their order.
+				// id, a row created in the group included (a touch of a row the group's bulk write creates runs before or after
+				// it): the truth does not depend on their order.
 				used := map[int]bool{}
 				// One commit, or a group of commits queued together.
 				commits := 1
@@ -301,15 +305,19 @@ func TestListTheInvariant(t *testing.T) {
 						clock++
 						truth[pick] = clock
 						at := clock
+						described = append(described, fmt.Sprintf("touch %d at %d", pick, at))
 						pending = append(pending, func() { w.touch(pick, at) })
 					case kind < 6:
 						id := nextID
 						nextID++
 						at := newAt()
 						truth[id] = at
+						used[id] = true // created in this group: a later pick of it would depend on the order the commits run in
+						described = append(described, fmt.Sprintf("put %d at %d", id, at))
 						pending = append(pending, func() { w.put(id, "a", at) })
 					case kind < 8 && have:
 						delete(truth, pick)
+						described = append(described, fmt.Sprintf("drop %d", pick))
 						pending = append(pending, func() { w.drop(pick) })
 					case kind == 8:
 						// A bulk write of many pages' rows at once.
@@ -319,15 +327,19 @@ func TestListTheInvariant(t *testing.T) {
 							nextID++
 							at := newAt()
 							truth[id] = at
+							used[id] = true
 							bulk = append(bulk, jsonObject("put", jsonObject("id", float64(id), "group", "a", "touched", float64(at))))
 						}
+						described = append(described, fmt.Sprintf("bulk %d..", nextID-4*first))
 						pending = append(pending, func() { mustCall(t, w.rows, "write", bulk) })
 					default:
+						described = append(described, "more")
 						pending = append(pending, w.more)
 					}
 				}
 				parallel(pending...)
 				flushed(w.host)
+				lastStep = fmt.Sprintf("step %d: %v", step, described)
 				check(fmt.Sprintf("seed %d, step %d", seed, step))
 			}
 			// Loading to the end shows the whole order.
