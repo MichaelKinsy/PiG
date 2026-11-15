@@ -84,6 +84,11 @@ var parkEvent = pitelemetry.TelemetryEventDefinition{
 	Attributes:  attributes("cause", str("`loading`, or the waiting cause's message.", true, false)),
 }
 
+var admitEvent = pitelemetry.TelemetryEventDefinition{
+	Description: "An admission's decision (slice 14): an admitted type's attempt read it, or a route's for the hold's principal.",
+	Attributes:  attributes("outcome", str("`allow` or `deny`.", true, false)),
+}
+
 var fateEvent = pitelemetry.TelemetryEventDefinition{
 	Description: "One object's fate in a reload.",
 	Attributes: attributes(
@@ -159,6 +164,7 @@ var Schema = pitelemetry.DefineTelemetrySchema(&pitelemetry.TelemetrySchemaDefin
 				"upstream.kind", str("The kind of the upstream host.", true, false),
 			),
 			EndAttributes: endAttributes("outcome", outcome("ok", "error", "aborted")),
+			Events:        map[string]pitelemetry.TelemetryEventDefinition{"chord.admit": admitEvent},
 			Status:        spanStatus,
 		},
 		"chord.hold": {
@@ -169,6 +175,7 @@ var Schema = pitelemetry.DefineTelemetrySchema(&pitelemetry.TelemetrySchemaDefin
 				"address.kind", str("The kind of the provider's host.", true, false),
 			),
 			EndAttributes: endAttributes("outcome", outcome("bound", "failed", "ended")),
+			Events:        map[string]pitelemetry.TelemetryEventDefinition{"chord.admit": admitEvent},
 			Status:        spanStatus,
 		},
 		"chord.activate": {
@@ -179,7 +186,7 @@ var Schema = pitelemetry.DefineTelemetrySchema(&pitelemetry.TelemetrySchemaDefin
 				"attempt", num("The object's attempt, from 1.", true),
 			),
 			EndAttributes: endAttributes("outcome", outcome("live", "failed", "parked", "ended")),
-			Events:        map[string]pitelemetry.TelemetryEventDefinition{"chord.park": parkEvent, "chord.retry": retryEvent},
+			Events:        map[string]pitelemetry.TelemetryEventDefinition{"chord.park": parkEvent, "chord.retry": retryEvent, "chord.admit": admitEvent},
 			Status:        spanStatus,
 		},
 		"chord.open": {
@@ -300,6 +307,9 @@ var Schema = pitelemetry.DefineTelemetrySchema(&pitelemetry.TelemetrySchemaDefin
 		"chord.store.commits":       counter("Store commits."),
 		"chord.store.statements":    counter("SQL statements of store commits."),
 		"chord.query.runs":          counter("Live query runs."),
+		"chord.query.probes":        counter("Keyed probes a commit asked before running a live query again."),
+		"chord.query.skips":         counter("Live queries a commit writing their tables did not run again."),
+		"chord.query.rows":          counter("Rows live query runs returned (output, not what the backend scanned)."),
 		"chord.cycle.visits":        counter("Objects a cycle check visited."),
 		"chord.derive.computes":     counter("Derive computations."),
 		"chord.derive.diffs":        counter("Derive diffs."),
