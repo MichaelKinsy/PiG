@@ -3,6 +3,7 @@ package store
 import (
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"weak"
 
@@ -309,6 +310,40 @@ func TestReadsRunBelongsToItsRegistration(t *testing.T) {
 		qEqual(t, shown(o.runs.last()), any([]any{int64(1)}))
 		o.query.Close()
 	})
+}
+
+// Pi open-query.ts:202-207 (`load`): `if (this.#generation !== generation) return undefined; site.batch.within(() => read.adopt(run),
+// context)`. The check and the adoption are one turn of Pi's one thread, so no commit's run can come between them. Go's
+// adoption waits for a section of the host; a check made before that wait is stale when the section is entered: a commit's
+// adoption that took the section first made the page's newer rows, and the first load's older run was adopted after them
+// (a list's page lost the rows of a gate commit: "ids = [30 40], want [10 20 30 40]"). The test's section holds the load between
+// its read and its adoption, as a busy host does, and lets a commit adopt meanwhile.
+func TestReadsLoadIsOvertakenByACommitThatAdoptsWhileItWaitsForItsSection(t *testing.T) {
+	w := newReadsWorld(t)
+	o := w.opened(t, w.notes, NewQuery(w.notes.Definition))
+	entered, release := make(chan struct{}), make(chan struct{})
+	var held atomic.Bool
+	o.batch.UseSection(func(work func()) {
+		if held.CompareAndSwap(false, true) {
+			close(entered)
+			<-release
+		}
+		work()
+	}, nil)
+	loaded := make(chan *ReadRun)
+	go func() { loaded <- o.open.Load() }()
+	<-entered
+	// The load read no rows and waits for its section. A commit puts a row and adopts its run.
+	before := o.runs.len()
+	w.put(t, w.notes, Row{"id": int64(1), "text": "t"}, o.batch)
+	qEqual(t, o.runs.len(), before+1)
+	close(release)
+	if run := <-loaded; run != nil {
+		t.Fatalf("the load adopted its older run after the commit's: %#v", shown(*run))
+	}
+	qEqual(t, o.runs.len(), before+1)
+	qEqual(t, shown(o.runs.last()), any([]any{int64(1)}))
+	o.query.Close()
 }
 
 func TestReadsIndexAndRefresh(t *testing.T) {

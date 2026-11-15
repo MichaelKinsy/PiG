@@ -305,15 +305,18 @@ func (read *OpenRead) load(ctx context.Context) *ReadRun {
 	if err != nil {
 		run = ReadRun{Kind: "failed", Err: err}
 	}
-	read.mu.Lock()
-	overtaken := read.generation != generation
-	read.mu.Unlock()
-	if overtaken {
-		return nil
-	}
+	// Pi's `if (this.#generation !== generation) return undefined; site.batch.within(...)` (open-query.ts:206-207) is one turn.
+	// Here the adoption waits for a section of the host, in which a commit's adoption of this read may have run first: the
+	// check is made in the section, atomic with the adoption, or the older run of this load would land after the commit's.
 	adopted := false
 	site.Batch.Section(func() {
 		if site.Store.Reads.isClosed() {
+			return
+		}
+		read.mu.Lock()
+		overtaken := read.generation != generation
+		read.mu.Unlock()
+		if overtaken {
 			return
 		}
 		adopted = true
