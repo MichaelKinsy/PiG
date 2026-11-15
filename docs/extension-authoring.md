@@ -642,6 +642,33 @@ Differences from Pi, each tested: a `model` the host's registry does not hold ra
 
 An extension that draws the model's thinking itself, for example in an activity tree, calls `pi.ownThinkingRuns()` (Go `ext.OwnThinkingRuns(true)`, Rust `ext.own_thinking_runs(true)`, Python `ext.own_thinking_runs()`, Lisp `(own-thinking-runs ext)`) while it loads, and rewrites the visible run to an empty string with a Markdown transformer for `assistant-thinking`. The built-in message then draws no blank rows for a run that is hidden or empty (D214). Call it again with `false` through the runtime entry point (`ctx.OwnThinkingRuns(false)`, `ctx.own_thinking_runs(False)`, `ctx-own-thinking-runs`, Node `pi.ownThinkingRuns(false)`) to give the rows back; the flag is yours alone, the host ORs it with other extensions', and it leaves with your extension. In Node the call is a void setter ordered after your earlier UI calls; elsewhere it returns once the host applied it. `ownThinkingRuns` removes the spacing only; to also hide the thinking text, pair it with a Markdown transformer that rewrites the `assistant-thinking` text to empty (`pi.registerMarkdownTransformer` in Node, `MarkdownTransformer` in Go, `markdown_transformer` in Rust and Python).
 
+## Deciding retries from a fused member (D654)
+
+A fused Go member that owns the command line (`extensions/sdk/clihook`) may also decide which failed model requests PiG retries. Set `clihook.Result.Retry` with a `Decide` function:
+
+```go
+idle := 9000
+result := clihook.Result{
+	Args: env.Args,
+	Retry: &clihook.RetryPolicy{
+		Decide: func(f clihook.RetryFailure) clihook.RetryDecision {
+			if f.Status == 429 {
+				return clihook.RetryDecision{Retry: true, DelayMs: 5000}
+			}
+			return clihook.RetryDecision{}
+		},
+		Silent: true,
+	},
+	HTTPIdleTimeoutMs: &idle,
+}
+```
+
+`Decide` runs for each failed model request of a session run and for each failed summarization request of a compaction. `RetryFailure` holds the attempt, the retry budget from `settings.json`, the error text, the HTTP status (0 when no response arrived), the lower-cased response headers and `StreamStarted`, which is true when the stream had emitted an event before it failed. A refusal ends the run with the failure. `DelayMs` replaces PiG's exponential delay. Without `Decide`, PiG retries by Pi's rule, and the numeric fields of the policy only set defaults that `settings.json` overrides.
+
+`Silent` removes the interactive retry status line and the final "Retry failed after ..." line, for a member that renders its own. Escape still cancels a retry delay. `HTTPIdleTimeoutMs` replaces the default HTTP idle time-out (300 s) when `settings.json` names none.
+
+PiG records a failed request's status and headers only when a decider is installed. A request made without one allocates nothing extra, and the failure response is never written to a session file, to RPC or to JSON mode.
+
 ## Plugin UI mounts (D614)
 
 The page for authors is `docs/site/docs/ui-views.md` (the built-in docs page `ui-views`). Its examples run in `coding/cli/docs_ui_views_test.go`.
@@ -823,6 +850,32 @@ Conformance: `TestConformance_UIViewMounts`, `TestConformance_UIViewExtras`, `Te
 `TestConformance_UIViewAbilitiesEvent`, `TestConformance_UIViewToolShowsAndFocuses`, `TestConformance_UIViewGrid` and
 `TestConformance_UIViewBindings` run the same probes in every SDK against the host, and `docs/additive-features.md` D614 lists the
 records.
+
+## Own the command line of a Piglet Binary (D653)
+
+A Piglet Binary fuses Go members into the `pig` command. A fused member that ships its own command line (its own flags, help and version, subcommands, a protocol on stdio, its own output format and status codes) registers a hook from its `init`. PiG calls it once, before it parses a word of the arguments:
+
+```go
+import "github.com/MichaelKinsy/PiG/extensions/sdk/clihook"
+
+func init() {
+	clihook.Register(func(env clihook.Env) clihook.Result {
+		if len(env.Args) > 0 && env.Args[0] == "doctor" {
+			fmt.Fprintln(env.Stdout, "all good")
+			return clihook.Result{Handled: true, Exit: 0}
+		}
+		return clihook.Result{Args: env.Args}
+	})
+}
+```
+
+- `Handled` serves the invocation: PiG parses nothing and exits with `Exit`.
+- `Args` is what PiG parses otherwise. A nil `Args` is an empty command line, so return the `Env.Args` you were given to leave it as it is.
+- `Retry` replaces the built-in retry defaults of 3 retries, a 2000 ms first delay and a 60000 ms cap. A `retry` member of settings.json still overrides each field it names.
+- `OwnPrintOutput` says the run is a print run whose output your extension writes. PiG then writes nothing to stdout and leaves the stderr line of a failed run to you. Write the output on `clihook.Stdout()` (nil in every other run) from an extension handler such as `agent_end`.
+- `clihook.SetExitCode(n)` sets the status of a print run that succeeded in PiG's terms. A failed run exits with 1, and a recorded 0 changes nothing.
+
+A second `Register` replaces the first, and `Register(nil)` removes the hook. `Registered`, `SetStdout` and `ExitCode` are PiG's own wiring: do not call them. The hook is Go only and host-side; it is not part of the extension wire, so Node, Python, Rust and Lisp extensions have no counterpart. Stock PiG registers none, so a build without a member behaves as before. `docs/additive-features.md` D653 is the record.
 
 ## Adding a new extension API surface
 

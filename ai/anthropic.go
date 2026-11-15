@@ -1315,6 +1315,7 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 			}
 			retry, err = p.prepareParams(ctx, request.baseURL, request.client, request.params, model, opts)
 		default:
+			noteFailureResponse(ctx, resp)
 			return anthHTTPError(resp.StatusCode, b)
 		}
 		if err != nil {
@@ -1327,6 +1328,7 @@ func (p *anthropicProvider) streamResponse(ctx, requestContext context.Context, 
 		if resp.StatusCode != http.StatusOK {
 			b2, _ := readWebText(resp.Body)
 			_ = resp.Body.Close()
+			noteFailureResponse(ctx, resp)
 			return anthHTTPError(resp.StatusCode, b2)
 		}
 	}

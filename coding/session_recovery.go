@@ -281,7 +281,7 @@ func (s *Session) handlePostAgentRun(ctx context.Context) (bool, error) {
 	if message == nil {
 		return s.agent.HasQueuedMessages(), nil
 	}
-	if icodingagent.IsRetryableError(message, s.contextWindowFor(message)) {
+	if s.isRetryableSessionError(message) {
 		retrying, err := s.prepareRetry(ctx, message)
 		if err != nil {
 			return false, err
@@ -331,7 +331,21 @@ func (s *Session) prepareRetry(ctx context.Context, message *agent.AssistantMess
 			s.retryAttempt.Add(-1)
 			return nil, nil
 		}
-		delayMs := ai.RetryDelayMs(ai.RetryPolicy{BaseDelayMs: cfg.BaseDelayMs, MaxAgentDelayMs: &cfg.MaxAgentDelayMs}, attempt)
+		var delayMs int
+		// pig additive (D654): an installed decider chooses the delay in place of the exponential schedule (agent-session.ts:3951).
+		if decider := icodingagent.DefaultRetryDecider(); decider != nil {
+			decision, ok := s.takePendingRetryDecision(message)
+			if !ok {
+				decision = decider(attempt, cfg.MaxRetries, message.LLMMessage())
+			}
+			if !decision.Retry {
+				s.retryAttempt.Add(-1)
+				return nil, nil
+			}
+			delayMs = decision.DelayMs
+		} else {
+			delayMs = ai.RetryDelayMs(ai.RetryPolicy{BaseDelayMs: cfg.BaseDelayMs, MaxAgentDelayMs: &cfg.MaxAgentDelayMs}, attempt)
+		}
 		errorMessage := message.ErrorMessage
 		if errorMessage == "" {
 			errorMessage = "Unknown error"
@@ -364,6 +378,24 @@ func (s *Session) prepareRetry(ctx context.Context, message *agent.AssistantMess
 	retry, err := wait.await()
 	s.mu.Lock()
 	return retry, err
+}
+
+func (s *Session) isRetryableSessionError(message *agent.AssistantMessage) bool {
+	if icodingagent.DefaultRetryDecider() != nil {
+		return message != nil && message.StopReason == ai.StopReasonError && !icodingagent.IsContextOverflow(message, s.contextWindowFor(message))
+	}
+	return icodingagent.IsRetryableError(message, s.contextWindowFor(message))
+}
+
+func (s *Session) takePendingRetryDecision(message *agent.AssistantMessage) (ai.RetryDecision, bool) {
+	s.retryMu.Lock()
+	defer s.retryMu.Unlock()
+	msg, decision := s.retryPendingMsg, s.retryPendingDecision
+	s.retryPendingMsg, s.retryPendingDecision = nil, nil
+	if msg == message && decision != nil {
+		return *decision, true
+	}
+	return ai.RetryDecision{}, false
 }
 
 // finishCancelledRetry ends an in-progress retry sequence after an abort.

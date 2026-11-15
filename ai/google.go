@@ -1144,6 +1144,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 		if resp.StatusCode != http.StatusOK {
 			b, _ := readWebText(resp.Body)
 			_ = resp.Body.Close()
+			noteFailureResponse(ctx, resp)
 			return nil, googleHTTPError(resp, b)
 		}
 		return resp, nil

@@ -119,15 +119,26 @@ var retryableProviderErrorPattern = buildProviderErrorPattern([]string{
 	"subscription_sharing_user_unavailable",
 })
 
+// RetryDecision is what a custom RetryDecider chooses for one failed assistant call.
+type RetryDecision struct {
+	Retry   bool
+	DelayMs int
+}
+
+// RetryDecider classifies a failed assistant response and chooses the backoff delay before attempt (1-based).
+type RetryDecider func(attempt, maxAttempts int, response AssistantMessage) RetryDecision
+
 // RetryPolicy bounds attempts with exponential backoff
 // (baseDelayMs * 2^(attempt-1)). MaxAgentDelayMs caps each computed delay and
-// defaults to DefaultMaxAgentRetryDelayMs when nil.
+// defaults to DefaultMaxAgentRetryDelayMs when nil. Decide, when non-nil,
+// replaces IsRetryableAssistantError and RetryDelayMs.
 type RetryPolicy struct {
 	Enabled bool `json:"enabled"`
 	// MaxRetries is the retry budget; the initial call never counts as a retry.
-	MaxRetries      int  `json:"maxRetries"`
-	BaseDelayMs     int  `json:"baseDelayMs"`
-	MaxAgentDelayMs *int `json:"maxAgentDelayMs,omitempty"`
+	MaxRetries      int          `json:"maxRetries"`
+	BaseDelayMs     int          `json:"baseDelayMs"`
+	MaxAgentDelayMs *int         `json:"maxAgentDelayMs,omitempty"`
+	Decide          RetryDecider `json:"-"`
 }
 
 // DefaultMaxAgentRetryDelayMs is the default cap for one agent retry delay.
@@ -198,13 +209,29 @@ func RetryAssistantCall(ctx context.Context, produce func() (AssistantMessage, e
 			}
 			return response, nil
 		}
-		if attempt >= maxAttempts || !IsRetryableAssistantError(response) {
-			if lastRetryAttempt > 0 {
-				if err := callFinished(callbacks, false, lastRetryAttempt, response.ErrorMessage); err != nil {
-					return AssistantMessage{}, err
+		var delayMs int
+		// pig additive (D654): a decider replaces isRetryableAssistantError and retryDelayMs (retry.ts:238, :149).
+		if policy != nil && policy.Decide != nil {
+			decision := policy.Decide(attempt+1, maxAttempts, response)
+			if attempt >= maxAttempts || !decision.Retry {
+				if lastRetryAttempt > 0 {
+					if err := callFinished(callbacks, false, lastRetryAttempt, response.ErrorMessage); err != nil {
+						return AssistantMessage{}, err
+					}
 				}
+				return response, nil
 			}
-			return response, nil
+			delayMs = decision.DelayMs
+		} else {
+			if attempt >= maxAttempts || !IsRetryableAssistantError(response) {
+				if lastRetryAttempt > 0 {
+					if err := callFinished(callbacks, false, lastRetryAttempt, response.ErrorMessage); err != nil {
+						return AssistantMessage{}, err
+					}
+				}
+				return response, nil
+			}
+			delayMs = RetryDelayMs(*policy, attempt+1)
 		}
 
 		attempt++
@@ -213,7 +240,6 @@ func RetryAssistantCall(ctx context.Context, produce func() (AssistantMessage, e
 		if lastRetryMessage == "" {
 			lastRetryMessage = "Unknown error"
 		}
-		delayMs := RetryDelayMs(*policy, attempt)
 		if callbacks.OnRetryScheduled != nil {
 			if err := callbacks.OnRetryScheduled(attempt, maxAttempts, delayMs, lastRetryMessage); err != nil {
 				return AssistantMessage{}, err

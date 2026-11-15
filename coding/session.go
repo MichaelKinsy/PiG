@@ -198,10 +198,13 @@ type Session struct {
 
 	// retryAttempt counts committed automatic retries of the current retry
 	// sequence (agent-session.ts _retryAttempt).
-	retryAttempt  atomic.Int32
-	retryMu       sync.Mutex
-	retryCancel   *sessionRetryWait
-	retrySchedule func(func())
+	retryAttempt atomic.Int32
+	// retryPendingDecision caches what DefaultRetryDecider returned at noteAssistantMessageEnd for prepareRetry.
+	retryPendingMsg      *agent.AssistantMessage
+	retryPendingDecision *ai.RetryDecision
+	retryMu              sync.Mutex
+	retryCancel          *sessionRetryWait
+	retrySchedule        func(func())
 
 	// assistantEnds carries, in message_end order, what the agent goroutine
 	// decided when each assistant message persisted, for forwardAgentEvents to
@@ -2871,8 +2874,21 @@ func (s *Session) willRetryAfterAgentEnd(message *agent.AssistantMessage) bool {
 		return false
 	}
 	retryCfg := s.SettingsManager().GetRetrySettings()
-	if !retryCfg.Enabled || int(s.retryAttempt.Load()) >= retryCfg.MaxRetries {
+	nextAttempt := int(s.retryAttempt.Load()) + 1
+	if !retryCfg.Enabled || nextAttempt > retryCfg.MaxRetries {
 		return false
+	}
+	// pig additive (D654): an installed decider replaces Pi's retry rule (agent-session.ts:3871 _isRetryableError) for this failed message.
+	if decider := icodingagent.DefaultRetryDecider(); decider != nil {
+		if message == nil || message.StopReason != ai.StopReasonError || icodingagent.IsContextOverflow(message, s.contextWindowFor(message)) {
+			return false
+		}
+		decision := decider(nextAttempt, retryCfg.MaxRetries, message.LLMMessage())
+		s.retryMu.Lock()
+		s.retryPendingMsg = message
+		s.retryPendingDecision = &decision
+		s.retryMu.Unlock()
+		return decision.Retry
 	}
 	return icodingagent.IsRetryableError(message, s.contextWindowFor(message))
 }
@@ -3319,11 +3335,13 @@ func (s *Session) AbortBranchSummary() {
 // applies to compaction. Mirrors upstream _summarizationRetryCallbacks.
 func (s *Session) summarizationRetryOptions(source, reason string) (*ai.RetryPolicy, ai.RetryCallbacks) {
 	cfg := s.SettingsManager().GetRetrySettings()
+	// pig additive (D654): the installed decider also decides a summarization request's retries.
 	policy := &ai.RetryPolicy{
 		Enabled:         cfg.Enabled,
 		MaxRetries:      cfg.MaxRetries,
 		BaseDelayMs:     cfg.BaseDelayMs,
 		MaxAgentDelayMs: &cfg.MaxAgentDelayMs,
+		Decide:          icodingagent.DefaultRetryDecider(),
 	}
 	return policy, ai.RetryCallbacks{
 		OnRetryScheduled: func(attempt, maxAttempts, delayMs int, errMsg string) error {

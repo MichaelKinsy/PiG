@@ -9,7 +9,7 @@ package gosdkbundle
 
 import "slices"
 
-//go:generate go run ../../automation/gen/packsdk -pkg gosdkbundle -root ../../extensions/sdk -skip _test.go -skip bundle.go -skip bundle_embed.go LICENSE go.mod *.go json/*.go json/LICENSE frontend/*.go kit/*.go internal/jsloop/*.go internal/kitwire/*.go tui/*.go tui/internal/*/*.go upgrade/*.go upgrade/driver/*.go upgrade/internal/upgrade/*.go upgrade/plan/*.go
+//go:generate go run ../../automation/gen/packsdk -pkg gosdkbundle -root ../../extensions/sdk -skip _test.go -skip bundle.go -skip bundle_embed.go LICENSE go.mod *.go clihook/*.go json/*.go json/LICENSE frontend/*.go kit/*.go internal/jsloop/*.go internal/kitwire/*.go tui/*.go tui/internal/*/*.go upgrade/*.go upgrade/driver/*.go upgrade/internal/upgrade/*.go upgrade/plan/*.go
 
 // BundledFiles lists the bundled files, relative to the module root, in a stable order. Paths use forward slashes; a stager recreates subdirectories. The returned slice is the caller's to modify.
 func BundledFiles() []string { return slices.Clone(bundledFiles) }
