@@ -1,8 +1,8 @@
-// Command chord-todo is the tutorial's app (docs/chord/tutorial.md): a todo app built with the app kit. Each numbered step of
+// This command is the tutorial's app (docs/chord/tutorial.md): a to-do app built with the app kit. Each numbered step of
 // `run` is the chapter of that number. The tutorial's test (tutorial_test.go) quotes this file in the book, runs `run` and
 // compares what it prints with the book.
 //
-//	go run ./examples/chord-todo [--serve]
+//	go run . [--serve]    (from this directory)
 package main
 
 import (
@@ -68,7 +68,7 @@ func kinds() []app.AppKindEntry {
 	}
 }
 
-// startTodo starts the todo app on a free loopback port, with its data in dataDir, its built-in plugins in root, recording to store (the
+// startTodo starts the to-do app on a free loopback port, with its data in dataDir, its built-in plugins in root, recording to store (the
 // telemetry store in dataDir).
 func startTodo(ctx context.Context, dataDir, root string, store *telemetrysqlite.SqliteTelemetry) (*app.App, error) {
 	executable, err := os.Executable()

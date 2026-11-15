@@ -11,7 +11,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
-// reloadStep is chapter IX: an edit applied in place. The lists plugin's worker facet trims a todo's text, so a blank one is empty and
+// reloadStep is chapter IX: an edit applied in place. The lists plugin's worker facet trims a to-do's text, so a blank one is empty and
 // the store refuses it with Chord's `invalid/args`, which reaches Ada as it would a refused argument. The watcher marks the plugin
 // dirty; applying the changes rolls it out to the server, the list's worker, the page and the terminal. On the worker each object of
 // the plugin restarts: running calls finish on the old code, new calls wait for the new code, documents and tables stay (the store's

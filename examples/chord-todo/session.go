@@ -122,7 +122,7 @@ func (s *session) untilGroceries(ok func([]todo) bool) error {
 	})
 }
 
-// showLast prints the label and the groceries' last todo, as the server's root reads it.
+// showLast prints the label and the groceries' last to-do, as the server's root reads it.
 func (s *session) showLast(label string, ctx host.Ctx) error {
 	list, err := ctx.Get(todos, delta.JsonObjectOf("list", "groceries"), host.GetOptions{})
 	if err != nil {
