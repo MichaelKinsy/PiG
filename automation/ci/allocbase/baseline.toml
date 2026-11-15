@@ -491,7 +491,7 @@ allocs = 1092
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCredentialProviderKeyRewrite"
-allocs = 460
+allocs = 496
 
 [[benchmark]]
 package = "./ai"
@@ -2681,7 +2681,7 @@ allocs = 58
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkXrefEventBusEmit/two-realms"
-allocs = 56069
+allocs = 54215
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3196,7 +3196,7 @@ allocs = 60999
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRunKeybindingsMigration/ordinary"
-allocs = 97
+allocs = 133
 
 [[benchmark]]
 package = "./internal/codingagent"

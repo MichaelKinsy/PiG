@@ -86,8 +86,8 @@ type LoadedExtension struct {
 	ResolvedPath string     `json:"resolvedPath"`
 	SourceInfo   SourceInfo `json:"sourceInfo"`
 	Tools        []string   `json:"tools"`
-	// loader is the loader the extension was read from, which [NewExtensionRunner] names to the host as the extension's source.
-	loader string
+	// loader is the loader the extension was read from, which [NewExtensionRunner] names to the host as the extension's source. It is the object, not its handle: the loader is released when nothing refers to it, and these extensions are what still names it.
+	loader *graphObject
 }
 
 // LoadExtensionsResult is Pi's LoadExtensionsResult as data: the extensions of a load with its errors and warnings.
@@ -214,6 +214,8 @@ func NewDefaultResourceLoader(c Context, options DefaultResourceLoaderOptions) (
 	if len(factories) > 0 {
 		wire["extensionFactories"] = factories
 	}
+	// The host reads the settings manager and the runtime by handle: they stay reachable until it has answered.
+	defer keepAlive(options.SettingsManager, options.Runtime)
 	if options.SettingsManager != nil {
 		wire["settingsManager"] = options.SettingsManager.Handle()
 	}
@@ -241,7 +243,7 @@ func (l *DefaultResourceLoader) extensionsResult(result LoadExtensionsResult, er
 		return result, err
 	}
 	for i := range result.Extensions {
-		result.Extensions[i].loader = l.object.Handle()
+		result.Extensions[i].loader = l.object
 	}
 	result.Runtime, err = extensionRuntimeOf(l.object.context, l.object)
 	return result, err

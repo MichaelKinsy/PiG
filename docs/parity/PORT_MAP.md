@@ -1017,7 +1017,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/store/live-query.ts` | `chord/next/store/live_query.go` | ✅ |
 | `packages/chord/src/surfaces/active-language.ts` | `chord/next/surfaces/surfaces_active_language.go`, `chord/next/surfaces/surfaces_page_state.go` | ✅ |
 | `packages/chord/src/surfaces/active-theme.ts` | `chord/next/surfaces/surfaces_active_theme.go` | ✅ |
-| `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go; Pi 22fe46c7b: ClientOptions.Follow (false: a static client); Pi 3c771bd18: StartClient follows the scripts object in the background (an owned goroutine Stop joins) and applies the set shown when following begins; Pi 21e4cb80d: connect stops the loop (stopNow) before it calls Outdated`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/client.ts` (vendored byte-for-byte for the browser, D601; derived tree: manifest `carried`) | ✅ |
+| `packages/chord/src/surfaces/client.ts` | `chord/next/surfaces/surfaces_client.go; Pi 22fe46c7b: ClientOptions.Follow (false: a static client); Pi 3c771bd18: StartClient follows the scripts object in the background (an owned goroutine Stop joins) and applies the set shown when following begins; Pi 21e4cb80d: connect stops the loop (stopNow) before it calls Outdated; Pi 34fb59f67: ClientOptions.Limits (*link.PartLimits, nil: Pi's undefined) is the host link's part limits`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/client.ts` (vendored byte-for-byte for the browser, D601; derived tree: manifest `carried`) | ✅ |
 | `packages/chord/src/surfaces/connection.ts` | `chord/next/surfaces/surfaces_connection.go; Pi 21e4cb80d: CanRetry is asked beside the next attempt, one question at a time, a late no stops the loop; a drop soon after a wake is retried at once`, `chord/nextnode/surfaces/client/pi/chord/src/surfaces/connection.ts` (vendored byte-for-byte for the browser, D601; derived tree: manifest `carried`) | ✅ |
 | `packages/chord/src/surfaces/format.ts` | `chord/next/surfaces/surfaces_format.go` (FormatNumber; FormatTime in chord/next/surfaces/intl_time.go over the generated Intl tables, D464, D465, D466; packages/chord/test/surfaces/format.test.ts in surfaces_format_test.go, differential tests intl_drift_test.go) | ✅ |
 | `packages/chord/src/surfaces/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
@@ -1059,7 +1059,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/web/environment.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/environment.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |
 | `packages/chord/src/web/language.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/language.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
-| `packages/chord/src/web/page.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/page.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go; vendored from the derived tree pin + Pi 22fe46c7b and Pi 21e4cb80d, manifest `carried`) | ✅ |
+| `packages/chord/src/web/page.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/page.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go; vendored from the derived tree pin + Pi 22fe46c7b, Pi 21e4cb80d and Pi 34fb59f67 (PageOptions.limits), manifest `carried`) | ✅ |
 | `packages/chord/src/web/scripts.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/scripts.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/styles.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/styles.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
 | `packages/chord/src/web/themes.ts` | `chord/nextnode/surfaces/client/pi/chord/src/web/themes.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go) | ✅ |
@@ -1169,11 +1169,11 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/tools/edit.ts` | `durable/tools/edit.go` | ✅ |
 | `packages/durable/src/tools/env.ts` | `durable/tools/env.go` | ✅ |
 | `packages/durable/src/tools/file-mutation-queue.ts` | `durable/tools/file_mutation_queue.go` | ✅ |
-| `packages/durable/src/tools/image-processor.ts` | `durable/tools/image_processor.go` | ✅ |
+| `packages/durable/src/tools/image-processor.ts` | `durable/tools/image_processor.go` (ImageLimitsOf is Pi's `imageLimits(model)`: the name is forced, ImageLimits is the type here; PreparedNotes, FromBase64; Pi 76c79d8bbe) | ✅ |
 | `packages/durable/src/tools/image.ts` | `durable/tools/image.go` | ✅ |
 | `packages/durable/src/tools/index.ts` | `durable/tools/index.go` | ✅ |
 | `packages/durable/src/tools/path-utils.ts` | `durable/tools/path_utils.go` | ✅ |
-| `packages/durable/src/tools/read.ts` | `durable/tools/read.go + durable/tools/read_image.go (readImage, imageModelOf; ReadToolDetails.ImageUnsupportedByModel instead of the non-vision diagnostic, Pi 4be4cb4f5e9c)` | ✅ |
+| `packages/durable/src/tools/read.ts` | `durable/tools/read.go + durable/tools/read_image.go (readImage, imageModelOf; ReadToolDetails.ImageUnsupportedByModel instead of the non-vision diagnostic, Pi 4be4cb4f5e9c; the limits and the notes come from ImageLimitsOf and PreparedNotes, Pi 76c79d8bbe)` | ✅ |
 | `packages/durable/src/tools/write.ts` | `durable/tools/write.go` | ✅ |
 | `packages/durable/src/truncate.ts` | `durable/truncate.go` | ✅ |
 | `packages/durable/src/types.ts` | `durable/types.go`, `durable/documents.go`, `durable/entries.go`, `durable/tasks.go` | ✅ |
@@ -1181,7 +1181,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/durable/src/codemode/describe.ts` | `durable/codemode/describe.go; Pi 5e24c6b1: NamespacesOf and declaredNamespaces replace Namespace and namespaceOf (prefix namespaces removed); Section takes the selected extensions and lists each declared namespace as `## <name>` and its description` | ✅ |
 | `packages/durable/src/codemode/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |
 | `packages/durable/src/codemode/models.ts` | `durable/codemode/models.go` | ✅ |
-| `packages/durable/src/codemode/output.ts` | `durable/codemode/output.go` | ✅ |
+| `packages/durable/src/codemode/output.ts` | `durable/codemode/output.go (saveImages decodes with tools.FromBase64, Pi 76c79d8bbe)` | ✅ |
 | `packages/durable/src/images/node-worker.ts` | `durable/images/node/node.go` (the worker goroutine; tests in durable/images/node/worker_test.go) | ✅ |
 | `packages/durable/src/search.ts` | `durable/internal/search/search.go` (tests in durable/internal/search/search_test.go) | ✅ |
 | `packages/durable/src/tool-search/index.ts` | `(barrel re-exports; Go has no barrel exports)` | n/a |

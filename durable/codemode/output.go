@@ -4,13 +4,13 @@ package codemode
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	cm "github.com/MichaelKinsy/PiG/codemode"
+	"github.com/MichaelKinsy/PiG/durable/tools"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
@@ -179,18 +179,6 @@ func lastLines(lines []string, n int) []string {
 	return lines[len(lines)-n:]
 }
 
-// decodeBase64 is atob: ASCII whitespace is ignored and the padding may be missing.
-func decodeBase64(data string) ([]byte, error) {
-	cleaned := strings.Map(func(r rune) rune {
-		if r == ' ' || r == '\t' || r == '\n' || r == '\f' || r == '\r' {
-			return -1
-		}
-		return r
-	}, data)
-	cleaned = strings.TrimRight(cleaned, "=")
-	return base64.RawStdEncoding.DecodeString(cleaned)
-}
-
 // saveImages saves each image to a file and puts a text item with its path before it; an image shown twice is saved once.
 func saveImages(items []ai.ToolResultMessageContent, write outputFile) ([]ai.ToolResultMessageContent, error) {
 	labels := map[string]string{}
@@ -203,9 +191,9 @@ func saveImages(items []ai.ToolResultMessageContent, write outputFile) ([]ai.Too
 		}
 		label, seen := labels[image.Data]
 		if !seen {
-			bytes, err := decodeBase64(image.Data)
+			bytes, err := tools.FromBase64(image.Data)
 			if err != nil {
-				return nil, fmt.Errorf("The string to be decoded is not correctly encoded.")
+				return nil, err
 			}
 			kind := fmt.Sprintf("%s, %d bytes", image.MimeType, len(bytes))
 			extension, known := imageExtensions[image.MimeType]

@@ -252,7 +252,7 @@ func newTuiAltScreen(out io.Writer, showHardwareCursor bool, options TuiAltScree
 	if t.searchNavigationButtonStyle == nil {
 		t.searchNavigationButtonStyle = func(text string, _ bool) string { return text }
 	}
-	t.render = t.doRender
+	t.render = t.drawFrame
 	t.resetRenderState = t.resetRenderStateLocked
 	t.flash = t.Flash
 	t.mountedRoots = t.getMountedRoots
@@ -851,13 +851,19 @@ func (t *TuiAltScreen) removeUploadedKittyOrder(imageID int) {
 func (t *TuiAltScreen) requestRenderFromLayout() { t.RequestRender() }
 
 //perf:hot
-func (t *TuiAltScreen) doRender() {
+func (t *TuiAltScreen) doRender() { t.drawFrame(frameGate{}) }
+
+// drawFrame is the alternate screen's frame: gate says which frame started it (frameGate). It reports whether the frame began.
+//
+//perf:hot
+func (t *TuiAltScreen) drawFrame(gate frameGate) (began bool) {
 	t.lockFrame()
 	defer t.unlockFrame()
-	if t.stopped.Load() || !t.altScreenActive {
-		return
+	if t.stopped.Load() || !t.altScreenActive || t.frameSupersededLocked(gate) {
+		return false
 	}
 	t.frameBeganLocked()
+	began = true
 	t.updateSize()
 	columns, screenRows := t.size()
 	width := max(1, columns)
@@ -1033,6 +1039,7 @@ func (t *TuiAltScreen) doRender() {
 	t.previousScreenWidth = width
 	t.previousScreenHeight = height
 	t.currentLayout = &nextLayout
+	return true
 }
 
 // altScreenRow returns screen[row], or "" past the end (upstream's

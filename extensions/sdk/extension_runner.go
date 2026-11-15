@@ -26,12 +26,14 @@ type ExtensionRunner struct {
 
 // NewExtensionRunner is `new ExtensionRunner(extensions, runtime, cwd, sessionManager, modelRegistry)`. extensions are the [LoadedExtension] values of a [DefaultResourceLoader.GetExtensions] result, runtime its Runtime. The sessionManager is the log ctx.sessionManager exposes and the modelRegistry the registry ctx.modelRegistry reads and provider registration applies to; Pi's ModelRegistry class is served as [ModelRuntime]. A nil runtime is the runtime the extensions share; a nil sessionManager or modelRegistry is not bound.
 func NewExtensionRunner(c Context, extensions []LoadedExtension, runtime *ExtensionRuntime, cwd string, sessionManager *SessionManager, modelRegistry *ModelRuntime) (*ExtensionRunner, error) {
+	// The host reads the loaders, the runtime, the session manager and the model registry by handle: they stay reachable until it has answered.
+	defer keepAlive(extensions, runtime, sessionManager, modelRegistry)
 	refs := make([]map[string]string, len(extensions))
 	for i, ext := range extensions {
-		if ext.loader == "" {
+		if ext.loader == nil {
 			return nil, fmt.Errorf("extension %s was not read from a DefaultResourceLoader: an extension built in this process cannot join the runner, load it with AdditionalExtensionPaths", ext.Path)
 		}
-		refs[i] = map[string]string{"loader": ext.loader, "resolvedPath": ext.ResolvedPath}
+		refs[i] = map[string]string{"loader": ext.loader.handle, "resolvedPath": ext.ResolvedPath}
 	}
 	wire := map[string]any{"extensions": refs, "cwd": cwd}
 	if runtime != nil {

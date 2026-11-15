@@ -532,6 +532,8 @@ PiG:
 
 A failed extension is removed and reported while other extensions load.
 
+PiG accepts input again when the host has received the reply of the last `session_start` handler of the reload, a fraction of a millisecond after that handler returns; input timed to the handler's own return can still be discarded. Wait for the reload's status line.
+
 If a Node factory throws or rejects, its captured `pi` API becomes inactive. Later registration, action, getter, and event-bus calls throw `Extension "<path>" failed to load and its API is no longer active.` synchronously, even when the method normally returns a Promise. Event-bus subscriptions made by that factory are removed. Healthy extensions keep their APIs.
 
 Node extensions keep Jiti's compiled-source cache under `<config-root>/cache/jiti` (D20). The loader checks source contents on each load and separates compiler and runtime versions, so a changed source is compiled again. Changing the temporary directory does not discard this cache. The cache does not retain evaluated factories between loads. `JITI_FS_CACHE=false` disables it. The transform cache is disposable and is separate from the published artifacts managed by `pig extensions cache prune`.

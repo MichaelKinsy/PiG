@@ -178,8 +178,13 @@ type more struct {
 	fetching func(entry ScriptEntry)
 	// follow is the client's Follow option (nil: the default).
 	follow *bool
+	// limits is the client's Limits option (nil: the default).
+	limits *link.PartLimits
 	// offline: the server never answers, the client's sockets never open.
 	offline bool
+	// notFollowing: setup does not wait for the client's follow to start, as Pi's setup does not (its follow is `void`): the
+	// scripts object's first set never arrives when it is past the limits (client.test.ts "part limits").
+	notFollowing bool
 	// shown is the set the server shows from the start (nil: initial's).
 	shown []RegisteredScript
 	// baseAnswers holds the server's base answers until it is closed (a slow network).
@@ -322,6 +327,7 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 		OnConnection: func(state ConnectionState) { s.mu.Lock(); s.states = append(s.states, state); s.mu.Unlock() },
 		Styles:       opt.styles,
 		Follow:       opt.follow,
+		Limits:       opt.limits,
 		Environment:  env,
 		OnError:      func(e ClientError) { s.mu.Lock(); s.errs = append(s.errs, e); s.mu.Unlock() },
 	}
@@ -345,7 +351,7 @@ func setup(t *testing.T, initial []RegisteredScript, available []RegisteredScrip
 	case <-time.After(30 * time.Second):
 		t.Fatal("StartClient did not return within 30 s")
 	}
-	if !opt.offline {
+	if !opt.offline && !opt.notFollowing {
 		// As Pi's setup, whose follow is made (every promise of the in-memory link is a microtask) before the test body runs: a set
 		// published before the watch started would be the one the watch shows at its start, not a frame.
 		select {
@@ -534,6 +540,26 @@ func TestAppliesTheSetTheServerShowsWhenItStartsFollowingThoughNoFrameBroughtIt(
 		t.Fatalf("fetched = %v", f)
 	}
 	s.finish(t)
+}
+
+// pi: "part limits" / "takes parts from the server within the limits it was given, and none past them" (Pi 34fb59f67).
+func TestPartLimitsTakesPartsFromTheServerWithinTheLimitsItWasGivenAndNonePastThem(t *testing.T) {
+	a1 := script("@test/a", "d1", "hello")
+	a2 := script("@test/a", "d2", "hello again")
+	within := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2}, more{shown: []RegisteredScript{a2}, limits: &link.PartLimits{Part: new(1024.0 * 1024.0)}})
+	greetingWithin := text(t, within.client.Host, greeting)
+	until(t, func() bool { return valueOf(greetingWithin) == "hello again" })
+	within.finish(t)
+	// The scripts object's set is past 32 bytes: the client never gets it, so it keeps the code it started with.
+	past := setup(t, []RegisteredScript{a1}, []RegisteredScript{a2}, more{shown: []RegisteredScript{a2}, limits: &link.PartLimits{Part: new(32.0)}, notFollowing: true})
+	time.Sleep(100 * time.Millisecond)
+	if f := past.fetchedNow(); len(f) != 0 {
+		t.Fatalf("fetched = %v, want none", f)
+	}
+	if got := valueOf(text(t, past.client.Host, greeting)); got != "hello" {
+		t.Fatalf("greeting = %q, want hello", got)
+	}
+	past.finish(t)
 }
 
 func TestAStaticClientAppliesNoNewSetAndIsNeverOutdatedByOne(t *testing.T) {

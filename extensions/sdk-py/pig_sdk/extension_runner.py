@@ -65,12 +65,12 @@ class ExtensionRunner(_GraphObject):
         """``new ExtensionRunner(extensions, runtime, cwd, sessionManager, modelRegistry)``. ``extensions`` are the ``LoadedExtension`` values of a ``get_extensions`` result, ``runtime`` its ``runtime``. ``session_manager`` is the log ``ctx.sessionManager`` exposes and ``model_registry`` the registry ``ctx.modelRegistry`` reads and provider registration applies to; Pi's ModelRegistry class is served as ``ModelRuntime``. A ``None`` runtime is the runtime the extensions share; a ``None`` session manager or model registry is not bound."""
         refs = []
         for extension in extensions:
-            loader = getattr(extension, "_loader", "")
-            if not loader:
+            loader = getattr(extension, "_loader", None)
+            if loader is None:
                 raise RuntimeError(
                     f"extension {extension.get('path') if isinstance(extension, dict) else extension!r} was not read from a DefaultResourceLoader: an extension built in this process cannot join the runner, load it with additional_extension_paths"
                 )
-            refs.append({"loader": loader, "resolvedPath": extension["resolvedPath"]})
+            refs.append({"loader": loader.handle, "resolvedPath": extension["resolvedPath"]})
         wire: dict[str, Any] = {"extensions": refs, "cwd": cwd}
         if runtime is not None:
             wire["runtime"] = runtime.handle

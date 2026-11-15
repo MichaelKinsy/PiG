@@ -150209,22 +150209,24 @@
     {
       "id": "pkg:chord/.#Outcome",
       "upstreamShapeHash": "sha256:4bbacd00fba40c876cb729b93dbc2c90b2f9016fa316f5caf3a76fe6e85d005b",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/uiview#Outcome"
+        "go:github.com/MichaelKinsy/PiG/coding/uiview#Outcome",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#loginRejection.outcome"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",

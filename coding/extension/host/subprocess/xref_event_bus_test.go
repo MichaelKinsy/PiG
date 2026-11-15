@@ -45,6 +45,12 @@ func xrefFixture(t *testing.T, isolation []string, sources ...string) (*Host, ma
 
 func xrefFixtureB(t testing.TB, isolation []string, sources ...string) (*Host, map[string]extension.Extension) {
 	t.Helper()
+	return xrefFixtureObserved(t, nil, isolation, sources...)
+}
+
+// xrefFixtureObserved is xrefFixtureB with observe called on the new Host before any extension loads, the only time its frame observers can be set.
+func xrefFixtureObserved(t testing.TB, observe func(*Host), isolation []string, sources ...string) (*Host, map[string]extension.Extension) {
+	t.Helper()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	var configs []ExtConfig
@@ -57,6 +63,9 @@ func xrefFixtureB(t testing.TB, isolation []string, sources ...string) (*Host, m
 		configs = append(configs, ExtConfig{Name: name, Source: path, Enabled: true, Isolation: isolation[i]})
 	}
 	h := NewHost(t.TempDir())
+	if observe != nil {
+		observe(h)
+	}
 	t.Cleanup(func() { h.Shutdown("test done") })
 	loaded, errs := h.LoadAll(t.Context(), configs)
 	if len(errs) != 0 || len(loaded) != len(configs) {

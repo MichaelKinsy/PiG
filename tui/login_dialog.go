@@ -576,7 +576,10 @@ func (d *LoginDialogComponent) Done() bool      { d.mu.Lock(); defer d.mu.Unlock
 func (d *LoginDialogComponent) Cancelled() bool { d.mu.Lock(); defer d.mu.Unlock(); return d.cancelled }
 
 // Success marks the provider operation complete; the caller restores the editor.
-func (d *LoginDialogComponent) Success() {
+func (d *LoginDialogComponent) Success() { d.Close() }
+
+// Close ends the dialog without cancelling it, so its caller restores the editor and reports what became of the login.
+func (d *LoginDialogComponent) Close() {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.done = true

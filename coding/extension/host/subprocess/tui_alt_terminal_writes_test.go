@@ -94,8 +94,9 @@ func (p *terminalWritePeer) answer(env *Envelope) {
 	_ = writeEnvelopeTo(p.conn, &Envelope{Type: MsgResponse, ID: env.ID, Response: &ResponsePayload{Result: json.RawMessage(result)}})
 }
 
-// goroutineWaitsForALock reports whether a goroutine whose stack holds frame is parked on a lock of package sync.
-func goroutineWaitsForALock(frame string) bool {
+// goroutineWaitsForALock reports whether a goroutine whose stack holds frame is parked on a lock of package sync (waits), and whether any goroutine holds frame
+// at all (present): a frame that is on no goroutine is a stale name, not an ordering.
+func goroutineWaitsForALock(frame string) (waits, present bool) {
 	buf := make([]byte, 1<<16)
 	for {
 		n := runtime.Stack(buf, true)
@@ -106,12 +107,16 @@ func goroutineWaitsForALock(frame string) bool {
 		buf = make([]byte, 2*len(buf))
 	}
 	for goroutine := range strings.SplitSeq(string(buf), "\n\n") {
+		if !strings.Contains(goroutine, frame) {
+			continue
+		}
+		present = true
 		header, _, _ := strings.Cut(goroutine, "\n")
-		if strings.Contains(goroutine, frame) && (strings.Contains(header, "[sync.") || strings.Contains(header, "[semacquire")) {
-			return true
+		if strings.Contains(header, "[sync.") || strings.Contains(header, "[semacquire") {
+			waits = true
 		}
 	}
-	return false
+	return waits, present
 }
 
 // anExtensionScreen is a started tui.alt screen with no copySelection, as the extension host builds it, and the extension end it talks to.
@@ -138,10 +143,12 @@ func anExtensionScreen(t *testing.T) (call func(body string), peer *terminalWrit
 }
 
 // secondWaitsOrWrites waits until the extension has seen a second output while one is unanswered (it reports true) or the goroutine that made the second call
-// is parked on a lock of the screen, holding frame in its stack (false). It reads goroutine states, not a clock.
+// is parked on a lock of the screen, holding frame in its stack (false). It reads goroutine states, not a clock. frame names the function that performs the
+// terminal write of a frame; if no goroutine ever holds it, the test fails as stale (the function was renamed), which is not the ordering failure.
 func secondWaitsOrWrites(t *testing.T, peer *terminalWritePeer, frame string) bool {
 	t.Helper()
 	deadline := time.Now().Add(time.Minute)
+	seen := false
 	for waits := 0; time.Now().Before(deadline); runtime.Gosched() {
 		select {
 		case <-peer.overlap:
@@ -149,13 +156,18 @@ func secondWaitsOrWrites(t *testing.T, peer *terminalWritePeer, frame string) bo
 		default:
 		}
 		// Two looks in a row: a lock that is only passed through is not the one the goroutine waits for.
-		if goroutineWaitsForALock(frame) {
+		waiting, present := goroutineWaitsForALock(frame)
+		seen = seen || present
+		if waiting {
 			if waits++; waits == 2 {
 				return false
 			}
 		} else {
 			waits = 0
 		}
+	}
+	if !seen {
+		t.Fatalf("the frame function %s was not found on any goroutine: the probe is stale", frame)
 	}
 	t.Fatal("the second goroutine neither wrote nor waited for a lock within a minute")
 	return false
@@ -180,7 +192,7 @@ func TestAnExtensionScreenWithoutCopySelectionWritesTheClipboardBeforeTheNextFra
 		t.Fatalf("the release of the drag did not copy: writes %q", peer.written())
 	}
 	call(`{"op":"requestRender","id":"s","force":true}`)
-	if secondWaitsOrWrites(t, peer, "tui.(*TuiAltScreen).doRender") {
+	if secondWaitsOrWrites(t, peer, "tui.(*TuiAltScreen).drawFrame") {
 		t.Errorf("the extension's Terminal got a frame while the clipboard write was unanswered; writes %q", peer.written())
 	}
 	close(peer.release)
