@@ -136,6 +136,12 @@ type StoreSelf interface {
 	// such commit, bounded by limit; not for tables written hundreds of times a second). A limit is required
 	// (`invalid/args`).
 	Query(table store.Table, q *store.Query, limit int64) chord.Watchable[delta.JsonValue]
+	// Queries is named queries over table, a table this factory declared (slice 14 §3.1): one per entry of builders, each a
+	// pure function of its arguments returning a query of the table. What it returns implements a `queries` member of the
+	// contract (Implementation.Members.Queries: the queries listed there; the others are private to this object and bring
+	// their argument schema). options.Map turns a row (and a joined query's partner) into the item readers get, from the
+	// columns Reads (and PartnerReads) list: a change of another column is no change of the item.
+	Queries(table store.Table, options QueriesOptions, builders map[string]QueryBuilder) map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]
 	// Contribute contributes value to registry R from the moment this object is live until it ends, fails or restarts (R21:
 	// a host-lifetime object): a plain value, or a Chord watchable of one (followed: its change recomposes). At most one
 	// per registry.
@@ -479,12 +485,8 @@ func (a *attempt) Query(given store.Table, q *store.Query, limit int64) chord.Wa
 	a.assertDeclaring("query")
 	object := a.object
 	// Plugin code may pass any table: only a handle this attempt declared is taken (its object's own table).
-	table, _ := given.(*store.TableHandle)
-	declared := false
-	for _, each := range a.tables {
-		declared = declared || (table != nil && each.handle == table)
-	}
-	if !declared {
+	table := a.declaredHandle(given)
+	if table == nil {
 		panic(undeclaredTable(object.text, "query"))
 	}
 	if err := store.CheckLiveQuery(table.Definition, q, limit, object.text); err != nil {
@@ -508,6 +510,37 @@ func (a *attempt) Query(given store.Table, q *store.Query, limit int64) chord.Wa
 	}
 	a.queries = append(a.queries, ownQuery{live: live, target: target})
 	return Expose(live)
+}
+
+// declaredHandle is given as a handle this attempt declared (its object's own table); nil for any other table.
+func (a *attempt) declaredHandle(given store.Table) *store.TableHandle {
+	table, _ := given.(*store.TableHandle)
+	for _, each := range a.tables {
+		if table != nil && each.handle == table {
+			return table
+		}
+	}
+	return nil
+}
+
+// Queries implements StoreSelf: one OwnQuery per builder, the member check's to take.
+func (a *attempt) Queries(given store.Table, options QueriesOptions, builders map[string]QueryBuilder) map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue] {
+	a.assertDeclaring("queries")
+	label := a.object.text
+	// Plugin code may pass any table: only a handle this attempt declared is taken (its object's own table).
+	handle := a.declaredHandle(given)
+	if handle == nil {
+		panic(undeclaredTable(label, "queries"))
+	}
+	checked, err := namedBuilders(label, builders)
+	if err != nil {
+		panic(err)
+	}
+	named := make(map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue], len(checked))
+	for _, each := range checked {
+		named[each.name] = newOwnQuery(label, each.name, handle, each.builder, options, each.args)
+	}
+	return named
 }
 
 // Derive implements Self.
@@ -1964,6 +1997,9 @@ func factoryResultOf(implementation contracts.Implementation) factoryResult {
 	}
 	for _, name := range sortedKeys(members.Events) {
 		add(name, members.Events[name])
+	}
+	for _, name := range sortedKeys(members.Queries) {
+		add(name, members.Queries[name])
 	}
 	return result
 }
