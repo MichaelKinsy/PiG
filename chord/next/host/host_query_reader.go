@@ -267,8 +267,7 @@ func (r *reader) settle() { r.drains.Wait() }
 
 // isOwnCode reports whether err is of the reader's own code: arguments the schema refused, or a builder that threw.
 func isOwnCode(err error) bool {
-	var chordErr *data.ChordError
-	if errors.As(err, &chordErr) {
+	if chordErr, ok := errors.AsType[*data.ChordError](err); ok {
 		return chordErr.Code == data.CodeInvalid
 	}
 	return true
