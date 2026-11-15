@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -146,25 +147,26 @@ func hostsOf(rel *relayed) []Host {
 	return hosts
 }
 
-// settled is Pi's `await transported()` after something an admission decides: what is in flight arrived, the settles the
-// change started (joined hops of the server's loop) and the deliveries they made ran to their end (deliveredOn), and what
-// that made arrived; a worker the settles started (resolve made its host) has its own tasks to run, so the hosts are listed
-// again once the first ones are quiet. No condition of its own.
+// settled is Pi's `await transported()` after something an admission decides. Pi's `transported()` is six `flushed()`
+// (test/support.ts:604-606), each draining the microtasks of every host of the process, so a frame a hop's delivery put on a link
+// arrives in the next. Here a hop is `Transported()` (what is in flight arrived) and `deliveredOn` over the hosts as they are
+// then (the settles and deliveries the arrival started ran to their end, a worker a settle made included); six hops, Pi's count,
+// then what the last one sent arrived. No condition of its own.
 func (g *gatedRelay) settled() {
 	g.t.Helper()
-	g.Transported()
-	deliveredOn(append(hostsOf(g.relayed), g.tabs...)...)
-	g.Transported()
-	deliveredOn(append(hostsOf(g.relayed), g.tabs...)...)
+	for range 6 {
+		g.Transported()
+		deliveredOn(append(hostsOf(g.relayed), g.tabs...)...)
+	}
 	g.Transported()
 }
 
 // settledOn is settled for a relay with no links of its own.
 func settledOn(rel *relayed) {
-	rel.Transported()
-	deliveredOn(hostsOf(rel)...)
-	rel.Transported()
-	deliveredOn(hostsOf(rel)...)
+	for range 6 {
+		rel.Transported()
+		deliveredOn(hostsOf(rel)...)
+	}
 	rel.Transported()
 }
 
@@ -415,6 +417,68 @@ func TestRouteAdmissionADecisionThatChangesWhileItIsSettledIsNotAnsweredWithWhat
 			t.Fatalf("resolves = %v, workers = %d, want none", resolves, workers)
 		}
 	})
+}
+
+// Open is the store of the loop below: one flag the admission reads.
+var Open = mustContract(contracts.Local("test.open", contracts.LocalDeclaration{
+	Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("open", contracts.Str())},
+}))
+
+// Pi: the loop "ends denied whenever the denial arrives: ${turns} turns into the settle" (turns 0..7): the same through an
+// ordinary source that changes `turns` microtasks after `admit` ran. A Go turn is one hop of the server's microtask queue
+// (Loop.Queue); where the settle task's own sections interleave with them is the scheduler's, so the sweep covers whichever
+// step of the settle the denial meets, as Pi's. Covers (host_route_admission.go): settle's moved/released checks; (part B) the
+// release arm after a denial (relayedHold.withheld) when the denial lands after the forward.
+func TestRouteAdmissionADecisionThatChangesWhileItIsSettledEndsDeniedWheneverTheDenialArrives(t *testing.T) {
+	for turns := range 8 {
+		t.Run(fmt.Sprintf("%d turns into the settle", turns), func(t *testing.T) {
+			forEachCodec(t, func(t *testing.T) {
+				var flag atomic.Pointer[state.Writable[any]]
+				var rel *relayed
+				rel = relay(t, relayedOptions{
+					Server: func(h FacetHost) error {
+						return h.Serve(Open, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+							open := self.Writable("yes")
+							flag.Store(&open)
+							return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+								"open": self.Derive([]any{open}, func(values []any) (delta.JsonValue, error) { return values[0], nil }),
+							}}}, nil
+						}, ServeOptions{})
+					},
+					Admit: func(_ data.Principal, _ contracts.Address, self AdmitSelf) (any, error) {
+						loop := rel.Server.(*chordHost).loop()
+						remaining := turns
+						var flip func()
+						flip = func() {
+							if remaining > 0 {
+								remaining--
+								loop.Queue(flip)
+							} else if open := flag.Load(); open != nil {
+								_ = (*open).Set("no")
+							}
+						}
+						loop.Queue(flip)
+						open := self.Get(Open, jsonObject()).Member("open")
+						return self.Derive([]any{open}, func(values []any) (delta.JsonValue, error) {
+							if values[0] == "yes" {
+								return Allow(nil), nil
+							}
+							return Deny("closed"), nil
+						}), nil
+					},
+				})
+				defer closeHosts(t, rel.Tab, rel.Server)
+				notes := mustHold(t, rel.Tab, PlacedNotes, jsonObject("session", "S1"))
+				g := &gatedRelay{relayed: rel, t: t}
+				g.settled()
+				wantKind(t, notes, RefStateFailed)
+				wantDenied(t, notes)
+				if references := workerReferences(rel, "session|S1"); references != 0 {
+					t.Fatalf("worker references = %d, want 0", references)
+				}
+			})
+		})
+	}
 }
 
 // --- a denial -----------------------------------------------------------------------------------------------------------
