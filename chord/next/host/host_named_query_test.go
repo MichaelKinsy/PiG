@@ -199,11 +199,15 @@ func nqTableWith(set *store.ColumnSet, extra ...store.ColumnProp) *store.TableDe
 
 func nqSession(id string) contracts.Address { return Session.Address(jsonObject("id", id)) }
 
-// nqServeSessions is the sessions' store: the publisher of the column set. table is the version its code declares.
-func nqServeSessions(h FacetHost, table *store.TableDefinition) error {
+// nqServeSessions is the sessions' store: the publisher of the column set. table is the version its code declares; declare,
+// when set, declares more after it (Pi's `serveSessions(h, table, declare)`).
+func nqServeSessions(h FacetHost, table *store.TableDefinition, declare func(self StoreSelf)) error {
 	return h.Serve(nqSessions, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
 		self := plain.(StoreSelf)
 		rows := self.Table(table)
+		if declare != nil {
+			declare(self)
+		}
 		tx := func(ctx context.Context, write func(tx documents.Tx) error) (delta.JsonValue, error) {
 			_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, write(tx) }, ctx)
 			return nil, err
@@ -286,7 +290,7 @@ func nqServeClub(h FacetHost, probe *nqProbe, set *store.ColumnSet) error {
 
 // nqPublisher is the sessions' plugin at a table version: only the publisher's code changes in these reloads.
 func nqPublisher(table *store.TableDefinition) HostFacet {
-	return HostFacet{Name: "@test/sessions", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return nqServeSessions(h, table) })}
+	return HostFacet{Name: "@test/sessions", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error { return nqServeSessions(h, table, nil) })}
 }
 
 // nqClubPlugin is the club's plugin.
@@ -520,5 +524,104 @@ func TestNamedQueryAReferenceTellsItsFollowersOfEveryOtherInstanceOfItsObject(t 
 	restart()
 	if got := moved.Load(); got != 2 {
 		t.Fatalf("told %d times after the release, want 2", got)
+	}
+}
+
+func TestNamedQueryASetMovedToAnotherPluginsTableInOneReloadIsBoundToTheNewTable(t *testing.T) {
+	// Opus S6, round 2 S3: the old owner's binding goes at its seal, not at the end of its teardown. Its native's close ends
+	// only when the new owner is live, so its teardown is still running when the new owner binds. (The reader's half, the
+	// club's page showing the moved rows, is with the reader.)
+	chordStore := memoryStore(t)
+	host, _ := nqHosted(t, chordStore, &nqProbe{})
+	closing := make(chan struct{})
+	slow := HostFacet{Name: "@test/sessions", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return nqServeSessions(h, nqRows, func(self StoreSelf) {
+			self.Open(func(context.Context) (any, error) { return nil, nil },
+				func(any, NativeCloseReason, context.Context) error { <-closing; return nil })
+		})
+	})}
+	reloadMust(t)(host.Reload([]HostFacet{slow, nqClubPlugin(&nqProbe{})}, background, ReloadOptions{}))
+	mustGet(t, host, nqSessions, jsonObject())
+	moved := exLocal("app.moved", contracts.Params{}, contracts.Mem("put", contracts.NewMethod(exStr())))
+	movedRows := nqMust(store.DefineTable("moved-rows", store.TableOptions{
+		Version: 1, Columns: slices.Clone(nqSessionColumns.Schemas), Key: []string{"id"}, Exposes: nqSessionColumns,
+	}))
+	movedPlugin := HostFacet{Name: "@test/moved", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(moved, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			self := plain.(StoreSelf)
+			rows := self.Table(movedRows)
+			return exImpl(nil, map[string]contracts.MethodFunction{
+				"put": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					_, err := self.Tx(func(tx documents.Tx) (any, error) {
+						return nil, tx.Put(rows, store.Row{"id": nqSession(id.(string)), "app": "club", "title": "moved", "lastTouch": int64(5)})
+					}, ctx)
+					return nil, err
+				},
+			}), nil
+		}, ServeOptions{})
+	})}
+	// The sessions' plugin is gone, another plugin exposes the set from its own table.
+	report := reloadMust(t)(host.Reload([]HostFacet{nqClubPlugin(&nqProbe{}), movedPlugin}, background, ReloadOptions{}))
+	if len(report.Failed) != 0 {
+		t.Fatalf("failed = %+v", report.Failed)
+	}
+	rows := mustGet(t, host, moved, jsonObject())
+	close(closing)
+	_, err := rows.Call("put", "s0", background)
+	must(t, err)
+	bound, ok := chordStore.Reads.Get(nqSessionColumns.Name)
+	if !ok || bound.Table != "app.moved:moved-rows" {
+		t.Fatalf("the set is bound to %+v (%v), want app.moved:moved-rows", bound, ok)
+	}
+}
+
+func TestNamedQueryAHostThatClosedServesNoSetAnymore(t *testing.T) {
+	// Go's own check of `Host.close`'s `unbindSets` (the objects' sets are dropped when every object is torn down).
+	chordStore := memoryStore(t)
+	host, _ := nqHosted(t, chordStore, &nqProbe{})
+	if _, bound := chordStore.Reads.Get(nqSessionColumns.Name); !bound {
+		t.Fatal("the set is not bound while its publisher serves it")
+	}
+	must(t, host.Close(background))
+	if bound, ok := chordStore.Reads.Get(nqSessionColumns.Name); ok {
+		t.Fatalf("the set is still bound after the host closed: %+v", bound)
+	}
+}
+
+func TestNamedQueryTwoTablesOfOneObjectExposingOneSetAreRefusedWhereTheyAreDeclaredNamingBoth(t *testing.T) {
+	twice := exLocal("app.twice", contracts.Params{}, contracts.Mem("n", contracts.Int()))
+	second := nqMust(store.DefineTable("second", store.TableOptions{
+		Version: 1, Columns: slices.Clone(nqSessionColumns.Schemas), Key: []string{"id"}, Exposes: nqSessionColumns,
+	}))
+	serve := func(h FacetHost) error {
+		return h.Serve(twice, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			self := plain.(StoreSelf)
+			self.Table(nqRows)
+			self.Table(second)
+			return exImpl(map[string]chord.Watchable[delta.JsonValue]{
+				"n": self.Derive(nil, func([]any) (delta.JsonValue, error) { return float64(1), nil }),
+			}, nil), nil
+		}, ServeOptions{})
+	}
+	const want = `is exposed by tables "rows" and "second"`
+	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error { return serve(h) }, loadedOptions{Store: memoryStore(t)})
+	_, _ = host.Get(background, twice, jsonObject(), GetOptions{})
+	all := errs.All()
+	if len(all) == 0 || all[len(all)-1].Failure.Error == nil || !strings.Contains(all[len(all)-1].Failure.Error.Message, want) {
+		t.Fatalf("the attempt's errors = %+v, want the last to contain %q", all, want)
+	}
+	// Staging refuses them too, where the reload declares them (Pi's recording `table`).
+	bare, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(twice, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": constant(float64(1))}, nil), nil
+		}, ServeOptions{})
+	}, loadedOptions{Store: memoryStore(t)})
+	report := reloadMust(t)(reloadApp(bare, func(h FacetHost) error { return serve(h) }))
+	var staged string
+	for _, failure := range report.Failed {
+		staged += failure.Error.Error()
+	}
+	if !strings.Contains(staged, want) {
+		t.Fatalf("staging refused with %q, want %q", staged, want)
 	}
 }

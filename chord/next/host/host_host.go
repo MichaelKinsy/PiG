@@ -2021,6 +2021,9 @@ func (h *chordHost) runClose() *closePromise {
 			failures = append(failures, tearDown()...)
 		}
 		h.enter(func() {
+			for _, object := range objects {
+				object.unbindSets()
+			}
 			h.types = newNamedMap[*served]()
 			// Their facets keep their factories' closures (which may keep objects' handles).
 			h.plugins = newNamedMap[*loadedPlugin]()

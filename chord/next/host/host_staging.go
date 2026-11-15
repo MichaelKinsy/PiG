@@ -419,6 +419,14 @@ func (r *recordingSelf) Table(definition *store.TableDefinition) store.Table {
 	if err := chordStore.Claims.AssertTable(sqlName, object); err != nil {
 		panic(err)
 	}
+	exposers := make([]store.Exposer, 0, r.tables.len())
+	for _, name := range r.tables.keys() {
+		declared, _ := r.tables.get(name)
+		exposers = append(exposers, store.Exposer{Name: declared.Name, Exposes: declared.Exposes})
+	}
+	if err := store.CheckExposedOnce(store.Exposer{Name: definition.Name, Exposes: definition.Exposes}, exposers, object.text); err != nil {
+		panic(err)
+	}
 	r.tables.set(definition.Name, definition)
 	// A handle whose reads and queries return errInert (its owner is never live): nothing reaches the store.
 	return store.NewTableHandle(definition, sqlName, chordStore, inertTableOwner{label: object.text})

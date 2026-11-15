@@ -1134,11 +1134,28 @@ func (o *chordObject) stop() func() []*closeFailed {
 // cause (`not_served`), references with their last values, until the next object of its identity binds them (`removal`).
 func (o *chordObject) remove(cause data.FailureCause) {
 	td := o.seal(ending{kind: endingRemoved, err: o.ended(), cause: cause})
+	o.unbindSets()
 	if td.kind == teardownNone {
 		return
 	}
 	torn := awaitTask(o.host, func() ([]*closeFailed, error) { return o.tearDown(td, closeEnd), nil })
 	o.host.ending(o.identity, o.reported(torn))
+}
+
+// unbindSets: the column sets its tables exposed are served no more (slice 14 §5): reads over them fail `unavailable`. A
+// table's owner has empty params, so it lives as long as its host serves its type; it leaves in two ways. An object whose
+// type a reload removed drops its sets at its seal, so another object may bind the name at once (a reload moving a set to
+// another plugin's table ends this object and starts that one in one commit; this object's teardown runs later). A closing
+// host drops them when every object is torn down: the readers end with their objects, not on a read that failed because its
+// publisher was torn down first.
+func (o *chordObject) unbindSets() {
+	chordStore := o.host.store
+	if chordStore == nil {
+		return
+	}
+	for _, set := range chordStore.Reads.BoundBy(o) {
+		chordStore.Reads.Unbind(set, o)
+	}
 }
 
 // reloadFate is what a reload does to this object, whose type is still served: a live object restarts, any other is retried.

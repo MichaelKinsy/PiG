@@ -427,6 +427,13 @@ func (a *attempt) Table(definition *store.TableDefinition) store.Table {
 	if _, twice := a.tableNames[definition.Name]; twice {
 		panic(declarationError(`%s: table "%s" is declared twice`, object.text, definition.Name))
 	}
+	exposers := make([]store.Exposer, 0, len(a.tables))
+	for _, declared := range a.tables {
+		exposers = append(exposers, store.Exposer{Name: declared.name, Exposes: declared.handle.Definition.Exposes})
+	}
+	if err := store.CheckExposedOnce(store.Exposer{Name: definition.Name, Exposes: definition.Exposes}, exposers, object.text); err != nil {
+		panic(err)
+	}
 	sqlName := store.TableSqlName(object.served.contract.Name, definition.Name)
 	a.mustClaim(object.claimTable(sqlName))
 	handle := store.NewTableHandle(definition, sqlName, chordStore, &attemptTableOwner{attempt: a})
