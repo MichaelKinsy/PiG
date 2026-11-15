@@ -1,4 +1,5 @@
 # The Python fixture of the session graph conformance rows (session_graph_test.go): the script of testfixture/sessiongraph (Go), testdata/session-graph.mjs (Node, Pi's own classes) and testdata/session-graph-rust.
+import gc
 import json
 import os
 import threading
@@ -6,6 +7,10 @@ import time
 
 import pig_sdk
 from pig_sdk import DefaultPackageManager, DefaultResourceLoader, ModelRuntime, ProjectTrustStore, SessionManager, SettingsManager, has_trust_requiring_project_resources
+
+# The aggressive-collector row (session_graph_gc_test.go) sets this: the collector runs on every container allocation, so a wrapper that nothing keeps alive is collected at once.
+if os.environ.get("PIG_SESSION_GRAPH_COLLECTOR"):
+    gc.set_threshold(1)
 
 
 def shape(entries):
@@ -1346,6 +1351,8 @@ def extension_runner_script(ctx, args):
     )
     loader.reload()
     loaded = loader.get_extensions()
+    # The loader's last use: from here only the loaded extensions name it (the runner below puts their loader's handle on the wire).
+    del loader
     r["loaded"] = {"paths": [ext["path"] for ext in loaded.extensions], "tools": [ext["tools"] for ext in loaded.extensions], "errors": loaded["errors"], "sources": [ext["sourceInfo"]["source"] for ext in loaded.extensions], "runtime": _runtime_view(loaded.runtime)}
 
     manager = SessionManager.in_memory(ctx, cwd)

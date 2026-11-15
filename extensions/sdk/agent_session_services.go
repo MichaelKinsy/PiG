@@ -83,6 +83,7 @@ func CreateAgentSessionServices(c Context, options CreateAgentSessionServicesOpt
 	for i, flag := range options.ExtensionFlagValues {
 		flags[i] = [2]any{flag.Name, flag.Value}
 	}
+	defer keepAlive(modelRuntime, settingsManager, resourceLoader)
 	diagnostics, err := graphStatic[[]AgentSessionRuntimeDiagnostic](c, "AgentSessionServices", "apply", modelRuntime.Handle(), settingsManager.Handle(), resourceLoader.Handle(), paths.Cwd, paths.AgentDir, flags)
 	if err != nil {
 		return nil, err
