@@ -129,6 +129,11 @@ type Self interface {
 	// every run reads every matching row, nothing caps it, and it runs again on every write to its tables except an `update`
 	// that assigns none of its condition's columns. Count what a key or an index bounds.
 	Count(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], args any) chord.Watchable[delta.JsonValue]
+	// List is a list a screen loads more of (slice 14 §4): the rows of a named query in pages of options.First between fixed
+	// bookmarks, so loaded rows stay live, `More` sends only the new rows, and a row that moves leaves no gap and no
+	// duplicate. name is the list's within this object: its bookmarks survive a reload by it. One source; its arguments may
+	// be a watchable of them.
+	List(name string, sources []ListSource, options ListOptions) *ListHandle
 	// Job is this object's job definition (§15), once per job name: Run runs each started run outside transactions, Finish
 	// records its outcome in one. Starts are taken once the object is live.
 	Job(definition *JobDefinition, implementation JobImplementation) JobHandle
@@ -341,8 +346,10 @@ type attempt struct {
 	// queries are its own live queries with what each reads, run at activation (after the tables are prepared), detached at
 	// its end.
 	queries []ownQuery
-	// readers are its readers of named queries (`LiveQuery`, `Count`), opened once its dependencies are live.
+	// readers are its readers of named queries (`LiveQuery`, `Count`, `List`), opened once its dependencies are live.
 	readers []*reader
+	// listed are the names of the lists its factory declared: one list per name.
+	listed map[string]struct{}
 	// readerWake follows a reader this attempt is parked on: its next adoption (a good run heals it) checks again.
 	readerWake *readerWake
 	// references are those this attempt declared with `self.get`.
@@ -400,6 +407,7 @@ func newAttempt(object *chordObject, ctx context.Context) *attempt {
 		object: object, served: object.served, ctx: ctx, abort: abort, opening: opening, opener: chordctx.WithValue(opening, openingKey, object),
 		token:         documents.NewSealToken(),
 		declaredNames: map[string]struct{}{}, jobNames: map[string]struct{}{}, tableNames: map[string]struct{}{},
+		listed: map[string]struct{}{},
 	}
 	a.readerWake = &readerWake{attempt: a}
 	return a
@@ -595,6 +603,30 @@ func (a *attempt) Count(query contracts.NamedQuery[delta.JsonValue, delta.JsonVa
 	a.readers = append(a.readers, reader)
 	// A count's value is its number.
 	return Expose(live)
+}
+
+// List implements Self.
+func (a *attempt) List(name string, sources []ListSource, options ListOptions) *ListHandle {
+	a.assertDeclaring("list")
+	at := a.readerSite()
+	if err := firstOf(at.Label, "list", int64(options.First)); err != nil {
+		panic(err)
+	}
+	source, err := oneSource(at.Label, sources)
+	if err != nil {
+		panic(err)
+	}
+	// Checked last: a list refused for another reason does not take its name.
+	if err := listName(at.Label, name, a.listed); err != nil {
+		panic(err)
+	}
+	reader, list, err := listReader(at, name, source, options.First, a.object.listMemory(name))
+	if err != nil {
+		panic(err)
+	}
+	a.readers = append(a.readers, reader)
+	// Its value is `{ rows, moreAfter }` of the query's items.
+	return &ListHandle{value: Expose(list), more: list.more, list: list}
 }
 
 // readerSite is where this attempt's readers live. A reader's drain is `void this.#reading.read(...)` (query-reader.ts:123): a

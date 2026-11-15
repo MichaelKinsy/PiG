@@ -1512,6 +1512,8 @@ type relayedOptions struct {
 	RoutePair func() (*link.MemoryLink, *link.MemoryLink)
 	// Resolve wraps the default one (`worker()` makes the worker).
 	Resolve func(address contracts.Address, worker func() resolved, ctx context.Context) (resolved, error)
+	// Admit is the route's admission (slice 14 §2.3); nil: none.
+	Admit RouteAdmit
 	Context context.Context
 	// RevokedBy is the server's and the workers' `revokedBy`; ServerRevokedBy is the server's when it differs.
 	RevokedBy       RevokedBy[delta.JsonValue]
@@ -1618,6 +1620,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 	}
 	result.Route = mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: authorize,
+		Admit:     options.Admit,
 		Resolve: func(address contracts.Address, routing context.Context) (ResolvedLink, error) {
 			// A resolve once the test ended (a re-resolve of a link the closing hosts dropped) makes no worker, as Pi's test ends
 			// before its hosts' close can start one. The test's context is canceled before its first cleanup runs, whichever
@@ -1676,6 +1679,8 @@ type rawWorkers struct {
 	mu      sync.Mutex
 	// peers are the raw peers in the order of the calls that made them.
 	peers []*RawPeer
+	// ends are both ends of every link Resolve made: Transported flushes them.
+	ends []*link.MemoryLink
 	// made is closed (and replaced) whenever Resolve makes a peer.
 	made chan struct{}
 }
@@ -1722,6 +1727,7 @@ func (w *rawWorkers) Resolve(address contracts.Address, _ func() resolved, _ con
 	peer := newRawPeer(w.t, b, rawPeerOptions{Calls: w.options.Calls, NoCalls: w.options.NoCalls, NoAck: w.options.NoAck})
 	w.mu.Lock()
 	w.peers = append(w.peers, peer)
+	w.ends = append(w.ends, a, b)
 	if w.made != nil {
 		close(w.made)
 		w.made = nil
@@ -1731,6 +1737,14 @@ func (w *rawWorkers) Resolve(address contracts.Address, _ func() resolved, _ con
 	return resolved{
 		Link: a, Principal: workerPrincipal(session), Codec: testCodec(), Trusted: w.options.Trusted, Limits: w.options.Limits,
 	}, nil
+}
+
+// Transported is Pi's `transported()` for the links of the raw workers made so far.
+func (w *rawWorkers) Transported() {
+	w.mu.Lock()
+	ends := append([]*link.MemoryLink(nil), w.ends...)
+	w.mu.Unlock()
+	transported(ends...)
 }
 
 // incarnationOf is a host's incarnation, which its handshakes send.

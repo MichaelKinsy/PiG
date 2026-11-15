@@ -40,15 +40,19 @@ func listName(label, name string, listed map[string]struct{}) error {
 	return nil
 }
 
+// oneSource checks the sources of a list: one `[query, args]` (lists over several sources are not built yet: `slices.md`,
+// "Carry-over", slice 14).
+func oneSource(label string, sources []ListSource) (ListSource, error) {
+	if len(sources) != 1 {
+		return ListSource{}, declarationError("%s: self.list: one source, [[namedQuery, args]]", label)
+	}
+	return sources[0], nil
+}
+
 // namedQueryExpected is the refusal of what `self.liveQuery`, `self.count` or `self.list` (declaration) was given as
 // its named query.
 func namedQueryExpected(label, declaration string) error {
 	return declarationError("%s: self.%s reads a named query; a table of this object is read with self.query", label, declaration)
-}
-
-// tableExpected is the refusal of a named query given to `self.query` as its table.
-func tableExpected(label string) error {
-	return declarationError("%s: self.query reads a table of this object; a named query is read with self.liveQuery", label)
 }
 
 // undeclaredTable is the refusal of a table given to `self.query` or `self.queries` (declaration) that the factory did
@@ -189,6 +193,16 @@ func liveReader(at ReaderSite, declaration string, query contracts.NamedQuery[de
 	}
 	live := store.NewLiveQuery(at.Site, readerOwnerOf(at, given), shape)
 	return newReader(given, newLiveReading(live), at.Wake, at.Go), live, nil
+}
+
+// listReader is the reader of `self.list(name, [[query, args]], { first })`; memory is what the object keeps of the list.
+func listReader(at ReaderSite, name string, source ListSource, first int, memory *ListMemory) (*reader, *list, error) {
+	given, err := givenQuery(at, `list "`+name+`"`, source.Query, source.Args)
+	if err != nil {
+		return nil, nil, err
+	}
+	l := newList(at.Site, readerOwnerOf(at, given), first, memory)
+	return newReader(given, l, at.Wake, at.Go), l, nil
 }
 
 // givenQuery is the named query a reader was given with its arguments, checked: a named query (a table of the object is

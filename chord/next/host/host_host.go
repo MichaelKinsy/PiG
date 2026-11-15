@@ -467,6 +467,9 @@ type chordHost struct {
 	plugins *namedMap[*loadedPlugin]
 	// reloading is the last reload's end, which the next one waits for (slice 7b section 1); nil before the first.
 	reloading *keyedPromise[struct{}]
+	// admissionHold is the test seam of an attempt's admission hop (internal/admitseam): set, it is handed the hop instead of the
+	// host's queue; nil outside tests. Read and written in sections.
+	admissionHold func(start func())
 	// objects are by identity, in the order they went live (the others where they were created).
 	objects     map[string]*chordObject
 	objectOrder []string
@@ -577,8 +580,8 @@ func createHost(options HostOptions) (*chordHost, error) {
 		h.heartbeat.close = durationOr(options.Heartbeat.Close, defaultHeartbeat)
 	}
 	h.routing, h.routingCancel = chordctx.WithCancel(chordctx.Background())
-	h.parent = newPath(func(pathEvent) {}, nil)
-	h.unplaced = newPath(func(pathEvent) {}, nil)
+	h.parent = newPath(func(pathEvent) {}, nil, nil)
+	h.unplaced = newPath(func(pathEvent) {}, nil, nil)
 	h.destination = newDestination(h.address, h.routes, h.parent, func(name string) bool { return h.served(name) != nil })
 	h.roots = newRootScopes(h)
 	h.hostData = newHostDataGate(events)
@@ -1848,6 +1851,12 @@ func (h *chordHost) isOwn(principal data.Principal, ctx context.Context) bool {
 		return false
 	}
 	return data.PrincipalKey(own, ctx, h.principalKey) == data.PrincipalKey(principal, ctx, h.principalKey)
+}
+
+// principalKeyOf is the principal key of principal (`HostOptions.PrincipalKey`): a route's admission keeps one decision per
+// key. Principals on this host are its own and the ones its links stamp.
+func (h *chordHost) principalKeyOf(principal data.Principal, ctx context.Context) string {
+	return data.PrincipalKey(principal, ctx, h.principalKey)
 }
 
 // linkOf is a new link of role, registered with the heartbeat while open.
