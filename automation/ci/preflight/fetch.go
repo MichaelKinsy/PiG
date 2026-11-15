@@ -18,6 +18,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/automation/ci/preflight/reviewed"
 )
 
 type state struct {
@@ -36,6 +38,8 @@ type verdict struct {
 	Result   string    `json:"result"`
 	Reason   string    `json:"reason,omitempty"`
 	Warnings []warning `json:"warnings,omitempty"`
+	// Notices are the lines of the check's output that name what it let pass for a reviewer to see; none asks for anything.
+	Notices []string `json:"notices,omitempty"`
 }
 
 type warning struct {
@@ -73,6 +77,8 @@ type data struct {
 	Previous     *state             `json:"previous,omitempty"`
 	SourceErrors map[string]string  `json:"source_errors,omitempty"`
 	Acknowledged string             `json:"acknowledged,omitempty"`
+	// ReviewedLedger is the text of test/parity/testprune-reviewed.toml at the PR's head commit.
+	ReviewedLedger string `json:"reviewed_ledger,omitempty"`
 }
 
 func (d *data) failed(mu *sync.Mutex, log io.Writer, source string, err error) {
@@ -311,8 +317,17 @@ func (f *fetcher) waveTwo(ctx context.Context, reads map[string]bool) {
 			return nil
 		})
 	}
+	if reads["reviewed-ledger"] {
+		f.source("reviewed-ledger", func() error {
+			text, err := f.fileAtHead(ctx, reviewed.File, head)
+			if err == nil {
+				d.ReviewedLedger = text
+			}
+			return err
+		})
+	}
 	f.source("acknowledged", func() error {
-		text, err := f.acknowledged(ctx, head)
+		text, err := f.fileAtHead(ctx, acknowledgedPath, head)
 		if err == nil {
 			d.Acknowledged = text
 		}
@@ -324,19 +339,21 @@ func (f *fetcher) waveTwo(ctx context.Context, reads map[string]bool) {
 	f.wg.Wait()
 }
 
-func (f *fetcher) acknowledged(ctx context.Context, head string) (string, error) {
+// fileAtHead reads one file of the repository at the PR's head commit, never at a branch name: the text is the one the
+// verdict is about, whatever the branch does meanwhile. A file the head does not have is empty text.
+func (f *fetcher) fileAtHead(ctx context.Context, filePath, head string) (string, error) {
 	var file struct {
 		Content  string `json:"content"`
 		Encoding string `json:"encoding"`
 	}
-	err := f.a.get(ctx, fmt.Sprintf("%s/contents/%s?ref=%s", f.prefix, acknowledgedPath, head), &file, false)
+	err := f.a.get(ctx, fmt.Sprintf("%s/contents/%s?ref=%s", f.prefix, filePath, head), &file, false)
 	switch {
 	case hasStatus(err, http.StatusNotFound):
 		return "", nil
 	case err != nil:
 		return "", err
 	case file.Encoding != "base64":
-		return "", fmt.Errorf("%s has encoding %q", acknowledgedPath, file.Encoding)
+		return "", fmt.Errorf("%s has encoding %q", filePath, file.Encoding)
 	}
 	raw, err := base64.StdEncoding.DecodeString(strings.ReplaceAll(file.Content, "\n", ""))
 	return string(raw), err

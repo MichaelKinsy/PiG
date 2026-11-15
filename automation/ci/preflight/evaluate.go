@@ -38,6 +38,8 @@ func sourceValue(d *data, name string) any {
 		return d.DependsOn
 	case "dependency-graph":
 		return d.Dependencies
+	case "reviewed-ledger":
+		return d.ReviewedLedger
 	}
 	return nil
 }
@@ -88,7 +90,7 @@ func evaluate(cfg config, d *data, env *ruleEnv) evaluation {
 			v.Result, v.Reason = resultScan, "waits for its scan"
 		default:
 			o := decide(d, c, env)
-			v.Result, v.Reason, v.Warnings = o.result, clip(o.reason, maxReason), perFile(o.warnings)
+			v.Result, v.Reason, v.Warnings, v.Notices = o.result, clip(o.reason, maxReason), perFile(o.warnings), o.notices
 		}
 		ev.Checks[c.Name] = v
 	}
@@ -185,6 +187,11 @@ func report(w io.Writer, cfg config, ev evaluation) {
 			}
 		}
 	}
+	for _, c := range cfg.Checks {
+		for _, n := range ev.Checks[c.Name].Notices {
+			logf(w, "NOTE  %-20s %s", c.Name, n)
+		}
+	}
 	if len(open) > 0 {
 		logf(w, "to acknowledge a warning, add its entry to %s:\n%s", acknowledgedPath, strings.Join(open, "\n"))
 	}
@@ -197,6 +204,9 @@ func report(w io.Writer, cfg config, ev evaluation) {
 			if !x.Acknowledged {
 				logf(w, "::warning title=pre-flight %s #%d::%s", c.Name, ev.PR, annotation(x.where()))
 			}
+		}
+		for _, n := range v.Notices {
+			logf(w, "::notice title=pre-flight %s #%d::%s", c.Name, ev.PR, annotation(n))
 		}
 	}
 }

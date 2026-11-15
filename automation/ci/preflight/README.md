@@ -77,7 +77,7 @@ Each check:
 |---|---|
 | `when` | `always: true`, or `paths:` globs that make the check relevant (`**` crosses directories) |
 | `stage` | `cheap`: decided from the PR's API data by a built-in rule; `scan`: an external tool on the PR's files |
-| `reads` | (cheap) the data sources the rule reads: `pull`, `files`, `commits`, `compare-main`, `depends-on`, `dependency-graph` |
+| `reads` | (cheap) the data sources the rule reads: `pull`, `files`, `commits`, `compare-main`, `depends-on`, `dependency-graph`, `reviewed-ledger` (the reviewed ledger at the head commit) |
 | `rule`, `with` | (cheap) the built-in rule of `rules.go` and its parameters |
 | `scan` | (scan) the tool run, below |
 | `main` | files in main's tree the verdict depends on (globs; a directory counts with everything in it) |
@@ -159,6 +159,26 @@ term of at least three characters per line. The workflow writes the secret to
 a file outside the checkout and names it in `PIG_PRIVATE_TERMS_FILE`; locally,
 point that variable at a file of your own. A finding names the file, the line
 and the term's line number, never the term. Without the secret the rule is off.
+
+## Expected values changed with code
+
+`test-expectation` fails a PR that changes an expected value in a `_test.go` file
+together with production code of the same directory, unless the Pi behavior that
+changed is cited (`Pi-Behavior-Change: <pi file.ts:line>` in the PR body and in a
+commit, the file named by an inventory of main), or the reviewed ledger admits
+the file. The ledger is `test/parity/testprune-reviewed.toml` read at the PR's
+head commit; `make test-expectation-lint` admits by the same rows and validates
+them with the same code (`reviewed/`). A row admits a changed test file when its
+`path` is the file and its `commit` (at least ten characters) names exactly one
+commit of the PR; a row of any other commit or file admits nothing. A row of
+class `CITE` needs a Pi file of main's inventories, `DIVERGENCE` a record in
+`docs/parity/divergences/` (main's or the PR's), `NOBEHAVIOR` a reason. A
+matching row that fails this, an ambiguous commit prefix, and a ledger that is
+not valid TOML are failures; a ledger the API cannot deliver makes the check an
+error, and a head without the file admits nothing. Each admission prints a `NOTE`
+line (and a `::notice`, and a row in the comment) naming the file, the row's
+commit, class, cite and reason; a notice asks for no acknowledgement. The ledger
+row is reviewed as part of the PR's diff.
 
 ## Acknowledgements
 

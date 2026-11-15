@@ -12,6 +12,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/automation/ci/preflight/reviewed"
 )
 
 const (
@@ -27,6 +29,8 @@ type outcome struct {
 	result   string
 	reason   string
 	warnings []warning
+	// notices name what a rule let pass that a reviewer should see; a notice asks for nothing.
+	notices []string
 }
 
 func pass(reason string) outcome { return outcome{result: resultPass, reason: reason} }
@@ -493,6 +497,79 @@ func isProdGo(p string) bool {
 	return strings.HasSuffix(p, ".go") && !strings.HasSuffix(p, "_test.go") && !strings.Contains(p, "/testdata/")
 }
 
+// editedTest is a test file of the PR that changes expected values together with production code of its directory.
+type editedTest struct {
+	name  string
+	edits int
+}
+
+func (e editedTest) String() string { return fmt.Sprintf("%s (%d value(s))", e.name, e.edits) }
+
+func joinEdited(edited []editedTest) string {
+	names := make([]string, len(edited))
+	for i, e := range edited {
+		names[i] = e.String()
+	}
+	return strings.Join(names, ", ")
+}
+
+// divergenceRecorded tells whether the record of divergence id is in main or is added by the PR.
+func divergenceRecorded(d *data, env *ruleEnv) func(string) bool {
+	return func(id string) bool {
+		file := reviewed.DivergenceFile(id)
+		if slices.ContainsFunc(d.Files, func(f prFile) bool { return f.Filename == file && f.Status != "removed" }) {
+			return true
+		}
+		_, err := os.Stat(filepath.Join(env.root, filepath.FromSlash(file)))
+		return err == nil
+	}
+}
+
+// admitByLedger splits the edited test files into those a reviewed ledger row admits and those it leaves open. A row
+// applies to a test file when its path is the file and its commit prefix names exactly one commit of the PR. An
+// applying row that fails the ledger's validation, or whose prefix names several commits of the PR, is a problem: the
+// file is not admitted. Each admission has a notice naming the row.
+func admitByLedger(d *data, ledger []reviewed.Entry, known map[string]bool, recorded func(string) bool, edited []editedTest) (open []editedTest, notices, problems []string) {
+	for _, e := range edited {
+		admitted := false
+		for _, r := range ledger {
+			if r.Path != e.name {
+				continue
+			}
+			named := 0
+			for _, c := range d.Commits {
+				if r.NamesCommit(c.SHA) {
+					named++
+				}
+			}
+			row := fmt.Sprintf("%s %s", short10(r.Commit), r.Path)
+			switch err := r.Validate(known, recorded); {
+			case named == 0:
+			case named > 1:
+				problems = append(problems, fmt.Sprintf("ledger row %s names %d commits of the PR; give a longer commit prefix", row, named))
+			case err != nil:
+				problems = append(problems, fmt.Sprintf("ledger row %s %s", row, err))
+			default:
+				admitted = true
+				notices = append(notices, fmt.Sprintf("%s: expected-value change admitted by reviewed ledger row %s, class %s%s: %s", e.name, short10(r.Commit), r.Class, citeOf(r), clip(strings.Join(strings.Fields(r.Reason), " "), maxNotice)))
+			}
+		}
+		if !admitted {
+			open = append(open, e)
+		}
+	}
+	return open, notices, problems
+}
+
+func citeOf(r reviewed.Entry) string {
+	if r.Cite == "" {
+		return ""
+	}
+	return " " + r.Cite
+}
+
+func short10(sha string) string { return sha[:min(len(sha), 10)] }
+
 func ruleTestExpectation(d *data, p params, env *ruleEnv) outcome {
 	prodDirs := map[string]bool{}
 	for _, f := range d.Files {
@@ -500,17 +577,46 @@ func ruleTestExpectation(d *data, p params, env *ruleEnv) outcome {
 			prodDirs[path.Dir(f.Filename)] = true
 		}
 	}
-	var edited []string
+	var edited []editedTest
 	for _, f := range d.Files {
 		if strings.HasSuffix(f.Filename, "_test.go") && prodDirs[path.Dir(f.Filename)] {
 			if n := expectationEdits(f.Patch); n > 0 {
-				edited = append(edited, fmt.Sprintf("%s (%d value(s))", f.Filename, n))
+				edited = append(edited, editedTest{f.Filename, n})
 			}
 		}
 	}
 	if len(edited) == 0 {
 		return pass("no expected value changed together with production code of its directory")
 	}
+	known := map[string]bool{}
+	for _, glob := range p.strs("inventories") {
+		for _, m := range piPathRE.FindAllString(env.mainFiles(glob), -1) {
+			known[path.Base(m)] = true
+		}
+	}
+	ledger, err := reviewed.Parse(d.ReviewedLedger)
+	if err != nil {
+		return fail("%s change expected values together with production code, and the reviewed ledger at the PR head cannot be read, so no row admits them: %v", joinEdited(edited), err)
+	}
+	open, notices, problems := admitByLedger(d, ledger, known, divergenceRecorded(d, env), edited)
+	if len(problems) > 0 {
+		o := fail("%s", strings.Join(problems, "; "))
+		o.notices = notices
+		return o
+	}
+	if len(open) == 0 {
+		o := pass(fmt.Sprintf("%d changed test file(s) admitted by reviewed ledger rows", len(notices)))
+		o.notices = notices
+		return o
+	}
+	o := citedExpectation(d, open, known)
+	o.notices = notices
+	return o
+}
+
+// citedExpectation decides the edited test files no ledger row admits: the Pi behavior that changed is cited in the PR
+// body and in a commit trailer, and the cited Pi file is one a main inventory names.
+func citedExpectation(d *data, edited []editedTest, known map[string]bool) outcome {
 	cited := map[string]bool{}
 	inBody := false
 	for _, m := range piCiteRE.FindAllStringSubmatch(d.Pull.Body, -1) {
@@ -530,13 +636,7 @@ func ruleTestExpectation(d *data, p params, env *ruleEnv) outcome {
 		missing = append(missing, "a commit trailer")
 	}
 	if len(missing) > 0 {
-		return fail("%s change expected values together with production code; cite the Pi behavior that changed as `Pi-Behavior-Change: <pi file.ts:line>` in %s", strings.Join(edited, ", "), strings.Join(missing, " and "))
-	}
-	known := map[string]bool{}
-	for _, glob := range p.strs("inventories") {
-		for _, m := range piPathRE.FindAllString(env.mainFiles(glob), -1) {
-			known[path.Base(m)] = true
-		}
+		return fail("%s change expected values together with production code; cite the Pi behavior that changed as `Pi-Behavior-Change: <pi file.ts:line>` in %s, or add a row for the commit and the file to %s in a later commit of the PR", joinEdited(edited), strings.Join(missing, " and "), reviewed.File)
 	}
 	var unknown []string
 	for name := range cited {

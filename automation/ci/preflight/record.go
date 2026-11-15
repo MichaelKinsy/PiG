@@ -39,6 +39,9 @@ func markdown(cfg config, d *data, ev evaluation) string {
 				acks = append(acks, ackEntry(c.Name, w))
 			}
 		}
+		for _, n := range v.Notices {
+			fmt.Fprintf(&b, "| 📝 | %s | %s |\n", c.Name, cell(n))
+		}
 	}
 	if len(acks) > 0 {
 		fmt.Fprintf(&b, "\n<details><summary>To acknowledge a warning, add its entry to <code>%s</code></summary>\n\n```toml\n%s```\n</details>\n", acknowledgedPath, strings.Join(acks, "\n"))
@@ -241,7 +244,7 @@ func (r recording) sendVia(ctx context.Context, a *api, log io.Writer) error {
 	return nil
 }
 
-const shortened = "\nThe warnings are left out: with them the report is too long for a comment. The run's log and step summary hold them.\n"
+const shortened = "\nThe warnings and notices are left out: with them the report is too long for a comment. The run's log and step summary hold them.\n"
 
 func fits(body string) bool { return len(body) <= maxCommentLength }
 
@@ -253,7 +256,7 @@ func commentBody(cfg config, d *data, ev evaluation, report string, st state) (s
 	bare := ev
 	bare.Checks = map[string]verdict{}
 	for name, v := range ev.Checks {
-		v.Warnings = nil
+		v.Warnings, v.Notices = nil, nil
 		bare.Checks[name] = v
 	}
 	st.Checks = bare.Checks
