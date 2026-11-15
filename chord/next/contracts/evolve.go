@@ -241,7 +241,8 @@ func newDraft(data *ContractData) *draft {
 	current := data.Versions[len(data.Versions)-1]
 	variants := NewNamedMap[*VariantData](current.Variants.Len())
 	for name, variant := range current.Variants.All() {
-		variants.Set(name, &VariantData{State: variant.State.Clone(), Methods: variant.Methods.Clone(), Keyed: variant.Keyed.Clone(), Events: variant.Events.Clone()})
+		// Queries members are carried over as they are: no edit changes one yet (slice 14, carry-over), so the map is shared.
+		variants.Set(name, &VariantData{State: variant.State.Clone(), Methods: variant.Methods.Clone(), Keyed: variant.Keyed.Clone(), Events: variant.Events.Clone(), Queries: variant.Queries})
 	}
 	version := current.Version + 1
 	return &draft{
@@ -475,7 +476,7 @@ func (d *draft) refuseDeclared(variant, member string, kind MemberKind) error {
 	if err != nil {
 		return err
 	}
-	if found.State.Has(member) || found.Methods.Has(member) || found.Keyed.Has(member) || found.Events.Has(member) {
+	if found.State.Has(member) || found.Methods.Has(member) || found.Keyed.Has(member) || found.Events.Has(member) || found.Queries.Has(member) {
 		return fail("%s: already declared", d.memberPath(variant, member, kind))
 	}
 	return nil
