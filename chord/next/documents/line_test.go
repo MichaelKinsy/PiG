@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 )
 
 // Ports packages/chord/test/documents/line.test.ts
@@ -131,5 +133,73 @@ func TestASweepTakesItsPlaceOnTheLineAtTheCallOfTheResidencyHook(t *testing.T) {
 	}
 	if got := <-ran; got != "later" {
 		t.Fatalf("second to run = %q, want the later holder", got)
+	}
+}
+
+// taskCount is the loop that counts a task, as a test's join of the host's loop does (host_loop_seam.go): it records the waits the
+// task parks in and resumes from.
+type taskCount struct{ parked, resumed chan *parking.Parked }
+
+func newTaskCount() *taskCount {
+	return &taskCount{parked: make(chan *parking.Parked, 4), resumed: make(chan *parking.Parked, 4)}
+}
+
+func (c *taskCount) Parked(p *parking.Parked)  { c.parked <- p }
+func (c *taskCount) Resumed(p *parking.Parked) { c.resumed <- p }
+
+// A task of the host's loop (awaitTask: the teardown's `await documents.settled()`) that waits for the holder before it waits for
+// something the loop does not run (a step still writing, a commit a test holds): it is parked, which the loop's join does not wait
+// for, as Pi's `setTimeout(0)` does not wait for a promise still pending on the line. Its wait is over, with no effect on the
+// wait, once the holder released.
+func TestTheLineParksATaskThatWaitsForTheHolderBeforeIt(t *testing.T) {
+	line := NewLine()
+	first := line.Acquire(context.Background())
+	count := newTaskCount()
+	got := make(chan func(), 1)
+	go func() {
+		task := &parking.Task{Loop: count}
+		defer task.Enter()()
+		got <- line.Acquire(context.Background())
+	}()
+	// A time bound as a fault detector only: the task parks before it waits.
+	var wait *parking.Parked
+	select {
+	case wait = <-count.parked:
+	case <-time.After(30 * time.Second):
+		t.Fatal("a task that waits for the holder before it did not park")
+	}
+	if wait.Ready() {
+		t.Fatal("the task's wait is over while the holder before it holds the line")
+	}
+	first()
+	if !wait.Ready() {
+		t.Fatal("the task's wait is not over after the holder before it released")
+	}
+	release := <-got
+	select {
+	case <-count.resumed:
+	case <-time.After(30 * time.Second):
+		t.Fatal("the task did not resume after its wait")
+	}
+	release()
+}
+
+// A task that takes a free line, or one whose holder before it released already, waits for nothing: it is not parked.
+func TestTheLineDoesNotParkATaskThatFindsItFree(t *testing.T) {
+	line := NewLine()
+	count := newTaskCount()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		task := &parking.Task{Loop: count}
+		defer task.Enter()()
+		line.Acquire(context.Background())()
+		line.Acquire(context.Background())()
+	}()
+	<-done
+	select {
+	case <-count.parked:
+		t.Fatal("a task that found the line free parked")
+	default:
 	}
 }

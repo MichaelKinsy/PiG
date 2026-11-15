@@ -180,7 +180,7 @@ func TestLiveQueryARunOfAReadItClosedIsDroppedWhenItsCommitAdoptsItAfterwards(t 
 	release()
 	must(t, <-committed)
 	// The run is neither the current read's nor a pending one's: it cannot heal the failure.
-	if _, err := w.query.Value(); err != cause {
+	if _, err := w.query.Value(); !errors.Is(err, cause) {
 		t.Fatalf("Value error = %v, want the failure still", err)
 	}
 }
@@ -193,14 +193,14 @@ func TestLiveQueryDetachEndsItsReadsAndItsValueIsTheEnd(t *testing.T) {
 	if reads := w.store.Reads.On(w.notes.Sql.Table); len(reads) != 0 {
 		t.Fatalf("%d reads left over the table, want none", len(reads))
 	}
-	if _, err := w.query.Value(); err != ended {
+	if _, err := w.query.Value(); !errors.Is(err, ended) {
 		t.Fatalf("Value error = %v, want the attempt's end", err)
 	}
 	if run := w.query.Read(w.target(""), background); run != nil {
 		t.Fatalf("a detached query read %+v, want nothing", run)
 	}
 	w.put(t, 1, "a")
-	if _, err := w.query.Value(); err != ended {
+	if _, err := w.query.Value(); !errors.Is(err, ended) {
 		t.Fatalf("Value error = %v after a commit, want the attempt's end", err)
 	}
 }
@@ -245,7 +245,7 @@ func TestLiveQueryFailWithoutAReadIsAFailedMemberAndClosesItsReads(t *testing.T)
 	// What it should read cannot be read (its arguments threw): a failed member; no read runs for it any more.
 	cause := errors.New("arguments refused")
 	w.query.Fail(cause, background)
-	if _, err := w.query.Value(); err != cause {
+	if _, err := w.query.Value(); !errors.Is(err, cause) {
 		t.Fatalf("Value error = %v, want the failure", err)
 	}
 	if reads := w.store.Reads.On(w.notes.Sql.Table); len(reads) != 0 {

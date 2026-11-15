@@ -8,6 +8,7 @@ import (
 	"time"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
+	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	chordtelemetry "github.com/MichaelKinsy/PiG/chord/next/telemetry"
 	"github.com/MichaelKinsy/PiG/telemetry"
@@ -291,6 +292,16 @@ func (w *nativeWork) settle(err error) {
 	})
 }
 
+// settled reports whether the work ended.
+func (w *nativeWork) settled() bool {
+	select {
+	case <-w.done:
+		return true
+	default:
+		return false
+	}
+}
+
 // withinResult is whether the work settled in time.
 type withinResult string
 
@@ -300,11 +311,21 @@ const (
 )
 
 // raceTimer waits for settled (which reports whether the work it waits on is done, giving up when its timedOut channel
-// closes) against a timer of ms on loop: the Promise.race of Pi's `within`.
-func raceTimer(loop eventLoop, ms time.Duration, settled func(timedOut <-chan struct{}) bool) withinResult {
+// closes) against a timer of ms on loop: the Promise.race of Pi's `within`. over reports, with no effect, whether the work is
+// done already: the wait of a task (awaitTask) is parked, so a test's join does not wait for work that is still running or
+// for the timer, and counts the task again once either is over (a timer is a later macrotask of Pi's loop).
+func raceTimer(loop eventLoop, ms time.Duration, over func() bool, settled func(timedOut <-chan struct{}) bool) withinResult {
 	timedOut := make(chan struct{})
 	timer := loop.AfterFunc(ms, func() { close(timedOut) })
 	defer timer.Stop()
+	defer parking.Idle(func() bool {
+		select {
+		case <-timedOut:
+			return true
+		default:
+			return over()
+		}
+	})()
 	if settled(timedOut) {
 		return withinSettled
 	}
@@ -313,7 +334,7 @@ func raceTimer(loop eventLoop, ms time.Duration, settled func(timedOut <-chan st
 
 // within reports whether promise settled within ms (it returns its error when it rejects first); promise itself runs on.
 func within(loop eventLoop, promise *nativeWork, ms time.Duration) (withinResult, error) {
-	result := raceTimer(loop, ms, func(timedOut <-chan struct{}) bool {
+	result := raceTimer(loop, ms, func() bool { return promise.settled() }, func(timedOut <-chan struct{}) bool {
 		select {
 		case <-promise.done:
 			return true
@@ -339,7 +360,14 @@ func drained(loop eventLoop, drain []*nativeWork, ms time.Duration) withinResult
 	if len(drain) == 0 {
 		return withinSettled
 	}
-	return raceTimer(loop, ms, func(timedOut <-chan struct{}) bool {
+	return raceTimer(loop, ms, func() bool {
+		for _, promise := range drain {
+			if !promise.settled() {
+				return false
+			}
+		}
+		return true
+	}, func(timedOut <-chan struct{}) bool {
 		for _, promise := range drain {
 			select {
 			case <-promise.done:
