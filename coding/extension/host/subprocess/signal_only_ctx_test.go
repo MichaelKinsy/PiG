@@ -42,8 +42,7 @@ func TestSignalOnlyCtxKeepsTheRequestPathValues(t *testing.T) {
 }
 
 func TestSignalOnlyCtxAllocatesOnce(t *testing.T) {
-	parent, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	parent := t.Context()
 	var sink context.Context
 	if n := testing.AllocsPerRun(100, func() { sink = &signalOnlyCtx{Context: parent, signal: parent} }); n != 1 {
 		t.Fatalf("allocations = %v, want 1", n)
