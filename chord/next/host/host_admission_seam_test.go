@@ -33,8 +33,9 @@ func TestAdmitseamHold(t *testing.T) {
 		admitseam.Hold(h, func(start func()) { held <- start })
 		ran := make(chan struct{})
 		var order []string
+		var section bool
 		h.enter(func() {
-			a.admissionHop(func() { order = append(order, "hop"); close(ran) })
+			a.admissionHop(func() { order = append(order, "hop"); section = h.loop().(*Loop).InSection(); close(ran) })
 			h.loop().Queue(func() { order = append(order, "second") })
 		})
 		expectStrings(t, order, "second")
@@ -43,6 +44,10 @@ func TestAdmitseamHold(t *testing.T) {
 		receive(t, ran)
 		h.enter(func() {})
 		expectStrings(t, order, "second", "hop")
+		// Handed over, it still runs as the host's microtask: a section of its loop, not on the goroutine that started it.
+		if !section {
+			t.Error("the held hop ran outside a section of the host's loop")
+		}
 		must(t, h.Close(background))
 	})
 
