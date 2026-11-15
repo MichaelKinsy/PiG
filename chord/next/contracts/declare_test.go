@@ -203,6 +203,12 @@ func TestQueriesMembers(t *testing.T) {
 		if got := keys(variant.State); len(got) != 0 {
 			t.Fatalf("state = %v", got)
 		}
+		other := args()
+		other[1] = contracts.Prop("one", contracts.Obj(contracts.Prop("id", contracts.Str())))
+		changed := local(t, "app.store", 1, noParams(), contracts.Mem("notes", contracts.Queries(note(), other)), contracts.Mem("add", contracts.NewMethod()))
+		if changed.Fingerprint == store.Fingerprint {
+			t.Fatal("a changed argument schema left the fingerprint")
+		}
 		// A contract without one keeps its fingerprint: queries_fingerprint_test.go pins it against Pi.
 		// Evolving the contract carries its queries members over unchanged (their edits are a later slice's).
 		next := must(contracts.Evolve(store, func(e *contracts.LocalEditor) *contracts.LocalEditor {
