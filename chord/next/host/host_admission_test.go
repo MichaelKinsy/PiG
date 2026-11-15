@@ -2217,3 +2217,29 @@ func (x *admHeldHops) release(h Host) {
 		start()
 	}
 }
+
+// admActivity is the host's activity.<field> count, read inside a section of the host.
+func admActivity(h Host, field string) float64 {
+	var value delta.JsonValue
+	h.(*chordHost).enter(func() { value, _ = h.Activity().Value() })
+	n, _ := value.(*delta.JsonObject).Value(field).(float64)
+	return n
+}
+
+// admDocV2: Doc with another admission schema (the same wire fingerprint): a reload does not rehearse across it.
+var admDocV2 = mustContract(contracts.Evolve(admDoc, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+	return e.Admission(contracts.Obj(contracts.Prop("mode", contracts.OneOf("read", "write")), contracts.Prop("since", contracts.Int())))
+}))
+
+// admReports is Pi's `reports(errors)`: `activation_failed: <message>` for an activation failure, the kind for the rest.
+func admReports(errs *hostErrors) []string {
+	out := []string{}
+	for _, e := range errs.All() {
+		if e.Kind == ErrActivationFailed {
+			out = append(out, string(e.Kind)+": "+e.Failure.Error.Message)
+			continue
+		}
+		out = append(out, string(e.Kind))
+	}
+	return out
+}
