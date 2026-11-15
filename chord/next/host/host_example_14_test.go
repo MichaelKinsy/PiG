@@ -18,61 +18,6 @@ import (
 
 // --- 14-flow-control.ts --------------------------------------------------------------------------------------------
 
-// exPausable is a slow tab's end of its link: while paused, what arrives waits (so the tab acknowledges nothing).
-type exPausable struct {
-	link     link.Link
-	mu       sync.Mutex
-	paused   bool
-	waiting  [][]byte
-	listener func([]byte)
-}
-
-func newExPausable(end link.Link) *exPausable {
-	p := &exPausable{link: end}
-	end.OnMessage(func(message []byte) {
-		p.mu.Lock()
-		// Messages that arrive before the host listens wait too (a microtask cannot interleave in Pi).
-		if p.paused || p.listener == nil {
-			p.waiting = append(p.waiting, message)
-			p.mu.Unlock()
-			return
-		}
-		listener := p.listener
-		p.mu.Unlock()
-		if listener != nil {
-			listener(message)
-		}
-	})
-	return p
-}
-
-func (p *exPausable) pause() { p.mu.Lock(); p.paused = true; p.mu.Unlock() }
-
-func (p *exPausable) resume() {
-	p.mu.Lock()
-	p.paused = false
-	waiting := p.waiting
-	p.waiting = nil
-	listener := p.listener
-	p.mu.Unlock()
-	for _, message := range waiting {
-		listener(message)
-	}
-}
-
-func (p *exPausable) Send(message []byte) { p.link.Send(message) }
-func (p *exPausable) OnMessage(listener func([]byte)) {
-	p.mu.Lock()
-	p.listener = listener
-	paused := p.paused
-	p.mu.Unlock()
-	if !paused {
-		p.resume()
-	}
-}
-func (p *exPausable) Close()                  { p.link.Close() }
-func (p *exPausable) OnClose(listener func()) { p.link.OnClose(listener) }
-
 func TestExample14FlowControl(t *testing.T) {
 	reply := exLocal("example.reply", contracts.Params{},
 		contracts.Mem("reply", exObj(exProp("text", exStr()))), contracts.Mem("append", contracts.NewMethod(exStr())))
@@ -124,7 +69,10 @@ func TestExample14FlowControl(t *testing.T) {
 	w1 := worker("S1")
 	up, down := link.MemoryLinkPair()
 	must(t, w1.Accept(up, LinkOptions{Principal: ownerPrincipal()}, background))
-	slow := newExPausable(down)
+	// Pi's Pausable (14-flow-control.ts:83-118) is pausableLink: resumed, what waited reaches the tab in order and what
+	// arrives meanwhile behind it. The `state` the worker sends for the tab's first `ack` is made for the text the second
+	// waiting one leaves (it uses the path id that one defines), so it cannot be applied in between.
+	slow := newPausableLink(down)
 	t1 := tab(slow)
 	view1 := exGet(t, t1, view, jsonObject("session", "S1"))
 	reply1 := exGet(t, w1, reply, jsonObject())
@@ -166,7 +114,7 @@ func TestExample14FlowControl(t *testing.T) {
 	mustLoad(t)(server.Load(nil, background))
 	up2, down2 := link.MemoryLinkPair()
 	must(t, server.Accept(up2, LinkOptions{Principal: ownerPrincipal()}, background))
-	slow2 := newExPausable(down2)
+	slow2 := newPausableLink(down2)
 	t2 := tab(slow2)
 	view2 := exGet(t, t2, view, jsonObject("session", "S2"))
 	up3, down3 := link.MemoryLinkPair()
@@ -183,8 +131,12 @@ func TestExample14FlowControl(t *testing.T) {
 		exCall(t, reply2, "append", fmt.Sprintf(" t%d", i))
 		// A relay forwards at once and returns each `ack` to the worker, so a fast tab frees its slot before the next commit
 		// and receives every one. In Pi the hops are microtasks the next commit's own microtasks follow; here a commit is a call
-		// from this goroutine, so wait for the `state` to reach the fast tab and its `ack` the worker before the next one.
+		// from this goroutine, so wait for the `state` to reach the fast tab and its `ack` the worker before the next one, and for
+		// the tab's watch to deliver it: a delivery runs on a goroutine of the tab's here (a microtask in Pi, which runs before
+		// the next commit's own), and a `state` applied before that goroutine ran folds into the delivery waiting, so the watch
+		// saw one change for two commits and the count below never reached five (seen under CPU load).
 		transported(up2, down2, up3, down3, workerLink[0], workerLink[1])
+		turn(t3)
 	}
 	transported(up2, down2, up3, down3)
 	exEqual(t, "the worker has", exValue(t, reply2, "reply"), exJSON(t, `{"text":" t0 t1 t2 t3 t4"}`))

@@ -43,14 +43,14 @@ windows | extension-conformance-2 | queue
 windows | extension-conformance-4 | queue
 windows | native-3 | queue
 windows | native-2 | queue
-windows | native-1 | pr
+windows | native-1 | queue
 windows | extension-conformance-1 | queue
 windows | extension-conformance-3 | queue
 windows | extension-host-1 | queue
 windows | native-4 | queue
 windows | extension-host-2 | queue
 windows | extension-host-3 | queue
-macos | native | pr
+macos | native | queue
 macos | cli-1 extension-host-3 packages | queue
 macos | cli-2 cli-8 extension-host-2 | queue
 macos | cli-4 cli-7 extension-host-1 | queue
@@ -60,4 +60,4 @@ single | node-runtime | queue
 single | durable-cf-host | queue
 single | durable-contract | queue
 single | android | pr
-single | node-loader | pr
+single | node-loader | queue

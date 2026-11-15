@@ -5,8 +5,6 @@ package fsretry
 import (
 	"errors"
 	"syscall"
-
-	"golang.org/x/sys/windows"
 )
 
 // TransientRename reports whether a rename failed because another process,
@@ -14,10 +12,10 @@ import (
 // directory, open without delete sharing. NTFS then refuses the rename with an
 // access or sharing error until the handle closes.
 func TransientRename(err error) bool {
-	for _, transient := range []error{
-		windows.ERROR_ACCESS_DENIED, windows.ERROR_SHARING_VIOLATION, windows.ERROR_LOCK_VIOLATION,
-		syscall.EPERM, syscall.EACCES, syscall.EBUSY,
-	} {
+	if transientWindowsCode(err) {
+		return true
+	}
+	for _, transient := range []error{syscall.EPERM, syscall.EACCES, syscall.EBUSY} {
 		if errors.Is(err, transient) {
 			return true
 		}

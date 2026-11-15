@@ -63,7 +63,7 @@ func (m *Models) resolveRequestAuth(ctx context.Context, model AnyModel, apiKey 
 	if apiKey != "" || apiKeySet {
 		overrides.APIKey = new(apiKey)
 	}
-	resolution, err := m.GetModelAuth(ctx, model, overrides)
+	resolution, err := m.getModelAuth(ctx, m.goOperation, model, overrides)
 	if err != nil {
 		return requestAuth{}, err
 	}

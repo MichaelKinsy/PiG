@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: MIT
+
+go: 1.27.4
+node: 24.22.1
+node-extension-floor: 22.13.0
+rust: 1.97.1
+npm: 12.1.0
+pi:
+  ref: v1.5.0
+  commit: f9a26365568127461c47a07a37dcb42c140a3ac5
+  package: 1.5.0
+  version: 1.5.0
+sbcl: 2.6.9
+tinygo: 0.42.0

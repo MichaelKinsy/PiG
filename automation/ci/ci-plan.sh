@@ -70,7 +70,8 @@ awk -F'|' -v full="$full" '
     if (bad) exit 1
     n = split("linux windows macos", jobs, " ")
     for (i = 1; i <= n; i++) {
-      if (!(jobs[i] in list)) { printf "ci-tiers.txt: no %s row runs in this plan\n", jobs[i] > "/dev/stderr"; exit 1 }
+      # Linux always runs: it is the one runner of the light run. Windows and macOS rows are all queue rows, so the light run has none.
+      if (!(jobs[i] in list) && (jobs[i] == "linux" || full == "true")) { printf "ci-tiers.txt: no %s row runs in this plan\n", jobs[i] > "/dev/stderr"; exit 1 }
       printf "%s=[%s]\n", jobs[i], list[jobs[i]]
     }
     for (i = 1; i <= nsingle; i++) printf "run-%s=%s\n", singles[i], (single[singles[i]] == 1 ? "true" : "false")

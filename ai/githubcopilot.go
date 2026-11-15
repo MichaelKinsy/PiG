@@ -720,6 +720,8 @@ type CopilotProviderConfig struct {
 	ModelMetadata *Model
 }
 
+func init() { registerOwnStreamProvider("github-copilot") }
+
 // NewCopilotProvider builds a Provider that streams via the Copilot proxy.
 // The wire protocol (Completions vs Responses API) is selected by cfg.API.
 // The credential is auto-refreshed transparently when within 60s of expiry.
@@ -878,7 +880,7 @@ func (m *copilotTokenManager) getAccessToken(ctx context.Context) (string, error
 	oauth := &OAuthAuth{Name: "GitHub Copilot", Refresh: func(ctx context.Context, current Credential) (Credential, error) {
 		return refreshCopilotCredential(ctx, current.Refresh, current.EnterpriseDomain)
 	}}
-	post, err := refreshStoredOAuthCredential(ctx, m.auth, "github-copilot", oauth, expiresSoon)
+	post, err := refreshStoredOAuthCredential(ctx, m.auth, "github-copilot", oauth, expiresSoon, startOAuthRefreshWork)
 	if err != nil {
 		// If the context was canceled (user abort), propagate the
 		// cancellation directly so callers can distinguish user abort

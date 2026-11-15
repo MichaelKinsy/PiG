@@ -85,6 +85,21 @@ func (recording *viewRecording) Live() []LiveState {
 	return states
 }
 
+// awaitLive waits until match holds of the recording's pi.live values, and returns them. A snapshot (Harness.Snapshot, a
+// document read) shows a commit as soon as memory adopted it, and the recording is told when the commit is published, a moment
+// later on the writer's goroutine (session.adopt: tx.adopt swaps the document, then publish runs the views' observers); Pi
+// cannot show the difference, its adoption and publication being one synchronous step. A test that reads the recording, or
+// a watch that starts from the views, after a snapshot saw the commit waits here for the recording to hold it instead.
+func (recording *viewRecording) awaitLive(t *testing.T, match func(states []LiveState) bool) []LiveState {
+	t.Helper()
+	var states []LiveState
+	waitFor(t, func() bool {
+		states = recording.Live()
+		return match(states)
+	})
+	return states
+}
+
 // Detach stops the recording.
 func (recording *viewRecording) Detach() { recording.observation.Detach() }
 

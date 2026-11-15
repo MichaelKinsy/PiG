@@ -268,7 +268,8 @@ func (s *ProjectTrustStore) write(data map[string]*bool) error {
 	if err := nodeerrno.MkdirAll(filepath.Dir(s.trustPath), 0o755); err != nil {
 		return err
 	}
-	if err := os.WriteFile(s.trustPath, append(encoded, '\n'), 0o644); err != nil {
+	// upstream: coding-agent/src/core/trust-manager.ts:142 writeFileSync(path, ..., "utf-8"): no mode, so a new file is 0666 with the umask taken out.
+	if err := os.WriteFile(s.trustPath, append(encoded, '\n'), 0o666); err != nil {
 		return nodeerrno.FromPathError(err)
 	}
 	return nil
