@@ -83,7 +83,7 @@ checks:
     stage: cheap
     reads: [pull, commits, files, reviewed-ledger]
     rule: test-expectation
-    main: [docs/parity/PORT_MAP.md, 'test/parity/interfaces/test-mapping-v*.json', 'test/parity/upstream-sync/*.toml', 'docs/parity/divergences/*.md']
+    main: [docs/parity/PORT_MAP.md, 'test/parity/interfaces/test-mapping-v*.json', 'test/parity/upstream-sync/*.toml', 'docs/parity/divergences/*.md', test/testdata-provenance.toml]
     with:
       inventories: [docs/parity/PORT_MAP.md, 'test/parity/interfaces/test-mapping-v*.json', 'test/parity/upstream-sync/*.toml']
 

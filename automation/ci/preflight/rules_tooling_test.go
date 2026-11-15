@@ -69,7 +69,7 @@ func TestRuleTestExpectationSkipsToolingDirectoriesOfMain(t *testing.T) {
 			if tc.result == resultPass && !strings.Contains(strings.Join(o.notices, "\n"), "tooling prefix") {
 				t.Errorf("the skip is not printed: %q", o.notices)
 			}
-			if tc.name == "a file under a tooling prefix of main" && !strings.Contains(o.notices[0], toolingTest+": "+note) {
+			if tc.name == "a file under a tooling prefix of main" && (!strings.HasPrefix(o.notices[0], toolingTest+": ") || !strings.Contains(o.notices[0], note)) {
 				t.Errorf("the notice is %q, want it to name the file and %q", o.notices[0], note)
 			}
 		})

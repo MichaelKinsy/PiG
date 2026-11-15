@@ -33,6 +33,7 @@ func ledgerEnv(t *testing.T) *ruleEnv {
 	for name, text := range map[string]string{
 		"docs/parity/PORT_MAP.md":        "| packages/coding-agent/src/core/agent.ts | x |\n",
 		"docs/parity/divergences/D12.md": "# D12\n",
+		"test/testdata-provenance.toml":  "[[tooling]]\nprefix = \"automation/ci/other/\"\nreason = \"r\"\n",
 	} {
 		if err := os.MkdirAll(filepath.Join(root, filepath.Dir(name)), 0o755); err != nil {
 			t.Fatal(err)

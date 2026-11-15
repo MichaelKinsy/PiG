@@ -186,6 +186,16 @@ line (and a `::notice`, and a row in the comment) naming the file, the row's
 commit, class, cite and reason; a notice asks for no acknowledgement. The ledger
 row is reviewed as part of the PR's diff.
 
+Both gates leave the tooling directories out of this rule: a changed test file
+under a `[[tooling]]` prefix of `test/testdata-provenance.toml` (PiG-owned CI
+tooling with no Pi behavior to cite) is skipped, and needs no cite and no ledger
+row (the line lint calls a row for such a file stale). The two gates read that
+list through one package (`reviewed/`) and compare with a plain prefix match. The
+pre-flight reads the list from main only, so a prefix that a PR adds exempts
+nothing in that PR; a list that is missing, empty or not valid TOML on main
+makes the check fail with that reason, never a silent skip. Each skip prints a
+`NOTE` line (and a `::notice`, and a comment row) naming the file and the prefix.
+
 ## Acknowledgements
 
 A warning (a copyright notice, licence text, an inline `gitleaks:allow`) does

@@ -605,10 +605,42 @@ func citeOf(r reviewed.Entry) string {
 
 func short10(sha string) string { return sha[:min(len(sha), 10)] }
 
+// skipTooling splits the edited test files into those that lie under a [[tooling]] prefix of test/testdata-provenance.toml
+// on main, which the line lint leaves out of the expected-value rule too, and the others. Each skip is a notice. The list
+// is main's checkout only: a prefix that the pull request adds does not exempt the pull request. A list that is missing,
+// empty or not TOML is an error of the rule, never a silent skip.
+func skipTooling(edited []editedTest, env *ruleEnv) (open []editedTest, notices []string, err error) {
+	text := env.mainFiles(reviewed.ProvenanceFile)
+	if strings.TrimSpace(text) == "" {
+		return nil, nil, fmt.Errorf("%s is missing or empty on main", reviewed.ProvenanceFile)
+	}
+	list, err := reviewed.ParseTooling(text)
+	if err != nil {
+		return nil, nil, err
+	}
+	for _, e := range edited {
+		if prefix, ok := reviewed.InTooling(list, e.name); ok {
+			notices = append(notices, fmt.Sprintf("%s: expected-value change skipped, tooling prefix %s of %s on main", e.name, prefix, reviewed.ProvenanceFile))
+		} else {
+			open = append(open, e)
+		}
+	}
+	return open, notices, nil
+}
+
 func ruleTestExpectation(d *data, p params, env *ruleEnv) outcome {
 	edited := editedTests(d)
 	if len(edited) == 0 {
 		return pass("no expected value changed together with production code of its directory")
+	}
+	edited, tooling, err := skipTooling(edited, env)
+	if err != nil {
+		return fail("test files change expected values together with production code, and the tooling directories cannot be read, so no file is skipped: %v", err)
+	}
+	if len(edited) == 0 {
+		o := pass(fmt.Sprintf("%d changed test file(s) under tooling prefixes of %s on main", len(tooling), reviewed.ProvenanceFile))
+		o.notices = tooling
+		return o
 	}
 	known := map[string]bool{}
 	for _, glob := range p.strs("inventories") {
@@ -618,19 +650,24 @@ func ruleTestExpectation(d *data, p params, env *ruleEnv) outcome {
 	}
 	ledger, err := reviewed.Parse(d.ReviewedLedger)
 	if err != nil {
-		return fail("%s change expected values together with production code, and the reviewed ledger at the PR head cannot be read, so no row admits them: %v", joinEdited(edited), err)
+		o := fail("%s change expected values together with production code, and the reviewed ledger at the PR head cannot be read, so no row admits them: %v", joinEdited(edited), err)
+		o.notices = tooling
+		return o
 	}
 	if n := len(ledgerCommits(d, ledger)); n > maxLedgerCommits {
-		return fail("the reviewed ledger holds rows of %d commits of the PR for its changed test files; the pre-flight checks at most %d: split the PR (%s change expected values together with production code)", n, maxLedgerCommits, joinEdited(edited))
+		o := fail("the reviewed ledger holds rows of %d commits of the PR for its changed test files; the pre-flight checks at most %d: split the PR (%s change expected values together with production code)", n, maxLedgerCommits, joinEdited(edited))
+		o.notices = tooling
+		return o
 	}
 	open, notices, problems := admitByLedger(d, ledger, known, divergenceRecorded(d, env), edited)
+	notices = append(tooling, notices...)
 	if len(problems) > 0 {
 		o := fail("%s", strings.Join(problems, "; "))
 		o.notices = notices
 		return o
 	}
 	if len(open) == 0 {
-		o := pass(fmt.Sprintf("%d changed test file(s) admitted by reviewed ledger rows", len(notices)))
+		o := pass(fmt.Sprintf("%d changed test file(s) admitted by reviewed ledger rows or skipped by tooling prefixes", len(notices)))
 		o.notices = notices
 		return o
 	}

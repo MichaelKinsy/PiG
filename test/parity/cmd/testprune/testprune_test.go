@@ -613,7 +613,7 @@ func TestCheckCoEditsSkipsOnlyListedToolingDirectories(t *testing.T) {
 	}
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-q", "-m", "change")
-	tooling := []toolingEntry{{Prefix: "automation/ci/preflight/", Reason: "CI tooling owned by PiG; no upstream Pi behaviour to cite"}}
+	tooling := []reviewed.Tooling{{Prefix: "automation/ci/preflight/", Reason: "CI tooling owned by PiG; no upstream Pi behaviour to cite"}}
 	problems, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, nil, tooling)
 	if err != nil {
 		t.Fatal(err)
@@ -636,22 +636,22 @@ func TestCheckToolingRejectsEntriesThatWidenTheScope(t *testing.T) {
 	tracked := []string{"automation/ci/preflight/a_test.go", "agent/a_test.go"}
 	cases := []struct {
 		name  string
-		entry toolingEntry
+		entry reviewed.Tooling
 		want  string
 	}{
-		{"product directory", toolingEntry{Prefix: "agent/", Reason: "r"}, "product code stays under the rule"},
-		{"all of automation", toolingEntry{Prefix: "automation/", Reason: "r"}, "product code stays under the rule"},
-		{"no trailing slash", toolingEntry{Prefix: "automation/ci/preflight", Reason: "r"}, "ends with a slash"},
-		{"parent escape", toolingEntry{Prefix: "automation/ci/../../agent/", Reason: "r"}, "product code stays under the rule"},
-		{"no reason", toolingEntry{Prefix: "automation/ci/preflight/"}, "has no reason"},
-		{"no file", toolingEntry{Prefix: "automation/ci/gone/", Reason: "r"}, "matches no tracked file"},
+		{"product directory", reviewed.Tooling{Prefix: "agent/", Reason: "r"}, "product code stays under the rule"},
+		{"all of automation", reviewed.Tooling{Prefix: "automation/", Reason: "r"}, "product code stays under the rule"},
+		{"no trailing slash", reviewed.Tooling{Prefix: "automation/ci/preflight", Reason: "r"}, "ends with a slash"},
+		{"parent escape", reviewed.Tooling{Prefix: "automation/ci/../../agent/", Reason: "r"}, "product code stays under the rule"},
+		{"no reason", reviewed.Tooling{Prefix: "automation/ci/preflight/"}, "has no reason"},
+		{"no file", reviewed.Tooling{Prefix: "automation/ci/gone/", Reason: "r"}, "matches no tracked file"},
 	}
 	for _, tc := range cases {
-		if got := strings.Join(checkTooling([]toolingEntry{tc.entry}, tracked), "\n"); !strings.Contains(got, tc.want) {
+		if got := strings.Join(checkTooling([]reviewed.Tooling{tc.entry}, tracked), "\n"); !strings.Contains(got, tc.want) {
 			t.Errorf("%s: problems %q lack %q", tc.name, got, tc.want)
 		}
 	}
-	if p := checkTooling([]toolingEntry{{Prefix: "automation/ci/preflight/", Reason: "r"}}, tracked); len(p) != 0 {
+	if p := checkTooling([]reviewed.Tooling{{Prefix: "automation/ci/preflight/", Reason: "r"}}, tracked); len(p) != 0 {
 		t.Errorf("a valid entry was reported: %q", p)
 	}
 }
