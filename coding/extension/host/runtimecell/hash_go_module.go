@@ -81,11 +81,7 @@ func hashGoModuleFSTracked(fsys fs.FS, label string, vanish *VanishTracker) stri
 	h := sha256.New()
 	h.Write([]byte(label))
 	h.Write([]byte{0})
-	add := func(name string) error {
-		data, err := fs.ReadFile(fsys, name)
-		if err != nil {
-			return err
-		}
+	add := func(name string, data []byte) error {
 		h.Write([]byte(name))
 		h.Write([]byte{0})
 		h.Write(data)
@@ -101,7 +97,7 @@ func hashGoModuleFSTracked(fsys fs.FS, label string, vanish *VanishTracker) stri
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func hashGoModuleDir(fsys fs.FS, dir string, add func(string) error, vanish *VanishTracker) error {
+func hashGoModuleDir(fsys fs.FS, dir string, add func(name string, data []byte) error, vanish *VanishTracker) error {
 	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
 		// A directory deleted after its parent listed it held no source of this build.
@@ -131,41 +127,62 @@ func hashGoModuleDir(fsys fs.FS, dir string, add func(string) error, vanish *Van
 			return err
 		}
 	}
-	var sources []string
+	// A .go source is read once, for its //go:embed patterns, and those bytes are the ones hashed; the other sources are read where they are hashed.
+	type source struct {
+		name   string
+		data   []byte
+		loaded bool
+	}
+	var sources []source
 	var embeds []string
 	hasGo := false
 	for _, name := range files {
 		switch {
 		case dir == "." && (name == "go.mod" || name == "go.sum"):
-			sources = append(sources, name)
+			sources = append(sources, source{name: name})
 		case ignoredByGo(name):
 		case strings.HasSuffix(name, "_test.go"):
 		case strings.HasSuffix(name, ".go"):
 			hasGo = true
-			sources = append(sources, name)
 			data, err := fs.ReadFile(fsys, path.Join(dir, name))
 			if err != nil {
 				return err
 			}
+			sources = append(sources, source{name: name, data: data, loaded: true})
 			embeds = append(embeds, embedPatterns(data)...)
 		case goSourceExtensions[path.Ext(name)]:
-			sources = append(sources, name)
+			sources = append(sources, source{name: name})
 		}
 	}
+	addSource := func(s source) error {
+		name := path.Join(dir, s.name)
+		if s.loaded {
+			return add(name, s.data)
+		}
+		data, err := fs.ReadFile(fsys, name)
+		if err != nil {
+			return err
+		}
+		return add(name, data)
+	}
 	if hasGo {
-		for _, name := range sources {
-			if err := add(path.Join(dir, name)); err != nil {
+		for _, s := range sources {
+			if err := addSource(s); err != nil {
 				return err
 			}
 		}
 		for _, name := range embeddedFiles(fsys, dir, embeds) {
-			if err := add(name); err != nil {
+			data, err := fs.ReadFile(fsys, name)
+			if err != nil {
+				return err
+			}
+			if err := add(name, data); err != nil {
 				return err
 			}
 		}
 	} else if dir == "." {
-		for _, name := range sources {
-			if err := add(name); err != nil {
+		for _, s := range sources {
+			if err := addSource(s); err != nil {
 				return err
 			}
 		}
