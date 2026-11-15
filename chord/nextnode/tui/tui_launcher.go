@@ -64,6 +64,8 @@ type TerminalOptions struct {
 	Node string
 	// Client is the HTTP client of the launcher's downloads and pairing: the default one by default.
 	Client *http.Client
+	// spawn starts the sandbox: StartSandbox by default. The tests that order the launcher against its sandbox's messages put their own.
+	spawn func(node, source string, start BridgeStart, onMessage func(SandboxMessage), onEnd func(reason string)) (*Sandbox, error)
 }
 
 // RunningTerminal is a running terminal client.
@@ -121,6 +123,8 @@ const (
 	defaultColumns    = 80
 	defaultRows       = 24
 	eventQueue        = 256
+	// maxEarly is the most messages held for a sandbox that is not installed yet: as many as the loop's queue held before.
+	maxEarly = eventQueue
 )
 
 // StartTerminal starts a terminal client; it fails when it cannot sign in or download, or Node is too old for the sandbox. Cancelling
@@ -205,6 +209,9 @@ type Launcher struct {
 	sandbox *Sandbox
 	// generation numbers the sandboxes: a message of one that is not the current is dropped.
 	generation int
+	// starting is whether the sandbox of the current generation is being started: it is not installed yet, so what it sends waits in early.
+	starting bool
+	early    []SandboxMessage
 	// base64 hash of the running base bundle: an `outdated` sandbox restarts only for another.
 	baseHash string
 	sockets  map[int]*linkSocket
@@ -525,8 +532,14 @@ func (l *Launcher) startSandbox(ctx context.Context) error {
 		l.requests = 0
 		l.generation++
 		generation = l.generation
+		l.starting = true
+		l.early = nil
 	})
-	sandbox, err := StartSandbox(l.options.Node, source, bridge,
+	spawn := l.options.spawn
+	if spawn == nil {
+		spawn = StartSandbox
+	}
+	sandbox, err := spawn(l.options.Node, source, bridge,
 		func(message SandboxMessage) { l.post(func() { l.message(generation, message) }) },
 		func(string) { l.sandboxEndPost(generation) },
 	)
@@ -536,6 +549,13 @@ func (l *Launcher) startSandbox(ctx context.Context) error {
 	l.sync(func() {
 		if l.generation == generation {
 			l.sandbox = sandbox
+			l.starting = false
+			// What it sent before it was installed is handled now, in the order it came.
+			early := l.early
+			l.early = nil
+			for _, message := range early {
+				l.message(generation, message)
+			}
 		}
 	})
 	if l.sandboxIs(sandbox) {
@@ -573,6 +593,15 @@ func (l *Launcher) sandboxEnded(generation int) {
 // set by beginFinish in the caller's turn, is that point here; a message queued before it ran first, as Pi handled it when it was read.
 func (l *Launcher) message(generation int, message SandboxMessage) {
 	if generation != l.generation || l.finished {
+		return
+	}
+	if l.starting {
+		// The child's first messages can reach the loop before the starter installed the sandbox. Pi's launcher assigns it in the
+		// continuation of `Sandbox.start`, which runs before any stdout 'data' event (launcher.ts:240, sandbox.ts:183), so its messages are
+		// always handled with it set: these wait for it, in order, as many as the loop's queue held before.
+		if len(l.early) < maxEarly {
+			l.early = append(l.early, message)
+		}
 		return
 	}
 	if err := l.handle(message); err != nil {
