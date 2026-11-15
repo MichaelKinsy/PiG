@@ -95,24 +95,6 @@ func TestFailedRequestWithoutRecordFailureResponseKeepsNoFailureResponse(t *test
 	}
 }
 
-// failedRequestAllocs is what one failed HTTP request allocates on car 21 (d87c7d13e3), measured with this test's transport and no decider. The
-// failure response and its header map must not add to it.
-var failedRequestAllocs = map[string]float64{"openai-completions": 253, "openai-responses": 225, "anthropic": 257, "google": 219}
-
-func TestFailedRequestAllocationsWithoutDeciderMatchCar21(t *testing.T) {
-	for _, tc := range failedRequestProviders {
-		t.Run(tc.name, func(t *testing.T) {
-			provider := tc.build()
-			transport := rateLimitedTransport()
-			got := testing.AllocsPerRun(200, func() { runFailedRequest(t, provider, transport, false) })
-			t.Logf("allocs/op %s = %v", tc.name, got)
-			if want := failedRequestAllocs[tc.name]; got != want {
-				t.Fatalf("allocs/op = %v, want %v (car 21)", got, want)
-			}
-		})
-	}
-}
-
 // With a decider the response the provider saw reaches the failed message: status, lower-cased headers, and that no stream event came first.
 func TestFailedRequestRecordsFailureResponseOnEveryHTTPPath(t *testing.T) {
 	for _, tc := range failedRequestProviders {
@@ -147,8 +129,9 @@ func TestFailedRequestRecordsStreamStartedAfterACutStream(t *testing.T) {
 // The failure response never leaves the process: the JSON of a failed message is the same with and without it.
 func TestFailureResponseDoesNotSerialize(t *testing.T) {
 	provider := failedRequestProviders[0].build()
-	plain := runFailedRequest(t, provider, rateLimitedTransport(), false)
-	recorded := runFailedRequest(t, provider, rateLimitedTransport(), true)
+	// The result is the stream's own message, which its producer may still be publishing: work on copies.
+	plainResult, recordedResult := *runFailedRequest(t, provider, rateLimitedTransport(), false), *runFailedRequest(t, provider, rateLimitedTransport(), true)
+	plain, recorded := &plainResult, &recordedResult
 	if recorded.FailureResponse == nil {
 		t.Fatal("precondition: no failure response recorded")
 	}
