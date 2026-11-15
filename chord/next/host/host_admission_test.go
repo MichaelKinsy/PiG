@@ -226,6 +226,9 @@ type admDocCode struct {
 	Built *admLog
 	// Gate: what `write` waits for (nil: nothing).
 	Gate chan struct{}
+	// Drain: what a `write` rejected at its attempt's seal waits for before it returns: its attempt's drain ends with it (nil: it
+	// returns at once, as Pi's does).
+	Drain chan struct{}
 	// Opened: a native that opens once this closes; its opens and closes are logged in Natives.
 	Opened  chan struct{}
 	Natives *admLog
@@ -283,6 +286,13 @@ func admDocFacet(code admDocCode, contract *contracts.Contract, shares *admLog) 
 				// As a handler waits (`await gate`): it parks, and its caller's cancellation and its attempt's seal end the wait.
 				if code.Gate != nil {
 					if _, err := chordctx.Receive(ctx, code.Gate); err != nil {
+						// Pi's rejection ends the handler, and so its attempt's drain, within microtasks of the seal: nothing a
+						// test's goroutine can stand between. The handler that holds the drain parks here until the test lets it end,
+						// through the host's own primitive on a context nothing cancels, so the moment between a flush that sealed
+						// the attempt and the end of its drain is the test's to look at.
+						if code.Drain != nil {
+							_, _ = chordctx.Receive(context.WithoutCancel(ctx), code.Drain)
+						}
 						return nil, err
 					}
 				}
@@ -619,6 +629,74 @@ func TestAdmissionTheWatchTable(t *testing.T) {
 		}
 		must(t, s.h.Close(background))
 	})
+
+	t.Run("another allowed value seals the attempt: its calls reject unavailable, its holders see loading, then the new variant", func(t *testing.T) {
+		built, drain := &admLog{}, make(chan struct{})
+		// Pi's assertion after `await set` runs before the successor's activation, by microtask depth. A Go test goroutine cannot
+		// stand between the two, so the sealed attempt's drain is held (Drain): its successor waits for it, loading.
+		s := admServed(t, admDocCode{Built: built, Gate: make(chan struct{}), Drain: drain}, admOptions{Mode: "write"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		watch, err := refStateWatch(doc, background)
+		must(t, err)
+		states := statesOf(t, watch)
+		live := admWatchStates(t, doc)
+		frames := admChanges(t, doc, "text")
+		writing := admStart(t, doc, "write", "x")
+		s.set("read", "server")
+		// In the flush of the change: sealed, and loading with the last value readable.
+		if kind, text := stateOfRef(doc).Kind, mustValue(t, doc, "text"); kind != RefStateLoading || text != "t" {
+			t.Fatalf("[%v %v], want [loading t]", kind, text)
+		}
+		if got := told(admRejection(t, writing)); got != [3]string{"unavailable", "", "test.doc(a): its admission changed"} {
+			t.Fatalf("write rejected with %v", got)
+		}
+		// The drain is held: still loading. Letting it end lets the successor admit and activate.
+		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLoading {
+			t.Fatalf("state = %v, want loading while the drain is held", kind)
+		}
+		close(drain)
+		live.until(t, admIsLive)
+		s.delivered()
+		if kind, variant := stateOfRef(doc).Kind, admVariant(doc); kind != RefStateLive || variant != "reader" {
+			t.Fatalf("[%v %v], want [live reader]", kind, variant)
+		}
+		expectStrings(t, built.Items(), "a:write", "a:read")
+		expectStrings(t, states.All(), "loading", "live")
+		// The same text on the new instance: no frame.
+		expectValues(t, frames.Items())
+		expectNoErrors(t, s.errors)
+		must(t, s.h.Close(background))
+	})
+
+	t.Run("a source that fails live seals its readers, which park on it and rebuild when it is back", func(t *testing.T) {
+		built, selves := &admLog{}, &attemptList{}
+		s := admServed(t, admDocCode{Built: built}, admOptions{Mode: "read", Access: admAccessCode{Selves: selves}})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		live := admWatchStates(t, doc)
+		// Pi's `failLive` and the assertion after it are one synchronous block of its event loop: no microtask runs between them.
+		// Here they are one section of the host's loop (as failLiveThen is), where the successor has not admitted yet.
+		var shown *RefState
+		failLiveThen(s.h, selves.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "the store broke"}, nil), func() {
+			shown = stateOfRef(doc)
+		})
+		if shown.Kind != RefStateLoading {
+			t.Fatalf("state = %v, want loading", shown.Kind)
+		}
+		s.delivered()
+		if message := admWaiting(t, doc).Cause.Error.Message; message != "waiting for test.access: the store broke" {
+			t.Fatalf("message = %q", message)
+		}
+		// The failed store is retried by its own getter; its modes are its object's documents.
+		access := mustHold(t, s.h, admAccess, jsonObject())
+		access.Retry()
+		s.delivered()
+		s.set("read", "server")
+		live.until(t, admIsLive)
+		expectStrings(t, built.Items(), "a:read", "a:read")
+		access.Release()
+		must(t, s.h.Close(background))
+	})
 }
 
 // --- what a denial removes (Pi 493-546) ---------------------------------------------------------------------------------------
@@ -715,6 +793,47 @@ func TestAdmissionAFailedAdmittedObject(t *testing.T) {
 		doc.Release()
 		must(t, s.h.Close(background))
 	})
+
+	t.Run("that failed live follows a denial: failed { denied }, no value, out of presence, its factory not run again", func(t *testing.T) {
+		built, selves, decisions := &admLog{}, &attemptList{}, &admDecisions{}
+		s := admServed(t, admDocCode{Built: built, Declare: func(self Self, _ string) { selves.add(self) }, Admit: decisions.counting(admitBy(false))}, admOptions{Mode: "read"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		live := admWatchStates(t, doc)
+		failLive(selves.at(0), data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "broke live"}, nil))
+		s.delivered()
+		// Failed: its last value stays readable, its holder listed.
+		if kind, text, present := stateOfRef(doc).Kind, mustValue(t, doc, "text"), len(admPresent(s.h, admDoc)); kind != RefStateFailed || text != "t" || present != 1 {
+			t.Fatalf("[%v %v %v], want [failed t 1]", kind, text, present)
+		}
+		made := decisions.len()
+		s.set("none", "server")
+		// In the denial's flush, with no new attempt.
+		admDenied(t, stateOfRef(doc), "no access")
+		if _, err := admValue(doc, "text"); err == nil || told(err)[2] != "no access" {
+			t.Fatalf("text.value threw %v, want no access", err)
+		}
+		if variant, present := admVariant(doc), admPresent(s.h, admDoc); variant != "" || len(present) != 0 {
+			t.Fatalf("[%q %v], want [none []]", variant, present)
+		}
+		s.delivered()
+		expectStrings(t, built.Items(), "a:read")
+		if n := decisions.len() - made; n != 0 {
+			t.Fatalf("%d decisions made after the denial, want 0", n)
+		}
+		// Allowed again: another decision than the denial, so the object is retried.
+		s.set("read", "server")
+		// The retry's new attempt activates on tasks `delivered()` does not join: wait for the state the host delivers.
+		live.until(t, admIsLive)
+		if kind, text := stateOfRef(doc).Kind, mustValue(t, doc, "text"); kind != RefStateLive || text != "t" {
+			t.Fatalf("[%v %v], want [live t]", kind, text)
+		}
+		expectStrings(t, built.Items(), "a:read", "a:read")
+		// Pi: `errors.map(({ kind }) => kind)`: every report's kind (failures() lists activation failures only).
+		if kinds := reportKinds(s.errors.All()); len(kinds) != 1 || kinds[0] != ErrObjectFailed {
+			t.Fatalf("errors = %v, want [object_failed]", kinds)
+		}
+		must(t, s.h.Close(background))
+	})
 }
 
 // --- an admission's requests (Pi 600-696) -------------------------------------------------------------------------------
@@ -754,6 +873,7 @@ func TestAdmissionAnAdmissionsRequests(t *testing.T) {
 		doc.Release()
 		must(t, s.h.Close(background))
 	})
+
 }
 
 // --- presence, linger, parked_long and retry (Pi 698-797) --------------------------------------------------------------
@@ -1075,6 +1195,51 @@ func admWaiting(t *testing.T, doc *Reference) *RefState {
 	return st
 }
 
+// admStates is a reference's state watch a test waits on: it blocks until the state the host delivers is one it names. This is
+// the Go form of an `await` that settles when the state changes, for a chain `delivered()` cannot join: its tasks resume only
+// once the test has let go of a gate of its own (a drain it holds). It waits on the host's own delivery, never polls and
+// never sleeps; a state that is never reached ends the run with the go test timeout.
+type admStates struct {
+	ref   *Reference
+	mu    sync.Mutex
+	moved chan struct{}
+}
+
+func admWatchStates(t *testing.T, ref *Reference) *admStates {
+	t.Helper()
+	w := &admStates{ref: ref, moved: make(chan struct{})}
+	watch, err := refStateWatch(ref, background)
+	must(t, err)
+	watch.Start(func(_ context.Context, call chord.NativeWatchCall[*RefState]) error {
+		w.mu.Lock()
+		close(w.moved)
+		w.moved = make(chan struct{})
+		w.mu.Unlock()
+		return nil
+	})
+	return w
+}
+
+// until returns once the reference shows a state is accepts: the state it shows now, else the next one the watch delivers.
+func (w *admStates) until(t *testing.T, accepts func(*RefState) bool) {
+	t.Helper()
+	for {
+		w.mu.Lock()
+		moved := w.moved
+		w.mu.Unlock()
+		if st := stateOfRef(w.ref); accepts(st) {
+			return
+		}
+		<-moved
+	}
+}
+
+func admIsLive(st *RefState) bool { return st.Kind == RefStateLive }
+
+func admIsWaiting(st *RefState) bool {
+	return st.Kind == RefStateFailed && st.Cause.Kind == data.FailureWaiting
+}
+
 func TestAdmissionAReloadOfAnAdmissionsSource(t *testing.T) {
 	t.Run("whose successor parks seals its readers, which rebuild once it is back", func(t *testing.T) {
 		built := &admLog{}
@@ -1138,4 +1303,168 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		must(t, s.h.Close(background))
 	})
 
+	// In these three the old attempt's drain is the seam Pi's assertions sit in: it ends within microtasks of the seal, and the
+	// shown state Pi asserts "right after `await set`" is the one its flush left, before that end wakes the successor. A Go test
+	// goroutine cannot stand between the two, so the call that holds the drain is held (Drain): the test looks at the flush's
+	// state, lets the drain end, and then looks at the state it settles in (Pi's, measured at 7cc21c24f6b5).
+	t.Run("a decision change while its old attempt drains seals that attempt at once", func(t *testing.T) {
+		built, gate, drain := &admLog{}, make(chan struct{}), make(chan struct{})
+		s := admServed(t, admDocCode{Built: &admLog{}, Gate: gate, Drain: drain}, admOptions{Mode: "write"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		writing := admStart(t, doc, "write", "x")
+		_, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: built}, admDoc, nil)})
+		must(t, err)
+		// The old attempt drains its call; its successor waits for it.
+		if kind := stateOfRef(doc).Kind; kind != RefStateLive {
+			t.Fatalf("state = %v, want live", kind)
+		}
+		if n := len(admPresent(s.h, admDoc)); n != 1 {
+			t.Fatalf("present = %d, want 1", n)
+		}
+		s.set("none", "server")
+		// The cut is the denial's flush, not the successor's later admission: no value, no presence, from here on.
+		admDenied(t, stateOfRef(doc), "no access")
+		if _, err := admValue(doc, "text"); told(err)[2] != "no access" {
+			t.Fatalf("text.value threw %v", err)
+		}
+		if n := len(admPresent(s.h, admDoc)); n != 0 {
+			t.Fatalf("present = %d, want 0", n)
+		}
+		if got := told(admRejection(t, writing)); got[0] != "forbidden" || got[1] != "revoked" {
+			t.Fatalf("write = %v, want forbidden/revoked", got)
+		}
+		s.delivered()
+		admDenied(t, stateOfRef(doc), "no access")
+		expectStrings(t, built.Items(), "a:write")
+		// Nothing failed in the flush that cut it (a reference released there would have).
+		expectNoErrors(t, s.errors)
+		// The drain ends: the successor goes on with its own admission, which denies too. Pi stays denied at every point
+		// after, and never builds the successor.
+		close(drain)
+		s.delivered()
+		admDenied(t, stateOfRef(doc), "no access")
+		expectStrings(t, built.Items(), "a:write")
+		expectNoErrors(t, s.errors)
+		close(gate)
+		must(t, s.h.Close(background))
+	})
+
+	t.Run("a denial while its old attempt drains is shown by that attempt's own decision, whatever its successor's admission waits for", func(t *testing.T) {
+		gate, drain := make(chan struct{}), make(chan struct{})
+		s := admServed(t, admDocCode{Built: &admLog{}, Gate: gate, Drain: drain}, admOptions{Mode: "write"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		shown := admWatchStates(t, doc)
+		writing := admStart(t, doc, "write", "x")
+		// The new admission also needs a type nobody serves: the successor parks on it and decides nothing.
+		waits := func(params *delta.JsonObject, principal data.Principal, self AdmitSelf) (chord.Watchable[delta.JsonValue], error) {
+			self.Get(admMissing, jsonObject())
+			return admitBy(false)(params, principal, self)
+		}
+		_, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: &admLog{}, Admit: waits}, admDoc, nil)})
+		must(t, err)
+		s.delivered()
+		admWaiting(t, doc)
+		if text := mustValue(t, doc, "text"); text != "t" {
+			t.Fatalf("text = %v, want t", text)
+		}
+		s.set("none", "server")
+		admDenied(t, stateOfRef(doc), "no access")
+		if _, err := admValue(doc, "text"); told(err)[2] != "no access" {
+			t.Fatalf("text.value threw %v", err)
+		}
+		if got := told(admRejection(t, writing)); got[0] != "forbidden" || got[1] != "revoked" {
+			t.Fatalf("write = %v, want forbidden/revoked", got)
+		}
+		// The old drain is held: nothing wakes the successor's check, the denial stays (Pi's assertions, by microtask depth).
+		s.delivered()
+		admDenied(t, stateOfRef(doc), "no access")
+		// The drain ends: `endOld` lets the old admission's requests go, which wakes the successor's check, and the object
+		// shows what that parks on. Pi settles there too (probed: waiting after one `delivered()`, for good), its text still
+		// denied.
+		close(drain)
+		shown.until(t, admIsWaiting)
+		if message := admWaiting(t, doc).Cause.Error.Message; !strings.Contains(message, "test.missing") {
+			t.Fatalf("message = %q, want it to name test.missing", message)
+		}
+		if _, err := admValue(doc, "text"); told(err)[2] != "no access" {
+			t.Fatalf("text.value threw %v", err)
+		}
+		close(gate)
+		must(t, s.h.Close(background))
+	})
+
+	t.Run("another value while its old attempt drains seals that attempt: its call is rejected unavailable, its holders load", func(t *testing.T) {
+		built, gate, drain := &admLog{}, make(chan struct{}), make(chan struct{})
+		s := admServed(t, admDocCode{Built: &admLog{}, Gate: gate, Drain: drain}, admOptions{Mode: "write"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		live := admWatchStates(t, doc)
+		writing := admStart(t, doc, "write", "x")
+		_, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: built}, admDoc, nil)})
+		must(t, err)
+		s.set("read", "server")
+		if kind, text := stateOfRef(doc).Kind, mustValue(t, doc, "text"); kind != RefStateLoading || text != "t" {
+			t.Fatalf("[%v %v], want [loading t]", kind, text)
+		}
+		if got := told(admRejection(t, writing)); got[0] != "unavailable" {
+			t.Fatalf("write = %v, want unavailable", got)
+		}
+		// The drain is held: its successor still waits for it, loading.
+		s.delivered()
+		if kind := stateOfRef(doc).Kind; kind != RefStateLoading {
+			t.Fatalf("state = %v, want loading while the drain is held", kind)
+		}
+		close(gate)
+		close(drain)
+		live.until(t, admIsLive)
+		if kind, variant := stateOfRef(doc).Kind, admVariant(doc); kind != RefStateLive || variant != "reader" {
+			t.Fatalf("[%v %v], want [live reader]", kind, variant)
+		}
+		expectNoErrors(t, s.errors)
+		must(t, s.h.Close(background))
+	})
+
+}
+
+func TestAdmissionWhatADenialRemoves(t *testing.T) {
+	t.Run("references hold no value, a watch gets one failed call and keeps what it delivered, a derive over a member fails until the next allow", func(t *testing.T) {
+		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "write"})
+		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
+		live := admWatchStates(t, doc)
+		panel := mustGet(t, s.h, admPanel, jsonObject("id", "a"))
+		var watch chord.WatchHandle[delta.JsonValue]
+		var err error
+		doc.binding.loop.Run(func() { watch, err = doc.Member("text").Watch(background) }) // WAITS-API: ReferenceMember.Watch
+		must(t, err)
+		frames := nexttest.ChangesOf(watch)
+		shouts := admChanges(t, panel, "shout")
+		s.set("none", "server")
+		s.delivered()
+		if _, err := admValue(doc, "text"); err == nil || told(err) != [3]string{"forbidden", "", "no access"} {
+			t.Fatalf("text.value threw %v, want forbidden no access", err)
+		}
+		if variant := admVariant(doc); variant != "" {
+			t.Fatalf("variant = %q, want none", variant)
+		}
+		expectValues(t, frames.Items(), failedFrame("no access"))
+		// Data already delivered to application code is not retracted.
+		if value := watch.Value(); value != "t" {
+			t.Fatalf("watch.value = %v, want t", value)
+		}
+		// The dependent stays live (R18); its derive over the member fails as a member.
+		if kind := stateOfRef(panel).Kind; kind != RefStateLive {
+			t.Fatalf("panel = %v, want live", kind)
+		}
+		expectValues(t, shouts.Items(), failedFrame("no access"))
+		if _, err := admValue(panel, "shout"); err == nil || told(err) != [3]string{"forbidden", "", "no access"} {
+			t.Fatalf("shout.value threw %v, want forbidden no access", err)
+		}
+		s.set("read", "server")
+		// The allow rebuilds the object on tasks `delivered()` does not join: wait for the state the host delivers, then for the
+		// frames that follow it.
+		live.until(t, admIsLive)
+		s.delivered()
+		expectValues(t, frames.Items(), failedFrame("no access"), "t")
+		expectValues(t, shouts.Items(), failedFrame("no access"), "T")
+		must(t, s.h.Close(background))
+	})
 }
