@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+
 	"github.com/MichaelKinsy/PiG/automation/ci/preflight/reviewed"
 )
 

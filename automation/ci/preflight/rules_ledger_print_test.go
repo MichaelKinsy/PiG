@@ -82,7 +82,7 @@ func outsideCodeSpans(s string) string {
 func rowOf(t *testing.T, md, marker string) string {
 	t.Helper()
 	var rows []string
-	for _, l := range strings.Split(md, "\n") {
+	for l := range strings.SplitSeq(md, "\n") {
 		if strings.Contains(l, marker) {
 			rows = append(rows, l)
 		}
