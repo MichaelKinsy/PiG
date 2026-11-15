@@ -2241,3 +2241,24 @@ commit = "de06601f21cc584acb111488445e19c3de3923ae"
 class = "CITE"
 cite = "packages/coding-agent/src/core/auth-storage.ts:188"
 reason = "Pi flags a lock as compromised only from proper-lockfile onCompromised, i.e. its heartbeat (auth-storage.ts:176-179 sets lockCompromised in that callback); throwIfCompromised (181, 185, 190) throws only after the flag is set. withLockAsync reads the file (183), awaits fn (184) and, when the flag is not raised, writes `next` with writeFileSync (188) and returns success. A lock removed inside the modifier before the heartbeat reports it therefore ends in a write and no error in Pi. The commit renames TestAuthStorageCompromisedModifierDoesNotWrite (which expected an error and the old value `stored`) to TestAuthStorageModifierPersistsItsCredentialAfterTheLockWasTaken, which expects Modify to succeed with the modifier credential `refreshed` persisted and the other provider kept; the case with the heartbeat's report stays an error and is covered by TestAuthStorageLockCompromisedDuringModifyUpstream. PiG writes the one provider entry as it is in the file where Pi writes its whole stale read back (a PiG-only narrowing: it cannot clobber other providers)."
+
+[[entry]]
+path = "coding/extension/host/subprocess/view_mount_image_placement_test.go"
+commit = "e4b5861a96b9f8a896d4a59b2dd01288934e37ec"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pi has no mount surface and no image node of one: the mount image (view_mount_image.go, `// pig additive (D614)`, docs/additive-features.md D614 terminal client) draws Kitty Unicode placeholder cells for a client that redraws, moves and closes its panels, and Pi's Image component (terminal-image.ts renderImage, which sends the bytes in its own line) has no placeholder cell, no placement id in the underline colour and no image held across sizes, so no Pi line governs the test. Thirteen expected values changed with the commit's own rule, which is PiG's: an image the terminal holds is transmitted once however often a frame draws it, the same image at two sizes at once stays two transmissions (real kitty draws placement 0 half once a second placement exists), and a size that comes back after another is a placement (a=p,U=1 with its own id in the underline colour of its cells, deleted by a=d,d=i). The values are the counts of transmissions, the ids and placement ids of the drawn cells, the colour set and reset of the rows, and the escape sequences written by the frames after the first; none of them is a Pi value."
+
+[[entry]]
+path = "coding/extension/host/subprocess/view_mount_image_placement_test.go"
+commit = "0fde943c25f7c5012cfc391c647e3e556ffdeb45"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pi has no mount surface and no image node of one: the mount image is the PiG-additive D614 (view_mount_image.go `// pig additive (D614)`; docs/additive-features.md D614 terminal client), so no Pi line governs the test. The two changed expected values are PiG's own placement rule: the one image an HStack draws at two sizes sets and resets the placement id's underline colour in each row of the stack (the Kitty row-head regexp is no longer anchored at the start of the row, since the stack composes the image rows after those of its neighbour), and the first size coming back after a resize writes only the delete `a=d,d=i,i=<id>,p=<placement id>` of the third placement and no bytes of the image."
+
+[[entry]]
+path = "coding/extension/host/subprocess/view_mount_image_test.go"
+commit = "0fde943c25f7c5012cfc391c647e3e556ffdeb45"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "Pi has no mount surface and no image node of one: the mount image is the PiG-additive D614 (view_mount_image.go `// pig additive (D614)`; docs/additive-features.md D614 terminal client), so no Pi line governs the test. The changed value is TestMountImageUpdateSecondMountAndEnd's: a mount whose width changes its cells now writes the placement of the held image (`a=p,U=1,q=2,i=<id>,p=1,c=16,r=8`, no bytes of it) and keeps the image id, where it wrote a new transmission with another id and freed the old image in the same write; the end of the last mount frees the held image id. That is PiG's rule of the commit, one transmission per ref, with no Pi counterpart."
