@@ -137,6 +137,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0f669b1](#bf-0f669b1) | The Node extension runtime no longer starts the last step of its highlight.js load, which holds its thread… | PiG's own defect | All platforms | Unreleased |
 | [BF-0f8866c](#bf-0f8866c) | fix(ai): default Anthropic message threads by endpoint, not provider id (Pi, #11987); ledger v1.5.2+ | PiG's own defect | All platforms | Unreleased |
 | [BF-0f8bc0f](#bf-0f8bc0f) | `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the… | PiG's own defect | All platforms | Unreleased |
+| [BF-0fde943](#bf-0fde943) | fix(view): the bytes of an image of a mount are transmitted once, a further size is a placement | PiG's own defect | All platforms | Unreleased |
 | [BF-0ff9f4a](#bf-0ff9f4a) | A Provider object registered from an extension process ignored `refreshModelsAuth`: its network refresh… | PiG's own defect | All platforms | Unreleased |
 | [BF-0ffb06a](#bf-0ffb06a) | fix(tui): diff rows with a CR are wrapped like Pi's Text | PiG's own defect | All platforms | Unreleased |
 | [BF-1003d2e](#bf-1003d2e) | fix(cli): the login secret prompt enters and leaves raw mode through tui.MakeRaw and tui.RestoreCooked (Pi) | PiG's own defect | All platforms | Unreleased |
@@ -2002,6 +2003,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e42ae82](#bf-e42ae82) | `SettingsManager` structured getters (settings-manager.ts getBranchSummarySettings, getRetrySettings… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e44a3a9](#bf-e44a3a9) | fix(chord/nextnode/workers): a child is idle by a flag, not by a zero time | PiG's own defect | All platforms | Unreleased |
 | [BF-e48a02f](#bf-e48a02f) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
+| [BF-e4b5861](#bf-e4b5861) | fix(view): a second size of an image is a placement only while its first placement is not drawn | PiG's own defect | All platforms | Unreleased |
 | [BF-e4b9bd5](#bf-e4b9bd5) | A Node extension's `ctx.getContextUsage()` returned the value of the host's last dispatch, so a timer between… | PiG's own defect | All platforms | Unreleased |
 | [BF-e4f8e35](#bf-e4f8e35) | OpenRouter's `~anthropic/claude-*-latest` aliases (`~anthropic/claude-fable-latest`, `-haiku-`, `-opus-` and… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-e516ccd](#bf-e516ccd) | An extension that stopped reading its connection while its component was being invalidated could hold the… | PiG's own defect | All platforms | Unreleased |
@@ -3891,6 +3893,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0f8bc0f0de` (2026-11-05)
 - **Tests:** `coding/cli/headless_reload_test.go::TestRefusedReloadDuringARunningToolKeepsTheExtensionHostLive`, `coding/session_reload_busy_test.go::TestSessionReloadRejectedWhileRunningOrCompacting`
 - **Release note:** `ctx.reload()` in print and RPC mode, and `Session.Reload` for SDK callers, now fail with `Wait for the current response to finish before reloading.` while a response is running, and with `Wait for compaction to finish before reloading.` during compaction or tree navigation, instead of shutting the extensions down under a running tool, which then failed with a stale-context error. A refused reload leaves the extensions and the running tool's context untouched, and the extension sees the error in every SDK.
+
+### BF-0fde943
+
+**fix(view): the bytes of an image of a mount are transmitted once, a further size is a placement**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(view): the bytes of an image of a mount are transmitted once, a further size is a placement
+- **Root cause:** the placement cache of (view_mount_image.go place) keyed the terminal image by ref+cols+rows, so a component that renders at more than one width in a frame, or two components of one image at two sizes, were each given an image of their own and its bytes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0fde943c25` (2026-11-14)
+- **Tests:** `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageInAnHStackIsTransmittedOncePerRef`, `coding/extension/host/subprocess/view_mount_image_test.go::TestMountImageUpdateSecondMountAndEnd`
 
 ### BF-0ff9f4a
 
@@ -29754,6 +29769,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e48a02f7ec` (2026-10-11)
 - **Tests:** `internal/codingagent/settings_selector_oracle_test.go::TestSettingsSelectorMatchesPi`, `tui/select_filterable_test.go::TestFilterableListShowsNoLabelWhenNoCellRemains`
+
+### BF-e4b5861
+
+**fix(view): a second size of an image is a placement only while its first placement is not drawn**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(view): a second size of an image is a placement only while its first placement is not drawn
+- **Root cause:** the placement cache of (view_mount_image.go place) keyed the terminal image by ref+cols+rows, and the first cut of the cure used placement 0 beside a second placement, which kitty draws half.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e4b5861a96` (2026-11-14)
+- **Tests:** `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageAtTwoSizesAtOnceIsTwoImages`, `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageInAnHStackIsTransmittedOncePerRef`, `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageIsFreedAtItsLastPlacement`, `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImagePlacementIDReachesTheTerminalThroughTheFrame`, `coding/extension/host/subprocess/view_mount_image_placement_test.go::TestMountImageResizeSendsNoBytesAndKeepsFewPlacements`
 
 ### BF-e4b9bd5
 
