@@ -495,7 +495,9 @@ func (c *consumerSide) adopt(adoptions []func()) error {
 }
 
 // failed: its holder fails; its calls still waiting for a slot reject with the cause (a bound hold is unbound by it,
-// slice 7b; its calls in flight are rejected by the provider).
+// slice 7b; its calls in flight are rejected by the provider). A denial is access withdrawn under those calls as under the
+// ones in flight (slice 14 §2.3): `forbidden/revoked` for both; a call made after it meets the denied reference and gets its
+// plain `forbidden`.
 func (c *consumerSide) failed(message *link.FailedMessage) error {
 	holder, found := c.entries.get(message.Hold)
 	if !found {
@@ -506,8 +508,12 @@ func (c *consumerSide) failed(message *link.FailedMessage) error {
 		return err
 	}
 	cause := data.AsChordError(received, fmt.Sprintf("hold %d", message.Hold))
+	rejected := cause
+	if message.Cause.Kind == string(data.FailureDenied) {
+		rejected = revoked(holder.label(), cause)
+	}
 	for _, call := range c.window.removeHold(message.Hold) {
-		call.reject(cause)
+		call.reject(rejected)
 	}
 	return holder.failed(message)
 }

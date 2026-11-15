@@ -69,9 +69,20 @@ type served struct {
 	hostLifetime bool
 	// traced is whether its calls start method spans (`serve`'s `untraced`: not).
 	traced bool
-	// local is the factory of a local type, remote of a remote one.
-	local  LocalFactory
-	remote RemoteFactory
+	// local is the factory of a local type, remote of a remote one, admitted of an admitted remote type (one whose contract
+	// declares an `admission`: only `admitted`, never `remote`, is set then).
+	local    LocalFactory
+	remote   RemoteFactory
+	admitted AdmittedFactory
+	// admission is its admission, when its contract declares one (Pi's `Served.remote.admission`).
+	admission *servedAdmission
+}
+
+// servedAdmission is a served type's admission: `admit`, plugin code run first in every attempt (what it returns is checked
+// there), and the fingerprint of its contract's admission schema, which a reload's staging compares.
+type servedAdmission struct {
+	admit       Admit
+	fingerprint string
 }
 
 // holder is what holds an object: a reference's binding, or a hold arriving over a link.
@@ -237,6 +248,13 @@ type chordObject struct {
 	phase      objectState
 	// holderList are the references and holds of this object, in the order they took it.
 	holderList []holder
+	// admissions are the attempts whose admission holds its requests, in the order they bound them (slice 14 §2.2, rule 4): a
+	// sealed one's are released once a later one bound its own, so a source held only by admissions never ends across a
+	// rebuild.
+	admissions []*attempt
+	// allowed is whether presence lists show an admitted object's holders (§19): from its first allow until a denial. Always
+	// true for a type without an admission.
+	allowed bool
 	// waitingFor are the dependencies its parked attempt waits for; their objects are followed to find cycles (Q5).
 	waitingFor []dependency
 	// firstOutcomeWait is its first outcome's promise, made by the first who waits for it (the start barrier, for
@@ -296,6 +314,7 @@ func newChordObject(
 	o := &chordObject{
 		host: host, served: entry, params: params, key: key, principal: principal, identity: identity, chain: chain,
 		ctx: ctx, jobs: map[string]*jobRecords{}, trigger: chordctx.Telemetry(ctx),
+		allowed: entry.kind != servedRemote || entry.admission == nil,
 	}
 	o.text = entry.contract.Name
 	if key != "" {
@@ -466,8 +485,13 @@ func (o *chordObject) activationChain() []string {
 	return append(slices.Clone(chain), id)
 }
 
-// holders are its holders, for a presence list made after they took it.
-func (o *chordObject) holders() []holder { return o.holderList }
+// holders are its holders, for a presence list made after they took it: none while an admitted object is not allowed.
+func (o *chordObject) holders() []holder {
+	if !o.allowed {
+		return nil
+	}
+	return o.holderList
+}
 
 // variant is the variant a live remote object's factory chose (a restart's open old attempt's meanwhile); not bound for a
 // local object and before it is live.
@@ -734,6 +758,10 @@ func (o *chordObject) followed(member string, version int) followed {
 		failure = st.shown
 	}
 	if failure != nil {
+		// A denial keeps no value (slice 14 §2.2): what the caller may read is withdrawn with its access.
+		if failure.Cause.Kind == data.FailureDenied {
+			return followed{kind: followedDenied, err: failure.Cause.Error}
+		}
 		return followed{kind: followedFailed, err: failure.Cause.Error, last: shown, instance: instance}
 	}
 	return followed{kind: followedLoading, last: shown, instance: instance}
@@ -838,7 +866,9 @@ func (o *chordObject) hold(h holder) {
 	}
 	o.stopLingering()
 	// Last: a derive over the presence list may close a link synchronously, which may release this holder again.
-	o.host.referenced(o, h, o.ctx)
+	if o.allowed {
+		o.host.referenced(o, h, o.ctx)
+	}
 }
 
 // unhold: holder was released: the object may end (`idle`).
@@ -1096,6 +1126,9 @@ func (o *chordObject) parked(a *attempt, shown *RefState, firstPass bool) {
 			o.failure = shown.Cause.Error
 			// A restart's successor parked on a failure: the old attempt's kept contributions leave (F-c).
 			o.dropKept()
+			if shown.Cause.Kind == data.FailureDenied {
+				o.disallow()
+			}
 		}
 		o.notify()
 	}
@@ -1240,6 +1273,7 @@ func (o *chordObject) endOld(old *attempt, ready *readiness, due int64) *keyedPr
 				o.withdraw(old)
 			}
 			old.seal(o.reloaded(), cutReload)
+			o.releaseSuperseded()
 			// Sealed, it is no longer the instance its holders bind (`instance`, `stateFor`): a hold waiting for a window
 			// slot unbinds now, before an `ack` could bind it to nothing; bound holds and references follow it on until it
 			// stopped changing.
@@ -1436,6 +1470,13 @@ func (o *chordObject) wentLive(a *attempt) {
 	o.phase = objectState{kind: objectLive, attempt: a}
 	o.exposed = a
 	o.following = true
+	if !o.allowed {
+		// An admitted object's first allow, or its first since a denial: presence lists its holders from now on (§19).
+		o.allowed = true
+		for _, each := range o.holderList {
+			o.host.referenced(o, each, o.ctx)
+		}
+	}
 	contributions := a.contributionList()
 	// A restart's kept contributions leave in the batch the new ones enter (F-c), so no reader sees a gap.
 	var leaving []*registries.RegistryContribution
@@ -1816,6 +1857,13 @@ func (o *chordObject) tearDown(td teardown, reason NativeCloseReason) []*closeFa
 			td.attempt.releaseReferences()
 		})
 	}
+	// Last, as its references: nothing of it is admitted any more.
+	o.host.enter(func() {
+		for _, each := range o.admissions {
+			each.releaseAdmission()
+		}
+		o.admissions = nil
+	})
 	o.documents.Settled()
 	o.host.enter(func() {
 		o.documents.End()

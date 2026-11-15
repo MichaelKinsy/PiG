@@ -418,6 +418,10 @@ func (r *remoteObject) followed(member string, _ int) followed {
 		}
 		return followed{kind: followedLacking, err: memberInvalid(fmt.Sprintf("%s (variant %s) has no state member %q", r.name, variant, member))}
 	case RefStateFailed:
+		// A denial keeps no value (slice 14 §2.2).
+		if r.refState.Cause.Kind == data.FailureDenied {
+			return followed{kind: followedDenied, err: r.refState.Cause.Error}
+		}
 		return followed{kind: followedFailed, err: r.refState.Cause.Error, last: last, instance: bound}
 	}
 	return followed{kind: followedLoading, last: last, instance: bound}

@@ -208,8 +208,13 @@ func stageEntry(plugin string, entry servedEntry, types *namedMap[*served], regi
 	if err != nil {
 		return err
 	}
+	admission, err := servedAdmissionOf(contract, contractData.Admission, entry.options.Admit)
+	if err != nil {
+		return err
+	}
 	var local LocalFactory
 	var remote RemoteFactory
+	var admitted AdmittedFactory
 	kind := servedLocal
 	if contract.Kind == contracts.KindLocal {
 		factory, ok := entry.factory.(LocalFactory)
@@ -217,6 +222,12 @@ func stageEntry(plugin string, entry servedEntry, types *namedMap[*served], regi
 			return fmt.Errorf("%s: a local type is served with a LocalFactory, not %T", contract.Name, entry.factory)
 		}
 		local = factory
+	} else if admission != nil {
+		factory, ok := entry.factory.(AdmittedFactory)
+		if !ok {
+			return fmt.Errorf("%s: an admitted type is served with an AdmittedFactory, not %T", contract.Name, entry.factory)
+		}
+		kind, admitted = servedRemote, factory
 	} else {
 		factory, ok := entry.factory.(RemoteFactory)
 		if !ok {
@@ -233,9 +244,30 @@ func stageEntry(plugin string, entry servedEntry, types *namedMap[*served], regi
 		contract:     contract,
 		local:        local,
 		remote:       remote,
+		admitted:     admitted,
+		admission:    admission,
 		hostLifetime: contract.Kind == contracts.KindLocal && len(contractData.Params.Fields) == 0,
 	})
 	return nil
+}
+
+// servedAdmissionOf is a served type's admission (slice 14 §2.1; declaration policy): a remote contract that declares an
+// `admission` is served with `admit`, and only such a contract is; anything else refuses the plugin.
+func servedAdmissionOf(contract *contracts.Contract, declared *contracts.AdmissionData, admit Admit) (*servedAdmission, error) {
+	if declared == nil && admit == nil {
+		return nil, nil
+	}
+	if contract.Kind == contracts.KindLocal {
+		return nil, fmt.Errorf("%s: only a remote type takes an admission (admit)", contract.Name)
+	}
+	if declared == nil {
+		return nil, fmt.Errorf("%s: admit needs the contract to declare its admission", contract.Name)
+	}
+	if admit == nil {
+		return nil, fmt.Errorf("%s: its contract declares an admission: serve it with admit", contract.Name)
+	}
+	// Plugin code: what it returns is checked when an attempt runs it.
+	return &servedAdmission{admit: admit, fingerprint: declared.Fingerprint}, nil
 }
 
 // Recorded is what a recorded factory declared: what a reload's fate and checks need, nothing activated.
@@ -282,7 +314,20 @@ func recordFactory(object *chordObject, entry *served, ctx context.Context) (Rec
 			return entry.local(object.params, recording)
 		}
 		// A remote object's identity has its principal.
-		return entry.remote(object.params, object.principal, recording)
+		if entry.admission == nil {
+			return entry.remote(object.params, object.principal, recording)
+		}
+		// An admitted type (slice 14 §2.5): its new `admit` runs first, against what an admission declares with; its new factory
+		// is rehearsed with the object's admitted value only when it was decided under an admission schema of the new one's
+		// fingerprint (otherwise a limit accepted: its declaration errors appear at its activation, its requests are not
+		// recorded).
+		if _, err := entry.admission.admit(object.params, object.principal, recording); err != nil {
+			return nil, err
+		}
+		if admitted := object.admittedValue(); admitted != nil && admitted.fingerprint == entry.admission.fingerprint {
+			return entry.admitted(object.params, object.principal, admitted.value, recording)
+		}
+		return nil, nil
 	})
 	if err != nil {
 		return Recorded{}, named(err, fmt.Sprintf("plugin %q, %s", entry.plugin, object.text))
@@ -643,6 +688,9 @@ func (r *recordingSelf) OnLive(OnLiveHandler) { r.assertDeclaring("onLive") }
 // Job implements Self.
 func (r *recordingSelf) Job(definition *JobDefinition, _ JobImplementation) JobHandle {
 	r.assertDeclaring("job")
+	if err := refuseAdmittedJob(r.served, r.object.text); err != nil {
+		panic(err)
+	}
 	if r.jobs.has(definition.Name) {
 		panic(declarationError(`%s: job "%s" is declared twice`, r.object.text, definition.Name))
 	}

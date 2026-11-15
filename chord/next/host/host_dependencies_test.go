@@ -561,7 +561,7 @@ func TestTheDependencyCheckOfRegistryValues(t *testing.T) {
 	absent := registries.NewRegistryRecord("app.absent", e.batch, func(registries.RegistryError) {}, nil)
 	got := checkDependencies([]dependency{live, {kind: dependencyRegistry, value: absent.Value(1)}})
 	if got.kind != checkParked || got.shown.Kind != RefStateFailed || got.shown.Cause.Kind != data.FailureWaiting || !got.firstPass ||
-		got.blocker != (blocker{label: "registry app.absent", state: blockerFailed}) || got.loadingOn != nil {
+		got.blocker == nil || *got.blocker != (blocker{label: "registry app.absent", state: blockerFailed}) || got.loadingOn != nil {
 		t.Fatalf("check with an unserved registry = %+v, want parked waiting", got)
 	}
 	if message := got.shown.Cause.Error.Message; !strings.HasPrefix(message, "waiting for registry app.absent: ") {
