@@ -256,7 +256,11 @@ func (a *AuthStorage) credential(provider string) (Credential, bool, error) {
 
 // credentialIn is credential with its read made in ctx's operation. It does not end with ctx.
 func (a *AuthStorage) credentialIn(ctx context.Context, provider string) (Credential, bool, error) {
-	creds, err := a.readLatest(context.WithoutCancel(ctx))
+	// A context with Done() == nil can never end, so the wrapper changes nothing for it: only one that can end needs it (an allocation, and a second on every Value lookup). A custom context with Done() == nil and a non-nil Err or a Deadline is not one the product makes.
+	if ctx.Done() != nil {
+		ctx = context.WithoutCancel(ctx)
+	}
+	creds, err := a.readLatest(ctx)
 	if err != nil {
 		return Credential{}, false, err
 	}

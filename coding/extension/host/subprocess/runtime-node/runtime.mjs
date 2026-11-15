@@ -3313,13 +3313,12 @@ export class Runtime {
     const quiesce = () => { if (!conn.closed) conn.notify("events.quiesce", { emission }); };
     const waitForEmitter = emission !== undefined && failure === null && !isWaiting();
     if (waitForEmitter) lockstep.add(emission);
+    // A prefix that reports at once writes its report before the response: the Host reads one connection's frames in order, so the emit that the response releases finds the emission settled and returns without an events.settle round trip. Written after the response, the report raced the Host's next read and a varying share of the emits paid that round trip.
+    if (emission !== undefined && failure === null && !waitForEmitter) quiesce();
     try { conn.respond(env.id, result, failure); }
     catch (error) { try { conn.respond(env.id, null, error); } catch {} }
     if (emission === undefined || failure !== null) return;
-    if (!waitForEmitter) {
-      quiesce();
-      return;
-    }
+    if (!waitForEmitter) return;
     try { conn.socket.waitUntil(() => !lockstep.has(emission) || conn.closed); }
     catch {}
     finally { lockstep.delete(emission); }
