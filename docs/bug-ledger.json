@@ -12741,6 +12741,33 @@
       "tests": []
     },
     {
+      "id": "BF-3e66246",
+      "title": "Chord: a worker's exit is published after its link closed and after the commits its calls queued in the…",
+      "symptom": "An exit could be published while the commits of the worker's last reports were still queued, and a worker that reported and exited in one turn could have its reports committed after its exit.",
+      "rootCause": "Pi workers.ts:683: `void (this.#store?.settled() ?? Promise.resolve()).then(() =\u003e { this.#left(routed, child, exit, failure); child.gone.resolve(); });` A host without a store (Pi's undefined `#store`) waits for nothing: Options.Store that is not a *store.ChordStore leaves in the exit's own section (Pi's `then` continues in the next microtask; nothing of this component runs in between).",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a worker's exit is published after its link closed and after the commits its calls queued in the server's store settled, and a stop resolves only once the exit was published; the app gives its workers the server's store for this. Before, an exit could be published while the commits of the worker's last reports were still queued, and a worker that reported and exited in one turn could have its reports committed after its exit. A worker process closes its link at its exit, before the exit is told, as neither a lost nor a closed link.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3e66246870",
+          "date": "2026-11-15"
+        },
+        {
+          "hash": "d3f63d62e9",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_process_end_unix_test.go::TestAWorkerProcessClosesItsLinkAtItsExitBeforeTheExitIsToldAsNeitherALostNorAClosedLink",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsChannel"
+      ]
+    },
+    {
       "id": "BF-3e66fd5",
       "title": "A failed interactive login now behaves as in Pi: the login dialog closes, the editor has focus again, and the…",
       "symptom": "GitHub Copilot, OpenAI Codex and every other OAuth login kept the dialog open with `Login failed: \u003cmessage\u003e` inside it until Escape, and anything typed went nowhere.",

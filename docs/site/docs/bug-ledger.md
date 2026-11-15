@@ -476,6 +476,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3de4b8e](#bf-3de4b8e) | A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content… | PiG's own defect | All platforms | Unreleased |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e00494](#bf-3e00494) | fix(session): a custom message entry whose content is null projects an empty list | PiG's own defect | All platforms | Unreleased |
+| [BF-3e66246](#bf-3e66246) | Chord: a worker's exit is published after its link closed and after the commits its calls queued in the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3e66fd5](#bf-3e66fd5) | A failed interactive login now behaves as in Pi: the login dialog closes, the editor has focus again, and the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-3e88414](#bf-3e88414) | fix(coding-agent): render system messages in HTML export (Pi) | A fix Pi shipped that PiG ported | All platforms | Unreleased |
@@ -8580,6 +8581,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `3e004947f7` (2026-11-13)
 - **Tests:** None recorded.
+
+### BF-3e66246
+
+**Chord: a worker's exit is published after its link closed and after the commits its calls queued in the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An exit could be published while the commits of the worker's last reports were still queued, and a worker that reported and exited in one turn could have its reports committed after its exit.
+- **Root cause:** Pi workers.ts:683: `void (this.#store?.settled() ?? Promise.resolve()).then(() => { this.#left(routed, child, exit, failure); child.gone.resolve(); });` A host without a store (Pi's undefined `#store`) waits for nothing: Options.Store that is not a *store.ChordStore leaves in the exit's own section (Pi's `then` continues in the next microtask; nothing of this component runs in between).
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3e66246870` (2026-11-15), `d3f63d62e9` (2026-11-15)
+- **Tests:** `chord/nextnode/workers/workers_process_end_unix_test.go::TestAWorkerProcessClosesItsLinkAtItsExitBeforeTheExitIsToldAsNeitherALostNorAClosedLink`, `chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsChannel`
+- **Release note:** Chord: a worker's exit is published after its link closed and after the commits its calls queued in the server's store settled, and a stop resolves only once the exit was published; the app gives its workers the server's store for this. Before, an exit could be published while the commits of the worker's last reports were still queued, and a worker that reported and exited in one turn could have its reports committed after its exit. A worker process closes its link at its exit, before the exit is told, as neither a lost nor a closed link.
 
 ### BF-3e66fd5
 
