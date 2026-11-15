@@ -158,7 +158,7 @@ func TestWindowsReplaceKeepingBackupFinishesAReplacementThatStoppedHalfWay(t *te
 			return &os.LinkError{Op: "replace", Old: temp, New: replaced, Err: errUnableToMoveReplacement2}
 		},
 		moveFile: moveFile,
-		copyDACL: copyDACL,
+		carry:    carryOnto(path),
 	})
 	if err != nil {
 		t.Fatalf("replaceKeepingBackup = %v, want the replacement finished", err)
@@ -195,7 +195,7 @@ func TestWindowsReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish(t *tes
 			}
 			return moveFile(from, to)
 		},
-		copyDACL: copyDACL,
+		carry: carryOnto(path),
 	})
 	if !errors.Is(err, errUnableToMoveReplacement2) || !errors.Is(err, refused) {
 		t.Fatalf("replaceKeepingBackup = %v, want both the replace error and the refused move", err)
@@ -216,7 +216,7 @@ func TestWindowsSyncDirectoryDoesNotFail(t *testing.T) {
 }
 
 // A symbolic link is followed and stays a link: the file it names is replaced, as D651 says for every platform. Creating a link needs the privilege or
-// the developer mode, so a runner without it skips the cell.
+// the developer mode; testenv.Symlink skips the cell, naming Developer Mode, on a runner without it.
 func TestWindowsWriteFileFollowsASymbolicLink(t *testing.T) {
 	dir := t.TempDir()
 	target, link := filepath.Join(dir, "target.json"), filepath.Join(dir, "link.json")

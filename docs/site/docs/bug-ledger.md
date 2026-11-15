@@ -235,6 +235,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1ee7dea](#bf-1ee7dea) | The Mistral request URL for a base URL with a non-special scheme or a host or port the WHATWG parser rejects… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1eea8f0](#bf-1eea8f0) | `ctx.ui.viewAbilities()` of a Node extension reported no client after a session log sync until the next state… | PiG's own defect | All platforms | Unreleased |
 | [BF-1f2f940](#bf-1f2f940) | The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-1f4ce56](#bf-1f4ce56) | On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes… | PiG's own defect | Windows | Unreleased |
 | [BF-1f7fa2f](#bf-1f7fa2f) | In print and JSON mode, an extension in its own Node process no longer runs its callbacks with a stale ctx… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1fabd48](#bf-1fabd48) | `pig -e npm:<pkg>` no longer stays on the version from the first download | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-1fbdabb](#bf-1fbdabb) | A CRLF that a proxy splits across two network chunks no longer aborts an Anthropic turn with `Could not parse… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -5246,6 +5247,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1f2f94065d` (2026-11-02)
 - **Tests:** `ai/anthropic_federation_number_oracle_test.go::TestFederationExpiresInNumberMatchesJS`, `ai/auth_context_oracle_test.go::TestDefaultProviderAuthContextMatchesPi`, `ai/cloudflare_stream_upstream_test.go::TestResolveCloudflareModelMatchesPiOnNonBMPBaseURLs`, `ai/oauth_credential_order_test.go::TestOAuthCredentialMembersFollowPiFlowLiterals`, `ai/oauth_load_oracle_test.go::TestOAuthFlowLoadersMatchPi`
 - **Release note:** The Anthropic workload-identity token exchange now reads `expires_in` with JavaScript's `Number()`, as the Anthropic SDK does. A response that sent the lifetime as a string such as `"0x10"`, `"0b11"` or `[5]` was rejected as missing required fields although `Number()` accepts it, and one such as `"1_0"` or `"0x1p3"` was accepted as a finite lifetime although `Number()` yields NaN and Pi rejects the response.
+
+### BF-1f4ce56
+
+**On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes…**
+
+- **Source:** PiG's own defect
+- **Symptom:** On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor of the file as it was, as Pi's in-place write does.
+- **Root cause:** the helper left the security descriptor of a replaced file to ReplaceFileW and copied only the DACL with its protected flag, and no test compared the whole descriptor before and after a write on Windows
+- **User impact:** Credential or permission exposure
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `1f4ce560a8` (2026-11-15), `950803e7b7` (2026-11-15)
+- **Tests:** `internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupFinishesAReplacementThatStoppedHalfWay`, `internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish`, `internal/atomicfile/carry_access_test.go::TestCarryAccessChoosesTheCallsByWhatTheReadBackShows`, `internal/atomicfile/carry_access_test.go::TestCarryAccessReturnsAFailedReadBack`, `internal/atomicfile/carry_decision_test.go::TestWriteFileWritesInPlaceWhereTheTemporaryFileCannotTakeTheAccess`, `internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsInheritanceDoesNotReachAProtectedFileAfterAWrite`, `internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsSecurityDescriptorMatrix`, `internal/atomicfile/replace_backup_test.go::TestCarryVerdict` and 7 more in docs/bug-ledger.json
+- **Release note:** On Windows, saving `auth.json`, the settings, trust, keybindings and MCP files, or any other file pig writes through a temporary file, now leaves the whole security descriptor of the file as it was, as Pi's in-place write does. The replacement kept the owner-only access of a credential file only as far as `ReplaceFileW` merged it: it always marked the file as auto-inherited and could rewrite the inherited flag of entries or add explicit copies of inherited ones, so a login or token refresh could change who may open `auth.json`. The access (the entries with their flags, and the protected flag) is now put on the temporary file before anything is written to it and read back, and again after the replacement, which puts the old file back and fails if the access still differs; a file system that cannot take it gets the in-place write, as before. Run on NTFS on the GitHub Windows runner by the main-side branch that carries the same files (run 43709055821); no other file system has been run (divergence D651).
 
 ### BF-1f7fa2f
 
