@@ -235,28 +235,32 @@ func TestAdmittedExpectationTextIsInertInTheComment(t *testing.T) {
 }
 
 // A file name of the pull request is printed in the findings of the check. It cannot name a file of a ledger row, but
-// it reaches the log all the same.
+// it reaches the log and the comment all the same.
 func TestFindingTextOfThePullRequestIsInert(t *testing.T) {
 	name := "a/` @someone <b>\n::error::injected [x](http://e) | z_test.go"
 	d := &data{
 		Files:   ledgerFiles(name),
 		Commits: []prCommit{commit(ledgerCommitA, "a: b", true)},
 	}
-	log, _ := printedBy(t, d)
+	log, md := printedBy(t, d)
 	if cmds := workflowCommands(log); len(cmds) != 1 || !strings.HasPrefix(cmds[0], "::error title=pre-flight test-expectation #7::") {
 		t.Errorf("the log runs %q, want the one error of the finding:\n%s", cmds, log)
 	}
+	row := rowOf(t, md, "| test-expectation |")
+	if rest := outsideCodeSpans(row); rest != "| ❌ | test-expectation |  |" {
+		t.Errorf("outside a code span the row holds %q, want the table cells only:\n%s", rest, row)
+	}
 }
 
-// A file name of the pull request, whatever it holds, is one line of the log, and the error annotation of the finding
-// carries it escaped the way GitHub unescapes. (How the comment shows the name of a finding is not changed here.)
+// A file name of the pull request, whatever it holds, is one line of the log and one inert row of the comment, and the
+// error annotation of the finding carries it escaped the way GitHub unescapes.
 func TestFindingTextCannotStartAWorkflowCommand(t *testing.T) {
 	texts := append(slices.Clone(hostileTexts), hostileText{"control characters", "a\x1b[31mb\x7f"})
 	for _, h := range texts {
 		t.Run(h.name, func(t *testing.T) {
 			name := "a/" + h.text + "_test.go"
 			d := &data{Files: ledgerFiles(name), Commits: []prCommit{commit(ledgerCommitA, "a: b", true)}}
-			log, _ := printedBy(t, d)
+			log, md := printedBy(t, d)
 			const commandOfError = "::error title=pre-flight test-expectation #7::"
 			cmds := workflowCommands(log)
 			if len(cmds) != 1 || !strings.HasPrefix(cmds[0], commandOfError) {
@@ -281,6 +285,10 @@ func TestFindingTextCannotStartAWorkflowCommand(t *testing.T) {
 			}
 			if fails != 1 {
 				t.Errorf("%d FAIL line(s), want one:\n%q", fails, log)
+			}
+			row := rowOf(t, md, "| test-expectation |")
+			if rest := outsideCodeSpans(row); rest != "| ❌ | test-expectation |  |" {
+				t.Errorf("outside a code span the row holds %q, want the table cells only:\n%s", rest, row)
 			}
 		})
 	}

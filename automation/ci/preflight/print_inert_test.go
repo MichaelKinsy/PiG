@@ -118,3 +118,41 @@ func TestInertKeepsTextReadable(t *testing.T) {
 		}
 	}
 }
+
+// The alert comment names the author on purpose and quotes the verdict's reason, which holds text of the pull request.
+func TestAlertBodyQuotesTheReasonInertly(t *testing.T) {
+	for _, h := range hostileTexts {
+		t.Run(h.name, func(t *testing.T) {
+			var d data
+			d.Pull.User.Login = "author"
+			reason := "a/f.go:3 @someone <img src=x> [x](http://e) | `tick` " + h.text
+			ev := evaluation{Head: "0123456789abcdef", Checks: map[string]verdict{"gitleaks": {Result: resultFail, Reason: reason}}}
+			body := alertBody(check{Name: "gitleaks", Alert: "Please remove the secret."}, &d, ev)
+			paragraphs := strings.Split(body, "\n\n")
+			if len(paragraphs) != 3 || !strings.HasPrefix(paragraphs[0], "@author Please") {
+				t.Fatalf("the alert has %d paragraph(s), the first %q, want the mention, the verdict line, the marker:\n%s", len(paragraphs), paragraphs[0], body)
+			}
+			if rest := outsideCodeSpans(paragraphs[1]); rest != "gitleaks on : " {
+				t.Errorf("outside a code span the verdict line holds %q:\n%s", rest, paragraphs[1])
+			}
+		})
+	}
+}
+
+// A backtick in the text cannot close the span: the fence is one backtick longer than the longest run in the text.
+func TestCellFenceOutgrowsTheBackticksInTheText(t *testing.T) {
+	for n := 1; n <= 3; n++ {
+		ticks := strings.Repeat("`", n)
+		text := "a" + ticks + " @someone | ::error::x " + ticks + "b"
+		got := cell(text)
+		fence := strings.Repeat("`", n+1)
+		want := fence + " a" + ticks + " @someone \\| ::error::x " + ticks + "b " + fence
+		if got != want {
+			t.Errorf("cell(%q) = %q, want %q", text, got, want)
+		}
+		if rest := outsideCodeSpans("| " + got + " |"); rest != "|  |" {
+			t.Errorf("outside the code span of %d backtick(s) the cell holds %q", n, rest)
+		}
+		t.Logf("%d backtick(s): %s", n, got)
+	}
+}
