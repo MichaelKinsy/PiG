@@ -35,6 +35,7 @@ func TestThinkingSelectorLabelColumnIsAtLeastTwelveWide(t *testing.T) {
 // The binding is moved to a printable key so that typing it would filter the list.
 // mutation-checked: the mutant "save falls through to the search input" fails it.
 func TestThinkingSelectorSaveKeyIsNotTypedIntoTheSearchInput(t *testing.T) {
+	restoreTUIKeybindings(t)
 	useKeybindings(t, map[string][]KeyID{"app.thinking.save": {"x"}})
 	var saved []ai.ThinkingLevel
 	selector := NewThinkingSelectorComponent("medium", []ai.ThinkingLevel{"off", "medium", "xhigh"}, func(ai.ThinkingLevel) {}, func() {},

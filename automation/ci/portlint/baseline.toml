@@ -31,12 +31,6 @@ snippet = "go sess.forwardAgentEvents()"
 
 [[hit]]
 check = "asyncorder"
-file = "internal/codingagent/model_tasks.go"
-func = "ModelRegistry.CloseModelTasks"
-snippet = "go models.Close()"
-
-[[hit]]
-check = "asyncorder"
 file = "mcp/client.go"
 func = "Client.startRequest"
 snippet = "go func() {"
@@ -2131,12 +2125,6 @@ check = "golifetime"
 file = "internal/codingagent/llama/ui.go"
 func = "RunWithProgress"
 snippet = "select {"
-
-[[hit]]
-check = "golifetime"
-file = "internal/codingagent/model_tasks.go"
-func = "ModelRegistry.CloseModelTasks"
-snippet = "go models.Close()"
 
 [[hit]]
 check = "golifetime"
@@ -4409,12 +4397,6 @@ snippet = "case \"github-copilot\":"
 
 [[hit]]
 check = "providerliteral"
-file = "coding/model.go"
-func = "buildLeafProviderForEntry"
-snippet = "if providerID == \"github-copilot\" && !resolvedAuth {"
-
-[[hit]]
-check = "providerliteral"
 file = "internal/codingagent/auth_warnings.go"
 func = "InteractiveMode.canWarnAboutAnthropicSubscriptionAuth"
 snippet = "return model != nil && model.Provider != nil && model.Provider.ID() == \"anthropic\""
@@ -6378,12 +6360,6 @@ check = "ctxbackground"
 file = "internal/codingagent/interactive_input.go"
 func = "InteractiveMode.syncExtensionSlashCommands"
 snippet = "baseCtx = context.Background()"
-
-[[hit]]
-check = "ctxbackground"
-file = "internal/codingagent/interactive_input.go"
-func = "InteractiveMode.settleActiveRun"
-snippet = "owner = context.Background()"
 
 [[hit]]
 check = "ctxbackground"

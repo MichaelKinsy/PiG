@@ -241,6 +241,9 @@ func (m *InteractiveMode) emitAgentSettledEvent() {
 }
 
 // emitAgentSettledFor dispatches agent_settled with aborted, whether the run ended because it was aborted (upstream agent-session.ts _emitAgentSettled reads _agentRunAbortRequested).
+// The actions the handlers deferred start after the last handler returned, unless exit is requested: the quit settles the interrupted run on the owner loop (settleRunAtQuit) and
+// waits for the Session to be idle, so a run started now would hold the quit for a whole provider turn. Pi's quit does not wait for the run at all (1.5.0 agent-session-runtime.ts
+// dispose, interactive-mode.ts shutdown ends in process.exit(0)): the deferred message is dropped, and nothing of it reaches a provider or the session file.
 func (m *InteractiveMode) emitAgentSettledFor(runner *inproc.Runner, aborted bool) {
 	m.settledMu.Lock()
 	m.emittingAgentSettled = true
@@ -253,6 +256,9 @@ func (m *InteractiveMode) emitAgentSettledFor(runner *inproc.Runner, aborted boo
 	deferred := m.deferredSettledActions
 	m.deferredSettledActions = nil
 	m.settledMu.Unlock()
+	if m.requestExit.Load() {
+		return
+	}
 	for _, action := range deferred {
 		action()
 	}
@@ -292,6 +298,8 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 	m.queueMu.Lock()
 	m.turnActive.Store(true)
 	m.turnSettled = make(chan struct{})
+	ended := make(chan struct{})
+	m.turnEnded = ended
 	m.queueMu.Unlock()
 	m.workStart = time.Now()
 	m.statusLine.SetWorking(m.workingVisible)
@@ -302,6 +310,8 @@ func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images [
 	session, runner := m.opts.SessionHandle, m.newRunner
 
 	go func() {
+		// Deferred first, so it closes last: after the settlement below, agent_settled included.
+		defer close(ended)
 		rejected := false
 		defer func() {
 			// Turn-end state (isIdle, workStart, statusLine, loaders) and the

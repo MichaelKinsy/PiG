@@ -127,6 +127,7 @@ func TestConfigSchemasAcceptSchemaInSettingsJSON(t *testing.T) {
 
 // "accepts $schema in keybindings.json without treating it as an action"
 func TestConfigSchemasAcceptSchemaInKeybindingsJSONWithoutTreatingItAsAnAction(t *testing.T) {
+	restoreTUIKeybindings(t)
 	dir := t.TempDir()
 	writeConfigSchemaFile(t, filepath.Join(dir, "keybindings.json"), `{"$schema":"`+configSchemaURL("keybindings")+`","app.session.new":"ctrl+n","extension.invalid":"ctrl+not-a-key"}`)
 

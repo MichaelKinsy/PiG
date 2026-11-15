@@ -278,8 +278,9 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 			return nil, cliCLIError("%v", err)
 		}
 		trace.Mark("trust-preload-start")
-		userScope := []string{"user"}
-		preTrustConfigs := collectExtensionConfigs(cwd, b.agentDir, services.SettingsManager(), resourceFlags, &userScope, resolver.Resolve)
+		// Pi's pre-trust pass reads the user scope only. A Piglet narrows it further: its discovery decides, and a closed Binary discovers nothing.
+		preTrustScopes, _ := b.ambientScopes(false)
+		preTrustConfigs := collectExtensionConfigs(cwd, b.agentDir, services.SettingsManager(), resourceFlags, preTrustScopes, resolver.Resolve)
 		if err := cliPackageSourceError(preTrustConfigs); err != nil {
 			return nil, cliCLIError("%v", err)
 		}

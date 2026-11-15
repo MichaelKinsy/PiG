@@ -116,6 +116,7 @@ func TestNewSessionDisposesQueuedCountdown(t *testing.T) {
 }
 
 func TestStatusUsesConfiguredInterruptHint(t *testing.T) {
+	restoreTUIKeybindings(t)
 	for _, event := range []agent.AgentEvent{
 		agent.CompactionStartEvent{Reason: "manual"},
 		agent.SummarizationRetryAttemptStartEvent{Source: "branchSummary"},

@@ -95,10 +95,18 @@ func (s *exitRecordSession) waitReady() {
 	}
 }
 
-// capturePTY copies terminal output until stop closes. A blocking read on a terminal master cannot be interrupted by closing it,
-// so it polls.
+// capturePTY copies terminal output until stop closes or the terminal is closed. A blocking read on a terminal master cannot be
+// interrupted by closing it, so it polls. Each poll and read runs under the file's RawConn, which holds the descriptor for that
+// step; the step after a Close fails, and the capture ends. The descriptor's bare number does neither: when a test closed the
+// master under a running capture (TestInteractiveExitOnAClosedTerminalLeavesALine), the capture went on to poll and read
+// whichever file the process opened next on that number. In CI that file was a connection the loopback server of
+// TestRPCAzureOpenAIResponsesObservation had just accepted: the capture read the model request before net/http did, and the run
+// ended in "timeout after 0 Responses request(s)" with the request received and no handler entered.
 func capturePTY(master *os.File, output *ptyOutput, stop <-chan struct{}) {
-	fd := int(master.Fd())
+	conn, err := master.SyscallConn()
+	if err != nil {
+		return
+	}
 	buffer := make([]byte, 4096)
 	for {
 		select {
@@ -106,23 +114,106 @@ func capturePTY(master *os.File, output *ptyOutput, stop <-chan struct{}) {
 			return
 		default:
 		}
-		ready, err := unix.Poll([]unix.PollFd{{Fd: int32(fd), Events: unix.POLLIN}}, 20)
-		if errors.Is(err, syscall.EINTR) {
+		ready, n := 0, 0
+		var pollErr, readErr error
+		if conn.Read(func(fd uintptr) bool {
+			if ready, pollErr = unix.Poll([]unix.PollFd{{Fd: int32(fd), Events: unix.POLLIN}}, 20); pollErr == nil && ready != 0 {
+				n, readErr = unix.Read(int(fd), buffer)
+			}
+			return true
+		}) != nil {
+			return
+		}
+		if errors.Is(pollErr, syscall.EINTR) {
 			continue
 		}
-		if err != nil {
+		if pollErr != nil {
 			return
 		}
 		if ready == 0 {
 			continue
 		}
-		n, err := unix.Read(fd, buffer)
 		if n > 0 {
 			_, _ = output.Write(buffer[:n])
 		}
-		if err != nil || n == 0 {
+		if readErr != nil || n == 0 {
 			return
 		}
+	}
+}
+
+// A capture ends with its terminal. TestInteractiveExitOnAClosedTerminalLeavesALine closes the master under a running capture, and
+// a capture that kept only the descriptor's number went on to poll and read whichever file took that number next. Here a socket
+// takes it at once, as an accepted connection did in CI: what its peer writes must still be there to read.
+func TestCapturePTYEndsWithItsTerminal(t *testing.T) {
+	master, slave := openPTY(t, 40, 120)
+	output := &ptyOutput{}
+	stop, copied := make(chan struct{}), make(chan struct{})
+	go func() { defer close(copied); capturePTY(master, output, stop) }()
+	var opened []int
+	defer func() {
+		close(stop)
+		<-copied
+		for _, fd := range opened {
+			_ = unix.Close(fd)
+		}
+		_ = master.Close()
+		_ = slave.Close()
+	}()
+	if _, err := slave.WriteString("drawn"); err != nil {
+		t.Fatal(err)
+	}
+	output.waitQuiet(0, []byte("drawn"), 0, testbudget.Wait(t))
+	if !bytes.Contains(output.since(0), []byte("drawn")) {
+		t.Fatalf("the capture is not copying: %q", output.since(0))
+	}
+	number := int(master.Fd())
+	if err := master.Close(); err != nil {
+		t.Fatal(err)
+	}
+	// The kernel hands out the lowest free number, so the descriptors opened next reach the master's as soon as it is free.
+	victim, peer := -1, -1
+	for victim < 0 && len(opened) < 32 {
+		pair, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_STREAM|unix.SOCK_CLOEXEC|unix.SOCK_NONBLOCK, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		opened = append(opened, pair[0], pair[1])
+		switch number {
+		case pair[0]:
+			victim, peer = pair[0], pair[1]
+		case pair[1]:
+			victim, peer = pair[1], pair[0]
+		}
+	}
+	const sent = "bytes of another file"
+	if victim >= 0 {
+		if _, err := unix.Write(peer, []byte(sent)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tick := time.NewTicker(5 * time.Millisecond)
+	defer tick.Stop()
+	deadline := time.After(testbudget.Wait(t))
+	for ended := false; !ended; {
+		if bytes.Contains(output.since(0), []byte(sent)) {
+			t.Fatalf("the capture read %q from the descriptor that took its closed terminal's number %d", sent, number)
+		}
+		select {
+		case <-copied:
+			ended = true
+		case <-deadline:
+			t.Fatal("the capture still runs after its terminal was closed")
+		case <-tick.C:
+		}
+	}
+	if victim < 0 {
+		// The master's number was still held when the capture ended, so no other file could have been read through it.
+		return
+	}
+	buffer := make([]byte, len(sent)+1)
+	if n, err := unix.Read(victim, buffer); err != nil || string(buffer[:n]) != sent {
+		t.Fatalf("the descriptor that took the terminal's number holds %q (%v), want %q", buffer[:max(n, 0)], err, sent)
 	}
 }
 

@@ -89,6 +89,60 @@ classification = "release-content"
 rationale = "Identifies the exact upstream npm dependency release whose source and archive hashes are verified; it does not select a Pig-owned schema reader."
 
 [[fields]]
+id = "automation/ci/preflight/config.go#tool.Version:yaml:version"
+path = "automation/ci/preflight/config.go"
+owner = "tool"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "The release of a pinned external tool (shellcheck, a pip package and the like) that config.yaml downloads and verifies by SHA-256 or installs from a hash-locked requirements file; it identifies released content and selects no Pig schema reader."
+
+[[fields]]
+id = "automation/ci/preflight/content.go#const.versionsPath:go:-"
+path = "automation/ci/preflight/content.go"
+owner = "<package>"
+field = "versionsPath"
+wire_name = "-"
+classification = "release-content"
+rationale = "Repository path of the variables/versions.yaml pin file that the mandatory and forbidden content rules expand {{ versions.* }} references from; a file name, not a format version."
+
+[[fields]]
+id = "automation/ci/preflight/evaluate.go#evaluation.Version:json:version"
+path = "automation/ci/preflight/evaluate.go"
+owner = "evaluation"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "The pre-flight's own definition hash (the engine revision plus every check's declared definition and the main-branch files it reads), stamped on the data, evaluation and state of a run. decideMode only compares it with the previous run's value to choose a full or reuse run; it selects no reader for the evaluation shape, and a mismatch re-runs instead of reading an older shape."
+
+[[fields]]
+id = "automation/ci/preflight/fetch.go#data.Version:json:version"
+path = "automation/ci/preflight/fetch.go"
+owner = "data"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "The pre-flight's own definition hash (the engine revision plus every check's declared definition and the main-branch files it reads), stamped on the data, evaluation and state of a run. decideMode only compares it with the previous run's value to choose a full or reuse run; it selects no reader for the data shape, and a mismatch re-runs instead of reading an older shape."
+
+[[fields]]
+id = "automation/ci/preflight/fetch.go#state.Version:json:version"
+path = "automation/ci/preflight/fetch.go"
+owner = "state"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "The pre-flight's own definition hash (the engine revision plus every check's declared definition and the main-branch files it reads), stamped on the data, evaluation and state of a run. decideMode only compares it with the previous run's value to choose a full or reuse run; it selects no reader for the state shape, and a mismatch re-runs instead of reading an older shape."
+
+[[fields]]
+id = "automation/ci/preflight/sources.go#dependencyChange.Version:json:version"
+path = "automation/ci/preflight/sources.go"
+owner = "dependencyChange"
+field = "Version"
+wire_name = "version"
+classification = "external"
+rationale = "The version of a changed dependency as GitHub's dependency-review compare API reports it; GitHub and the package ecosystem own the field, the pre-flight only reads and prints it."
+
+[[fields]]
 id = "automation/portlens/ledger.go#PinLedger.Version:go:-"
 path = "automation/portlens/ledger.go"
 owner = "PinLedger"

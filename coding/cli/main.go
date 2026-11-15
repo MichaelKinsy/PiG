@@ -891,7 +891,9 @@ func Main(args []string, options *MainOptions) {
 	runMode := processAppMode(flags)
 	if runMode == appModePrint || runMode == appModeJSON || runMode == appModeRPC {
 		// pig additive (D175): print, json and rpc runs collect at GOGC 400 unless the environment sets GOGC, and at 100 again past 64 MiB live.
-		gcpolicy.Apply()
+		stopGCPolicy = gcpolicy.Apply()
+		// Deferred after stopProfiles, so it runs first: the exit record counts no watcher.
+		defer stopGCPolicy()
 	}
 	if runMode == appModeRPC {
 		// pig additive (D174): an rpc run schedules on procpolicy.RPCCap Ps unless the environment sets GOMAXPROCS.

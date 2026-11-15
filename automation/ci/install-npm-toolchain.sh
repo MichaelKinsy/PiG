@@ -7,6 +7,8 @@ set -euo pipefail
 # npm's tarball bundles its own copies of its dependencies, and neither overrides nor the lockfile can replace a
 # bundled copy. package.json therefore lists each dependency with an advisory fix as a direct dependency, and this
 # script removes npm's bundled copy so npm resolves the patched one from the toolchain's top-level node_modules.
+# A fix that exists only in a later major than npm's own range (glob, minimatch) also needs an override, or npm ci
+# rejects the lockfile.
 # The lockfile carries no entry for a removed bundled copy. The parity image does the same in
 # automation/images/ci-parity/Dockerfile. The dependency list is read before the loop so that an unreadable manifest
 # fails the install instead of leaving every bundled copy in place.

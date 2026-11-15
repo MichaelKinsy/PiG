@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/MichaelKinsy/PiG/internal/atomicfile"
 	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
 
@@ -59,7 +60,7 @@ func (b *FileAuthStorageBackend) WithLock(fn func(current string, exists bool) (
 		return err
 	}
 	if next != nil {
-		return os.WriteFile(b.path, []byte(*next), 0o600)
+		return atomicfile.WriteFile(b.path, []byte(*next), 0o600)
 	}
 	return nil
 }

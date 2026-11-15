@@ -4,10 +4,16 @@
   "version": "0.0.0",
   "description": "The npm that CI installs with automation/ci/install-npm-toolchain.sh. Keep in step with NPM_VERSION in .github/workflows/ci.yml.",
   "dependencies": {
+    "glob": "14.0.4",
     "http-cache-semantics": "4.3.0",
     "ip-address": "10.7.4",
+    "minimatch": "11.0.5",
     "npm": "12.1.0",
     "postcss-selector-parser": "7.1.6",
     "undici": "6.29.1"
+  },
+  "overrides": {
+    "glob": "14.0.4",
+    "minimatch": "11.0.5"
   }
 }

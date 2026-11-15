@@ -102,6 +102,7 @@ func randomKeybindingsFileCases(rng *rand.Rand, n int) map[string]string {
 }
 
 func TestKeybindingsFileLoadingMatchesPi(t *testing.T) {
+	restoreTUIKeybindings(t)
 	root := t.TempDir()
 	paths := map[string]string{}
 	cases := maps.Clone(keybindingsFileCases)

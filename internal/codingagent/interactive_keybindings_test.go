@@ -30,6 +30,7 @@ func newCustomEditorDispatchMode(t *testing.T) (*InteractiveMode, context.Contex
 // extension shortcut, paste-image, interrupt, then exit. It does not let the
 // keybinding registry's declaration order decide collisions between them.
 func TestCustomEditorHighPriorityBindingOrder(t *testing.T) {
+	restoreTUIKeybindings(t)
 	km := DefaultKeybindingsManager()
 	km.SetUserBindings(map[string][]KeyID{
 		"app.clipboard.pasteImage": {"ctrl+r"},

@@ -1,0 +1,136 @@
+# SPDX-License-Identifier: MIT
+
+- id: pin-go-version-file
+  description: .go-version names the Go of variables/versions.yaml
+  paths: [.go-version]
+  pattern: '^{{ versions.go }}\s*$'
+- id: pin-go-toolchain
+  description: the toolchain line names the Go of variables/versions.yaml
+  paths: [go.mod, go.work]
+  pattern: '(?m)^toolchain go{{ versions.go }}$'
+- id: pin-go-devcontainer
+  description: the devcontainer's Go feature is the Go of variables/versions.yaml
+  paths: [.devcontainer/devcontainer.json]
+  pattern: '"ghcr\.io/devcontainers/features/go:1"\s*:\s*\{\s*"version"\s*:\s*"{{ versions.go }}"'
+- id: pin-go-parity-image
+  description: the parity image builds the Go of variables/versions.yaml
+  paths: [automation/images/ci-parity/Dockerfile]
+  pattern: '(?m)^ARG GO_VERSION={{ versions.go }}$'
+- id: pin-go-go-image
+  description: the Go image starts from the Go of variables/versions.yaml
+  paths: [automation/images/ci-go/Dockerfile]
+  pattern: '(?m)^ARG GO_IMAGE=golang:{{ versions.go }}-'
+- id: pin-go-image-tags
+  description: the image tags name the Go of variables/versions.yaml
+  paths: [automation/images/ci-parity/metadata.env, automation/images/ci-go/metadata.env]
+  pattern: '(?m)^IMAGE_TAG=go{{ versions.go }}-'
+- id: pin-go-docs
+  description: the documentation names the Go of variables/versions.yaml
+  paths: [docs/site/docs/containerization.md, docs/site/docs/termux.md, docs/site/docs/windows.md, internal/pigdocs/content/extension-api.md]
+  pattern: 'FROM golang:{{ versions.go }} AS build|Go {{ versions.go }} builds PiG;|Install Git and Go {{ versions.go }}\.|Build PiG and Go extensions with Go {{ versions.go }}\.'
+
+- id: pin-node-version-file
+  description: .node-version names the Node of variables/versions.yaml
+  paths: [.node-version]
+  pattern: '^{{ versions.node }}\s*$'
+- id: pin-node-devcontainer
+  description: the devcontainer's Node feature is the Node of variables/versions.yaml
+  paths: [.devcontainer/devcontainer.json]
+  pattern: '"ghcr\.io/devcontainers/features/node:1"\s*:\s*\{\s*"version"\s*:\s*"{{ versions.node }}"'
+- id: pin-node-parity-image-tag
+  description: the parity image tag names the Node of variables/versions.yaml
+  paths: [automation/images/ci-parity/metadata.env]
+  pattern: '(?m)^IMAGE_TAG=\S*-node{{ versions.node | minor }}-'
+- id: pin-node-docs
+  description: the documentation names the Node of variables/versions.yaml
+  paths: [README.md, docs/site/docs/quickstart.md]
+  pattern: 'Node\.js {{ versions.node }} and npm'
+
+- id: pin-node-extension-floor
+  description: the extension runtime's Node floor is the one of variables/versions.yaml
+  paths: [coding/extension/host/subprocess/builder_node.go]
+  pattern: 'const minimumNodeRuntimeVersion = "v{{ versions.node-extension-floor }}"'
+- id: pin-node-extension-floor-text
+  description: setup and the documentation name the extension runtime's Node floor of variables/versions.yaml
+  paths: [automation/dev/setup.sh, coding/cli/setup_command.go, internal/pigdocs/content/troubleshooting.md, docs/site/docs/install-troubleshooting.md]
+  pattern: 'Node >= {{ versions.node-extension-floor | minor }} is required|install Node\.js {{ versions.node-extension-floor | minor }} or newer|Node and TypeScript extensions \| Node\.js {{ versions.node-extension-floor | minor }} or newer'
+
+- id: pin-rust-ci
+  description: CI's RUST_VERSION is the Rust of variables/versions.yaml
+  paths: [.github/workflows/ci.yml]
+  pattern: '(?m)^\s+RUST_VERSION: {{ versions.rust }}$'
+- id: pin-rust-devcontainer
+  description: the devcontainer's Rust feature is the Rust of variables/versions.yaml
+  paths: [.devcontainer/devcontainer.json]
+  pattern: '"ghcr\.io/devcontainers/features/rust:1"\s*:\s*\{\s*"version"\s*:\s*"{{ versions.rust }}"'
+- id: pin-rust-parity-image-tag
+  description: the parity image tag names the Rust of variables/versions.yaml
+  paths: [automation/images/ci-parity/metadata.env]
+  pattern: '(?m)^IMAGE_TAG=\S*-rust{{ versions.rust | minor }}-'
+
+- id: pin-npm-ci
+  description: CI's NPM_VERSION is the npm of variables/versions.yaml
+  paths: [.github/workflows/ci.yml]
+  pattern: '(?m)^\s+NPM_VERSION: {{ versions.npm }}$'
+- id: pin-npm-packages
+  description: the npm toolchain and runtime install the npm of variables/versions.yaml
+  paths: [automation/ci/npm-toolchain/package.json, automation/images/npm-runtime/package.json]
+  pattern: '"npm":\s*"{{ versions.npm }}"'
+- id: pin-npm-parity-image
+  description: the parity image checks the npm of variables/versions.yaml
+  paths: [automation/images/ci-parity/Dockerfile]
+  pattern: 'npm-cli\.js --version\)" = "{{ versions.npm }}"'
+- id: pin-npm-docs
+  description: the documentation names the npm of variables/versions.yaml
+  paths: [README.md, docs/site/docs/development.md, docs/site/docs/quickstart.md]
+  pattern: 'and npm {{ versions.npm }}( for parity tooling|;)|(?m)^- npm {{ versions.npm }};$'
+
+- id: pin-pi-file
+  description: .upstream/pin is the Pi of variables/versions.yaml
+  paths: [.upstream/pin]
+  pattern: '(?ms)^ref={{ versions.pi.ref }}$.*^commit={{ versions.pi.commit }}$.*^package_version={{ versions.pi.package }}$.*^version={{ versions.pi.version }}$'
+- id: pin-pi-pigversion
+  description: pigversion.go names the Pi of variables/versions.yaml
+  paths: [internal/coding/pigversion/pigversion.go]
+  pattern: '(?s)const UpstreamRef = "{{ versions.pi.ref }}".*const UpstreamVersion = "{{ versions.pi.version }}".*const UpstreamPackageVersion = "{{ versions.pi.package }}".*const UpstreamCommit = "{{ versions.pi.commit }}"'
+- id: pin-pi-sdk-ts
+  description: the TypeScript SDK depends on the Pi of variables/versions.yaml
+  paths: [extensions/sdk-ts/package.json]
+  pattern: '(?s)"@earendil-works/pi-coding-agent":\s*"{{ versions.pi.package }}".*"@earendil-works/pi-coding-agent":\s*"{{ versions.pi.package }}"'
+- id: pin-pi-oracle
+  description: the parity image's oracle is the Pi of variables/versions.yaml
+  paths: [automation/images/ci-parity/package.json]
+  pattern: '(?s)"@earendil-works/pi-agent-core":\s*"{{ versions.pi.package }}".*"@earendil-works/pi-ai":\s*"{{ versions.pi.package }}".*"@earendil-works/pi-coding-agent":\s*"{{ versions.pi.package }}".*"@earendil-works/pi-tui":\s*"{{ versions.pi.package }}"'
+- id: pin-pi-parity-image
+  description: the parity image installs the Pi of variables/versions.yaml
+  paths: [automation/images/ci-parity/Dockerfile]
+  pattern: '(?m)^ARG PI_VERSION={{ versions.pi.package }}$'
+- id: pin-pi-parity-image-tag
+  description: the parity image tag names the Pi of variables/versions.yaml
+  paths: [automation/images/ci-parity/metadata.env]
+  pattern: '(?m)^IMAGE_TAG=\S*-pi{{ versions.pi.version }}-'
+- id: pin-pi-ledgers
+  description: the parity ledgers name the Pi of variables/versions.yaml
+  paths: [test/parity/known-gaps.toml, test/parity/behavior-contracts.toml]
+  pattern: '(?m)^(pi_version|upstream_version) = "{{ versions.pi.version }}"$'
+- id: pin-pi-readme-badge
+  description: the README's Pi badge names the Pi of variables/versions.yaml
+  paths: [README.md]
+  pattern: '\[!\[Pi pin {{ versions.pi.version }}\]\(https://img\.shields\.io/badge/Pi%20pin-{{ versions.pi.version | url }}-[^)]*\)\]\(https://github\.com/earendil-works/pi/(releases/tag/{{ versions.pi.ref }}|commit/{{ versions.pi.commit }})\)'
+
+- id: pin-sbcl
+  description: toolchains.lock pins the SBCL of variables/versions.yaml
+  paths: [automation/dev/toolchains.lock]
+  pattern: '(?m)^sbcl-source\t{{ versions.sbcl }}\t'
+- id: pin-tinygo
+  description: toolchains.lock pins the TinyGo of variables/versions.yaml
+  paths: [automation/dev/toolchains.lock]
+  pattern: '(?m)^tinygo\t{{ versions.tinygo }}\t'
+
+- id: golden-provenance
+  description: a golden or snapshot data file needs its entry in test/testdata-provenance.toml
+  path-pattern: '(?i)((^|/)testdata/.*(golden|snapshot|\.snap$)|__snapshots__)'
+  exclude-pattern: '(^|/)(third_party|node_modules|shims)/|^(test/parity/scenarios|docs)/|\.(go|mjs|js|ts|py|sh|md|rs|cjs)$'
+  listed-in:
+    file: test/testdata-provenance.toml
+    keys: ['golden[].paths[]', 'input[].paths[]']

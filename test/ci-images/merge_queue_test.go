@@ -348,8 +348,12 @@ func TestLightPullRequestRunKeepsTheFastGatesUnderTheSameNames(t *testing.T) {
 				want = append(want, row.shard)
 			}
 		}
-		if len(want) == 0 {
+		// The light run is one runner: Windows and macOS rows are all queue rows.
+		if len(want) == 0 && job == "linux" {
 			t.Errorf("the light run has no %s job", job)
+		}
+		if len(want) != 0 && job != "linux" {
+			t.Errorf("the light run has %s rows %v; it is one runner, Linux", job, want)
 		}
 		if got := light.shards(job); !slices.Equal(got, want) {
 			t.Errorf("light %s shards = %v, want the pr rows %v", job, got, want)
@@ -502,13 +506,13 @@ func TestCIWorkflowFollowsThePlan(t *testing.T) {
 
 func TestPlannerRejectsAMalformedTable(t *testing.T) {
 	for name, table := range map[string]string{
-		"unknown tier":                  "linux | build | sometimes\nwindows | native-1 | pr\nmacos | native | pr\n",
-		"unknown job":                   "linux | build | pr\nlinus | build | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
-		"duplicate row":                 "linux | build | pr\nlinux | build | queue\nwindows | native-1 | pr\nmacos | native | pr\n",
-		"missing shard":                 "linux | | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
-		"light target on windows":       "linux | build | pr\nwindows | native-1 | pr | ci-x\nmacos | native | pr\n",
-		"no row runs in the light plan": "linux | build | pr\nwindows | native-1 | queue\nmacos | native | pr\n",
-		"quote in a shard":              "linux | b\"d | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
+		"unknown tier":                        "linux | build | sometimes\nwindows | native-1 | pr\nmacos | native | pr\n",
+		"unknown job":                         "linux | build | pr\nlinus | build | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
+		"duplicate row":                       "linux | build | pr\nlinux | build | queue\nwindows | native-1 | pr\nmacos | native | pr\n",
+		"missing shard":                       "linux | | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
+		"light target on windows":             "linux | build | pr\nwindows | native-1 | pr | ci-x\nmacos | native | pr\n",
+		"no linux row runs in the light plan": "linux | build | queue\nwindows | native-1 | pr\nmacos | native | pr\n",
+		"quote in a shard":                    "linux | b\"d | pr\nwindows | native-1 | pr\nmacos | native | pr\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "tiers.txt")
@@ -523,7 +527,7 @@ func TestPlannerRejectsAMalformedTable(t *testing.T) {
 }
 
 // lightPlanResults are the job results of a light run that planned only the pr rows and found them green.
-var lightPlanResults = map[string]string{"FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "RUN_DURABLE_CONTRACT": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}
+var lightPlanResults = map[string]string{"FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "RUN_DURABLE_CONTRACT": "false", "RUN_NODE_LOADER": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped", "NODE_LOADER": "skipped", "WINDOWS_PLANNED": "false", "MACOS_PLANNED": "false", "WINDOWS": "skipped", "MACOS": "skipped"}
 
 // merge returns the union of the sets, later sets overriding earlier ones.
 func merge(sets ...map[string]string) map[string]string {
@@ -555,6 +559,7 @@ func ciResultRun(t *testing.T, set map[string]string, liveHead string) (string, 
 		"CHANGES": "success", "DOCS": "skipped", "BOOKKEEPING": "success", "VERIFY": "success", "NODE_RUNTIME": "success",
 		"WINDOWS": "success", "MACOS": "success", "ANDROID": "success", "NODE_LOADER": "success",
 		"DURABLE_CF_HOST": "success", "DURABLE_CONTRACT": "success", "PREFLIGHT": "success",
+		"VERDICT": "skipped", "WINDOWS_PLANNED": "true", "MACOS_PLANNED": "true",
 	}
 	for name := range declared {
 		if _, ok := values[name]; !ok {
@@ -588,7 +593,7 @@ func ciResultRun(t *testing.T, set map[string]string, liveHead string) (string, 
 }
 
 func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
-	pullRequest := map[string]string{"EVENT": "pull_request"}
+	pullRequest := map[string]string{"EVENT": "pull_request", "VERDICT": "success"}
 	for _, tc := range []struct {
 		name string
 		set  map[string]string
@@ -610,6 +615,14 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 		{"light pull request whose bookkeeping failed", merge(pullRequest, lightPlanResults, map[string]string{"BOOKKEEPING": "failure"}), false},
 		{"full pull request whose bookkeeping failed and stopped the jobs behind it", merge(pullRequest, map[string]string{"BOOKKEEPING": "failure", "PREFLIGHT": "skipped", "VERIFY": "failure", "WINDOWS": "skipped", "MACOS": "skipped"}), false},
 		{"merge group whose bookkeeping was skipped", map[string]string{"BOOKKEEPING": "skipped"}, false},
+		{"pull request the pre-flight rejected", merge(pullRequest, map[string]string{"VERDICT": "failure", "BOOKKEEPING": "skipped"}), false},
+		{"pull request the pre-flight never judged", merge(pullRequest, map[string]string{"VERDICT": "skipped"}), false},
+		{"pull request whose pre-flight wait was cancelled", merge(pullRequest, map[string]string{"VERDICT": "cancelled"}), false},
+		{"merge group that waited for a pre-flight", map[string]string{"VERDICT": "success"}, false},
+		{"light pull request runs no Windows or macOS job", merge(pullRequest, lightPlanResults), true},
+		{"full pull request that planned Windows but skipped it", merge(pullRequest, map[string]string{"WINDOWS": "skipped"}), false},
+		{"full pull request that planned macOS but skipped it", merge(pullRequest, map[string]string{"MACOS": "skipped"}), false},
+		{"light pull request whose planned-away Windows job ran and failed", merge(pullRequest, lightPlanResults, map[string]string{"WINDOWS": "failure"}), false},
 		{"docs-only merge group", map[string]string{"PRODUCT": "false", "DOCS": "success", "PREFLIGHT": "skipped", "NODE_RUNTIME": "skipped", "WINDOWS": "skipped", "MACOS": "skipped", "ANDROID": "skipped", "NODE_LOADER": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -624,7 +637,7 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 // Without a merge queue (PIG_PR_CI_LIGHT=label) a pull request is mergeable only on a head whose full run was green, so the
 // light run's CI result fails however green its own jobs are, and says what to do.
 func TestLightRunCannotSatisfyCIResultWithoutAMergeQueue(t *testing.T) {
-	labelPR := map[string]string{"EVENT": "pull_request", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "aaaa"}
+	labelPR := map[string]string{"EVENT": "pull_request", "VERDICT": "success", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "aaaa"}
 	output, err := ciResultRun(t, merge(labelPR, lightPlanResults), "aaaa")
 	if err == nil {
 		t.Fatalf("a light run with every job green satisfied CI result\n%s", output)
@@ -659,7 +672,7 @@ func TestLightRunCannotSatisfyCIResultWithoutAMergeQueue(t *testing.T) {
 // A full run counts only for the head it ran on: a result computed for an older head fails once the pull request has moved on,
 // and a run that cannot learn the head fails closed.
 func TestFullRunOnAnOlderHeadDoesNotCountForANewerHead(t *testing.T) {
-	fullOnOld := map[string]string{"EVENT": "pull_request", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "oldhead"}
+	fullOnOld := map[string]string{"EVENT": "pull_request", "VERDICT": "success", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "oldhead"}
 	if output, err := ciResultRun(t, fullOnOld, "oldhead"); err != nil {
 		t.Fatalf("the full run on the current head failed CI result: %v\n%s", err, output)
 	}
@@ -674,7 +687,7 @@ func TestFullRunOnAnOlderHeadDoesNotCountForANewerHead(t *testing.T) {
 		t.Errorf("a run that could not read the pull request's head satisfied CI result\n%s", output)
 	}
 	// The run for the newer head is its own run: without the full plan it fails, whatever ran on the older head.
-	lightOnNew := map[string]string{"EVENT": "pull_request", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "newhead", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "RUN_DURABLE_CONTRACT": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}
+	lightOnNew := map[string]string{"EVENT": "pull_request", "VERDICT": "success", "FULL_REQUIRED": "true", "PR_NUMBER": "7", "PR_HEAD_SHA": "newhead", "FULL": "false", "RUN_NODE_RUNTIME": "false", "RUN_DURABLE_CF_HOST": "false", "RUN_DURABLE_CONTRACT": "false", "NODE_RUNTIME": "skipped", "DURABLE_CF_HOST": "skipped", "DURABLE_CONTRACT": "skipped"}
 	if output, err := ciResultRun(t, lightOnNew, "newhead"); err == nil {
 		t.Fatalf("a light run on newhead satisfied CI result\n%s", output)
 	}
@@ -783,11 +796,28 @@ func TestChangeClassifierReadsMergeGroups(t *testing.T) {
 	prose := commit("docs/media/logo.txt", "prose")
 	source := commit("coding/session.go", "source")
 	script := filepath.Join(repoRoot(t), "automation", "ci", "classify-changes.sh")
-	classify := func(event, from, to string) (string, error) {
+	classifyLine := func(prefix, event, from, to string) (string, error) {
 		cmd := testenv.ScriptCommand(t, script, event, from, to)
 		cmd.Dir = repo
 		output, err := cmd.Output()
-		return strings.TrimSpace(string(output)), err
+		for line := range strings.SplitSeq(string(output), "\n") {
+			if strings.HasPrefix(line, prefix) {
+				return strings.TrimSpace(line), err
+			}
+		}
+		return "", err
+	}
+	classify := func(event, from, to string) (string, error) { return classifyLine("product=", event, from, to) }
+	// A change a Linux run cannot prove (automation/ci/os-specific-paths.txt) asks for the full run.
+	osSpecific := commit("internal/nativeplatform/clipboard_windows.go", "windows only")
+	for _, tc := range []struct{ from, to, want string }{
+		{source, osSpecific, "os-specific=true"},
+		{base, source, "os-specific=false"},
+		{base, prose, "os-specific=false"},
+	} {
+		if got, err := classifyLine("os-specific=", "pull_request", tc.from, tc.to); err != nil || got != tc.want {
+			t.Errorf("os-specific %.7s..%.7s: got %q, %v, want %q", tc.from, tc.to, got, err, tc.want)
+		}
 	}
 	for _, tc := range []struct {
 		event, from, to, want string
