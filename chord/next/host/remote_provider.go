@@ -74,6 +74,10 @@ type providerSide struct {
 	inFlight int
 	// ownSent and ownAcked count this host's own `bound` and `state` messages sent, and acknowledged by its consumer.
 	ownSent, ownAcked int
+	// fenced are the served holds with a binding fence not acknowledged yet (design §22): each drops its fences as the `ack`s
+	// of this host's own messages arrive. Only holds that rebind are ever in it, and only until their `bound` is
+	// acknowledged. Made by the first.
+	fenced_ map[*hold]struct{}
 	// touchedHolds are the holds the current batch touched, in order; its flush sends or queues them.
 	touchedHolds []*hold
 	// waiting are the holds whose ops wait in their pending queues for a slot.
@@ -395,6 +399,7 @@ func (p *providerSide) forget(entry providerEntry, err *data.ChordError) {
 	endAll(relayed)
 	if served, isServed := entry.(*hold); isServed {
 		p.unbind(served)
+		delete(p.fenced_, served)
 	}
 	p.settle()
 }
@@ -732,6 +737,11 @@ func (p *providerSide) ack() {
 	if sender == nil {
 		p.inFlight--
 		p.ownAcked++
+		for h := range p.fenced_ {
+			if h.acknowledged() {
+				delete(p.fenced_, h)
+			}
+		}
 		p.slotFreed()
 		return
 	}
@@ -776,6 +786,15 @@ func (p *providerSide) eventAck(count int) {
 
 // nextOwn is the number the next of this host's own `bound` and `state` messages gets (counted from 1).
 func (p *providerSide) nextOwn() int { return p.ownSent + 1 }
+
+// fenced: h has a binding fence its consumer has not acknowledged (a rebinding's `bound` is about to go out): the `ack`s of
+// this host's own messages tell it until none is left.
+func (p *providerSide) fenced(h *hold) {
+	if p.fenced_ == nil {
+		p.fenced_ = map[*hold]struct{}{}
+	}
+	p.fenced_[h] = struct{}{}
+}
 
 // acknowledged is whether its consumer acknowledged this host's own message number own, so applied it: a call it sent after
 // that arrives after the `ack` (one direction keeps its order).
