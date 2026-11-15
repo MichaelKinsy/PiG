@@ -417,18 +417,19 @@ func writeJSON(path string, v any) error {
 
 var logMu sync.Mutex
 
-// logf prints one line of the log. An error among args is printed flattened: an error of the API, of git or of a parser
-// can quote text of the pull request, and a line that starts with "::" is a workflow command.
+// logf prints one line of the log. An error among args is printed inert: an error of the API, of git or of a parser
+// can quote text of the pull request, and a line that starts with "::" or "##[" is a workflow command. The line as a
+// whole is defanged too (annotation data, the comment of a dry run): logf is the one exit of the log.
 func logf(w io.Writer, format string, args ...any) {
 	logMu.Lock()
 	defer logMu.Unlock()
 	shown := slices.Clone(args)
 	for i, a := range shown {
 		if err, ok := a.(error); ok {
-			shown[i] = flatten(err.Error())
+			shown[i] = inert(err.Error())
 		}
 	}
-	_, _ = fmt.Fprintf(w, format+"\n", shown...)
+	_, _ = io.WriteString(w, defang(fmt.Sprintf(format+"\n", shown...)))
 }
 
 func short(sha string) string { return sha[:min(len(sha), 9)] }

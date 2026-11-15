@@ -98,3 +98,23 @@ func TestMergeableLogLineIsOneLine(t *testing.T) {
 		})
 	}
 }
+
+// inert keeps text readable: a legacy opener gets a space, a leading "::" is split, nothing else changes.
+func TestInertKeepsTextReadable(t *testing.T) {
+	for in, want := range map[string]string{
+		"plain text":              "plain text",
+		"a ##[error]x b":          "a # #[error]x b",
+		"###[error]x":             "## #[error]x",
+		"ok\r\n##[add-mask]s":     "ok  # #[add-mask]s",
+		"  ::error::x":            "  : :error::x",
+		"a ::error::x":            "a ::error::x",
+		"##[set-output name=a;]b": "# #[set-output name=a;]b",
+	} {
+		if got := inert(in); got != want {
+			t.Errorf("inert(%q) = %q, want %q", in, got, want)
+		}
+		if legacyLeft(inert(in)) {
+			t.Errorf("inert(%q) still holds a legacy opener", in)
+		}
+	}
+}

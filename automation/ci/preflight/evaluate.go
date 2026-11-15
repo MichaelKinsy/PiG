@@ -174,15 +174,15 @@ func report(w io.Writer, cfg config, ev evaluation) {
 	var open []string
 	for _, c := range cfg.Checks {
 		v := ev.Checks[c.Name]
-		logf(w, "%s %-20s %s", resultMark[v.Result], c.Name, flatten(v.Reason))
+		logf(w, "%s %-20s %s", resultMark[v.Result], c.Name, inert(v.Reason))
 	}
 	for _, c := range cfg.Checks {
 		for _, x := range ev.Checks[c.Name].Warnings {
 			if x.Acknowledged {
-				logf(w, "ACK   %-20s %s", c.Name, flatten(x.where()))
+				logf(w, "ACK   %-20s %s", c.Name, inert(x.where()))
 				continue
 			}
-			logf(w, "WARN  %-20s %s", c.Name, flatten(x.where()))
+			logf(w, "WARN  %-20s %s", c.Name, inert(x.where()))
 			if x.File != "" {
 				open = append(open, ackEntry(c.Name, x))
 			}
@@ -190,7 +190,7 @@ func report(w io.Writer, cfg config, ev evaluation) {
 	}
 	for _, c := range cfg.Checks {
 		for _, n := range ev.Checks[c.Name].Notices {
-			logf(w, "NOTE  %-20s %s", c.Name, flatten(n))
+			logf(w, "NOTE  %-20s %s", c.Name, inert(n))
 		}
 	}
 	if len(open) > 0 {
@@ -241,6 +241,27 @@ const (
 func clip(s string, n int) string {
 	if r := []rune(s); len(r) > n {
 		return string(r[:n-1]) + "…"
+	}
+	return s
+}
+
+// legacyOpen opens a legacy workflow command ("##[error]x", "##[set-output name=a;]b", "##[add-mask]s"), which the
+// runner reads in a job log next to "::command::data".
+const legacyOpen = "##["
+
+// defang is s with every legacyOpen made inert: "##[" becomes "# #[", plain ASCII that reads the same and is no
+// command. The tool prints no legacyOpen of its own, so logf applies defang to every line it writes.
+func defang(s string) string { return strings.ReplaceAll(s, legacyOpen, "# #[") }
+
+// inert is text of a pull request (a file name, a commit subject, a ledger reason, cite or path, an error that quotes
+// them) as it is printed into the job log: on one line (see flatten), with defang applied, and with a leading "::"
+// (after spaces) written ": :". A line that starts with "::" or "##[" is a workflow command, so text of a pull
+// request must never start a line: it cannot follow a line break here, and every print puts a fixed word of the tool
+// before it. Annotation data is escaped by annotation, and logf defangs the whole line.
+func inert(s string) string {
+	s = defang(flatten(s))
+	if rest := strings.TrimLeft(s, " \t"); strings.HasPrefix(rest, "::") {
+		s = s[:len(s)-len(rest)] + ": :" + rest[2:]
 	}
 	return s
 }
