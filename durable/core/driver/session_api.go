@@ -650,6 +650,9 @@ func submissionEvent(conversationID durable.ConversationId, draft durable.Submis
 	if draft.WhenIdle != "" {
 		event["whenIdle"] = string(draft.WhenIdle)
 	}
+	if draft.OnAbort == durable.OnAbortKeep {
+		event["onAbort"] = string(draft.OnAbort)
+	}
 	if draft.Type == durable.SubmissionTypeInput {
 		event["content"] = draft.Content
 		if draft.InputEntry != nil {

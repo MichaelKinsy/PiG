@@ -83,7 +83,7 @@ func (h *handler) startScheduler() error {
 		ContextRetentionMs: h.contextRetentionMs,
 		ReleaseContext:     h.releaseContext,
 		SettleOutcome:      turn.SettleSchedulerOutcome,
-		WithdrawInputs:     inbox.WithdrawQueued,
+		WithdrawInputs:     inbox.WithdrawAborted,
 		ReadTicks:          func() int { return h.job.change },
 		GateRead:           func(method string, id session.ID) error { return h.gateRead(method, float64(id)) },
 		After:              h.hopsThen,

@@ -145,7 +145,7 @@ type Env struct {
 	// scheduler-written outcome (faulted or orphaned): harness.live.ts settleSchedulerOutcome.
 	SettleOutcome func(tx *Tx, record *jv.Object, outcome *jv.Object) error
 	// WithdrawInputs runs in the transaction that withdraws a conversation's
-	// queued inputs (inbox.ts withdrawQueuedInputs).
+	// queued inputs, as Conversation.abort() and abort cascades do (inbox.ts withdrawAbortedInputs).
 	WithdrawInputs func(tx *Tx, conversationID ID) error
 	// ReadTicks is the ticks the running line job's Storage reads have taken so far, and After runs then once a chain of n
 	// hops ran: a reconcile a chain load schedules after its read starts when Pi's microtask does, not at the job's start.
