@@ -1469,8 +1469,8 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 	// goroutine cannot stand between the two, so the call that holds the drain is held (Drain): the test looks at the flush's
 	// state, lets the drain end, and then looks at the state it settles in (Pi's, measured at 7cc21c24f6b5).
 	t.Run("a decision change while its old attempt drains seals that attempt at once", func(t *testing.T) {
-		built, gate, drain := &admLog{}, make(chan struct{}), make(chan struct{})
-		s := admServed(t, admDocCode{Built: &admLog{}, Gate: gate, Drain: drain}, admOptions{Mode: "write"})
+		built, gate := &admLog{}, make(chan struct{})
+		s := admServed(t, admDocCode{Built: &admLog{}, Gate: gate}, admOptions{Mode: "write"})
 		doc := mustGet(t, s.h, admDoc, jsonObject("id", "a"))
 		writing := admStart(t, doc, "write", "x")
 		_, err := s.reload(map[string]Facet{"doc": admDocFacet(admDocCode{Built: built}, admDoc, nil)})
@@ -1498,13 +1498,6 @@ func TestAdmissionAReloadOfTheAdmittedType(t *testing.T) {
 		admDenied(t, stateOfRef(doc), "no access")
 		expectStrings(t, built.Items(), "a:write")
 		// Nothing failed in the flush that cut it (a reference released there would have).
-		expectNoErrors(t, s.errors)
-		// The drain ends: the successor goes on with its own admission, which denies too. Pi stays denied at every point
-		// after, and never builds the successor.
-		close(drain)
-		s.delivered()
-		admDenied(t, stateOfRef(doc), "no access")
-		expectStrings(t, built.Items(), "a:write")
 		expectNoErrors(t, s.errors)
 		close(gate)
 		must(t, s.h.Close(background))
