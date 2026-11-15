@@ -6,7 +6,6 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/internal/compactprogress"
 )
 
 // ModelMutationOptions controls whether a Session mutation also saves a global default.
@@ -55,8 +54,8 @@ type InteractiveSessionHandle interface {
 	// reference (*Session) is the same as *icodingagent.Session
 	// from coding/'s point of view.
 	Inner() *Session
-	// CompactionProgress is the streamed-summary counter of the compaction in flight, nil when none runs. The interactive compaction line reads it (pig divergence D652).
-	CompactionProgress() *compactprogress.Progress
+	// pig divergence (D652): CompactionStreamedTokens is the size in tokens of the summary the compaction in flight has streamed so far, 0 when none runs. The interactive compaction line reads it.
+	CompactionStreamedTokens() int64
 	// RecordUserBashResult records a user `!` command result as upstream recordBashResult: appended to the
 	// Session and live context when idle, queued until the run ends while one streams. It returns the immediate
 	// persistence failure.

@@ -3,11 +3,13 @@
 package codingagent
 
 import (
+	"math"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/compactprogress"
+	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -27,7 +29,7 @@ func TestCompactionStatusMessage(t *testing.T) {
 		{"Auto-compacting... ", 0, 40, "Auto-compacting... ~40 tokens (escape to cancel)"},
 		{"Context overflow detected, Auto-compacting... ", 61, 0, "Context overflow detected, Auto-compacting... 1m 1s (escape to cancel)"},
 	} {
-		if got := compactionStatusMessage(c.label, c.secs, c.tokens, hint); got != c.want {
+		if got := compactionStatusMessage(c.label, c.secs, c.tokens, hint, math.MaxInt); got != c.want {
 			t.Errorf("compactionStatusMessage(%q, %d, %d) = %q, want %q", c.label, c.secs, c.tokens, got, c.want)
 		}
 	}
@@ -44,14 +46,14 @@ func TestTickCompactionMessageFollowsClockAndCounter(t *testing.T) {
 	if m.tickCompactionMessage(base.Add(300 * time.Millisecond)) {
 		t.Fatal("the line changed within the first second with no tokens")
 	}
-	if !m.tickCompactionMessage(base.Add(7 * time.Second)) || line() != "Compacting context... 7s (escape to cancel)" {
+	if !m.tickCompactionMessage(base.Add(7*time.Second)) || line() != "Compacting context... 7s (escape to cancel)" {
 		t.Fatalf("line %q", line())
 	}
 	if m.tickCompactionMessage(base.Add(7*time.Second + 400*time.Millisecond)) {
 		t.Fatal("the line was rewritten with neither seconds nor tokens changed")
 	}
 	progress.Add(56_800)
-	if !m.tickCompactionMessage(base.Add(8 * time.Second)) || line() != "Compacting context... 8s · ~14k tokens (escape to cancel)" {
+	if !m.tickCompactionMessage(base.Add(8*time.Second)) || line() != "Compacting context... 8s · ~14k tokens (escape to cancel)" {
 		t.Fatalf("line %q", line())
 	}
 	// a retry of the summary shows the indicator again; the compaction's start is kept
@@ -83,8 +85,13 @@ func TestCompactionProgressAllocations(t *testing.T) {
 		t.Fatalf("Progress.Add allocates %v times, want 0", got)
 	}
 	var sink string
-	if got := testing.AllocsPerRun(100, func() { sink = compactionStatusMessage("Compacting context... ", 72, 500, "(escape to cancel)") }); got != 1 {
+	if got := testing.AllocsPerRun(100, func() {
+		sink = compactionStatusMessage("Compacting context... ", 72, 500, "(escape to cancel)", math.MaxInt)
+	}); got != 1 {
 		t.Fatalf("compactionStatusMessage allocates %v times, want 1", got)
+	}
+	if got := testing.AllocsPerRun(100, func() { sink = compactionStatusMessage("Compacting context... ", 72, 500, "(escape to cancel)", 30) }); got != 1 {
+		t.Fatalf("compactionStatusMessage in a narrow room allocates %v times, want 1", got)
 	}
 	_ = sink
 }
@@ -111,20 +118,68 @@ func TestTickCompactionMessageChangesNothingWithinASecond(t *testing.T) {
 	m.clearStatusIndicator("")
 }
 
-// In a 40-column terminal the border row is 40 cells and cuts the line before "(escape to cancel)": it reads `── ⠋ Compacting context... 1m 12s ──────` (observed). The old line, 40 cells long, did not fit the 35 cells the border gives a status either; its row at 40 columns was not measured here.
+// pig divergence (D652): in a narrow terminal the elapsed time and the size give way before the cancel hint does. At every width where Pi's own line (label and hint) fits the border, the hint is on the row; the forms fall back full, without the size, Pi's line, then today's truncation.
 func TestCompactionLineInANarrowTerminal(t *testing.T) {
+	const (
+		full = "⠋ Compacting context... 1m 12s · ~14k tokens (escape to cancel)"
+		mid  = "⠋ Compacting context... 1m 12s (escape to cancel)"
+		pi   = "⠋ Compacting context... (escape to cancel)"
+		cut  = "⠋ Compacting context... (escape to"
+		stub = "⠋ Compacting context..."
+	)
+	for _, c := range []struct {
+		width  int
+		status string
+	}{{120, full}, {60, mid}, {48, pi}, {40, cut}, {30, stub}} {
+		m, _, _ := newFrontendEditorProbe(t)
+		tuiInst := m.tuiInst
+		m.tuiInst = &fixedWidthTUI{TUI: tuiInst, width: c.width}
+		m.editor.EmbedWorkingStatus = true
+		progress := new(compactprogress.Progress)
+		progress.Add(56_800)
+		m.opts.SessionHandle = &recordingCompactHandle{progress: progress}
+		m.showCompactionStatusIndicator("manual")
+		m.tickCompactionMessage(m.statusLastFrame.Add(72 * time.Second))
+		row := widthx.StripAnsi(m.editor.Render(c.width)[0])
+		want := "── " + c.status + " " + strings.Repeat("─", c.width-widthx.VisibleWidth(c.status)-4)
+		if row != want {
+			t.Errorf("row at %d columns = %q, want %q", c.width, row, want)
+		}
+		if piFits := c.width-5 >= widthx.VisibleWidth(pi); piFits && !strings.Contains(row, "(escape to cancel)") {
+			t.Errorf("row at %d columns lost the hint where Pi's line fits: %q", c.width, row)
+		}
+		m.clearStatusIndicator("")
+		m.tuiInst = tuiInst
+	}
+}
+
+// fixedWidthTUI is a TUI that reports the width a test sets, the width the editor border is drawn at.
+type fixedWidthTUI struct {
+	tui.TUI
+	width int
+}
+
+func (u *fixedWidthTUI) Width() int { return u.width }
+
+// pig divergence (D652): the line is rewritten when the room for it changes, with no tick bringing a new second or size.
+func TestTickCompactionMessageFollowsTheWidth(t *testing.T) {
 	m, _, _ := newFrontendEditorProbe(t)
-	m.editor.EmbedWorkingStatus = true
+	tuiInst := m.tuiInst
+	defer func() { m.tuiInst = tuiInst }()
 	m.opts.SessionHandle = &recordingCompactHandle{progress: new(compactprogress.Progress)}
+	m.tuiInst = &fixedWidthTUI{TUI: tuiInst, width: 120}
 	m.showCompactionStatusIndicator("manual")
-	m.tickCompactionMessage(m.statusLastFrame.Add(72 * time.Second))
-	row := m.editor.Render(40)[0]
-	if got := widthx.VisibleWidth(row); got != 40 {
-		t.Fatalf("border row %q is %d cells, want 40", row, got)
+	at := m.statusLastFrame.Add(72 * time.Second)
+	m.tickCompactionMessage(at)
+	if want := "Compacting context... 1m 12s (escape to cancel)"; m.activeStatusIndicator.Message != want {
+		t.Fatalf("line %q, want %q", m.activeStatusIndicator.Message, want)
 	}
-	if !strings.Contains(row, "Compacting context... 1m 12s") || strings.Contains(row, "(escape") {
-		t.Fatalf("border row %q at 40 columns", row)
+	m.tuiInst = &fixedWidthTUI{TUI: tuiInst, width: 48}
+	if !m.tickCompactionMessage(at) || m.activeStatusIndicator.Message != "Compacting context... (escape to cancel)" {
+		t.Fatalf("line %q after the terminal narrowed", m.activeStatusIndicator.Message)
 	}
-	t.Logf("40-column border row: %q", row)
+	if m.tickCompactionMessage(at) {
+		t.Fatal("an unchanged width rewrote the line")
+	}
 	m.clearStatusIndicator("")
 }

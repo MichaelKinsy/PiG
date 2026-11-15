@@ -1450,12 +1450,17 @@ func (s *Session) Agent() *agent.Agent { return s.agent }
 // Session methods (Path, ID, CWD, Messages, Send, etc.) instead.
 func (s *Session) Inner() *icodingagent.Session { return s.inner.Load() }
 
-// CompactionProgress is the streamed-summary counter of the compaction in flight, nil when none runs.
+// CompactionStreamedTokens is the size in tokens of the summary the compaction in flight has streamed so far, 0 when none runs.
 //
 // pig divergence (D652): the interactive compaction line shows how much of the summary has streamed.
-func (s *Session) CompactionProgress() *compactprogress.Progress { return s.compactionProgress.Load() }
+func (s *Session) CompactionStreamedTokens() int64 {
+	if progress := s.compactionProgress.Load(); progress != nil {
+		return int64(progress.Tokens())
+	}
+	return 0
+}
 
-// withCompactionProgress is ctx carrying a fresh Progress, which CompactionProgress returns until the compaction ends.
+// withCompactionProgress is ctx carrying a fresh Progress, which CompactionStreamedTokens reads until the compaction ends.
 //
 // pig divergence (D652): the summary requests count what they stream into it.
 func (s *Session) withCompactionProgress(ctx context.Context) context.Context {

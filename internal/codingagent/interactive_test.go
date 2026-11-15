@@ -1631,10 +1631,15 @@ func (h *recordingCompactHandle) FlushDeferredCustomMessages() error {
 	return nil
 }
 
-func (h *recordingCompactHandle) Agent() *agent.Agent                           { return h.agent }
-func (h *recordingCompactHandle) Inner() *Session                               { return h.inner }
-func (h *recordingCompactHandle) Events() <-chan agent.AgentEvent               { return nil }
-func (h *recordingCompactHandle) CompactionProgress() *compactprogress.Progress { return h.progress }
+func (h *recordingCompactHandle) Agent() *agent.Agent             { return h.agent }
+func (h *recordingCompactHandle) Inner() *Session                 { return h.inner }
+func (h *recordingCompactHandle) Events() <-chan agent.AgentEvent { return nil }
+func (h *recordingCompactHandle) CompactionStreamedTokens() int64 {
+	if h.progress == nil {
+		return 0
+	}
+	return int64(h.progress.Tokens())
+}
 func (h *recordingCompactHandle) SubscribeFunc(func(agent.AgentEvent)) func() {
 	return func() {}
 }

@@ -2,8 +2,10 @@ package codingagent
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -91,32 +93,76 @@ func (m *InteractiveMode) showCompactionStatusIndicator(reason string) {
 	}
 	// pig divergence (D652): the label's elapsed time and streamed size are rewritten by the status tick (tickCompactionMessage); a retry of the summary keeps the compaction's start.
 	m.compactionLabel, m.compactionHint = label, m.statusCancelHint()
-	m.compactionShownSecs, m.compactionShownTokens = 0, 0
-	m.showStatusIndicator(&tui.StatusIndicator{Kind: "compaction", Loader: tui.NewLoader(m.tuiInst, tui.ThemeFg("accent"), tui.ThemeFg("muted"), compactionStatusMessage(label, 0, 0, m.compactionHint), nil)})
+	m.compactionShownSecs, m.compactionShownTokens, m.compactionShownRoom = 0, 0, m.compactionRoom()
+	m.showStatusIndicator(&tui.StatusIndicator{Kind: "compaction", Loader: tui.NewLoader(m.tuiInst, tui.ThemeFg("accent"), tui.ThemeFg("muted"), compactionStatusMessage(label, 0, 0, m.compactionHint, m.compactionShownRoom), nil)})
 	if m.compactionStartedAt.IsZero() {
 		m.compactionStartedAt = m.statusLastFrame
 	}
 }
 
-// compactionStatusMessage is the compaction line: the label, the elapsed time from the first second, the streamed size once a delta has arrived, and the hint last, so that the old line's two halves still hold around them (pig divergence D652).
-func compactionStatusMessage(label string, secs, tokens int, hint string) string {
+// compactionRoom is the cells the editor border leaves the compaction message after its margins and the spinner: the terminal's width less 5 for the border and 2 for the spinner and its space, unbounded while the width is unknown.
+func (m *InteractiveMode) compactionRoom() int {
+	if width := m.tuiInst.Width(); width > 0 {
+		return max(0, width-compactionBorderCells-compactionSpinnerCells)
+	}
+	return math.MaxInt
+}
+
+const (
+	compactionBorderCells  = 5 // tui.Editor.renderStatusBorder gives a status the width less 5
+	compactionSpinnerCells = 2 // the spinner frame and the space after it
+)
+
+// compactionStatusMessage is the compaction line: the label, the elapsed time from the first second, the streamed size once a delta has arrived, and the hint last, so that the old line's two halves still hold around them. When that does not fit room cells the size goes, then the elapsed time: the hint stays, Pi's line being the last form.
+//
+// pig divergence (D652): in a narrow terminal the elapsed time and the size give way before the cancel hint does.
+func compactionStatusMessage(label string, secs, tokens int, hint string, room int) string {
 	buf := make([]byte, 0, 128)
 	buf = append(buf, label...)
+	elapsedAt := len(buf)
 	if secs > 0 {
 		buf = appendCompactionElapsed(buf, secs)
-		if tokens > 0 {
+	}
+	tokensAt := len(buf)
+	if tokens > 0 {
+		if secs > 0 {
 			buf = append(buf, " · ~"...)
-			buf = appendCompactionTokens(buf, tokens)
-			buf = append(buf, " tokens"...)
+		} else {
+			buf = append(buf, '~')
 		}
-		buf = append(buf, ' ')
-	} else if tokens > 0 {
-		buf = append(buf, "~"...)
 		buf = appendCompactionTokens(buf, tokens)
-		buf = append(buf, " tokens "...)
+		buf = append(buf, " tokens"...)
+	}
+	hintAt := len(buf)
+	if secs > 0 || tokens > 0 {
+		buf = append(buf, ' ')
 	}
 	buf = append(buf, hint...)
+	if compactionCells(buf) <= room {
+		return string(buf)
+	}
+	if secs > 0 && tokens > 0 {
+		buf = append(buf[:tokensAt], buf[hintAt:]...)
+		if compactionCells(buf) <= room {
+			return string(buf)
+		}
+	}
+	buf = append(buf[:elapsedAt], hint...)
 	return string(buf)
+}
+
+// compactionCells is the cells of the line in buf, each rune one: the line is the label, digits, "·", "~" and the key text of the hint. It converts nothing to a string, which utf8.RuneCount would for a line over 32 bytes.
+func compactionCells(buf []byte) int {
+	cells := 0
+	for i := 0; i < len(buf); cells++ {
+		if buf[i] < utf8.RuneSelf {
+			i++
+			continue
+		}
+		_, size := utf8.DecodeRune(buf[i:])
+		i += size
+	}
+	return cells
 }
 
 // appendCompactionElapsed appends whole seconds as "12s", "1m 12s" or "1h 2m 3s": the form of the tool footer's tui.FormatToolDuration without its tenths, appended without an allocation.
@@ -141,7 +187,9 @@ func appendCompactionTokens(buf []byte, tokens int) []byte {
 	return append(buf, formatTokens(tokens)...)
 }
 
-// tickCompactionMessage rewrites the compaction line when the elapsed seconds or the streamed size changed since it was last written: one string, on the status tick the owner loop already runs, with the tick's own clock reading (pig divergence D652). It reports whether the line changed.
+// tickCompactionMessage rewrites the compaction line when the elapsed seconds, the streamed size or the room for the line changed since it was last written: one string, on the status tick the owner loop already runs, with the tick's own clock reading. It reports whether the line changed.
+//
+// pig divergence (D652): the line carries the elapsed time and the streamed size, which Pi's does not.
 func (m *InteractiveMode) tickCompactionMessage(now time.Time) bool {
 	indicator := m.activeStatusIndicator
 	if indicator == nil || indicator.Kind != "compaction" || m.compactionStartedAt.IsZero() {
@@ -150,15 +198,14 @@ func (m *InteractiveMode) tickCompactionMessage(now time.Time) bool {
 	secs := int(max(0, now.Sub(m.compactionStartedAt)) / time.Second)
 	tokens := 0
 	if handle := m.opts.SessionHandle; handle != nil {
-		if progress := handle.CompactionProgress(); progress != nil {
-			tokens = progress.Tokens()
-		}
+		tokens = int(handle.CompactionStreamedTokens())
 	}
-	if secs == m.compactionShownSecs && tokens == m.compactionShownTokens {
+	room := m.compactionRoom()
+	if secs == m.compactionShownSecs && tokens == m.compactionShownTokens && room == m.compactionShownRoom {
 		return false
 	}
-	m.compactionShownSecs, m.compactionShownTokens = secs, tokens
-	indicator.SetMessageStep(compactionStatusMessage(m.compactionLabel, secs, tokens, m.compactionHint))
+	m.compactionShownSecs, m.compactionShownTokens, m.compactionShownRoom = secs, tokens, room
+	indicator.SetMessage(compactionStatusMessage(m.compactionLabel, secs, tokens, m.compactionHint, room))
 	return true
 }
 
