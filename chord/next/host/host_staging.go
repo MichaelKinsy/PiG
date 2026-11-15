@@ -479,6 +479,33 @@ func (r *recordingSelf) Queries(given store.Table, _ QueriesOptions, builders ma
 	return named
 }
 
+// LiveQuery implements Self: the checks an attempt makes on its declaration (the page size, the query given), no read.
+func (r *recordingSelf) LiveQuery(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], _ any, first int64) chord.Watchable[delta.JsonValue] {
+	r.assertDeclaring("liveQuery")
+	if err := firstOf(r.object.text, "liveQuery", first); err != nil {
+		panic(err)
+	}
+	r.checkNamed(query, "liveQuery")
+	return state.ConstantOf[delta.JsonValue](nil)
+}
+
+// Count implements Self.
+func (r *recordingSelf) Count(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], _ any) chord.Watchable[delta.JsonValue] {
+	r.assertDeclaring("count")
+	r.checkNamed(query, "count")
+	return state.ConstantOf[delta.JsonValue](nil)
+}
+
+// checkNamed refuses what a reader was given when it cannot be a named query: a table, or no handle of this recording (a
+// recorded `Queries`' or an inert reference's).
+func (r *recordingSelf) checkNamed(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], declaration string) {
+	switch query.(type) {
+	case inertNamed, *ReferenceQuery:
+		return
+	}
+	panic(namedQueryExpected(r.object.text, declaration))
+}
+
 // Derive implements Self.
 func (r *recordingSelf) Derive([]any, func(values []any) (delta.JsonValue, error)) chord.Watchable[delta.JsonValue] {
 	r.assertDeclaring("derive")

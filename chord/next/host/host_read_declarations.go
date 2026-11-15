@@ -1,10 +1,13 @@
 package host
 
 import (
+	"context"
 	"sort"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/state"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
@@ -88,3 +91,135 @@ func namedBuilders(label string, builders map[string]QueryBuilder) ([]namedBuild
 	}
 	return checked, nil
 }
+
+// openReaders opens each of readers in turn (slice 14 §3.2), named to long as label while its first run is awaited, as one
+// step of a parked attempt (or of an admission): ready once all have values; else parked on the first that is not, `loading`
+// while its read has not run yet (a table it reads is being created or migrated), `failed { waiting }` on a read it waits
+// on; or broken (its own code). Parked, it says why (cause), as a parked dependency does: an admission parked on a read is
+// its attempt's first check, which a reload's report waits for. A reader that is not ready is followed by wake from then on:
+// its next adoption (its table ready, a good run after a failed one) checks again. A reader's Open blocks on the store's
+// first run: it runs on an owned task (awaitTask), and settle is called in a section.
+func openReaders(host *chordHost, readers []*reader, wake state.Dependent, long blocked, label string, ctx context.Context, settle func(parkResult)) {
+	var open func(index int)
+	open = func(index int) {
+		if index == len(readers) {
+			settle(parkResult{kind: parkingReady})
+			return
+		}
+		each := readers[index]
+		long.blockedBy(blocker{label: label, state: blockerLoading})
+		awaitTask(host, func() (Opened, error) { return each.Open(ctx), nil }).then(func(opened Opened, _ error) {
+			if opened.Kind == OpenedReady {
+				open(index + 1)
+				return
+			}
+			each.source().DependentSet().Add(wake)
+			if opened.Kind == OpenedLoading {
+				loading := data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: label + " is loading"}, nil)
+				cause := data.WaitingFor(label, loading)
+				settle(parkResult{kind: parkingParked, shown: refLoading, firstPass: false, cause: &cause})
+				return
+			}
+			long.blockedBy(blocker{label: label, state: blockerFailed})
+			err := data.AsChordError(opened.Err, label)
+			if opened.Kind == OpenedBroken {
+				settle(parkResult{kind: parkingBroken, err: err})
+				return
+			}
+			shown := waitingOn(label, err)
+			settle(parkResult{kind: parkingParked, shown: shown, firstPass: true, cause: &shown.Cause})
+		})
+	}
+	open(0)
+}
+
+// ReaderSite is where an attempt's readers live: the store and batch, the object's label, its failure reports, its wake and
+// the loop task a reader's un-awaited read runs on.
+type ReaderSite struct {
+	Site  store.ReadSite
+	Label string
+	// Report reports a failed run of query after the reader went live (`query_failed`, once per episode).
+	Report func(query string, err error)
+	// Wake tells the attempt, waiting on a reader, to open it again.
+	Wake func()
+	// Go runs task as an owned task of the host's loop: the reader's read for a source that moved while it is open (Pi:
+	// `void this.#reading.read(...)`, query-reader.ts:123).
+	Go func(task func())
+}
+
+// readerSite is where the readers label declares on host live (an attempt's, an admission's): a reader needs the host's
+// store. wake tells whoever waits on a reader to open it again; spawn is the loop's Go.
+func readerSite(host *chordHost, label string, wake func(), spawn func(task func())) (ReaderSite, error) {
+	if host.store == nil {
+		return ReaderSite{}, declarationError("%s: reading a named query needs a store", label)
+	}
+	return ReaderSite{
+		Site:  store.ReadSite{Store: host.store, Batch: host.batch},
+		Label: label,
+		Report: func(query string, err error) {
+			host.report(HostError{Kind: ErrQueryFailed, Object: label, Query: query, Error: err})
+		},
+		Wake: wake,
+		Go:   spawn,
+	}, nil
+}
+
+// rowsReader is the reader of `self.liveQuery(query, args, first)`: its value the first `first` rows as `{ rows, more }`.
+func rowsReader(at ReaderSite, query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], args any, first int64) (*reader, *store.LiveQuery, error) {
+	if err := firstOf(at.Label, "liveQuery", first); err != nil {
+		return nil, nil, err
+	}
+	shape := store.LiveShape{
+		Kind: "rows",
+		// Checked above: a positive integer.
+		Range: store.Range{Limit: int(first)},
+		Present: func(rows []delta.JsonValue, more bool) delta.JsonValue {
+			return delta.JsonObjectOf("rows", rows, "more", more)
+		},
+	}
+	return liveReader(at, "liveQuery", query, args, shape)
+}
+
+// liveReader is the reader of `self.liveQuery(query, args, first)` (shape `rows`) or of `self.count(query, args)`
+// (`count`).
+func liveReader(at ReaderSite, declaration string, query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], args any, shape store.LiveShape) (*reader, *store.LiveQuery, error) {
+	given, err := givenQuery(at, declaration, query, args)
+	if err != nil {
+		return nil, nil, err
+	}
+	live := store.NewLiveQuery(at.Site, readerOwnerOf(at, given), shape)
+	return newReader(given, newLiveReading(live), at.Wake, at.Go), live, nil
+}
+
+// givenQuery is the named query a reader was given with its arguments, checked: a named query (a table of the object is
+// the old form's argument), and arguments that are JSON (their schema checks them when the read opens) or a watchable of
+// them.
+func givenQuery(at ReaderSite, declaration string, query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], args any) (*GivenQuery, error) {
+	handle, ok := query.(NamedQueryHandle)
+	if !ok {
+		return nil, namedQueryExpected(at.Label, declaration)
+	}
+	source, err := resolveWatchable(unwrapMember(args))
+	if err != nil {
+		return nil, err
+	}
+	given := GivenArguments{Kind: GivenFixed, Value: args}
+	if source != nil {
+		given = GivenArguments{Kind: GivenFollowing, Source: source}
+	}
+	return NewGivenQuery(handle, given, at.Site.Batch), nil
+}
+
+// readerOwner is who a reader's source belongs to: its object, reporting failures under the query's name.
+type readerOwner struct {
+	at    ReaderSite
+	given *GivenQuery
+}
+
+// Label implements state.FramedOwner.
+func (o readerOwner) Label() string { return o.at.Label }
+
+// Report implements state.FramedOwner.
+func (o readerOwner) Report(err error) { o.at.Report(o.given.Handle.Label(), err) }
+
+func readerOwnerOf(at ReaderSite, given *GivenQuery) state.FramedOwner { return readerOwner{at: at, given: given} }

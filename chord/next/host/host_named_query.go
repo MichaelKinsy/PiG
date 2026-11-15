@@ -143,8 +143,11 @@ func (q *OwnQuery) build(args delta.JsonValue, ctx context.Context) (*store.Quer
 	if err := data.Check(validator, args, data.ReasonArgs, ctx); err != nil {
 		return nil, err
 	}
-	// The builder is plugin code: what it returns is checked.
-	built := q.builder(args)
+	// The builder is plugin code: it may throw (panic), what it returns is checked.
+	var built *store.Query
+	if _, err := tryPlugin(func() (any, error) { built = q.builder(args); return nil, nil }); err != nil {
+		return nil, err
+	}
 	if built == nil || built.Table != q.Handle.Definition {
 		return nil, errors.New(q.label + `: the builder returns a query of table "` + q.Handle.Definition.Name + `"`)
 	}

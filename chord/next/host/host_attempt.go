@@ -119,6 +119,16 @@ type Self interface {
 	// the source keeping its last value. A state member, a derive source, an `On` source. A method handler that waits for the
 	// followed runtime calls chordctx.Suspend first (see FollowObserver).
 	Follow(attach FollowAttach[delta.JsonValue]) chord.Watchable[delta.JsonValue]
+	// LiveQuery is a named query read live (slice 14 §3): the first `first` rows of query for args, and whether a further row
+	// exists, as a JSON watchable `{ rows, more }`. args is a JSON value or a watchable of it: the member shows the previous
+	// rows until the read for the new arguments has run. Opened once this object's dependencies are live; a commit that can
+	// change its rows runs it again in its step. Another object's query is read through its reference
+	// (`self.Get(Store, {}).Queries(member)[name]`), the owner's own through what `Queries` returned.
+	LiveQuery(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], args any, first int64) chord.Watchable[delta.JsonValue]
+	// Count is the exact number of rows of a named query for args, live (slice 14 §3.1). Expensive, know what you are doing:
+	// every run reads every matching row, nothing caps it, and it runs again on every write to its tables except an `update`
+	// that assigns none of its condition's columns. Count what a key or an index bounds.
+	Count(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], args any) chord.Watchable[delta.JsonValue]
 	// Job is this object's job definition (§15), once per job name: Run runs each started run outside transactions, Finish
 	// records its outcome in one. Starts are taken once the object is live.
 	Job(definition *JobDefinition, implementation JobImplementation) JobHandle
@@ -325,6 +335,10 @@ type attempt struct {
 	// queries are its own live queries with what each reads, run at activation (after the tables are prepared), detached at
 	// its end.
 	queries []ownQuery
+	// readers are its readers of named queries (`LiveQuery`, `Count`), opened once its dependencies are live.
+	readers []*reader
+	// readerWake follows a reader this attempt is parked on: its next adoption (a good run heals it) checks again.
+	readerWake *readerWake
 	// references are those this attempt declared with `self.get`.
 	references []declaredReference
 	// dependencies are its dependencies (`self.get` references and `self.registry` values) in declaration order: the parked
@@ -376,11 +390,13 @@ func newAttempt(object *chordObject, ctx context.Context) *attempt {
 	opening, abort := chordctx.WithCancel(ctx)
 	// Its opener's calls are known as its object's: their gate waits are the object's edges for reload cycles. A separate
 	// context: the abort order of `opening` is read through its own type (chordctx.AbortOrder), which a value wrapper hides.
-	return &attempt{
+	a := &attempt{
 		object: object, served: object.served, ctx: ctx, abort: abort, opening: opening, opener: chordctx.WithValue(opening, openingKey, object),
 		token:         documents.NewSealToken(),
 		declaredNames: map[string]struct{}{}, jobNames: map[string]struct{}{}, tableNames: map[string]struct{}{},
 	}
+	a.readerWake = &readerWake{attempt: a}
+	return a
 }
 
 func (a *attempt) loop() sectionLoop { return a.object.host.loop() }
@@ -549,6 +565,50 @@ func (a *attempt) Queries(given store.Table, options QueriesOptions, builders ma
 	}
 	return named
 }
+
+// LiveQuery implements Self.
+func (a *attempt) LiveQuery(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], args any, first int64) chord.Watchable[delta.JsonValue] {
+	a.assertDeclaring("liveQuery")
+	at := a.readerSite()
+	reader, live, err := rowsReader(at, query, args, first)
+	if err != nil {
+		panic(err)
+	}
+	a.readers = append(a.readers, reader)
+	// Its value is what `Present` builds from the query's items.
+	return Expose(live)
+}
+
+// Count implements Self.
+func (a *attempt) Count(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], args any) chord.Watchable[delta.JsonValue] {
+	a.assertDeclaring("count")
+	reader, live, err := liveReader(a.readerSite(), "count", query, args, store.LiveShape{Kind: "count"})
+	if err != nil {
+		panic(err)
+	}
+	a.readers = append(a.readers, reader)
+	// A count's value is its number.
+	return Expose(live)
+}
+
+// readerSite is where this attempt's readers live.
+func (a *attempt) readerSite() ReaderSite {
+	object := a.object
+	at, err := readerSite(object.host, object.text, a.dependencyMoved, a.loop().Go)
+	if err != nil {
+		panic(err)
+	}
+	return at
+}
+
+// readerWake is the attempt as a dependent of the readers it is parked on.
+type readerWake struct{ attempt *attempt }
+
+// Invalidate implements state.Dependent: a reader's source changed; the parked attempt checks again.
+func (w *readerWake) Invalidate() { w.attempt.dependencyMoved() }
+
+// SourceRetired implements state.Dependent: a retired source changes nothing here.
+func (*readerWake) SourceRetired(map[state.Dependent]struct{}) {}
 
 // Derive implements Self.
 func (a *attempt) Derive(sources []any, compute func(values []any) (delta.JsonValue, error)) chord.Watchable[delta.JsonValue] {
@@ -1389,6 +1449,14 @@ func (a *attempt) detach() {
 	for _, each := range a.queries {
 		each.live.Detach(ended)
 	}
+	for _, each := range a.readers {
+		each.Close(ended)
+	}
+	// The named queries it offered are offered no more (slice 14 §3.2): their readers' reads leave the store's index before a
+	// successor prepares the tables, and read the successor's queries when it is live.
+	for _, each := range a.tables {
+		each.handle.Store.Reads.Retire(each.handle)
+	}
 	for _, follow := range a.follows {
 		follow.detach()
 	}
@@ -1480,11 +1548,11 @@ func (a *attempt) activateSteps(dl *deadline, finish func(activation)) {
 		}
 		return nil
 	}
-	ownSteps := func() { a.ownSteps(implementation, finish) }
+	ownSteps := func() { a.ownSteps(implementation, dl, finish) }
 	afterBind := func() {
 		// Parked only when something is not live yet (most activations find their dependencies live).
 		if (len(dependencies) > 0 && checkDependencies(dependencies).kind != checkLive) || a.pinsKeys() {
-			a.park(dependencies, dl, func(parked *activation) {
+			a.park(dependencies, a.checkDependencies(dependencies), dl, func(parked *activation) {
 				if parked != nil {
 					finish(*parked)
 					return
@@ -1630,12 +1698,11 @@ func (a *attempt) takePins() []func() {
 	return pins
 }
 
-// park parks while a dependency is not live (dependency model §3), with no timer: the deadline paused, `parked_long`'s
-// report the only clock. Checks at every change of a dependency (after its batch) and shows what it found on its object;
-// once all are live, the keys the factory pinned on them are loaded (a failed load parks it `waiting` until the next change
-// or a retry). done gets nil once all are live and pinned, else how it ends: abandoned, or broken (a cycle, an ended
-// dependency).
-func (a *attempt) park(dependencies []dependency, dl *deadline, done func(*activation)) {
+// park parks until step finds nothing to wait for (dependency model §3), with no timer: the deadline paused, `parked_long`'s
+// report the only clock. step runs at every change of what the attempt waits on (after its batch): its dependencies, a
+// pinned key, its readers; it calls settle once with what it found, which is shown on its object. done gets nil once the
+// attempt may go on, else how it ends: abandoned, or broken (a cycle, an ended dependency, its readers' own code).
+func (a *attempt) park(dependencies []dependency, step func(long *parkedLong, settle func(parkResult)), dl *deadline, done func(*activation)) {
 	object := a.object
 	dl.pause()
 	a.parked = dependencies
@@ -1673,47 +1740,71 @@ func (a *attempt) park(dependencies []dependency, dl *deadline, done func(*activ
 	}
 	iterate = func() {
 		a.moved = false
-		check := checkDependencies(dependencies)
-		if check.kind != checkParked {
-			a.settleCheck(nil)
-		}
-		switch check.kind {
-		case checkBroken:
+		step(long, func(found parkResult) {
 			if a.abandoned != nil {
 				finished(a.abandoned)
 				return
 			}
-			finished(&activation{kind: activationFailed, cause: data.FailureCause{Kind: data.FailureBroken, Error: check.err}})
-		case checkLive:
-			a.pinKeys(long).then(func(pinned *failed, _ error) {
-				if a.abandoned != nil {
-					finished(a.abandoned)
-					return
-				}
-				// Changed while the keys loaded: checked again.
-				if pinned == nil && !a.moved {
+			switch found.kind {
+			case parkingBroken:
+				finished(&activation{kind: activationFailed, cause: data.FailureCause{Kind: data.FailureBroken, Error: found.err}})
+				return
+			case parkingReady:
+				// Changed while it checked (its keys loaded, its readers opened): checked again.
+				if !a.moved {
 					// Its own steps follow: `loading` until its outcome (a failure shows as the failure, not this).
 					object.unparked(a)
 					a.unparkedTrace()
 					finished(nil)
 					return
 				}
-				if pinned != nil {
-					object.parked(a, pinned, true)
-					a.parkedOn(pinned)
+			case parkingParked:
+				object.parked(a, found.shown, found.firstPass)
+				if found.cause != nil {
+					a.settleCheck(found.cause)
 				}
-				waitForChange()
-			})
-		default:
-			object.parked(a, check.shown, check.firstPass)
-			cause := parkedCause(check)
-			a.settleCheck(&cause)
-			long.blockedBy(check.blocker)
-			a.parkedOn(check.shown)
+				a.parkedOn(found.shown)
+			}
 			waitForChange()
-		}
+		})
 	}
 	iterate()
+}
+
+// checkDependencies is one check of its factory's dependencies while it parks on them: once all are live, the keys the
+// factory pinned on them are loaded (a failed load parks it `waiting` until the next change or a retry).
+func (a *attempt) checkDependencies(dependencies []dependency) func(long *parkedLong, settle func(parkResult)) {
+	return func(long *parkedLong, settle func(parkResult)) {
+		found := checkDependencies(dependencies)
+		if found.kind != checkParked {
+			a.settleCheck(nil)
+		}
+		switch found.kind {
+		case checkBroken:
+			settle(parkResult{kind: parkingBroken, err: found.err})
+		case checkParked:
+			long.blockedBy(found.blocker)
+			cause := parkedCause(found)
+			settle(parkResult{kind: parkingParked, shown: found.shown, firstPass: found.firstPass, cause: &cause})
+		default:
+			pinKeys(a.loop(), a.bindings(), long, a.opening).then(func(pinned *failed, _ error) {
+				if pinned == nil {
+					settle(parkResult{kind: parkingReady})
+					return
+				}
+				settle(parkResult{kind: parkingParked, shown: pinned, firstPass: true})
+			})
+		}
+	}
+}
+
+// bindings are the references its factory declared.
+func (a *attempt) bindings() []*binding {
+	bindings := make([]*binding, len(a.references))
+	for index, each := range a.references {
+		bindings[index] = each.binding
+	}
+	return bindings
 }
 
 // nextChange waits for the next change of a dependency (at once when one came during the check); ok is false when the
@@ -1731,38 +1822,6 @@ func (a *attempt) nextChange(done func(ok bool)) {
 		}
 		done(err == nil)
 	})
-}
-
-// pinKeys loads the keys the factory pinned on its dependencies' keyed members (`at(key)`), each reference's named to long
-// as the blocker while they load (`failed` when they failed); it resolves nil once all are, else what the parked attempt
-// shows for the first that failed to load (`waiting` on its reference).
-func (a *attempt) pinKeys(long *parkedLong) *keyedPromise[*failed] {
-	result := newKeyedPromise[*failed](a.loop())
-	var next func(index int)
-	next = func(index int) {
-		if index == len(a.references) {
-			result.resolve(nil)
-			return
-		}
-		bound := a.references[index].binding
-		label := bound.label()
-		pinning := bound.pinKeys(a.opening)
-		if pinning == nil {
-			next(index + 1)
-			return
-		}
-		long.blockedBy(blocker{label: label, state: blockerLoading})
-		pinning.then(func(_ struct{}, err error) {
-			if err != nil {
-				long.blockedBy(blocker{label: label, state: blockerFailed})
-				result.resolve(waitingOn(label, data.AsChordError(err, label)))
-				return
-			}
-			next(index + 1)
-		})
-	}
-	next(0)
-	return result
 }
 
 // dependencyMoved: a dependency of this parked attempt changed (its state, its cause, its first outcome): it checks again
@@ -1813,10 +1872,10 @@ func (a *attempt) retryDependencies(walk *retryWalk) {
 	a.dependencyMoved()
 }
 
-// ownSteps are the steps after the dependency check (its own: natives, followed sources, the member check, derives), under
-// the deadline. A dependency that leaves `live` meanwhile changes nothing
-// (R18 after live).
-func (a *attempt) ownSteps(implementation factoryResult, finish func(activation)) {
+// ownSteps are the steps after the dependency check (its own: the member check, derives attached, the readers of named
+// queries, natives, followed sources, derives computed), under the deadline. A dependency that leaves `live` meanwhile
+// changes nothing (R18 after live).
+func (a *attempt) ownSteps(implementation factoryResult, dl *deadline, finish func(activation)) {
 	host := a.object.host
 	failedWith := func(cause data.FailureCause) {
 		if a.abandoned != nil {
@@ -1826,9 +1885,12 @@ func (a *attempt) ownSteps(implementation factoryResult, finish func(activation)
 		finish(activation{kind: activationFailed, cause: cause})
 	}
 	afterFollows := func() {
-		if _, err := a.checkOwn(implementation); err != nil {
-			finish(a.broken(err))
-			return
+		for _, derive := range a.derives {
+			// `void derive.value` throws a failing derive's error: the first one fails the attempt.
+			if _, err := derive.Value(); err != nil {
+				finish(a.broken(err))
+				return
+			}
 		}
 		if a.abandoned != nil {
 			finish(*a.abandoned)
@@ -1878,17 +1940,52 @@ func (a *attempt) ownSteps(implementation factoryResult, finish func(activation)
 				openFrom(index + 1)
 			})
 	}
-	openFrom(0)
+	if err := a.checkMembers(implementation); err != nil {
+		finish(a.broken(err))
+		return
+	}
+	// Before the natives: an attempt that waits on a reader holds none (design §6), as one parked on a dependency. Awaited
+	// only with readers: an attempt without any takes no extra turn before its natives open.
+	if len(a.readers) == 0 {
+		openFrom(0)
+		return
+	}
+	a.awaitReaders(dl, func(outcome *activation) {
+		if outcome != nil {
+			finish(*outcome)
+			return
+		}
+		openFrom(0)
+	})
 }
 
-// checkOwn is the member check and the derives' attachment: what the factory returned is checked against the contract, the
-// contributions resolved, the derives attached and computed (a throwing derive fails the attempt, reported by its
-// `activation_failed` alone).
-func (a *attempt) checkOwn(implementation factoryResult) (*members, error) {
+// awaitReaders opens its readers of named queries and waits until each has a value (slice 14 §3.2), after its derives are
+// attached (the ones computing arguments are computed here) and before the others are computed (they may read a live
+// query). A reader that cannot read yet, or whose first run failed, parks the attempt on it (`loading`, or
+// `failed { waiting }`): its next adoption (`readerWake`) or a move of what it reads checks again. Arguments its provider
+// refuses and a builder that throws fail the attempt `broken`. done gets nil once all have values, else how the attempt
+// ends.
+func (a *attempt) awaitReaders(dl *deadline, done func(*activation)) {
+	label := a.object.text + ": a live query"
+	open := func(long *parkedLong, settle func(parkResult)) {
+		openReaders(a.object.host, a.readers, a.readerWake, long, label, a.opening, settle)
+	}
+	a.park(nil, open, dl, func(outcome *activation) {
+		for _, each := range a.readers {
+			each.source().DependentSet().Delete(a.readerWake)
+		}
+		done(outcome)
+	})
+}
+
+// checkMembers is the member check and the derives' attachment: what the factory returned is checked against the contract,
+// the contributions resolved, the derives attached (a throwing derive fails the attempt, reported by its `activation_failed`
+// alone).
+func (a *attempt) checkMembers(implementation factoryResult) error {
 	object := a.object
 	variant, checked, err := checkImplementation(object.served.contract, implementation, a.sourceOwner)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	a.members = checked
 	a.variant = variant
@@ -1901,7 +1998,7 @@ func (a *attempt) checkOwn(implementation factoryResult) (*members, error) {
 	if a.registry != nil {
 		contributions, err := a.resolveContributions(a.registry)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		a.registry.contributions = contributions
 	}
@@ -1919,16 +2016,7 @@ func (a *attempt) checkOwn(implementation factoryResult) (*members, error) {
 			host.report(failure)
 		}
 	})
-	if err != nil {
-		return nil, err
-	}
-	for _, derive := range a.derives {
-		// `void derive.value` throws a failing derive's error: the first one fails the attempt.
-		if _, err := derive.Value(); err != nil {
-			return nil, err
-		}
-	}
-	return checked, nil
+	return err
 }
 
 // resolveContributions are its declared contributions, as Chord follows them (its references are live now), by its plugin

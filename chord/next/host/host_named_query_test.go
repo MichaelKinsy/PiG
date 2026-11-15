@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/documents"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
 )
 
@@ -154,6 +155,18 @@ func TestNamedQueryStagingRefusesTheQueriesAnAttemptRefusesTheNamedBuildersAndTh
 			self.Table(nqPlain)
 			self.Queries(store.NewTableHandle(nqTeamRows, "x", nil, inertTableOwner{}), QueriesOptions{}, nil)
 		}, "self.queries: the table is not one this factory declared"},
+		// Pi's `self.count(table)` and `self.liveQuery(table)`: a table cannot be given in Go, a foreign query stands for it.
+		{"a count of what is no named query of this object", func(self StoreSelf) {
+			self.Count(nqForeign{}, jsonObject())
+		}, "self.count reads a named query; a table of this object is read with self.query"},
+		{"a live query of what is no named query of this object", func(self StoreSelf) {
+			self.LiveQuery(nqForeign{}, jsonObject(), 1)
+		}, "self.liveQuery reads a named query"},
+		// Pi's staging case 1 (the page size of `self.liveQuery`; its `{} as never` is a first of 0).
+		{"a live query without a page size", func(self StoreSelf) {
+			named := self.Queries(self.Table(nqPlain), QueriesOptions{}, map[string]QueryBuilder{"all": {Args: contracts.Obj(), Build: func(delta.JsonValue) *store.Query { return store.NewQuery(nqPlain) }}})
+			self.LiveQuery(named["all"], jsonObject(), 0)
+		}, "self.liveQuery: { first: n } is required"},
 		// Mine: Pi's namedBuilders check has no case of its own.
 		{"a builder that is none", func(self StoreSelf) {
 			self.Queries(self.Table(nqPlain), QueriesOptions{}, map[string]QueryBuilder{"all": {}})
@@ -196,6 +209,10 @@ func nqTableWith(set *store.ColumnSet, extra ...store.ColumnProp) *store.TableDe
 		Version: 1, Columns: append(append([]store.ColumnProp{}, set.Schemas...), extra...), Key: []string{"id"}, Exposes: set,
 	}))
 }
+
+// nqTeamPage is a screen over the club's page of a team: a live query of the club's named query.
+var nqTeamPage = exLocal("app.team-page", contracts.Params{contracts.Prop("team", contracts.Str())},
+	contracts.Mem("sessions", exObj(exProp("rows", exArr(exObj(exProp("session", exStr()), exProp("title", exStr()), exProp("touched", exInt())))), exProp("more", exBool()))))
 
 func nqSession(id string) contracts.Address { return Session.Address(jsonObject("id", id)) }
 
@@ -259,7 +276,7 @@ func nqKeys(row map[string]any) []string {
 
 // nqServeClub is the club: its team rows joined with the sessions' column set, a query per team.
 func nqServeClub(h FacetHost, probe *nqProbe, set *store.ColumnSet) error {
-	return h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+	if err := h.Serve(nqClub, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
 		self := plain.(StoreSelf)
 		table := self.Table(nqTeamRows)
 		teams := self.Queries(table, QueriesOptions{
@@ -285,6 +302,13 @@ func nqServeClub(h FacetHost, probe *nqProbe, set *store.ColumnSet) error {
 				return nil, err
 			})},
 		}}, nil
+	}, ServeOptions{}); err != nil {
+		return err
+	}
+	return h.Serve(nqTeamPage, func(params *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+		self := plain.(StoreSelf)
+		page := self.LiveQuery(self.Get(nqClub, jsonObject()).Queries("teams")["ofTeam"], jsonObject("team", params.Value("team")), 10)
+		return exImpl(map[string]chord.Watchable[delta.JsonValue]{"sessions": page}, nil), nil
 	}, ServeOptions{})
 }
 
@@ -406,8 +430,7 @@ func TestNamedQueryTheMappingsProjectionGetsOnlyTheColumnsReadsAndPartnerReadsLi
 }
 
 func TestNamedQueryAPublisherWhoseNewCodeDeclaresNoTableServesItsSetNoMore(t *testing.T) {
-	// Sol 2, Astra S1: the binding must not outlive the last table. (The reader's half of the case, its page's value
-	// failing `column set ... is not served`, is with the reader.)
+	// Sol 2, Astra S1: the binding must not outlive the last table.
 	chordStore := memoryStore(t)
 	host, _ := nqHosted(t, chordStore, &nqProbe{})
 	if _, bound := chordStore.Reads.Get(nqSessionColumns.Name); !bound {
@@ -529,10 +552,10 @@ func TestNamedQueryAReferenceTellsItsFollowersOfEveryOtherInstanceOfItsObject(t 
 
 func TestNamedQueryASetMovedToAnotherPluginsTableInOneReloadIsBoundToTheNewTable(t *testing.T) {
 	// Opus S6, round 2 S3: the old owner's binding goes at its seal, not at the end of its teardown. Its native's close ends
-	// only when the new owner is live, so its teardown is still running when the new owner binds. (The reader's half, the
-	// club's page showing the moved rows, is with the reader.)
+	// only when the new owner is live, so its teardown is still running when the new owner binds.
 	chordStore := memoryStore(t)
 	host, _ := nqHosted(t, chordStore, &nqProbe{})
+	page := mustGet(t, host, nqTeamPage, jsonObject("team", "u12"))
 	closing := make(chan struct{})
 	slow := HostFacet{Name: "@test/sessions", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return nqServeSessions(h, nqRows, func(self StoreSelf) {
@@ -573,6 +596,8 @@ func TestNamedQueryASetMovedToAnotherPluginsTableInOneReloadIsBoundToTheNewTable
 	if !ok || bound.Table != "app.moved:moved-rows" {
 		t.Fatalf("the set is bound to %+v (%v), want app.moved:moved-rows", bound, ok)
 	}
+	flushed(host)
+	qrWant(t, "rows", nqPageRows(t, page), `{"rows":[{"session":"s0","title":"moved","touched":5}],"more":false}`)
 }
 
 func TestNamedQueryAHostThatClosedServesNoSetAnymore(t *testing.T) {
@@ -624,4 +649,112 @@ func TestNamedQueryTwoTablesOfOneObjectExposingOneSetAreRefusedWhereTheyAreDecla
 	if !strings.Contains(staged, want) {
 		t.Fatalf("staging refused with %q, want %q", staged, want)
 	}
+}
+
+func TestNamedQueryStagingAcceptsTheOwnNamedQueryCountedAsAnAttemptDoes(t *testing.T) {
+	// What an attempt accepts, staging accepts: the object's own named query, counted (Pi: `self.count(named(self).all, {})`
+	// is the one declaration of that test that is no refusal).
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return nqServeCounted(h, func(StoreSelf) {}) }, loadedOptions{Store: memoryStore(t)})
+	counted := mustGet(t, host, nqCounted, jsonObject())
+	report := reloadMust(t)(reloadApp(host, func(h FacetHost) error {
+		return h.Serve(nqCounted, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			self := plain.(StoreSelf)
+			named := self.Queries(self.Table(nqPlain), QueriesOptions{}, map[string]QueryBuilder{"all": {Args: contracts.Obj(), Build: func(delta.JsonValue) *store.Query { return store.NewQuery(nqPlain) }}})
+			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": self.Count(named["all"], jsonObject())}, nil), nil
+		}, ServeOptions{})
+	}))
+	if len(report.Failed) != 0 {
+		t.Fatalf("failed = %+v", report.Failed)
+	}
+	// The successor counts the rows of an empty table: the member shows 0 once its read ran.
+	watch, err := counted.Member("n").Watch(background)
+	must(t, err)
+	values := make(chan delta.JsonValue, 8)
+	watch.Start(func(_ context.Context, call chord.WatchCall[delta.JsonValue]) error {
+		if call.Kind == chord.WatchCallValue {
+			values <- call.Value
+		}
+		return nil
+	})
+	value, err := counted.Member("n").Value()
+	must(t, err)
+	for value != float64(0) {
+		value = <-values
+	}
+	watch.Stop()
+}
+
+func TestNamedQueryAReaderNeedsAStore(t *testing.T) {
+	// Pi: `reading a named query needs a store` (`readerSite`); no Pi case reaches it.
+	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(nqCounted, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
+			return exImpl(map[string]chord.Watchable[delta.JsonValue]{"n": self.Count(nqForeign{}, jsonObject())}, nil), nil
+		}, ServeOptions{})
+	}, loadedOptions{})
+	_, _ = host.Get(background, nqCounted, jsonObject(), GetOptions{})
+	nqExpectOne(t, errMessages(errs), "app.counted: reading a named query needs a store")
+}
+
+// errMessages is the messages of the host's reported errors.
+func errMessages(errs *hostErrors) []string {
+	var messages []string
+	for _, err := range errs.All() {
+		if err.Failure.Error != nil {
+			messages = append(messages, err.Failure.Error.Message)
+		} else {
+			messages = append(messages, string(err.Kind))
+		}
+	}
+	return messages
+}
+
+// nqPageRows is the rows of the team page's value, as JSON text.
+func nqPageRows(t *testing.T, page *Reference) string {
+	t.Helper()
+	return qrValue(t, page, "sessions")
+}
+
+func TestNamedQueryAJoinedQueryMapsEachRowWithItsPartnersProjectedColumnsInThePartnersOrder(t *testing.T) {
+	probe := &nqProbe{}
+	host, _ := nqHosted(t, memoryStore(t), probe)
+	page := mustGet(t, host, nqTeamPage, jsonObject("team", "u12"))
+	// The family's session is no club session: its team row is dropped.
+	qrWant(t, "rows", nqPageRows(t, page), `{"rows":[{"session":"s1","title":"t1","touched":1},{"session":"s0","title":"t0","touched":0}],"more":false}`)
+	if got := probe.last(); len(got) != 2 || got[0] != "lastTouch" || got[1] != "title" {
+		t.Fatalf("partner columns = %v, want [lastTouch title]", got)
+	}
+	// The sessions' owner commits: the club's read over its table runs in that owner's step.
+	_, err := mustGet(t, host, nqSessions, jsonObject()).Call("touch", jsonObject("id", "s0", "at", float64(9)), background)
+	must(t, err)
+	flushed(host)
+	qrWant(t, "rows", nqPageRows(t, page), `{"rows":[{"session":"s0","title":"t0","touched":9},{"session":"s1","title":"t1","touched":1}],"more":false}`)
+	closeHosts(t, host)
+}
+
+func TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing(t *testing.T) {
+	host, errs := nqHosted(t, memoryStore(t), &nqProbe{})
+	page := mustGet(t, host, nqTeamPage, jsonObject("team", "u12"))
+	watch, err := page.Member("sessions").Watch(background)
+	must(t, err)
+	calls := nexttest.ChangesOf(watch)
+	club := nqClubPlugin(&nqProbe{})
+	reloadMust(t)(host.Reload([]HostFacet{nqPublisher(nqRows), club}, background, ReloadOptions{}))
+	flushed(host)
+	wider := nqMust(store.EvolveTable(nqRows, func(e *store.TableEditor) store.TableTailEditor { return e.Add("note", store.Opt(store.Str())) }))
+	reloadMust(t)(host.Reload([]HostFacet{nqPublisher(wider), club}, background, ReloadOptions{}))
+	flushed(host)
+	deliveredOn(host)
+	if calls.Len() != 0 || len(failures(errs.All())) != 0 {
+		t.Fatalf("calls = %d, failures = %v; want none", calls.Len(), failures(errs.All()))
+	}
+	// The migrated table still feeds the reader.
+	_, err = mustGet(t, host, nqSessions, jsonObject()).Call("touch", jsonObject("id", "s0", "at", float64(9)), background)
+	must(t, err)
+	deliveredOn(host)
+	qrWant(t, "rows", nqPageRows(t, page), `{"rows":[{"session":"s0","title":"t0","touched":9},{"session":"s1","title":"t1","touched":1}],"more":false}`)
+	if calls.Len() != 1 {
+		t.Fatalf("calls = %d, want 1", calls.Len())
+	}
+	watch.Stop()
+	closeHosts(t, host)
 }

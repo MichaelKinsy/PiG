@@ -1,6 +1,8 @@
 package host
 
 import (
+	"context"
+
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
@@ -54,6 +56,33 @@ const (
 type blocker struct {
 	label string
 	state blockerState
+}
+
+// blocked is what a check names its blocker to: a parking episode's `parked_long` clock (parkedLong), or nothing (a route's
+// decision is no attempt: it reports no long wait).
+type blocked interface{ blockedBy(found blocker) }
+
+// parkingKind is what a parked attempt does after one check.
+type parkingKind uint8
+
+const (
+	// parkingReady: it goes on.
+	parkingReady parkingKind = iota
+	// parkingParked: it stays parked showing shown.
+	parkingParked
+	// parkingBroken: it breaks with err.
+	parkingBroken
+)
+
+// parkResult is what a parked attempt does after one check (of its dependencies, of its readers, or of its admission): it goes
+// on; it stays parked showing shown (firstPass as in check; cause: why it parked, for a reload's report, nil when only a
+// pinned key failed to load); or it breaks. Only the fields of its kind are set.
+type parkResult struct {
+	kind      parkingKind
+	shown     *RefState
+	firstPass bool
+	cause     *data.FailureCause
+	err       *data.ChordError
 }
 
 // check is what the dependencies say, by kind. Only the fields of its kind are set. shown, firstPass, blocker and loadingOn
@@ -160,6 +189,38 @@ func parkedCause(parked check) data.FailureCause {
 // waitingOn is a parked attempt's state for a blocker label that failed with err.
 func waitingOn(label string, err *data.ChordError) *failed {
 	return &RefState{Kind: RefStateFailed, Cause: data.WaitingFor(label, err), RetryAt: nil}
+}
+
+// pinKeys loads the keys a factory (or an admission) pinned on bindings' keyed members (`at(key)`), each reference named to
+// long as the blocker while they load (`failed` when they failed); it resolves nil once all are, else what the parked attempt
+// shows for the first that failed to load (`waiting` on its reference).
+func pinKeys(loop sectionLoop, bindings []*binding, long blocked, ctx context.Context) *keyedPromise[*failed] {
+	result := newKeyedPromise[*failed](loop)
+	var next func(index int)
+	next = func(index int) {
+		if index == len(bindings) {
+			result.resolve(nil)
+			return
+		}
+		bound := bindings[index]
+		label := bound.label()
+		pinning := bound.pinKeys(ctx)
+		if pinning == nil {
+			next(index + 1)
+			return
+		}
+		long.blockedBy(blocker{label: label, state: blockerLoading})
+		pinning.then(func(_ struct{}, err error) {
+			if err != nil {
+				long.blockedBy(blocker{label: label, state: blockerFailed})
+				result.resolve(waitingOn(label, data.AsChordError(err, label)))
+				return
+			}
+			next(index + 1)
+		})
+	}
+	next(0)
+	return result
 }
 
 // parkedLong is the `parked_long` report of one parking episode (dependency model §7, audit A11): once, when the attempt has
