@@ -9,18 +9,50 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/loopseam"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/storeseam"
 	"github.com/MichaelKinsy/PiG/chord/next/link"
 )
 
 // Test support of the reference-side files (reference, presence, route, member-source, keyed-members, follow): what the
 // upstream tests build with `framesOf`, `delivered()` and small local helpers, over the support of host_next_support_test.go.
 
-// deliveredOn is support.ts `delivered()` for the hosts: every queued watch frame of their batches has been delivered
-// (the hosts' delivery schedulers are idle).
+// deliveredOn is support.ts:138 `delivered()` (`new Promise((resolve) => setTimeout(resolve, 0))`) for the hosts. Its contract
+// is what that `setTimeout(0)` waits for in Pi: every queued watch frame delivered, and every microtask chain queued before it
+// run to its next real wait; not what a Pi test would still be waiting for after it (a plugin's gate, a timer, a link frame not
+// yet received, a commit held by the test). Go: (1) the hosts' delivery schedulers are idle; (2) the host's loop has no joined
+// hop in flight (loopseam.Quiesce: its count of the goroutines that run a microtask queued from outside a section, which
+// signals when it falls to zero: no polling, no sleep, no deadline); (3) the store's reads index has no reload task running
+// (storeseam.ReadTasks: the unawaited `void open.load()` of a changed binding, owned by the index); repeated until all hold,
+// since a delivery's listener queues microtasks, a hop advances frames and a reload's adoption queues a delivery.
 func deliveredOn(hosts ...Host) {
 	for _, host := range hosts {
-		host.(*chordHost).scheduler.Wait()
+		h := host.(*chordHost)
+		for {
+			if h.store != nil {
+				<-storeseam.ReadTasks(h.store)
+			}
+			h.scheduler.Wait()
+			loopseam.Quiesce(h.loop())
+			if !h.scheduler.Busy() && storeIdle(h) {
+				break
+			}
+		}
+	}
+}
+
+// storeIdle is whether the reloads a changed binding started in the host's store (its reads index owns them: Pi's unawaited
+// `void open.load()`, whose chain `delivered()` runs to its end) have ended; the barrier is closed then, with no polling.
+func storeIdle(h *chordHost) bool {
+	if h.store == nil {
+		return true
+	}
+	select {
+	case <-storeseam.ReadTasks(h.store):
+		return true
+	default:
+		return false
 	}
 }
 

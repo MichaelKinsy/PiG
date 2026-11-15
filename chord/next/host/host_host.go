@@ -113,6 +113,12 @@ type HostFacet struct {
 	Facet Facet
 }
 
+// HostDeleteOptions is what `DeleteHostData` takes besides the address (Pi's `HostDeleteOptions`): the one plugin whose data
+// of it is deleted; nil, everything.
+type HostDeleteOptions struct {
+	Plugin *string
+}
+
 // PluginFailure is a plugin left out at `Load`, or whose new code failed at a reload (it kept its old code, if it had
 // any), and why.
 type PluginFailure struct {
@@ -282,8 +288,11 @@ type Host interface {
 	// `docs/host-keyed/spec.md` §5). It returns `invalid/args` without a store, for a refused archive or existing data;
 	// `released` once ctx aborted before the commit was admitted.
 	ImportHostData(parts store.PartSource, ctx context.Context, options store.HostImportOptions) (store.HostDataCounts, error)
-	// DeleteHostData deletes the records and rows belonging to address in one commit, coordinated as ImportHostData.
-	DeleteHostData(address contracts.Address, ctx context.Context) (store.HostDataCounts, error)
+	// DeleteHostData deletes the records and rows belonging to address in one commit, coordinated as ImportHostData. With
+	// options.Plugin (slice 14 §6), only what that plugin's objects own: the documents and tables of the types it serves
+	// here now (a session moving to another app drops the old app's data of it). Data under a type the plugin served
+	// before and serves no more (a renamed type) is not its any more and stays; a plugin not loaded here is `invalid/args`.
+	DeleteHostData(address contracts.Address, ctx context.Context, options HostDeleteOptions) (store.HostDataCounts, error)
 	// Close closes its links, seals its root scopes, then ends every object at once, then drains and closes them one by one,
 	// the last to go live first (reason `close`). It returns an error joining the closes that failed.
 	Close(ctx context.Context) error
@@ -1156,13 +1165,30 @@ func (h *chordHost) ImportHostData(parts store.PartSource, ctx context.Context, 
 }
 
 // DeleteHostData implements Host. It blocks.
-func (h *chordHost) DeleteHostData(address contracts.Address, ctx context.Context) (store.HostDataCounts, error) {
+func (h *chordHost) DeleteHostData(address contracts.Address, ctx context.Context, options HostDeleteOptions) (store.HostDataCounts, error) {
 	site, err := h.dataSite("deleteHostData")
 	if err != nil {
 		return store.HostDataCounts{}, err
 	}
+	var only map[string]struct{}
+	if plugin := options.Plugin; plugin != nil {
+		var loaded bool
+		h.enter(func() {
+			loaded = h.plugins.has(*plugin)
+			// A plugin's data is what the types it serves own: their names are the owners in the store.
+			only = map[string]struct{}{}
+			for _, name := range h.types.keys() {
+				if served, _ := h.types.get(name); served.plugin == *plugin {
+					only[name] = struct{}{}
+				}
+			}
+		})
+		if !loaded {
+			return store.HostDataCounts{}, data.Invalid(data.ReasonArgs, fmt.Sprintf("deleteHostData: plugin %q is not loaded here", *plugin))
+		}
+	}
 	parking.Park(ctx)
-	return deleteFrom(site, address, ctx)
+	return deleteFrom(site, address, ctx, only)
 }
 
 // dataSite is what a host data operation needs of this host; `invalid/args` without a store, `invalid/reentrant` inside a

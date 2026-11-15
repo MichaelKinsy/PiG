@@ -475,6 +475,32 @@ func TestQueryReaderFailures(t *testing.T) {
 		closeHosts(t, host)
 	})
 
+	t.Run("a builder that throws breaks the reader: its own code, not a failure to wait for", func(t *testing.T) {
+		// `isOwnCode`: a throwing builder is a plain error, which is the reader's own code (broken), where a provider that is
+		// not live is waited for. The attempt's activation fails with it at once instead of parking.
+		chordStore := memoryStore(t)
+		errs := &hostErrors{}
+		host := newHost(t, HostOptions{Store: chordStore, OnError: errs.push})
+		broken := mustContract(contracts.Local("app.thrower", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("notes", qrPage)}}))
+		_, err := host.Load([]HostFacet{qrStoreFacet, {Name: "@test/views", Facet: DefineFacet(func(h FacetHost, _ FacetSelf) error {
+			return h.Serve(broken, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+				ofBoard := plain.Get(qrNoteStore, jsonObject()).Queries("notes")["ofBoard"]
+				return contracts.Implementation{Members: contracts.VariantImplementation{
+					State: map[string]chord.Watchable[delta.JsonValue]{"notes": plain.LiveQuery(ofBoard, jsonObject("board", "broken"), 1)},
+				}}, nil
+			}, ServeOptions{})
+		})}}, background)
+		must(t, err)
+		_, getErr := host.Get(background, broken, jsonObject(), GetOptions{})
+		if getErr == nil || !strings.Contains(getErr.Error(), "no such board") {
+			t.Fatalf("get error = %v, want the builder's own error", getErr)
+		}
+		if got := failures(errs.All()); len(got) != 1 || !strings.HasSuffix(got[0], ": broken") {
+			t.Fatalf("activation failures = %v, want one broken", got)
+		}
+		closeHosts(t, host)
+	})
+
 	t.Run("the wrong form of each call throws naming the other; a private query needs its schema", func(t *testing.T) {
 		// Go keeps what its types do not state: `{ first: n }` is required, and the owner's own private query is counted,
 		// read in its own activation, with no dependency on itself. The other two refusals (a named query given to
