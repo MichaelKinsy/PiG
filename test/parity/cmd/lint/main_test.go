@@ -132,6 +132,18 @@ func TestLintRules(t *testing.T) {
 			wantRules: []string{"no-equality-comparator"},
 		},
 		{
+			name:   "a transcript sequence window is an equality comparator",
+			source: "# Upstream evidence (pi v0.69.0)\nsome toml",
+			sc: scenario{
+				Name:   "window-test",
+				Driver: "interactive-tmux",
+				Covers: []string{"packages/tui/src/autocomplete.ts"},
+				Tags:   []string{"fast", "hermetic"},
+				Assert: assertBlock{TranscriptSequencesEqual: []sequenceWindowBlock{{From: "\x1b[?2031l"}}},
+			},
+			wantRules: nil,
+		},
+		{
 			name:   "boot-only description exempts equality rule",
 			source: "# Upstream evidence (pi v0.69.0)\nsome toml",
 			sc: scenario{
