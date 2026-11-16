@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/ai/providers/bedrock"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 func main() {
@@ -27,14 +29,19 @@ func run() error {
 	if err := json.Unmarshal(raw, &cases); err != nil {
 		return err
 	}
-	requests := make(chan map[string]any, 1)
+	requests := make(chan *orderedjson.Object, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var request map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		body, err := io.ReadAll(r.Body)
+		if err == nil {
+			var request *orderedjson.Object
+			if request, err = orderedjson.Parse(body); err == nil {
+				requests <- request
+			}
+		}
+		if err != nil {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		requests <- request
 		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
 	}))
 	defer server.Close()
@@ -49,15 +56,23 @@ func run() error {
 			return err
 		}
 		stream.Result()
-		var payload map[string]any
+		var payload *orderedjson.Object
 		select {
 		case payload = <-requests:
 		default:
 			return fmt.Errorf("%s: provider settled without sending the request", tc.Name)
 		}
-		if err := json.NewEncoder(os.Stdout).Encode([]any{tc.Name, payload["system"], payload["messages"]}); err != nil {
+		if err := json.NewEncoder(os.Stdout).Encode([]any{tc.Name, member(payload, "system"), member(payload, "messages")}); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// member is the request member name as the wire carried it, null when absent.
+func member(payload *orderedjson.Object, name string) json.RawMessage {
+	if value, ok := payload.Get(name); ok {
+		return value
+	}
+	return json.RawMessage("null")
 }

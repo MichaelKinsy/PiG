@@ -21,6 +21,6 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['"case":"aborted"', '"content":null,"role":"assistant"', '"output":"done"']
+both_contain = ['"case":"aborted"', '"role":"assistant","content":null', '"output":"done"']
 both_not_contain = ['"text":"Double 21"']
 runs = 3
