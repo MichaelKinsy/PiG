@@ -166645,7 +166645,8 @@
         "call:internal/codingagent/clipboard_copy.go#CopyToClipboard"
       ],
       "evidence": [
-        "test:internal/codingagent/clipboard_copy_oracle_test.go#TestCopyToClipboardMatchesPi"
+        "test:internal/codingagent/clipboard_copy_oracle_test.go#TestCopyToClipboardMatchesPi",
+        "test:internal/codingagent/interactive_exit_bytes_pty_test.go#TestExitBytesChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -166666,7 +166667,8 @@
         "call:internal/codingagent/clipboard_copy.go#CopyToClipboard"
       ],
       "evidence": [
-        "test:internal/codingagent/clipboard_copy_oracle_test.go#TestCopyToClipboardMatchesPi"
+        "test:internal/codingagent/clipboard_copy_oracle_test.go#TestCopyToClipboardMatchesPi",
+        "test:internal/codingagent/interactive_exit_bytes_pty_test.go#TestExitBytesChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -305364,9 +305366,9 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/stop_transaction_test.go#TestRestoreOnExitSealsTheTerminalAgainstForeignWrites",
         "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
-        "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
-        "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
+        "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates"
       ]
     },
     {
@@ -305386,9 +305388,9 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/stop_transaction_test.go#TestRestoreOnExitSealsTheTerminalAgainstForeignWrites",
         "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
-        "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
-        "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
+        "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates"
       ]
     },
     {
@@ -305475,7 +305477,7 @@
       "evidence": [
         "test:tui/terminal_upstream_test.go#TestUpstreamTerminalProgressClear",
         "test:internal/codingagent/terminal_writer_test.go#TestProgressIsWrittenOnTheTerminalOption",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode"
+        "test:tui/stop_transaction_test.go#TestForeignWriteStormHoldsNoByteInsideAStop"
       ]
     },
     {
@@ -305497,7 +305499,7 @@
       "evidence": [
         "test:tui/terminal_upstream_test.go#TestUpstreamTerminalProgressClear",
         "test:internal/codingagent/terminal_writer_test.go#TestProgressIsWrittenOnTheTerminalOption",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode"
+        "test:tui/stop_transaction_test.go#TestForeignWriteStormHoldsNoByteInsideAStop"
       ]
     },
     {
@@ -305517,9 +305519,9 @@
         "call:tui/terminal.go#ProcessTerminal.SetTitle"
       ],
       "evidence": [
-        "test:tui/terminal_test.go#TestProcessTerminalSetTitleReplacesControlCharacters",
-        "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences",
-        "test:tui/terminal_write_log_test.go#TestProcessTerminalControlMethodsAreNotLogged"
+        "test:tui/stop_transaction_test.go#TestForeignWriteMadeDuringAStopRunsAfterItInTheOrderItWasMade",
+        "test:tui/stop_transaction_test.go#TestForeignWriteStormHoldsNoByteInsideAStop",
+        "test:tui/stop_transaction_test.go#TestRestoreOnExitSealsTheTerminalAgainstForeignWrites"
       ]
     },
     {
@@ -305539,9 +305541,9 @@
         "call:tui/terminal.go#ProcessTerminal.SetTitle"
       ],
       "evidence": [
-        "test:tui/terminal_test.go#TestProcessTerminalSetTitleReplacesControlCharacters",
-        "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences",
-        "test:tui/terminal_write_log_test.go#TestProcessTerminalControlMethodsAreNotLogged"
+        "test:tui/stop_transaction_test.go#TestForeignWriteMadeDuringAStopRunsAfterItInTheOrderItWasMade",
+        "test:tui/stop_transaction_test.go#TestForeignWriteStormHoldsNoByteInsideAStop",
+        "test:tui/stop_transaction_test.go#TestRestoreOnExitSealsTheTerminalAgainstForeignWrites"
       ]
     },
     {
@@ -311675,6 +311677,7 @@
         "call:internal/codingagent/interactive_chat.go#InteractiveMode.setTerminalTitle"
       ],
       "evidence": [
+        "test:internal/codingagent/terminal_stop_transaction_test.go#TestHeldStopOrdersAWriteAndOpensAgain",
         "test:tui/terminal_interface_test.go#TestTerminalInterfaceOutputMatchesUpstreamSequences"
       ]
     },
@@ -311695,6 +311698,7 @@
         "call:internal/codingagent/interactive_chat.go#InteractiveMode.setTerminalTitle"
       ],
       "evidence": [
+        "test:internal/codingagent/terminal_stop_transaction_test.go#TestHeldStopOrdersAWriteAndOpensAgain",
         "test:tui/terminal_interface_test.go#TestTerminalInterfaceOutputMatchesUpstreamSequences"
       ]
     },

@@ -267169,6 +267169,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.beginTerminalStop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.beginTerminalStop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *github.com/MichaelKinsy/PiG/tui.StopTransaction"
+      },
+      "shapeHash": "sha256:105f02a47d85d64c97e58b0ab29cef2c8cd2c73f88f327c2da5076102cd8cb1b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.beginTurnEnd",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.beginTurnEnd",
@@ -268181,6 +268192,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.endTerminalStop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.endTerminalStop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(tx *github.com/MichaelKinsy/PiG/tui.StopTransaction, seal bool)"
+      },
+      "shapeHash": "sha256:7582878a7c8ce82c38535cdc82c99c29f63679da2685cdb4b7dec94f6a005e49"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.enqueueIfTurnActive",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.enqueueIfTurnActive",
@@ -268245,6 +268267,17 @@
         "type": "func(status int)"
       },
       "shapeHash": "sha256:3b260c84780b92ec9af902b8cce031b50d69e178a8792ee46e647e890f539bfe"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.exitEndsAtStop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.exitEndsAtStop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.exitIfDeadTerminal",
@@ -269314,6 +269347,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.holdTerminalStop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.holdTerminalStop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (end func())"
+      },
+      "shapeHash": "sha256:dafb9e0ae8fbabbb29f8d72d8afd37c4002df05a6eb53d1a0eb1ba45bd77a666"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.ignoreSuspendInterrupt",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.ignoreSuspendInterrupt",
@@ -270148,6 +270192,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.orderClipboardWrites",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.orderClipboardWrites",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (remove func())"
+      },
+      "shapeHash": "sha256:d73b4dcf9cbeadfbaee0aab290bc4ec69708c7e67c72c3e2f63109ed53da4715"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.ownsThinkingRuns",
@@ -271099,6 +271154,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.reloadSkillsFromPaths",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.reloadSkillsFromPaths",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.rememberDrawTerminal",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.rememberDrawTerminal",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -273351,6 +273417,17 @@
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.stopTerminalProgress",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.stopTerminalProgress",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(tx *github.com/MichaelKinsy/PiG/tui.StopTransaction)"
+      },
+      "shapeHash": "sha256:7e50df573d549c97c2b91213c482f13c39d5468767b2e2001f23c6bdb9bfec8f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.stopWorkingLoader",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.stopWorkingLoader",
@@ -273989,6 +274066,17 @@
       "shapeHash": "sha256:467cdc096c78789c2716374695dc15addf1414a22bbcbc7393f3997d555ad14b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.writeBetweenFrames",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.writeBetweenFrames",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(write func())"
+      },
+      "shapeHash": "sha256:ca20efb72773e186dbc616dcbacfc211eeb05172dab348edf6397d67c0ae8e64"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.writeDebugLog",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.writeDebugLog",
@@ -273998,6 +274086,28 @@
         "type": "func() (string, error)"
       },
       "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.writeDirectOutsideStop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.writeDirectOutsideStop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data string)"
+      },
+      "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.writeOutsideStop",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.writeOutsideStop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(write func())"
+      },
+      "shapeHash": "sha256:ca20efb72773e186dbc616dcbacfc211eeb05172dab348edf6397d67c0ae8e64"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.writeTerminal",
@@ -311906,6 +312016,17 @@
       "shapeHash": "sha256:ee712f96dbf4580c70267517f3776d3d0a42296c04b89733e0b30fc9e4118b27"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#orderedTerminalWrite",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "orderedTerminalWrite",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(write func())"
+      },
+      "shapeHash": "sha256:ca20efb72773e186dbc616dcbacfc211eeb05172dab348edf6397d67c0ae8e64"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#orderedToolParameters",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "orderedToolParameters",
@@ -324741,6 +324862,105 @@
         "type": "github.com/MichaelKinsy/PiG/coding/uiview.Limits"
       },
       "shapeHash": "sha256:3d06c32e4a3370eb0a0aab5a6e283f3fb250902a2710d4869e14eb220a96093e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalWriteOrder",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "terminalWriteOrder",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Pointer[func(write func())]"
+      },
+      "shapeHash": "sha256:72823ea2719723635c3bcf3c00f38576f61dba2aea6e89076008aea045b9ab73"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalWriteOrder.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "terminalWriteOrder.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old *func(write func()), new *func(write func())) (swapped bool)"
+      },
+      "shapeHash": "sha256:9d124a47d4cfa549476f42384e72b68c9ea3c937b245b8ae02a9c7c4ac4011c7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalWriteOrder.Load",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "terminalWriteOrder.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *func(write func())"
+      },
+      "shapeHash": "sha256:38b7f34fe486ecfa2f1cb2ed1966b0b4abc3dd029cfad7e7017735b38e8894d1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalWriteOrder.Store",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "terminalWriteOrder.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val *func(write func()))"
+      },
+      "shapeHash": "sha256:ffab588701a44efd6d9a9e7da3076ed146d009bc537b13d1ad3d6700d898cfc9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalWriteOrder.Swap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "terminalWriteOrder.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new *func(write func())) (old *func(write func()))"
+      },
+      "shapeHash": "sha256:99b61e0f49d0629050b3c4af59c657e3cceaf5f4fe660f3bf25c39aa023cfe67"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalWriteQueue",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "terminalWriteQueue",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "terminalWriteQueue"
+      },
+      "shapeHash": "sha256:86f808ba66fb9c26331c41cd6ddfc723628b6eaa68670c8dd5f62ebe64041808"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalWriteQueue.enqueue",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "terminalWriteQueue.enqueue",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(write func()) (queued bool, wake bool)"
+      },
+      "shapeHash": "sha256:e0f9141e2c02e801cc12bc45d9e4ff324f9fd287d325ee05ead50c3b6421953d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalWriteQueue.flushAndClose",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "terminalWriteQueue.flushAndClose",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalWriteQueue.run",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "terminalWriteQueue.run",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminateTrash",
@@ -364376,6 +364596,17 @@
       "shapeHash": "sha256:e4ad71a91f7fd7c5ac8e0722652855165fc08c31c841da399341b90e1cc1b665"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.BeginStop",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ProcessTerminal.BeginStop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *StopTransaction"
+      },
+      "shapeHash": "sha256:2beb44aa6fd1c2aba54299477b12c55482c066c92e1040572d0f4056688dafeb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.CacheSizeUntilResize",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ProcessTerminal.CacheSizeUntilResize",
@@ -364629,6 +364860,17 @@
       "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.WriteOutsideStop",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ProcessTerminal.WriteOutsideStop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(write func())"
+      },
+      "shapeHash": "sha256:ca20efb72773e186dbc616dcbacfc211eeb05172dab348edf6397d67c0ae8e64"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.WriteStopModes",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ProcessTerminal.WriteStopModes",
@@ -364783,6 +365025,28 @@
       "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.keepalive",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ProcessTerminal.keepalive",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, stopped \u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:5aeaa2bd9b04f8a8046bce59b0c7dae41859e358429db0e688916efd97326c3c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.openForeignWrites",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ProcessTerminal.openForeignWrites",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.progressActiveForExit",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ProcessTerminal.progressActiveForExit",
@@ -364805,6 +365069,28 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.sealForeignWrites",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ProcessTerminal.sealForeignWrites",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.setKeepaliveDispatch",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ProcessTerminal.setKeepaliveDispatch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dispatch func(ctx context.Context, fn func()) error)"
+      },
+      "shapeHash": "sha256:231967dad61154bc88644bb4828ae272ba22a53c936d8ef4994bc735ff9f90d2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.setProgramStatusElsewhere",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ProcessTerminal.setProgramStatusElsewhere",
@@ -364814,6 +365100,17 @@
         "type": "func(elsewhere bool)"
       },
       "shapeHash": "sha256:4929cd67b0a04896152863476d2ae6423f9d8376d002e7eadbe56001094b803f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.setProgress",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ProcessTerminal.setProgress",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(active bool)"
+      },
+      "shapeHash": "sha256:293b70ea26cb4b4db9f1f3d8c96c066cb3dbc334eecbf120c15f9a4fec3970ad"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.size",
@@ -371713,6 +372010,17 @@
       "shapeHash": "sha256:e5c60b1172413e8425788a61730588e4d339970f1672f6f2be0b543f498d5e09"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#StopGate",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "StopGate",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "StopGate"
+      },
+      "shapeHash": "sha256:b5e9a31cd22502e23cb8583d707a825cfbd7fce141eff83c2caad226fd661137"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#StopOptions",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "StopOptions",
@@ -371722,6 +372030,39 @@
         "type": "StopOptions"
       },
       "shapeHash": "sha256:12fd965c142ccbbfa2fa11fbd3077a27a1f540d6008c77554163f5d6e1c363ec"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#StopTransaction",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "StopTransaction",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "StopTransaction"
+      },
+      "shapeHash": "sha256:e96dd5f8de2399ca52cc1781cee8890bb332d20a1efa6ba982e1f13a349c9ddc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#StopTransaction.End",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "StopTransaction.End",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(seal bool)"
+      },
+      "shapeHash": "sha256:a01c51e9a95cd4eb9c8f641b9fa05d5c875f6696f05086918b60bbf4e46b876c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#StopTransaction.SetProgress",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "StopTransaction.SetProgress",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(active bool)"
+      },
+      "shapeHash": "sha256:293b70ea26cb4b4db9f1f3d8c96c066cb3dbc334eecbf120c15f9a4fec3970ad"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#StreamedToolArgs",
@@ -393119,6 +393460,17 @@
       "shapeHash": "sha256:654f06c5b7b7549ae57a1acef3ce8e111a5f79708752674e185d53b769f455e3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#getTermios",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "getTermios",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fd int) (*golang.org/x/sys/unix.Termios, error)"
+      },
+      "shapeHash": "sha256:3e5480f1e71441e8d9148cea0cd64beb8a058b196d820be5118ce3ef86789c4e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#globalRegistry",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "globalRegistry",
@@ -394272,6 +394624,28 @@
         "type": "func(root Component)"
       },
       "shapeHash": "sha256:dda462222d8cbd5a6ab6ace848aee652460b2d27ee001db0cd826180eb4504cd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ioctlReadTermios",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ioctlReadTermios",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ioctlWriteTermiosDrain",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ioctlWriteTermiosDrain",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#isASCII",
@@ -395933,6 +396307,28 @@
         "type": "func(src string, state *markedInlineState) []markedToken"
       },
       "shapeHash": "sha256:f507c70768058f8c168157a96875766b5ae745f4fc0bab363636c1c0e89b149b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#libuvRawMode",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "libuvRawMode",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fd int) (*golang.org/x/term.State, error)"
+      },
+      "shapeHash": "sha256:da08de22057ee94aa9a2a4e68f77725f6eb7a74cffa7fe0f432f12dceb96f04e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#libuvRawTermios",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "libuvRawTermios",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(termios *golang.org/x/sys/unix.Termios)"
+      },
+      "shapeHash": "sha256:4460df68c384fc65f2262542a119906e1ad34b1ef9e79e230fdcdb9c96e2cf55"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#lineCells",
@@ -403668,6 +404064,17 @@
       "shapeHash": "sha256:3c1839dfb7b4cc4f5ff5ac68b0b9e3bca6def38d5fbec3a0bfdc092348b74cc4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.BeginStop",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "rendererTerminal.BeginStop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *StopTransaction"
+      },
+      "shapeHash": "sha256:2beb44aa6fd1c2aba54299477b12c55482c066c92e1040572d0f4056688dafeb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.CacheSizeUntilResize",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "rendererTerminal.CacheSizeUntilResize",
@@ -403921,6 +404328,17 @@
       "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.WriteOutsideStop",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "rendererTerminal.WriteOutsideStop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(write func())"
+      },
+      "shapeHash": "sha256:ca20efb72773e186dbc616dcbacfc211eeb05172dab348edf6397d67c0ae8e64"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.WriteStopModes",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "rendererTerminal.WriteStopModes",
@@ -404075,6 +404493,28 @@
       "shapeHash": "sha256:445dc8d6f1996672991f88a8c5d8ec1530635dcbfcbbedbd5bfc56414677b5b0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.keepalive",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "rendererTerminal.keepalive",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, stopped \u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:5aeaa2bd9b04f8a8046bce59b0c7dae41859e358429db0e688916efd97326c3c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.openForeignWrites",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "rendererTerminal.openForeignWrites",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.progressActiveForExit",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "rendererTerminal.progressActiveForExit",
@@ -404097,6 +404537,28 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.sealForeignWrites",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "rendererTerminal.sealForeignWrites",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.setKeepaliveDispatch",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "rendererTerminal.setKeepaliveDispatch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dispatch func(ctx context.Context, fn func()) error)"
+      },
+      "shapeHash": "sha256:231967dad61154bc88644bb4828ae272ba22a53c936d8ef4994bc735ff9f90d2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.setProgramStatusElsewhere",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "rendererTerminal.setProgramStatusElsewhere",
@@ -404106,6 +404568,17 @@
         "type": "func(elsewhere bool)"
       },
       "shapeHash": "sha256:4929cd67b0a04896152863476d2ae6423f9d8376d002e7eadbe56001094b803f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.setProgress",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "rendererTerminal.setProgress",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(active bool)"
+      },
+      "shapeHash": "sha256:293b70ea26cb4b4db9f1f3d8c96c066cb3dbc334eecbf120c15f9a4fec3970ad"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.size",
@@ -405483,6 +405956,17 @@
       "shapeHash": "sha256:2e50a9fabd1e4eb39822a62ebab5a1a92d74e8c64b4642e36c26cf0f491708fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#setTermiosAfterDraining",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "setTermiosAfterDraining",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fd int, termios *golang.org/x/sys/unix.Termios) error"
+      },
+      "shapeHash": "sha256:ec3f607ebfec7c2ba1120f7555a558625bc612efc17f6987a94b86ad0cb9356e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#settingsEqual",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "settingsEqual",
@@ -406108,6 +406592,17 @@
         "type": "func(theme *MarkdownTheme) bool"
       },
       "shapeHash": "sha256:6173a695d44b57fffb8b874ed0773504896cd6122708ff554c320e20abfc442e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#stopGate",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "stopGate",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "stopGate"
+      },
+      "shapeHash": "sha256:1d3409a9848ebfb826a3798f1b51ca7759e186a6a578a474e1ae88d381a294fe"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#stoppableTimer",
