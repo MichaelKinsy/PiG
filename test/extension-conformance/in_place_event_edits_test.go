@@ -40,9 +40,7 @@ func inPlaceToolResult(content string, details string, isError bool) map[string]
 
 func eventEditCases() []eventEditCase {
 	orig := inPlaceToolResult("orig", "orig", false)
-	edited := func(content, details string, isError bool) map[string]any {
-		return inPlaceToolResult(content, details, isError)
-	}
+	edited := inPlaceToolResult
 	message := func(text string) map[string]any {
 		return map[string]any{"message": map[string]any{"role": "user", "content": []any{map[string]any{"type": "text", "text": text}}, "timestamp": float64(1)}}
 	}
