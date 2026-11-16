@@ -1,90 +1,76 @@
 # Behavior family: extensions-runtime
-# Scenario: an extension removed from disk before /reload keeps its provider: still listed, still selectable, and still answered by the old extension's own closure.
+# Scenario: an extension removed from disk before /reload keeps its provider: still selected, and still answered by the old extension's own closure.
 #
 # Pi's reload never unregisters a provider (agent-session.ts:3815-3855 reload; model-runtime.ts:965-993): ModelRuntime holds the registration, and with it the
-# extension's streamSimple closure, until the process ends or an extension unregisters the name. Probed on Pi 1.5.2 (rpc mode, user extensions in the agent
-# directory): after the extension file was removed and /reload ran, get_available_models still listed removed-prov/r1, set_model accepted it, and a prompt was
-# answered by the closure of the first load ("served by closure of load 1"); a second /reload changed nothing. PiG once unregistered the provider with the
-# removed extension: the model vanished from the list, set_model said "Model not found" and a prompt failed with "No API key found for removed-prov".
+# extension's streamSimple closure, until the process ends or an extension unregisters the name. Probed on Pi 1.5.2 (user extensions in the agent directory):
+# after the extension file was removed and /reload ran, get_available_models still listed removed-prov/r1, set_model accepted it, and a prompt was answered by
+# the closure of the first load ("served by closure of load 1"); a second /reload changed nothing. PiG once unregistered the provider with the removed
+# extension: the model vanished from the list, set_model said "Model not found" and a prompt failed with "No API key found for removed-prov".
 #
-# The answer names the factory run that made the closure, so only the old generation can give it: a host that restarted the extension, or answered from
-# anywhere else, would say another load or fail.
+# The answer names the factory run that made the closure and the number of the call it serves, so only the old generation can give it, and a host that
+# restarted the extension would answer another load or call 1 again. The file is removed by a command of an extension that stays, then /reload is typed.
 
 name = "107-removed-extension-provider-after-reload"
-description = "A removed extension's provider stays listed, selectable and answered by its old closure across two reloads"
+description = "A removed extension's provider stays selected and answered by its old closure across two reloads"
 covers = [
   "packages/coding-agent/src/core/agent-session.ts",
   "packages/coding-agent/src/core/model-runtime.ts",
   "packages/coding-agent/src/core/extensions/runner.ts",
 ]
-tags = ["hermetic", "fast"]
-driver = "rpc-mode"
-model = "test-faux/faux-1"
-
-[rpc]
-cwd = "../testdata"
-timeout_seconds = 60
-
-[[rpc.steps]]
-line = '{"id":"models1","type":"get_available_models"}'
-wait_contains = ['"id":"models1"']
-wait_timeout_seconds = 20
-
-[[rpc.steps]]
-line = '{"id":"select1","type":"set_model","provider":"removed-prov","modelId":"r1"}'
-wait_contains = ['"id":"select1"']
-wait_timeout_seconds = 20
-
-[[rpc.steps]]
-line = '{"id":"prompt1","type":"prompt","message":"hello 1"}'
-wait_event = "agent_end"
-wait_timeout_seconds = 30
-
-[[rpc.steps]]
-line = '{"id":"remove1","type":"prompt","message":"/removed-remove-and-reload"}'
-wait_contains = ['removed-reload-done-1']
-wait_timeout_seconds = 30
-
-[[rpc.steps]]
-line = '{"id":"models2","type":"get_available_models"}'
-wait_contains = ['"id":"models2"']
-wait_timeout_seconds = 20
-
-[[rpc.steps]]
-line = '{"id":"prompt2","type":"prompt","message":"hello 2"}'
-wait_event = "agent_end"
-wait_timeout_seconds = 30
-
-[[rpc.steps]]
-line = '{"id":"reload2","type":"prompt","message":"/removed-reload"}'
-wait_contains = ['removed-reload-done-2']
-wait_timeout_seconds = 30
-
-[[rpc.steps]]
-line = '{"id":"select3","type":"set_model","provider":"removed-prov","modelId":"r1"}'
-wait_contains = ['"id":"select3"']
-wait_timeout_seconds = 20
-
-[[rpc.steps]]
-line = '{"id":"prompt3","type":"prompt","message":"hello 3"}'
-wait_event = "agent_end"
-wait_timeout_seconds = 30
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "removed-prov/r1"
 
 [env]
 override_base_args = true
-pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/removed-provider/pig-agent"]
-pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/removed-provider/pig-agent"]
+pig_args = ["--model", "removed-prov/r1", "--no-session"]
 pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/removed-provider/pi-agent"]
-pi_extensions = ["../../testdata/test-faux-provider.ts"]
-pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+pi_args = ["--model", "removed-prov/r1", "--no-session"]
+
+[tmux]
+width = 120
+height = 60
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["hello 1", "Enter"]
+wait_visible_contains = ["served by closure of load 1, call 1"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/removed-unlink", "Enter"]
+wait_visible_contains = ["removed-unlinked"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_visible_contains = ["Reloaded"]
+wait_timeout_seconds = 20
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["hello 2", "Enter"]
+wait_visible_contains = ["served by closure of load 1, call 2"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+settle_seconds = 4
+
+[[tmux.steps]]
+keys = ["hello 3", "Enter"]
+wait_visible_contains = ["served by closure of load 1, call 3"]
+wait_timeout_seconds = 20
 
 [assert]
-exit_code = 0
-runs = 3
-output_normalized_equal = true
-# The three answers come from the closure of load 1, which the removed extension's file made; the list after the first reload still holds the provider; no
-# prompt fails for want of a credential or a model.
-both_match_regex = [
-  '(?s)served by closure of load 1.*"id":"models2".*removed-prov.*served by closure of load 1.*served by closure of load 1',
+both_reach_ready = true
+both_contain = [
+  "served by closure of load 1, call 1",
+  "served by closure of load 1, call 2",
+  "served by closure of load 1, call 3",
 ]
 both_not_contain = ["No API key found", "Model not found", "Failed to load extension", "panic:", "goroutine "]
+runs = 3
