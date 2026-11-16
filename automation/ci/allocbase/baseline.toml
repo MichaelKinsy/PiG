@@ -1611,7 +1611,7 @@ allocs = 1064
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionRegistryMetadataRefresh"
-allocs = 1089
+allocs = 444
 
 [[benchmark]]
 package = "./coding"
@@ -2921,7 +2921,7 @@ allocs = 49845
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionCatalogEncoding/uncached"
-allocs = 97795
+allocs = 89779
 
 [[benchmark]]
 package = "./internal/codingagent"
