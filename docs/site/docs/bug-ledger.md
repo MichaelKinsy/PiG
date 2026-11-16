@@ -1232,7 +1232,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8b15be3](#bf-8b15be3) | Tests: the read barrier, which lets a fixture server write its next record only when the client is reading… | PiG's own defect | Linux | Unreleased |
 | [BF-8b75dc0](#bf-8b75dc0) | Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8b792f9](#bf-8b792f9) | Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the… | PiG's own defect | Windows, WSL | Unreleased |
-| [BF-8b8524d](#bf-8b8524d) | chord: closing the workers component waits for the goroutines that read the streams of the workers that exited | PiG's own defect | All platforms | Unreleased |
 | [BF-8b8b8d3](#bf-8b8b8d3) | A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in… | PiG's own defect | All platforms | Unreleased |
 | [BF-8b8f379](#bf-8b8f379) | A pi-ai call made while a module loads is answered in every extension host: SDK sessions, the extension… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8b9e467](#bf-8b9e467) | `PIG_PROFILE=metrics` reports the exact cumulative allocation counts | PiG's own defect | All platforms | 0.5.0 |
@@ -2145,7 +2144,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f12896b](#bf-f12896b) | Interactive startup writes the terminal color query before its first frame, as Pi does: starting the renderer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f19efb1](#bf-f19efb1) | A `session_compact` handler's passive custom message reaches the overflow retry (D138, Pi #9051) | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f1a59f9](#bf-f1a59f9) | An OpenAI Responses event's `output_index` matches an output item as a key of Pi's `Map` does: a string… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-f1df4eb](#bf-f1df4eb) | chord: a worker's exit is told when its process ended even while a process outside its tree keeps writing the… | PiG's own defect | All platforms | Unreleased |
 | [BF-f1ed7db](#bf-f1ed7db) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-f1f2471](#bf-f1f2471) | Saving `auth.json` (or another state file pig replaces through a temporary file) when the path is not an… | PiG's own defect | All platforms | Unreleased |
 | [BF-f1fc6ab](#bf-f1fc6ab) | A custom provider named exactly `ollama` in `models.json` with no `apiKey` was sent requests in print mode… | PiG's own defect | All platforms | Unreleased |
@@ -19087,20 +19085,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/custom_editor_test.go::TestCustomEditorExtensionShortcutThenPasteImageComeFirst`, `internal/codingagent/keybindings_inventory_test.go::TestAppKeybindingDefinitionsMatchUpstreamInventory`, `internal/codingagent/keybindings_platform_test.go::TestKeybindingDefinitionsApplyPlatformDefaults`, `internal/codingagent/keybindings_platform_test.go::TestPlatformDivergentControlKeys`
 - **Release note:** Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the program as a raw key did nothing before), as in Pi.
 
-### BF-8b8524d
-
-**chord: closing the workers component waits for the goroutines that read the streams of the workers that exited**
-
-- **Source:** PiG's own defect
-- **Symptom:** chord: closing the workers component waits for the goroutines that read the streams of the workers that exited.
-- **Root cause:** the release was written as if closing the descriptors ended the readers, but a reader is also a call into the app, which a closed stream does not stop, and nothing tied the goroutine's end to the component that released it
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `8b8524d39d` (2026-11-16)
-- **Tests:** `chord/nextnode/workers/workers_drain_flood_unix_test.go::TestCloseWaitsForTheReaderOfAnExitedWorkersOutputThatIsInTheAppsOnOutput`
-- **Release note:** chord: closing the workers component waits for the goroutines that read the streams of the workers that exited. A process outside a worker's tree that still held its output made the server keep the stream's reader after the worker's exit; Close released the stream without waiting for that reader, so a reader inside the app's OnOutput (or in a listener of the link) went on running and told what it had read to the app after Close returned, and its goroutine and descriptor outlived the component. Close now waits for those readers, bounded by its context, and nothing of a released worker's streams is told once it returned. Same origin and releases as the fix before it (no tag contains the fault; v0.7.0 does not).
-
 ### BF-8b8b8d3
 
 **A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in…**
@@ -31782,20 +31766,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/anthropic_event_member_type_oracle_test.go::TestAnthropicEventMistypedMembersMatchPi`, `ai/mistral_chunk_member_type_oracle_test.go::TestMistralChunkMistypedMembersMatchPi`, `ai/openai_responses_member_type_oracle_test.go::TestOpenAIResponsesMistypedMembersMatchPi`
 - **Release note:** An OpenAI Responses event's `output_index` matches an output item as a key of Pi's `Map` does: a string, `null`, a boolean or a missing index is its own key rather than a decode error or item 0, and an object never matches.
 
-### BF-f1df4eb
-
-**chord: a worker's exit is told when its process ended even while a process outside its tree keeps writing the…**
-
-- **Source:** PiG's own defect
-- **Symptom:** chord: a worker's exit is told when its process ended even while a process outside its tree keeps writing the worker's stdout, stderr or channel.
-- **Root cause:** the drain took a read that finds the stream empty as the sign that everything written before the exit was told, which holds only while nobody else writes the stream, and a descriptor held outside the tree is exactly someone else
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `f1df4eb0d8` (2026-11-16)
-- **Tests:** `chord/nextnode/workers/workers_drain_flood_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatKeepsItsOutputFull`, `chord/nextnode/workers/workers_drain_unix_test.go::TestADrainDoesNotOweWhatItsReaderTookBeforeItsProcessEnded`, `chord/nextnode/workers/workers_drain_unix_test.go::TestADrainSettlesOnceItToldWhatItsStreamHeldWhenItsProcessEndedWhileAProcessOutsideKeepsItFull`, `chord/nextnode/workers/workers_drain_unix_test.go::TestADrainTellsAllThatWasWrittenBeforeItsProcessEndedWhileItsReaderReadsAndAProcessOutsideWritesWithoutPause`
-- **Release note:** chord: a worker's exit is told when its process ended even while a process outside its tree keeps writing the worker's stdout, stderr or channel. A process the worker started in a session of its own survives the kill of the worker's process group; when it held a stream of the worker and wrote it without a pause, the server's settlement of the exit never finished (it waited for a read that found the stream empty, and a refilled stream never is), so the worker's exit was never told and its session never learned that its worker had died. The settlement now covers what the stream held when the worker ended: all of that is told before the exit, and what the outside process writes later is told after it, as before. The fault came with the fix that made a worker's exit wait for no stream's end (2026-11-13) and is in no release (no tag contains it; v0.7.0 does not).
-
 ### BF-f1ed7db
 
 **Fix in shipped code**
@@ -34047,7 +34017,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 19
+- Follow-up to unreleased work: 21
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 3
 - test-only: 1

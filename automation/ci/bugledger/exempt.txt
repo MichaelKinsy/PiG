@@ -47,3 +47,5 @@ c6ab561d18 Follow-up to unreleased work: the --listen server's isolated Node lau
 360170d195 Fix reverted before release: the tool declaration decode that keeps a lone surrogate was reverted by cad47e1edb in the same branch, because the decode alone did not make the request equal to Pi (the difference is recorded in ai/anthropic_wire_body_oracle_test.go)
 f98b572dcad57038e727d73145c89f271bb38cf5 see 4a0c240b0159238c7200ffb66f902727a74e81d7
 da08a31d17e4c10902bf4fa81cf1ddb3347214d1 see 4a0c240b0159238c7200ffb66f902727a74e81d7
+f1df4eb0d8 Follow-up to unreleased work: the exit settlement of 48ba73df5 (2026-11-13, in no tag) took a stream found empty as all told, which a descriptor held outside the worker's tree never lets happen; it settles on what the stream held at the exit, found in review (PR 508) before any release
+8b8524d39d Follow-up to unreleased work: the release of an exited worker that 48ba73df5 (2026-11-13, in no tag) added did not wait for the goroutines reading its streams, so Workers.Close returned before them; it awaits them, found in review (PR 508) before any release
