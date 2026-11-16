@@ -278,11 +278,11 @@ def test_conversation_kinds_encode_as_the_go_sdk() -> None:
 
 
 def test_image_ref_is_the_sha256_of_its_bytes() -> None:
-    image = kit.Image(b"png-bytes", "image/png", max_width_cells=20, max_height_cells=10, filename="cover.png", fallback_color="dim")
+    image = kit.Image(b"png-bytes", "image/png", max_width_cells=20, max_height_cells=10, image_id=4242, filename="cover.png", fallback_color="dim")
     assert image.ref == _sha(b"png-bytes")
     encoded = kit.View(image)._encode(False)
     assert encoded.body["root"] == {"kind": "image", "ref": _sha(b"png-bytes"), "mimeType": "image/png", "maxWidthCells": 20,
-                                    "maxHeightCells": 10, "filename": "cover.png", "fallbackColor": "dim"}
+                                    "maxHeightCells": 10, "imageId": 4242, "filename": "cover.png", "fallbackColor": "dim"}
     assert encoded.refs() == [_sha(b"png-bytes")]
 
 

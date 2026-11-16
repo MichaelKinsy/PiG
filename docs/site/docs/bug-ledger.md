@@ -203,6 +203,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-18e3b43](#bf-18e3b43) | After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and… | PiG's own defect | All platforms | Unreleased |
 | [BF-18e7372](#bf-18e7372) | Chord: a table read from a handler's goroutine (`handle.Get`, `Page`, `Count`) while its object ended was a… | PiG's own defect | All platforms | Unreleased |
 | [BF-18f7d39](#bf-18f7d39) | Codemode `@options` errors report V8's JSON error text, tool and schema declarations keep unpaired… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
+| [BF-194a2b1](#bf-194a2b1) | The `root` of a TypeScript `PiGWireView` is typed against the node kinds the host builds (`PiGViewNode`) and… | PiG's own defect | All platforms | Unreleased |
 | [BF-1971aae](#bf-1971aae) | A `bash` shell that starts at the moment `pig` handles an emergency exit, a crash or a signal is now killed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-19a07f0](#bf-19a07f0) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
 | [BF-19a2d2d](#bf-19a2d2d) | fix(durable/core): match Pi's passes in the cut-off flows: drain resumes after the async reserve, open and… | PiG's own defect | All platforms | Unreleased |
@@ -230,6 +231,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1d5b272](#bf-1d5b272) | A text file passed as an `@file` argument that holds invalid UTF-8 now reaches the prompt as Pi sends it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1dcaef7](#bf-1dcaef7) | Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1de9126](#bf-1de9126) | fix(schema/formats): keep lone surrogates, drop unused idna helpers, check the generators in | PiG's own defect | All platforms | Unreleased |
+| [BF-1e2fa7e](#bf-1e2fa7e) | A Go, Rust, Python or Lisp extension can now set the Kitty image id of an image node of a view, as a Node… | PiG's own defect | All platforms | Unreleased |
 | [BF-1e64d3f](#bf-1e64d3f) | A Durable core's warm turn waits exactly the microtask passes Pi's does | PiG's own defect | All platforms | Unreleased |
 | [BF-1ea5c18](#bf-1ea5c18) | A `usage` object that an extension supplies is written to the session file as the extension wrote it, as in… | PiG's own defect | All platforms | Unreleased |
 | [BF-1ed43b3](#bf-1ed43b3) | fix(train): load pig_sdk.tui with the package, run the TS queue check with no runtime, pin three fixture… | PiG's own defect | All platforms | Unreleased |
@@ -4832,6 +4834,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `codemode/declarations_test.go::TestRenderDeclarationsRendersNamespacedGlobalsAndExplicitSignatures`, `codemode/upstream_oracle_test.go::TestParseCodemodeSourceMatchesPi`, `codemode/upstream_oracle_test.go::TestRenderDeclarationsMatchesPi`, `codemode/upstream_oracle_test.go::TestSchemaToTypeMatchesPi`, `codemode/upstream_oracle_test.go::TestToCodemodeIdentifierMatchesPi`, `codemode/upstream_oracle_test.go::TestToolSignatureAndSampleMatchPi`, `coding/extension/system_prompt_options_wire_test.go::TestBuildSystemPromptOptionsMarshalsCollectionComplete`, `coding/tool_definition_output_schema_test.go::TestToolDefinitionCarriesOutputSchemaOfBuiltinTools` and 2 more in docs/bug-ledger.json
 - **Release note:** Codemode `@options` errors report V8's JSON error text, tool and schema declarations keep unpaired surrogates, and an explicitly empty global signature renders as Pi renders it.
 
+### BF-194a2b1
+
+**The `root` of a TypeScript `PiGWireView` is typed against the node kinds the host builds (`PiGViewNode`) and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The `root` of a TypeScript `PiGWireView` is typed against the node kinds the host builds (`PiGViewNode`) and no longer accepts any object: a misspelt kind, a member of another kind, a select-list without its id or a string `imageId` is a compile error and no longer a refused mount at run time.
+- **Root cause:** PiGWireView.root was Record<string, unknown>, which no type test could fail
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `194a2b1b70` (2026-11-16)
+- **Tests:** None recorded.
+- **Release note:** The `root` of a TypeScript `PiGWireView` is typed against the node kinds the host builds (`PiGViewNode`) and no longer accepts any object: a misspelt kind, a member of another kind, a select-list without its id or a string `imageId` is a compile error and no longer a refused mount at run time. The plugin view API is unreleased and no release has the type.
+
 ### BF-1971aae
 
 **A `bash` shell that starts at the moment `pig` handles an emergency exit, a crash or a signal is now killed…**
@@ -5201,6 +5217,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1de91268b6` (2026-10-31)
 - **Tests:** `schema/formats/conformance_test.go::TestConformance`, `schema/formats/formats_test.go::TestSplitSurrogatePairs`, `schema/formats/oracle_test.go::TestOracleCorpus`
+
+### BF-1e2fa7e
+
+**A Go, Rust, Python or Lisp extension can now set the Kitty image id of an image node of a view, as a Node…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go, Rust, Python or Lisp extension can now set the Kitty image id of an image node of a view, as a Node extension could: Go `kit.Image.ImageID`, Rust `kit::Image::image_id`, Python `kit.Image(image_id=...)`, Lisp `(kit-image ... :image-id n)`.
+- **Root cause:** The host has read `imageId` of an image node (upstream `ImageOptions.imageId`; absent, the host allocates one) since the node was added, but those four kits had no member for it and sent none.
+- **User impact:** Extra allocation or slower run
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1e2fa7e4a6` (2026-11-16)
+- **Tests:** `extensions/sdk/internal/kitwire/encode_test.go::TestEncodeMatchesTheHostViewPayload`, `test/extension-conformance/ui_view_image_id_test.go::TestConformance_UIViewImageID`
+- **Release note:** A Go, Rust, Python or Lisp extension can now set the Kitty image id of an image node of a view, as a Node extension could: Go `kit.Image.ImageID`, Rust `kit::Image::image_id`, Python `kit.Image(image_id=...)`, Lisp `(kit-image ... :image-id n)`. The host has read `imageId` of an image node (upstream `ImageOptions.imageId`; absent, the host allocates one) since the node was added, but those four kits had no member for it and sent none. The Go, Python and Rust kits have had the image node since 0.5.1 and the Lisp kit since 0.7.0.
 
 ### BF-1e64d3f
 
