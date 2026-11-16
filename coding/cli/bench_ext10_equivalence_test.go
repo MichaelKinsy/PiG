@@ -1,3 +1,5 @@
+//go:build !pig_strip_extension_sdk_go
+
 // SPDX-License-Identifier: MIT
 
 package cli
