@@ -58,7 +58,7 @@ pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
 [assert]
 exit_code = 0
 both_contain = ['"contextUsage":{"tokens":', '"toolCalls":1']
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 runs = 3
 

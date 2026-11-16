@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -37,23 +38,23 @@ func main() {
 	_ = os.Setenv("AWS_REGION", "us-east-1")
 	_ = os.Setenv("AWS_BEDROCK_FORCE_HTTP1", "1")
 
-	out := map[string]any{}
-	out["openaiCompletions"] = probeOpenAICompletions()
-	out["openaiCompletionsGrammar"] = probeOpenAICompletionsGrammar()
-	out["openaiCompletions084"] = probeOpenAICompletions084()
-	out["openaiCompletionsResponse"] = probeOpenAICompletionsResponse()
-	out["openaiCompletionsUnknownFinish"] = probeOpenAICompletionsUnknownFinish()
-	out["openaiResponses"] = probeOpenAIResponses()
-	out["openaiCodexResponses"] = probeOpenAICodexResponses()
-	out["azureOpenAIResponses"] = probeAzureOpenAIResponses()
-	out["openaiResponsesGrammar"] = probeOpenAIResponsesGrammar()
-	out["anthropic"] = probeAnthropic()
-	out["google"] = probeGoogle()
-	out["googleToolIds"] = probeGoogleToolIds()
-	out["googleThinkingSig"] = probeGoogleThinkingSig()
-	out["googleVertex"] = probeGoogleVertex()
-	out["mistral"] = probeMistral()
-	out["bedrock"] = probeBedrock()
+	out := &object{}
+	out.set("openaiCompletions", probeOpenAICompletions())
+	out.set("openaiCompletionsGrammar", probeOpenAICompletionsGrammar())
+	out.set("openaiCompletions084", probeOpenAICompletions084())
+	out.set("openaiCompletionsResponse", probeOpenAICompletionsResponse())
+	out.set("openaiCompletionsUnknownFinish", probeOpenAICompletionsUnknownFinish())
+	out.set("openaiResponses", probeOpenAIResponses())
+	out.set("openaiCodexResponses", probeOpenAICodexResponses())
+	out.set("azureOpenAIResponses", probeAzureOpenAIResponses())
+	out.set("openaiResponsesGrammar", probeOpenAIResponsesGrammar())
+	out.set("anthropic", probeAnthropic())
+	out.set("google", probeGoogle())
+	out.set("googleToolIds", probeGoogleToolIds())
+	out.set("googleThinkingSig", probeGoogleThinkingSig())
+	out.set("googleVertex", probeGoogleVertex())
+	out.set("mistral", probeMistral())
+	out.set("bedrock", probeBedrock())
 
 	enc := json.NewEncoder(os.Stdout)
 	if err := enc.Encode(out); err != nil {
@@ -69,15 +70,7 @@ func probeOpenAICompletionsGrammar() any {
 	defer server.Close()
 	strictTrue := true
 	opts := sampleOptions(nil, false)
-	opts.context.Tools = []ai.ToolSchema{{
-		Name:        "calc",
-		Description: "calculator",
-		Parameters:  map[string]any{"type": "object", "properties": map[string]any{"expr": map[string]any{"type": "string"}}, "required": []string{"expr"}},
-		ConstrainedSampling: &ai.ConstrainedSamplingConfig{
-			Type:     "grammar",
-			Variants: map[string]string{ai.GrammarFormatOpenAILark: "start: NUMBER"},
-		},
-	}}
+	opts.context.Tools = []ai.ToolSchema{toolFromJSON(`{"name":"calc","description":"calculator","parameters":{"type":"object","properties":{"expr":{"type":"string"}},"required":["expr"]},"constrainedSampling":{"type":"grammar","variants":{"openai_lark":"start: NUMBER"}}}`)}
 	return runProbeOptions(ai.NewOpenAIProvider(ai.OpenAIConfig{
 		BaseURL:    server.URL,
 		APIKey:     "sk-test",
@@ -119,6 +112,8 @@ func probeOpenAICompletions084() any {
 		Model:          "reasoning-model",
 		ProviderID:     "baseten",
 		SamplingParams: map[string]any{"top_p": 0.7, "min_p": 0.1},
+		// Models arrive from models.json with their members in file order; Pi's model literal writes top_p, then min_p.
+		SamplingParamsOrder: []string{"top_p", "min_p"},
 		Compat: &ai.OpenAICompat{
 			SupportsDeveloperRole:       new(false),
 			SupportsStore:               new(false),
@@ -204,12 +199,12 @@ func probeOpenAICompletionsUnknownFinish() any {
 // collectResponse drives a provider against the faux SSE and aggregates the
 // observed stream into a normalized shape the pi harness produces identically:
 // full text, full reasoning, terminal stop reason, and input/output usage.
-func collectResponse(provider ai.Provider) map[string]any {
+func collectResponse(provider ai.Provider) *object {
 	opts := sampleOptions(func(any, *ai.Model) (any, error) { return nil, nil }, false)
-	res := map[string]any{"text": "", "reasoning": "", "stop": "", "usageIn": 0, "usageOut": 0}
+	res := obj("text", "", "reasoning", "", "stop", "", "usageIn", 0, "usageOut", 0)
 	stream, err := provider.Stream(context.Background(), ai.NormalizeContext(opts.context), opts.stream)
 	if err != nil {
-		res["error"] = err.Error()
+		res.set("error", err.Error())
 		return res
 	}
 	var text, reasoning strings.Builder
@@ -220,19 +215,19 @@ func collectResponse(provider ai.Provider) map[string]any {
 		case ai.ThinkingDeltaEvent:
 			reasoning.WriteString(ev.Delta)
 		case ai.DoneEvent:
-			res["stop"] = ev.Reason
+			res.set("stop", ev.Reason)
 			if ev.Message != nil {
-				res["usageIn"] = ev.Message.Usage.Input
-				res["usageOut"] = ev.Message.Usage.Output
+				res.set("usageIn", ev.Message.Usage.Input)
+				res.set("usageOut", ev.Message.Usage.Output)
 			}
 		case ai.ErrorEvent:
 			if ev.Error != nil {
-				res["error"] = ev.Error.ErrorMessage
+				res.set("error", ev.Error.ErrorMessage)
 			}
 		}
 	}
-	res["text"] = text.String()
-	res["reasoning"] = reasoning.String()
+	res.set("text", text.String())
+	res.set("reasoning", reasoning.String())
 	return res
 }
 
@@ -256,15 +251,7 @@ func probeOpenAIResponsesGrammar() any {
 	defer server.Close()
 	strictTrue := true
 	opts := sampleOptions(nil, true)
-	opts.context.Tools = []ai.ToolSchema{{
-		Name:        "calc",
-		Description: "calculator",
-		Parameters:  map[string]any{"type": "object", "properties": map[string]any{"expr": map[string]any{"type": "string"}}, "required": []string{"expr"}},
-		ConstrainedSampling: &ai.ConstrainedSamplingConfig{
-			Type:     "grammar",
-			Variants: map[string]string{ai.GrammarFormatOpenAILark: "start: NUMBER"},
-		},
-	}}
+	opts.context.Tools = []ai.ToolSchema{toolFromJSON(`{"name":"calc","description":"calculator","parameters":{"type":"object","properties":{"expr":{"type":"string"}},"required":["expr"]},"constrainedSampling":{"type":"grammar","variants":{"openai_lark":"start: NUMBER"}}}`)}
 	return runProbeOptions(ai.NewOpenAIResponsesProvider(ai.OpenAIResponsesConfig{
 		BaseURL:     server.URL,
 		APIKey:      "sk-test",
@@ -399,11 +386,11 @@ func probeBedrock() any {
 	return runProbe(provider, cap, true)
 }
 
-func runProbe(provider ai.Provider, cap *capture, isReasoning bool) map[string]any {
+func runProbe(provider ai.Provider, cap *capture, isReasoning bool) *object {
 	return runProbeOptions(provider, cap, sampleOptions(nil, isReasoning))
 }
 
-func runProbeOptions(provider ai.Provider, cap *capture, opts probeRequest) map[string]any {
+func runProbeOptions(provider ai.Provider, cap *capture, opts probeRequest) *object {
 	var payload any
 	opts.stream.OnPayload = func(p any, _ *ai.Model) (any, error) {
 		payload = p
@@ -427,17 +414,14 @@ func runProbeOptions(provider ai.Provider, cap *capture, opts probeRequest) map[
 	if !json.Valid(body) {
 		panic("provider probe did not capture a complete JSON request: " + provider.ID())
 	}
-	result := map[string]any{
-		"wireBody": json.RawMessage(body),
-		"provider": provider.ID(),
-		"path":     cap.path,
-		"auth":     authKind(cap.header),
-		"payload":  summarizePayload(provider.ID(), payload),
-	}
+	// Pi writes provider, path, auth, the codex headers, the wire body, then the payload summary.
+	result := obj("provider", provider.ID(), "path", cap.path, "auth", authKind(cap.header))
 	if provider.ID() == "openai-codex" {
-		result["accountHeader"] = cap.header.Get("chatgpt-account-id")
-		result["sessionHeader"] = cap.header.Get("session-id")
+		result.set("accountHeader", cap.header.Get("chatgpt-account-id"))
+		result.set("sessionHeader", cap.header.Get("session-id"))
 	}
+	result.set("wireBody", json.RawMessage(body))
+	result.set("payload", summarizePayload(provider.ID(), payload))
 	return result
 }
 
@@ -449,11 +433,7 @@ func sampleOptions(onPayload func(any, *ai.Model) (any, error), isReasoning bool
 				ai.UserMessage{Content: ai.UserContentBlocks{ai.TextContent{Text: "hello provider"}}},
 				ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.TextContent{Text: "prior answer"}}},
 			},
-			Tools: []ai.ToolSchema{{
-				Name:        "lookup",
-				Description: "look things up",
-				Parameters:  map[string]any{"type": "object", "properties": map[string]any{"q": map[string]any{"type": "string"}}, "required": []string{"q"}},
-			}},
+			Tools: []ai.ToolSchema{toolFromJSON(`{"name":"lookup","description":"look things up","parameters":{"type":"object","properties":{"q":{"type":"string"}},"required":["q"]}}`)},
 		},
 		stream: ai.StreamOptions{
 			MaxTokens:   123,
@@ -480,83 +460,86 @@ func captureServer() (*httptest.Server, *capture) {
 	return server, cap
 }
 
-func summarizePayload(provider string, payload any) map[string]any {
+func summarizePayload(provider string, payload any) *object {
 	if payload == nil {
-		return map[string]any{"kind": "nil"}
+		return obj("kind", "nil")
 	}
 	if bedrock, ok := payload.(*bedrockruntime.ConverseStreamInput); ok {
-		return map[string]any{
-			"kind":       "bedrock-converse",
-			"model":      stringValue(bedrock.ModelId),
-			"messages":   len(bedrock.Messages),
-			"system":     len(bedrock.System),
-			"tools":      bedrock.ToolConfig != nil,
-			"inference":  bedrock.InferenceConfig != nil,
-			"additional": bedrock.AdditionalModelRequestFields != nil,
-		}
+		return obj(
+			"kind", "bedrock-converse",
+			"model", stringValue(bedrock.ModelId),
+			"messages", len(bedrock.Messages),
+			"system", len(bedrock.System),
+			"tools", bedrock.ToolConfig != nil,
+			"inference", bedrock.InferenceConfig != nil,
+			"additional", bedrock.AdditionalModelRequestFields != nil,
+		)
 	}
 	var v any
 	b, _ := json.Marshal(payload)
 	_ = json.Unmarshal(b, &v)
 	m, _ := v.(map[string]any)
+	// chat_template_args is a caller's object: it is summarized as the payload wrote it, member order and all, as Pi's JSON round trip keeps it.
+	var members map[string]json.RawMessage
+	_ = json.Unmarshal(b, &members)
 	modelValue := m["model"]
 	if provider == "google" || provider == "google-vertex" {
 		modelValue = nil
 	}
-	out := map[string]any{
-		"kind":       "json",
-		"keys":       normalizedKeys(provider, m),
-		"model":      modelValue,
-		"tools":      normalizedToolCount(provider, m),
-		"maxFields":  normalizedMaxFields(provider, m),
-		"reasoning":  m["reasoning"] != nil || m["reasoning_effort"] != nil || m["reasoningEffort"] != nil || m["thinking"] != nil || m["prompt_mode"] != nil,
-		"stream":     m["stream"],
-		"store":      m["store"],
-		"sessionKey": m["prompt_cache_key"] != nil || m["prompt_cache_retention"] != nil,
-	}
+	out := obj(
+		"kind", "json",
+		"keys", normalizedKeys(provider, m),
+		"model", modelValue,
+		"tools", normalizedToolCount(provider, m),
+		"maxFields", normalizedMaxFields(provider, m),
+		"reasoning", m["reasoning"] != nil || m["reasoning_effort"] != nil || m["reasoningEffort"] != nil || m["thinking"] != nil || m["prompt_mode"] != nil,
+		"stream", m["stream"],
+		"store", m["store"],
+		"sessionKey", m["prompt_cache_key"] != nil || m["prompt_cache_retention"] != nil,
+	)
 	if value, ok := m["top_p"]; ok {
-		out["topP"] = value
+		out.set("topP", value)
 	}
 	if value, ok := m["min_p"]; ok {
-		out["minP"] = value
+		out.set("minP", value)
 	}
 	if value, ok := m["thinking_token_budget"]; ok {
-		out["thinkingTokenBudget"] = value
+		out.set("thinkingTokenBudget", value)
 	}
-	if value, ok := m["chat_template_args"]; ok {
-		out["chatTemplateArgs"] = value
+	if value, ok := members["chat_template_args"]; ok {
+		out.set("chatTemplateArgs", value)
 	}
 	if roles := messageRoles(m["messages"]); len(roles) > 0 {
-		out["messageRoles"] = roles
+		out.set("messageRoles", roles)
 	}
 	if roles := inputRoles(m["input"]); len(roles) > 0 {
-		out["inputRoles"] = roles
+		out.set("inputRoles", roles)
 	}
 	if contents := geminiRoles(m["contents"]); len(contents) > 0 {
-		out["contentRoles"] = contents
+		out.set("contentRoles", contents)
 	}
 	if ids := geminiToolCallIDs(m["contents"]); len(ids) > 0 {
-		out["toolCallIds"] = ids
+		out.set("toolCallIds", ids)
 	}
 	if sigs := geminiThoughtSignatures(m["contents"]); len(sigs) > 0 {
-		out["thoughtSignatures"] = sigs
+		out.set("thoughtSignatures", sigs)
 	}
 	if system := m["system"]; system != nil {
-		out["system"] = true
+		out.set("system", true)
 	}
 	if system := m["systemInstruction"]; system != nil {
-		out["systemInstruction"] = true
+		out.set("systemInstruction", true)
 	}
 	if config, ok := m["config"].(map[string]any); ok {
 		if config["systemInstruction"] != nil {
-			out["systemInstruction"] = true
+			out.set("systemInstruction", true)
 		}
 	}
 	if shape := responsesToolShape(m); shape != nil {
-		out["responsesToolShape"] = shape
+		out.set("responsesToolShape", shape)
 	}
 	if shape := completionsToolShape(m); shape != nil {
-		out["completionsToolShape"] = shape
+		out.set("completionsToolShape", shape)
 	}
 	return out
 }
@@ -566,7 +549,7 @@ func summarizePayload(provider string, payload any) map[string]any {
 // under function and the grammar format under custom.format.grammar. It returns
 // nil for responses payloads (identified by the "input" field) and for payloads
 // without a tools array.
-func completionsToolShape(m map[string]any) []map[string]any {
+func completionsToolShape(m map[string]any) []*object {
 	if _, ok := m["input"]; ok {
 		return nil
 	}
@@ -574,7 +557,7 @@ func completionsToolShape(m map[string]any) []map[string]any {
 	if !ok || len(tools) == 0 {
 		return nil
 	}
-	out := make([]map[string]any, 0, len(tools))
+	out := make([]*object, 0, len(tools))
 	for _, t := range tools {
 		tm, ok := t.(map[string]any)
 		if !ok {
@@ -586,21 +569,21 @@ func completionsToolShape(m map[string]any) []map[string]any {
 			// Not an openai-completions-shaped tool (e.g. anthropic/google).
 			continue
 		}
-		shape := map[string]any{"type": tm["type"]}
+		shape := obj("type", tm["type"])
 		if hasFn {
 			if v, present := fn["strict"]; present {
-				shape["strict"] = v
+				shape.set("strict", v)
 			} else {
-				shape["strict"] = "absent"
+				shape.set("strict", "absent")
 			}
 		}
 		if hasCustom {
 			if f, ok := cu["format"].(map[string]any); ok {
-				format := map[string]any{"type": f["type"]}
+				format := obj("type", f["type"])
 				if g, ok := f["grammar"].(map[string]any); ok {
-					format["syntax"] = g["syntax"]
+					format.set("syntax", g["syntax"])
 				}
-				shape["format"] = format
+				shape.set("format", format)
 			}
 		}
 		out = append(out, shape)
@@ -616,7 +599,7 @@ func completionsToolShape(m map[string]any) []map[string]any {
 // its value), and any grammar format block. It returns nil for non-responses
 // payloads (identified by the "input" field) so completions payloads are
 // unaffected.
-func responsesToolShape(m map[string]any) []map[string]any {
+func responsesToolShape(m map[string]any) []*object {
 	if _, ok := m["input"]; !ok {
 		return nil
 	}
@@ -624,20 +607,20 @@ func responsesToolShape(m map[string]any) []map[string]any {
 	if !ok || len(tools) == 0 {
 		return nil
 	}
-	out := make([]map[string]any, 0, len(tools))
+	out := make([]*object, 0, len(tools))
 	for _, t := range tools {
 		tm, ok := t.(map[string]any)
 		if !ok {
 			continue
 		}
-		shape := map[string]any{"type": tm["type"]}
+		shape := obj("type", tm["type"])
 		if v, present := tm["strict"]; present {
-			shape["strict"] = v
+			shape.set("strict", v)
 		} else {
-			shape["strict"] = "absent"
+			shape.set("strict", "absent")
 		}
 		if f, ok := tm["format"].(map[string]any); ok {
-			shape["format"] = map[string]any{"type": f["type"], "syntax": f["syntax"]}
+			shape.set("format", obj("type", f["type"], "syntax", f["syntax"]))
 		}
 		out = append(out, shape)
 	}
@@ -874,3 +857,63 @@ func makeCodexJWT(accountID string) string {
 }
 
 //go:fix inline
+
+// toolFromJSON declares a tool as JSON text, the way an extension or an MCP server hands pig its schema: ai.ToolSchema keeps that member order, where a Go map carries none and is sent sorted. Pi's probe holds the same members in a literal.
+func toolFromJSON(text string) ai.ToolSchema {
+	var tool ai.ToolSchema
+	if err := json.Unmarshal([]byte(text), &tool); err != nil {
+		panic(err)
+	}
+	return tool
+}
+
+// object is a JSON object that keeps its members in the order they were set, the order Pi's probe writes them: a Go map would write them sorted.
+type object struct{ members []member }
+
+type member struct {
+	key   string
+	value any
+}
+
+// obj builds an object from alternating keys and values.
+func obj(pairs ...any) *object {
+	o := &object{}
+	for i := 0; i < len(pairs); i += 2 {
+		o.set(pairs[i].(string), pairs[i+1])
+	}
+	return o
+}
+
+// set replaces the member key keeps, or appends one, as an assignment to a JavaScript property does.
+func (o *object) set(key string, value any) {
+	for i := range o.members {
+		if o.members[i].key == key {
+			o.members[i].value = value
+			return
+		}
+	}
+	o.members = append(o.members, member{key, value})
+}
+
+func (o *object) MarshalJSON() ([]byte, error) {
+	var out bytes.Buffer
+	out.WriteByte('{')
+	for i, m := range o.members {
+		if i > 0 {
+			out.WriteByte(',')
+		}
+		key, err := json.Marshal(m.key)
+		if err != nil {
+			return nil, err
+		}
+		value, err := json.Marshal(m.value)
+		if err != nil {
+			return nil, err
+		}
+		out.Write(key)
+		out.WriteByte(':')
+		out.Write(value)
+	}
+	out.WriteByte('}')
+	return out.Bytes(), nil
+}

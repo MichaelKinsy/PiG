@@ -204446,7 +204446,7 @@
       "evidence": [
         "test:coding/stored_credential_oracle_test.go#TestReadStoredCredentialMatchesPi",
         "test:coding/stored_credential_prototype_names_oracle_test.go#TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
-        "test:coding/auth_storage_test.go#TestReadStoredCredentialReadsOneProviderWithoutAStore"
+        "test:coding/auth_storage_test.go#TestReadStoredCredentialKeepsFileMemberOrder"
       ]
     },
     {
@@ -204468,7 +204468,7 @@
       "evidence": [
         "test:coding/stored_credential_oracle_test.go#TestReadStoredCredentialMatchesPi",
         "test:coding/stored_credential_prototype_names_oracle_test.go#TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
-        "test:coding/auth_storage_test.go#TestReadStoredCredentialReadsOneProviderWithoutAStore"
+        "test:coding/auth_storage_test.go#TestReadStoredCredentialKeepsFileMemberOrder"
       ]
     },
     {
@@ -275829,6 +275829,7 @@
         "call:mcp/input_schema.go#NormalizeMcpInputSchema"
       ],
       "evidence": [
+        "test:coding/tool_schema_arrival_wire_test.go#TestToolSchemaKeepsAuthoredOrderOnTheBedrockWireFromEveryArrival",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaAddsTypeObjectAndEmptyPropertiesWhenMissing",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaKeepsTheSchemasOwnKeywords"
       ]
@@ -275850,6 +275851,7 @@
         "call:mcp/input_schema.go#NormalizeMcpInputSchema"
       ],
       "evidence": [
+        "test:coding/tool_schema_arrival_wire_test.go#TestToolSchemaKeepsAuthoredOrderOnTheBedrockWireFromEveryArrival",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaAddsTypeObjectAndEmptyPropertiesWhenMissing",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaKeepsTheSchemasOwnKeywords"
       ]

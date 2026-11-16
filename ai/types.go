@@ -515,7 +515,8 @@ const (
 
 // ─── Tool Schema ──────────────────────────────────────────────────────────────
 
-// ToolSchema describes an LLM-callable tool in JSON Schema format. JSON decoding and encoding retain schema declaration order for provider strict-schema derivation; directly authored Go maps use deterministic key order.
+// ToolSchema describes an LLM-callable tool in JSON Schema format. JSON decoding and encoding retain schema declaration order for provider strict-schema derivation and for the request body: Pi sends a tool's schema in the order its author wrote it, and those bytes are part of the prompt and of the provider's prompt-cache key.
+// A schema that reaches pig as JSON text (an extension's declaration, an MCP server's input schema, a built-in's source literal) is sent in that order. A schema a Go caller assigns to Parameters as a map[string]any has no order to keep, since a Go map is unordered: its object members are sent sorted by name, on every provider. A caller that needs an order hands the declaration as JSON text and decodes it into a ToolSchema.
 type ToolSchema struct {
 	parameterOrder   schemaObjectOrder
 	Name             string         `json:"name"`

@@ -42,7 +42,12 @@ func main() {
 		if captured == nil || result.StopReason != ai.StopReasonError || result.ErrorMessage != "payload captured" {
 			panic(result)
 		}
-		if err := json.NewEncoder(os.Stdout).Encode(map[string]any{"provider": row.provider, "thinking": captured["thinking"], "output_config": captured["output_config"], "max_tokens": captured["max_tokens"]}); err != nil {
+		if err := json.NewEncoder(os.Stdout).Encode(struct {
+			Provider     string          `json:"provider"`
+			Thinking     json.RawMessage `json:"thinking"`
+			OutputConfig json.RawMessage `json:"output_config"`
+			MaxTokens    json.RawMessage `json:"max_tokens"`
+		}{row.provider, captured["thinking"], captured["output_config"], captured["max_tokens"]}); err != nil {
 			panic(err)
 		}
 	}

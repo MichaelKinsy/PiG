@@ -53,9 +53,10 @@ func recordType(line string) string {
 	return record.Type
 }
 
-// dropPigOnlyRecords returns Pig's result without the records its rules name. A rule whose record Pig did not emit exactly Count times,
+// dropPigOnlyRecords returns Pig's result without the records its rules name; same is the scenario's JSON comparison (compareJSONResults, or compareJSONResultsOrdered
+// when member order is significant), which decides whether an emitted record is the one a rule names. A rule whose record Pig did not emit exactly Count times,
 // or emitted anywhere but directly before a BeforeType record, fails.
-func dropPigOnlyRecords(pig Result, rules []JSONPigOnlyRecordRule) (Result, error) {
+func dropPigOnlyRecords(pig Result, rules []JSONPigOnlyRecordRule, same func(g, p Result, rules []JSONAliasRule) error) (Result, error) {
 	if len(rules) == 0 {
 		return pig, nil
 	}
@@ -74,7 +75,7 @@ func dropPigOnlyRecords(pig Result, rules []JSONPigOnlyRecordRule) (Result, erro
 	for at, line := range lines {
 		dropped := false
 		for i, rule := range rules {
-			if compareJSONResults(Result{Output: line}, Result{Output: rule.Record}, nil) != nil {
+			if same(Result{Output: line}, Result{Output: rule.Record}, nil) != nil {
 				continue
 			}
 			next := ""

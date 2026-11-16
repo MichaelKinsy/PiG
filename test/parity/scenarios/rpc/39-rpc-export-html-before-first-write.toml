@@ -34,6 +34,6 @@ exit_code = 0
 both_contain = [
   '{"id":"export","type":"response","command":"export_html","success":false,"error":"Nothing to export yet - start a conversation first"}',
 ]
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 runs = 3

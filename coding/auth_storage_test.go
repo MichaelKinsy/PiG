@@ -1,6 +1,7 @@
 package coding
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -69,4 +70,32 @@ func TestReadStoredCredentialReadsOneProviderWithoutAStore(t *testing.T) {
 			t.Fatalf("credential = %+v", got)
 		}
 	})
+}
+
+// auth-storage.ts:498-507 readStoredCredential returns the JSON.parse'd entry, so the credential serializes in the file's member order, unmodelled members in place.
+func TestReadStoredCredentialKeepsFileMemberOrder(t *testing.T) {
+	dir := t.TempDir()
+	for _, c := range []struct{ name, entry string }{
+		{"oauth", `{"type":"oauth","access":"a","refresh":"r","expires":123}`},
+		{"oauth with an unmodelled member", `{"access":"a","custom":{"z":1,"a":2},"type":"oauth","expires":5,"refresh":"r"}`},
+		{"api key", `{"env":{"B":"2","A":"1"},"key":"k","extra":1,"type":"api_key"}`},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			path := filepath.Join(dir, "auth.json")
+			if err := os.WriteFile(path, []byte(`{"p":`+c.entry+`}`), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			credential := ReadStoredCredential("p", path)
+			if credential == nil {
+				t.Fatal("no credential")
+			}
+			got, err := json.Marshal(credential)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != c.entry {
+				t.Errorf("got  %s\nwant %s", got, c.entry)
+			}
+		})
+	}
 }

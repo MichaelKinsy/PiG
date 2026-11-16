@@ -22,7 +22,7 @@ pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/tool-activati
 pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--no-context-files", "--no-skills"]
 
 [assert]
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 exit_code = 0
 runs = 5
