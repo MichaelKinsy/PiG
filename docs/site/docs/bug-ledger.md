@@ -1023,6 +1023,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6ee6eae](#bf-6ee6eae) | A Session delivers each event to its listeners the way Pi's `AgentSession` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f165a2](#bf-6f165a2) | After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6f26a84](#bf-6f26a84) | Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6f3ca3d](#bf-6f3ca3d) | fix(extension): a turn_end handler's in-place edit of the turn's messages is kept | PiG's own defect | All platforms | Unreleased |
 | [BF-6f4a82f](#bf-6f4a82f) | Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f553ca](#bf-6f553ca) | `pig update --models` warns about a provider whose OAuth login can no longer be refreshed (`Warning: skipped… | PiG's own defect | All platforms | Unreleased |
 | [BF-6f74b70](#bf-6f74b70) | The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a… | PiG's own defect | All platforms | Unreleased |
@@ -16199,6 +16200,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6f26a84f7f` (2026-10-14, #10818)
 - **Tests:** `ai/openai_tool_choice_formats_upstream_test.go::TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream`, `ai/xiaomi_models_upstream_test.go::TestXiaomiReasoningModelsAreAnOffOnToggleUpstream`
 - **Release note:** Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and `high` thinking levels, fixing the 400 at `minimal`. Carried forward from Pi 6374c2ba and 381a2d8e (earendil-works/pi#10818), past the 1.2.0+3daa2028 pin.
+
+### BF-6f3ca3d
+
+**fix(extension): a turn_end handler's in-place edit of the turn's messages is kept**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extension): a turn_end handler's in-place edit of the turn's messages is kept
+- **Root cause:** A turn_end handler edits event.message or a member of event.toolResults in place; Pi hands every handler of the boundary the same message objects, so the edit is what the next handler, the saved entry and the next provider request hold. Every SDK now sends the messages it left, when they differ from the ones it received, as _pigEventEdits beside _pigBoundaryEntries and _pigBoundaryResult, and the host validates them (position in range and once, same role, a member of the pair and of each edit it knows) before it applies any. The boundary object's decode ignores unknown members as before; a malformed _pigEventEdits is a refused reply.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6f3ca3d155` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyEditsReachTheTurnsMessages`, `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyIgnoresAMemberItDoesNotName`, `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyRefusesMalformedEditsAndAppliesNone`, `test/extension-conformance/in_place_event_edits_test.go::TestConformance_NodeEditsOutsideMessageEndStayInTheProcess`
 
 ### BF-6f4a82f
 

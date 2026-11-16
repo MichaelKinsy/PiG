@@ -1387,6 +1387,9 @@ def _event_edit_messages(name: str, data: dict[str, Any]) -> list[Any]:
     """The message objects of an event a handler may edit in place, by the position the reply names them at (``_pigEventEdits``): message_end has one, turn_end its assistant message and then its tool results. The reply is about these objects, so assigning another value to the member changes nothing, as assigning event.message changes nothing in Pi."""
     if name == "message_end":
         return [data.get("message")]
+    if name == "agent_end":
+        messages = data.get("messages")
+        return list(messages) if isinstance(messages, list) else []
     if name == "turn_end":
         results = data.get("toolResults")
         return [data.get("message"), *(results if isinstance(results, list) else [])]
@@ -6640,7 +6643,7 @@ class Extension:
                     self._respond(req_id, reply, error)
                     return
                 # Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, turn_end, agent_end, the entry and the next request hold, even when it fails afterwards. The host cannot share the dict, so the reply carries the message the handler left when its JSON text differs from the one it received (member order included). Assigning a new dict to data["message"] changes nothing, as assigning event.message changes nothing in Pi.
-                if req.get("event") == "message_end":
+                if req.get("event") in ("message_end", "agent_end"):
                     event_messages = _event_edit_messages(req["event"], data)
                     before = _snapshot_event_messages(event_messages)
                     result = None

@@ -71,11 +71,15 @@ func applyToolCallInput(event any, input json.RawMessage) error {
 	return nil
 }
 
-// eventMessage is the message at position at of the messages event holds: message_end holds one, turn_end its assistant message and then its tool results. The message shares its object with the event, so a replacement written into it is what the event's next handler and the agent's transcript read.
+// eventMessage is the message at position at of the messages event holds: message_start and message_end hold one, turn_end its assistant message and then its tool results, agent_end the run's messages. The message shares its object with the event, so a replacement written into it is what the event's next handler and the agent's transcript read.
 func eventMessage(event any, at int) (agent.AgentMessage, bool) {
 	switch event := event.(type) {
 	case extension.MessageEndEvent:
 		return event.Message, at == 0
+	case extension.AgentEndEvent:
+		if at >= 0 && at < len(event.Messages) {
+			return event.Messages[at], true
+		}
 	case extension.TurnEndEvent:
 		switch {
 		case at == 0:

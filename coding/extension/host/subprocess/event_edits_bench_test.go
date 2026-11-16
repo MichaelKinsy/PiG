@@ -2,6 +2,7 @@ package subprocess
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -69,4 +70,39 @@ func BenchmarkNodeMessageUpdateStream(b *testing.B) {
 	}
 	b.ReportMetric(float64(b.Elapsed().Nanoseconds())/float64(b.N*len(events)), "ns/delta")
 	b.ReportMetric(float64(len(events)), "deltas")
+}
+
+// agentEndMessages is the 200-message run the agent_end benchmarks hand a handler: a user prompt and an assistant answer, alternating.
+const agentEndMessages = 200
+
+// BenchmarkNodeAgentEndEvent is the agent_end dispatch of a run of 200 messages to a Node extension whose handler edits nothing: the cost of its reply when the SDK has to tell that the 200 messages are unchanged.
+func BenchmarkNodeAgentEndEvent(b *testing.B) {
+	benchAgentEnd(b, `export default function(pi){let calls=0;pi.on("agent_end",()=>{calls++})}`)
+}
+
+// BenchmarkNodeAgentEndEventEdit is the same dispatch to a handler that edits the first message in place.
+func BenchmarkNodeAgentEndEventEdit(b *testing.B) {
+	benchAgentEnd(b, `export default function(pi){let n=0;pi.on("agent_end",(event)=>{event.messages[0].content="edit "+(n++)})}`)
+}
+
+func benchAgentEnd(b *testing.B, source string) {
+	b.Helper()
+	handler := loadNodeBenchExtension(b, "agent_end", source)
+	messages := make([]agent.AgentMessage, agentEndMessages)
+	seqs := make([]uint64, agentEndMessages)
+	for i := range messages {
+		if i%2 == 0 {
+			messages[i] = agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserText(fmt.Sprintf("question %d", i)), Timestamp: int64(i)}}
+		} else {
+			messages[i] = agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("answer %d", i)}}, Timestamp: int64(i)}}
+		}
+		seqs[i] = uint64(9000 + i)
+	}
+	ctx := extension.WithMessageSequences(context.Background(), func() []uint64 { return seqs })
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := handler(extension.AgentEndEvent{Type: "agent_end", Messages: messages}, ctx); err != nil {
+			b.Fatal(err)
+		}
+	}
 }

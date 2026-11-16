@@ -2510,6 +2510,16 @@ allocs = 1105
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeAgentEndEvent"
+allocs = 1634
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeAgentEndEventEdit"
+allocs = 1656
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAutocompleteRoundTrip"
 allocs = 171
 
@@ -2526,7 +2536,7 @@ allocs = 28
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeMessageEndEventEdit"
-allocs = 54
+allocs = 50
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"

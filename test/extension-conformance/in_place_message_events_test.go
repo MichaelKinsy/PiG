@@ -390,7 +390,6 @@ var curePending = map[string]string{
 	"turn_start/top":      "the event is not one object across handlers and extensions",
 	"agent_start/top":     "the event is not one object across handlers and extensions",
 	"agent_end/top":       "the event is not one object across handlers and extensions",
-	"agent_end/deep":      "an edit of the first user message is not sent back (Pi: entry and the next request hold it)",
 }
 
 // TestInPlaceMessageEventEditsMatchPi pins what a handler's in-place edit of a message event does, at two levels, against Pi's own AgentSession: an edit of a member of the

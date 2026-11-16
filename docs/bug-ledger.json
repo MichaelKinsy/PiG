@@ -27645,6 +27645,30 @@
       ]
     },
     {
+      "id": "BF-6f3ca3d",
+      "title": "fix(extension): a turn_end handler's in-place edit of the turn's messages is kept",
+      "symptom": "fix(extension): a turn_end handler's in-place edit of the turn's messages is kept",
+      "rootCause": "A turn_end handler edits event.message or a member of event.toolResults in place; Pi hands every handler of the boundary the same message objects, so the edit is what the next handler, the saved entry and the next provider request hold. Every SDK now sends the messages it left, when they differ from the ones it received, as _pigEventEdits beside _pigBoundaryEntries and _pigBoundaryResult, and the host validates them (position in range and once, same role, a member of the pair and of each edit it knows) before it applies any. The boundary object's decode ignores unknown members as before; a malformed _pigEventEdits is a refused reply.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "6f3ca3d155",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyEditsReachTheTurnsMessages",
+        "coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyIgnoresAMemberItDoesNotName",
+        "coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyRefusesMalformedEditsAndAppliesNone",
+        "test/extension-conformance/in_place_event_edits_test.go::TestConformance_NodeEditsOutsideMessageEndStayInTheProcess"
+      ]
+    },
+    {
       "id": "BF-6f4a82f",
       "title": "Validation errors for `propertyNames` name the failing member in their path, `contains` reports only \"must…",
       "symptom": "Validation errors for `propertyNames` name the failing member in their path, `contains` reports only \"must contain at least 1 valid item\", and a failing `then` branch reports only `must match \"then\" schema` while a failing `else` branch also lists its errors, as in Pi.",
