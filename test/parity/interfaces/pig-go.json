@@ -34123,6 +34123,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogEntryView",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogEntryView",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(record string) *Model"
+      },
+      "shapeHash": "sha256:a23d7da10900f623a2249d0aeaeb33c582daad94fbee97912590a86a407505fa"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#catalogPair",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "catalogPair",
@@ -48866,6 +48877,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/ai#marshalCatalogModel",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "marshalCatalogModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model AnyModel) (encoding/json.RawMessage, error)"
+      },
+      "shapeHash": "sha256:7b1d0aa5f52915725d9583f1faddc1d1c14bea49ba99db10367e223e4773ede6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#marshalCatalogModelByEncoding",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "marshalCatalogModelByEncoding",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -65592,6 +65614,17 @@
         "type": "SystemOneTransport"
       },
       "shapeHash": "sha256:b46f3d2d5b7d74134522f800d6416b3507956d24a000b6f2dca475abdb29b8f7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#unchangedBundledRecord",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "unchangedBundledRecord",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model AnyModel) (string, bool)"
+      },
+      "shapeHash": "sha256:0c4412a95dfd3a80c341a4c7824d67cddf9f5467c48dc46805b33b5e97eb653e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#unfinishedToolCallError",
