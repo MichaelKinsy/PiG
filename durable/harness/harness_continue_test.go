@@ -49,7 +49,9 @@ func continueAnswering(text string, seen *continueSeen) ai.FauxResponseStep {
 }
 
 // continueModels is the Harness's models with a hold on the next model lookup. A run resolves its model in its prepare phase,
-// before it finds a context with nothing to answer, so the hold keeps a run that never calls the model busy.
+// before it finds a context with nothing to answer, so the hold keeps a run that never calls the model busy. A run is on its
+// own goroutine (D181), where upstream's loop reads what the submit's caller reads next before that run's commits; a test that
+// reads a run's live state or its submission's status right after the submit returns holds the run here first.
 type continueModels struct {
 	*ai.Models
 	held atomic.Pointer[continueHold]
@@ -131,6 +133,8 @@ func TestContinue(t *testing.T) {
 	// #11043
 	t.Run("answers a run that failed, without a new user message", func(t *testing.T) {
 		setup := chatSetup(t)
+		models := &continueModels{Models: setup.Models}
+		setup.HarnessModels = models
 		seen := &continueSeen{}
 		setup.Faux.SetResponses([]ai.FauxResponseStep{continueFailure(), continueAnswering("recovered", seen)})
 		harness, root := openChat(t, storage.NewMemoryStorage(), setup)
@@ -142,10 +146,14 @@ func TestContinue(t *testing.T) {
 			t.Fatalf("runFailure = %+v", live.RunFailure)
 		}
 
+		// The continue's run answers at once; held where it resolves its model, its submission is read still placed.
+		held := models.hold()
+		defer held.release.resolve()
 		resumed := submit(t, root, continueDraft())
 		if status := must(resumed.Status(testContext)).Status; status != durable.SubmissionPlaced {
 			t.Fatalf("continue status = %s, want placed", status)
 		}
+		held.release.resolve()
 		settled := must(resumed.Wait(testContext))
 		if settled.Type != durable.SubmissionTypeContinue {
 			t.Fatalf("type = %s", settled.Type)
@@ -561,6 +569,8 @@ func TestContinue(t *testing.T) {
 	// #11043
 	t.Run("places inputs a failed run left queued first, and they join its run", func(t *testing.T) {
 		setup := chatSetup(t)
+		models := &continueModels{Models: setup.Models}
+		setup.HarnessModels = models
 		gate := deferred()
 		reached := deferred()
 		setup.Faux.SetResponses([]ai.FauxResponseStep{
@@ -587,11 +597,15 @@ func TestContinue(t *testing.T) {
 			t.Fatalf("queued = %s", status)
 		}
 
+		// The continue's run answers at once; held where it resolves its model, the snapshot is read before its commits.
+		held := models.hold()
+		defer held.release.resolve()
 		resumed := submit(t, root, continueDraft())
 		live := liveOf(t, harness, root.Id())
 		if live.Run == nil || !reflect.DeepEqual(live.Run.Inputs, []durable.SubmissionId{queued.Id(), resumed.Id()}) {
 			t.Fatalf("run = %+v, want inputs [%d %d]", live.Run, queued.Id(), resumed.Id())
 		}
+		held.release.resolve()
 		byQueued, byContinue := must(queued.Wait(testContext)), must(resumed.Wait(testContext))
 		if answer := continueAnswerText(t, root, byContinue); answer != "both handled" {
 			t.Fatalf("answer = %q", answer)
