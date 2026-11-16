@@ -80,7 +80,7 @@ A snapshot's `bindings [{key | gesture, intent, arg?, name?}]` tie keys and gest
 
 ## Gestures on a region of a drawing
 
-Approved (the owner, 2026-11-13T19:27:20Z, "G-arg"; recorded in D614, "Gesture argument"): D614 says a client raises a region's intent "with the argument its declared shape asks for", and this section says which properties that is, so that every client fills the argument the same way. The reference web client implements it. It is the only client in this repository that raises a region's gesture: the terminal view client draws no drawings and raises none.
+Approved (the owner, 2026-11-13T19:27:20Z, "G-arg"; recorded in D614, "Gesture argument"): D614 says a client raises a region's intent "with the argument its declared shape asks for", and this section says which properties that is, so that every client fills the argument the same way. The reference web client implements it. It is the only client in this repository that raises the gesture of a region of a drawing: the terminal view client draws no drawings and raises none.
 
 - A property of the argument is filled only when the intent's declared argument shape names it. An intent whose shape names none of the properties below is sent `{}`.
 - `x` and `y`: the pointer's position in the drawing's coordinates (the viewport's units). For `activate` made with the keyboard, the centre of the region.
