@@ -2009,6 +2009,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-dfa57b3](#bf-dfa57b3) | An OpenAI Responses request for a conversation with no messages sends `"input": []` instead of `"input": null` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e045fa5](#bf-e045fa5) | fix(durable/codemode): count image blocks in a generateImages result as Pi does, and compare the code mode… | PiG's own defect | All platforms | Unreleased |
 | [BF-e046dd9](#bf-e046dd9) | fix(rust): resolve every clippy warning in the Rust crates | PiG's own defect | All platforms | Unreleased |
+| [BF-e061002](#bf-e061002) | A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`)… | PiG's own defect | All platforms | Unreleased |
 | [BF-e098463](#bf-e098463) | A Gemini stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e09d2bc](#bf-e09d2bc) | fix(durable/core): Session.fail, a failing store of held changes at close rejects close, observers see a… | PiG's own defect | All platforms | Unreleased |
 | [BF-e0a4613](#bf-e0a4613) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -29902,6 +29903,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e046dd9a93` (2026-10-31)
 - **Tests:** None recorded.
+
+### BF-e061002
+
+**A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`)…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`) now keeps the member order of the auth.json entry when anything prints or forwards it, as Pi does: an OAuth entry written `type, access, refresh, expires` is no longer returned as `type, refresh, access, expires`, and members the typed form does not model keep their place.
+- **Root cause:** the read-only decode built its credential from a map and never recorded the entry's member order, which the writable decode records, so marshaling fell back to struct order
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e061002932` (2026-11-16)
+- **Tests:** `ai/auth_read_member_order_test.go::TestInMemoryReadKeepsDecodedMemberOrder`, `ai/auth_read_member_order_test.go::TestReadCredentialKeepsFileMemberOrder`, `ai/auth_read_member_order_test.go::TestReadCredentialMemberOrderMatchesPi`, `ai/auth_read_member_order_test.go::TestRefreshedCredentialKeepsFileMemberOrder`, `coding/auth_storage_test.go::TestReadStoredCredentialKeepsFileMemberOrder`
+- **Release note:** A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`) now keeps the member order of the auth.json entry when anything prints or forwards it, as Pi does: an OAuth entry written `type, access, refresh, expires` is no longer returned as `type, refresh, access, expires`, and members the typed form does not model keep their place. Only the order changes, not which members are returned. Present since 0.2.0.
 
 ### BF-e098463
 

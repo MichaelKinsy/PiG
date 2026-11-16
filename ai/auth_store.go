@@ -628,6 +628,8 @@ func retainReadOnlyCredentialFields(raw json.RawMessage, credential Credential) 
 	if len(credential.Extra) == 0 {
 		credential.Extra = nil
 	}
+	// Pi returns the JSON.parse'd entry (auth-storage.ts:260-269 ReadOnlyAuthStorage.read), so the credential keeps the file's member order, as a credential the writable store decodes does (decodeStoredCredential).
+	credential.order = decodedCredentialOrder(raw).retainedFor(credential.marshalFields)
 	return credential, true
 }
 
