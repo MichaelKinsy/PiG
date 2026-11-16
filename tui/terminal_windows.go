@@ -19,6 +19,7 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+	"golang.org/x/term"
 )
 
 // resizePollInterval is how often the Windows resize watcher samples the
@@ -427,4 +428,24 @@ func (t *ProcessTerminal) enableVTProcessing() func() {
 		return func() {}
 	}
 	return func() { _ = windows.SetConsoleMode(h, mode) }
+}
+
+// libuvRawMode puts the console input at fd into the mode Node's setRawMode(true) and Pi's ProcessTerminal.start() leave it in (packages/tui/src/terminal.ts
+// :229-233): libuv's uv_tty_set_mode (deps/uv/src/win/tty.c, libuv 1.52.1) sets the input mode to exactly ENABLE_WINDOW_INPUT, and Pi's native helper then adds
+// ENABLE_VIRTUAL_TERMINAL_INPUT, where the console takes it. Every other flag is off: no processed, line or echo input, and no ENABLE_QUICK_EDIT_MODE, which
+// stops a program's output while the user selects text in the window, no ENABLE_MOUSE_INPUT. x/term's MakeRaw only clears the first three and leaves the
+// rest as the console had them. The state returned is the mode before, for the restore.
+func libuvRawMode(fd int) (*term.State, error) {
+	state, err := term.GetState(fd)
+	if err != nil {
+		return nil, err
+	}
+	handle := windows.Handle(fd)
+	if err := windows.SetConsoleMode(handle, windows.ENABLE_WINDOW_INPUT|windows.ENABLE_VIRTUAL_TERMINAL_INPUT); err != nil {
+		// libuv's own fallback: a console without virtual terminal input gets the mode without it.
+		if err := windows.SetConsoleMode(handle, windows.ENABLE_WINDOW_INPUT); err != nil {
+			return nil, err
+		}
+	}
+	return state, nil
 }

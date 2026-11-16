@@ -386,9 +386,10 @@ func (t *ProcessTerminal) EnterRawMode() (restore func(), err error) {
 	return t.enterRawMode(true)
 }
 
-// makeRawTerminal and restoreTerminal are the raw-mode ioctls (TCGETS/TCSETS, TIOCGETA/TIOCSETA); tests replace them to interrupt the call.
+// makeRawTerminal and restoreTerminal are the raw-mode calls: Pi's raw mode (libuv's uv_tty_set_mode with UV_TTY_MODE_RAW, see libuvRawMode) and the
+// restore of the mode before it (TCSETS, TIOCSETA); tests replace them to interrupt the call.
 var (
-	makeRawTerminal = term.MakeRaw
+	makeRawTerminal = libuvRawMode
 	restoreTerminal = term.Restore
 )
 
@@ -428,7 +429,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 	t.stopModesWritten.Store(false)
 	t.openForeignWrites()
 	// On Windows, enable VT output processing so pig's ANSI renderer displays;
-	// term.MakeRaw only configures raw input. No-op on unix.
+	// the raw mode above sets only the console's input. No-op on unix.
 	vtRestore := t.enableVTProcessing()
 	t.writeUnlogged("\x1b[?2004h")
 	t.queryAndEnableKittyProtocol()
