@@ -122,11 +122,16 @@ func (s signal) wait(t testing.TB) {
 
 // await is `await promise` in a handler: the handler suspends (its call's section goes on) and waits until the signal fired,
 // whatever its context does. The wait is chordctx.Receive's, so an awaited task (a native's open) that waits here is parked, not
-// one the loop's join (deliveredOn) waits for; its bound is a fault detector only, as receive's.
+// one the loop's join (deliveredOn) waits for; its bound is a fault detector only, as receive's. The bound is a dropTimer that
+// cancels a context of its own: a stopped time.Timer stays in the runtime's timer heap with its callback until the heap drops
+// it, and a callback that held the handler's context (context.WithTimeout over it) kept what the call carries reachable
+// (TestSignalAwaitKeepsNothingOfTheCallContextInTheTimerHeapOnceItReturned).
 func (s signal) await(t testing.TB, ctx context.Context) {
 	t.Helper()
-	bounded, cancel := context.WithTimeout(context.WithoutCancel(ctx), hangGuard)
-	defer cancel()
+	bounded, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
+	guard := newDropTimer(hangGuard, func() { cancel(context.DeadlineExceeded) })
+	defer guard.Stop()
+	defer cancel(nil)
 	if _, err := chordctx.Receive(bounded, (<-chan struct{})(s)); err != nil {
 		t.Error("the awaited signal never came")
 	}
