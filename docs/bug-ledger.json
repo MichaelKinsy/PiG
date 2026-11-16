@@ -34873,6 +34873,29 @@
       "tests": []
     },
     {
+      "id": "BF-9236042",
+      "title": "chord: a host object reading a live query, a count or a list could stay loading for ever, and `Host.Load`…",
+      "symptom": "chord: a host object reading a live query, a count or a list could stay loading for ever, and `Host.Load` with it, when the first run of its read was adopted between the reader's classification and the registration of the wake: the attempt checked the reader and followed it in two sections with a task between them, so the adoption made the reader ready and told nobody (one run in about 18,000 of a loaded test).",
+      "rootCause": "reader.Open read the reading in a section of its own at the end of its blocking task and the attempt followed the reader in the next section, the one that settles the task's promise, where Pi has one turn; an adoption between the two found no wake to tell",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a host object reading a live query, a count or a list could stay loading for ever, and `Host.Load` with it, when the first run of its read was adopted between the reader's classification and the registration of the wake: the attempt checked the reader and followed it in two sections with a task between them, so the adoption made the reader ready and told nobody (one run in about 18,000 of a loaded test). Pi checks the reader and follows it in one turn (query-reader.ts, read-declarations.ts); the check now runs in the section that settles its await, before the attempt follows the reader.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9236042669",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_open_readers_go_test.go::TestOpeningReadersFollowsAReaderInTheSectionThatFoundItNotReadyNotAfterAnAdoptionCouldLandBetween",
+        "chord/next/host/host_open_readers_go_test.go::TestStartBarrierAHostObjectWhoseReaderWasAdoptedBetweenItsCheckAndItsFollowGoesLive"
+      ]
+    },
+    {
       "id": "BF-928e15c",
       "title": "A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no…",
       "symptom": "A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no turn_start or prompt), and the failure message carries the model's api (agent.ts handleRunFailure).",
