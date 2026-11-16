@@ -118,11 +118,23 @@ struct Graph {
     /// The `modelStream` calls, which the host holds unanswered until the test answers them.
     streams: Vec<Value>,
     response: Option<Value>,
+    /// The n-th (from 1) `sessionGraph.new` the host keeps unanswered, in `held`, until `answer_held`; 0 holds none.
+    hold_new: usize,
+    held: Option<Value>,
 }
 
 impl Graph {
     fn released(&self, handle: &str) -> bool {
         self.released.iter().any(|released| released == handle)
+    }
+
+    /// Answers the `sessionGraph.new` the host held.
+    fn answer_held(&mut self, host: &mut Host) {
+        let frame = self.held.take().expect("no sessionGraph.new is held");
+        host.reply(
+            &frame,
+            json!({"handle": format!("h{}", self.created.len())}),
+        );
     }
 
     /// Reads one frame and answers it as a host does; the `response` of the command is kept.
@@ -137,6 +149,10 @@ impl Graph {
         match frame["call"]["method"].as_str().unwrap() {
             "sessionGraph.new" => {
                 self.created.push(args);
+                if self.hold_new == self.created.len() {
+                    self.held = Some(frame);
+                    return;
+                }
                 host.reply(
                     &frame,
                     json!({"handle": format!("h{}", self.created.len())}),
@@ -203,14 +219,20 @@ fn a_loaded_extension_keeps_its_loader_until_it_is_dropped() {
     ext.command("load", "Load", |ctx, _| result(name_the_loader(ctx)));
     let mut host = Host::start(ext);
     host.command("c1", "load");
-    let mut graph = Graph::default();
-    graph.serve_until(&mut host, |graph| graph.released("h3"));
+    // The host holds the runner's constructor (h4) unanswered until the retention asserts are done: the handler is blocked in it, so the
+    // extensions it loaded stay held, whatever order the releases of dropped objects (each sent from its own thread) reach the host in.
+    let mut graph = Graph {
+        hold_new: 4,
+        ..Graph::default()
+    };
+    graph.serve_until(&mut host, |graph| {
+        graph.released("h3") && graph.held.is_some()
+    });
     assert!(
         !graph.released("h1"),
         "the loader (h1) was released while the extensions it loaded were still held: released {:?}",
         graph.released
     );
-    graph.serve_until(&mut host, |graph| graph.created.len() == 4);
     let wire = &graph.created[3]["args"][0];
     assert_eq!(graph.created[3]["kind"], "ExtensionRunner");
     assert_eq!(wire["extensions"][0]["loader"], "h1", "{wire}");
@@ -220,6 +242,7 @@ fn a_loaded_extension_keeps_its_loader_until_it_is_dropped() {
         "the runner was made after its loader or runtime was released: released {:?}",
         graph.released
     );
+    graph.answer_held(&mut host);
     graph.serve_until(&mut host, |graph| graph.response.is_some());
     assert_eq!(graph.response, Some(json!({})), "{:?}", graph.response);
     // Dropping what held them releases them: the host learns it (the read has the harness's timeout).
