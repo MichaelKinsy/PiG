@@ -12,3 +12,12 @@ func TestLowerSearchesDoNotAllocateForASCII(t *testing.T) {
 		t.Fatalf("allocs = %v, want 0", allocs)
 	}
 }
+
+// An ASCII text is searched for an ASCII needle without the UTF-16 copy of either: the model resolver asks it once per catalog model.
+func TestIndexOfDoesNotAllocateForASCII(t *testing.T) {
+	if allocs := testing.AllocsPerRun(100, func() {
+		_ = IndexOf("openai/gpt-4o-mini", "/", 6)
+	}); allocs != 0 {
+		t.Fatalf("allocs = %v, want 0", allocs)
+	}
+}

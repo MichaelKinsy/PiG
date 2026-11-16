@@ -5123,6 +5123,26 @@
       ]
     },
     {
+      "id": "BF-194a2b1",
+      "title": "The `root` of a TypeScript `PiGWireView` is typed against the node kinds the host builds (`PiGViewNode`) and…",
+      "symptom": "The `root` of a TypeScript `PiGWireView` is typed against the node kinds the host builds (`PiGViewNode`) and no longer accepts any object: a misspelt kind, a member of another kind, a select-list without its id or a string `imageId` is a compile error and no longer a refused mount at run time.",
+      "rootCause": "PiGWireView.root was Record\u003cstring, unknown\u003e, which no type test could fail",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The `root` of a TypeScript `PiGWireView` is typed against the node kinds the host builds (`PiGViewNode`) and no longer accepts any object: a misspelt kind, a member of another kind, a select-list without its id or a string `imageId` is a compile error and no longer a refused mount at run time. The plugin view API is unreleased and no release has the type.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "194a2b1b70",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-1971aae",
       "title": "A `bash` shell that starts at the moment `pig` handles an emergency exit, a crash or a signal is now killed…",
       "symptom": "A `bash` shell that starts at the moment `pig` handles an emergency exit, a crash or a signal is now killed with the others.",
@@ -5810,6 +5830,29 @@
         "schema/formats/conformance_test.go::TestConformance",
         "schema/formats/formats_test.go::TestSplitSurrogatePairs",
         "schema/formats/oracle_test.go::TestOracleCorpus"
+      ]
+    },
+    {
+      "id": "BF-1e2fa7e",
+      "title": "A Go, Rust, Python or Lisp extension can now set the Kitty image id of an image node of a view, as a Node…",
+      "symptom": "A Go, Rust, Python or Lisp extension can now set the Kitty image id of an image node of a view, as a Node extension could: Go `kit.Image.ImageID`, Rust `kit::Image::image_id`, Python `kit.Image(image_id=...)`, Lisp `(kit-image ... :image-id n)`.",
+      "rootCause": "The host has read `imageId` of an image node (upstream `ImageOptions.imageId`; absent, the host allocates one) since the node was added, but those four kits had no member for it and sent none.",
+      "rootCauseSource": "release note",
+      "userImpact": "Extra allocation or slower run",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python or Lisp extension can now set the Kitty image id of an image node of a view, as a Node extension could: Go `kit.Image.ImageID`, Rust `kit::Image::image_id`, Python `kit.Image(image_id=...)`, Lisp `(kit-image ... :image-id n)`. The host has read `imageId` of an image node (upstream `ImageOptions.imageId`; absent, the host allocates one) since the node was added, but those four kits had no member for it and sent none. The Go, Python and Rust kits have had the image node since 0.5.1 and the Lisp kit since 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1e2fa7e4a6",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/internal/kitwire/encode_test.go::TestEncodeMatchesTheHostViewPayload",
+        "test/extension-conformance/ui_view_image_id_test.go::TestConformance_UIViewImageID"
       ]
     },
     {
@@ -41871,6 +41914,29 @@
       ],
       "tests": [
         "durable/core/abi/spec/spec_test.go::TestTablesUnchanged"
+      ]
+    },
+    {
+      "id": "BF-a4f9a59",
+      "title": "A reload that retries an object whose earlier restart is still parked behind a call running on its old…",
+      "symptom": "A reload that retries an object whose earlier restart is still parked behind a call running on its old attempt, in the same reload that adds the plugin serving the type the object waited for, reported the object as `parked` with the stale cause `waiting for \u003ctype\u003e`; it reports it as `retried`, as Pi does.",
+      "rootCause": "the report read the earlier restart's readiness cause before the reload's publication woke the request of that readiness that waited for the type, where Pi reads it after; the restart readiness is new since v0.7.0",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A reload that retries an object whose earlier restart is still parked behind a call running on its old attempt, in the same reload that adds the plugin serving the type the object waited for, reported the object as `parked` with the stale cause `waiting for \u003ctype\u003e`; it reports it as `retried`, as Pi does.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a4f9a5907f",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_reload_report_goonly_test.go::TestReloadReportARetriedObjectWithAnOpenOldAttemptReportsWhatItsReadinessFindsAfterTheCommitsPublicationNotBefore",
+        "chord/next/host/host_reload_report_goonly_test.go::TestReloadReportARetriedObjectWithAnOpenOldAttemptStillReportsTheCauseOfItsReadinessWhenNothingServesWhatItWaitsFor"
       ]
     },
     {
