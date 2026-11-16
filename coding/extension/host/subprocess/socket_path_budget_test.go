@@ -123,7 +123,7 @@ func TestTheLongestSocketPathOfTheDeepestKeptDirectoryBindsAtTheLimit(t *testing
 	if err != nil {
 		t.Fatalf("listen on the longest socket path (%d bytes): %v", len(path), err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 	accepted := make(chan error, 1)
 	go func() {
 		conn, err := listener.Accept()
