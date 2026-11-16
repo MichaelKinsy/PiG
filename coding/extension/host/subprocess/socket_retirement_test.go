@@ -194,3 +194,41 @@ func TestAStopRemovesTheSocketFileOfItsOwnGenerationOnly(t *testing.T) {
 		}
 	})
 }
+
+// A retired generation that a running command holds until the session ends (a command awaiting a surface call that nothing answers) owns its socket path for as long as it is held: the generations that later reloads stage each bind and close a path of their own and none of them removes the held one's file, and Shutdown runs the held generation's stop and removes the directory.
+func TestAHeldRetiredGenerationOwnsItsSocketFileUntilTheSessionEnds(t *testing.T) {
+	eachSubprocessMode(t, func(t *testing.T, packed bool) {
+		h, held, stopped := retiredGenerationHost(t, packed)
+		leftSocketFile(t, held.sockPath)
+		heldLeaf := filepath.Base(held.sockPath)
+		h.commitStaged([]stagedManagedExt{{name: "busy", me: &managedExt{config: ExtConfig{Name: "busy"}}}}, nil, "reload replaced")
+		// Five later generations each bind a path of their own and close their listener once connected; the command of the first is still running.
+		for round := range 5 {
+			path, err := h.newSocketPath()
+			if err != nil {
+				t.Fatal(err)
+			}
+			listener, _, err := ListenExtension(path, false)
+			if err != nil {
+				t.Fatalf("round %d: %v", round, err)
+			}
+			if err := listener.Close(); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if got := socketFiles(t, h); !slices.Equal(got, []string{heldLeaf}) {
+			t.Fatalf("socket directory holds %q while the generation is held, want only its own %q", got, heldLeaf)
+		}
+		select {
+		case got := <-stopped:
+			t.Fatalf("the held generation %q was stopped before the session ended", got)
+		default:
+		}
+		dir := h.sockRuntimeDir
+		h.Shutdown("session ended")
+		requireStopped(t, stopped)
+		if _, err := os.Stat(dir); !os.IsNotExist(err) {
+			t.Fatalf("socket directory survived Shutdown: %v", err)
+		}
+	})
+}

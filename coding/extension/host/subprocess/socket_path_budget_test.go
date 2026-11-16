@@ -19,9 +19,7 @@ func TestEverySocketPathIsNewAndFitsTheBudget(t *testing.T) {
 		wg   sync.WaitGroup
 	)
 	for range callers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for range each {
 				path, err := h.newSocketPath()
 				mu.Lock()
@@ -33,7 +31,7 @@ func TestEverySocketPathIsNewAndFitsTheBudget(t *testing.T) {
 				seen[path] = true
 				mu.Unlock()
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	if len(seen) != callers*each {
