@@ -690,6 +690,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-54e3983](#bf-54e3983) | fix(packagemanager): npm gets Node's realpathSync of the install root, and the npm tests expect it | PiG's own defect | All platforms | Unreleased |
 | [BF-54eb030](#bf-54eb030) | A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal | PiG's own defect | All platforms | Unreleased |
 | [BF-55573f4](#bf-55573f4) | fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-556f2b0](#bf-556f2b0) | A `before_provider_request` handler that edits `event.payload` in place and returns nothing now changes the… | PiG's own defect | All platforms | Unreleased |
 | [BF-55a5244](#bf-55a5244) | The find tool on Windows returned no results for patterns with Windows separators such as `src\**\*.ts`, and… | PiG's own defect | Windows | Unreleased |
 | [BF-55a5244-2](#bf-55a5244-2) | A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd | PiG's own defect | All platforms | Unreleased |
 | [BF-563f896](#bf-563f896) | A model request that is cancelled while its setup runs, for example the request after an abort during a tool… | PiG's own defect | All platforms | Unreleased |
@@ -11580,6 +11581,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `55573f475d` (2026-10-23)
 - **Tests:** None recorded.
+
+### BF-556f2b0
+
+**A `before_provider_request` handler that edits `event.payload` in place and returns nothing now changes the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `before_provider_request` handler that edits `event.payload` in place and returns nothing now changes the request the provider receives, as it does in Pi, in the Go, Node, Python, Rust and Lisp extension SDKs, and so does an edit made before the handler throws.
+- **Root cause:** Pi hands every before_provider_request handler the one payload and sends what emitBeforeProviderRequest returns (the last result a handler returned, else the object the handlers edited), and every before_provider_headers handler the one headers object, whose handlers' results it ignores. An edit made in place before a handler returns nothing, or before it throws, is therefore in the request.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `556f2b00a1` (2026-11-16)
+- **Tests:** `extensions/sdk/provider_hook_test.go::TestProviderHookReply`, `test/extension-conformance/in_place_provider_hook_test.go::TestConformance_InPlaceProviderHookEditsReachTheRequest`, `test/extension-conformance/in_place_provider_hook_test.go::TestInPlaceProviderHookEditsMatchPi`
+- **Release note:** A `before_provider_request` handler that edits `event.payload` in place and returns nothing now changes the request the provider receives, as it does in Pi, in the Go, Node, Python, Rust and Lisp extension SDKs, and so does an edit made before the handler throws. A `before_provider_headers` handler's in-place edit of `event.headers` is kept the same way when the handler throws, and in the Go, Python, Rust and Lisp SDKs when it returns normally (the Node SDK already kept it then). Until now only a payload a handler returned took effect, so an edit in place was lost, for every provider, in every SDK. Each SDK sends back the payload as the handler left it when it differs from the one it received, in the member order the handler's object has. The loss was present in v0.7.0.
 
 ### BF-55a5244
 
