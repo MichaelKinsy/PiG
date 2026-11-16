@@ -8,6 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/pigdocs"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // Login help names the providers and models pages of this build's materialized bundle (auth-guidance.ts:9-10 names Pi's package docs).
@@ -19,6 +20,13 @@ func TestProviderLoginHelpPrefersMaterializedPigDocs(t *testing.T) {
 	}
 
 	msg := ProviderLoginHelp()
+	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.Docs) {
+		// pig additive (D92): a build that strips docs names no page.
+		if strings.Contains(msg, "providers.md") || strings.Contains(msg, "models.md") {
+			t.Fatalf("ProviderLoginHelp = %q names a docs page in a build that strips docs", msg)
+		}
+		return
+	}
 	wantProviders := filepath.Join(pigdocs.DocsDir(pigHome), "providers.md")
 	wantModels := filepath.Join(pigdocs.DocsDir(pigHome), "models.md")
 	if !strings.Contains(msg, wantProviders) || !strings.Contains(msg, wantModels) {

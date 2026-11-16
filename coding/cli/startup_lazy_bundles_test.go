@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/pigdocs"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -242,7 +243,8 @@ func TestBuildWritesTheDocsBundleBeforeItStartsAnExtension(t *testing.T) {
 		wrote bool
 	}{
 		{"no extension", nil, false},
-		{"extension", []string{"-e", lazyBundleExtension(t)}, true},
+		// pig additive (D92): a build that strips docs has no bundle to write.
+		{"extension", []string{"-e", lazyBundleExtension(t)}, !pigstrip.Has(pigstrip.ListFeatures, pigstrip.Docs)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			home := t.TempDir()
