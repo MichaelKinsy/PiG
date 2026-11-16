@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 type transport struct {
@@ -70,9 +72,13 @@ func run() error {
 
 // probe sends the transcript through the Responses provider's request path and prints the request's input.
 func probe(name string, transport transport, messages []ai.Message) error {
-	var body map[string]any
+	var body *orderedjson.Object
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		raw, err := io.ReadAll(r.Body)
+		if err == nil {
+			body, err = orderedjson.Parse(raw)
+		}
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -90,9 +96,10 @@ func probe(name string, transport transport, messages []ai.Message) error {
 	if result := stream.Result(); result.StopReason != ai.StopReasonStop {
 		return fmt.Errorf("%s %s: response=%#v", name, transport.name, result)
 	}
+	input, _ := body.Get("input")
 	return json.NewEncoder(os.Stdout).Encode(struct {
-		Case      string `json:"case"`
-		Transport string `json:"transport"`
-		Input     any    `json:"input"`
-	}{name, transport.name, body["input"]})
+		Case      string          `json:"case"`
+		Transport string          `json:"transport"`
+		Input     json.RawMessage `json:"input"`
+	}{name, transport.name, input})
 }

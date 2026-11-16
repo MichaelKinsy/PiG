@@ -28,9 +28,4 @@ for (const test of cases) {
     ? { system: captured.system[0].cache_control ?? null, user: captured.messages.at(-1).content.at(-1)?.cache_control ?? null }
     : Object.fromEntries(['prompt_cache_key', 'prompt_cache_retention', 'prompt_cache_options'].map(key => [key, captured[key] ?? null]));
 }
-function sorted(value) {
-  if (Array.isArray(value)) return value.map(sorted);
-  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, sorted(value[key])]));
-  return value;
-}
-console.log(JSON.stringify(sorted(results)));
+console.log(JSON.stringify(results));
