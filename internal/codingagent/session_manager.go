@@ -19,6 +19,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
@@ -71,9 +72,14 @@ func defaultSessionDir(cwd string) string {
 	return GetDefaultSessionDirPath(cwd, AgentDir())
 }
 
-// MkdirSessionDir creates a session directory and its missing parents with mode 0700. pig divergence (D132): Pi creates them with the umask
+// MkdirSessionDir creates a session directory and its missing parents with mode 0700, as Pi does when existsSync finds the path absent (`if (!existsSync(dir)) mkdirSync(dir, { recursive: true })`, session-manager.ts:597-602,1018-1020): a path that exists, even a file, is left as it is. A failure is reported as Node's mkdirSync does (`ENOTDIR: not a directory, mkdir '<dir>'`), which Pi lets escape unwrapped from getDefaultSessionDir and from the SessionManager constructor. pig divergence (D132): Pi creates them with the umask
 // default (0755), so every other user of the machine can read the sessions (pi-mono #10770). An existing directory keeps its mode.
-func MkdirSessionDir(dir string) error { return os.MkdirAll(dir, 0o700) }
+func MkdirSessionDir(dir string) error {
+	if pathExists(dir) {
+		return nil
+	}
+	return nodeerrno.MkdirAll(dir, 0o700)
+}
 
 // GetDefaultSessionDirPath derives storage from the selected agent directory, without consulting another configuration root.
 //
@@ -119,7 +125,7 @@ func (sm *SessionManager) Create(id, parentSessionPath string) (*Session, error)
 		return nil, err
 	}
 	if err := MkdirSessionDir(sm.sessionDir); err != nil {
-		return nil, fmt.Errorf("sessionmanager: mkdir: %w", err)
+		return nil, err
 	}
 	// File name: <ts>_<id>.jsonl (matches upstream ordering convention
 	// so directory listings sort chronologically).
@@ -319,7 +325,7 @@ func (sm *SessionManager) ForkFromFile(sourcePath string, idOption ...string) (*
 		return nil, err
 	}
 	if err := MkdirSessionDir(sm.sessionDir); err != nil {
-		return nil, fmt.Errorf("sessionmanager: mkdir: %w", err)
+		return nil, err
 	}
 	header := created.GetHeader()
 	newPath := filepath.Join(sm.sessionDir, fileTimestamp(header.Timestamp)+"_"+header.ID+".jsonl")
