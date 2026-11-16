@@ -1741,6 +1741,13 @@ def agent_session_runtime_script(ctx, args):
         "missing": error_text(lambda: runtime.import_from_jsonl(os.path.join(import_dir, "missing.jsonl"))),
     }
 
+    # reload after bind_extensions() with no bindings (Pi e03dca7a3843): the old extensions get session_shutdown and the new ones session_start.
+    with open(log_file) as handle:
+        logged_before_reload = len(handle.read().rstrip("\n").split("\n"))
+    runtime.session.reload()
+    with open(log_file) as handle:
+        r["reload"] = {"events": handle.read().rstrip("\n").split("\n")[logged_before_reload:]}
+
     # dispose settles a run in flight before it emits session_shutdown; the model never ends this run, so only the abort can end it.
     observe_file = os.path.join(cwd, "observe-run")
     open(observe_file, "w", newline="").close()

@@ -72,7 +72,7 @@ func TestSessionOriginWritersObeyTheWriterSubscribedGate(t *testing.T) {
 		t.Fatal(err)
 	}
 	var emit, subscribe []token.Pos
-	gated := 0
+
 	ast.Inspect(file, func(node ast.Node) bool {
 		call, ok := node.(*ast.CallExpr)
 		if !ok {
@@ -90,34 +90,18 @@ func TestSessionOriginWritersObeyTheWriterSubscribedGate(t *testing.T) {
 		}
 		return true
 	})
+	// Pi 6aab551a79ba: the JSON mode has no writer-subscribed flag, and its event writer subscribes before the session_start emit (print-mode.ts rebindSession).
 	ast.Inspect(file, func(node ast.Node) bool {
-		fn, ok := node.(*ast.FuncLit)
-		if !ok {
-			return true
+		if ident, ok := node.(*ast.Ident); ok && ident.Name == "writing" {
+			t.Errorf("print_mode.go: %s names a writer-subscribed flag; the JSON writer subscribes before session_start and nothing waits for it", fset.Position(ident.Pos()))
 		}
-		ast.Inspect(fn.Body, func(inner ast.Node) bool {
-			if call, ok := inner.(*ast.CallExpr); ok {
-				if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "writeJSONLine" && len(call.Args) == 2 {
-					if arg, ok := call.Args[1].(*ast.Ident); ok && arg.Name == "event" {
-						if !callsLoadOnWriting(fn.Body) {
-							t.Errorf("print_mode.go: %s writes a Session-origin event without testing writing.Load()", fset.Position(call.Pos()))
-						}
-						gated++
-					}
-				}
-			}
-			return true
-		})
 		return true
 	})
-	if gated == 0 {
-		t.Error("print_mode.go: the JSON entry_appended writer (writeJSONLine(jsonOut, event)) was not found; update this test with the sink that replaced it")
-	}
 	if len(emit) != 1 || len(subscribe) != 1 {
 		t.Fatalf("print_mode.go: %d session_start emits and %d subscribe calls in bind, want one each", len(emit), len(subscribe))
 	}
-	if !slices.IsSorted([]token.Pos{emit[0], subscribe[0]}) {
-		t.Errorf("print_mode.go: subscribe(session) at %s comes before the session_start emit at %s; Pi subscribes the JSON writer after bindExtensions", fset.Position(subscribe[0]), fset.Position(emit[0]))
+	if !slices.IsSorted([]token.Pos{subscribe[0], emit[0]}) {
+		t.Errorf("print_mode.go: subscribe(session) at %s comes after the session_start emit at %s; Pi subscribes the JSON writer before bindExtensions", fset.Position(subscribe[0]), fset.Position(emit[0]))
 	}
 }
 

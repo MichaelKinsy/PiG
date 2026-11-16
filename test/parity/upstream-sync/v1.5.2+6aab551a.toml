@@ -1,0 +1,23 @@
+from = "1.5.2+beffcde9"
+to = "1.5.2+6aab551a"
+
+[[files]]
+path = "packages/coding-agent/src/modes/print-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/json_mode_writer_after_session_start_test.go#TestJSONModeWritesWhatSessionStartEmitsInEverySDK", "test:coding/cli/json_mode_writer_after_session_start_test.go#TestJSONModeWritesSessionStartEventsOfAReplacementInEverySDK", "test:coding/cli/writer_after_session_start_structure_test.go#TestSessionOriginWritersObeyTheWriterSubscribedGate", "scenario:test/parity/scenarios/json/13-json-session-start-writer-order.toml", "scenario:test/parity/scenarios/json/15-json-session-start-replacement.toml"]
+rationale = "6aab551a79ba (#12232) moves rebindSession's subscription (the event writer and the stdout backpressure) before `session.bindExtensions()`, so the events session_start handlers emit (entry_appended, session_info_changed, a custom message's message_start and message_end) reach the --mode json output at startup and after an extension replaces the session; the session header is still written first. PiG's counterpart is the `bind` closure of coding/cli/print_mode.go: `subscribe(session)` now runs before `session.EmitSessionStartTransition`, and the `writing` flag that held back the entry_appended writer until session_start was dispatched is gone. Plain print mode (text) has no event subscription and is unchanged. PiG had the fault by design (its test and scenario json/13 pinned the dropped stream, in v0.7.0). The oracle carries the commit through the 6aab551a79ba block of automation/gen/pi-post-release-backports.mjs (pi-coding-agent/modes/print-mode.js)."
+
+[[files]]
+path = "packages/coding-agent/test/suite/print-mode-session-start-events.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:coding/cli/json_mode_writer_after_session_start_test.go#TestJSONModeWritesSessionStartEventsOfAReplacementInEverySDK", "scenario:test/parity/scenarios/json/15-json-session-start-replacement.toml"]
+rationale = "6aab551a79ba adds the one case: JSON print mode on a runtime whose extension appends an entry in session_start (data = the event's reason) and replaces the session with ctx.newSession() from /renew; the output starts with the session header and the entry_appended events of the startup and of the new session are both in it (`[\"startup\", \"new\"]`). Scenario json/15 is that case against the installed Pi with the commit backported (same extension and prompt, output compared byte for byte after masking ids and clocks, runs = 3). TestJSONModeWritesSessionStartEventsOfAReplacementInEverySDK runs it in every SDK through the writer-start fixture's /writer-renew command (Node, Go, Python, Rust, Lisp: each serves ctx.newSession) and asserts two session_start entry_appended and two session_info_changed. It fails on the code before the change (0 of each) and passes after."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "6aab551a79ba: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment (followmain45sessionstart-c28880ae3e71.md)."

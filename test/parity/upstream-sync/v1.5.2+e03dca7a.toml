@@ -1,0 +1,23 @@
+from = "1.5.2+6aab551a"
+to = "1.5.2+e03dca7a"
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/session_reload_bound_empty_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsEmitsSessionStart", "test:coding/session_reload_bound_empty_upstream_test.go#TestSessionReloadRestartsTheExtensionsOnlyOfABoundSession", "test:test/extension-conformance/agent_session_runtime_test.go#TestSessionGraphAgentSessionRuntimeAcrossSDKs", "test:test/extension-conformance/agent_session_runtime_test.go#TestPackedSessionGraphAgentSessionRuntimeAcrossSDKs"]
+rationale = "e03dca7a3843 (#12231) makes reload() restart the extensions (session_start with reason reload, MCP reporting, resource discovery) when bindExtensions() set `_extensionsBound`, in place of the check that a UI context, command actions, a shutdown handler or an error listener were set, which a host that called bindExtensions({}) never satisfied. PiG's counterpart is coding.Session: BindExtensions sets `extensionsBound` (before the runner check, as Pi sets the flag unconditionally) and Reload tests it, replacing ExtensionBindings.hasBindings, which is deleted. The faulty host shape is every SDK's AgentSession.BindExtensions (coding/cli/child_sessions.go binds with ExtensionBindings{}) and examples/headless; the print, JSON, RPC and interactive modes do not call Session.BindExtensions (print and RPC emit session_start themselves after Session.Reload, interactive only stores the abort handler) so they are unchanged. PiG had the fault in v0.7.0. The oracle carries the commit through the e03dca7a3843 block of automation/gen/pi-post-release-backports.mjs (pi-coding-agent/core/agent-session.js)."
+
+[[files]]
+path = "packages/coding-agent/test/agent-session-runtime-events.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/session_reload_bound_empty_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsEmitsSessionStart", "test:test/extension-conformance/agent_session_runtime_test.go#TestSessionGraphAgentSessionRuntimeAcrossSDKs", "test:test/extension-conformance/agent_session_runtime_test.go#TestPackedSessionGraphAgentSessionRuntimeAcrossSDKs"]
+rationale = "e03dca7a3843 adds \"emits session_start after reload when extensions were bound without bindings\": a runtime whose extension records session_shutdown and session_start, bindExtensions({}), reload(): [session_shutdown reload, session_start reload]. The Go twin is the first test above (same events, same order; it fails before the change with only session_shutdown); TestSessionReloadRestartsTheExtensionsOnlyOfABoundSession adds the cases Pi's flag distinguishes (never bound: shutdown only; bound with members; bound again after a reload). The agent_session_runtime conformance row gains a reload step in every SDK (Node, Go, Python, Rust; isolated and packed): the report's `reload.events` is [shutdown|reload|-, start|reload|-], taken from Pi's own run in the Node row."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "e03dca7a3843: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment (followmain46reload-7236618f972d.md)."
