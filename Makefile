@@ -263,7 +263,7 @@ sdk-bundles: ## Regenerate the compressed SDK copies and embed lists of extensio
 sdk-bundles-drift: ## Fail when a compressed SDK copy differs from its source (regenerate with make sdk-bundles)
 	@./automation/ci/sdk-bundles-drift.sh
 
-.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
+.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift divergence-approve help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
 
 ##@ Test and lint
 
@@ -506,8 +506,14 @@ compliance: ## Check badge and OpenSSF evidence: files, pins, workflow hardening
 divergence-consistency: ## Match every docs/parity/DIVERGENCES.md entry to its call-site marker
 	@./automation/ci/check-divergence-consistency.sh
 
-divergence-quality: ## Validate divergence records as enforceable contracts
+divergence-quality: ## Validate divergence records as enforceable contracts, each approval bound to the hash of its record's text
+	@python3 -B -m unittest discover -s automation/ci -p test_check_divergence_quality.py
 	@./automation/ci/check-divergence-quality.py
+
+divergence-approve: ## OWNER ONLY: approve the current text of record ID=D<N> (writes the date and text hash on its approval line, drops its pending entry, regenerates the ledger)
+	@test -n "$(ID)" || { echo "divergence-approve: set ID=D<N>" >&2; exit 2; }
+	@./automation/ci/check-divergence-quality.py --stamp $(ID)
+	@$(MAKE) --no-print-directory divergences
 
 # divergence-guard fails on hidden divergences no docs/parity/DIVERGENCES.md entry
 # records: invented limits and timeouts, dropped events, swallowed errors,
