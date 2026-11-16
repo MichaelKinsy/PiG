@@ -56225,6 +56225,32 @@
       "tests": []
     },
     {
+      "id": "BF-e061002",
+      "title": "A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`)…",
+      "symptom": "A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`) now keeps the member order of the auth.json entry when anything prints or forwards it, as Pi does: an OAuth entry written `type, access, refresh, expires` is no longer returned as `type, refresh, access, expires`, and members the typed form does not model keep their place.",
+      "rootCause": "the read-only decode built its credential from a map and never recorded the entry's member order, which the writable decode records, so marshaling fell back to struct order",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`) now keeps the member order of the auth.json entry when anything prints or forwards it, as Pi does: an OAuth entry written `type, access, refresh, expires` is no longer returned as `type, refresh, access, expires`, and members the typed form does not model keep their place. Only the order changes, not which members are returned. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e061002932",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/auth_read_member_order_test.go::TestInMemoryReadKeepsDecodedMemberOrder",
+        "ai/auth_read_member_order_test.go::TestReadCredentialKeepsFileMemberOrder",
+        "ai/auth_read_member_order_test.go::TestReadCredentialMemberOrderMatchesPi",
+        "ai/auth_read_member_order_test.go::TestRefreshedCredentialKeepsFileMemberOrder",
+        "coding/auth_storage_test.go::TestReadStoredCredentialKeepsFileMemberOrder"
+      ]
+    },
+    {
       "id": "BF-e098463",
       "title": "A Gemini stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of…",
       "symptom": "A Gemini stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of ending the turn with `google: invalid SSE JSON`: a text that is not a string (or null) appends its string form, a `thought` or `thoughtSignature` of the wrong type is ignored, a `candidates`, candidate, content or `functionCall` that is not the expected shape reads as empty, `parts` that are a string are skipped and other non-arrays end the turn with `candidate.content.parts is not iterable`, a null part ends it with Pi's `Cannot read properties of null` error after the parts before it, a finish reason that is not a string ends it with `Unhandled stop reason: \u003cits string form\u003e`, and usage that is not an object reads as zeros, and a `candidatesTokenCount` of `true` counts as 1, as Pi's `+` makes it.",
