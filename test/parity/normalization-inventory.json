@@ -77,7 +77,7 @@
     },
     {
       "source": "test/parity/testdata/provider-wire-pig/main.go",
-      "sha256": "048e77319ec5758485dc9110a354596b5bd4c9fe5ac5e7951ef25461726289ef",
+      "sha256": "c10bb060b61b5d5faa070e617b38b697227401221c97cbd21cbebe101a3c3514",
       "reason": "Legacy role/key/auth summaries are diagnostic only: wireBody now compares the entire captured HTTP request body alongside them. Aggregated provider response summaries do not prove mode events; real-provider RPC/JSON scenarios compare those separately."
     },
     {
@@ -102,7 +102,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "2b84f77e627afedac81393f3daaf50872eb4d5fa9c72cb7c25659c335865e4c3",
+      "sha256": "26bdb7e827d602bf0462fe80d91cb7fece5ce9ee0e0be557c72ad23d507e633e",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
