@@ -497,6 +497,7 @@ go-fix-clean: ## Fail when go fix would change any file
 # every version pin, reuse lint, and govulncheck. It fails on any miss.
 compliance: ## Check badge and OpenSSF evidence: files, pins, workflow hardening, REUSE, govulncheck
 	@python3 -B -m unittest discover -s automation/ci -p test_go_pin.py
+	@python3 -B -m unittest discover -s automation/ci -p test_secret_scan_range.py
 	@./automation/ci/check-compliance.py $(COMPLIANCE_ARGS)
 
 # divergence-consistency enforces AGENTS.md rule #4. Every divergence
