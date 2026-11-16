@@ -69,6 +69,9 @@ func watchLiveHeap(quit <-chan struct{}) {
 	timer := time.NewTimer(wait)
 	defer timer.Stop()
 	for {
+		if watcherTurn != nil {
+			watcherTurn()
+		}
 		select {
 		case <-quit:
 			return
@@ -95,6 +98,10 @@ func watchLiveHeap(quit <-chan struct{}) {
 		timer.Reset(wait)
 	}
 }
+
+// watcherTurn, when a test sets it before Apply, is called each time the watcher is about to wait: first when it has started and made its
+// timer, then after each poll has set the timer again. It lets a test wait for those moments as events. It is nil in production.
+var watcherTurn func()
 
 // debug.ReadGCStats takes the runtime's heap lock and nothing else (no stop-the-world, no mcache flush), but it makes its two history
 // buffers (4,120 and 6,144 bytes) when the caller gives it none. A watcher that polls before the first collection hands it these
