@@ -18708,6 +18708,30 @@
       "tests": []
     },
     {
+      "id": "BF-556f2b0",
+      "title": "A `before_provider_request` handler that edits `event.payload` in place and returns nothing now changes the…",
+      "symptom": "A `before_provider_request` handler that edits `event.payload` in place and returns nothing now changes the request the provider receives, as it does in Pi, in the Go, Node, Python, Rust and Lisp extension SDKs, and so does an edit made before the handler throws.",
+      "rootCause": "Pi hands every before_provider_request handler the one payload and sends what emitBeforeProviderRequest returns (the last result a handler returned, else the object the handlers edited), and every before_provider_headers handler the one headers object, whose handlers' results it ignores. An edit made in place before a handler returns nothing, or before it throws, is therefore in the request.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `before_provider_request` handler that edits `event.payload` in place and returns nothing now changes the request the provider receives, as it does in Pi, in the Go, Node, Python, Rust and Lisp extension SDKs, and so does an edit made before the handler throws. A `before_provider_headers` handler's in-place edit of `event.headers` is kept the same way when the handler throws, and in the Go, Python, Rust and Lisp SDKs when it returns normally (the Node SDK already kept it then). Until now only a payload a handler returned took effect, so an edit in place was lost, for every provider, in every SDK. Each SDK sends back the payload as the handler left it when it differs from the one it received, in the member order the handler's object has. The loss was present in v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "556f2b00a1",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/provider_hook_test.go::TestProviderHookReply",
+        "test/extension-conformance/in_place_provider_hook_test.go::TestConformance_InPlaceProviderHookEditsReachTheRequest",
+        "test/extension-conformance/in_place_provider_hook_test.go::TestInPlaceProviderHookEditsMatchPi"
+      ]
+    },
+    {
       "id": "BF-55a5244",
       "title": "The find tool on Windows returned no results for patterns with Windows separators such as `src\\**\\*.ts`, and…",
       "symptom": "The find tool on Windows returned no results for patterns with Windows separators such as `src\\**\\*.ts`, and for every path pattern such as `src/**/*.ts` with fd 10.5.1.",
@@ -47241,6 +47265,30 @@
         "ai/builtin_providers_strip_test.go::TestStrippedProvidersAreNotBuilt",
         "ai/providers/bedrock/bedrock_models_upstream_stripped_test.go::TestBedrockUpstreamModelCatalog",
         "ai/strip_built_test.go::TestBuiltStrippedProvidersMatchTheStripState"
+      ]
+    },
+    {
+      "id": "BF-c13e751",
+      "title": "fix(ai): the provider-request hook hands an extension Pi member order for Google, Vertex and pi-messages",
+      "symptom": "fix(ai): the provider-request hook hands an extension Pi member order for Google, Vertex and pi-messages",
+      "rootCause": "Pi hands before_provider_request the object buildParams created, and JSON.stringify writes its members in creation order. PiG built a map, so a subprocess extension saw the members sorted. The provider now holds the member order of the map it hands the hook (ai.HoldHookPayload) and the subprocess host writes it with ai.MarshalHookPayload. Replayed Google parts are written in the member order of Pi convertMessages.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c13e751f73",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/google_replayed_part_order_test.go::TestGoogleReplayedPartsHavePiMemberOrder",
+        "ai/pi_messages_payload_oracle_test.go::TestPiMessagesPayloadMatchesPi",
+        "ai/raw_payload_replacement_oracle_test.go::TestRawPayloadReplacementsAreSentAsPiSendsThem",
+        "coding/extension/host/subprocess/event_payload_order_test.go::TestBeforeProviderRequestWireKeepsPiMemberOrder"
       ]
     },
     {

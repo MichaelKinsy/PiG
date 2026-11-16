@@ -685,6 +685,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-54e3983](#bf-54e3983) | fix(packagemanager): npm gets Node's realpathSync of the install root, and the npm tests expect it | PiG's own defect | All platforms | Unreleased |
 | [BF-54eb030](#bf-54eb030) | A Go, Rust, Python, Lisp or Node extension's SDK no longer prints its own diagnostics on the terminal | PiG's own defect | All platforms | Unreleased |
 | [BF-55573f4](#bf-55573f4) | fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-556f2b0](#bf-556f2b0) | A `before_provider_request` handler that edits `event.payload` in place and returns nothing now changes the… | PiG's own defect | All platforms | Unreleased |
 | [BF-55a5244](#bf-55a5244) | The find tool on Windows returned no results for patterns with Windows separators such as `src\**\*.ts`, and… | PiG's own defect | Windows | Unreleased |
 | [BF-55a5244-2](#bf-55a5244-2) | A find call aborted while the tool looked for a `.git` directory above the search path no longer starts fd | PiG's own defect | All platforms | Unreleased |
 | [BF-563f896](#bf-563f896) | A model request that is cancelled while its setup runs, for example the request after an abort during a tool… | PiG's own defect | All platforms | Unreleased |
@@ -1721,6 +1722,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c122088](#bf-c122088) | A durable nested call keeps its arguments in the member order the caller wrote them, as Pi does: the stored… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c129008](#bf-c129008) | Registering a native provider did not refresh the Session's active model from the registry, as Pi does after… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1292ec](#bf-c1292ec) | A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions | PiG's own defect | All platforms | Unreleased |
+| [BF-c13e751](#bf-c13e751) | fix(ai): the provider-request hook hands an extension Pi member order for Google, Vertex and pi-messages | PiG's own defect | All platforms | Unreleased |
 | [BF-c1524ce](#bf-c1524ce) | fix(durable/core): a registry change tells the task graph its blocked reasons may have changed | PiG's own defect | All platforms | Unreleased |
 | [BF-c15309d](#bf-c15309d) | fix(sdk): extension SDK calculateCost reports totalFromProvider=false (Pi); chord entries reach the durable… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1ed918](#bf-c1ed918) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
@@ -11489,6 +11491,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `55573f475d` (2026-10-23)
 - **Tests:** None recorded.
+
+### BF-556f2b0
+
+**A `before_provider_request` handler that edits `event.payload` in place and returns nothing now changes the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `before_provider_request` handler that edits `event.payload` in place and returns nothing now changes the request the provider receives, as it does in Pi, in the Go, Node, Python, Rust and Lisp extension SDKs, and so does an edit made before the handler throws.
+- **Root cause:** Pi hands every before_provider_request handler the one payload and sends what emitBeforeProviderRequest returns (the last result a handler returned, else the object the handlers edited), and every before_provider_headers handler the one headers object, whose handlers' results it ignores. An edit made in place before a handler returns nothing, or before it throws, is therefore in the request.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `556f2b00a1` (2026-11-16)
+- **Tests:** `extensions/sdk/provider_hook_test.go::TestProviderHookReply`, `test/extension-conformance/in_place_provider_hook_test.go::TestConformance_InPlaceProviderHookEditsReachTheRequest`, `test/extension-conformance/in_place_provider_hook_test.go::TestInPlaceProviderHookEditsMatchPi`
+- **Release note:** A `before_provider_request` handler that edits `event.payload` in place and returns nothing now changes the request the provider receives, as it does in Pi, in the Go, Node, Python, Rust and Lisp extension SDKs, and so does an edit made before the handler throws. A `before_provider_headers` handler's in-place edit of `event.headers` is kept the same way when the handler throws, and in the Go, Python, Rust and Lisp SDKs when it returns normally (the Node SDK already kept it then). Until now only a payload a handler returned took effect, so an edit in place was lost, for every provider, in every SDK. Each SDK sends back the payload as the handler left it when it differs from the one it received, in the member order the handler's object has. The loss was present in v0.7.0.
 
 ### BF-55a5244
 
@@ -25907,6 +25923,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c1292ecbab` (2026-11-12)
 - **Tests:** `ai/builtin_providers_strip_test.go::TestStrippedProvidersAreNotBuilt`, `ai/providers/bedrock/bedrock_models_upstream_stripped_test.go::TestBedrockUpstreamModelCatalog`, `ai/strip_built_test.go::TestBuiltStrippedProvidersMatchTheStripState`
 - **Release note:** A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions. This affected a Piglet Binary whose `strip.apis` names `bedrock-converse-stream`, `google-vertex` or `mistral-conversations` (build tags `pig_strip_bedrock_converse_stream`, `pig_strip_google_vertex`, `pig_strip_mistral_conversations`), and Stock PiG running a Piglet file with such a strip. In such a Binary the provider bridge subprocess (the `provider-bridge` command of the PiG executable, the transport of an extension's detached helpers such as background runs of pi-subagents) exited with status 2 and `panic: Provider <id>: at least one of "api", "images", or "classifiers" is required.` on its first stream request, whatever provider the request named. In both, an extension's pi-ai `stream` or `complete` call failed with `internal_panic: panic in HandleCall for <extension>.modelStream: Provider <id>: at least one of "api", "images", or "classifiers" is required.`. The built-in provider collection behind those calls now leaves a stripped provider out: requests to the other providers run, and a request for a model on a stripped API ends with `Provider <id>: API <api> is stripped from this Piglet (strip.apis: <api>)`. `--version`, `--help`, `--list-models`, print mode, RPC `get_available_models` and a `--model` that names a stripped provider were not affected, and neither was a build that strips only extensions or features. The defect is in every release since 0.5.0.
+
+### BF-c13e751
+
+**fix(ai): the provider-request hook hands an extension Pi member order for Google, Vertex and pi-messages**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(ai): the provider-request hook hands an extension Pi member order for Google, Vertex and pi-messages
+- **Root cause:** Pi hands before_provider_request the object buildParams created, and JSON.stringify writes its members in creation order. PiG built a map, so a subprocess extension saw the members sorted. The provider now holds the member order of the map it hands the hook (ai.HoldHookPayload) and the subprocess host writes it with ai.MarshalHookPayload. Replayed Google parts are written in the member order of Pi convertMessages.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c13e751f73` (2026-11-16)
+- **Tests:** `ai/google_replayed_part_order_test.go::TestGoogleReplayedPartsHavePiMemberOrder`, `ai/pi_messages_payload_oracle_test.go::TestPiMessagesPayloadMatchesPi`, `ai/raw_payload_replacement_oracle_test.go::TestRawPayloadReplacementsAreSentAsPiSendsThem`, `coding/extension/host/subprocess/event_payload_order_test.go::TestBeforeProviderRequestWireKeepsPiMemberOrder`
 
 ### BF-c1524ce
 
