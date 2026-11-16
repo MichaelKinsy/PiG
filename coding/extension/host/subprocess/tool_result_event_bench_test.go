@@ -14,10 +14,8 @@ func BenchmarkNodeToolResultEvent(b *testing.B) {
 	loaded := loadToolResultBenchExtension(b)
 	handler := loaded.Handlers["tool_result"][0]
 	event := extension.CustomToolResultEvent{
-		ToolResultEventBase: extension.ToolResultEventBase{
-			Type: "tool_result", ToolCallID: "c1", Input: map[string]any{"command": "true"},
-			Content: []any{map[string]any{"type": "text", "text": "ok"}},
-		},
+		Type: "tool_result", ToolCallID: "c1", Input: map[string]any{"command": "true"},
+		Content:  []any{map[string]any{"type": "text", "text": "ok"}},
 		ToolName: "bash",
 	}
 	b.ReportAllocs()
