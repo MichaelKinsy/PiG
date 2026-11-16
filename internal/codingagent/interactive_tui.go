@@ -182,7 +182,7 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress, startRende
 		m.transcriptScrollView.Dispose()
 		m.transcriptScrollView = nil
 	}
-	m.tuiInst.StopWithOptions(tui.StopOptions{PreserveScreen: true})
+	m.tuiInst.StopWithOptions(tui.StopOptions{PreserveScreen: true, ExitTerminal: m.exitingTui})
 	if viewport, ok := m.tuiInst.(tui.ViewportTUI); ok && tui.IsViewportTUI(m.tuiInst) {
 		viewport.SetLayoutRoot(nil) // interactive-mode.ts:908: the outgoing viewport renderer lets go of the fullscreen layout
 	}
@@ -427,13 +427,16 @@ func (m *InteractiveMode) stopInteractiveTui() {
 		for m.altScreen.HasOverlay() {
 			m.altScreen.HideOverlay()
 		}
+		m.exitingTui = true
 		m.switchTuiMode("regular", false, false)
 		m.renderNow()
 	}
+	// Pi's stop() writes the cursor show and terminal.stop()'s mode resets inside each ui.stop(), the swap's included (interactive-mode.ts:928-936); the exit's stops are marked so the restore below does not write them again.
+	m.exitingTui = true
 	if m.altScreen != nil {
-		m.altScreen.StopWithOptions(tui.StopOptions{PreserveScreen: true})
+		m.altScreen.StopWithOptions(tui.StopOptions{PreserveScreen: true, ExitTerminal: true})
 	} else if m.tuiInst != nil {
-		m.tuiInst.Stop()
+		m.tuiInst.StopWithOptions(tui.StopOptions{ExitTerminal: true})
 	}
 	// The resume hint and extension shutdown run only after cooked output is
 	// restored; a bare LF in raw mode leaves the next writer mid-line.

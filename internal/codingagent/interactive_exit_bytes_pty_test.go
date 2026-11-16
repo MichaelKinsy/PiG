@@ -35,6 +35,7 @@ const (
 	exitBytesChildEnv    = "PIG_TEST_EXIT_BYTES_CHILD"
 	exitBytesProgressEnv = "PIG_TEST_EXIT_BYTES_PROGRESS"
 	exitBytesRunEnv      = "PIG_TEST_EXIT_BYTES_RUN"
+	exitBytesTuiModeEnv  = "PIG_TEST_EXIT_BYTES_TUIMODE"
 )
 
 // exitTitleOrProgress matches a terminal title (OSC 0) or a progress indicator (OSC 9;4) sequence.
@@ -145,7 +146,7 @@ type exitBytesChild struct {
 	waitErr  error
 }
 
-func startExitBytesChild(t *testing.T, progress, run bool) *exitBytesChild {
+func startExitBytesChild(t *testing.T, progress, run bool, extraEnv ...string) *exitBytesChild {
 	t.Helper()
 	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR|syscall.O_NOCTTY|syscall.O_CLOEXEC, 0)
 	if err != nil {
@@ -177,6 +178,7 @@ func startExitBytesChild(t *testing.T, progress, run bool) *exitBytesChild {
 	child.cmd = exec.CommandContext(ctx, executable, "-test.run=^TestExitBytesChild$", "-test.count=1")
 	child.cmd.Env = append(os.Environ(), exitBytesChildEnv+"="+child.dir, exitBytesProgressEnv+"="+strconv.FormatBool(progress),
 		exitBytesRunEnv+"="+strconv.FormatBool(run), "TERM=xterm-256color", "PIG_HOME="+t.TempDir())
+	child.cmd.Env = append(child.cmd.Env, extraEnv...)
 	child.cmd.Stdin, child.cmd.Stdout, child.cmd.Stderr = slave, slave, slave
 	child.cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
 	if err := child.cmd.Start(); err != nil {
@@ -298,7 +300,7 @@ func TestExitBytesChild(t *testing.T) {
 	var mode *icodingagent.InteractiveMode
 	readyAt := -1
 	mode = icodingagent.NewInteractiveMode(nil, icodingagent.InteractiveModeOptions{
-		CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, NoThemes: true,
+		CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, NoThemes: true, TuiMode: os.Getenv(exitBytesTuiModeEnv),
 		SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), Terminal: terminal,
 		// The mark is made on the owner loop's goroutine, right before the loop reads input.
 		StartupMark: func(label string) {

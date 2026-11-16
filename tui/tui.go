@@ -3098,6 +3098,25 @@ func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
 		WriteToTerminal(t.out, "\r\n")
 	}
 	WriteToTerminal(t.cursorOut(), "\x1b[?25h")
+	if options.ExitTerminal {
+		t.writeTerminalStopModes()
+	}
+}
+
+// writeExitTerminalStop is the stop() of Pi's TuiBase between its two hooks for a process exit: showCursor, then terminal.stop()'s mode resets.
+func (t *tuiBase) writeExitTerminalStop(options StopOptions) {
+	if !options.ExitTerminal {
+		return
+	}
+	t.writeOwned(t.cursorOut(), "\x1b[?25h")
+	t.writeTerminalStopModes()
+}
+
+// writeTerminalStopModes writes the mode resets of terminal.stop() on the renderer's terminal, when it is a process terminal.
+func (t *tuiBase) writeTerminalStopModes() {
+	if terminal, ok := t.Terminal().(interface{ WriteStopModes() }); ok {
+		terminal.WriteStopModes()
+	}
 }
 
 // drawBox draws a box with title and content lines. Content clipping and padding use terminal-cell width and preserve ANSI styling without splitting graphemes.

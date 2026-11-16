@@ -267,8 +267,10 @@ type InteractiveMode struct {
 	shutdownRequested atomic.Bool
 	// entriesRenderedByBoundaryCompaction holds the ids of entries after a boundary compaction that its rebuild of the transcript already drew.
 	entriesRenderedByBoundaryCompaction map[string]struct{}
-	requestExit                         atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
-	fatalRuntime                        atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
+	// exitingTui marks the renderer stops of the process exit (stopInteractiveTui), which write terminal.stop()'s mode resets; a renderer swap does not.
+	exitingTui   bool
+	requestExit  atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
+	fatalRuntime atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
 
 	// suspended is true while the session is parked by SIGTSTP. SIGINT is
 	// ignored then, mirroring upstream's ignoreSigint listener.
@@ -1785,8 +1787,6 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.rawDrain = drain
 	m.openFrontend()
 	m.tuiInst.HideCursor()
-	cursorTUI := m.tuiInst
-	m.onStop(func() error { cursorTUI.ShowCursor(); return nil })
 	// Centralized, idempotent renderer teardown runs before the deferred cursor and cooked-mode restoration on normal quit or graceful signal shutdown. A dead-terminal emergency exits without unwinding these terminal writes.
 	m.onStop(func() error { m.stopInteractiveTui(); return nil })
 

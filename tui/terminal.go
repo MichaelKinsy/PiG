@@ -134,6 +134,8 @@ type ProcessTerminal struct {
 	colorSchemeReports atomic.Bool
 	// exitRestored is set once the exit restore has written: every later write is dropped, so a frame still in flight cannot repaint over a crash report or hide the cursor again. Entering raw mode again clears it.
 	exitRestored atomic.Bool
+	// stopModesWritten is set once a renderer's exit stop wrote the mode resets of Pi's terminal.stop() (WriteStopModes); the restore that follows then does not write them a second time. Entering raw mode clears it.
+	stopModesWritten atomic.Bool
 	// sizeCache is the window size kept between SIGWINCHs while the interactive resize handler holds it.
 	sizeCache terminalSizeCache
 }
@@ -418,6 +420,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 	}
 	rememberSignalRestore(fd, state)
 	t.exitRestored.Store(false)
+	t.stopModesWritten.Store(false)
 	// On Windows, enable VT output processing so pig's ANSI renderer displays;
 	// term.MakeRaw only configures raw input. No-op on unix.
 	vtRestore := t.enableVTProcessing()
@@ -438,8 +441,10 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 		// Disable bracketed paste before restoring cooked mode. A caller that
 		// is exiting the interactive process drains late key releases; a
 		// ProcessTerminal Stop preserves unread input for the next consumer,
-		// matching upstream stop().
-		t.writeUnlogged("\x1b[?2004l")
+		// matching upstream stop(). A renderer's exit stop wrote it already, in Pi's place.
+		if !t.stopModesWritten.Swap(false) {
+			t.writeUnlogged("\x1b[?2004l")
+		}
 		if drainOnRestore {
 			_ = t.DrainInput(time.Second, 50*time.Millisecond)
 		}
@@ -695,6 +700,20 @@ func (t *ProcessTerminal) Stop() {
 		t.disableKeyboardProtocol()
 		t.protocolQueried = false
 	}
+}
+
+// WriteStopModes writes the mode resets of Pi's terminal.stop() that precede the input restore: the progress clear when one is active, the program
+// status clear, bracketed paste off and the keyboard protocol pops. A renderer's exit stop calls it where Pi's stop() calls terminal.stop(), before the
+// alternate screen is left; the restore that follows does not write bracketed paste off again (stopModesWritten).
+// upstream: packages/tui/src/terminal.ts:stop (:481-512)
+func (t *ProcessTerminal) WriteStopModes() {
+	if t.clearProgressInterval() {
+		t.writeUnlogged(terminalProgressClearSeq)
+	}
+	t.stopProgramStatus()
+	t.writeUnlogged("\x1b[?2004l")
+	t.disableKeyboardProtocol()
+	t.stopModesWritten.Store(true)
 }
 
 // DrainInput drains pending stdin bytes for up to maxWait, exiting early once
