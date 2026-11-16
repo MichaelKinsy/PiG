@@ -1015,6 +1015,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6d0ec02](#bf-6d0ec02) | Durable (Pi eb2fce43): a wait that closes a cycle through waits and held owners now fails the task's commit… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6d3043e](#bf-6d3043e) | The startup prompts (the project-trust and extension selectors, the extension text input and first-time… | PiG's own defect | All platforms | Unreleased |
 | [BF-6d3cfc8](#bf-6d3cfc8) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | 0.5.2 |
+| [BF-6d4cba0](#bf-6d4cba0) | A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled… | PiG's own defect | All platforms | Unreleased |
 | [BF-6d4e10c](#bf-6d4e10c) | Chord: a query reader opens its read in the section of the move that created it, as Pi does, so what it reads… | PiG's own defect | All platforms | Unreleased |
 | [BF-6d9b403](#bf-6d9b403) | The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6da170c](#bf-6da170c) | `pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -1814,6 +1815,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cb20ec0](#bf-cb20ec0) | After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cb21ee0](#bf-cb21ee0) | Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
+| [BF-cb409e6](#bf-cb409e6) | Chord: a context derived by `chordctx.WithAbortSignal` from a signal that is a context made by… | PiG's own defect | All platforms | Unreleased |
 | [BF-cbc986b](#bf-cbc986b) | BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cbf4a52](#bf-cbf4a52) | The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cc05ab3](#bf-cc05ab3) | Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now… | PiG's own defect | All platforms | Unreleased |
@@ -16108,6 +16110,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsAreNotReleasedWhileAnExecRuns`
 - **Release note:** A user_bash `operations` object from an extension is no longer released while a command is running through it. The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.
 
+### BF-6d4cba0
+
+**A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before the harness closed, or before its Session failed, now fails with the cancellation, as it does in Pi, not with `ErrClosed` or the Session's failure.
+- **Root cause:** Pi's Waiters.add (packages/durable/src/harness/util.ts:9-32) runs the abort listener inside abort(): by the time abort() returns the wait is out of the set and rejected with the reason. So rejectAll (:44-48) reaches only the waits still in the set and a wait that was aborted keeps the abort reason (the first rejection wins), and keys() (:34-36) no longer lists a key whose waits were all aborted. PiG delivered the abort with context.AfterFunc, on a goroutine of its own: between a cancel and that callback a RejectAll gave the wait the close error (ErrClosed, SessionFailed) in place of the cancellation, and Keys still listed the key, so the idle pass counted a conversation nobody waited for.…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6d4cba03d9` (2026-11-16)
+- **Tests:** `durable/harness/waiter_cancel_test.go::TestARejectAllAfterAWaitsContextWasCancelledKeepsTheCancellation`, `durable/harness/waiter_cancel_test.go::TestAWaitAddedWhileItsContextIsCancelledIsNeverLeftPending`, `durable/harness/waiter_cancel_test.go::TestAWaitSettledAfterItsContextWasCancelledFailsWithTheCancellation`, `durable/harness/waiter_cancel_test.go::TestAWaitsKeyIsGoneOnceItsContextWasCancelled`, `durable/harness/waiter_sampling_test.go::TestAWaitSamplesItsContextOnlyWhenOnAbortCannotListenToIt`
+- **Release note:** A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before the harness closed, or before its Session failed, now fails with the cancellation, as it does in Pi, not with `ErrClosed` or the Session's failure. Pi rejects a wait at the abort itself (`Waiters.add` runs the abort listener there), so a later `rejectAll` never reaches it and the first rejection wins; PiG's cancellation reached the wait on its own goroutine (`context.AfterFunc`), and a close that came in between gave it the close error. The idle pass also counted a wait whose context was cancelled until that goroutine ran. The wait now listens with `chordctx.OnAbort`: for a context made by `chord/context` it is rejected and out of the set when the cancel returns. A context of another package (an embedder's own `context.WithCancel`, a deadline) still reaches the wait on a goroutine of its own, and the harness reads that context's error where the order matters. The durable library's embedders can see it (stock `pig` does not link `durable/harness`): `git tag --contains` names v0.7.0 as the first tag with the code.
+
 ### BF-6d4e10c
 
 **Chord: a query reader opens its read in the section of the move that created it, as Pi does, so what it reads…**
@@ -27226,6 +27242,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `cb3eb3bea2` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-cb409e6
+
+**Chord: a context derived by `chordctx.WithAbortSignal` from a signal that is a context made by…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `WithAbortSignal` cancelled it with `context.AfterFunc`, on a goroutine of its own, so code that ran right after the cancel could still see a context derived from the cancelled signal live.
+- **Root cause:** Pi's withAbortSignal is AbortSignal.any. When a source aborts, every composite derived from it is marked aborted before any listener runs; then the source's own listeners run in the order they were added, then each composite's in the order the composites were created (packages/chord/src/context/index.ts:111-130, 138-153). Measured on Node v24.22.2 by chord/context/testdata/abort_order_oracle.mjs, which TestAbortListenerOrderMatchesPi runs against the pinned Pi: a1 c.aborted=true d.aborted=true / a2 / c1 / c2 / d1.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cb409e6c32` (2026-11-16)
+- **Tests:** `chord/context/abort_link_test.go::TestAContextDerivedFromADerivedSignalFollowsEveryCancelOfItsAncestors`, `chord/context/abort_link_test.go::TestAContextDerivedFromAForeignSignalFollowsItAndIsNotExact`, `chord/context/abort_link_test.go::TestAContextLinkedWhileItsSignalIsCancelledIsNeverLeftLive`, `chord/context/abort_link_test.go::TestADerivedContextIsAbortedWhenItsSignalsCancelReturns`, `chord/context/abort_link_test.go::TestAnEndedDerivedContextIsHeldByNoSource`, `chord/context/abort_link_test.go::TestEveryDerivedContextIsAbortedBeforeTheFirstListenerOfTheSourceRuns`, `chord/context/abort_link_test.go::TestOnAbortFromAListenerOfTheSameAbortRunsAtOnceOnce`, `chord/context/abort_link_test.go::TestOnAbortRunsAParentsListenersBeforeItsChildrenWhateverTheOrderTheyWereAdded` and 1 more in docs/bug-ledger.json
+- **Release note:** Chord: a context derived by `chordctx.WithAbortSignal` from a signal that is a context made by `chord/context` is now cancelled inside the cancel function of its source, before that function returns and before any abort listener (`OnAbort`) of the source runs, as `AbortSignal.any` marks its composite aborted in Pi. Before, `WithAbortSignal` cancelled it with `context.AfterFunc`, on a goroutine of its own, so code that ran right after the cancel could still see a context derived from the cancelled signal live. `OnAbort` now also runs listeners in Pi's order: the aborted context's own, in the order they were added, then those of the contexts derived from it, in the order those were created. Before, a listener added to a child first ran before one added to its parent. A source from another package (a deadline, the standard library's cancel) still reaches the derived context on a goroutine of its own, and `OnAbort` reports `exact` false for such a context. An embedder of `chord/context` can see all of it; no change was found through the Chord host. `git tag --contains` names v0.7.0 as the first tag with the code.
 
 ### BF-cbc986b
 

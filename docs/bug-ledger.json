@@ -27435,6 +27435,32 @@
       ]
     },
     {
+      "id": "BF-6d4cba0",
+      "title": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled…",
+      "symptom": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before the harness closed, or before its Session failed, now fails with the cancellation, as it does in Pi, not with `ErrClosed` or the Session's failure.",
+      "rootCause": "Pi's Waiters.add (packages/durable/src/harness/util.ts:9-32) runs the abort listener inside abort(): by the time abort() returns the wait is out of the set and rejected with the reason. So rejectAll (:44-48) reaches only the waits still in the set and a wait that was aborted keeps the abort reason (the first rejection wins), and keys() (:34-36) no longer lists a key whose waits were all aborted. PiG delivered the abort with context.AfterFunc, on a goroutine of its own: between a cancel and that callback a RejectAll gave the wait the close error (ErrClosed, SessionFailed) in place of the cancellation, and Keys still listed the key, so the idle pass counted a conversation nobody waited for.…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before the harness closed, or before its Session failed, now fails with the cancellation, as it does in Pi, not with `ErrClosed` or the Session's failure. Pi rejects a wait at the abort itself (`Waiters.add` runs the abort listener there), so a later `rejectAll` never reaches it and the first rejection wins; PiG's cancellation reached the wait on its own goroutine (`context.AfterFunc`), and a close that came in between gave it the close error. The idle pass also counted a wait whose context was cancelled until that goroutine ran. The wait now listens with `chordctx.OnAbort`: for a context made by `chord/context` it is rejected and out of the set when the cancel returns. A context of another package (an embedder's own `context.WithCancel`, a deadline) still reaches the wait on a goroutine of its own, and the harness reads that context's error where the order matters. The durable library's embedders can see it (stock `pig` does not link `durable/harness`): `git tag --contains` names v0.7.0 as the first tag with the code.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6d4cba03d9",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "durable/harness/waiter_cancel_test.go::TestARejectAllAfterAWaitsContextWasCancelledKeepsTheCancellation",
+        "durable/harness/waiter_cancel_test.go::TestAWaitAddedWhileItsContextIsCancelledIsNeverLeftPending",
+        "durable/harness/waiter_cancel_test.go::TestAWaitSettledAfterItsContextWasCancelledFailsWithTheCancellation",
+        "durable/harness/waiter_cancel_test.go::TestAWaitsKeyIsGoneOnceItsContextWasCancelled",
+        "durable/harness/waiter_sampling_test.go::TestAWaitSamplesItsContextOnlyWhenOnAbortCannotListenToIt"
+      ]
+    },
+    {
       "id": "BF-6d4e10c",
       "title": "Chord: a query reader opens its read in the section of the move that created it, as Pi does, so what it reads…",
       "symptom": "Chord: a query reader opens its read in the section of the move that created it, as Pi does, so what it reads follows the move in the same section.",
@@ -49771,6 +49797,36 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-cb409e6",
+      "title": "Chord: a context derived by `chordctx.WithAbortSignal` from a signal that is a context made by…",
+      "symptom": "`WithAbortSignal` cancelled it with `context.AfterFunc`, on a goroutine of its own, so code that ran right after the cancel could still see a context derived from the cancelled signal live.",
+      "rootCause": "Pi's withAbortSignal is AbortSignal.any. When a source aborts, every composite derived from it is marked aborted before any listener runs; then the source's own listeners run in the order they were added, then each composite's in the order the composites were created (packages/chord/src/context/index.ts:111-130, 138-153). Measured on Node v24.22.2 by chord/context/testdata/abort_order_oracle.mjs, which TestAbortListenerOrderMatchesPi runs against the pinned Pi: a1 c.aborted=true d.aborted=true / a2 / c1 / c2 / d1.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a context derived by `chordctx.WithAbortSignal` from a signal that is a context made by `chord/context` is now cancelled inside the cancel function of its source, before that function returns and before any abort listener (`OnAbort`) of the source runs, as `AbortSignal.any` marks its composite aborted in Pi. Before, `WithAbortSignal` cancelled it with `context.AfterFunc`, on a goroutine of its own, so code that ran right after the cancel could still see a context derived from the cancelled signal live. `OnAbort` now also runs listeners in Pi's order: the aborted context's own, in the order they were added, then those of the contexts derived from it, in the order those were created. Before, a listener added to a child first ran before one added to its parent. A source from another package (a deadline, the standard library's cancel) still reaches the derived context on a goroutine of its own, and `OnAbort` reports `exact` false for such a context. An embedder of `chord/context` can see all of it; no change was found through the Chord host. `git tag --contains` names v0.7.0 as the first tag with the code.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cb409e6c32",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "chord/context/abort_link_test.go::TestAContextDerivedFromADerivedSignalFollowsEveryCancelOfItsAncestors",
+        "chord/context/abort_link_test.go::TestAContextDerivedFromAForeignSignalFollowsItAndIsNotExact",
+        "chord/context/abort_link_test.go::TestAContextLinkedWhileItsSignalIsCancelledIsNeverLeftLive",
+        "chord/context/abort_link_test.go::TestADerivedContextIsAbortedWhenItsSignalsCancelReturns",
+        "chord/context/abort_link_test.go::TestAnEndedDerivedContextIsHeldByNoSource",
+        "chord/context/abort_link_test.go::TestEveryDerivedContextIsAbortedBeforeTheFirstListenerOfTheSourceRuns",
+        "chord/context/abort_link_test.go::TestOnAbortFromAListenerOfTheSameAbortRunsAtOnceOnce",
+        "chord/context/abort_link_test.go::TestOnAbortRunsAParentsListenersBeforeItsChildrenWhateverTheOrderTheyWereAdded",
+        "chord/context/abort_order_pi_oracle_test.go::TestAbortListenerOrderMatchesPi"
+      ]
     },
     {
       "id": "BF-cbc986b",

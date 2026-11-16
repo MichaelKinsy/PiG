@@ -52,28 +52,61 @@ func (c *valueContext) String() string {
 }
 
 // abortContext is the context withAbortSignal, withoutAbortSignal and withCancel derive in Pi: a ContextValue of the abort signal key, printed as `<parent>.WithValue(chord.abortSignal)`. Cancellation, deadline and values are the embedded derived context's.
+//
+// Pi's signal of such a context is an `AbortSignal.any` composite of its sources: the parent's signal, the signal given to withAbortSignal, and the controller withCancel makes. An abort of a source marks every composite derived from it aborted before any listener runs, then runs the source's own listeners, then each composite's in the order the composites were created. Here the sources that are contexts of this package are linked: the cancel function of a source aborts the contexts derived from it before it returns (abortLinked), then runs the listeners (dispatch), so no context derived from a source of this package is ever seen live after the source's cancel returned. A source of another package cannot be linked: context.AfterFunc is the only hook it offers, and it runs on a goroutine of its own.
 type abortContext struct {
 	context.Context
 	parent context.Context
-	// signal is the other source of a WithAbortSignal context; nil otherwise.
-	signal context.Context
 	// detached is set on a WithoutAbortSignal context, whose embedded context is stdlib's WithoutCancel.
 	detached bool
+	// own is set on a context that has a cancel function of its own (Pi's controller): WithCancel and WithAbortSignalCancel.
+	own bool
+	// cancelCause ends the embedded context; nil on a detached one.
+	cancelCause context.CancelCauseFunc
+	// created numbers the contexts of this package in the order they were derived: Pi's composites run their listeners in
+	// the order they were created.
+	created uint64
 	// order is the place of this context's own cancel in the order of aborts (see AbortOrder); 0 until it was cancelled.
 	order atomic.Uint64
-	// listeners are the OnAbort listeners of this context's own cancel, guarded by mu; the cancel function runs and clears them.
+	// listeners are the OnAbort listeners of the cancel functions that abort this context, guarded by mu; a cancel function
+	// runs and clears them. links are the contexts derived from a signal this context's cancel can abort, which the cancel
+	// function aborts first (abortLinked), guarded by mu.
 	mu        sync.Mutex
 	listeners map[*abortListener]struct{}
+	links     map[*abortContext]struct{}
+	// signaled is set on a context derived from a signal (WithAbortSignal, WithAbortSignalCancel) before it is linked, and
+	// unchanged after; nil on every other, which is most of them, so they do not carry what only a signal needs.
+	signaled *signalLink
+}
+
+// signalLink is what a context derived from a signal holds besides what every context of this package does.
+type signalLink struct {
+	// signal is the other source of the context.
+	signal context.Context
+	// linkedTo are the contexts whose links hold the context, and stopSignal stops the context.AfterFunc of a signal that is
+	// not of this package (nil when every source is).
+	linkedTo   []*abortContext
+	stopSignal func() bool
+}
+
+// linkedContext is a context of this package with the link of its signal, made as one allocation.
+type linkedContext struct {
+	abortContext
+	link signalLink
 }
 
 // aborts numbers the aborts of the contexts WithCancel makes, in the order their cancel functions ran.
 var aborts atomic.Uint64
 
+// derivations numbers the contexts of this package as they are created (abortContext.created).
+var derivations atomic.Uint64
+
 // AbortOrder is when ctx was aborted relative to other contexts of this package: the number of the earliest abort that
 // ended it (its own cancel, or the one of a parent or signal it derives from), 0 for a context not aborted by this
-// package's cancel functions. AbortSignal.any takes the reason of the source that aborted first; a Go context derived from
-// two sources is cancelled by listeners on goroutines of their own, which may run in any order, so the one that decides the
-// reason compares AbortOrder of the sources instead.
+// package's cancel functions. AbortSignal.any takes the reason of the source that aborted first; a context derived from two
+// sources of this package takes the cause of the one whose cancel function reached it first, and two cancel functions that
+// run at once on two goroutines reach it in any order, so the one that decides the reason compares AbortOrder of the
+// sources instead.
 func AbortOrder(ctx context.Context) uint64 {
 	var earliest uint64
 	for ctx != nil {
@@ -91,8 +124,8 @@ func AbortOrder(ctx context.Context) uint64 {
 		if order := c.order.Load(); order != 0 && (earliest == 0 || order < earliest) {
 			earliest = order
 		}
-		if c.signal != nil {
-			if order := AbortOrder(c.signal); order != 0 && (earliest == 0 || order < earliest) {
+		if c.signaled != nil {
+			if order := AbortOrder(c.signaled.signal); order != 0 && (earliest == 0 || order < earliest) {
 				earliest = order
 			}
 		}
@@ -148,19 +181,132 @@ func Value[T any](ctx context.Context, key Key[T]) (T, bool) {
 }
 
 // WithAbortSignal derives a context cancelled by either the parent or signal, whichever is first, with that one's cause. The parent is unchanged. A signal that is already cancelled cancels the result before it is returned, as AbortSignal.any does with an aborted input.
+// The result is cancelled inside the cancel function that aborts a source that is a context of this package, before that function returns and before any listener of the abort runs, as AbortSignal.any marks its composite aborted when a source aborts. A source of another package (a deadline, a context.WithCancel of the standard library) cannot be hooked: a signal of that kind cancels the result on a goroutine of its own (context.AfterFunc), and OnAbort reports it as not exact.
 // A parent with no cancellation (no Done channel) leaves signal alone to cancel: Pi's `withAbortSignal` then uses signal itself, with no listener, and so does the result here (signalContext), which registers nothing on signal, so a signal that outlives its derived contexts (an attempt's, a reference's) keeps nothing of them.
 func WithAbortSignal(parent, signal context.Context) context.Context {
 	if parent.Done() == nil {
 		return &signalContext{Context: signal, parent: parent}
 	}
-	derived, cancel := context.WithCancelCause(parent)
-	if signal.Err() != nil {
-		cancel(context.Cause(signal))
-		return &abortContext{Context: derived, parent: parent, signal: signal}
+	return derive(parent, signal, false)
+}
+
+// WithAbortSignalCancel derives a context cancelled by the parent, by signal, or by cancel: Pi's `withCancel(withAbortSignal(signal, parent))` as one context, so that cancel also unlinks it from signal. A caller that derives per operation and ends the operation before either source aborts calls cancel (a nil cause records context.Canceled), as it would call the one WithCancel returns; WithAbortSignal has none and keeps its link until a source aborts. The result is cancelled as WithAbortSignal's is, and its own cancel runs the listeners registered on it as WithCancel's does.
+func WithAbortSignalCancel(parent, signal context.Context) (ctx context.Context, cancel func(cause error)) {
+	child := derive(parent, signal, true)
+	return child, child.cancel
+}
+
+// derive makes a context of this package under parent: with its own cancel function (own), and cancelled also by signal when
+// that is not nil.
+func derive(parent, signal context.Context, own bool) *abortContext {
+	inner, cancelCause := context.WithCancelCause(parent)
+	var c *abortContext
+	if signal != nil {
+		linked := &linkedContext{link: signalLink{signal: signal}}
+		c = &linked.abortContext
+		c.signaled = &linked.link
+	} else {
+		c = &abortContext{}
 	}
-	stop := context.AfterFunc(signal, func() { cancel(context.Cause(signal)) })
-	context.AfterFunc(derived, func() { stop() })
-	return &abortContext{Context: derived, parent: parent, signal: signal}
+	c.Context, c.parent, c.cancelCause, c.own, c.created = inner, parent, cancelCause, own, derivations.Add(1)
+	if signal != nil {
+		c.link()
+	}
+	return c
+}
+
+// link makes the cancel function of every source of c that is a context of this package abort c, and hooks a source of
+// another package with context.AfterFunc. A source is registered once its sources are known, last, so that a cancel function
+// that finds c in its links cancels a context that is complete: the registration and the check that the source is live are
+// one step under the source's mu, as OnAbort's are, so a cancel in between finds c and one before it is seen here.
+func (c *abortContext) link() {
+	signal := c.signaled.signal
+	if signal.Err() != nil {
+		c.cancelCause(context.Cause(signal))
+		return
+	}
+	sources, fromParent := abortSources(c.parent, nil)
+	sources, fromSignal := abortSources(signal, sources)
+	c.signaled.linkedTo = sources
+	if !fromSignal {
+		c.signaled.stopSignal = context.AfterFunc(signal, func() {
+			c.cancelCause(context.Cause(signal))
+			c.unlinkSources()
+		})
+	}
+	if !fromParent || !fromSignal {
+		// c may be ended by a cancel no cancel function of this package runs (the standard library cancelling a parent): nothing
+		// else would take it out of the links of its sources.
+		context.AfterFunc(c.Context, c.unlinkSources)
+	}
+	for _, source := range sources {
+		source.mu.Lock()
+		if source.Err() != nil {
+			source.mu.Unlock()
+			c.abortFrom(context.Cause(source.Context))
+			return
+		}
+		if source.links == nil {
+			source.links = map[*abortContext]struct{}{}
+		}
+		source.links[c] = struct{}{}
+		source.mu.Unlock()
+	}
+}
+
+// abortFrom is the abort of a source of c: it ends c with the source's cause and releases what c holds.
+func (c *abortContext) abortFrom(cause error) {
+	c.cancelCause(cause)
+	c.unlink()
+}
+
+// unlink releases c's registration on every source and the hook on a signal of another package.
+func (c *abortContext) unlink() {
+	if c.signaled == nil {
+		return
+	}
+	c.unlinkSources()
+	if c.signaled.stopSignal != nil {
+		c.signaled.stopSignal()
+	}
+}
+
+func (c *abortContext) unlinkSources() {
+	for _, source := range c.signaled.linkedTo {
+		source.mu.Lock()
+		delete(source.links, c)
+		if len(source.links) == 0 {
+			source.links = nil
+		}
+		source.mu.Unlock()
+	}
+}
+
+// abortLinked aborts the contexts derived from a signal this context's cancel aborts (WithAbortSignal), with this context's
+// cause. It runs inside the cancel function after the context itself is cancelled and before the listeners run: Pi marks
+// every composite of a source aborted before it runs any listener.
+func (c *abortContext) abortLinked() {
+	c.mu.Lock()
+	linked := c.links
+	c.links = nil
+	c.mu.Unlock()
+	if len(linked) == 0 {
+		return
+	}
+	cause := context.Cause(c.Context)
+	for derived := range linked {
+		derived.abortFrom(cause)
+	}
+}
+
+// cancel is the cancel function of a context with its own: it aborts the context, then everything derived from it, then runs
+// the listeners of the abort.
+func (c *abortContext) cancel(cause error) {
+	c.order.CompareAndSwap(0, aborts.Add(1))
+	c.cancelCause(cause)
+	c.unlink()
+	c.abortLinked()
+	c.dispatch()
 }
 
 // signalContext is a context whose abort signal is another context's: the Done channel, the error, the deadline and the
@@ -191,13 +337,8 @@ func WithoutAbortSignal(parent context.Context) context.Context {
 
 // WithCancel derives an independently cancellable child. cancel records cause, and a nil cause records context.Canceled.
 func WithCancel(parent context.Context) (ctx context.Context, cancel func(cause error)) {
-	derived, cancelCause := context.WithCancelCause(parent)
-	child := &abortContext{Context: derived, parent: parent}
-	return child, func(cause error) {
-		child.order.CompareAndSwap(0, aborts.Add(1))
-		cancelCause(cause)
-		child.dispatch()
-	}
+	child := derive(parent, nil, true)
+	return child, child.cancel
 }
 
 // telemetryKey is Pi's TELEMETRY_CONTEXT_KEY: the key under which a context carries its telemetry parent. It prints as `.WithValue(chord.telemetry)`.

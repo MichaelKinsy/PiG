@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/durable"
 	"github.com/MichaelKinsy/PiG/durable/env"
 	"github.com/MichaelKinsy/PiG/durable/session"
@@ -566,10 +567,11 @@ func (submission *boundSubmission) Abort(ctx context.Context) (durable.Submissio
 	return submission.inner.Abort(submission.bound.bind(ctx))
 }
 
-// withSignal returns ctx additionally cancelled with signal's cause, as chord's withAbortSignal.
+// withSignal returns ctx additionally cancelled with signal's cause, as chord's withAbortSignal: inside the cancel function of a
+// signal of chord/context, before it returns. The link is dropped when either aborts; the result has no release of its own,
+// as chord's has none.
 func withSignal(ctx context.Context, signal context.Context) context.Context {
-	merged, release := linkedChild(ctx, signal)
-	context.AfterFunc(merged, release)
+	merged, _ := chordctx.WithAbortSignalCancel(ctx, signal)
 	return merged
 }
 
