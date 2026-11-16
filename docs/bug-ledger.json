@@ -8400,6 +8400,29 @@
       ]
     },
     {
+      "id": "BF-28e26ff",
+      "title": "fix(ext): a before_provider_headers handler's returned map changes no header, as in Pi, and the conformance…",
+      "symptom": "fix(ext): a before_provider_headers handler's returned map changes no header, as in Pi, and the conformance row binds the edits",
+      "rootCause": "Pi's emitBeforeProviderHeaders hands every handler the one headers object and ignores what a handler returns (runner.ts:1399-1425). The in-place work () made every SDK reply with the headers object the handler left, so a map a Go, Python, Rust or Lisp handler returned stopped replacing the headers. The older event_result row still queued a returned map {a:1,c:3} in those four fixtures and expected it to be the result, so the conformance row failed in every SDK but Node, whose fixture already edits event.headers in place.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "28e26ff6f5",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/inproc/null_result_test.go::TestBeforeProviderHeadersNativeResultIsIgnored",
+        "test/extension-conformance/provider_hook_combine_test.go::TestConformance_ProviderHookEditsAndResultsCombine",
+        "test/extension-conformance/provider_hook_combine_test.go::TestProviderHookEditsAndResultsMatchPi"
+      ]
+    },
+    {
       "id": "BF-28f8b3b",
       "title": "fix(tui): editor wrap of a one-grapheme segment wider than the width no longer overflows the stack (D158)",
       "symptom": "fix(tui): editor wrap of a one-grapheme segment wider than the width no longer overflows the stack (D158)",

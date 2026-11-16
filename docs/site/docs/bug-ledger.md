@@ -321,6 +321,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-285ae70](#bf-285ae70) | Windows: the extension host's IPC pipe no longer polls with 1 ms sleeps when a write has to interrupt a… | PiG's own defect | Windows | Unreleased |
 | [BF-286d303](#bf-286d303) | A native Provider object an extension registers (`registerNativeProvider`, `pi.registerProvider(provider)`)… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-28b8425](#bf-28b8425) | Blank-key detection for compat API keys, the Vertex API key and the Vertex custom base URL trim whitespace… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-28e26ff](#bf-28e26ff) | fix(ext): a before_provider_headers handler's returned map changes no header, as in Pi, and the conformance… | PiG's own defect | All platforms | Unreleased |
 | [BF-28f8b3b](#bf-28f8b3b) | fix(tui): editor wrap of a one-grapheme segment wider than the width no longer overflows the stack (D158) | PiG's own defect | All platforms | Unreleased |
 | [BF-2921bea](#bf-2921bea) | fix(delta-nonchord): cite the platform-default test for keybindings.ts, test the microsecond rounding of span… | PiG's own defect | All platforms | Unreleased |
 | [BF-2a055a7](#bf-2a055a7) | An extension dialog (`select`, `confirm`, `input`, `editor`) opened while a focused `ctx.ui.custom` component… | PiG's own defect | All platforms | 0.5.0 |
@@ -6504,6 +6505,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `093cf5c781` (2026-10-09), `0b4e1e3376` (2026-10-09), `28b8425efa` (2026-10-09), `90882933f6` (2026-10-09)
 - **Tests:** `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/error_body_oracle_test.go::TestErrorBodyHelpersMatchPiOnSeededProbes`, `ai/trim_sites_oracle_test.go::TestJSTrimSitesMatchPi`, `internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes`
 - **Release note:** Blank-key detection for compat API keys, the Vertex API key and the Vertex custom base URL trim whitespace the way JavaScript does: a value that is only a byte-order mark counts as blank, and a leading or trailing U+0085 is kept, as in Pi.
+
+### BF-28e26ff
+
+**fix(ext): a before_provider_headers handler's returned map changes no header, as in Pi, and the conformance…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(ext): a before_provider_headers handler's returned map changes no header, as in Pi, and the conformance row binds the edits
+- **Root cause:** Pi's emitBeforeProviderHeaders hands every handler the one headers object and ignores what a handler returns (runner.ts:1399-1425). The in-place work () made every SDK reply with the headers object the handler left, so a map a Go, Python, Rust or Lisp handler returned stopped replacing the headers. The older event_result row still queued a returned map {a:1,c:3} in those four fixtures and expected it to be the result, so the conformance row failed in every SDK but Node, whose fixture already edits event.headers in place.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `28e26ff6f5` (2026-11-16)
+- **Tests:** `coding/extension/host/inproc/null_result_test.go::TestBeforeProviderHeadersNativeResultIsIgnored`, `test/extension-conformance/provider_hook_combine_test.go::TestConformance_ProviderHookEditsAndResultsCombine`, `test/extension-conformance/provider_hook_combine_test.go::TestProviderHookEditsAndResultsMatchPi`
 
 ### BF-28f8b3b
 
