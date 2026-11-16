@@ -204440,7 +204440,7 @@
       "evidence": [
         "test:coding/stored_credential_oracle_test.go#TestReadStoredCredentialMatchesPi",
         "test:coding/stored_credential_prototype_names_oracle_test.go#TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
-        "test:coding/auth_storage_test.go#TestReadStoredCredentialReadsOneProviderWithoutAStore"
+        "test:coding/auth_storage_test.go#TestReadStoredCredentialKeepsFileMemberOrder"
       ]
     },
     {
@@ -204462,7 +204462,7 @@
       "evidence": [
         "test:coding/stored_credential_oracle_test.go#TestReadStoredCredentialMatchesPi",
         "test:coding/stored_credential_prototype_names_oracle_test.go#TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
-        "test:coding/auth_storage_test.go#TestReadStoredCredentialReadsOneProviderWithoutAStore"
+        "test:coding/auth_storage_test.go#TestReadStoredCredentialKeepsFileMemberOrder"
       ]
     },
     {
