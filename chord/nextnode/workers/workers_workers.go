@@ -587,6 +587,9 @@ type Workers struct {
 	baseMu   sync.Mutex
 	baseDir  string
 	baseCopy string
+	// released are the processes of workers that exited whose streams the component released as it closed (those that were
+	// lingering, and those that exited while it closed): Close waits for their readers. Guarded by the loop.
+	released []*WorkerProcess
 }
 
 func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
@@ -727,6 +730,7 @@ func (c *Workers) close(ctx context.Context) error {
 			c.closing(closed())
 		}
 		lingering, c.lingering = c.lingering, nil
+		c.released = append(c.released, lingering...)
 		if c.idleTimer != nil {
 			c.idleTimer.Stop()
 			c.idleTimer = nil
@@ -761,15 +765,25 @@ func (c *Workers) close(ctx context.Context) error {
 	// wait first: nothing forks once closing, and only the directory this component wrote goes. The kit releases the data
 	// directory's lock only after this close resolved.
 	err := exited(ctx)
-	if err == nil {
-		c.removeBase()
-		return nil
+	if err != nil {
+		c.task(func() {
+			_ = exited(chordctx.Background())
+			c.removeBase()
+		})
+		return err
 	}
-	c.task(func() {
-		_ = exited(chordctx.Background())
-		c.removeBase()
-	})
-	return err
+	c.removeBase()
+	// What was released is read no more: a reader may be in the app's OnOutput or in a listener of a link with what it read
+	// before, which Close does not leave running. The streams are closed, so only such a call holds a reader, and ctx ends the
+	// wait of one that does not return.
+	var released []*WorkerProcess
+	c.loop.Run(func() { released = slices.Clone(c.released) })
+	for _, process := range released {
+		if err := process.awaitReaders(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // closeWith: ctx's abort closes the component (the route's is aborted when the host closes).
@@ -1049,14 +1063,15 @@ func (c *Workers) fork(record *routed, entry string) (*child, error) {
 
 // linger keeps process, whose exit was just told, while its output or its channel is still read (a process outside its tree
 // holds it), for Close to release; those whose streams ended since are dropped. Pi has no such list: Node's handles of a
-// child end with the server's process. A component that is closing keeps nothing: the caller releases process (true), out
-// of the section, as release tells the link's listener.
+// child end with the server's process. A component that is closing keeps it only for Close to wait for its readers: the
+// caller releases process (true), out of the section, as release tells the link's listener.
 func (c *Workers) linger(process *WorkerProcess) (release bool) {
 	c.lingering = slices.DeleteFunc(c.lingering, func(each *WorkerProcess) bool { return !each.stillRead() })
 	if !process.stillRead() {
 		return false
 	}
 	if c.isClosing() {
+		c.released = append(c.released, process)
 		return true
 	}
 	c.lingering = append(c.lingering, process)
