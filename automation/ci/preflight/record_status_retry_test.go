@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-const retryTestToken = "tok-SECRET-123"
+const retryTestToken = "test-token-fixed"
 
 // statusServer answers the status POST with fail for the first failures requests and then takes it; it answers a
 // comment POST with comment. It keeps what every request held.

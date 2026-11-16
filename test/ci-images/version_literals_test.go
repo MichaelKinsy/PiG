@@ -63,6 +63,7 @@ var versionLiteralAllowlist = []allowedVersionLiteral{
 	{"automation/ci/seed-ci-image-bases.sh", "0.32.2", "local tag of the digest-pinned buildkit image; the digest on the line above is the pin"},
 	{"automation/ci/seed-ci-image-bases.sh", "1.45.1", "local tag of the digest-pinned syft image; the digest on the line above is the pin"},
 	{"automation/ci/seed-ci-image-bases.sh", "0.20.6", "go-containerregistry release; the sha256 on the next line is the pin"},
+	{".github/workflows/security.yml", "8.24.3", "gitleaks release the pull request scan installs, the one gitleaks-action 3.0.0 installs; the GITLEAKS_SHA256 beside it is the pin"},
 	{"automation/ci/mirror-ci-tools.sh", "0.20.6", "go-containerregistry release the mirror pushes; the sha256 on the same line is the pin, which the script requires seed-ci-image-bases.sh to still carry"},
 	{"automation/gen/vendor-typebox.sh", "1.3.27", "the typebox release the script vendors; its integrity hash is the next line"},
 	{"automation/gen/vendor-typebox.sh", "0.25.10", "the esbuild release the script bundles with"},

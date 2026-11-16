@@ -442,6 +442,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-54dc372](#bf-54dc372) | fix(release): carry main's PigVersion 0.5.3 and the post-bump goldens and pins | PiG's own defect | All platforms | Unreleased |
 | [BF-54e3983](#bf-54e3983) | fix(packagemanager): npm gets Node's realpathSync of the install root, and the npm tests expect it | PiG's own defect | All platforms | Unreleased |
 | [BF-55573f4](#bf-55573f4) | fix(sdk): Rust and Python fuzzy match score contiguous occurrences (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-55fbbcb](#bf-55fbbcb) | CI only: a pull request's secret scan now stops, with one error line, when it cannot compute the range of… | PiG's own defect | All platforms | Unreleased |
 | [BF-5654e71](#bf-5654e71) | MCP OAuth discovery and resource selection now read URLs the way Node's `URL` does (default ports, dot… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5654e71-2](#bf-5654e71-2) | A JSON-RPC request or notification with a malformed `error` member is no longer rejected, and a `method` that… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56731e9](#bf-56731e9) | `/login` runs a provider object's OAuth login with Pi's login interaction, so an `info` event shows in the… | PiG's own defect | All platforms | 0.5.0 |
@@ -1459,6 +1460,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e2db931](#bf-e2db931) | On Windows, refreshing an MCP server's OAuth token no longer fails with `EPERM` when another `pig` process is… | PiG's own defect | Windows | 0.5.0 |
 | [BF-e32c60c](#bf-e32c60c) | A Piglet or Package installed under a symlinked agent directory keeps the origin integrity recorded in its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e33dbb0](#bf-e33dbb0) | fix(chord/delta): textTails remembers buffers weakly so a released text costs nothing | PiG's own defect | All platforms | Unreleased |
+| [BF-e3f1505](#bf-e3f1505) | CI only: a pull request's secret scan now covers what the pull request adds over its base (the merge base to… | PiG's own defect | All platforms | Unreleased |
 | [BF-e3f39b7](#bf-e3f39b7) | Automatic retry now triggers for the gateway error "Unable to forward upstream stream" | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e4252b4](#bf-e4252b4) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-e42ae82](#bf-e42ae82) | `SettingsManager` structured getters (settings-manager.ts getBranchSummarySettings, getRetrySettings… | PiG's own defect | All platforms | 0.5.0 |
@@ -7490,6 +7492,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `55573f475d` (2026-10-23)
 - **Tests:** None recorded.
+
+### BF-55fbbcb
+
+**CI only: a pull request's secret scan now stops, with one error line, when it cannot compute the range of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** CI only: a pull request's secret scan now stops, with one error line, when it cannot compute the range of commits to scan.
+- **Root cause:** The range script printed an open-ended `..<head>` and exited 0 when the base had no merge base with the head (unrelated histories, or a clone too shallow to reach the fork point), so the scan could cover no commits and pass; a missing or empty argument or a ref that is not a commit was not checked either.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `55fbbcbe12` (2026-11-15)
+- **Tests:** None recorded.
+- **Release note:** CI only: a pull request's secret scan now stops, with one error line, when it cannot compute the range of commits to scan. The range script printed an open-ended `..<head>` and exited 0 when the base had no merge base with the head (unrelated histories, or a clone too shallow to reach the fork point), so the scan could cover no commits and pass; a missing or empty argument or a ref that is not a commit was not checked either. A pull request that adds no commit over its base is now reported as having nothing to scan. Released versions: none (CI only). <!-- cause: secret-scan-range.sh took the merge base inside the arguments of printf, where a failing command does not trip set -e, so a failed git merge-base left an empty first sha and the script still printed the range and exited 0; no test ran it without a merge base. -->
 
 ### BF-5654e71
 
@@ -21608,6 +21624,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e33dbb0ad0` (2026-11-01)
 - **Tests:** `chord/delta/append_text_retention_norace_test.go::TestTrackerAppendTextReleasesBuffersOfReleasedKeys`, `chord/delta/text_tails_test.go::TestTextTailsForgetCollectedBuffers`, `chord/delta/text_tails_test.go::TestTrackerAppendTextStreamKeepsEarlierRevisions`
+
+### BF-e3f1505
+
+**CI only: a pull request's secret scan now covers what the pull request adds over its base (the merge base to…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A batch pull request that merged member branches cut from an older main used to fail the scan on secret-shaped test values already on main, and, because the scan followed only the first parent (`--first-parent`), the commits inside a merged member branch were not scanned at all.
+- **Root cause:** A batch pull request that merged member branches cut from an older main used to fail the scan on secret-shaped test values already on main, and, because the scan followed only the first parent (`--first-parent`), the commits inside a merged member branch were not scanned at all.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e3f150557b` (2026-11-15)
+- **Tests:** `automation/ci/test_secret_scan_range.py`, `test/ci-images/merge_queue_test.go::TestSecretScanRunsInTheMergeGroup`
+- **Release note:** CI only: a pull request's secret scan now covers what the pull request adds over its base (the merge base to its head) instead of everything from the parent of its oldest commit. A batch pull request that merged member branches cut from an older main used to fail the scan on secret-shaped test values already on main, and, because the scan followed only the first parent (`--first-parent`), the commits inside a merged member branch were not scanned at all. Released versions: none (CI only). <!-- cause: gitleaks-action scanned `<oldest pull request commit>^..<newest>` with --first-parent, which reaches back into main's history for an older-based member and skips every commit behind a merge, and no test built a batch of merged member branches -->
 
 ### BF-e3f39b7
 
