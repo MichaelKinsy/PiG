@@ -3,7 +3,11 @@
 package main
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 )
 
@@ -21,6 +25,50 @@ PASS
 	want := []entry{{"./ai", "BenchmarkPlain", 17}, {"./ai", "BenchmarkSub/case=1", 1700}, {"./ai", "BenchmarkThroughput/clean", 0}, {"./ai", "BenchmarkSub/edits-1", 21}, {"./ai", "BenchmarkSub/edits-1000", 4000}}
 	if got := parseResults("./ai", output); !slices.Equal(got, want) {
 		t.Fatalf("parsed %+v, want %+v", got, want)
+	}
+}
+
+// A sub-benchmark that reports its own allocs/op with b.ReportMetric (a per-unit figure, as BenchmarkReload_PackedCellWarmCache's rows are) is read as that
+// figure: go test prints one allocs/op for it, the reported one, and not a second beside the count of the testing package.
+func TestParseResultsReadsAReportedAllocsPerOp(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string]string{
+		"go.mod": "module reported\n\ngo 1.26\n",
+		"reported_test.go": `package reported
+
+import "testing"
+
+func BenchmarkReported(b *testing.B) {
+	b.Run("per-100-things", func(b *testing.B) {
+		b.ReportAllocs()
+		sink := make([][]byte, 0, b.N)
+		for i := 0; i < b.N; i++ {
+			sink = append(sink, make([]byte, 64))
+		}
+		_ = sink
+		b.ReportMetric(1234, "allocs/op")
+	})
+}
+`,
+	}
+	for name, content := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	command := exec.Command("go", "test", "-run", "^$", "-bench", ".", "-benchmem", "-benchtime", "5x")
+	command.Dir = dir
+	command.Env = append(os.Environ(), "GOMAXPROCS=1", "GOFLAGS=-mod=mod")
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("go test: %v\n%s", err, output)
+	}
+	if strings.Count(string(output), "allocs/op") != 1 {
+		t.Fatalf("want one allocs/op in the output, got:\n%s", output)
+	}
+	want := []entry{{"./reported", "BenchmarkReported/per-100-things", 1234}}
+	if got := parseResults("./reported", output); !slices.Equal(got, want) {
+		t.Fatalf("parsed %+v from\n%s\nwant %+v", got, output, want)
 	}
 }
 
