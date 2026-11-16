@@ -112,7 +112,10 @@ func TestEnsureTmuxServerConfiguresAReplacementForALostServer(t *testing.T) {
 	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline) && tmuxProcessRunning(first); {
 		time.Sleep(10 * time.Millisecond)
 	}
-	// What the next scenario does: it creates its session on whatever server answers.
+	// What the next scenario does: ensureTmuxServer probes for the keeper before anything creates a session, and only then does the scenario's new-session reach whatever server answers. tmux 3.6a answers the first client that meets a killed server's stale socket, on any command, with "server exited unexpectedly" about one time in three (15 of 40 measured on xd670; none of 40 when a failed probe came first), so a bare new-session right after the kill is not what a run does and made this test fail on a loaded host.
+	if tmuxKeeperPresent() {
+		t.Fatal("the keeper is present on a killed server")
+	}
 	if out, err := exec.Command("tmux", tmuxArgs("new-session", "-d", "-s", "work", "sleep 300")...).CombinedOutput(); err != nil {
 		t.Fatalf("replacement session: %v: %s", err, out)
 	}
@@ -179,4 +182,35 @@ func TestEnsureTmuxServerRestartsALostKeeperOnTheSameServer(t *testing.T) {
 		t.Fatalf("report %q lacks %q", report, want)
 	}
 	_ = exec.Command("tmux", tmuxArgs("kill-session", "-t", tmuxKeeperSession)...).Run()
+}
+
+// The next scenario after a server died starts the replacement right away. tmux 3.6a answers the first client that meets the killed server's stale socket with "server exited unexpectedly" about one time in three; ensureTmuxServer probes for the keeper first, which takes that answer, so it must bring the server and its keeper up on the first call (20 kills in a row, no wait after the process is gone).
+func TestEnsureTmuxServerStartsAgainRightAfterTheServerDied(t *testing.T) {
+	useTmuxSocket(t, "pig-parity-report-"+uniqueID())
+	tmuxServerMu.Lock()
+	defer tmuxServerMu.Unlock()
+	tmuxKeeperErr, tmuxKeeperStarted = nil, false
+	if err := ensureTmuxServer(); err != nil {
+		t.Skipf("tmux unavailable: %v", err)
+	}
+	for round := 1; round <= 20; round++ {
+		pid := int(tmuxServerPID.Load())
+		process, err := os.FindProcess(pid)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := process.Kill(); err != nil {
+			t.Fatal(err)
+		}
+		for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline) && tmuxProcessRunning(pid); {
+			time.Sleep(time.Millisecond)
+		}
+		if err := ensureTmuxServer(); err != nil {
+			t.Fatalf("round %d: ensureTmuxServer right after the server %d died: %v", round, pid, err)
+		}
+		if got := int(tmuxServerPID.Load()); got == pid || got == 0 {
+			t.Fatalf("round %d: recorded server pid = %d, want a replacement for %d", round, got, pid)
+		}
+	}
+	_ = exec.Command("tmux", tmuxArgs("kill-server")...).Run()
 }
