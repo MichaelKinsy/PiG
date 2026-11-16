@@ -333,8 +333,8 @@ func TestSyncRestoresPreviousTreeStrandedByFailedRollback(t *testing.T) {
 // A process killed after the swap but before it removed the previous tree strands that tree. A start that finds every SDK current must still remove it, and only the languages it was asked about.
 func TestEnsureSyncedRemovesStagingLeftoversWhenSDKIsCurrent(t *testing.T) {
 	operations := map[string]struct {
-		run      func(root string) error
-		keepRust bool
+		run       func(root string) error
+		keepOther bool
 	}{
 		"all languages": {EnsureSynced, false},
 		"one language":  {func(root string) error { return EnsureSyncedLang(root, "python") }, true},
@@ -349,12 +349,15 @@ func TestEnsureSyncedRemovesStagingLeftoversWhenSDKIsCurrent(t *testing.T) {
 			removed := stagePrefix(pythonSDKDir(t, root)) + "crashed.old"
 			leftovers := []string{removed}
 			var kept string
-			if operation.keepRust {
-				rustDir, err := SDKDirFor(root, "rust")
+			if operation.keepOther {
+				// Another language's tree: Rust, or Go in a Piglet that strips the Rust SDK.
+				otherDir, err := SDKDirFor(root, "rust")
 				if err != nil {
-					t.Fatal(err)
+					if otherDir, err = SDKDirFor(root, "go"); err != nil {
+						t.Fatal(err)
+					}
 				}
-				kept = stagePrefix(rustDir) + "crashed"
+				kept = stagePrefix(otherDir) + "crashed"
 				leftovers = append(leftovers, kept)
 			}
 			for _, leftover := range leftovers {
