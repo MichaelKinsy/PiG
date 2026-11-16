@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Installs the pinned ShellCheck (a release binary, sha256-verified) on a Linux runner, so security.yml and `make pre-push` analyze shell scripts with
-# the same version instead of whatever apt has. `--print-version` prints the pinned version and installs nothing; pre-push-gate.sh compares its
+# the same version instead of whatever apt has. `--print-version` prints the pinned version and installs nothing; lint-shell.sh (make lint-shell, make pre-push) compares its
 # ShellCheck with it. SHELLCHECK_INSTALL_DIR (default /usr/local/bin) names where the binary goes; sudo is used when that directory is not writable.
 # To move the pin: set version, download both tarballs from https://github.com/koalaman/shellcheck/releases/tag/v<version>, replace both digests, and run
 # `make pre-push` and `make compliance`.
