@@ -1,13 +1,13 @@
 package cli
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
-	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // Pi's reload() discovers the extensions again (resource-loader.ts DefaultResourceLoader.reload) in JSON mode as in the others: a command that changes the extensions folder and awaits ctx.reload() leaves the extensions that are on disk loaded.
@@ -15,9 +15,7 @@ import (
 // runJSONReload runs `pig --mode json -p /act-and-reload` over a membership fixture and waits for the process to end.
 func runJSONReload(t *testing.T, f membershipFixture) {
 	t.Helper()
-	ctx, cancel := context.WithTimeout(t.Context(), 90*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, buildPigBinaryForSignalTest(t), "--mode", "json", "--no-session", "--model", "test-faux/faux-1", "-p", "/act-and-reload")
+	cmd := exec.CommandContext(testbudget.Context(t), buildPigBinaryForSignalTest(t), "--mode", "json", "--no-session", "--model", "test-faux/faux-1", "-p", "/act-and-reload")
 	cmd.Dir = t.TempDir()
 	cmd.Env = append(os.Environ(), f.env()...)
 	if out, err := cmd.CombinedOutput(); err != nil {
