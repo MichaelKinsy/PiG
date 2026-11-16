@@ -120,20 +120,26 @@ func newList(site store.ReadSite, owner state.FramedOwner, first int, memory *Li
 // pending tiling closes. It returns the load: the list shows its previous rows until every page of the new tiling ran,
 // then switches in one frame; the load returns once every page's load settled. Called inside a section; the load is not.
 func (l *list) Open(target store.LiveTarget, ctx context.Context) (load func()) {
-	var detached bool
-	l.site.Batch.Section(func() { detached = l.Detached() })
-	if detached {
-		return func() {}
-	}
-	tiling := newTiling(l.site, target, l.first, l, ctx, l.spawn)
-	l.mu.Lock()
-	previous := l.next
-	l.next = tiling
-	l.mu.Unlock()
-	if previous != nil {
-		previous.close()
-	}
-	return tiling.openPages(l.memory.opening(tiling.signature()))
+	load = func() {}
+	// `if (this.detached) return Promise.resolve(); this.#next?.close(); ... this.#next = tiling` (list.ts:57-61): the check of
+	// `detached` and the installation of the tiling are one turn.
+	l.site.Batch.CheckAct(func() func() {
+		if l.Detached() {
+			return nil
+		}
+		return func() {
+			tiling := newTiling(l.site, target, l.first, l, ctx, l.spawn)
+			l.mu.Lock()
+			previous := l.next
+			l.next = tiling
+			l.mu.Unlock()
+			if previous != nil {
+				previous.close()
+			}
+			load = tiling.openPages(l.memory.opening(tiling.signature()))
+		}
+	})
+	return load
 }
 
 // Fail is: what it should read cannot be read (its arguments threw, its provider refused them): a failed member with its
@@ -215,20 +221,22 @@ func (l *list) show(tiling *tiling) {
 // and the list switches in one frame once every page of it ran, as for new arguments. A current tiling that a pending one is
 // about to replace is left alone: the pending one reads again for itself.
 func (l *list) rebound(tiling *tiling) {
-	var detached bool
-	l.site.Batch.Section(func() { detached = l.Detached() })
-	if detached {
-		return
-	}
-	l.mu.Lock()
-	pending := l.next
-	again := tiling == pending || (tiling == l.current && pending == nil)
-	l.mu.Unlock()
-	if again {
+	// Pi's `#rebound` checks which tiling is pending or current and `void this.read(...)`s in one turn: a `read` for new
+	// arguments that ran between would be replaced by this older target. The decision is made in the section that opens.
+	var load func()
+	l.site.Batch.CheckAct(func() func() {
+		l.mu.Lock()
+		pending := l.next
+		again := tiling == pending || (tiling == l.current && pending == nil)
+		l.mu.Unlock()
+		if !again {
+			return nil
+		}
 		// The read opens now, as Pi's `void this.read` runs up to its first await when it is called: the new tiling is the
 		// pending one at once. A failed page fails the list, as any read's failure does; nothing awaits the loads.
-		var load func()
-		l.site.Batch.Section(func() { load = l.Open(tiling.target, tiling.context()) })
+		return func() { load = l.Open(tiling.target, tiling.context()) }
+	})
+	if load != nil {
 		l.spawn(load)
 	}
 }
