@@ -426,9 +426,14 @@ func (m *InteractiveMode) requestShutdown() {
 }
 
 // holdExitRenders holds the renderer's frames from the moment the exit is decided until stopInteractiveTui has drained the input (see tui HoldRenders).
+// pig additive (D91): a frontend's surface draws no terminal bytes, so the order of its last frame against the stop is no contract, and its editor node
+// must show the requested exit (not sendable) at once.
 func (m *InteractiveMode) holdExitRenders() {
 	m.rendererMu.RLock()
 	defer m.rendererMu.RUnlock()
+	if _, isSurface := m.tuiInst.(*tui.TuiSurface); isSurface {
+		return
+	}
 	if h, ok := m.tuiInst.(interface{ HoldRenders() }); ok {
 		h.HoldRenders()
 	}
