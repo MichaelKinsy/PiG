@@ -55366,6 +55366,33 @@
       ]
     },
     {
+      "id": "BF-dddc106",
+      "title": "Extensions: a refused `sendUserMessage` or `sendMessage` is now reported as the extension error…",
+      "symptom": "Extensions: a refused `sendUserMessage` or `sendMessage` is now reported as the extension error `send_user_message` or `send_message` after the run of the code that made the call, as Pi does, instead of when the call arrived (since 0.2.0).",
+      "rootCause": "the Session reported a failed send from the call that made it, and the host had no point at which the sending code ends its run",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extensions: a refused `sendUserMessage` or `sendMessage` is now reported as the extension error `send_user_message` or `send_message` after the run of the code that made the call, as Pi does, instead of when the call arrived (since 0.2.0). Pi reports from a catch callback on the Promise the Session method returns, so the error comes after every effect of the sending code: the `queue_update` of a steer or follow-up sent later in the same handler, an appended entry, a notification. A handler that sent a refused message first and a steer after it now sees the queue updates before the error, in print, JSON, RPC and interactive mode and in every SDK. Inside a handler or request the report is made when the run ends (a Node run at its next microtask checkpoint, a Go, Python, Rust or Lisp handler when its request returns, fails or is cancelled, or at its yield), and an extension that exits before that has its reports made at the connection's end, in call order. A Go, Python, Rust or Lisp thread that sends outside any request has no run boundary, so its refusal is still reported at once.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dddc1064ca",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/sync_run_report_test.go::TestHostMakesHeldReportsWhenTheConnectionEnds",
+        "coding/extension/host/subprocess/sync_run_report_test.go::TestSyncRunReportsAfterTheEndAreMadeAtOnce",
+        "coding/extension/host/subprocess/sync_run_report_test.go::TestSyncRunReportsClosedMakesTheConnectionsReports",
+        "coding/extension/host/subprocess/sync_run_report_test.go::TestSyncRunReportsMakeReportsAtTheEndInCallOrder",
+        "coding/extension/host/subprocess/upstream_examples_test.go::TestGitMergeAndResolveExample",
+        "test/parity/scenarios/rpc/85-rpc-send-user-message-refusal-turn-end.toml"
+      ]
+    },
+    {
       "id": "BF-dde6aa6",
       "title": "Cache warming no longer refreshes at once when a model's promptCache lifetime is far larger than the one-hour…",
       "symptom": "Cache warming no longer refreshes at once when a model's promptCache lifetime is far larger than the one-hour safety limit.",

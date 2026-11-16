@@ -86,7 +86,9 @@ func (s *Session) sendCustomMessage(ctx context.Context, message extension.Custo
 	}
 	if s.runState.settling.Load() {
 		s.runState.mu.Lock()
-		s.runState.deferred = append(s.runState.deferred, func() { s.reportRuntimeErrorAfter(opts.AfterRun, "send_message", s.SendCustomMessage(ctx, message, &opts)) })
+		s.runState.deferred = append(s.runState.deferred, func() {
+			s.reportRuntimeErrorAfter(opts.AfterRun, "send_message", s.SendCustomMessage(ctx, message, &opts))
+		})
 		s.runState.mu.Unlock()
 		s.pendingBashMu.Unlock()
 		return nil

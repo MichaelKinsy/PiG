@@ -1974,6 +1974,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-dd2f4cb](#bf-dd2f4cb) | The Go SDK's `EstimateTokens` counts an unpaired surrogate as one UTF-16 unit, as Pi's `estimateTokens` does… | PiG's own defect | All platforms | Unreleased |
 | [BF-dd7613e](#bf-dd7613e) | Loading a packed Python cell no longer hangs when its second extension's factory makes a host call before the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ddd4772](#bf-ddd4772) | fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse | PiG's own defect | All platforms | Unreleased |
+| [BF-dddc106](#bf-dddc106) | Extensions: a refused `sendUserMessage` or `sendMessage` is now reported as the extension error… | PiG's own defect | All platforms | Unreleased |
 | [BF-dde6aa6](#bf-dde6aa6) | Cache warming no longer refreshes at once when a model's promptCache lifetime is far larger than the one-hour… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-dde6aa6-10](#bf-dde6aa6-10) | On Windows, path normalization and joining follow Node 24's reserved device name handling: a path such as… | PiG's own defect | Windows | 0.5.0 |
 | [BF-dde6aa6-11](#bf-dde6aa6-11) | OpenDirReader on a FIFO now fails with not_directory at once instead of waiting for a writer | PiG's own defect | All platforms | 0.5.0 |
@@ -29417,6 +29418,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ddd4772e07` (2026-10-10)
 - **Tests:** `ai/content_block_test.go::TestUnmarshalContentBlockKeepsALoneSurrogate`, `coding/extension/host/subprocess/tool_result_member_order_test.go::TestToolResultKeepsALoneSurrogateInEveryContentForm`, `test/extension-conformance/sdkscenario_test.go::TestSDKScenarios`
+
+### BF-dddc106
+
+**Extensions: a refused `sendUserMessage` or `sendMessage` is now reported as the extension error…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Extensions: a refused `sendUserMessage` or `sendMessage` is now reported as the extension error `send_user_message` or `send_message` after the run of the code that made the call, as Pi does, instead of when the call arrived (since 0.2.0).
+- **Root cause:** the Session reported a failed send from the call that made it, and the host had no point at which the sending code ends its run
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dddc1064ca` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/sync_run_report_test.go::TestHostMakesHeldReportsWhenTheConnectionEnds`, `coding/extension/host/subprocess/sync_run_report_test.go::TestSyncRunReportsAfterTheEndAreMadeAtOnce`, `coding/extension/host/subprocess/sync_run_report_test.go::TestSyncRunReportsClosedMakesTheConnectionsReports`, `coding/extension/host/subprocess/sync_run_report_test.go::TestSyncRunReportsMakeReportsAtTheEndInCallOrder`, `coding/extension/host/subprocess/upstream_examples_test.go::TestGitMergeAndResolveExample`, `test/parity/scenarios/rpc/85-rpc-send-user-message-refusal-turn-end.toml`
+- **Release note:** Extensions: a refused `sendUserMessage` or `sendMessage` is now reported as the extension error `send_user_message` or `send_message` after the run of the code that made the call, as Pi does, instead of when the call arrived (since 0.2.0). Pi reports from a catch callback on the Promise the Session method returns, so the error comes after every effect of the sending code: the `queue_update` of a steer or follow-up sent later in the same handler, an appended entry, a notification. A handler that sent a refused message first and a steer after it now sees the queue updates before the error, in print, JSON, RPC and interactive mode and in every SDK. Inside a handler or request the report is made when the run ends (a Node run at its next microtask checkpoint, a Go, Python, Rust or Lisp handler when its request returns, fails or is cancelled, or at its yield), and an extension that exits before that has its reports made at the connection's end, in call order. A Go, Python, Rust or Lisp thread that sends outside any request has no run boundary, so its refusal is still reported at once.
 
 ### BF-dde6aa6
 

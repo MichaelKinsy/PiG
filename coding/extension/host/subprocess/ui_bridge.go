@@ -60,10 +60,11 @@ type UIBridge struct {
 		encoded json.RawMessage
 		valid   bool
 	}
-	// mcpServers reads the servers extensions registered; the Host installs its runtime's registry.
-	mcpServers    func() []extension.RegisteredMcpServer
 	// afterRun returns, for a send of the extension on owner, the function that makes a failure report when the sending code's run ends (Host.syncReports); nil when the Host has none.
 	afterRun func(owner *Conn, request, token string) func(report func())
+
+	// mcpServers reads the servers extensions registered; the Host installs its runtime's registry.
+	mcpServers    func() []extension.RegisteredMcpServer
 	mu            sync.RWMutex
 	headerMu      sync.Mutex
 	footerMu      sync.Mutex             // footer admission, pending state and application are one step, as for headerMu; lock headerMu first
