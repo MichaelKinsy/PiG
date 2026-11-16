@@ -85,6 +85,18 @@
     (check (not (pig:retryable-assistant-error-p (message "Unknown field ETIMEDOUTX"))))
     (check (not (pig:retryable-assistant-error-p (message "Invalid key ERR_EPIPE_ID"))))))
 
+;; Pi bb1a2b3542b5 packages/ai/test/retry.test.ts (#12124): the Codex WebSocket lifetime limit, as text or as the error code, is retried; a generic connection limit is not.
+(deftest codex-websocket-connection-limit-is-retryable
+  (flet ((message (text) (pig:from-json (format nil "{\"role\":\"assistant\",\"stopReason\":\"error\",\"errorMessage\":~A}" (pig:to-json text)))))
+    (check (pig:retryable-assistant-error-p (message "Codex error: Responses websocket connection limit reached (60 minutes). Create a new websocket connection to continue.")))
+    (check (pig:retryable-assistant-error-p (message "Codex error: websocket_connection_limit_reached")))
+    (check (pig:retryable-assistant-error-p (message "WEBSOCKET CONNECTION LIMIT REACHED")))
+    (check (pig:retryable-assistant-error-p (message "websocket-connection-limit-reached")))
+    (check (not (pig:retryable-assistant-error-p (message "connection limit reached"))))
+    (check (not (pig:retryable-assistant-error-p (message "websocket connection limit"))))
+    (check (not (pig:retryable-assistant-error-p (message "connection limit reached on the websocket"))))
+    (check (not (pig:retryable-assistant-error-p (message "websocket connection limit reached: insufficient_quota"))))))
+
 (deftest the-default-retry-delay-cap-is-pis
   (check-equal 60000 pig:+default-max-agent-retry-delay-ms+))
 

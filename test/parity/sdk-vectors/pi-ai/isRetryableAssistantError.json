@@ -6602,6 +6602,396 @@
     }
    ],
    "result": false
+  },
+  {
+   "name": "case 0221",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Codex error: Responses websocket connection limit reached (60 minutes). Create a new websocket connection to continue.",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0222",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "Codex error: websocket_connection_limit_reached",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0223",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "connection limit reached",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0224",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "WEBSOCKET CONNECTION LIMIT REACHED",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0225",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "websocket-connection-limit-reached",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0226",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "websocketconnectionlimitreached",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0227",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "websocket\nconnection limit reached",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0228",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "{\"type\":\"error\",\"error\":{\"code\":\"websocket_connection_limit_reached\"}}",
+     "timestamp": 1
+    }
+   ],
+   "result": true
+  },
+  {
+   "name": "case 0229",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "websocket connection limit",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0230",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "websocket limit reached",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0231",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "websocket connection  limit reached",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0232",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "connection limit reached on the websocket",
+     "timestamp": 1
+    }
+   ],
+   "result": false
+  },
+  {
+   "name": "case 0233",
+   "args": [
+    {
+     "role": "assistant",
+     "content": [],
+     "api": "x",
+     "provider": "p",
+     "model": "m",
+     "usage": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "totalTokens": 0,
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "total": 0
+      }
+     },
+     "stopReason": "error",
+     "errorMessage": "websocket connection limit reached: insufficient_quota",
+     "timestamp": 1
+    }
+   ],
+   "result": false
   }
  ]
 }

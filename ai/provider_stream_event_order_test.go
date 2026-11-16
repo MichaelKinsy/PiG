@@ -134,15 +134,13 @@ func TestProviderStreamEventObserverFollowsNormalization(t *testing.T) {
 	})
 }
 
-// mapCodexEvents observes every WebSocket event, including the leading codex.rate_limits event and an error event that makes the request retry on a new
-// connection (openai-codex-responses.ts:749-757, 342-352).
+// mapCodexEvents observes every WebSocket event, including an error event that makes the request retry on a new connection (openai-codex-responses.ts:749-757, 342-352).
 func TestCodexWebSocketObservesFramesThatPrecedeARetry(t *testing.T) {
-	rateLimits := `{"type":"codex.rate_limits","plan_type":"plus","rate_limits":{"allowed":true,"limit_reached":false}}`
 	limit := `{"type":"error","error":{"code":"websocket_connection_limit_reached","message":"limit"}}`
 	hello := codexWSHello("resp_retry", "Hello")
 	peer := newCodexWSPeer(t, func(index, _ int, _ map[string]any) []string {
 		if index == 1 {
-			return []string{rateLimits, limit}
+			return []string{limit}
 		}
 		return hello
 	})
@@ -152,8 +150,56 @@ func TestCodexWebSocketObservesFramesThatPrecedeARetry(t *testing.T) {
 		t.Fatalf("result = %#v", result)
 	}
 	events, _ := recorder.snapshot()
-	if want := decodedEvents(t, append([]string{rateLimits, limit}, hello...)...); !reflect.DeepEqual(events, want) {
+	if want := decodedEvents(t, append([]string{limit}, hello...)...); !reflect.DeepEqual(events, want) {
 		t.Fatalf("observed events = %#v, want %#v", events, want)
+	}
+}
+
+// The leading codex.rate_limits event is yielded by mapCodexEvents, so websocketStarted is true (openai-codex-responses.ts:321-336,
+// startWebSocketOutputOnFirstEvent) and a connection limit after it ends the message in an error instead of reconnecting inside the provider:
+// the caller's retry opens the next connection. Pi bb1a2b3542b5 (#12229) tests the same sequence ("rate-limit metadata").
+// upstream: packages/ai/test/openai-codex-stream.test.ts "retries a connection lifetime limit after $name on a fresh websocket"
+func TestCodexWebSocketLimitAfterLeadingRateLimitsEndsTheMessage(t *testing.T) {
+	rateLimits := `{"type":"codex.rate_limits","plan_type":"plus","rate_limits":{"allowed":true,"limit_reached":false}}`
+	limit := `{"type":"error","error":{"code":"websocket_connection_limit_reached","message":"limit"}}`
+	hello := codexWSHello("resp_retry", "Hello")
+	peer := newCodexWSPeer(t, func(index, _ int, _ map[string]any) []string {
+		if index == 1 {
+			return []string{rateLimits, limit}
+		}
+		return hello
+	})
+	provider := peer.provider(t, "acc_test")
+	recorder := &providerEventRecorder{}
+	result, types := codexWSResult(t, provider, codexUpstreamContext(), StreamOptions{Transport: TransportWebSocket, OnProviderStreamEvent: recorder.observe})
+	// The oracle with the commit (Pi bb1a2b3542b5): stopReason error, "Codex error: limit", events start then error, one connection, no fetch.
+	if result.StopReason != StopReasonError || result.ErrorMessage != "Codex error: limit" || !reflect.DeepEqual(types, []AssistantEventType{EventStart, EventError}) {
+		t.Fatalf("result = %#v", result)
+	}
+	events, _ := recorder.snapshot()
+	if want := decodedEvents(t, rateLimits, limit); !reflect.DeepEqual(events, want) {
+		t.Fatalf("observed events = %#v, want %#v", events, want)
+	}
+	if headers, bodies, fetches := peer.snapshot(); len(headers) != 1 || len(bodies) != 1 || fetches != 0 {
+		t.Fatalf("connections=%d requests=%d sse fetches=%d, want one WebSocket request and no fallback", len(headers), len(bodies), fetches)
+	}
+}
+
+// A read error after the leading codex.rate_limits event is the error of a started stream: the message ends in an error and the caller's retry
+// opens the next connection; the provider neither retries the request itself nor falls back to SSE (openai-codex-responses.ts:386-388).
+// upstream: packages/ai/src/api/openai-codex-responses.ts:processWebSocketStream
+func TestCodexWebSocketReadErrorAfterLeadingRateLimitsEndsTheMessage(t *testing.T) {
+	rateLimits := `{"type":"codex.rate_limits","plan_type":"plus","rate_limits":{"allowed":true,"limit_reached":false}}`
+	peer := newCodexWSPeer(t, func(int, int, map[string]any) []string {
+		return []string{rateLimits, "close"}
+	})
+	result, types := codexWSResult(t, peer.provider(t, "acc_test"), codexUpstreamContext(), StreamOptions{Transport: TransportAuto, SessionID: "rate-limits-then-close"})
+	// The oracle with the commit (Pi bb1a2b3542b5): stopReason error, "WebSocket closed 1006", a provider_transport_failure diagnostic, events start then error, one connection, no fetch.
+	if result.StopReason != StopReasonError || result.ErrorMessage != "WebSocket closed 1006" || !reflect.DeepEqual(types, []AssistantEventType{EventStart, EventError}) || len(result.Diagnostics) != 1 || result.Diagnostics[0].Type != "provider_transport_failure" {
+		t.Fatalf("result = %#v", result)
+	}
+	if headers, bodies, fetches := peer.snapshot(); len(headers) != 1 || len(bodies) != 1 || fetches != 0 {
+		t.Fatalf("connections=%d requests=%d sse fetches=%d, want one WebSocket request and no fallback", len(headers), len(bodies), fetches)
 	}
 }
 

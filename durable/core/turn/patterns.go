@@ -61,6 +61,7 @@ var retryablePatterns = []string{
 	`terminated`,
 	`websocket.?closed`,
 	`websocket.?error`,
+	`websocket.?connection.?limit.?reached`,
 	`ended without`,
 	`stream ended before message_stop`,
 	`stream ended before a terminal response event`,

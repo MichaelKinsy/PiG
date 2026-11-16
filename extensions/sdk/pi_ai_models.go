@@ -348,6 +348,9 @@ var (
 		`terminated`,
 		`websocket.?closed`,
 		`websocket.?error`,
+		// Codex 60-minute WebSocket lifetime limit, as code `websocket_connection_limit_reached` or as text "Responses websocket connection limit reached" (#12124, Pi bb1a2b3542b5).
+		// upstream: packages/ai/src/utils/retry.ts:RETRYABLE_PROVIDER_ERROR_PATTERN
+		`websocket.?connection.?limit.?reached`,
 		`ended without`,
 		`stream ended before message_stop`,
 		`stream ended before a terminal response event`,

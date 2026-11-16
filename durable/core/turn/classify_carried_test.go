@@ -93,3 +93,26 @@ func TestNodeSocketErrorCodesAreRetryable(t *testing.T) {
 		}
 	}
 }
+
+// Pi bb1a2b3542b5 packages/ai/test/retry.test.ts (#12124): the Codex WebSocket lifetime limit, as text or as the error code, is retried;
+// a generic connection limit is not.
+func TestCodexWebSocketConnectionLimitIsRetryable(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want bool
+	}{
+		{"Codex error: Responses websocket connection limit reached (60 minutes). Create a new websocket connection to continue.", true},
+		{"Codex error: websocket_connection_limit_reached", true},
+		{"WEBSOCKET CONNECTION LIMIT REACHED", true},
+		{"websocket-connection-limit-reached", true},
+		{"connection limit reached", false},
+		{"websocket connection limit", false},
+		{"connection limit reached on the websocket", false},
+		{"websocket connection limit reached: insufficient_quota", false},
+	} {
+		message := jobj("role", "assistant", "stopReason", "error", "errorMessage", tc.text)
+		if got := IsRetryableAssistantError(message); got != tc.want {
+			t.Errorf("IsRetryableAssistantError(%q) = %v, want %v", tc.text, got, tc.want)
+		}
+	}
+}

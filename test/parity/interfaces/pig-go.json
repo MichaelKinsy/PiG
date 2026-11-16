@@ -55238,9 +55238,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, acquired *acquiredCodexWebSocket, first []byte, request codexRequest, requestBytes int, grammarProps map[string]string, useCachedContext bool, builder *assistantStreamBuilder, opts StreamOptions)"
+        "type": "func(ctx context.Context, acquired *acquiredCodexWebSocket, first []byte, readErr error, request codexRequest, requestBytes int, grammarProps map[string]string, useCachedContext bool, builder *assistantStreamBuilder, opts StreamOptions)"
       },
-      "shapeHash": "sha256:09e9e0de7a7cef10a2dbd4486158e969e50406f0a7ac9095f18ab58db35b8193"
+      "shapeHash": "sha256:4c2892d5ae0bd8f685c2f671752dbeb80f5ba118392577581d4d049b778936fd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.convertMessages",

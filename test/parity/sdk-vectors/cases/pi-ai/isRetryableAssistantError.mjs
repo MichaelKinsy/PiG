@@ -194,3 +194,12 @@ for (const errorMessage of [
   "read econnreset", "(EPIPE)", "ECONNRESET_", "_ECONNRESET", "0EPIPE", "EPIPE0", "connect EHOSTUNREACH 140.82.113.3:443", "connect ENETUNREACH 140.82.113.3:443", "UND_ERR_SOCKET",
   "\u212aECONNRESET", "EPIPE\u017f", "write: broken pipe", "read tcp 100.64.0.1:50817->140.82.112.22:443: read: connection reset by peer", "ECONNRESET billing",
 ]) cases.push({ name: `case ${String(cases.length + 1).padStart(4, "0")}`, args: [failed(errorMessage)] });
+
+// Pi bb1a2b3542b5 (packages/ai/src/utils/retry.ts, #12124): the Codex WebSocket 60-minute connection limit is retried, as the code or as the message text, and a generic connection limit is not.
+// The first three messages are Pi's own test strings (packages/ai/test/retry.test.ts); the rest are the separators `.?` accepts, the case-insensitive flag, near misses and the quota pattern that is checked first.
+for (const errorMessage of [
+  "Codex error: Responses websocket connection limit reached (60 minutes). Create a new websocket connection to continue.", "Codex error: websocket_connection_limit_reached", "connection limit reached",
+  "WEBSOCKET CONNECTION LIMIT REACHED", "websocket-connection-limit-reached", "websocketconnectionlimitreached", "websocket\nconnection limit reached", '{"type":"error","error":{"code":"websocket_connection_limit_reached"}}',
+  "websocket connection limit", "websocket limit reached", "websocket connection  limit reached", "connection limit reached on the websocket", "websocket connection limit reached: insufficient_quota",
+]) cases.push({ name: `case ${String(cases.length + 1).padStart(4, "0")}`, args: [failed(errorMessage)] });
+

@@ -27,7 +27,9 @@ const (
 	codexWebSocketBeta           = "responses_websockets=2026-02-06"
 	codexWebSocketConnectTimeout = 15 * time.Second
 	codexWebSocketCacheTTL       = 5 * time.Minute
-	codexWebSocketMaxAge         = 55 * time.Minute
+	// The server closes a socket after 60 minutes, even mid-response, and the in-flight response is lost. New requests open a fresh socket after 45 minutes, leaving 15 minutes for long responses (Pi bb1a2b3542b5).
+	// upstream: packages/ai/src/api/openai-codex-responses.ts:SESSION_WEBSOCKET_MAX_AGE_MS
+	codexWebSocketMaxAge = 45 * time.Minute
 )
 
 // codexWebSocketError is a WebSocket transport failure as Node's WebSocket reports it to openai-codex-responses.ts: extractWebSocketError's "WebSocket error" for a failed handshake or a dropped connection, and extractWebSocketCloseError's WebSocketCloseError, with the close code, for a close frame (openai-codex-responses.ts:1250-1288).
@@ -818,6 +820,10 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 	builder.setProviderEventObserver(opts, providerEventModel(p.cfg.ModelMetadata, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model))
 	var messageType int
 	var first []byte
+	// websocketStarted (openai-codex-responses.ts:321-336) becomes true at the first event mapCodexEvents yields, a leading codex.rate_limits
+	// event included. Every decision below reads that one flag: a started stream is not reconnected for the connection limit and is not retried or
+	// moved to SSE after a read error; it ends in an error message, which the caller's retry handles.
+	websocketStarted := false
 	for {
 		messageType, first, err = readCodexWebSocket(ctx, acquired.connection, optionTimeout(opts.TimeoutMs))
 		if err != nil {
@@ -838,6 +844,12 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 		if json.Unmarshal(first, &event) != nil || event.Type != "codex.rate_limits" {
 			break
 		}
+		websocketStarted = true
+	}
+	if err != nil && websocketStarted {
+		// An aborted request ends the same way (consumeCodexWebSocket does not call a cancelled context a transport failure).
+		go p.consumeCodexWebSocket(ctx, acquired, nil, err, request, len(body), grammarProps, useCachedContext, builder, opts)
+		return builder.stream, nil, nil
 	}
 	if err != nil {
 		wasReused := acquired.reused
@@ -867,7 +879,8 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 		acquired.release(false)
 		return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, retryConnectionLimit, false)
 	}
-	if code == "websocket_connection_limit_reached" {
+	// connectionLimitBeforeStart := !websocketStarted && isWebSocketConnectionLimitReachedError(error) (openai-codex-responses.ts:362): a started stream keeps its error.
+	if code == "websocket_connection_limit_reached" && !websocketStarted {
 		acquired.release(false)
 		if retryConnectionLimit {
 			return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, false, retryMissingContinuation)
@@ -882,7 +895,7 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 		return nil, eventErr, nil
 	}
 
-	go p.consumeCodexWebSocket(ctx, acquired, first, request, len(body), grammarProps, useCachedContext, builder, opts)
+	go p.consumeCodexWebSocket(ctx, acquired, first, nil, request, len(body), grammarProps, useCachedContext, builder, opts)
 	return builder.stream, nil, nil
 }
 
@@ -895,7 +908,9 @@ func markCodexWebSocketFinishing(entry *codexWebSocketEntry) {
 	codexWebSocketSessions.mu.Unlock()
 }
 
-func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acquired *acquiredCodexWebSocket, first []byte, request codexRequest, requestBytes int, grammarProps map[string]string, useCachedContext bool, builder *assistantStreamBuilder, opts StreamOptions) {
+// consumeCodexWebSocket feeds the stream from first and the frames after it. A non-nil readErr is the read error of a stream that has started (a leading
+// codex.rate_limits event was yielded): it replaces first, as the error of the next read.
+func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acquired *acquiredCodexWebSocket, first []byte, readErr error, request codexRequest, requestBytes int, grammarProps map[string]string, useCachedContext bool, builder *assistantStreamBuilder, opts StreamOptions) {
 	reader, writer := io.Pipe()
 	feedDone := make(chan struct{})
 	parseDone := make(chan struct{})
@@ -921,6 +936,15 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 				case <-parseDone:
 					return
 				}
+			}
+			if readErr != nil {
+				err := readErr
+				if ctx.Err() == nil {
+					recordCodexWebSocketFailure(acquired.sessionID, err)
+					err = &codexWebSocketTransportFailure{err: err}
+				}
+				_ = writer.CloseWithError(err)
+				return
 			}
 			if !observed {
 				if err := builder.observeCodexFrame(message); err != nil {

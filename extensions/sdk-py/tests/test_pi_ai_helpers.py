@@ -137,6 +137,21 @@ def test_node_socket_error_codes_are_retryable():
         assert helpers.is_retryable_assistant_error({"role": "assistant", "stopReason": "error", "errorMessage": text}) is want, text
 
 
+def test_codex_websocket_connection_limit_is_retryable():
+    # Pi bb1a2b3542b5 packages/ai/test/retry.test.ts (#12124): the Codex WebSocket lifetime limit, as text or as the error code, is retried; a generic connection limit is not.
+    for text, want in (
+        ("Codex error: Responses websocket connection limit reached (60 minutes). Create a new websocket connection to continue.", True),
+        ("Codex error: websocket_connection_limit_reached", True),
+        ("WEBSOCKET CONNECTION LIMIT REACHED", True),
+        ("websocket-connection-limit-reached", True),
+        ("connection limit reached", False),
+        ("websocket connection limit", False),
+        ("connection limit reached on the websocket", False),
+        ("websocket connection limit reached: insufficient_quota", False),
+    ):
+        assert helpers.is_retryable_assistant_error({"role": "assistant", "stopReason": "error", "errorMessage": text}) is want, text
+
+
 def test_the_golden_file_covers_every_helper():
     called = {case["fn"] for case in GOLDEN["cases"]}
     assert set(CALLS) <= called

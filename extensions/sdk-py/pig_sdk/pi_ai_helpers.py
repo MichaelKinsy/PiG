@@ -485,7 +485,10 @@ _RETRYABLE_PROVIDER_ERROR_PATTERN = _js_regexp("|".join([
     # Pi 4699b5b26 (#12128): bare Node socket error codes, e.g. "read ECONNRESET", "write EPIPE", or "connect ETIMEDOUT 1.2.3.4:443", not part of a longer identifier.
     "(?<![a-z0-9_])(?:ECONNRESET|ECONNABORTED|ECONNREFUSED|ETIMEDOUT|EPIPE)(?![a-z0-9_])", "connection reset by peer",
     "ENOTFOUND", "EAI_AGAIN", "upstream.?connect", "reset before headers", "socket hang up", "socket connection was closed",
-    "timed? out", "timeout", "terminated", "websocket.?closed", "websocket.?error", "ended without", "stream ended before message_stop",
+    "timed? out", "timeout", "terminated", "websocket.?closed", "websocket.?error",
+    # Pi bb1a2b3542b5 (#12124): the Codex 60-minute WebSocket lifetime limit, as code websocket_connection_limit_reached or as text "Responses websocket connection limit reached".
+    "websocket.?connection.?limit.?reached",
+    "ended without", "stream ended before message_stop",
     "stream ended before a terminal response event", "http2 request did not get a response",
     # Codex CLI mid-stream disconnect, relayed by proxies that wrap the Codex CLI, e.g. "stream disconnected before completion: stream closed before response.completed" (#11057).
     "stream disconnected before completion",

@@ -1373,6 +1373,10 @@ var RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
   // WebSocket transports can report close/error text instead of HTTP/fetch text.
   "websocket.?closed",
   "websocket.?error",
+  // Pi bb1a2b3542b5 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+  // Codex 60-minute WebSocket lifetime limit, as code `websocket_connection_limit_reached` or as
+  // text "Responses websocket connection limit reached". A retry opens a fresh connection (#12124).
+  "websocket.?connection.?limit.?reached",
   // Premature stream endings from SDKs and transports. Anthropic can throw
   // "stream ended without ..." and "Anthropic stream ended before message_stop"
   // (#4433); Bedrock/Smithy can throw an HTTP/2 no-response error (#3594).

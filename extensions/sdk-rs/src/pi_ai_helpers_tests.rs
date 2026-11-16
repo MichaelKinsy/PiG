@@ -504,6 +504,24 @@ fn node_socket_error_codes_are_retryable() {
     }
 }
 
+/// Pi bb1a2b3542b5 packages/ai/test/retry.test.ts (#12124): the Codex WebSocket lifetime limit, as text or as the error code, is retried; a generic connection limit is not.
+#[test]
+fn codex_websocket_connection_limit_is_retryable() {
+    for (text, want) in [
+        ("Codex error: Responses websocket connection limit reached (60 minutes). Create a new websocket connection to continue.", true),
+        ("Codex error: websocket_connection_limit_reached", true),
+        ("WEBSOCKET CONNECTION LIMIT REACHED", true),
+        ("websocket-connection-limit-reached", true),
+        ("connection limit reached", false),
+        ("websocket connection limit", false),
+        ("connection limit reached on the websocket", false),
+        ("websocket connection limit reached: insufficient_quota", false),
+    ] {
+        let message = json!({"role": "assistant", "stopReason": "error", "errorMessage": text});
+        assert_eq!(is_retryable_assistant_error(&message), want, "{text}");
+    }
+}
+
 #[test]
 fn the_default_retry_delay_cap_is_pis() {
     assert_eq!(DEFAULT_MAX_AGENT_RETRY_DELAY_MS, 60_000.0);

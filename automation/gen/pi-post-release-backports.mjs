@@ -1317,6 +1317,33 @@ function serverSummary(server) {
 ]);
 // END backport 3567987250
 
+// BEGIN backport bb1a2b3542b5
+// bb1a2b3542b5 (#12229, closes #12124): the Codex WebSocket 60-minute connection limit, as the code `websocket_connection_limit_reached` or as the text "Responses websocket
+// connection limit reached", is a retryable provider error (the classifier that pi-ai's SDK, the coding agent, durable and compaction and the oracle test of ai.IsRetryableAssistantError run).
+patch("bb1a2b3542b5", "pi-ai/utils/retry.js", [
+    [`    "websocket.?error",
+`, `    "websocket.?error",
+    ${note("bb1a2b3542b5").trim()}
+    // Codex 60-minute WebSocket lifetime limit, as code \`websocket_connection_limit_reached\` or as
+    // text "Responses websocket connection limit reached". A retry opens a fresh connection (#12124).
+    "websocket.?connection.?limit.?reached",
+`],
+]);
+// END backport bb1a2b3542b5
+
+// BEGIN backport bb1a2b3542b5
+// bb1a2b3542b5 (#12229, closes #12124): new requests stop reusing a cached Codex WebSocket after 45 minutes instead of 55. PiG's vendored runtime carries pi-ai's
+// openai-codex-responses as a bridge stub that runs in PiG's host (ai/openai_codex_websocket.go codexWebSocketMaxAge, which has the change), so the file is the installed Pi's only.
+packageFile("bb1a2b3542b5", "pi-ai/api/openai-codex-responses.js", [
+    [`const SESSION_WEBSOCKET_MAX_AGE_MS = 55 * 60 * 1000;
+`, `// The server closes a socket after 60 minutes, even mid-response, and the in-flight response is lost.
+// New requests open a fresh socket after 45 minutes, leaving 15 minutes for long responses.
+${note("bb1a2b3542b5").trim()}
+const SESSION_WEBSOCKET_MAX_AGE_MS = 45 * 60 * 1000;
+`],
+]);
+// END backport bb1a2b3542b5
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

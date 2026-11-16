@@ -971,6 +971,8 @@ static RETRYABLE_PROVIDER_ERROR_PATTERN: LazyLock<Pattern> = LazyLock::new(|| {
         "terminated",
         "websocket.?closed",
         "websocket.?error",
+        // Pi bb1a2b3542b5 (#12124): the Codex 60-minute WebSocket lifetime limit, as code websocket_connection_limit_reached or as text "Responses websocket connection limit reached".
+        "websocket.?connection.?limit.?reached",
         "ended without",
         "stream ended before message_stop",
         "stream ended before a terminal response event",

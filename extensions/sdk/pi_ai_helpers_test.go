@@ -327,6 +327,24 @@ func TestNodeSocketErrorCodesAreRetryable(t *testing.T) {
 	}
 }
 
+// Pi bb1a2b3542b5 packages/ai/test/retry.test.ts (#12124): the Codex WebSocket lifetime limit, as text or as the error code, is retried; a generic connection limit is not.
+func TestCodexWebSocketConnectionLimitIsRetryable(t *testing.T) {
+	for text, want := range map[string]bool{
+		"Codex error: Responses websocket connection limit reached (60 minutes). Create a new websocket connection to continue.": true,
+		"Codex error: websocket_connection_limit_reached":                                                                        true,
+		"WEBSOCKET CONNECTION LIMIT REACHED":                                                                                     true,
+		"websocket-connection-limit-reached":                                                                                     true,
+		"connection limit reached":                                                                                               false,
+		"websocket connection limit":                                                                                             false,
+		"connection limit reached on the websocket":                                                                              false,
+		"websocket connection limit reached: insufficient_quota":                                                                 false,
+	} {
+		if got := IsRetryableAssistantError(map[string]any{"role": "assistant", "stopReason": "error", "errorMessage": text}); got != want {
+			t.Errorf("IsRetryableAssistantError(%q) = %v, want %v", text, got, want)
+		}
+	}
+}
+
 func TestEnvAPIKeyAuthMatchesThePinnedPackage(t *testing.T) {
 	_, golden := loadGolden(t)
 	for _, c := range golden.Cases {
