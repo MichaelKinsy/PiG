@@ -27,7 +27,8 @@ type reloadSDKTree struct {
 }
 
 // copyReloadSDK copies the repository's Go SDK, the whole of it for the SDK embeds its hidden .gz directory, into a new directory, and adds
-// extraFiles data files to the directory the copy's root is, and extraDirs new directories under it with one data file each. hashTree reads
+// extraFiles data files to the directory the copy's root is, and extraDirs new directories under it with reloadDirFiles data files each, as the
+// SDK's own directories hold several. hashTree reads
 // every file whatever it is called, so a data file costs a reload what a source file does.
 func copyReloadSDK(b *testing.B, extraFiles, extraDirs int) reloadSDKTree {
 	b.Helper()
@@ -83,11 +84,13 @@ func copyReloadSDK(b *testing.B, extraFiles, extraDirs int) reloadSDKTree {
 		if err := os.Mkdir(dir, 0o755); err != nil {
 			b.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(dir, "data.txt"), data, 0o644); err != nil {
-			b.Fatal(err)
+		for j := range reloadDirFiles {
+			if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf("data%02d.txt", j)), data, 0o644); err != nil {
+				b.Fatal(err)
+			}
 		}
 		tree.dirs++
-		tree.files++
+		tree.files += reloadDirFiles
 	}
 	return tree
 }
@@ -132,7 +135,8 @@ func reloadAllocs(b *testing.B, extraFiles, extraDirs, reloads int) (allocs floa
 // The three figures of BenchmarkReload_PackedCellWarmCache, which its sub-benchmarks report as allocs/op.
 const (
 	reloadExtraFiles = 300 // data files added to the SDK's root directory to measure a file
-	reloadExtraDirs  = 50  // directories with one data file each added to measure a directory
+	reloadExtraDirs  = 50  // directories added to measure a directory, each with reloadDirFiles data files
+	reloadDirFiles   = 10  // data files in each added directory: the shape of the SDK's own directories
 	reloadCount      = 20  // warm reloads counted for each tree
 )
 
@@ -146,14 +150,20 @@ var reloadFigures struct {
 // (runtimecell.hashTree: a directory listing for each directory, a stat and a read for each file), so a reload costs a fixed part, a part for
 // each file and a part for each directory, and the SDK gaining files or directories moves only its own part. The slopes are measured here, in
 // the same run, and taken out of the reload of the copy as it is: what is left is fixed.
+//
+// A directory is measured in the shape the SDK's directories have, reloadDirFiles files each, so a directory's listing is not counted as a file.
+// What the model leaves is small and written here: adding 60 files and 3 directories of ten files to the SDK moved fixed by about 14 (1483 to
+// 1486 plain, 1492 to 1503 with them), that is about a fifth of an allocation for each file and 5 for each directory beyond the two slopes
+// (a larger listing grows its slices a step more). fixed has a tolerance of 89, so the SDK may gain some 380 files, or 19 directories, over
+// 1490's measurement before the row leaves it; past that the row is raised in the change that grows the SDK, with the figures above.
 func measureReloadFigures(b *testing.B) {
 	b.Helper()
 	base, tree := reloadAllocs(b, 0, 0, reloadCount)
 	withFiles, _ := reloadAllocs(b, reloadExtraFiles, 0, reloadCount)
 	withDirs, _ := reloadAllocs(b, 0, reloadExtraDirs, reloadCount)
 	perFile := (withFiles - base) / reloadExtraFiles
-	// Each new directory holds a file: that file costs what a file does.
-	perDir := (withDirs-base)/reloadExtraDirs - perFile
+	// Each new directory holds reloadDirFiles files: they cost what files do, and what is left is the directory.
+	perDir := (withDirs-base)/reloadExtraDirs - perFile*reloadDirFiles
 	reloadFigures.fixed = base - perFile*float64(tree.files) - perDir*float64(tree.dirs)
 	reloadFigures.per100Files = perFile * 100
 	reloadFigures.per10Dirs = perDir * 10
