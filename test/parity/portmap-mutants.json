@@ -282,8 +282,8 @@
  "packages/ai/catalog/providers/qwen-token-plan.ts": [
   {
    "file": "internal/modelgen/providers/qwen_token_plan.go",
-   "old": "\"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1\"",
-   "new": "\"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/vZ\""
+   "old": "\"https://token-plan.maas.qwencloudapi.com/compatible-mode/v1\"",
+   "new": "\"https://token-plan.maas.qwencloudapi.com/compatible-mode/vZ\""
   }
  ],
  "packages/ai/catalog/providers/radius.ts": [

@@ -24,6 +24,8 @@ type WriteDetails struct {
 }
 
 // ReadDetails carries the optional upstream truncation object. The renderer derives display-only fields from the retained read call.
+//
+// Ports packages/coding-agent/src/core/tools/read.ts: ReadToolDetails (truncation, imageUnsupportedByModel).
 type ReadDetails struct {
 	Path       string `json:"-"`
 	StartLine  int    `json:"-"`
