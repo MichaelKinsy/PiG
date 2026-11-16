@@ -110,6 +110,10 @@ func TestFramePacingNoticeIsTheOnlyDifferenceUnderAdaptivePacing(t *testing.T) {
 	var pig, pi BinaryRef
 	for _, allowed := range framePacingNoticeAllowed {
 		if selected[filepath.Join(canonicalDir, filepath.FromSlash(allowed.path))] != nil && pig.Path == "" {
+			// No binary was provided at all (neither PIG_PARITY_PIG_BIN nor PIG_BIN): the input is absent, not wrong, so this test has nothing to run against and skips. Every parity gate sets PIG_PARITY_PIG_BIN, and a path that is set but missing still fails in ResolvePigBin.
+			if pigBinUnderTest() == "" {
+				t.Skip("no pig binary under test: build one (`go build -o bin/pig-parity ./cmd/pig`) and set PIG_PARITY_PIG_BIN (or PIG_BIN); the parity make targets (`make parity`) do this")
+			}
 			if err := upstreamMirrorMissing(repoRoot); err != nil {
 				t.Fatal(err)
 			}
