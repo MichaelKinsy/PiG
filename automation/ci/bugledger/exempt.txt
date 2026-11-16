@@ -27,3 +27,5 @@ f3fd868442 see ab1d07097c
 ee03bf520b Follow-up to unreleased work: commits the vendored node_modules of the Chord plugins Node evaluator that the .gitignore hid (701 generated files), no product behaviour
 # f26dfe2355 corrects f06ba8fd15, which hid the symptom of the same bug (its trailer names f06ba8fd15 back): the entry is the correction's.
 f06ba8fd15 see f26dfe2355
+7f4c44a147 Follow-up to unreleased work: the exit settlement of ce73c6217 (2026-11-13, in no tag) took a stream found empty as all told, which a descriptor held outside the worker's tree never lets happen; it settles on what the stream held at the exit, found in review (PR 508) before any release
+18cb1a9381 Follow-up to unreleased work: the release of an exited worker that ce73c6217 (2026-11-13, in no tag) added did not wait for the goroutines reading its streams, so Workers.Close returned before them; it awaits them, found in review (PR 508) before any release
