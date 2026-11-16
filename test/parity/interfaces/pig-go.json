@@ -292205,6 +292205,50 @@
       "shapeHash": "sha256:be33eb8f1b94252ada6d5955b4f1f17db3d13e281fca28c6a2d3020f639d96aa"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinChatCatalogs.catalog",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtinChatCatalogs.catalog",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) []github.com/MichaelKinsy/PiG/ai.GeneratedModel"
+      },
+      "shapeHash": "sha256:906c73ddda1c5a72c808ed6c1f19f9d4fdd5e5b5fc239ea9eebedc63bded159e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinChatCatalogs.convertedModels",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtinChatCatalogs.convertedModels",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) []*github.com/MichaelKinsy/PiG/ai.Model"
+      },
+      "shapeHash": "sha256:08fb8ba26b848d0bf55a760b976531cd988dd0573e5f2c3a830e3c2d0371839f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinChatCatalogs.listed",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtinChatCatalogs.listed",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) []github.com/MichaelKinsy/PiG/ai.GeneratedModel"
+      },
+      "shapeHash": "sha256:906c73ddda1c5a72c808ed6c1f19f9d4fdd5e5b5fc239ea9eebedc63bded159e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinChatModels",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "builtinChatModels",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) []*github.com/MichaelKinsy/PiG/ai.Model"
+      },
+      "shapeHash": "sha256:08fb8ba26b848d0bf55a760b976531cd988dd0573e5f2c3a830e3c2d0371839f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinClassifierModels",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "builtinClassifierModels",
@@ -295109,6 +295153,17 @@
       "shapeHash": "sha256:949751e2d04926090e3cf684055b2250d7a0cbe17eb8f52b44b477569e66abbf"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#convertedChatModels",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "convertedChatModels",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "convertedChatModels"
+      },
+      "shapeHash": "sha256:141723e580cde9c095cb519159f055df56b2722cc11ba23c5aff6cc4b748c142"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#copilotBaseURLProbe",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "copilotBaseURLProbe",
@@ -295360,6 +295415,17 @@
         "type": "func(new *builtinChatCatalogs) (old *builtinChatCatalogs)"
       },
       "shapeHash": "sha256:7d2f9ee0d90e4f7dd84300c6b6016998e8f671063326277c83368c30d1c87367"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#currentBuiltinChatCatalogsNow",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "currentBuiltinChatCatalogsNow",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *builtinChatCatalogs"
+      },
+      "shapeHash": "sha256:671cc276e4761a48074194a6b6574254d1c51fbaa649a4c295a0799d6e504c46"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#currentRendererTUI",
