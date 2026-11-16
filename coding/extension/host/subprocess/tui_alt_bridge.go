@@ -83,13 +83,15 @@ type tuiAltScreenState struct {
 	screen *tui.TuiAltScreen
 	term   *tuiAltTerminal
 
-	// ctx is the context of every request the screen makes (callback); end, called by disposeTuiAlt, ends it. The goroutine that runs a frame holds the frame
-	// lock while it waits for the extension to answer, and disposing the screen takes that lock, so the host must be able to end the wait of an extension that
-	// never answers.
+	// ctx is the context of every request the screen makes (callback); end, called by disposeTuiAlt, ends it. The owner waits for the extension's answer to a
+	// callback while it holds the frame lock, and disposing the screen takes that lock, so the host must be able to end the wait of an extension that never answers.
 	ctx context.Context
 	end context.CancelFunc
 
-	// waits holds the callbacks the goroutine that runs the renderer's frame is waiting on, by request id: see callback.
+	// owner is the one goroutine that runs the screen's frames, ticks and calls (tui_alt_owner.go), so the extension's components see one callback at a time.
+	owner *tuiAltOwner
+
+	// waits holds the callbacks the owner is waiting on, by request id: see callback.
 	waitMu sync.Mutex
 	waits  map[string]*tuiAltWait
 
@@ -120,10 +122,13 @@ type tuiAltKey struct {
 	id   string
 }
 
-// tuiAltWait is a tui.alt.cb request the goroutine that runs the renderer's frame waits on. That goroutine holds the frame lock (and, while a component
-// renders, the base container's lock), so a call the extension makes from the callback runs on it, as Pi's render calls the screen on its one thread.
+// tuiAltWait is a tui.alt.cb request the owner waits on. The owner holds the frame lock while it waits when the callback belongs to a frame (and, while a
+// component renders, the base container's lock), so a call the extension makes from the callback runs on the owner, as Pi's callbacks call the screen on its one
+// thread.
 type tuiAltWait struct {
-	frame tui.AltScreenFrame
+	// frame is the frame the owner runs when inFrame is set: the callback is one of a frame's.
+	frame   tui.AltScreenFrame
+	inFrame bool
 	// runs carries the calls to run on the waiting goroutine; done is closed when it stops waiting.
 	runs chan func()
 	done chan struct{}
@@ -131,20 +136,21 @@ type tuiAltWait struct {
 
 // callback sends one tui.alt.cb request and decodes its response into result.
 //
-// The goroutine that runs the renderer's frame sends the callbacks a frame makes (a component's render, an overlay's visible callback, a style callback, a
-// terminal write) and those the screen's members make while it runs a call from one of them (a component's invalidate or focus). It holds the frame lock
-// while it waits. The extension answers from the request's own thread; a call it makes meanwhile names the request as its parent (serveInFrame), and this
-// goroutine runs it, while it holds the frame lock: the call applies at once and a later read sees it, as in Pi.
+// The owner sends every callback of the screen: those a frame makes (a component's render, an overlay's visible callback, a style callback, a terminal write),
+// those an input, a mouse event or a focus change makes (the component's input, mouse and focus, the input listeners, the option callbacks), and those the
+// screen's members make while it runs a call from one of them. It waits for the answer, holding the frame lock when the callback is a frame's. The extension
+// answers from the request's own thread; a call it makes meanwhile names the request as its parent (serveOnOwner) and the owner runs it, so the call applies
+// at once and a later read sees it, as in Pi. A goroutine that is not the owner sends its callback as any request (nothing the renderer does sends one).
 func (s *tuiAltScreenState) callback(kind string, fields map[string]any, result any) error {
 	args := map[string]any{"id": s.id, "kind": kind}
 	maps.Copy(args, fields)
 	ctx := s.ctx
-	frame, inFrame := s.screen.Frame()
-	if !inFrame {
+	if !s.owner.onOwner() {
 		return autocompleteRequest(ctx, s.conn, RequestTuiAltCallback, args, result)
 	}
+	frame, inFrame := s.screen.Frame()
 	id := s.conn.newRequestID()
-	wait := &tuiAltWait{frame: frame, runs: make(chan func()), done: make(chan struct{})}
+	wait := &tuiAltWait{frame: frame, inFrame: inFrame, runs: make(chan func()), done: make(chan struct{})}
 	s.waitMu.Lock()
 	if s.waits == nil {
 		s.waits = map[string]*tuiAltWait{}
@@ -160,9 +166,10 @@ func (s *tuiAltScreenState) callback(kind string, fields map[string]any, result 
 	return requestWithID(withRequestInterjections(ctx, wait.runs), s.conn, id, RequestTuiAltCallback, args, result)
 }
 
-// serveInFrame runs fn on the goroutine that waits for the callback request parent, with the frame that goroutine runs, and reports whether it did. It
-// reports false when no frame goroutine waits for parent, or stopped waiting before it took the call; the call then runs as any other.
-func (s *tuiAltScreenState) serveInFrame(parent string, fn func(frame tui.AltScreenFrame)) bool {
+// serveOnOwner runs fn on the owner while it waits for the callback request parent, with the members the owner holds for it (the frame's when the callback is a
+// frame's, the screen's otherwise) and whether that is a frame, and reports whether it did. It reports false when the owner does not wait for parent, or stopped
+// waiting before it took the call; the call then runs as any other, queued behind the owner's task.
+func (s *tuiAltScreenState) serveOnOwner(parent string, fn func(m tuiAltMembers, inFrame bool)) bool {
 	if parent == "" {
 		return false
 	}
@@ -175,7 +182,11 @@ func (s *tuiAltScreenState) serveInFrame(parent string, fn func(frame tui.AltScr
 	ran := make(chan struct{})
 	run := func() {
 		defer close(ran)
-		fn(wait.frame)
+		if wait.inFrame {
+			fn(wait.frame, true)
+			return
+		}
+		fn(s.screen, false)
 	}
 	select {
 	case wait.runs <- run:
@@ -422,7 +433,8 @@ func (b *UIBridge) tuiAltScreen(owner *Conn, id string) (*tuiAltScreenState, err
 	return s, nil
 }
 
-// disposeTuiAlt forgets the screens of owner (all of them when ownerOnly is false and owner is nil), stopping each.
+// disposeTuiAlt forgets the screens of owner (all of them when ownerOnly is false and owner is nil), stopping each: it ends the screen's callbacks and waits for
+// its owner to return.
 func (b *UIBridge) disposeTuiAlt(owner *Conn, all bool) {
 	var screens []*tuiAltScreenState
 	registry := b.tuiAlt()
@@ -436,9 +448,11 @@ func (b *UIBridge) disposeTuiAlt(owner *Conn, all bool) {
 	registry.mu.Unlock()
 	for _, s := range screens {
 		s.end()
-		// Ending the screen's callbacks lets a frame that waits on the extension finish and release the lock CancelPendingRender takes; the connection is
-		// still open (a shutdown disposes before it closes the extension), so the extension is not told to stop its terminal: end the renderer's own timers only.
+		// Ending the screen's callbacks lets a frame that waits on the extension finish and release the lock CancelPendingRender takes, and ends the owner after the
+		// task it runs; the connection is still open (a shutdown disposes before it closes the extension), so the extension is not told to stop its terminal: end the
+		// renderer's own timers only.
 		s.screen.CancelPendingRender()
+		s.owner.wait()
 	}
 }
 
@@ -498,21 +512,40 @@ func (b *UIBridge) handleTuiAlt(owner *Conn, parent string, args json.RawMessage
 		registry.mu.Lock()
 		delete(registry.screens, tuiAltKey{owner, call.ID})
 		registry.mu.Unlock()
-		if !s.serveInFrame(parent, func(frame tui.AltScreenFrame) { frame.CancelPendingRender() }) {
-			s.screen.CancelPendingRender()
+		// The owner ends after the task that cancels the pending frame: a dispose from a callback it waits on is that task, and it ends once the callback has
+		// answered; any other dispose waits for the owner to return.
+		end := func(m tuiAltMembers) {
+			m.CancelPendingRender()
+			s.owner.close()
+		}
+		if !s.serveOnOwner(parent, func(m tuiAltMembers, _ bool) { end(m) }) {
+			_ = s.owner.do(func() { end(s.screen) })
+			s.owner.wait()
 		}
 		return tuiAltResult(map[string]any{})
 	}
 	if s.term.update(call.Terminal) {
 		s.screen.RequestRender()
 	}
-	// A call from a callback the frame goroutine waits for runs on that goroutine, at once, as Pi's render calls the screen.
+	if call.Op == "input" && tui.IsTerminalColorReply(call.Data) && s.screen.ConsumeTerminalColorResponse(call.Data) {
+		// A reply to a colour query settles the query and nothing else, and the extension may be waiting for it inside a callback the owner is waiting on (an
+		// input handler that awaits queryTerminalColors, which Pi's loop lets it do: handleTerminalInput consumes the reply first, tui.ts:1121), so it does not
+		// queue behind the owner.
+		return tuiAltResult(map[string]any{})
+	}
+	if call.Op == "queryTerminalColors" {
+		return s.queryTerminalColors(parent, &call)
+	}
+	// A call from a callback the owner waits for runs on the owner, at once, as Pi's callbacks call the screen; any other call runs after the task the owner is in.
 	var result *CallResultPayload
 	var callErr error
-	if s.serveInFrame(parent, func(frame tui.AltScreenFrame) { result, callErr = s.run(&call, frame, true) }) {
+	if s.serveOnOwner(parent, func(m tuiAltMembers, inFrame bool) { result, callErr = s.run(&call, m, inFrame) }) {
 		return result, callErr
 	}
-	return s.run(&call, s.screen, false)
+	if err := s.owner.do(func() { result, callErr = s.run(&call, s.screen, false) }); err != nil {
+		return nil, err
+	}
+	return result, callErr
 }
 
 func (b *UIBridge) tuiAltCreate(owner *Conn, call *tuiAltCall) (*CallResultPayload, error) {
@@ -552,11 +585,13 @@ func (b *UIBridge) tuiAltCreate(owner *Conn, call *tuiAltCall) (*CallResultPaylo
 	//portlint:allow ctxbackground the screen outlives the call that built it; its callbacks end when disposeTuiAlt ends it or the connection closes (Request returns when it closes)
 	s.ctx, s.end = context.WithCancel(context.Background())
 	s.screen = tui.NewTuiAltScreen(s.term, call.ShowHardwareCursor, call.LogDirectory, options)
-	// The components are the extension's: their render calls back into the screen, from the goroutine that runs the frame (callback).
+	// The components are the extension's: their calls back into the screen run on the owner, which waits for their callback (callback).
 	s.screen.EnableFrameAccess()
 	s.screen.OnTerminalColorSchemeChange(func(scheme tui.TerminalColorScheme) {
 		_ = s.callback("colorScheme", map[string]any{"scheme": string(scheme)}, nil)
 	})
+	s.owner = newTuiAltOwner(s.ctx, s.end, owner.Done(), s.screen)
+	s.owner.start()
 	registry.mu.Lock()
 	if registry.screens == nil {
 		registry.screens = map[tuiAltKey]*tuiAltScreenState{}
@@ -678,10 +713,11 @@ type tuiAltMembers interface {
 	ScrollBy(lines int)
 	ScrollToTop()
 	ScrollToBottom()
+	CancelPendingRender()
 }
 
-// run applies call to the screen. inFrame says the call comes from a callback the goroutine that runs the frame waits for and runs on that goroutine, and m
-// is the frame it holds; otherwise m is the screen.
+// run applies call to the screen on the owner. inFrame says the call comes from a callback of a frame that the owner waits for and runs on the owner, and m is
+// the frame it holds; otherwise m is the screen.
 func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool) (*CallResultPayload, error) {
 	screen := s.screen
 	empty := func() (*CallResultPayload, error) { return tuiAltResult(map[string]any{}) }
@@ -691,7 +727,7 @@ func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool)
 			// pig divergence (D208): Pi re-enters its own frame or recurses here (renderNow inside render renders the frame again, start and stop nest a
 			// terminal start and stop, the Promise-returning copy and color query run inside the frame, input dispatches input from render); the frame here
 			// holds its lock for the render it waits on, which these would take again, so the call fails and the screen goes on.
-			return nil, fmt.Errorf("tui.alt: %s cannot run while a component renders", call.Op)
+			return nil, errTuiAltInFrame(call.Op)
 		}
 	}
 	switch call.Op {
@@ -886,18 +922,6 @@ func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool)
 	case "setTerminalColorSchemeNotifications":
 		screen.SetTerminalColorSchemeNotifications(call.Enabled)
 		return empty()
-	case "queryTerminalColors":
-		options := tui.TerminalColorQueryOptions{TimeoutMs: call.TimeoutMs}
-		if call.OnLateReply {
-			options.OnLateReply = func(colors tui.TerminalColors) {
-				_ = s.callback("lateColors", map[string]any{"queryId": call.QueryID, "colors": tuiAltColorsWire(colors)}, nil)
-			}
-		}
-		result := <-screen.QueryTerminalColors(options)
-		if result.Err != nil {
-			return nil, result.Err
-		}
-		return tuiAltResult(map[string]any{"colors": tuiAltColorsWire(result.Colors)})
 	case "handleMouse":
 		var event tuiAltMouseEvent
 		if err := json.Unmarshal(call.Event, &event); err != nil {
@@ -919,6 +943,52 @@ func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool)
 		return empty()
 	}
 	return nil, fmt.Errorf("tui.alt: unknown op %q", call.Op)
+}
+
+// errTuiAltInFrame is D208's error for a call that cannot run while a component renders.
+func errTuiAltInFrame(op string) error {
+	return fmt.Errorf("tui.alt: %s cannot run while a component renders", op)
+}
+
+// queryTerminalColors starts a colour query and answers it when the terminal has. The query is started on the owner, as every call is, and its answer is waited
+// for off it: the reply arrives as input, which the owner must be free to run (Pi's handleTerminalInput consumes the reply on the loop while a handler that
+// awaited the query is suspended). The call is rejected from a frame's callback (D208), where the frame holds the lock its input would take.
+func (s *tuiAltScreenState) queryTerminalColors(parent string, call *tuiAltCall) (*CallResultPayload, error) {
+	options := tui.TerminalColorQueryOptions{TimeoutMs: call.TimeoutMs}
+	if call.OnLateReply {
+		options.OnLateReply = func(colors tui.TerminalColors) {
+			// The late reply is consumed off the owner (handleTuiAlt); the extension's callback for it goes out on the owner.
+			s.owner.post(func() {
+				_ = s.callback("lateColors", map[string]any{"queryId": call.QueryID, "colors": tuiAltColorsWire(colors)}, nil)
+			})
+		}
+	}
+	var pending <-chan tui.TerminalColorsResult
+	var rejected error
+	start := func(_ tuiAltMembers, inFrame bool) {
+		if inFrame {
+			rejected = errTuiAltInFrame(call.Op)
+			return
+		}
+		pending = s.screen.QueryTerminalColors(options)
+	}
+	if !s.serveOnOwner(parent, start) {
+		if err := s.owner.do(func() { start(s.screen, false) }); err != nil {
+			return nil, err
+		}
+	}
+	if rejected != nil {
+		return nil, rejected
+	}
+	select {
+	case result := <-pending:
+		if result.Err != nil {
+			return nil, result.Err
+		}
+		return tuiAltResult(map[string]any{"colors": tuiAltColorsWire(result.Colors)})
+	case <-s.ctx.Done():
+		return nil, errTuiAltScreenEnded
+	}
 }
 
 func nonNilLines(lines []string) []string {

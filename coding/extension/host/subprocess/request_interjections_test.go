@@ -12,8 +12,9 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
-// A TuiAltScreen frame's goroutine sends a component's render and waits for it holding the frame lock; the calls the extension's render makes to the screen
-// must run on that goroutine, in the wait, since no other goroutine can take the lock. withRequestInterjections hands them to it.
+// A TuiAltScreen's owner sends a component's callback and waits for it, holding the frame lock when it is a render; the calls the extension's code makes to the
+// screen meanwhile must run on that goroutine, in the wait, since no other goroutine can take the lock and Pi runs them on its one thread.
+// withRequestInterjections hands them to it.
 func TestRequestInterjectionsRunOnTheWaitingGoroutine(t *testing.T) {
 	hostSide, extSide := net.Pipe()
 	conn := NewConn("interject", hostSide)
