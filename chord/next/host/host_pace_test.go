@@ -63,12 +63,11 @@ func pacing(loop *Loop) (running, pending, peak, waiting int) {
 	return loop.pacing.running, loop.pacing.pending, loop.pacing.peak, loop.pacing.waiting
 }
 
-// pacerHolds is how many paced tasks the pacer keeps a record of, by task and by the goroutine that runs it: both are empty
-// once every paced task ended.
-func pacerHolds(loop *Loop) (tasks, goroutines int) {
+// pacerHolds is how many paced tasks the pacer keeps a record of: none once every paced task ended.
+func pacerHolds(loop *Loop) int {
 	loop.mu.Lock()
 	defer loop.mu.Unlock()
-	return len(loop.pacing.tasks), len(loop.pacing.gids)
+	return len(loop.pacing.tasks)
 }
 
 // discard drops what the peer received and nobody took, except a pong: a sampler that clears the peer's inbox while a case
@@ -168,8 +167,8 @@ func TestPaceBoundsTheEndingsAPeersUnmarkedChurnLeavesPending(t *testing.T) {
 			if _, pending, peak, _ := pacing(loop); peak > pendingBound || pending != 0 {
 				t.Fatalf("a peer's %d unmarked holds and releases left up to %d endings pending at once (%d now), want at most %d: the reader read on while the endings of earlier frames still ran", n, peak, pending, pendingBound)
 			}
-			if tasks, goroutines := pacerHolds(loop); tasks != 0 || goroutines != 0 {
-				t.Fatalf("the pacer keeps %d paced tasks and %d goroutines of tasks after a churn of %d holds and releases, want none", tasks, goroutines, n)
+			if tasks := pacerHolds(loop); tasks != 0 {
+				t.Fatalf("the pacer keeps %d paced tasks after a churn of %d holds and releases, want none", tasks, n)
 			}
 		})
 	}

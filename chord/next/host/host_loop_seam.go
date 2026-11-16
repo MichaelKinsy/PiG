@@ -12,7 +12,6 @@ import (
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/loopseam"
-	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
 
 func init() {
@@ -98,11 +97,6 @@ func (l *Loop) start(work any, fn func(), paced bool) {
 	l.mu.Unlock()
 	l.Go(func() {
 		leave := t.Enter()
-		if paced {
-			l.mu.Lock()
-			l.pacing.enterLocked(t, t.GID())
-			l.mu.Unlock()
-		}
 		defer func() {
 			leave()
 			l.mu.Lock()
@@ -192,19 +186,18 @@ func (c *taskCounter) Resumed(p *parking.Parked) {
 // unlocked, and a paced task waits for the peer's frames only parked. A reader that is inside a section (a link on the
 // loop's own queue, a test's) never waits: it would wait for tasks that need the section.
 //
-// pacer is the count: tasks are the paced tasks that have not ended, each with the ID of the goroutine it registered under
-// (zero before it ran), running those of them that are neither parked on a real wait nor in a transport's send (sending),
-// pending the endings made and not ended (a chain's endings that wait for their predecessor are no task yet). quiet is
-// closed when running falls to zero. All guarded by Loop.mu, the lock of the join's count, so the wake-up cannot be lost
-// between a reader's last look at running and its wait.
+// pacer is the count: tasks are the paced tasks that have not ended, running those of them that are neither parked on a real
+// wait nor in a transport's send (sending), pending the endings made and not ended (a chain's endings that wait for their
+// predecessor are no task yet). quiet is closed when running falls to zero. All guarded by Loop.mu, the lock of the join's
+// count, so the wake-up cannot be lost between a reader's last look at running and its wait.
 //
-// Nothing of a task stays once it ended, as nothing of a settled promise does in Pi (a settled promise holds no reaction;
-// host/object.ts:1625, host.ts:1690): gids is deleted by the ID the task registered under, not by Task.GID, which
-// parking.Adopt moves to a handler's coroutine while the task's goroutine finishes the handlers its section resumed. An entry
-// left behind would keep the ended task, its work, and the attempt the work closes over.
+// A task is the identity, never the ID of a goroutine: the goroutine that runs it changes while it runs (a handler's coroutine
+// is adopted for it, parking.Adopt, while the task's goroutine waits for the coroutine), so an index of tasks by goroutine ID
+// is stale after the first adoption, which kept an ended task and its work reachable and left a send of the coroutine unmarked.
+// Pi has no such index either: the identity is the async frame, and nothing of a settled promise stays (host/object.ts:1625,
+// host.ts:1690). The pacer keeps the tasks and nothing else of them; the task a goroutine runs is parking's to say (Current).
 type pacer struct {
-	tasks   map[*parking.Task]uint64
-	gids    map[uint64]*parking.Task
+	tasks   map[*parking.Task]struct{}
 	running int
 	pending int
 	// peak is the most endings that were pending at once; waiting the readers that wait in pace now.
@@ -231,22 +224,15 @@ func (p *pacer) quietLocked() {
 
 func (p *pacer) startLocked(t *parking.Task) {
 	if p.tasks == nil {
-		p.tasks, p.gids = map[*parking.Task]uint64{}, map[uint64]*parking.Task{}
+		p.tasks = map[*parking.Task]struct{}{}
 	}
-	p.tasks[t] = 0
+	p.tasks[t] = struct{}{}
 	p.live.Add(1)
 	p.runningLocked()
 }
 
-// enterLocked: t runs on the goroutine gid, which is where sending finds it.
-func (p *pacer) enterLocked(t *parking.Task, gid uint64) {
-	p.tasks[t] = gid
-	p.gids[gid] = t
-}
-
 // endLocked: t ended, from running (a task ends when it is not parked).
 func (p *pacer) endLocked(t *parking.Task) {
-	delete(p.gids, p.tasks[t])
 	delete(p.tasks, t)
 	p.live.Add(-1)
 	p.pending--
@@ -313,13 +299,16 @@ func (l *Loop) sending() *parking.Task {
 	if l.pacing.live.Load() == 0 {
 		return nil
 	}
-	gid := goroutineid.Current()
+	t := parking.Current()
+	if t == nil {
+		return nil
+	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	t := l.pacing.gids[gid]
-	if t != nil {
-		l.pacing.quietLocked()
+	if _, paced := l.pacing.tasks[t]; !paced {
+		return nil
 	}
+	l.pacing.quietLocked()
 	return t
 }
 
@@ -424,7 +413,7 @@ func (l *Loop) stalled(after time.Duration) string {
 	stacks := make([]byte, 1<<20)
 	dump := string(stacks[:runtime.Stack(stacks, true)])
 	for _, t := range running {
-		fmt.Fprintf(&report, "\ntask %s\n%s\n", workName(t.Work), stackOf(dump, t.GID()))
+		fmt.Fprintf(&report, "\ntask %s\n%s\n", workName(t.Work), stacksOf(dump, t))
 	}
 	if owner := l.owner.Load(); owner != 0 {
 		fmt.Fprintf(&report, "\nthe section that runs now:\n%s\n", stackOf(dump, owner))
@@ -456,4 +445,18 @@ func stackOf(dump string, gid uint64) string {
 		}
 	}
 	return "(no stack)"
+}
+
+// stacksOf is the blocks of the goroutines that run t in a dump of every goroutine's stack: the task's own and, while a handler
+// it adopted a coroutine for runs, the coroutine's, which is where the task is blocked.
+func stacksOf(dump string, t *parking.Task) string {
+	ids := t.Goroutines()
+	if len(ids) == 0 {
+		return "(no stack)"
+	}
+	blocks := make([]string, len(ids))
+	for i, id := range ids {
+		blocks[i] = stackOf(dump, id)
+	}
+	return strings.Join(blocks, "\n\n")
 }
