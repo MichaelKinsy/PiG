@@ -33262,6 +33262,29 @@
       ]
     },
     {
+      "id": "BF-8b6eb22",
+      "title": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a…",
+      "symptom": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a component it already showed with different members (it gains or loses `handleInput`, `handleMouse`, focus or `wantsKeyRelease`) no longer races the host's reads of those members: a call that named the component again stored them while a key, a mouse event, a focus change or a frame read them, with no lock between the two, so an input could be delivered or withheld by a half-stored value.",
+      "rootCause": "tuiAltScreenState.component stored a component's caps under s.mu (tui_alt_bridge.go:382) while HandleInput, WantsKeyRelease, HandleMouse, SetFocused and CapturesViewportInput (:294-357) read the same struct with no lock, on the goroutine of an input delivery, a mouse event, a focus change or a frame. Every SDK names a component's members with each call that names it, so a setFocus on one request goroutine and a key on another stored and read one struct unordered; go test -race reported it in all five readers and across the call boundary, 5 of 5 on the base. No user symptom was observed: the stores carry equal values unless an extension changes the members of a component it already showed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a component it already showed with different members (it gains or loses `handleInput`, `handleMouse`, focus or `wantsKeyRelease`) no longer races the host's reads of those members: a call that named the component again stored them while a key, a mouse event, a focus change or a frame read them, with no lock between the two, so an input could be delivered or withheld by a half-stored value. The host now keeps the members of a component as one value that a call replaces whole. Present since 0.7.0, the first release with the subprocess `TuiAltScreen`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b6eb224b8",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/tui_alt_caps_race_test.go::TestARenamedComponentsMembersAreNotRacedByTheScreensReads",
+        "coding/extension/host/subprocess/tui_alt_caps_race_test.go::TestSetFocusAndInputOfAnExtensionScreenDoNotRaceTheComponentsMembers"
+      ]
+    },
+    {
       "id": "BF-8b75dc0",
       "title": "Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection…",
       "symptom": "Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection to the first item even when the query is unchanged, Tab no longer edits the search when project mode is unavailable, and the search is a callback-mode Input so Enter no longer freezes it, all as in Pi's `ResourceList.handleInput` (`tui/config_selector_oracle_test.go`, 648 probes against pinned Pi).",
@@ -58757,6 +58780,30 @@
       ],
       "tests": [
         "chord/next/surfaces/surfaces_client_test.go::TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet"
+      ]
+    },
+    {
+      "id": "BF-ec9984a",
+      "title": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) is now sent the…",
+      "symptom": "The host sent a frame from the renderer's timer goroutine or from the call that asked for it, and an input or mouse event from the call that delivered it, with nothing between them, so an extension that keeps state across the two could draw a half-applied input.",
+      "rootCause": "Pi runs a TuiAltScreen on one event loop: the terminal's input (tui.ts:995-997), the throttled frame (requestRender arms one setTimeout, :1067-1120) and the extension's own calls are tasks of it, so a component's render and its handleInput never run together and a render never reads what a handler half applied. The subprocess bridge had no such loop: the frame ran on the renderer's timer goroutine or the caller's, input and mouse events on the call goroutine that delivered them, and the extension (which answers each request on a goroutine or thread of its own) was sent a render while it was still answering an input.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) is now sent the callbacks of its components one at a time, as Pi runs them on one event loop: a component's `render` no longer reaches the extension while its `handleInput`, `handleMouse` or focus callback is still being answered, and a frame that a handler asks for with `requestRender` runs after the handler returns. Before, the host sent a frame from the renderer's timer goroutine or from the call that asked for it, and an input or mouse event from the call that delivered it, with nothing between them, so an extension that keeps state across the two could draw a half-applied input. Each screen now has one goroutine that sends every callback, runs the throttled frame and runs every call the extension does not make from a callback. Present since 0.7.0, the first release with the subprocess `TuiAltScreen`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ec9984ae6c",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/tui_alt_owner_order_test.go::TestAnExtensionScreensInputAndRenderNeverRunAtOnce",
+        "coding/extension/host/subprocess/tui_alt_owner_test.go::TestAScheduledFrameRunsOnTheOwner",
+        "coding/extension/host/subprocess/tui_alt_owner_test.go::TestAnInputHandlersRenderRequestRunsAfterTheHandlerAnswers"
       ]
     },
     {
