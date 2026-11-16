@@ -4,8 +4,8 @@ package host
 // registration of its close handler. Pi's connect() and webSocketLink() run to completion before any socket event, so
 // they never see a link closed while they set it up; Go has no such guarantee, so the setup reads the state it may
 // have missed (Pi's Chord v2: packages/chord/src/next/host/host.ts:859 `if (parent.open) this.#parent.connected(parent)`
-// and next/link/websocket.ts:52 `readyState !== CONNECTING && !== OPEN` give a closed link, both Pi 93029a0f1, in the
-// pinned v1.5.0). These tests build each interleaving instead of racing for it.
+// and next/link/websocket.ts:52 `readyState !== CONNECTING && !== OPEN` give a closed link, both in the pinned v1.5.0).
+// These tests build each interleaving instead of racing for it.
 
 import (
 	"context"
