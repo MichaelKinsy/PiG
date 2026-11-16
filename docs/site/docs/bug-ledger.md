@@ -1042,6 +1042,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7160ad4](#bf-7160ad4) | Chord: a table read made while its object ended no longer races with the end | PiG's own defect | All platforms | Unreleased |
 | [BF-7163ab3](#bf-7163ab3) | A pi-env connection whose daemon exits (or fails) before `hello` now adds the end of the daemon's stderr (the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7177d5f](#bf-7177d5f) | fix(tui): card of an unregistered tool is Pi's formatToolExecution | PiG's own defect | All platforms | Unreleased |
+| [BF-7236618](#bf-7236618) | Follows Pi e03dca7a3843: `Session.Reload` (and the reload of every SDK's `AgentSession`) did not emit… | PiG's own defect | All platforms | Unreleased |
 | [BF-725e104](#bf-725e104) | The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks… | PiG's own defect | Windows | 0.5.2 |
 | [BF-72bf4f2](#bf-72bf4f2) | extensions (MCP): a server an extension registers at run time (`pi.registerMcpServer` and its SDK forms)… | PiG's own defect | All platforms | Unreleased |
 | [BF-72db80f](#bf-72db80f) | fix(durable): a streamed partial commits the text of its own events | PiG's own defect | All platforms | Unreleased |
@@ -1733,6 +1734,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c21aaa6](#bf-c21aaa6) | fix(nix): the install check reads Pi's version from --version and PiG's from pig version | PiG's own defect | All platforms | Unreleased |
 | [BF-c225c97](#bf-c225c97) | fix(rpc): compaction_start precedes a refused replacement's error; D148 names the extra compaction_end; D141… | PiG's own defect | All platforms | Unreleased |
 | [BF-c229e1c](#bf-c229e1c) | A Pi Durable SQLite file written by PiG can be read by Pi, and the reverse, when a task kind, request ID, or… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c28880a](#bf-c28880a) | Follows Pi 6aab551a79ba: `--mode json` dropped the events emitted by extension `session_start` handlers, such… | PiG's own defect | All platforms | Unreleased |
 | [BF-c2b2b8b](#bf-c2b2b8b) | fix(tui): the inline memo is used only with tui's own style functions | PiG's own defect | All platforms | Unreleased |
 | [BF-c30a73a](#bf-c30a73a) | fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the… | PiG's own defect | All platforms | Unreleased |
 | [BF-c350117](#bf-c350117) | Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup | PiG's own defect | All platforms | 0.7.0 |
@@ -16457,6 +16459,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7177d5f92b` (2026-10-11)
 - **Tests:** `tui/summary_output_pad_test.go::TestToolAndBashBlocksFollowOutputPad`, `tui/tool_execution_test.go::TestToolExecutionStreamingFallbackUsesLeadingPreview`, `tui/tool_execution_test.go::TestUnregisteredToolCardIsUpstreamFormatToolExecution`
 
+### BF-7236618
+
+**Follows Pi e03dca7a3843: `Session.Reload` (and the reload of every SDK's `AgentSession`) did not emit…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Follows Pi e03dca7a3843: `Session.Reload` (and the reload of every SDK's `AgentSession`) did not emit `session_start` to the extensions when the host had bound them with `BindExtensions` and no bindings (the Go counterpart of `bindExtensions({})`), after it had already emitted `session_shutdown`.
+- **Root cause:** Follows Pi e03dca7a3843: `Session.Reload` (and the reload of every SDK's `AgentSession`) did not emit `session_start` to the extensions when the host had bound them with `BindExtensions` and no bindings (the Go counterpart of `bindExtensions({})`), after it had already emitted `session_shutdown`.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7236618f97` (2026-11-16)
+- **Tests:** `coding/session_reload_bound_empty_upstream_test.go::TestSessionReloadAfterBindExtensionsWithEmptyBindingsEmitsSessionStart`, `coding/session_reload_bound_empty_upstream_test.go::TestSessionReloadRestartsTheExtensionsOnlyOfABoundSession`, `coding/session_reload_upstream_test.go::TestSessionReloadRebuildsTheRunnerFromTheResourceLoader`
+- **Release note:** Follows Pi e03dca7a3843: `Session.Reload` (and the reload of every SDK's `AgentSession`) did not emit `session_start` to the extensions when the host had bound them with `BindExtensions` and no bindings (the Go counterpart of `bindExtensions({})`), after it had already emitted `session_shutdown`. Extensions that start work in `session_start`, such as the MCP extension connecting its servers, stayed stopped after a reload. A reload now restarts the extensions of every session whose host called `BindExtensions`; a session that was never bound behaves as before, and the print, JSON, RPC and interactive modes were not affected. The fault is in v0.7.0.
+
 ### BF-725e104
 
 **The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks…**
@@ -26074,6 +26090,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `97e178f7f6` (2026-10-09), `c229e1cae8` (2026-10-10)
 - **Tests:** `ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput`, `durable/codecs_test.go::TestDocumentRecordMarshalsInPiStorageOrder`, `durable/storage/memory_pi_oracle_test.go::TestMemoryStorageMatchesPiOnSeededPrograms`, `durable/storage/sqlite_pi_oracle_test.go::TestSqliteStorageMatchesPiOnSeededPrograms`
 - **Release note:** A Pi Durable SQLite file written by PiG can be read by Pi, and the reverse, when a task kind, request ID, or document kind or key contains `<`, `>`, `&`, U+2028 or U+2029. PiG now stores indexed columns and records as `JSON.stringify` writes them. Before, a lookup by kind, request ID or document address missed rows written by the other implementation. Stored document records list `createdAt` and `retiredAt` after the other members, as Pi stores them.
+
+### BF-c28880a
+
+**Follows Pi 6aab551a79ba: `--mode json` dropped the events emitted by extension `session_start` handlers, such…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Follows Pi 6aab551a79ba: `--mode json` dropped the events emitted by extension `session_start` handlers, such as `entry_appended` for entries they append, `session_info_changed` for a name they set and the `message_start` and `message_end` of a custom message they send, at startup and after an extension replaces the session (`ctx.newSession()`).
+- **Root cause:** The writer subscribed after the session_start emission and a flag held back entry_appended until then, so the entry_appended, session_info_changed and custom message events a session_start handler emits were dropped at startup and after ctx.newSession(). The writer now subscribes first, as print-mode.ts rebindSession does, and the flag is gone. The writer-start fixtures of every SDK gain /writer-renew; scenario json/13 expects the startup events and json/15 compares the stream across a replacement.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c28880ae3e` (2026-11-16)
+- **Tests:** `coding/cli/json_mode_writer_after_session_start_test.go::TestJSONModeWritesSessionStartEventsOfAReplacementInEverySDK`, `coding/cli/json_mode_writer_after_session_start_test.go::TestJSONModeWritesWhatSessionStartEmitsInEverySDK`, `test/parity/scenarios/json/15-json-session-start-replacement.toml`
+- **Release note:** Follows Pi 6aab551a79ba: `--mode json` dropped the events emitted by extension `session_start` handlers, such as `entry_appended` for entries they append, `session_info_changed` for a name they set and the `message_start` and `message_end` of a custom message they send, at startup and after an extension replaces the session (`ctx.newSession()`). The JSON writer now subscribes before the extensions are bound, so these events follow the session header and come before the prompt's events. The fault is in v0.7.0.
 
 ### BF-c2b2b8b
 

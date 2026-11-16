@@ -8594,6 +8594,9 @@ var AgentSession = class {
   _extensionShutdownHandler;
   _extensionErrorListener;
   _extensionErrorUnsubscriber;
+  // Pi e03dca7a3843 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+  // Set by bindExtensions(): reload() restarts extensions only if the host started them.
+  _extensionsBound = false;
   _modelRuntime;
   _cacheWarmer;
   // Tool registry for extension getTools/setTools
@@ -10956,6 +10959,7 @@ ${normalized.hints.join("\n")}` : first.text;
     if (bindings.onError !== void 0) {
       this._extensionErrorListener = bindings.onError;
     }
+    this._extensionsBound = true;
     this._applyExtensionBindings(this._extensionRunner);
     await this._extensionRunner.emit(this._sessionStartEvent);
     this._extensionRunner.reportUnhandledMcpServers();
@@ -11279,8 +11283,7 @@ ${normalized.hints.join("\n")}` : first.text;
       flagValues: previousFlagValues,
       includeAllExtensionTools: true
     });
-    const hasBindings = this._extensionUIContext || this._extensionCommandContextActions || this._extensionShutdownHandler || this._extensionErrorListener;
-    if (hasBindings) {
+    if (this._extensionsBound) {
       await options?.beforeSessionStart?.();
       await this._extensionRunner.emit({ type: "session_start", reason: "reload" });
       this._extensionRunner.reportUnhandledMcpServers();

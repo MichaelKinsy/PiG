@@ -71,7 +71,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/agent-session.js",
-      "sha256": "fd10aaf2e45d19e4167cba59a1a6e509415d745f55f66cb438b43eba84b6140e"
+      "sha256": "c457d93946c6ea654c7d8adad7a01da0acfdeff8108b04bfa9f6e9341e2f3152"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/auth-guidance.js",
@@ -823,7 +823,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/print-mode.js",
-      "sha256": "d299d32642059b61e040e4da815f6d47e2db35f8b2a2f2d8b3e2103c0260ce78"
+      "sha256": "c28b7c900bbe2921b4f06786870e9df8ab38292fbedced548600e46c4a55242b"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/rpc/jsonl.js",
