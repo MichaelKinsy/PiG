@@ -27,6 +27,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-00d9a1f](#bf-00d9a1f) | fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an… | PiG's own defect | All platforms | Unreleased |
 | [BF-016a19a](#bf-016a19a) | A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-01a63b9](#bf-01a63b9) | The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248) | PiG's own defect | All platforms | Unreleased |
+| [BF-01c9e0b](#bf-01c9e0b) | The frame that the exit key itself asks for is painted inside the exit's drain now, as Pi paints it, not… | PiG's own defect | All platforms | Unreleased |
 | [BF-01d0835](#bf-01d0835) | fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is… | PiG's own defect | All platforms | Unreleased |
 | [BF-01f1936](#bf-01f1936) | Print and JSON mode: on SIGTERM or SIGHUP the interrupted run now settles before `session_shutdown` handlers… | PiG's own defect | All platforms | Unreleased |
 | [BF-02114ff](#bf-02114ff) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
@@ -2415,6 +2416,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `01a63b933a` (2026-11-05)
 - **Tests:** `internal/codingagent/selector_focus_test.go::TestEditorSlotTreeSelectorTakesAndReturnsFocus`, `tui/tree_select_empty_state_test.go::TestTreeSelectSearchCursor`
 - **Release note:** The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248).
+
+### BF-01c9e0b
+
+**The frame that the exit key itself asks for is painted inside the exit's drain now, as Pi paints it, not…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The frame that the exit key itself asks for is painted inside the exit's drain now, as Pi paints it, not before the exit starts.
+- **Root cause:** the input dispatch painted the frame of every key right after the key, and the exit's own key was no exception, although Pi renders it on the next tick, after shutdown() has ended the color scheme reports and while it drains
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `01c9e0b8fa` (2026-11-16)
+- **Tests:** `internal/codingagent/interactive_exit_frame_flush_pty_test.go::TestExitFrameRequestedByTheExitIsPaintedInsideTheDrain`
+- **Release note:** The frame that the exit key itself asks for is painted inside the exit's drain now, as Pi paints it, not before the exit starts. Pi's `shutdown()` turns the color scheme reports off, drains the input and only then stops, and the frame requested by Ctrl+D, `/quit`, a second Ctrl+C or a signal's dispose is rendered on the next tick, which falls inside that drain: `?2031l`, the keyboard protocol pop when it is on, the frame, the progress clear, the renderer's stop. PiG painted that frame first, so a recording of the exit showed `frame ?2031l ... progress clear`. The exit holds the renderer's frames from the moment it is decided, and the one requested frame is flushed after the drain, before the active selector is disposed and the progress is cleared. No screen differs for a user; a terminal that records or replays the bytes, and the per-exit-path parity scenarios, saw the order. Present in v0.7.0 (checked by tag: v0.7.0 paints in the key's dispatch, before the exit starts).
 
 ### BF-01d0835
 
