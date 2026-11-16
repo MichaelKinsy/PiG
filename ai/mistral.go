@@ -379,9 +379,12 @@ func (p *mistralProvider) Stream(ctx context.Context, transcript TranscriptConte
 	}
 	tools := borrowedCurrentTools(messages)
 	if len(tools) > 0 {
-		convertedTools, err := p.convertTools(tools)
+		// Strict tools are opt-in: Mistral Large 4 can go silent for minutes before a strict tool call (Pi 2c2a77f9f3ab, #12148).
+		supportsStrictMode := model.ProviderMeta.Compat != nil && model.ProviderMeta.Compat.SupportsStrictMode != nil && *model.ProviderMeta.Compat.SupportsStrictMode
+		convertedTools, err := p.convertTools(tools, supportsStrictMode)
 		if err != nil {
-			return nil, fmt.Errorf("mistral: convert tools: %w", err)
+			// Pi's buildChatPayload throws the resolver's message and the stream reports it as is: a "require" tool the model's compat cannot send strict fails before any request.
+			return nil, err
 		}
 		req.Tools = convertedTools
 	}
@@ -1225,10 +1228,10 @@ func buildMistralToolResultText(text string, hasImages, supportsImages, isError 
 	return prefix + "(no tool output)"
 }
 
-func (p *mistralProvider) convertTools(tools []ToolSchema) ([]mistralTool, error) {
+func (p *mistralProvider) convertTools(tools []ToolSchema, supportsStrictMode bool) ([]mistralTool, error) {
 	result := make([]mistralTool, len(tools))
 	for i, tool := range tools {
-		strict, err := resolveJSONSchemaStrictSampling(tool, true, nil)
+		strict, err := resolveJSONSchemaStrictSampling(tool, supportsStrictMode, nil)
 		if err != nil {
 			return nil, err
 		}
