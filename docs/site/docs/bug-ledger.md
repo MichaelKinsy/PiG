@@ -1006,6 +1006,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6d0ec02](#bf-6d0ec02) | Durable (Pi eb2fce43): a wait that closes a cycle through waits and held owners now fails the task's commit… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6d3043e](#bf-6d3043e) | The startup prompts (the project-trust and extension selectors, the extension text input and first-time… | PiG's own defect | All platforms | Unreleased |
 | [BF-6d3cfc8](#bf-6d3cfc8) | A user_bash `operations` object from an extension is no longer released while a command is running through it | PiG's own defect | All platforms | 0.5.2 |
+| [BF-6d4cba0](#bf-6d4cba0) | A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled… | PiG's own defect | All platforms | Unreleased |
 | [BF-6d4e10c](#bf-6d4e10c) | Chord: a query reader opens its read in the section of the move that created it, as Pi does, so what it reads… | PiG's own defect | All platforms | Unreleased |
 | [BF-6d9b403](#bf-6d9b403) | The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6da170c](#bf-6da170c) | `pi.exec`: when a command's output exceeds `maxBuffer`, the output pipes are now closed before the command is… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -15955,6 +15956,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6d3cfc863d` (2026-10-21, #278)
 - **Tests:** `coding/extension/host/subprocess/user_bash_operations_test.go::TestUserBashOperationsAreNotReleasedWhileAnExecRuns`
 - **Release note:** A user_bash `operations` object from an extension is no longer released while a command is running through it. The extension's handle is released when the host drops the object, but the running exec did not keep the object reachable, so a garbage collection mid-command could delete the extension's table entry under the command.
+
+### BF-6d4cba0
+
+**A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before the harness closed, or before its Session failed, now fails with the cancellation, as it does in Pi, not with `ErrClosed` or the Session's failure.
+- **Root cause:** Pi's Waiters.add (packages/durable/src/harness/util.ts:9-32) runs the abort listener inside abort(): by the time abort() returns the wait is out of the set and rejected with the reason. So rejectAll (:44-48) reaches only the waits still in the set and a wait that was aborted keeps the abort reason (the first rejection wins), and keys() (:34-36) no longer lists a key whose waits were all aborted. PiG delivered the abort with context.AfterFunc, on a goroutine of its own: between a cancel and that callback a RejectAll gave the wait the close error (ErrClosed, SessionFailed) in place of the cancellation, and Keys still listed the key, so the idle pass counted a conversation nobody waited for.…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6d4cba03d9` (2026-11-16)
+- **Tests:** `durable/harness/waiter_cancel_test.go::TestARejectAllAfterAWaitsContextWasCancelledKeepsTheCancellation`, `durable/harness/waiter_cancel_test.go::TestAWaitAddedWhileItsContextIsCancelledIsNeverLeftPending`, `durable/harness/waiter_cancel_test.go::TestAWaitSettledAfterItsContextWasCancelledFailsWithTheCancellation`, `durable/harness/waiter_cancel_test.go::TestAWaitsKeyIsGoneOnceItsContextWasCancelled`, `durable/harness/waiter_sampling_test.go::TestAWaitSamplesItsContextOnlyWhenOnAbortCannotListenToIt`
+- **Release note:** A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before the harness closed, or before its Session failed, now fails with the cancellation, as it does in Pi, not with `ErrClosed` or the Session's failure. Pi rejects a wait at the abort itself (`Waiters.add` runs the abort listener there), so a later `rejectAll` never reaches it and the first rejection wins; PiG's cancellation reached the wait on its own goroutine (`context.AfterFunc`), and a close that came in between gave it the close error. The idle pass also counted a wait whose context was cancelled until that goroutine ran. The wait now listens with `chordctx.OnAbort`: for a context made by `chord/context` it is rejected and out of the set when the cancel returns. A context of another package (an embedder's own `context.WithCancel`, a deadline) still reaches the wait on a goroutine of its own, and the harness reads that context's error where the order matters. The durable library's embedders can see it (stock `pig` does not link `durable/harness`): `git tag --contains` names v0.7.0 as the first tag with the code.
 
 ### BF-6d4e10c
 
