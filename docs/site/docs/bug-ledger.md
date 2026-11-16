@@ -129,7 +129,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1848633](#bf-1848633) | Extension widgets share one key namespace across extensions, as in Pi: an extension that sets a widget key… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-184ed40](#bf-184ed40) | fix(hljs): a language's reach does not depend on the first text it highlights; red cases for resumeLimit | PiG's own defect | All platforms | Unreleased |
 | [BF-1896331](#bf-1896331) | Changing the thinking level in interactive mode (cycle key, `/thinking`, the settings selector) goes through… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-18cb1a9](#bf-18cb1a9) | chord: closing the workers component waits for the goroutines that read the streams of the workers that exited | PiG's own defect | All platforms | Unreleased |
 | [BF-18daf7f](#bf-18daf7f) | The Go SDK's typed branch entry keeps the text, thinking and tool calls of an assistant message whose tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-18f7d39](#bf-18f7d39) | Codemode `@options` errors report V8's JSON error text, tool and schema declarations keep unpaired… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-1971aae](#bf-1971aae) | A `bash` shell that starts at the moment `pig` handles an emergency exit, a crash or a signal is now killed… | PiG's own defect | All platforms | 0.5.0 |
@@ -813,7 +812,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7f2c05b](#bf-7f2c05b) | A `ChordError` of code `invalid` from a failed args, result, state or input check carries TypeBox's whole… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7f3a71c](#bf-7f3a71c) | fix(durable): the reference Harness wraps a plain Models once too | PiG's own defect | All platforms | Unreleased |
 | [BF-7f441d7](#bf-7f441d7) | MCP OAuth URLs are WHATWG URLs, as in Pi | PiG's own defect | All platforms | 0.5.0 |
-| [BF-7f4c44a](#bf-7f4c44a) | chord: a worker's exit is told when its process ended even while a process outside its tree keeps writing the… | PiG's own defect | All platforms | Unreleased |
 | [BF-7f9ca19](#bf-7f9ca19) | fix: relocate the transcript wire encoders' perf annotations; raise the headless default size ceilings for… | PiG's own defect | All platforms | Unreleased |
 | [BF-7fc4ef4](#bf-7fc4ef4) | fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last… | PiG's own defect | All platforms | Unreleased |
 | [BF-8001cc5](#bf-8001cc5) | `SettingsManager` collection getters (getPackages, getExtensionPaths, getSkillPaths, getPromptTemplatePaths… | PiG's own defect | All platforms | 0.5.0 |
@@ -3194,20 +3192,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `18963311a1` (2026-10-08)
 - **Tests:** `coding/session_extension_events_upstream_test.go::TestSessionEmitsThinkingLevelSelectOnlyForAChangeWithTheEffectiveLevel`, `coding/session_extension_events_upstream_test.go::TestSessionEmitsTurnStartWithThePerRunTurnIndexAndATimestamp`, `coding/session_extension_events_upstream_test.go::TestSessionSetThinkingLevelOnMainDispatchesOnlyTheMutation`, `internal/codingagent/interactive_session_append_test.go::TestSelectThinkingLevelShowsAFailedSessionAppend`, `internal/codingagent/thinking_selector_test.go::TestSelectThinkingLevelDoesNotHoldTheInputLoopOnTheNotification`, `internal/codingagent/thinking_selector_test.go::TestThinkingLevelPersistsOnlyWhenSaved`, `test/extension-conformance/event_payload_test.go::TestConformance_EventPayloadsReachEverySDKUnchanged`, `test/extension-conformance/event_unsubscribe_every_test.go::TestConformance_EventUnsubscribeEveryEvent`
 - **Release note:** Changing the thinking level in interactive mode (cycle key, `/thinking`, the settings selector) goes through the Session like Pi's `session.setThinkingLevel`: the level is clamped to the model, the `thinking_level_select` event carries the clamped level, and a handler that is slow to start no longer holds the input loop.
-
-### BF-18cb1a9
-
-**chord: closing the workers component waits for the goroutines that read the streams of the workers that exited**
-
-- **Source:** PiG's own defect
-- **Symptom:** chord: closing the workers component waits for the goroutines that read the streams of the workers that exited.
-- **Root cause:** release was written as if closing the descriptors ended the readers. A reader is also a call into the app, which a closed stream does not stop, and nothing tied the goroutine's end to the component that released it.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `18cb1a9381` (2026-11-16)
-- **Tests:** `chord/nextnode/workers/workers_drain_flood_unix_test.go::TestCloseWaitsForTheReaderOfAnExitedWorkersOutputThatIsInTheAppsOnOutput`
-- **Release note:** chord: closing the workers component waits for the goroutines that read the streams of the workers that exited. A process outside a worker's tree that still held its output made the server keep the stream's reader after the worker's exit; Close released the stream without waiting for that reader, so a reader inside the app's OnOutput (or in a listener of the link) went on running and told what it had read to the app after Close returned, and its goroutine and descriptor outlived the component. Close now waits for those readers, bounded by its context, and nothing of a released worker's streams is told once it returned. Same origin and releases as the fix before it (no tag contains the fault; v0.7.0 does not). <!-- cause: the release was written as if closing the descriptors ended the readers, but a reader is also a call into the app, which a closed stream does not stop, and nothing tied the goroutine's end to the component that released it -->
 
 ### BF-18daf7f
 
@@ -12652,20 +12636,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7f441d7364` (2026-10-10), `827b3cffa4` (2026-10-10), `ced3a9c4d4` (2026-10-10)
 - **Tests:** `coding/cli/rpc_model_type_binary_test.go::TestRPCModelObjectsCarryTheRegistryModelType`, `coding/cli/rpc_model_type_test.go::TestRPCBuiltinChatModelCarriesType`, `coding/cli/rpc_model_type_test.go::TestRPCModelProjectionCarriesModelType`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode`, `internal/testenv/spawn_test.go::TestCleanupStopsARunningChild`, `internal/testenv/spawn_test.go::TestOutputRefusesAStreamTheCallerSet`, `internal/testenv/spawn_test.go::TestStopEndsAChildThatIgnoresSIGTERM`, `internal/testenv/spawn_test.go::TestWaitDoesNotBlockOnStdoutHeldByADescendant` and 5 more in docs/bug-ledger.json
 - **Release note:** MCP OAuth URLs are WHATWG URLs, as in Pi. An empty fragment (`#`) or a malformed fragment escape now stays in the authorization URL that is shown and opened, and in the insecure-endpoint error. The authorization parameters replace repeated names, and an opaque authorization server URL fails with `Invalid URL`. The protected-resource check compares origins, which are `null` for custom schemes.
-
-### BF-7f4c44a
-
-**chord: a worker's exit is told when its process ended even while a process outside its tree keeps writing the…**
-
-- **Source:** PiG's own defect
-- **Symptom:** chord: a worker's exit is told when its process ended even while a process outside its tree keeps writing the worker's stdout, stderr or channel.
-- **Root cause:** the drain took a read that finds the stream empty as the sign that everything written before the exit was told. That holds only while nobody else writes the stream, and a descriptor held outside the tree is exactly someone else.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `7f4c44a147` (2026-11-16)
-- **Tests:** `chord/nextnode/workers/workers_drain_flood_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatKeepsItsOutputFull`, `chord/nextnode/workers/workers_drain_unix_test.go::TestADrainDoesNotOweWhatItsReaderTookBeforeItsProcessEnded`, `chord/nextnode/workers/workers_drain_unix_test.go::TestADrainSettlesOnceItToldWhatItsStreamHeldWhenItsProcessEndedWhileAProcessOutsideKeepsItFull`, `chord/nextnode/workers/workers_drain_unix_test.go::TestADrainTellsAllThatWasWrittenBeforeItsProcessEndedWhileItsReaderReadsAndAProcessOutsideWritesWithoutPause`
-- **Release note:** chord: a worker's exit is told when its process ended even while a process outside its tree keeps writing the worker's stdout, stderr or channel. A process the worker started in a session of its own survives the kill of the worker's process group; when it held a stream of the worker and wrote it without a pause, the server's settlement of the exit never finished (it waited for a read that found the stream empty, and a refilled stream never is), so the worker's exit was never told and its session never learned that its worker had died. The settlement now covers what the stream held when the worker ended: all of that is told before the exit, and what the outside process writes later is told after it, as before. The fault came with the fix that made a worker's exit wait for no stream's end (2026-11-13) and is in no release (no tag contains it; v0.7.0 does not). <!-- cause: the drain took a read that finds the stream empty as the sign that everything written before the exit was told, which holds only while nobody else writes the stream, and a descriptor held outside the tree is exactly someone else -->
 
 ### BF-7f9ca19
 
@@ -24735,7 +24705,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 1
-- Follow-up to unreleased work: 2
+- Follow-up to unreleased work: 4
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 3
 - test-only: 1
