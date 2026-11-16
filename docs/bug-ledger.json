@@ -12613,6 +12613,30 @@
       ]
     },
     {
+      "id": "BF-567c58b",
+      "title": "A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h\u003cnumber\u003e` directory…",
+      "symptom": "A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h\u003cnumber\u003e` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed.",
+      "rootCause": "RPC mode ends with os.Exit after TerminateProcesses, as Pi ends with process.exit, so Runtime.Close and Host.Shutdown, which removed the Host private socket directory, never ran on a normal RPC exit: every RPC session that started an extension left an h\u003cuint32\u003e directory in the temp directory. TerminateProcesses is the last call of a host process that is about to exit, so it removes the directory too and makes the Host refuse a socket path afterwards, so a generation that asks for one while the process exits cannot make a directory nobody removes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h\u003cnumber\u003e` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed. The host process now removes that directory when it terminates its processes, and a generation that asks for a socket path while the process exits no longer makes a new one.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "567c58b9dd",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_exit_socket_dir_test.go::TestAnRPCPigThatEndsNormallyLeavesNoSocketDirectory",
+        "coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesMakesNoRuntimeDirectoryAndNoneAfterIt",
+        "coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesRemovesTheRuntimeDirectory"
+      ]
+    },
+    {
       "id": "BF-5689853",
       "title": "`pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary…",
       "symptom": "`pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary needed libc although nothing in it uses cgo.",
