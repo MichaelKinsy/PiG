@@ -174412,8 +174412,8 @@
       ],
       "evidence": [
         "test:coding/extension/exec_oracle_test.go#TestExecCommandMatchesPi",
-        "test:coding/extension/exec_max_buffer_test.go#TestExecCommandAcceptsTheMaxBufferBoundaries",
-        "test:coding/extension/exec_max_buffer_test.go#TestExecCommandCapsCombinedOutputAtMaxBuffer"
+        "test:coding/extension/exec_close_order_test.go#TestExecCommandClosesBothPipesBeforeItSignalsAtTheCap",
+        "test:coding/extension/exec_max_buffer_test.go#TestExecCommandAcceptsTheMaxBufferBoundaries"
       ]
     },
     {
@@ -174458,7 +174458,7 @@
       "evidence": [
         "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad",
         "test:test/extension-conformance/timeout_numbers_test.go#TestTimeoutNumbersAcrossSDKs",
-        "test:coding/extension/exec_signal_code_unix_test.go#TestExecCommandReportsSIGTERMForATimeout"
+        "test:coding/extension/exec_close_order_test.go#TestExecCommandSignalsWithBothPipesOpenOnATimeout"
       ]
     },
     {
@@ -174524,7 +174524,7 @@
       "evidence": [
         "test:test/extension-conformance/exec_abort_test.go#TestExecAbortAcrossSDKs",
         "test:test/extension-conformance/node_load_exec_test.go#TestNodeFactoryExecDuringLoad",
-        "test:coding/extension/exec_max_buffer_test.go#TestExecCommandCapsCombinedOutputAtMaxBuffer"
+        "test:coding/extension/exec_close_order_test.go#TestExecCommandClosesBothPipesBeforeItSignalsAtTheCap"
       ]
     },
     {
@@ -174588,9 +174588,9 @@
         "call:coding/extension/exec.go#ExecCommand"
       ],
       "evidence": [
-        "test:coding/extension/exec_max_buffer_test.go#TestExecCommandCapsCombinedOutputAtMaxBuffer",
-        "test:coding/extension/exec_max_buffer_test.go#TestExecCommandCountsStdoutBeforeStderrWhenTheChildWroteItFirst",
-        "test:coding/extension/exec_max_buffer_test.go#TestExecCommandKeepsCompleteUTF8CharactersUnderTheCap"
+        "test:coding/extension/exec_close_order_test.go#TestExecCommandClosesBothPipesBeforeItSignalsAtTheCap",
+        "test:coding/extension/exec_close_order_test.go#TestExecCommandSignalsWithBothPipesOpenOnATimeout",
+        "test:coding/extension/exec_close_order_test.go#TestExecCommandSignalsWithBothPipesOpenOnAnAbort"
       ]
     },
     {
