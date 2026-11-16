@@ -43,6 +43,7 @@ func newParkedTestLoop() *parkedTestLoop {
 func (l *parkedTestLoop) Now() int64      { return l.fakeLoop.Now() + l.skew.Load() }
 func (l *parkedTestLoop) Run(work func()) { l.real.Run(work) }
 func (l *parkedTestLoop) Go(fn func())    { l.real.Go(fn) }
+func (l *parkedTestLoop) counted() *Loop  { return nil }
 func (l *parkedTestLoop) Lend(signal *parking.Signal, fn func(abandoned bool)) {
 	l.real.Lend(signal, fn)
 }

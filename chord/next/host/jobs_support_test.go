@@ -142,6 +142,9 @@ type virtualLoop struct {
 
 func newVirtualLoop() *virtualLoop { return &virtualLoop{Loop: NewLoop(), fake: newFakeLoop()} }
 
+// counted: the virtual-time loop has nothing to join (the embedded Loop's count is not the host's join).
+func (l *virtualLoop) counted() *Loop { return nil }
+
 // nextDue is the time of the earliest pending timer.
 func (l *virtualLoop) nextDue() int64 {
 	l.fake.mu.Lock()
