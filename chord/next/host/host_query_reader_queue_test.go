@@ -109,11 +109,19 @@ func (f *qqFixture) queryFor(n int64) *store.Query {
 // settled waits until the reads the reader queued ran.
 func (f *qqFixture) settled() { f.reader.settle() }
 
+// open is `await reader.open(context)`: the reader's Open on this goroutine, and its tail run in a section, as awaitTail does.
+func (f *qqFixture) open() Opened {
+	tail := f.reader.Open(background)
+	var got Opened
+	f.host.batch.Section(func() { got = tail() })
+	return got
+}
+
 func TestQueryReaderQueueTwoMovesWhileAReadRunsReadOnceWithTheLaterTarget(t *testing.T) {
 	f := newQQ(t)
 	f.args.n.Store(1)
 	opened := make(chan Opened, 1)
-	go func() { opened <- f.reader.Open(background) }()
+	go func() { opened <- f.open() }()
 	first := <-f.reading.reads
 	if first.target.Spec.Query != f.queryFor(1) {
 		t.Fatal("the first read is not of the arguments the reader opened with")
@@ -145,7 +153,7 @@ func TestQueryReaderQueueACloseDropsTheQueuedReadAndDetachesTheReading(t *testin
 	f := newQQ(t)
 	f.args.n.Store(1)
 	opened := make(chan Opened, 1)
-	go func() { opened <- f.reader.Open(background) }()
+	go func() { opened <- f.open() }()
 	first := <-f.reading.reads
 	f.move(2)
 	ended := context.Canceled

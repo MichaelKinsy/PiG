@@ -102,7 +102,8 @@ func namedBuilders(label string, builders map[string]QueryBuilder) ([]namedBuild
 // on; or broken (its own code). Parked, it says why (cause), as a parked dependency does: an admission parked on a read is
 // its attempt's first check, which a reload's report waits for. A reader that is not ready is followed by wake from then on:
 // its next adoption (its table ready, a good run after a failed one) checks again. A reader's Open blocks on the store's
-// first run: it runs on an owned task (awaitTask), and settle is called in a section.
+// first run: it runs on an owned task, and how it ended is read in the section that settles it (awaitTail), the same turn as
+// the follow below; settle is called in a section.
 func openReaders(host *chordHost, readers []*reader, wake state.Dependent, long blocked, label string, ctx context.Context, settle func(parkResult)) {
 	var open func(index int)
 	open = func(index int) {
@@ -112,7 +113,11 @@ func openReaders(host *chordHost, readers []*reader, wake state.Dependent, long 
 		}
 		each := readers[index]
 		long.blockedBy(&blocker{label: label, state: blockerLoading})
-		awaitTask(host, func() (Opened, error) { return each.Open(ctx), nil }).then(func(opened Opened, _ error) {
+		// `const opened = await reader.open(context); if (opened.kind === "ready") continue; reader.source.dependents.add(wake)`
+		// (read-declarations.ts:43-45): the check of the reading is Open's tail, read in the section that settles the await and
+		// followed, when the reader is not ready, in the same turn: an adoption between the two would make the reader ready and
+		// tell nobody, and the attempt would park on a ready reader for good.
+		awaitTail(host, func() func() Opened { return each.Open(ctx) }).then(func(opened Opened, _ error) {
 			if opened.Kind == OpenedReady {
 				open(index + 1)
 				return

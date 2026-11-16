@@ -2328,11 +2328,32 @@ func (a *attempt) assertDeclaring(declaration string) {
 // host's loop, outside a section, and its outcome settles the returned promise in a section (the resumption). The loop counts
 // the task from here to the end of the section that resumes the promise (a test's join waits for it, host_loop_seam.go),
 // unless it waits parked on something the loop does not run (chordctx.Receive, a native's work still running).
+//
+// Pi continues an `await` in the turn in which the awaited promise resolved: no other task runs between the last statement of
+// the awaited function and its awaiter's continuation. Here the last statement of work and the section that settles the promise
+// are two sections with others between: work's outcome is what work did (an error, the failures of a close), never a reading of
+// the host's state that its reaction acts on. A function that ends by reading the host's state after its last await is
+// awaitTail. The sites of both are classified in host_await_guard_test.go.
 func awaitTask[T any](host *chordHost, work func() (T, error)) *keyedPromise[T] {
 	promise := newKeyedPromise[T](host.loop())
 	goTask(host.loop(), work, func() {
 		value, err := work()
 		host.enter(func() { promise.settle(value, err) })
+	})
+	return promise
+}
+
+// awaitTail is awaitTask for an async function that reads the host's state after its last await (Pi's `open`: `await
+// this.#reading.read(...)`, then the check of the reading): work blocks, on an owned task outside a section, and returns
+// that code as tail; tail runs in the section that settles the promise, before its reactions run as microtasks of that
+// section, so what it read is what the reaction acts on. The forced Go mechanic: a Go task that blocks and then reads in a
+// section of its own leaves a gap before the section that settles its promise, where Pi has none. A tail that fails returns
+// its failure as its value.
+func awaitTail[T any](host *chordHost, work func() (tail func() T)) *keyedPromise[T] {
+	promise := newKeyedPromise[T](host.loop())
+	goTask(host.loop(), work, func() {
+		tail := work()
+		host.enter(func() { promise.resolve(tail()) })
 	})
 	return promise
 }

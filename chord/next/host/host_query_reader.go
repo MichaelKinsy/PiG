@@ -9,8 +9,12 @@ package host
 //
 // Go forms of Pi's promises (decisions; see ChordS14Reader-STATE.md 'Async contract'):
 //   - `await reading.read(...)` in `open` is a blocking call: `reader.Open` blocks (the caller runs it on an owned task,
-//     `awaitTask`, off the host's section) until the first run settled; nothing it waits on can fail (Pi's `read` never
-//     rejects: a failed run is the source's failure, which `Open` reports as Opened{waiting}).
+//     `awaitTail`, off the host's section) until the first run settled; nothing it waits on can fail (Pi's `read` never
+//     rejects: a failed run is the source's failure, which the check reports as Opened{waiting}). What Pi's `open` does after
+//     that await (the check of the reading) is the func `Open` returns: `awaitTail` runs it in the section that settles the
+//     promise, before its reaction. A Go task that blocks and then looks at the reading in a section of its own leaves a gap
+//     before the section that settles its promise, where Pi has the next microtask of one turn; an adoption that landed in it
+//     would be missed by the follow that comes after the check (read-declarations.ts:43-45).
 //   - `void reading.read(...)` in `#moved` is an owned background task (`ReaderSite.Go`, the loop's `Go`): nothing awaits
 //     it. Pi's `read` runs up to its first await when it is called (the open query is registered, the previous pending
 //     read closed): that part is `Reading.Open`, which a move runs in its own section, in call order. What awaits (the
@@ -136,10 +140,13 @@ func newReader(given *GivenQuery, reading Reading, wake func(), spawn func(task 
 // source is the source that changes when the reader gets a value.
 func (r *reader) source() Reading { return r.reading }
 
-// Open opens the read (the provider is live: its attempt's dependencies are) and returns once its first run settled.
-// Called again while its attempt waits on it: a reader with a value is ready, one that never read tries again, one whose
-// run failed waits for its next good run. It blocks: call it off the host's section.
-func (r *reader) Open(ctx context.Context) Opened {
+// Open opens the read (the provider is live: its attempt's dependencies are) and returns once its first run settled: Pi's `open`
+// up to its `await this.#reading.read(...)`. Called again while its attempt waits on it: a reader that read has nothing to wait
+// for, one that never read tries again. It blocks: call it off the host's section. It returns what Pi's `open` does after that
+// await (query-reader.ts:91-94: the refusal it returns before it reads, else the check of the reading) as a func to run in a
+// section of the host: the one that settles the promise of the await (awaitTail), so that the check and what follows it
+// (read-declarations.ts:43-45) are one turn, as in Pi.
+func (r *reader) Open(ctx context.Context) (opened func() Opened) {
 	var refused *Opened
 	var done chan struct{}
 	r.given.batch.Section(func() {
@@ -164,24 +171,22 @@ func (r *reader) Open(ctx context.Context) Opened {
 		r.started = true
 		done = r.enqueue(r.reading.Open(target, ctx))
 	})
-	if refused != nil {
-		return *refused
-	}
 	if done != nil {
 		<-done
 	}
-	var opened Opened
-	r.given.batch.Section(func() {
+	return func() Opened {
+		if refused != nil {
+			return *refused
+		}
 		switch failure := r.reading.Failure(); {
 		case r.reading.Ready():
-			opened = Opened{Kind: OpenedReady}
+			return Opened{Kind: OpenedReady}
 		case failure == nil:
-			opened = Opened{Kind: OpenedLoading}
+			return Opened{Kind: OpenedLoading}
 		default:
-			opened = Opened{Kind: OpenedWaiting, Err: failure}
+			return Opened{Kind: OpenedWaiting, Err: failure}
 		}
-	})
-	return opened
+	}
 }
 
 // Close is: its attempt ended: no commit runs its reads again, its member's reads return err. Inside a section.

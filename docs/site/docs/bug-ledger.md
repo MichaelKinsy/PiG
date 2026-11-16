@@ -1277,6 +1277,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-91e912a](#bf-91e912a) | Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-91f9946](#bf-91f9946) | OpenRouter image generation reads the chat completions body as Pi does, checked against the pinned Pi in a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9208423](#bf-9208423) | fix(imageprocessing): an image with no pixels is not encoded as PNG | PiG's own defect | All platforms | Unreleased |
+| [BF-9236042](#bf-9236042) | chord: a host object reading a live query, a count or a list could stay loading for ever, and `Host.Load`… | PiG's own defect | All platforms | Unreleased |
 | [BF-928e15c](#bf-928e15c) | A listener that fails while agent_start is dispatched now ends the run as in Pi (failure messages, no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-10](#bf-928e15c-10) | Constrained-sampling errors quote tool and property names as Pi does (raw text between double quotes, not… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-11](#bf-928e15c-11) | GitHub Copilot model-catalog fetches now report a failed response as Pi does (`<status> <reason>: <untrimmed… | PiG's own defect | All platforms | 0.5.0 |
@@ -19687,6 +19688,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `9208423356` (2026-10-29)
 - **Tests:** None recorded.
+
+### BF-9236042
+
+**chord: a host object reading a live query, a count or a list could stay loading for ever, and `Host.Load`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a host object reading a live query, a count or a list could stay loading for ever, and `Host.Load` with it, when the first run of its read was adopted between the reader's classification and the registration of the wake: the attempt checked the reader and followed it in two sections with a task between them, so the adoption made the reader ready and told nobody (one run in about 18,000 of a loaded test).
+- **Root cause:** reader.Open read the reading in a section of its own at the end of its blocking task and the attempt followed the reader in the next section, the one that settles the task's promise, where Pi has one turn; an adoption between the two found no wake to tell
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9236042669` (2026-11-15)
+- **Tests:** `chord/next/host/host_open_readers_go_test.go::TestOpeningReadersFollowsAReaderInTheSectionThatFoundItNotReadyNotAfterAnAdoptionCouldLandBetween`, `chord/next/host/host_open_readers_go_test.go::TestStartBarrierAHostObjectWhoseReaderWasAdoptedBetweenItsCheckAndItsFollowGoesLive`
+- **Release note:** chord: a host object reading a live query, a count or a list could stay loading for ever, and `Host.Load` with it, when the first run of its read was adopted between the reader's classification and the registration of the wake: the attempt checked the reader and followed it in two sections with a task between them, so the adoption made the reader ready and told nobody (one run in about 18,000 of a loaded test). Pi checks the reader and follows it in one turn (query-reader.ts, read-declarations.ts); the check now runs in the section that settles its await, before the attempt follows the reader.
 
 ### BF-928e15c
 
