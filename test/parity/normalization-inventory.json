@@ -1242,6 +1242,128 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/107-removed-extension-provider-after-reload.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A removed extension's provider stays selected and answered by its old closure across two reloads",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "hello 1",
+            "capture_end": "served by closure of load 1, call 3"
+          },
+          "reason": "Owned visible surface: A removed extension's provider stays selected and answered by its old closure across two reloads",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/108-rpc-reload-loads-the-extensions-on-disk.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Notifications have generated UUIDs; retain distinct identities, event order, payloads and all command responses."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-pending-confirm-after-reload-replaced-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits confirm (replaced owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-pending-custom-after-reload-replaced-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits custom (replaced owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-pending-editor-after-reload-replaced-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits editor (replaced owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-pending-input-after-reload-replaced-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits input (replaced owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-pending-select-after-reload-replaced-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits select (replaced owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
       "transforms": [
         {
@@ -1251,6 +1373,91 @@
             "capture_end": "note:ready"
           },
           "reason": "Owned visible surface: Subprocess extension tool opens Select, Input, and Editor and receives submitted values",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/110-pending-confirm-after-reload-removed-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits confirm (removed owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/110-pending-custom-after-reload-removed-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits custom (removed owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/110-pending-editor-after-reload-removed-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits editor (removed owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/110-pending-input-after-reload-removed-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits input (removed owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/110-pending-select-after-reload-removed-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits select (removed owner): is the surface gone, does the late code run, does a second command run",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
