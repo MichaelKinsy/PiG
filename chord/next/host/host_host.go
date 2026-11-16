@@ -2281,7 +2281,7 @@ type startedFate struct {
 	object  string
 	kind    ReloadedObjectKind
 	checked *keyedPromise[*data.FailureCause]
-	// check makes checked once every fate of the reload started.
+	// check makes checked: the report's wait, begun once the commit ended (startChecks).
 	check func() *keyedPromise[*data.FailureCause]
 }
 
@@ -2375,6 +2375,9 @@ func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options Relo
 			return
 		}
 		started, failure = h.commit(plan, ctx)
+		if failure == nil {
+			h.startChecks(started)
+		}
 	})
 	if failure != nil {
 		return ReloadReport{}, failure
@@ -2706,13 +2709,20 @@ func (h *chordHost) startFates(fates []plannedFate) []startedFate {
 			fate.object.startSuccessor()
 		}
 	}
-	// The report's waits, made now that every readiness started.
+	return started
+}
+
+// startChecks makes the report's waits, as Pi's `#report` begins them when the commit returned (host.ts:823, 1047, 1073): after
+// the fates started, the host-lifetime objects of new types started and the publication woke the requests waiting for the names the
+// reload serves (host.ts:995-1001). That order matters to what a restart's readiness found (`readinessCause`) and to a retry of an
+// attempt that waits for an open old attempt, which reports it too: the wake binds a request of that readiness that waited for a
+// name this reload serves, and the cause it showed before is none any more.
+func (h *chordHost) startChecks(started []startedFate) {
 	for index := range started {
 		if started[index].check != nil {
 			started[index].checked = started[index].check()
 		}
 	}
-	return started
 }
 
 // startFate starts one object's fate after the commit: a removed type's object ends, its holders waiting `not_served`; any
