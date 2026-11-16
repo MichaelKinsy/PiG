@@ -103,7 +103,8 @@ var derivations atomic.Uint64
 
 // AbortOrder is when ctx was aborted relative to other contexts of this package: the number of the earliest abort that
 // ended it (its own cancel, or the one of a parent or signal it derives from), 0 for a context not aborted by this
-// package's cancel functions. AbortSignal.any takes the reason of the source that aborted first; a context derived from two
+// package's cancel functions. The walk through the parents ends at a WithoutAbortSignal context: the aborts behind it do not
+// end what is derived from it. AbortSignal.any takes the reason of the source that aborted first; a context derived from two
 // sources of this package takes the cause of the one whose cancel function reached it first, and two cancel functions that
 // run at once on two goroutines reach it in any order, so the one that decides the reason compares AbortOrder of the
 // sources instead.
@@ -119,6 +120,11 @@ func AbortOrder(ctx context.Context) uint64 {
 		}
 		c, ok := ctx.(*abortContext)
 		if !ok {
+			return earliest
+		}
+		if c.detached {
+			// Nothing behind a WithoutAbortSignal context aborts it: Pi's withoutAbortSignal leaves the context no abort signal
+			// (context/index.ts:118-120), so what is derived from it is aborted by its own cancel and its other sources alone.
 			return earliest
 		}
 		if order := c.order.Load(); order != 0 && (earliest == 0 || order < earliest) {
