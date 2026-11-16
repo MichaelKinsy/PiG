@@ -1,10 +1,9 @@
 package extension_test
 
-// pi: packages/coding-agent/src/core/exec.ts:76-98 (killProcess, the abort listener, the timeout), :111-113 (the cap)
+// pi: packages/coding-agent/src/core/exec.ts
 
 import (
 	"context"
-	"errors"
 	"os"
 	"sync"
 	"testing"
@@ -31,10 +30,11 @@ type signalSight struct {
 	stdoutClosed, stderrClosed bool
 }
 
-// closedFile reports that f was closed: Stat on a closed file fails with os.ErrClosed, and on an open one it does not.
+// closedFile reports that f was closed. RawControl takes a reference to the descriptor without waiting for a reader, and fails only on a closed file:
+// Stat does not tell a closed file on Windows, and a read of it would wait for the reader of the pipe.
 func closedFile(f *os.File) bool {
-	_, err := f.Stat()
-	return errors.Is(err, os.ErrClosed)
+	conn, err := f.SyscallConn()
+	return err != nil || conn.Control(func(uintptr) {}) != nil
 }
 
 // execFloodSeenAtTheSignal runs the `flood` helper, which writes on both pipes until it is ended, through ExecCommand with opts, and returns the result
