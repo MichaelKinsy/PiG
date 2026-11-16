@@ -10718,6 +10718,30 @@
       ]
     },
     {
+      "id": "BF-33aa6ec",
+      "title": "An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another…",
+      "symptom": "An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another member of the command's shared Go, Rust, Python or Lisp process, as it does in Pi, where the old extension instance outlives the reload its command awaits.",
+      "rootCause": "A shared Go, Rust, Python or Lisp cell runs its members in one process. A reload that removed one member stopped that process at the commit, while the generation of the member whose command had asked for the reload waited for the command to return before it stopped: the command's connection was cut under it, `await ctx.reload()` failed, and the caller was lost. In Pi the old extension instance outlives the reload its command awaits (agent-session.ts:3828-3876), so the command resolves and goes on. A generation with a command still running now takes a hold on its cell's process before any member stops, as a lingering generation does, and its retirement releases it when the command returns.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another member of the command's shared Go, Rust, Python or Lisp process, as it does in Pi, where the old extension instance outlives the reload its command awaits. The reload stopped the shared process while the command still ran, so `await ctx.reload()` failed with a lost connection, the command stopped half way, and the calling extension was gone after the reload (an RPC session with two extensions of one shared process, one of which removed the other's file and reloaded), in the Go, Rust, Python and Lisp SDKs alike. Node extensions were not affected. Present since 0.4.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "33aa6ec15e",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_resumes_test.go::TestRPCCommandGoesOnAfterAReloadThatRemovesACellMember",
+        "coding/extension/host/subprocess/reload_caller_packed_cell_test.go::TestPackedGoCommandGoesOnAfterAReloadThatRemovesAMemberOfItsCell",
+        "test/extension-conformance/sdkscenario_test.go::TestSDKScenarios"
+      ]
+    },
+    {
       "id": "BF-33dc8a0",
       "title": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",
       "symptom": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",

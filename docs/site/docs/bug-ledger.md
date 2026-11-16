@@ -404,6 +404,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3351167](#bf-3351167) | The OAuth callback server reads an absolute-form request target with a scheme other than http or https, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-33558f6](#bf-33558f6) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-336d0dc](#bf-336d0dc) | Chord's plugin watcher watches a directory of the app's base code again when it comes back after its watch… | PiG's own defect | macOS, Linux | Unreleased |
+| [BF-33aa6ec](#bf-33aa6ec) | An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another… | PiG's own defect | All platforms | Unreleased |
 | [BF-33dc8a0](#bf-33dc8a0) | fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does | PiG's own defect | All platforms | Unreleased |
 | [BF-33ea9e4](#bf-33ea9e4) | fix(sdk): name the Go ModelRegistry.Find change in the upgrade rules; Node adoption survives an unbound leaf… | PiG's own defect | All platforms | Unreleased |
 | [BF-33efd9f](#bf-33efd9f) | `pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU… | PiG's own defect | All platforms | 0.7.0 |
@@ -7617,6 +7618,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `336d0dc96f` (2026-11-09)
 - **Tests:** `chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkRenewsTheWatchOfAnAncestorRemovedAndMadeAgainWhileTheRecordedDirectoryIsMissing`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAway`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesTheTreeOfABaseDirectoryBackWhoseWatchesCouldNotBePutBackWhileItWasAway`
 - **Release note:** Chord's plugin watcher watches a directory of the app's base code again when it comes back after its watch had ended: moved away and back (the watch of a renamed directory ends on macOS and BSD, with kqueue), or removed and made again (inotify on Linux, where ext4 also gives the new directory the inode and birth time of the old one). An edit of the app's base code in that directory went unnoticed, so `base` was never marked and the app kept its hosts on the old code, where Pi marks it. When the watcher put a watch back and found the directory missing, it kept the recorded identity of a directory it did not watch, and the directory seen again looked like the same one; the watch now leaves no identity behind, so the directory is watched again.
+
+### BF-33aa6ec
+
+**An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another member of the command's shared Go, Rust, Python or Lisp process, as it does in Pi, where the old extension instance outlives the reload its command awaits.
+- **Root cause:** A shared Go, Rust, Python or Lisp cell runs its members in one process. A reload that removed one member stopped that process at the commit, while the generation of the member whose command had asked for the reload waited for the command to return before it stopped: the command's connection was cut under it, `await ctx.reload()` failed, and the caller was lost. In Pi the old extension instance outlives the reload its command awaits (agent-session.ts:3828-3876), so the command resolves and goes on. A generation with a command still running now takes a hold on its cell's process before any member stops, as a lingering generation does, and its retirement releases it when the command returns.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `33aa6ec15e` (2026-11-16)
+- **Tests:** `coding/cli/rpc_reload_resumes_test.go::TestRPCCommandGoesOnAfterAReloadThatRemovesACellMember`, `coding/extension/host/subprocess/reload_caller_packed_cell_test.go::TestPackedGoCommandGoesOnAfterAReloadThatRemovesAMemberOfItsCell`, `test/extension-conformance/sdkscenario_test.go::TestSDKScenarios`
+- **Release note:** An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another member of the command's shared Go, Rust, Python or Lisp process, as it does in Pi, where the old extension instance outlives the reload its command awaits. The reload stopped the shared process while the command still ran, so `await ctx.reload()` failed with a lost connection, the command stopped half way, and the calling extension was gone after the reload (an RPC session with two extensions of one shared process, one of which removed the other's file and reloaded), in the Go, Rust, Python and Lisp SDKs alike. Node extensions were not affected. Present since 0.4.0.
 
 ### BF-33dc8a0
 
