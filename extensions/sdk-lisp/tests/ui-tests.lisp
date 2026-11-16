@@ -214,10 +214,10 @@
       (check-equal (list ref) (pig::kit-encoded-refs enc) "the result image goes out once"))))
 
 (deftest kit-image-ref-is-the-sha256-of-its-bytes
-  (let ((image (pig:kit-image (kt-octets "png-bytes") "image/png" :max-width-cells 20 :max-height-cells 10 :filename "cover.png" :fallback-color "dim"))
+  (let ((image (pig:kit-image (kt-octets "png-bytes") "image/png" :max-width-cells 20 :max-height-cells 10 :image-id 4242 :filename "cover.png" :fallback-color "dim"))
         (ref (pig::kit-sha256-hex (kt-octets "png-bytes"))))
     (check-equal ref (pig:kit-image-ref image))
-    (kt-check-json (format nil "{\"kind\":\"image\",\"ref\":\"~A\",\"mimeType\":\"image/png\",\"maxWidthCells\":20,\"maxHeightCells\":10,\"filename\":\"cover.png\",\"fallbackColor\":\"dim\"}" ref)
+    (kt-check-json (format nil "{\"kind\":\"image\",\"ref\":\"~A\",\"mimeType\":\"image/png\",\"maxWidthCells\":20,\"maxHeightCells\":10,\"imageId\":4242,\"filename\":\"cover.png\",\"fallbackColor\":\"dim\"}" ref)
                 (kt-node-json image))
     (check-equal (list ref) (pig::kit-encoded-refs (kt-encoded (pig:kit-view image))))
     (check-error type-error (pig:kit-image "not octets" "image/png"))))

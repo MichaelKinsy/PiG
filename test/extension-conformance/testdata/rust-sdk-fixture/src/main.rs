@@ -4813,6 +4813,28 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // D614 image id: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewImageID). The argument is the row's token and a Kitty image id only that row uses: the image node carries both, its bytes are the token's.
+    ext.command(
+        "ui_view_image_id",
+        "Mount a view whose image node carries a Kitty image id",
+        |ctx, args| {
+            let Some((tok, number)) = args.trim().split_once(' ') else {
+                return CommandResult::Error("want a token and an image id".into());
+            };
+            let Ok(number) = number.parse::<u32>() else {
+                return CommandResult::Error("the image id is not a number".into());
+            };
+            let image = kit::Image::new(format!("pig-image-{tok}").into_bytes(), "image/png")
+                .id(format!("{tok}-photo"))
+                .image_id(number)
+                .filename(format!("{tok}.png"));
+            match ctx.mount_view(view_mount("image-id", kit::View::new(image), vec![])) {
+                Ok(st) => ctx.notify(&format!("view-m-mounted:{}", st.state), "info"),
+                Err(e) => return CommandResult::Error(e.to_string()),
+            }
+            CommandResult::Ok
+        },
+    );
     ext.on_view_intent(|inv| match inv.intent.as_str() {
         // The user dismissed the dialog: the client raised the intent with {}, and its handler removes the mount.
         name if name.starts_with("fx.close-") => {

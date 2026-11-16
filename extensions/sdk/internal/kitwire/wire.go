@@ -59,6 +59,7 @@ type viewNode struct {
 	MimeType         string            `json:"mimeType,omitempty"`
 	MaxWidthCells    *int              `json:"maxWidthCells,omitempty"`
 	MaxHeightCells   *int              `json:"maxHeightCells,omitempty"`
+	ImageID          *int              `json:"imageId,omitempty"`
 	Filename         string            `json:"filename,omitempty"`
 	FallbackColor    string            `json:"fallbackColor,omitempty"`
 	// Message is a loader's message (a string) or an assistant-message's

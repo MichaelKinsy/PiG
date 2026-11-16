@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -107,6 +108,14 @@ func abbreviate(s string) string {
 	return s
 }
 
+// dataOnlyModFile is the one file other than a fragment that dir may hold: the go.mod that keeps the directory out of the
+// root module zip (automation/release/modulesize). Nothing else is allowed besides the .md fragments.
+const dataOnlyModFile = "go.mod"
+
+func isDataOnlyModFile(entry fs.DirEntry) bool {
+	return entry.Name() == dataOnlyModFile && !entry.IsDir()
+}
+
 // load reads every fragment in dir. Fragments in the legacy list are exempt from the name and format rules; one that
 // does not parse is assembled under "### Unsorted". A legacy entry whose file is gone is a problem: the list only shrinks.
 // A missing dir holds no fragments: Git does not keep the directory a fold empties.
@@ -121,6 +130,9 @@ func load(dir string) ([]fragment, []error) {
 	var problems []error
 	for _, entry := range entries {
 		name := entry.Name()
+		if isDataOnlyModFile(entry) {
+			continue
+		}
 		if entry.IsDir() || !strings.HasSuffix(name, ".md") {
 			problems = append(problems, fmt.Errorf("%s: only .md fragments belong in %s", name, dir))
 			continue
@@ -366,8 +378,12 @@ func foldInto(dir, changelogPath, legacyPath, recordsPath, version string, fragm
 	if err := os.WriteFile(legacyPath, []byte(text), 0o644); err != nil {
 		return err
 	}
-	if left, err := os.ReadDir(dir); err != nil && !errors.Is(err, fs.ErrNotExist) || len(left) > 0 {
+	left, err := os.ReadDir(dir)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
+	}
+	if slices.ContainsFunc(left, func(entry fs.DirEntry) bool { return !isDataOnlyModFile(entry) }) {
+		return nil
 	}
 	return dropRecordEntryFile(recordsPath, filepath.ToSlash(dir)+"/")
 }

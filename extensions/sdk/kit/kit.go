@@ -266,7 +266,10 @@ type Image struct {
 	MimeType       string
 	MaxWidthCells  *int
 	MaxHeightCells *int
-	Filename       string
+	// ImageID is upstream ImageOptions.imageId, the Kitty image id; nil
+	// leaves the host to allocate one as upstream does.
+	ImageID  *int
+	Filename string
 	// FallbackColor is the foreground token of the text fallback ("" for
 	// none).
 	FallbackColor string

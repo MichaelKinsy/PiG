@@ -274,16 +274,16 @@
   (when (kit-get node :enable-search) (setf (gethash "enableSearch" out) t))
   (kit-out-state node out (:selected-index "selectedIndex") (:filter "filter")))
 
-(defun kit-image (data mime-type &key max-width-cells max-height-cells filename fallback-color id)
+(defun kit-image (data mime-type &key max-width-cells max-height-cells image-id filename fallback-color id)
   "Image(base64Data, mimeType): DATA is the decoded octets. A connection sends the bytes once; later frames name the ref."
   (kit-new "image" :id id :image (kit-image-data data mime-type) :max-width-cells max-width-cells :max-height-cells max-height-cells
-                   :filename filename :fallback-color fallback-color))
+                   :image-id image-id :filename filename :fallback-color fallback-color))
 (defun kit-image-ref (node) "The lowercase hex SHA-256 of the image's bytes." (kit-img-ref (kit-get node :image)))
 (def-kit-encoder "image" (node enc depth out)
   (let ((image (kit-get node :image)))
     (setf (gethash "ref" out) (kit-img-ref image) (gethash "mimeType" out) (kit-img-mime-type image))
     (kit-out-state node out (:max-width-cells "maxWidthCells") (:max-height-cells "maxHeightCells")
-                   (:filename "filename") (:fallback-color "fallbackColor"))
+                   (:image-id "imageId") (:filename "filename") (:fallback-color "fallbackColor"))
     (kit-enc-add-image enc image)))
 
 (defun kit-loader (&optional (message "Loading...") &key spinner-color message-color indicator frame id)
