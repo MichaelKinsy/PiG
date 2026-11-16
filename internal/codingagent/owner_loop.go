@@ -234,6 +234,17 @@ func (m *InteractiveMode) holdTerminalStop() (end func()) {
 	return func() { m.endTerminalStop(tx, false) }
 }
 
+// stopTerminalProgress turns the terminal progress off as the first write of the exit's stop (interactive-mode.ts:7285-7287). It writes at once: the stop holds the
+// terminal, and the terminal's own SetProgress would queue the clear behind it, after the stop's bytes. A terminal with no gate has no transaction: the clear is
+// setTerminalProgress's.
+func (m *InteractiveMode) stopTerminalProgress(tx *tui.StopTransaction) {
+	if tx == nil {
+		m.setTerminalProgress(false)
+		return
+	}
+	tx.SetProgress(false)
+}
+
 // exitEndsAtStop reports whether the process ends right after the exit's stop writes its last byte: a signal's exit does (Pi's process.exit(0),
 // interactive-mode.ts:4493-4494), a quit by keys goes on to its dispose and the resume hint (:4506-4513).
 func (m *InteractiveMode) exitEndsAtStop() bool {
