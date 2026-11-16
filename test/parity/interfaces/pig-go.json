@@ -267213,6 +267213,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.bindStartupSession",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.bindStartupSession",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.bindThinkingRuns",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.bindThinkingRuns",
@@ -270797,6 +270808,17 @@
         "type": "func(ctx context.Context, session InteractiveSessionHandle) error"
       },
       "shapeHash": "sha256:df77636602124977829b876418716a44d47d06dfa50be6ff0cf96741050f2d4b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.rebindSession",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.rebindSession",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, renderBeforeBind bool, awaitEmit func(ctx context.Context, runner *github.com/MichaelKinsy/PiG/coding/extension/host/inproc.Runner, emit func(context.Context) error) error) error"
+      },
+      "shapeHash": "sha256:0116aa14dd6337a8bb65c0a1ff1d5bdbeeef492754ca43e9b3f97a3022668f7f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.rebuildAutocompleteWrappers",
@@ -291246,6 +291268,17 @@
         "type": "func(t *github.com/MichaelKinsy/PiG/tui.Theme, latestVersion string, command string) string"
       },
       "shapeHash": "sha256:1b61d8c03135cf841422a7bd9ccc0984606474f9cb039f896cc556f1d74fe90c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#bindMayPend",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "bindMayPend",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(runner *github.com/MichaelKinsy/PiG/coding/extension/host/inproc.Runner) bool"
+      },
+      "shapeHash": "sha256:b8061366c8607c77821bf1d8700af7dc601486bac87bc2c18be5fcbe87d13b5a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#blitLoginGrid",
