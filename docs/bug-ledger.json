@@ -25528,6 +25528,29 @@
       ]
     },
     {
+      "id": "BF-6835163",
+      "title": "A terminal that answers the start-up Device Attributes query at once no longer has `CSI \u003e 4 ; 2 m` (the…",
+      "symptom": "A terminal that answers the start-up Device Attributes query at once no longer has `CSI \u003e 4 ; 2 m` (the modifyOtherKeys fallback for a terminal without the Kitty keyboard protocol) written in the middle of PiG's start-up writes, between the cursor hide and the colour-scheme and colour queries: the reply is read once the start has written its last bytes, so the fallback follows them as in Pi.",
+      "rootCause": "Node hands stdin to Pi's input listener only once the synchronous run that ends in ui.start() (tui.ts:956: hideCursor, the colour-scheme reports, the first frame request) and init()'s colour query has finished, so the fallback that the Device Attributes reply triggers (CSI \u003e 4 ; 2 m, terminal.ts:418) is written after every one of those bytes: a recorded Pi start has it at token 35 or later, after the second Device Attributes query. PiG started its terminal reader before the TUI start and the colour query, on its own goroutine, so a terminal that answered the first sentinel at once had the fallback written between the cursor hide and the colour-scheme and colour queries.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal that answers the start-up Device Attributes query at once no longer has `CSI \u003e 4 ; 2 m` (the modifyOtherKeys fallback for a terminal without the Kitty keyboard protocol) written in the middle of PiG's start-up writes, between the cursor hide and the colour-scheme and colour queries: the reply is read once the start has written its last bytes, so the fallback follows them as in Pi. Since v0.3.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6835163dd2",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_start_order_pty_test.go::TestStartModeWritesFollowPiStartOrder",
+        "internal/codingagent/interactive_terminal_reader_hold_test.go::TestHeldInteractiveTerminalReaderReadsOnlyAfterTheHoldCloses"
+      ]
+    },
+    {
       "id": "BF-68457ed",
       "title": "Startup now paints the resumed transcript before the startup diagnostics, the models.json error, the model…",
       "symptom": "Startup now paints the resumed transcript before the startup diagnostics, the models.json error, the model fallback message and the crash notice, and shows the changelog notice before the transcript, as Pi orders init() and run().",

@@ -944,6 +944,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6753e9c](#bf-6753e9c) | fix(chord): tui scope ends its watches in Dispose; settle the test's change counter | PiG's own defect | All platforms | Unreleased |
 | [BF-677ded1](#bf-677ded1) | An indented line after a quoted heading, rule or fence in a blockquote renders as the code block Pi shows | PiG's own defect | All platforms | 0.5.0 |
 | [BF-67eccd7](#bf-67eccd7) | Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor`… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-6835163](#bf-6835163) | A terminal that answers the start-up Device Attributes query at once no longer has `CSI > 4 ; 2 m` (the… | PiG's own defect | All platforms | Unreleased |
 | [BF-68457ed](#bf-68457ed) | Startup now paints the resumed transcript before the startup diagnostics, the models.json error, the model… | PiG's own defect | All platforms | Unreleased |
 | [BF-68a4ed2](#bf-68a4ed2) | PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68a63f2](#bf-68a63f2) | A tool namespace registered with `aliases: []` keeps the empty array in `pi.getAllTools()` and the replicated… | PiG's own defect | All platforms | 0.5.0 |
@@ -15094,6 +15095,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `67eccd768a` (2026-10-31)
 - **Tests:** `ai/openrouter_variants_allocs_norace_test.go::TestDerivingOpenRouterRoutingVariantsAllocatesOnlyTheEntries`, `ai/openrouter_variants_allocs_norace_test.go::TestListingOpenRouterRoutingVariantsAllocatesNothingPerVariant`, `ai/openrouter_variants_test.go::TestDerivedOpenRouterVariantsAreBuiltOnce`, `internal/codingagent/model_registry_available_variants_test.go::TestAvailableModelDataDerivesRoutingVariantsOnlyForAConfiguredOpenRouter`, `internal/codingagent/model_registry_variants_allocs_norace_test.go::TestRuntimeModelsAllocatesNothingPerRoutingVariant`, `internal/codingagent/model_registry_variants_allocs_norace_test.go::TestSelectorModelLookupBuildsOnlyTheModelRead`
 - **Release note:** Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor` variants included, to read each scoped model, and the registry no longer derives those variants for a provider it lists no model of.
+
+### BF-6835163
+
+**A terminal that answers the start-up Device Attributes query at once no longer has `CSI > 4 ; 2 m` (the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal that answers the start-up Device Attributes query at once no longer has `CSI > 4 ; 2 m` (the modifyOtherKeys fallback for a terminal without the Kitty keyboard protocol) written in the middle of PiG's start-up writes, between the cursor hide and the colour-scheme and colour queries: the reply is read once the start has written its last bytes, so the fallback follows them as in Pi.
+- **Root cause:** Node hands stdin to Pi's input listener only once the synchronous run that ends in ui.start() (tui.ts:956: hideCursor, the colour-scheme reports, the first frame request) and init()'s colour query has finished, so the fallback that the Device Attributes reply triggers (CSI > 4 ; 2 m, terminal.ts:418) is written after every one of those bytes: a recorded Pi start has it at token 35 or later, after the second Device Attributes query. PiG started its terminal reader before the TUI start and the colour query, on its own goroutine, so a terminal that answered the first sentinel at once had the fallback written between the cursor hide and the colour-scheme and colour queries.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6835163dd2` (2026-11-16)
+- **Tests:** `internal/codingagent/interactive_start_order_pty_test.go::TestStartModeWritesFollowPiStartOrder`, `internal/codingagent/interactive_terminal_reader_hold_test.go::TestHeldInteractiveTerminalReaderReadsOnlyAfterTheHoldCloses`
+- **Release note:** A terminal that answers the start-up Device Attributes query at once no longer has `CSI > 4 ; 2 m` (the modifyOtherKeys fallback for a terminal without the Kitty keyboard protocol) written in the middle of PiG's start-up writes, between the cursor hide and the colour-scheme and colour queries: the reply is read once the start has written its last bytes, so the fallback follows them as in Pi. Since v0.3.0.
 
 ### BF-68457ed
 
