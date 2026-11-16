@@ -722,7 +722,7 @@ SOFTWARE.
 | Package | Version | License | Retained notice and license |
 |---|---|---|---|
 | chalk | 6.0.0 | MIT | `chalk/license` |
-| undici | 8.10.2 | MIT | `undici/LICENSE` |
+| undici | 8.12.4 | MIT | `undici/LICENSE` |
 | semver | 7.8.5 | ISC | `semver/LICENSE` |
 | minimatch | 11.0.3 | BlueOak-1.0.0 | `minimatch/LICENSE.md` |
 | @isaacs/nonrecursive-glob-match | 1.0.3 | BlueOak-1.0.0 | `minimatch/node_modules/@isaacs/nonrecursive-glob-match/LICENSE.md` |

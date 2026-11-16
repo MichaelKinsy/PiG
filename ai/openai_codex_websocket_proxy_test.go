@@ -60,7 +60,7 @@ func TestCodexWebSocketDialsTheLowercaseHTTPSProxyFirst(t *testing.T) {
 	}
 }
 
-// EnvHttpProxyAgent (undici 8.10.2 env-http-proxy-agent.js:26-37) sends an https request through the http proxy when https_proxy ?? HTTPS_PROXY is empty,
+// EnvHttpProxyAgent (undici 8.12.4 env-http-proxy-agent.js:26-37) sends an https request through the http proxy when https_proxy ?? HTTPS_PROXY is empty,
 // and an https_proxy that is set but empty counts as empty.
 func TestCodexWebSocketFallsBackToTheHTTPProxy(t *testing.T) {
 	listener, err := net.Listen("tcp", "127.0.0.1:0")

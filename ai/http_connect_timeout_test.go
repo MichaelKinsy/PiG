@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-// Undici8.10.2 lib/core/connect.js clears its connection timer on secureConnect; the configured HTTP body/header idle timeout does not govern that handshake.
+// Undici 8.12.4 lib/core/connect.js clears its connection timer on secureConnect; the configured HTTP body/header idle timeout does not govern that handshake.
 func TestHTTPIdleTimeoutBeginsAfterTLS(t *testing.T) {
 	previous := ConfiguredHTTPIdleTimeoutMs()
 	if err := ConfigureHTTPDispatcher(100); err != nil {

@@ -34,7 +34,7 @@ The Node extension runtime embeds the third-party packages Pi 0.87.1 depends on 
 - `cross-spawn` 7.0.6, Copyright (c) 2018 Made With MOXY Lda, MIT, with `path-key` 3.1.1 and `shebang-regex` 3.0.0, Copyright (c) Sindre Sorhus, MIT; `shebang-command` 2.0.0, Copyright (c) Kevin Mårtensson, MIT; and `which` 2.0.2 and `isexe` 2.0.0, Copyright (c) Isaac Z. Schlueter and Contributors, ISC.
 - `jiti` 2.7.0, Copyright (c) Pooya Parsa, MIT, with bundled MIT and ISC dependencies.
 - `chalk` 6.0.0, Copyright (c) Sindre Sorhus, MIT.
-- `undici` 8.10.2, Copyright (c) Matteo Collina and Undici contributors, MIT.
+- `undici` 8.12.4, Copyright (c) Matteo Collina and Undici contributors, MIT.
 - `semver` 7.8.5, Copyright (c) Isaac Z. Schlueter and Contributors, ISC.
 - `minimatch` 11.0.3, `@isaacs/nonrecursive-glob-match` 1.0.3 and `lru-cache` 11.4.0, BlueOak-1.0.0; `brace-expansion` 5.0.12 and `balanced-match` 4.0.4, Copyright Julian Gruber and Isaac Z. Schlueter, MIT.
 - `hosted-git-info` 9.0.3, Copyright (c) 2015 Rebecca Turner, ISC.

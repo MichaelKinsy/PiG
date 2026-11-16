@@ -1038,6 +1038,24 @@ packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
 ]);
 // END backport aa47cedce
 
+// BEGIN backport efbcd5adb
+// efbcd5adb (#12200): the coding agent moves its exact pin of undici from 8.12.3 to 8.12.4 (GHSA-mqg3-3v4r-cm32, GHSA-7xg3-fphp-28hg, GHSA-5rm8-gv32-r954, GHSA-9v6h-8rgp-m69f,
+// GHSA-3g9m-rv3r-w5w2, GHSA-r4pc-4jcp-7pqc). The lock entry is the one Pi's package-lock.json and packages/coding-agent/install-lock/package-lock.json hold at efbcd5adb; both locks
+// change that entry (version, archive, integrity) and the coding agent's range, nothing else, and 8.12.4 declares no dependencies of its own, as 8.12.3 does not.
+// The installed Pi bundles undici into its `pi` bundle (the oracle's bundle is made again from the installed copy), and vendor-pi-dist.sh copies the installed undici into
+// the vendored runtime (shims/undici), so the oracle and the vendored runtime both run 8.12.4.
+// not carried: pi-coding-agent/package.json (`"undici": "8.12.4"`): published ranges follow the pin until the re-pin; the lock the oracle installs names 8.12.4, the manifest on disk 8.12.3.
+// not carried: apps/p2/package.json and the CHANGELOG: not part of the installed package.
+dependency("efbcd5adb", "pi-coding-agent", {
+    name: "undici",
+    from: "8.12.3",
+    to: "8.12.4",
+    resolved: "https://registry.npmjs.org/undici/-/undici-8.12.4.tgz",
+    integrity: "sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==",
+    dependencies: {},
+});
+// END backport efbcd5adb
+
 // BEGIN backport f72f799a4
 // f72f799a4 (#12103; 22f456d73 #12108 after it changes Pi's changelog and a test only): the Google adapters hand the caller's fetch to @google/genai, which takes one
 // (httpOptions.fetch) from 2.32.0 on, so the commit moves pi-ai's exact pin of the SDK. The lock entry below is the one Pi's package-lock.json and
