@@ -989,6 +989,7 @@ func (t *ProcessTerminal) SetProgress(active bool) {
 		}
 		ticker := time.NewTicker(keepalive)
 		stopCh := make(chan struct{})
+		//portlint:allow ctxbackground the keepalive's lifetime is SetProgress to clearProgressInterval, which cancels it: Pi's setInterval carries no caller signal (terminal.ts:622)
 		ctx, cancel := context.WithCancel(context.Background())
 		t.progressTicker = ticker
 		t.progressStop = stopCh
