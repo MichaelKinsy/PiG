@@ -131,7 +131,9 @@ func (waiters *Waiters[K, T]) Resolve(key K, value T) {
 // Settle takes the waits of key out of the pending set and fixes their result to value, as resolving a promise does, and
 // returns the function that wakes them. Until it is called the waits are settled but their goroutines still sleep: a
 // RejectAll or a cancelled context in between no longer reaches them, so a close that seals before the wake cannot turn
-// the result into an error.
+// the result into an error. A wait whose context was cancelled before the settle was already rejected where Pi runs the
+// abort listener at the abort itself (util.ts Waiters.add), but here the cancellation reaches it on its own goroutine
+// (context.AfterFunc), which may not have run yet: that wait fails with the cancellation cause, not with value.
 func (waiters *Waiters[K, T]) Settle(key K, value T) (wake func()) {
 	waiters.mu.Lock()
 	set := waiters.sets[key]
@@ -140,6 +142,10 @@ func (waiters *Waiters[K, T]) Settle(key K, value T) (wake func()) {
 	}
 	waiters.mu.Unlock()
 	for _, waiter := range set {
+		if waiter.ctx.Err() != nil {
+			waiter.err = context.Cause(waiter.ctx)
+			continue
+		}
 		waiter.value = value
 	}
 	return func() {
