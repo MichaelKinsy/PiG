@@ -3459,6 +3459,30 @@
       "tests": []
     },
     {
+      "id": "BF-1a89bc2",
+      "title": "Chord: a context linked from two abort sources now reports the reason of the source that aborted first when…",
+      "symptom": "The abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first.",
+      "rootCause": "What was wrong. OnAbort picks, among the sources of a context that were aborted already, the one whose abort came first (AbortOrder), because a Go context derived from two sources is cancelled by listeners on goroutines of their own, in any order. abortSources leaves a WithoutAbortSignal ancestor out of the sources, but AbortOrder walked through it into the ancestor's own parents.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a context linked from two abort sources now reports the reason of the source that aborted first when one of the sources is derived from a `chordctx.WithoutAbortSignal` context: the host's linked abort signals do, and so does `chordctx.OnAbort` on a context derived by `WithAbortSignal`. Before, the abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first. As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context. Released in: v0.7.0, and every release since (the walk came with 0b76ae5e5, which `git tag --contains` places in v0.7.0; a probe at the v0.7.0 tag ranks `WithCancel(WithoutAbortSignal(x))` before an independent source that aborted earlier). \u003c!-- cause: abortSources and AbortOrder each walked a context's parents on their own, and only abortSources stopped at a WithoutAbortSignal context, so the two functions disagreed about which aborts reach a context. --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1a89bc25f7",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "chord/context/abort_cause_oracle_test.go::TestAbortCauseMatchesPi",
+        "chord/context/abort_detached_order_test.go::TestAbortOrderStopsAtADetachedAncestor",
+        "chord/context/abort_detached_order_test.go::TestLateListenerHearsTheFirstSourceThatAbortedNotADetachedAncestorsParent"
+      ]
+    },
+    {
       "id": "BF-1a9093e",
       "title": "The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command…",
       "symptom": "The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command output, more than a client buffers, where Pi's daemon answers between output frames.",
@@ -48756,7 +48780,7 @@
     "Fix reverted before release": 1,
     "Follow-up to unreleased work": 4,
     "Repair of a merge between development branches": 9,
-    "Review follow-up to unreleased work": 3,
+    "Review follow-up to unreleased work": 4,
     "test-only": 1
   }
 }
