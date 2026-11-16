@@ -79,7 +79,7 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 				m.inputReader.pause()
 			}
 			if m.surface == nil {
-				m.tuiInst.Stop()
+				m.tuiInst.StopWithOptions(tui.StopOptions{ExitTerminal: true})
 			}
 			if m.rawRestore != nil {
 				m.rawRestore()
@@ -88,7 +88,7 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 			}
 		},
 		start: func() error {
-			restore, drain, err := tui.EnterRawModeWithDrain()
+			restore, drain, err := m.startTerminal(m.altScreen != nil)
 			if err != nil {
 				m.exitIfDeadTerminal(err)
 				return err

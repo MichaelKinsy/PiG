@@ -433,7 +433,7 @@ func (m *InteractiveMode) startTerminalInput(ctx context.Context, source io.Read
 	m.inputErrCh = make(chan error, 1)
 	if file, ok := source.(*os.File); ok {
 		owner.router = m.newTerminalInputRouter(ctx, m.inputReadCh, m.inputErrCh, true)
-		owner.reader = newInteractiveTerminalReader(ctx, file, owner.router)
+		owner.reader = newHeldInteractiveTerminalReader(ctx, file, owner.router, m.inputHold)
 		m.inputReader = owner.reader
 		return
 	}

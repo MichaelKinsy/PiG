@@ -948,6 +948,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6753e9c](#bf-6753e9c) | fix(chord): tui scope ends its watches in Dispose; settle the test's change counter | PiG's own defect | All platforms | Unreleased |
 | [BF-677ded1](#bf-677ded1) | An indented line after a quoted heading, rule or fence in a blockquote renders as the code block Pi shows | PiG's own defect | All platforms | 0.5.0 |
 | [BF-67eccd7](#bf-67eccd7) | Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor`… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-6835163](#bf-6835163) | A terminal that answers the start-up Device Attributes query at once no longer has `CSI > 4 ; 2 m` (the… | PiG's own defect | All platforms | Unreleased |
 | [BF-68457ed](#bf-68457ed) | Startup now paints the resumed transcript before the startup diagnostics, the models.json error, the model… | PiG's own defect | All platforms | Unreleased |
 | [BF-68a4ed2](#bf-68a4ed2) | PageUp and PageDown move the selection by a page in selection lists and selectors (settings, model… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-68a63f2](#bf-68a63f2) | A tool namespace registered with `aliases: []` keeps the empty array in `pi.getAllTools()` and the replicated… | PiG's own defect | All platforms | 0.5.0 |
@@ -1116,6 +1117,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7a4a8e8](#bf-7a4a8e8) | fix duplicate jsstring import in tui/assistant_message_block.go | PiG's own defect | All platforms | Unreleased |
 | [BF-7a5e7d1](#bf-7a5e7d1) | fix(chord/nextnode/plugins): the bridged proxies' Go get takes the context first, as the merged host does | PiG's own defect | All platforms | Unreleased |
 | [BF-7b0f5d7](#bf-7b0f5d7) | A native extension provider's `filterAllModels` receives the models its `getAllModels` (or `getModels`)… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-7b36c4f](#bf-7b36c4f) | A fullscreen start now writes its terminal setup in Pi's order: the alternate screen is entered first… | PiG's own defect | All platforms | Unreleased |
 | [BF-7b59fe2](#bf-7b59fe2) | `pig piglet build --format binary` from a Pig source directory that is not a Git checkout (for example… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7b92429](#bf-7b92429) | `find` and `grep` trim like JavaScript: `FindTool` trimmed each fd output line with `strings.TrimSpace` where… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7ba3211](#bf-7ba3211) | A resumed session no longer holds its whole file in memory | PiG's own defect | macOS | 0.5.0 |
@@ -15158,6 +15160,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/openrouter_variants_allocs_norace_test.go::TestDerivingOpenRouterRoutingVariantsAllocatesOnlyTheEntries`, `ai/openrouter_variants_allocs_norace_test.go::TestListingOpenRouterRoutingVariantsAllocatesNothingPerVariant`, `ai/openrouter_variants_test.go::TestDerivedOpenRouterVariantsAreBuiltOnce`, `internal/codingagent/model_registry_available_variants_test.go::TestAvailableModelDataDerivesRoutingVariantsOnlyForAConfiguredOpenRouter`, `internal/codingagent/model_registry_variants_allocs_norace_test.go::TestRuntimeModelsAllocatesNothingPerRoutingVariant`, `internal/codingagent/model_registry_variants_allocs_norace_test.go::TestSelectorModelLookupBuildsOnlyTheModelRead`
 - **Release note:** Opening the model selector no longer composes the whole model catalog, OpenRouter's `:nitro` and `:floor` variants included, to read each scoped model, and the registry no longer derives those variants for a provider it lists no model of.
 
+### BF-6835163
+
+**A terminal that answers the start-up Device Attributes query at once no longer has `CSI > 4 ; 2 m` (the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal that answers the start-up Device Attributes query at once no longer has `CSI > 4 ; 2 m` (the modifyOtherKeys fallback for a terminal without the Kitty keyboard protocol) written in the middle of PiG's start-up writes, between the cursor hide and the colour-scheme and colour queries: the reply is read once the start has written its last bytes, so the fallback follows them as in Pi.
+- **Root cause:** Node hands stdin to Pi's input listener only once the synchronous run that ends in ui.start() (tui.ts:956: hideCursor, the colour-scheme reports, the first frame request) and init()'s colour query has finished, so the fallback that the Device Attributes reply triggers (CSI > 4 ; 2 m, terminal.ts:418) is written after every one of those bytes: a recorded Pi start has it at token 35 or later, after the second Device Attributes query. PiG started its terminal reader before the TUI start and the colour query, on its own goroutine, so a terminal that answered the first sentinel at once had the fallback written between the cursor hide and the colour-scheme and colour queries.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6835163dd2` (2026-11-16)
+- **Tests:** `internal/codingagent/interactive_start_order_pty_test.go::TestStartModeWritesFollowPiStartOrder`, `internal/codingagent/interactive_terminal_reader_hold_test.go::TestHeldInteractiveTerminalReaderReadsOnlyAfterTheHoldCloses`
+- **Release note:** A terminal that answers the start-up Device Attributes query at once no longer has `CSI > 4 ; 2 m` (the modifyOtherKeys fallback for a terminal without the Kitty keyboard protocol) written in the middle of PiG's start-up writes, between the cursor hide and the colour-scheme and colour queries: the reply is read once the start has written its last bytes, so the fallback follows them as in Pi. Since v0.3.0.
+
 ### BF-68457ed
 
 **Startup now paints the resumed transcript before the startup diagnostics, the models.json error, the model…**
@@ -16517,7 +16533,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `71e0f20510` (2026-11-16)
-- **Tests:** `internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild`, `internal/codingagent/interactive_exit_order_pty_test.go::TestExitModeResetsFollowPiStopOrder`, `internal/codingagent/interactive_teardown_test.go::TestStopInteractiveTuiFullscreenExitOutput`, `tui/stop_terminal_modes_test.go::TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen`, `tui/stop_terminal_modes_test.go::TestAltScreenSwapStopLeavesBracketedPasteOn`, `tui/stop_terminal_modes_test.go::TestMainScreenExitStopWritesCursorThenPasteReset`
+- **Tests:** `internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild`, `internal/codingagent/interactive_exit_order_pty_test.go::TestExitModeResetsFollowPiStopOrder`, `internal/codingagent/interactive_teardown_test.go::TestStopInteractiveTuiFullscreenExitOutput`, `tui/stop_terminal_modes_test.go::TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen`, `tui/stop_terminal_modes_test.go::TestMainScreenExitStopWritesCursorThenPasteReset`
 - **Release note:** A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off. PiG wrote them only after the alternate screen was left and added a trailing cursor show. A terminal that handles the resets in order, or a recording of the exit bytes, now sees Pi's order; the screen a user sees is the same. Present in every release from v0.2.0 through v0.7.0 (checked by tag: v0.2.0, v0.5.3 and v0.7.0 each stop the renderer first and write the bracketed paste off in the terminal restore after it).
 
 ### BF-725e104
@@ -17483,6 +17499,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7b0f5d7da8` (2026-10-13)
 - **Tests:** `internal/codingagent/native_provider_filter_order_test.go::TestNativeProviderFilterAllModelsSeesTheProvidersOwnModels`
 - **Release note:** A native extension provider's `filterAllModels` receives the models its `getAllModels` (or `getModels`) returned, with their members in the order the provider wrote them, instead of copies with members sorted by name.
+
+### BF-7b36c4f
+
+**A fullscreen start now writes its terminal setup in Pi's order: the alternate screen is entered first…**
+
+- **Source:** PiG's own defect
+- **Symptom:** PiG started the terminal on the main screen (bracketed paste, the Kitty push and the queries, so the flags went onto the main screen's stack), then popped them, entered the alternate screen and pushed them a second time (`?2004h >7u ?u`, then `<u ?1049h >7u`), and mirrored the wrap on leaving.
+- **Root cause:** Pi's TuiBase.start() (tui.ts:956) runs beforeTerminalStart (tui-alt-screen.ts:347, the alternate screen's enter), then terminal.start (terminal.ts:207: bracketed paste on, the Kitty keyboard push and query, the Device Attributes sentinel), then hideCursor, the colour-scheme reports and the first frame. PiG started the terminal (raw mode, bracketed paste, the push and the queries) before it entered the alternate screen, so the Kitty flags were pushed on the main screen's stack, and added a pop, enter, push wrap around the enter and a mirror wrap around the leave to move them. A terminal therefore saw `?2004h >7u ?u DA1`, `<u ?1049h >7u` and a second push, where Pi writes `?1049h` first and…
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7b36c4fddd` (2026-11-16)
+- **Tests:** `internal/codingagent/interactive_keyboard_protocol_pty_test.go::TestKeyboardProtocolDriverBalancesPerScreenStacks`, `internal/codingagent/interactive_keyboard_protocol_pty_test.go::TestKeyboardProtocolDriverChild`, `internal/codingagent/interactive_keyboard_protocol_pty_test.go::TestKeyboardProtocolDriverStartsAndStopsInPisOrder`, `internal/codingagent/interactive_start_order_pty_test.go::TestStartModeWritesFollowPiStartOrder`, `tui/terminal_negotiation_upstream_test.go::TestUpstreamTerminalNegotiation`, `tui/tui_alt_screen_keyboard_protocol_test.go::TestTuiAltScreenStartAfterHandoffWritesOnlyTheRendererTail`, `tui/tui_alt_screen_keyboard_protocol_test.go::TestTuiAltScreenStartSequenceFollowsPiStart`, `tui/tui_alt_screen_keyboard_protocol_test.go::TestTuiAltScreenStopAfterDrainWritesNoKeyboardProtocol` and 1 more in docs/bug-ledger.json
+- **Release note:** A fullscreen start now writes its terminal setup in Pi's order: the alternate screen is entered first (`ESC[?1049h`), then bracketed paste on, the Kitty keyboard push and query and the Device Attributes query, with the Kitty flags pushed once, on the alternate screen's own stack. Before, PiG started the terminal on the main screen (bracketed paste, the Kitty push and the queries, so the flags went onto the main screen's stack), then popped them, entered the alternate screen and pushed them a second time (`?2004h >7u ?u`, then `<u ?1049h >7u`), and mirrored the wrap on leaving. A terminal that was killed between those writes kept keyboard flags on the shell's main screen, and a recorder or terminal multiplexer saw a pop and a second push that Pi does not write. A start after an external editor, `ctrl+z` or a renderer swap, and an extension's alternate screen, follow the same order. What the screen shows, and `ctrl+digit` and `shift+enter` in fullscreen, are unchanged. Since v0.7.0.
 
 ### BF-7b59fe2
 

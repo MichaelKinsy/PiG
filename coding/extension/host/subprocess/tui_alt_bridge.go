@@ -732,12 +732,15 @@ func (s *tuiAltScreenState) run(call *tuiAltCall, m tuiAltMembers, inFrame bool)
 	}
 	switch call.Op {
 	case "start":
-		screen.StartRequestingRender()
+		// Pi's TuiBase.start() order (tui.ts:956): the screen enters the alternate screen, the terminal starts on it, the cursor is hidden, then the
+		// colour-scheme reports, the cell-size query and the first frame.
+		screen.BeforeTerminalStart()
 		if err := s.term.Start(func(data string) { screen.HandleTerminalInput(data) }, func() { screen.RequestRender() }); err != nil {
 			return nil, err
 		}
 		// Through the screen, which takes the writer lock: a frame of the screen's timer may be writing.
 		screen.HideCursor()
+		screen.StartRequestingRender()
 		return empty()
 	case "stop":
 		screen.ShowCursor()

@@ -271877,6 +271877,17 @@
       "shapeHash": "sha256:fac7e9740867a1462f1f02ae533606a8fc5d3c858927a25ed3019bdfc455a45f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.restartTerminal",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.restartTerminal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.restoreBuiltInHeader",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.restoreBuiltInHeader",
@@ -273437,6 +273448,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.startTerminal",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.startTerminal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(enterAltScreen bool) (restore func(), drain func() error, err error)"
+      },
+      "shapeHash": "sha256:b750d302d803f7c7beea4c0c7249696e50caa1a8c2a7d1abc1641b7c7edb491e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.startTerminalInput",
@@ -311145,6 +311167,17 @@
         "type": "func(sc *SlashContext) error"
       },
       "shapeHash": "sha256:0cd60dad808b8abf48c43075929dca6f537de910d92da19946937c2b720c7a03"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#newHeldInteractiveTerminalReader",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "newHeldInteractiveTerminalReader",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, file *os.File, sink terminalInputSink, hold \u003c-chan struct{}) *interactiveTerminalReader"
+      },
+      "shapeHash": "sha256:d7fe960209c820bf7afd6331bb1cd564c32b5157941e53b34a96836ea3aab350"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#newInputTicket",
@@ -378357,6 +378390,17 @@
       "shapeHash": "sha256:616e7dffe9eaaebde65799c4ccb2929c047615c1db104aa384e3c0f254da112d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.BeforeTerminalStart",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.BeforeTerminalStart",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.CancelPendingRender",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.CancelPendingRender",
@@ -379402,6 +379446,17 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.afterTerminalStart",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.afterTerminalStart",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.applyMouseDispatchResult",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.applyMouseDispatchResult",
@@ -379488,6 +379543,17 @@
         "type": "func(gen uint64)"
       },
       "shapeHash": "sha256:cfdfca7364cb582d9fd446539defde7c009ced3156cfbeee1e0f3b8cfed32763"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.beforeTerminalStartIfNeeded",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.beforeTerminalStartIfNeeded",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.cancelPendingRenderLocked",
@@ -379812,17 +379878,6 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.dropWindowLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.dropWindowLocked",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.enterAltScreen",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiAltScreen.enterAltScreen",
       "kind": "function",
       "exported": false,
       "shape": {

@@ -118,6 +118,43 @@ func (m *InteractiveMode) mountInteractiveTui(start bool) {
 	}
 }
 
+// startTerminal is the start of Pi's TuiBase.start() up to the renderer's own tail (tui.ts:956): beforeTerminalStart, which for the fullscreen
+// renderer enters the alternate screen, then terminal.start(): raw mode, bracketed paste, the Kitty keyboard push and the queries. The push lands
+// on the stack of the screen the renderer draws on, and terminal.stop() pops it there, so nothing moves a push across the screen switch.
+// enterAltScreen is false for a run whose frontend may draw instead of the fullscreen renderer.
+func (m *InteractiveMode) startTerminal(enterAltScreen bool) (restore func(), drain func() error, err error) {
+	if enterAltScreen {
+		m.altScreen.BeforeTerminalStart()
+	}
+	restore, drain, err = tui.EnterRawModeWithDrain()
+	if err != nil && enterAltScreen {
+		// The terminal did not start: leave the screen entered for it.
+		m.altScreen.StopWithOptions(tui.StopOptions{PreserveScreen: true})
+	}
+	return restore, drain, err
+}
+
+// restartTerminal gives the terminal back and starts it again for the renderer that is current, as Pi's stop() and start() do around a renderer
+// swap: the mode resets of terminal.stop() (the renderer's stop already wrote them, or the restore writes them), then beforeTerminalStart and
+// terminal.start() on the screen the renderer draws on.
+func (m *InteractiveMode) restartTerminal() error {
+	if m.rawRestore == nil {
+		// The mode holds no terminal (a mode assembled without Run's raw mode): nothing was started, so nothing starts again.
+		return nil
+	}
+	m.rawRestore()
+	m.rawRestore = nil
+	m.rawDrain = nil
+	restore, drain, err := m.startTerminal(m.altScreen != nil)
+	if err != nil {
+		m.exitIfDeadTerminal(err)
+		return err
+	}
+	m.rawRestore = restore
+	m.rawDrain = drain
+	return nil
+}
+
 // startInteractiveTui starts the renderer mountInteractiveTui(false) mounted as Pi's TUI.start does: fullscreen enters the alt screen, the renderer queries the cell size, and the first frame is requested, not painted (tui.ts start(): requestRender() defers the frame through process.nextTick and the render timer). The first frame has no earlier frame to throttle against, so the request reaches the owner loop at once, which paints it on its next turn; in Init that is the terminal color wait, after applyThemeFromSettings wrote the color query. Pi's TUI.start paints even when quietStartup omits the header.
 func (m *InteractiveMode) startInteractiveTui() {
 	switch {
@@ -182,7 +219,7 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress, startRende
 		m.transcriptScrollView.Dispose()
 		m.transcriptScrollView = nil
 	}
-	m.tuiInst.StopWithOptions(tui.StopOptions{PreserveScreen: true, ExitTerminal: m.exitingTui})
+	m.tuiInst.StopWithOptions(tui.StopOptions{PreserveScreen: true, ExitTerminal: true})
 	if viewport, ok := m.tuiInst.(tui.ViewportTUI); ok && tui.IsViewportTUI(m.tuiInst) {
 		viewport.SetLayoutRoot(nil) // interactive-mode.ts:908: the outgoing viewport renderer lets go of the fullscreen layout
 	}
@@ -200,6 +237,13 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress, startRende
 
 	// Re-apply Run's renderer-level wiring to the new renderer.
 	m.rewireRenderer()
+
+	// Pi's nextUi.start() starts the terminal again: the keyboard flags the old renderer's stop popped are pushed on the screen the new one draws on.
+	if startRenderer {
+		if err := m.restartTerminal(); err != nil {
+			m.failInputLoop(err)
+		}
+	}
 
 	// Remount the complete shared component tree into the new renderer, mirroring
 	// upstream remounting every previous child.

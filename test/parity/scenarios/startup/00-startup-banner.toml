@@ -40,6 +40,27 @@ pig_not_contain = ["▀▀█"]
 # the first scenario; we'll tighten as we baseline real numbers.
 runtime_ratio_max = 1.50
 
+# The start-up escape sequences, in order, up to the first frame (CSI ? 2026 h): the terminal mode setup both binaries write before they draw.
+# floating-evidence: Pi, 20 runs of this scenario on xd6702, 2026-11-16, the terminal transcript attached before the program ran (tmux wait-for gate;
+# complete from byte 0; token positions counted from 0 in the whole transcript). CSI > 4 ; 2 m is first seen at token 35 in 9 runs (before the first
+# frame, token 37) and at token 204 in 11 (after it, the first frame at token 35); the OSC 0 window title follows it, at token 36 or 205. Pi writes both
+# when the terminal's reply to its Kitty keyboard query arrives, which the host's load moves across the first frame. Every other sequence before the
+# first frame was the same 35 tokens, in the same order, in all 20 runs.
+[[assert.transcript_sequences_equal]]
+window = "startup"
+
+[[assert.transcript_sequences_equal.floating]]
+sequence = "\u001b[>4;2m"
+reason = "Pi writes it when the terminal answers its Kitty keyboard query; the answer's time moves it across the first frame."
+evidence_runs = 20
+evidence_positions = [35, 204]
+
+[[assert.transcript_sequences_equal.floating]]
+osc = 0
+reason = "Pi sets the window title in the same step as the CSI > 4 ; 2 m above, and the title ends in the run's random working directory name."
+evidence_runs = 20
+evidence_positions = [36, 205]
+
 [diverge]
 # Upstream 1.0.0 prints its 4-cell, 2-line logo with "v<version>" beside the
 # first line and the first hints beside the second (" ▀▀█  v1.0.0"). PiG draws

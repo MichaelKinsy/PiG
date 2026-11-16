@@ -656,7 +656,10 @@ type InteractiveMode struct {
 
 	// rawDrain consumes late protocol input before renderer teardown and reports a failed read; temporary handoffs restore
 	// without draining.
-	rawDrain             func() error
+	rawDrain func() error
+	// inputHold keeps the terminal reader from reading until Init's synchronous start has written its last bytes; nil reads at once.
+	inputHold            chan struct{}
+	inputHoldOnce        sync.Once
 	rawRestore           func()
 	inputReader          *interactiveTerminalReader
 	externalEditorActive bool
@@ -1789,7 +1792,8 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	})
 	mark("pre-raw-mode")
 	m.holdProgramStatusForFrontend()
-	restore, drain, err := tui.EnterRawModeWithDrain()
+	// A frontend may draw instead of the fullscreen renderer, on its own terminal: the alternate screen is entered once it declined (below).
+	restore, drain, err := m.startTerminal(m.altScreen != nil && m.opts.Frontend == nil)
 	if err != nil {
 		// Entering raw mode on a terminal that went away (setRawMode EIO or ENOTTY) is not a crash.
 		m.exitIfDeadTerminal(err)
@@ -1805,6 +1809,12 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.rawRestore = restore
 	m.rawDrain = drain
 	m.openFrontend()
+	if m.opts.Frontend != nil && m.surface == nil && m.altScreen != nil {
+		// The frontend declined: the fullscreen renderer draws, and the terminal starts again on its screen.
+		if err := m.restartTerminal(); err != nil {
+			return fmt.Errorf("interactive: raw mode: %w", err)
+		}
+	}
 	m.tuiInst.HideCursor()
 	// Centralized, idempotent renderer teardown runs before the deferred cursor and cooked-mode restoration on normal quit or graceful signal shutdown. A dead-terminal emergency exits without unwinding these terminal writes.
 	m.onStop(func() error { m.stopInteractiveTui(); return nil })
@@ -1840,6 +1850,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.editorContainer = tui.NewContainer()
 	m.editorContainer.Add(m.editor)
 	m.tuiInst.SetFocus(m.editor)
+	m.inputHold = make(chan struct{})
 	m.startTerminalInput(ctx, os.Stdin)
 	m.programStatusReporter().Report()
 	m.onStop(m.stopTerminalInput)
@@ -1884,6 +1895,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.programStatusReporter().Report()
 	// Pi's ui.start() only requests the first frame, and init() writes the terminal color query (applyFromSettings()) before the deferred frame runs at `await waitForTerminalColors()`. The header, which bakes theme colors into its text, is built once the query completed or timed out (interactive-mode.ts init(): ui.start(), applyFromSettings(), waitForTerminalColors(), header). The color wait serves the owner loop, so it paints the requested frame: a terminal that answers nothing shows the editor and footer at once and the header after the timeout.
 	m.applyThemeFromSettings(ctx)
+	m.inputHoldOnce.Do(func() { close(m.inputHold) })
 	if err := m.waitForTerminalColors(ctx); err != nil {
 		return err
 	}
