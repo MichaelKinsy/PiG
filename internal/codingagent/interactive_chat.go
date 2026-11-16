@@ -441,9 +441,11 @@ func (m *InteractiveMode) updateTerminalTitle() {
 // process terminal is that terminal only when the mode was given no other, so the title never goes past the renderer to the process's
 // stdout.
 func (m *InteractiveMode) setTerminalTitle(title string) {
-	if m.tuiInst != nil {
-		m.tuiInst.Terminal().SetTitle(title)
-	}
+	m.writeBetweenFrames(func() {
+		if m.tuiInst != nil {
+			m.tuiInst.Terminal().SetTitle(title)
+		}
+	})
 }
 
 // setTerminalProgress turns the OSC 9;4 progress indicator of the terminal the renderer draws on on or off (interactive-mode.ts

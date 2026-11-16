@@ -94,3 +94,16 @@ func (m *InteractiveMode) runOnOwner(ctx context.Context, fn func()) {
 
 // OnOwnerLoop reports whether the caller is the goroutine running the owner loop. The extension Runner asks before it waits, on the caller's goroutine, for a handler that runs on another goroutine and may need the loop (inproc Runner.onMcpServersChange).
 func (c *ExtUIContext) OnOwnerLoop() bool { return c.m.onOwnerLoop() }
+
+// writeBetweenFrames runs a terminal write so that it is before the bytes of a frame or after them. The owner loop renders the frames, so a write made on it
+// is ordered where it is made, as Pi's terminal.write calls are on its one event loop. A write another goroutine makes (an extension's host call) is queued
+// for the loop in order and not waited for, and runs inline once the TUI stopped or while no loop runs, when there is no frame to meet.
+func (m *InteractiveMode) writeBetweenFrames(write func()) {
+	if m.ownerGoroutine.Load() == 0 || m.tuiStopped.Load() || m.onOwnerLoop() {
+		write()
+		return
+	}
+	if err := m.postToMain(m.runCtx, write); err != nil {
+		write()
+	}
+}

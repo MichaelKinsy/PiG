@@ -226,6 +226,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1caec6e](#bf-1caec6e) | `pi.exec` reports `killed: true` for a command whose timeout fell due before the call settled, as Pi does… | PiG's own defect | All platforms | Unreleased |
 | [BF-1cc7519](#bf-1cc7519) | fix(sdk): a command, shortcut, flag or renderer registered after load reaches the host in every SDK | PiG's own defect | All platforms | Unreleased |
 | [BF-1ce00b0](#bf-1ce00b0) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-1ceb9fb](#bf-1ceb9fb) | A title an extension sets (`ctx.ui.setTitle`, or the session name an extension sets), the OSC 52 sequence of… | PiG's own defect | All platforms | Unreleased |
 | [BF-1d02c73](#bf-1d02c73) | Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1d1c8aa](#bf-1d1c8aa) | RPC mode now ends by the signal when a termination signal arrives while a quit `session_shutdown` handler is… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1d5b272](#bf-1d5b272) | A text file passed as an `@file` argument that holds invalid UTF-8 now reaches the prompt as Pi sends it… | PiG's own defect | All platforms | 0.5.0 |
@@ -5152,6 +5153,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `1ce00b0a53` (2026-10-13)
 - **Tests:** None recorded.
+
+### BF-1ceb9fb
+
+**A title an extension sets (`ctx.ui.setTitle`, or the session name an extension sets), the OSC 52 sequence of…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A title an extension sets (`ctx.ui.setTitle`, or the session name an extension sets), the OSC 52 sequence of an extension's `copyToClipboard` and the progress indicator's keepalive are written between frames now, as in Pi: Pi writes each of them with `terminal.write` (the keepalive from a `setInterval` callback) on its one event loop, so each is before the bytes of a frame or after them.
+- **Root cause:** the process terminal's own writes (title, progress keepalive) and the clipboard helper's direct OSC 52 write take no lock of the renderer, and the callers that run off the owner loop (an extension's host call, the keepalive's ticker) were not handed to the loop that writes the frames, as Pi's terminal.write calls are on its one event loop
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1ceb9fb95a` (2026-11-16)
+- **Tests:** `internal/codingagent/terminal_write_order_test.go::TestExtensionClipboardOSC52FromAHostGoroutineIsWrittenBetweenFrames`, `internal/codingagent/terminal_write_order_test.go::TestExtensionSessionNameTitleFromAHostGoroutineIsWrittenBetweenFrames`, `internal/codingagent/terminal_write_order_test.go::TestExtensionTitleFromAHostGoroutineIsWrittenBetweenFrames`, `internal/codingagent/terminal_write_order_test.go::TestOwnerLoopClipboardOSC52IsWrittenWhereItIsMade`, `internal/codingagent/terminal_write_sites_test.go::TestEveryTerminalWriteOutsideTheFrameIsOrdered`, `tui/terminal_progress_keepalive_order_test.go::TestProgressKeepaliveIsBeforeAFrameOrAfterIt`
+- **Release note:** A title an extension sets (`ctx.ui.setTitle`, or the session name an extension sets), the OSC 52 sequence of an extension's `copyToClipboard` and the progress indicator's keepalive are written between frames now, as in Pi: Pi writes each of them with `terminal.write` (the keepalive from a `setInterval` callback) on its one event loop, so each is before the bytes of a frame or after them. PiG wrote them from the extension host's call or the keepalive's ticker goroutine, so they could land between two writes of a frame, and the race detector reported the writer. The interactive mode's loop writes them now. Released in v0.7.0 and earlier.
 
 ### BF-1d02c73
 

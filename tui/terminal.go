@@ -117,8 +117,11 @@ type ProcessTerminal struct {
 	progressMu        sync.Mutex
 	progressTicker    *time.Ticker
 	progressStop      chan struct{}
+	progressCancel    context.CancelFunc // ends a keepalive tick that waits for the owner dispatcher
 	progressDone      chan struct{}
 	progressKeepalive time.Duration
+	// keepaliveDispatch, when set, takes each keepalive write to the loop that renders (SetOwnerDispatcher of the renderer on this terminal).
+	keepaliveDispatch atomic.Pointer[func(ctx context.Context, fn func()) error]
 
 	// programStatusMu guards the OSC 7501 state below. The input goroutine confirms support while the owner loop reports.
 	programStatusMu sync.Mutex
@@ -986,8 +989,11 @@ func (t *ProcessTerminal) SetProgress(active bool) {
 		}
 		ticker := time.NewTicker(keepalive)
 		stopCh := make(chan struct{})
+		//portlint:allow ctxbackground the keepalive's lifetime is SetProgress to clearProgressInterval, which cancels it: Pi's setInterval carries no caller signal (terminal.ts:622)
+		ctx, cancel := context.WithCancel(context.Background())
 		t.progressTicker = ticker
 		t.progressStop = stopCh
+		t.progressCancel = cancel
 		done := make(chan struct{})
 		t.progressDone = done
 		go func() {
@@ -1002,7 +1008,7 @@ func (t *ProcessTerminal) SetProgress(active bool) {
 						return
 					default:
 					}
-					t.writeUnlogged(terminalProgressActiveSeq)
+					t.keepalive(ctx, stopCh)
 				}
 			}
 		}()
@@ -1010,6 +1016,34 @@ func (t *ProcessTerminal) SetProgress(active bool) {
 	}
 	t.clearProgressInterval()
 	t.writeUnlogged(terminalProgressClearSeq)
+}
+
+// keepalive writes one tick of the progress keepalive. Pi's setInterval callback runs on its one event loop, between renders, so the tick is before the
+// bytes of a frame or after them: with an owner dispatcher the loop writes it, and a tick that waits for the loop ends with ctx when the progress is cleared.
+func (t *ProcessTerminal) keepalive(ctx context.Context, stopped <-chan struct{}) {
+	write := func() {
+		// The loop writes the tick after the frame it waited for, and the progress may have been cleared since.
+		select {
+		case <-stopped:
+			return
+		default:
+		}
+		t.writeUnlogged(terminalProgressActiveSeq)
+	}
+	if dispatch := t.keepaliveDispatch.Load(); dispatch != nil {
+		_ = (*dispatch)(ctx, write)
+		return
+	}
+	write()
+}
+
+// setKeepaliveDispatch routes the progress keepalive's writes through dispatch, the renderer's owner dispatcher; nil returns them to the ticker goroutine.
+func (t *ProcessTerminal) setKeepaliveDispatch(dispatch func(ctx context.Context, fn func()) error) {
+	if dispatch == nil {
+		t.keepaliveDispatch.Store(nil)
+		return
+	}
+	t.keepaliveDispatch.Store(&dispatch)
 }
 
 func (t *ProcessTerminal) clearProgressInterval() bool {
@@ -1020,9 +1054,11 @@ func (t *ProcessTerminal) clearProgressInterval() bool {
 	}
 	t.progressTicker.Stop()
 	close(t.progressStop)
+	t.progressCancel()
 	<-t.progressDone
 	t.progressTicker = nil
 	t.progressStop = nil
+	t.progressCancel = nil
 	t.progressDone = nil
 	return true
 }

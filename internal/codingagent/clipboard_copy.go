@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -152,8 +153,10 @@ type clipboardCopier struct {
 	isWSL    func() bool
 	run      func(name string, args []string, options clipboardCommandOptions) ([]byte, bool)
 	stdout   io.Writer
-	tempDir  func() string
-	native   func() *tui.NativeClipboard
+	// ordered runs a terminal write so that it is before the bytes of a frame or after them (orderClipboardWrites); nil runs it where it is made.
+	ordered func(write func())
+	tempDir func() string
+	native  func() *tui.NativeClipboard
 }
 
 func hostClipboardCopier() clipboardCopier {
@@ -163,9 +166,31 @@ func hostClipboardCopier() clipboardCopier {
 		isWSL:    isHostWSL,
 		run:      runClipboardCommand,
 		stdout:   os.Stdout,
+		ordered:  orderedTerminalWrite,
 		tempDir:  os.TempDir,
 		native:   func() *tui.NativeClipboard { return getNativeClipboard() },
 	}
+}
+
+// terminalWriteOrder is the running interactive mode's way of ordering a terminal write that the clipboard helper makes on another goroutine. The helper is
+// process-wide, because a fused extension calls it with no Host in hand, so the mode installs the order for the length of its run.
+var terminalWriteOrder atomic.Pointer[func(write func())]
+
+// orderedTerminalWrite runs write through the installed order, or where it is made when no mode runs.
+func orderedTerminalWrite(write func()) {
+	if order := terminalWriteOrder.Load(); order != nil {
+		(*order)(write)
+		return
+	}
+	write()
+}
+
+// orderClipboardWrites makes the clipboard helper's OSC 52 writes, which an extension's host call makes on its own goroutine, run between the frames of m's
+// owner loop, as Pi's emitOsc52 is a terminal write on its one event loop. It returns the call that removes the order.
+func (m *InteractiveMode) orderClipboardWrites() (remove func()) {
+	order := m.writeBetweenFrames
+	terminalWriteOrder.Store(&order)
+	return func() { terminalWriteOrder.CompareAndSwap(&order, nil) }
 }
 
 // copyToClipboard writes text to the system clipboard. Ports upstream
@@ -189,7 +214,12 @@ func (c clipboardCopier) emitOSC52(text string) bool {
 	if len(encoded) > maxOSC52EncodedLength {
 		return false
 	}
-	tui.WriteToTerminal(c.stdout, "\x1b]52;c;"+encoded+"\x07")
+	write := func() { tui.WriteToTerminal(c.stdout, "\x1b]52;c;"+encoded+"\x07") }
+	if c.ordered != nil {
+		c.ordered(write)
+	} else {
+		write()
+	}
 	return true
 }
 
