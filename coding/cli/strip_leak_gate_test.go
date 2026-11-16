@@ -201,6 +201,9 @@ func TestStripLeakGate(t *testing.T) {
 		sessionCommands := 0
 		for _, list := range sessionLists {
 			for _, id := range pigstrip.Known(list) {
+				if pigstrip.Has(list, id) {
+					continue // this build compiles the ID out: an API's leak names are the providers this binary registers, so it has none
+				}
 				patterns, err := leakgate.Names(list, id)
 				if err != nil {
 					t.Fatal(err)
@@ -253,6 +256,9 @@ func TestStripLeakGate(t *testing.T) {
 				if slices.Contains(keep, id) {
 					continue
 				}
+				if pigstrip.Has(list, id) {
+					continue // this build compiles the ID out: an API's leak names are the providers this binary registers, so it has none
+				}
 				patterns, err := leakgate.Names(list, id)
 				if err != nil {
 					t.Fatal(err)
@@ -297,6 +303,9 @@ func TestStripLeakGate(t *testing.T) {
 				stdout = modelProviders(stdout)
 			}
 			for _, stripped := range compiledOut {
+				if stripped.list == pigstrip.ListAPIs && pigstrip.Has(stripped.list, stripped.id) {
+					continue // this test binary compiles the API out, so it knows no provider that uses only it
+				}
 				patterns, err := leakgate.Names(stripped.list, stripped.id)
 				if err != nil {
 					t.Fatal(err)
