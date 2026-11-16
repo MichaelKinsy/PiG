@@ -1175,7 +1175,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-825b4ab](#bf-825b4ab) | `pig config` no longer clips ` No resources found` and the `(n/total)` scroll row to the terminal width, as… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-82ca8da](#bf-82ca8da) | On Windows, the host reports the load error of a Node extension that exits right after it sends the error | PiG's own defect | Windows | 0.7.0 |
 | [BF-82d1808](#bf-82d1808) | Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-8303e4c](#bf-8303e4c) | fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header… | PiG's own defect | All platforms | Unreleased |
 | [BF-8392c29](#bf-8392c29) | MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's… | PiG's own defect | All platforms | Unreleased |
 | [BF-83d0c73](#bf-83d0c73) | Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured… | PiG's own defect | All platforms | Unreleased |
 | [BF-83d5488](#bf-83d5488) | `pig install <dir>` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`… | PiG's own defect | All platforms | 0.5.0 |
@@ -1588,7 +1587,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-aca35e7](#bf-aca35e7) | In print and JSON mode, a Node extension no longer runs a timer or other callback between a prompt's last… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-acc1492](#bf-acc1492) | chord: a client whose link dropped while it was away (a laptop or phone woken, a network changed) reconnects… | PiG's own defect | All platforms | Unreleased |
 | [BF-ad0c167](#bf-ad0c167) | Bold, italic, underline, strikethrough and inverse text (markdown headings, quotes, table headers, links and… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-ad24cdf](#bf-ad24cdf) | fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered | PiG's own defect | All platforms | Unreleased |
+| [BF-ad24cdf](#bf-ad24cdf) | The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has… | PiG's own defect | All platforms | Unreleased |
 | [BF-ad6d659](#bf-ad6d659) | The durable scheduler's per-commit work no longer grows with the number of conversations: after a commit it… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-ad88391](#bf-ad88391) | The watcher of the plugins component closes the system watcher outside the host's lock, so a failure to watch… | PiG's own defect | All platforms | Unreleased |
 | [BF-ad9ed64](#bf-ad9ed64) | Appending a tool result whose details are a tool's own value (a truncated `read`, `bash` output details, an… | PiG's own defect | All platforms | 0.5.0 |
@@ -18296,19 +18295,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/complexity_scaling_norace_test.go::TestScalingProviderRequestPerTurn`, `ai/complexity_scaling_norace_test.go::TestScalingProviderStreamPerDelta`, `coding/cli/complexity_scaling_norace_test.go::TestScalingExtensionEventStatePush`, `coding/complexity_scaling_norace_test.go::TestScalingSessionTurn`, `coding/extension/host/subprocess/complexity_scaling_norace_test.go::TestScalingMessageUpdatePayload`, `coding/session_context_usage_reuse_test.go::TestContextUsageReusesTheEstimateUntilTheLogOrWindowChanges`, `internal/codingagent/compaction/complexity_scaling_norace_test.go::TestScalingCompactionAndContextEstimate`, `internal/codingagent/complexity_scaling_norace_test.go::TestScalingSessionLogOperations` and 7 more in docs/bug-ledger.json
 - **Release note:** Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each event reuses the context usage estimate and the session name until the session changes.
 
-### BF-8303e4c
-
-**fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header…**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header state
-- **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `8303e4c989` (2026-11-09)
-- **Tests:** `durable/harness/quiescence_test.go::TestAwaitQuiescentReturnsWithGoroutinesParkedInTheProgramsWaits`, `internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock`
-
 ### BF-8392c29
 
 **MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's…**
@@ -24074,16 +24060,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-ad24cdf
 
-**fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered**
+**The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has…**
 
 - **Source:** PiG's own defect
-- **Symptom:** fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered
-- **Root cause:** entered.Parked read the state of the goroutine it is asked about from a goroutine dump and took every state but "running", "runnable", "syscall", "copystack" and "preempted" for a wait, except the sync.Mutex, sync.RWMutex and semaphore waits, which are locks (parked only for AwaitBlocked, whose caller may hold the lock). A goroutine that allocates while a collection starts waits on the world lock, which the dump shows as "semacquire", and one that allocates while a collection marks waits for assist credit, "GC assist wait". The runtime ends both on its own, so the goroutine is still on its way to the wait the program gave it; Parked took "GC assist wait" for parked, and "semacquire" for…
-- **User impact:** Behavior differed from Pi
+- **Symptom:** The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has stopped for its own work.
+- **Root cause:** entered.Parked took every state of a goroutine dump except running, runnable, syscall, copystack and preempted for a wait of the program's, so a goroutine the runtime itself had stopped (assist credit, a stack scan, a trace or heap dump stop; for AwaitBlocked also the world lock of a collection) read as parked
+- **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `ad24cdf7f0` (2026-11-09)
-- **Tests:** `durable/harness/harness_idle_scopes_test.go::TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork`, `internal/entered/entered_test.go::TestClassifySeparatesTheRuntimesWaitsFromTheProgramsOwn`, `internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock`, `internal/entered/entered_test.go::TestParkedNeverReportsAGoroutineThatAllocatesWithoutPause`
+- **Fix commits:** `8303e4c989` (2026-11-09), `ad24cdf7f0` (2026-11-09)
+- **Tests:** `internal/entered/entered_test.go::TestClassifySeparatesTheRuntimesWaitsFromTheProgramsOwn`, `internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock`, `internal/entered/entered_test.go::TestParkedNeverReportsAGoroutineThatAllocatesWithoutPause`
+- **Release note:** The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has stopped for its own work. `entered.Await`, `entered.Go` and `entered.AwaitUnless` took a goroutine that allocates while a collection marks (it waits for assist credit) or scans its stack, or that a trace or a heap dump stops, for one parked in a wait of the program's, and `entered.AwaitBlocked` also took the world lock of a collection that is starting for one. What a caller could see: `chord/output.AwaitCaller` (`SettleInOrder`, `SettleAndAwait`) went on to settle the next `details()` waiter of a commit before the caller of the one before had run to its next await, so the continuations ran out of Pi's order; `durable/codemode` `spawnEntered` returned before the tool call it started was running, so the call that followed it, or the end of the script that aborts it, could come first; and the chord host's `goEntered` closed its channel before the handler had run to its first wait. It needed a collection or a trace at that instant, so it was rare. The first release with it is 0.5.0: `git log --diff-filter=A v0.5.0 -- internal/entered/entered.go` names 9080668e4ab, `git tag --contains` that commit lists v0.5.0 first, and v0.4.1 has no such package. `entered.Classify` is now the one place that reads a goroutine dump entry, and the durable harness's test barrier uses it too, which also ends the intermittent failure of `TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork`.
 
 ### BF-ad6d659
 
