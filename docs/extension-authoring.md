@@ -802,7 +802,7 @@ check the abilities and keep a fallback such as a widget or a notice.
 | `panel` | the rows directly above the editor, as tabs | at most half the terminal | yes |
 | `dialog` | a titled frame centred over the screen, eight tenths of the terminal's columns and of its rows | the rows inside the frame | yes |
 
-- The TUI draws every D107 node kind except `image`, at the terminal's width. It states its size as claims: `size.columns`,
+- The TUI draws every D107 node kind, the `image` node included, at the terminal's width. It states its size as claims: `size.columns`,
   `size.rows` for each slot, and for `dialog` its own `size.columns`, the columns inside the frame (94 by 30 in a terminal of
   120 by 40). Use them in `alternatives` (`atLeast`) to send a layout that fits; `client.kind` is `terminal`.
 - A view taller than its slot is cut, the last row reads `... (view truncated)`, and `ViewDiagnostics` returns a `limit` notice.
@@ -843,6 +843,7 @@ check the abilities and keep a fallback such as a widget or a notice.
   `(kit-grid id columns cells :head :chip-rows :selected)` over `kit-grid-cell` and `kit-grid-chip`. In Node the node is the
   plain object above; `PiGViewGrid`, `PiGViewGridCell` and `PiGViewGridChip` type it. A member you do not set is not sent, and
   no SDK checks or changes a value: the host validates the grid and answers a broken rule with code `invalid`.
+- An `image` node is a photograph or other bitmap: `{kind: "image", id?, ref, mimeType, maxWidthCells?, maxHeightCells?, imageId?, filename?, fallbackColor?}` (`ref` and `mimeType` are required). Its bytes ride in the view's `images` list, `[{ref, mimeType, data}]` with `data` in base64 and `ref` the lowercase hex SHA-256 of the decoded bytes (at most 8 MiB each). Build it with your SDK's kit: Go `kit.NewImage(data, mimeType)`, Rust `kit::Image::new(data, mime_type)`, Python `kit.Image(data, mime_type)`, Lisp `(kit-image data mime-type)`; each SDK puts the bytes in `images` and, on a later frame, names a held image by its `ref`. In Node the node and the records are the plain objects above; `PiGViewImageNode`, `PiGViewImage` and the `images` member of `PiGWireView` type them, and a later view may leave a record out and name the held image by `ref` alone. A view that names a `ref` the host does not hold is rejected. Use an `image` node for a photograph; use a drawing profile for a drawing the extension computes.
 - One intent per mount runs at a time. Redraw the view from the handler to show what it did; an activation made before your
   answer arrived is dropped.
 

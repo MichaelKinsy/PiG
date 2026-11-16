@@ -131,11 +131,38 @@ export interface PiGViewAsset {
   delivery: "inline" | "managed";
 }
 /**
+ * D107: the bytes of one image of a {@link PiGWireView}, in its `images` list. All three members are required. `ref` is the lowercase hex
+ * SHA-256 of the decoded bytes, `mimeType` is the image's media type, and `data` is the bytes in base64 (at most 8 MiB decoded). The host
+ * rejects the view when `ref` does not match the bytes.
+ */
+export interface PiGViewImage {
+  ref: string;
+  mimeType: string;
+  data: string;
+}
+/**
+ * D614: the `image` node of the D107 view, Pi's `Image` component. It names its bytes by `ref`; both `ref` and `mimeType` are required. Put the
+ * bytes in the `images` list of the view that first names them. A later view may name an image the host still holds by its `ref` alone and
+ * leave the record out of `images`; a view that names a `ref` the host does not hold is rejected. `maxWidthCells` is 60 when absent.
+ * `fallbackColor` is a theme token of the text the node shows when the client cannot draw the image.
+ */
+export type PiGViewImageNode = {
+  kind: "image";
+  id?: string;
+  ref: string;
+  mimeType: string;
+  maxWidthCells?: number;
+  maxHeightCells?: number;
+  imageId?: number;
+  filename?: string;
+  fallbackColor?: string;
+};
+/**
  * The D107 wire view, `{ root: { kind: "text", text: "..." } }`. A node of any kind may carry `id`, a string unique in the view: an
  * a11y, focus or drawing record names a node by it. The colour of a `text` or a `box` node is `bg`, a background token; neither has a
  * `color` member, and the host draws none it is sent.
  */
-export type PiGWireView = { root: Record<string, unknown>; focus?: string; theme?: Record<string, string> };
+export type PiGWireView = { root: Record<string, unknown>; focus?: string; theme?: Record<string, string>; images?: PiGViewImage[] };
 /** D614: one event of a grid cell: its text (at most 256 bytes) and its colour (a theme token, "#rrggbb" or "#rrggbbaa"). */
 export type PiGViewGridChip = { text: string; color?: string };
 /**
