@@ -38291,6 +38291,30 @@
       "tests": []
     },
     {
+      "id": "BF-9b30272",
+      "title": "ai: Mistral Large 4 tool calls no longer stall for minutes",
+      "symptom": "ai: Mistral Large 4 tool calls no longer stall for minutes.",
+      "rootCause": "buildChatPayload passed true as the strict-tools default to toFunctionTools, so every Mistral tool that asked for JSON-schema constrained sampling carried strict true and a converted schema, and Mistral Large 4 spends minutes before a call to a strict tool; the default is now the model's compat.supportsStrictMode, false when absent.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "ai: Mistral Large 4 tool calls no longer stall for minutes. The model went silent before a tool call when the tools carried `strict: true`, which PiG sent on every Mistral request since 0.2.0; with strict off the call arrives in seconds (Pi 2c2a77f9f3ab, #12148).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9b302729ad",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/mistral_strict_mode_oracle_test.go::TestMistralStrictToolsRequestBodyMatchesPi",
+        "ai/mistral_test.go::TestMistralToolsWithoutStrictMode",
+        "ai/mistral_tool_schema_upstream_test.go::TestMistralToolsAreNonStrictUnlessTheModelEnablesStrictMode"
+      ]
+    },
+    {
       "id": "BF-9b33064",
       "title": "Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler (\"Segmentation fault at address 0x30\", on…",
       "symptom": "Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler (\"Segmentation fault at address 0x30\", on the CI image and on the host) in the ahead-of-time step whenever the build's function order held any record, so `pig-bolt` built no image.",
