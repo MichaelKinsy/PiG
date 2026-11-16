@@ -3,6 +3,8 @@ import importlib.util
 import json
 import os
 import pathlib
+import contextlib
+import io
 import tempfile
 import unittest
 from unittest import mock
@@ -53,6 +55,35 @@ class StartupTimingTests(unittest.TestCase):
             self.assertTrue(row["malformed_json"])
             self.assertEqual(row["returncode"], 0)
             self.assertIn("not JSON", (root / row["stdout"]).read_text())
+
+    def test_budget_report_names_the_rows_over_budget(self):
+        rows = [{"build": "pig", "kind": "package", "cache": "warm", "runs": 25, "median_ms": 291.4, "p90_ms": 295.9, "ratio": 1.157, "budget": 1.15, "within_budget": False},
+                {"build": "pig", "kind": "ts", "cache": "warm", "runs": 25, "median_ms": 221.2, "p90_ms": 230.0, "ratio": 0.9, "budget": 1.15, "within_budget": True},
+                {"build": "pi", "kind": "package", "cache": "warm", "runs": 25, "median_ms": 251.8, "p90_ms": 260.0}]
+        report = timing.budget_report(rows)
+        self.assertIn("1 row(s) over budget", report[0])
+        self.assertIn("budget excess, not a failed trial", report[0])
+        self.assertEqual(report[2], "  pig package warm 291.40 295.90 1.157 1.150")
+        self.assertEqual(len(report), 3)
+        self.assertEqual(timing.budget_report(rows[1:]), [])
+
+    def test_a_failed_trial_is_reported_on_stdout_as_a_failed_trial(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            binary = root / "fake"
+            binary.write_text('#!/usr/bin/env python3\nimport sys\nsys.stderr.write("first\\nboom: cannot start\\n")\nsys.exit(3)\n')
+            binary.chmod(0o755)
+            row = timing.trial(str(binary), "pig", "package", "warm", 7, root / "home", root, root)
+            self.assertFalse(row["valid"])
+            failure = timing.trial_failure("measured trial, no retry", row, root)
+            text = str(failure)
+            self.assertIn("failed trial, not a budget excess", text)
+            self.assertIn("build=pig workload=package cache=warm run=7 returncode=3", text)
+            self.assertIn("boom: cannot start", text)
+            out = io.StringIO()
+            with mock.patch.object(timing, "measure", side_effect=failure), contextlib.redirect_stdout(out):
+                self.assertEqual(timing.main(), 1)
+            self.assertEqual(out.getvalue(), text + "\n")
 
 
 if __name__ == "__main__":
