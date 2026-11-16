@@ -185,7 +185,7 @@ func parseToolPackages(source []byte) []string {
 		return nil
 	}
 	var pkgs []string
-	for _, field := range strings.Split(string(match[1]), ",") {
+	for field := range strings.SplitSeq(string(match[1]), ",") {
 		if name := strings.Trim(strings.TrimSpace(field), `"`); name != "" {
 			pkgs = append(pkgs, name)
 		}
@@ -219,7 +219,7 @@ func changedFiles(root, base string, committedOnly bool) ([]string, error) {
 		if err != nil {
 			return nil, err
 		}
-		for _, name := range strings.Split(string(out), "\x00") {
+		for name := range strings.SplitSeq(string(out), "\x00") {
 			if name != "" && !slices.Contains(files, name) {
 				files = append(files, name)
 			}
