@@ -40,6 +40,10 @@ import (
 type drain struct {
 	settled chan struct{}
 	once    sync.Once
+	// returned is closed once the goroutine that reads and tells the stream returned: nothing of this stream is told after
+	// it, which release waits for (WorkerProcess.awaitReaders).
+	returned     chan struct{}
+	returnedOnce sync.Once
 
 	mu sync.Mutex
 	// ended: the process ended. A reader begins its reads, and settles, under mu, which processEnded sets it under.
@@ -53,11 +57,17 @@ type drain struct {
 }
 
 func newDrain() *drain {
-	return &drain{settled: make(chan struct{}), owed: -1}
+	return &drain{settled: make(chan struct{}), returned: make(chan struct{}), owed: -1}
 }
 
 // settle closes settled, once.
 func (d *drain) settle() { d.once.Do(func() { close(d.settled) }) }
+
+// finish is the end of the goroutine that reads the stream: it has told all it read, so it settles, and it has returned.
+func (d *drain) finish() {
+	d.settle()
+	d.returnedOnce.Do(func() { close(d.returned) })
+}
 
 // processEnded: the process that writes the stream ended. What the stream holds is counted, and a reader that waits for the
 // stream is woken to look again.
