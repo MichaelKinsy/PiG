@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -346,9 +348,25 @@ func (h *Host) stagePackedRust(ctx context.Context, cell CellSpec, oldByName map
 type packedConfigsKey struct{}
 
 func (h *Host) stagePackedNode(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error) {
-	nodeExts, err := cell.NodeExtensions()
+	nodeExts, unresolved, err := cell.nodeMembers()
 	if err != nil {
 		return nil, err
+	}
+	if len(unresolved) != 0 {
+		// A member whose entry point does not resolve fails alone, with its own error, and the others load, as Pi's loader reports one error per extension
+		// (loader.ts loadExtensions) and as an isolated extension does. Its admission is answered here, since it takes no turn in the cell's process.
+		for name, memberErr := range unresolved {
+			if admission := admissionFor(ctx, name); admission != nil {
+				admission.publish(nil, memberErr)
+			}
+		}
+		if len(nodeExts) == 0 {
+			return nil, &packedAcceptError{perMember: unresolved}
+		}
+		cell.Extensions = slices.DeleteFunc(slices.Clone(cell.Extensions), func(cfg ExtConfig) bool {
+			_, gone := unresolved[cfg.Name]
+			return gone
+		})
 	}
 	// Claim this attempt's generation before any build/cache work (CNC-002):
 	// see startNodePackedCell's doc comment.
@@ -364,14 +382,24 @@ func (h *Host) stagePackedNode(ctx context.Context, cell CellSpec, oldByName map
 	rep.BinaryPath = packed.BinaryPath
 	rep.Cached = packed.Cached
 	staged, _, err := h.startNodePackedCell(ctx, packed, generation)
+	var acceptErr *packedAcceptError
 	if err != nil {
-		if acceptErr, ok := errors.AsType[*packedAcceptError](err); ok {
-			rep.Replaced = anyExisting(cell.Extensions, oldByName)
-			return staged, acceptErr
+		var ok bool
+		if acceptErr, ok = errors.AsType[*packedAcceptError](err); !ok {
+			return nil, fmt.Errorf("reload packed Node cell %s: %w", cell.Key, err)
 		}
-		return nil, fmt.Errorf("reload packed Node cell %s: %w", cell.Key, err)
 	}
 	rep.Replaced = anyExisting(cell.Extensions, oldByName)
+	if len(unresolved) != 0 {
+		// The members that did load are in staged; the failures a caller without admissions reads are the ones named here.
+		if acceptErr == nil {
+			acceptErr = &packedAcceptError{perMember: make(map[string]error, len(unresolved))}
+		}
+		maps.Copy(acceptErr.perMember, unresolved)
+	}
+	if acceptErr != nil {
+		return staged, acceptErr
+	}
 	return staged, nil
 }
 
