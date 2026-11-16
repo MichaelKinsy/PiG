@@ -154663,7 +154663,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestExportToHTMLChoosesTheNamedThenSettingsTheme",
-        "test:coding/session_state_test.go#TestSessionExportToHTML"
+        "test:coding/session_export_html_test.go#TestSessionExportToHTML"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -154686,7 +154686,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestExportToHTMLChoosesTheNamedThenSettingsTheme",
-        "test:coding/session_state_test.go#TestSessionExportToHTML"
+        "test:coding/session_export_html_test.go#TestSessionExportToHTML"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -154885,7 +154885,7 @@
       "evidence": [
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDeclaresDirectlyExposedMCPToolsToTheModel",
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPListsAndReadsResourcesWithCodexResourceTools",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed"
+        "test:coding/base_tools_override_test.go#TestBaseToolsOverrideReplacesTheBuiltInToolsAndIsActive"
       ]
     },
     {
@@ -154907,7 +154907,7 @@
       "evidence": [
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDeclaresDirectlyExposedMCPToolsToTheModel",
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPListsAndReadsResourcesWithCodexResourceTools",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed"
+        "test:coding/base_tools_override_test.go#TestBaseToolsOverrideReplacesTheBuiltInToolsAndIsActive"
       ]
     },
     {
@@ -156922,8 +156922,8 @@
       ],
       "evidence": [
         "test:coding/session_default_tool_modifiers_upstream_test.go#TestNewSessionRejectsInvalidToolModifierOptions",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed",
-        "test:coding/base_tools_override_test.go#TestUsesDefaultToolsIsDerivedAndOverridable"
+        "test:coding/base_tools_override_test.go#TestUsesDefaultToolsIsDerivedAndOverridable",
+        "test:coding/session_active_builtin_extension_tools_test.go#TestNewSessionAllowedToolsActivateInCallerOrder"
       ]
     },
     {
@@ -168130,8 +168130,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed",
-        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost"
+        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost",
+        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpriteSetRepaintsTheHeaderThroughTheInteractiveHost"
       ]
     },
     {
@@ -168152,8 +168152,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed",
-        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost"
+        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost",
+        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpriteSetRepaintsTheHeaderThroughTheInteractiveHost"
       ]
     },
     {
