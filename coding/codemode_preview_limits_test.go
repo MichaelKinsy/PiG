@@ -1,4 +1,4 @@
-//go:build !pig_strip_codemode
+//go:build !pig_strip_codemode && !pig_strip_node_extensions
 
 package coding
 

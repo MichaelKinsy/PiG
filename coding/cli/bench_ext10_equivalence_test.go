@@ -1,4 +1,4 @@
-//go:build !pig_strip_extension_sdk_go
+//go:build !pig_strip_extension_sdk_go && !pig_strip_node_extensions
 
 // SPDX-License-Identifier: MIT
 
