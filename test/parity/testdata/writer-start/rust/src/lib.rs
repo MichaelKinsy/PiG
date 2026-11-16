@@ -30,5 +30,11 @@ pub fn new_extension() -> Extension {
             CommandResult::Ok
         },
     );
+    ext.command("writer-renew", "Replace the session", |ctx, _args| {
+        match ctx.new_session(json!({})) {
+            Ok(_) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        }
+    });
     ext
 }

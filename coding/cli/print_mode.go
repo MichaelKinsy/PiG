@@ -435,7 +435,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	var currentCommands atomic.Pointer[headlessCommandCatalog]
 	var detachModelRegistry, stopRunSignal, stopHostState func()
 	var publishedCommands atomic.Pointer[headlessCommandCatalog]
-	// bind wires the Session to this mode as upstream rebindSession does: extension bindings, command actions, then the event subscription. It emits session_start for the Session's own reason, which is startup for the first Session.
+	// bind wires the Session to this mode as upstream rebindSession does: the event subscription, then extension bindings and command actions. It emits session_start for the Session's own reason, which is startup for the first Session.
 	// A reload binds the same Session to a replacement runner: the Session has reloaded its resources and rebuilt its system prompt, and the event subscription stays (agent-session.ts:3575-3625).
 	bind := func(ctx context.Context, session *coding.Session, event extension.SessionStartEvent, reloading bool) error {
 		services := session.Services()
@@ -453,16 +453,13 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		stopRunSignal = coding.WatchSessionRunSignal(bridge, session)
 		stopHostState = coding.WatchHostState(bridge, session)
 		coding.BindSessionReadActions(bridge, current, session.CWD(), session.Inner().GetSessionDir())
-		// writing is set once session_start is dispatched; a reload binds the same Session, whose writer stays subscribed.
-		var writing atomic.Bool
-		writing.Store(reloading)
+		// print-mode.ts:84-98 subscribes the writer before `await session.bindExtensions()`, so what a session_start handler emits (events, entry_appended) is written. A reload binds the same Session, whose writer stays subscribed.
+		if !reloading {
+			subscribe(session)
+		}
 		var emitEntryAppended func(RPCEntryAppendedEvent)
 		if opts.Mode == "json" {
-			emitEntryAppended = func(event RPCEntryAppendedEvent) {
-				if writing.Load() {
-					writeJSONLine(jsonOut, event)
-				}
-			}
+			emitEntryAppended = func(event RPCEntryAppendedEvent) { writeJSONLine(jsonOut, event) }
 		}
 		bindSessionAppendEntry(bridge, current, emitEntryAppended)
 		runner := session.ExtensionRunner()
@@ -515,11 +512,6 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		if err := session.EmitSessionStartTransition(event.Reason, event.PreviousSessionFile); err != nil {
 			return err
 		}
-		// print-mode.ts:76-108 subscribes the writer after `await session.bindExtensions()`, so what a session_start handler emitted (events, entry_appended) is not written. A reload keeps the writer subscribed.
-		if !reloading {
-			subscribe(session)
-		}
-		writing.Store(true)
 		commands.promptTemplates = session.PromptTemplates()
 		commands.skills = session.ResourceLoader().GetSkills().Skills
 		publishedCommands.Store(new(commands))

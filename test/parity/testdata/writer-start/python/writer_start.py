@@ -20,4 +20,5 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.on_event("session_start", session_start)
     ext.command("writer-after", "Append, name and send from a command", after)
+    ext.command("writer-renew", "Replace the session", lambda ctx, _args: ctx.new_session())
     return ext

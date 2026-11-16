@@ -17,4 +17,8 @@
                    (pig:ctx-append-entry ctx "writer-after" (pig:obj "text" "from-command"))
                    (pig:ctx-set-session-name ctx "after-name")
                    (pig:ctx-send-message ctx "writer-after" "after-message" :display nil :trigger-turn :false)))
+    (pig:command ext "writer-renew" "Replace the session"
+                 (lambda (ctx args)
+                   (declare (ignore args))
+                   (pig:ctx-new-session ctx)))
     ext))

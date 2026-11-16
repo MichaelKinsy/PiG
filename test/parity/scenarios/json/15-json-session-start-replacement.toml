@@ -1,0 +1,47 @@
+# Behavior family: json
+# Surface: the --mode json stream across an extension replacing the session (ctx.newSession) when a session_start handler appends an entry.
+#
+# Upstream evidence (Pi 6aab551a79ba, #12232; test/suite/print-mode-session-start-events.test.ts): runPrintMode's rebindSession subscribes the JSON writer before `session.bindExtensions(...)`, at startup and for the replacement session, so the entry_appended of the startup session_start handler (data "startup") and of the new session's (data "new") are both on the stream; the new session writes no header. Before that commit the stream carried neither; the oracle carries the commit through the backport block of automation/gen/pi-post-release-backports.mjs.
+# Entry IDs and clocks are masked; member order and every other byte compare.
+name = "15-json-session-start-replacement"
+description = "--mode json writes the entry a session_start handler appends at startup and after ctx.newSession()"
+covers = ["packages/coding-agent/src/modes/print-mode.ts", "packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--mode", "json", "--model", "test-faux/faux-1", "--system-prompt", "JSON event probe.", "--no-context-files", "--no-skills", "/renew"]
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions", "--no-session"]
+pig_extensions = ["../../scenarios/json/testdata/ext/session-start-renew.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../../scenarios/json/testdata/ext/session-start-renew.mjs"]
+pi_args = ["--no-extensions", "--no-session"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_normalized_equal = true
+stderr_equal = true
+both_contain = ['"customType":"start-marker","data":"startup"', '"customType":"start-marker","data":"new"']
+both_not_contain = ['extension_error']
+
+# normalize-rationale: Only entry IDs, independent clocks and the header's UUID and cwd vary; every member name, order and value stays byte-compared.
+[[assert.normalize_replace]]
+pattern = '"(id|parentId)":"[0-9a-f-]{8,36}"'
+with = '"$1":"<ID>"'
+reason = "Generated entry keys and the session header id are random per run; keep each member's name and position."
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'
+reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+[[assert.normalize_replace]]
+pattern = '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"'
+with = '"timestamp":"2000-01-01T00:00:00.000Z"'
+reason = "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+[[assert.normalize_replace]]
+pattern = '"cwd":"[^"]*"'
+with = '"cwd":"<CWD>"'
+reason = "D2: each binary runs in its own isolated cwd."
