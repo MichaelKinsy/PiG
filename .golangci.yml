@@ -129,6 +129,19 @@ linters:
       # releases CDN (trusted source), not arbitrary user input
       - linters: [gosec]
         text: "G110:"
+      # gosec: request forgery via taint, in the two files where gosec reports it only in some runs
+      # on identical bytes (install_telemetry.go in two of six runs, remote_catalog_provider.go in
+      # one). An inline pragma there fails nolintlint in every run where gosec stays silent, and
+      # a repository-wide exclusion would make the pragmas that other sites carry (they fire in every
+      # run) unused. The request URL of install_telemetry.go is PIG_INSTALL_TELEMETRY_URL from the
+      # CLI user's own environment or a constant; remote_catalog_provider.go requests the catalog
+      # base URL its caller passes or a constant. A repository the user opened can name a URL only
+      # through project settings.json, mcp.json or extensions, and the boundary for that is project
+      # trust, enforced in internal/codingagent/trust_manager.go (trustRequiringProjectConfigResources),
+      # not by this rule.
+      - linters: [gosec]
+        path: "internal/codingagent/(install_telemetry|remote_catalog_provider)\\.go"
+        text: "G704:"
       # staticcheck: error strings should not be capitalized: upstream
       # error messages are user-facing and intentionally capitalized
       - linters: [staticcheck]
