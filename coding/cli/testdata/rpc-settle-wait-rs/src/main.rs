@@ -29,7 +29,10 @@ fn main() {
     // Handlers of the two events Pi emits without awaiting them: with RPC_NAME_ADDR they wait on the peer, with RPC_NAME_BUSY_MS they compute for that long without waiting, and then they notify.
     for event in ["session_info_changed", "thinking_level_select"] {
         ext.on_event(event, move |ctx, _| {
-            let busy = std::env::var("RPC_NAME_BUSY_MS").ok().and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
+            let busy = std::env::var("RPC_NAME_BUSY_MS")
+                .ok()
+                .and_then(|v| v.parse::<u64>().ok())
+                .unwrap_or(0);
             if std::env::var("RPC_NAME_ADDR").is_ok() || busy > 0 {
                 let end = std::time::Instant::now() + std::time::Duration::from_millis(busy);
                 while std::time::Instant::now() < end {
