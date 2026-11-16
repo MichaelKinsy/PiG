@@ -1686,9 +1686,20 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	defer func() { err = errors.Join(err, m.stopRun()) }()
 	defer m.closeViewEndpoint()
 	if err := m.Init(ctx); err != nil {
-		return err
+		return m.startupEndError(ctx, err)
 	}
 	return m.run(ctx)
+}
+
+// startupEndError is the result of a Run whose startup failed with err. A SIGTERM or SIGHUP that arrives while startup runs is disposed by the signal's
+// goroutine (ShutdownFromSignal) before main cancels the root context, and the startup step it interrupts (the terminal colors, an awaited handler, an
+// owner-loop step of the bind) then reports the cancellation. That is the end of a session that shut down, which Pi's shutdown({ fromSignal }) ends with
+// process.exit(0) whatever init() is awaiting (interactive-mode.ts:4483-4494); main reports an error from Run as "Error: ..." with status 1.
+func (m *InteractiveMode) startupEndError(ctx context.Context, err error) error {
+	if errors.Is(err, context.Canceled) && ctx.Err() != nil && m.signalShutdownDone.Load() {
+		return nil
+	}
+	return err
 }
 
 // startupMark is the optional startup timing hook, a no-op when unset.
