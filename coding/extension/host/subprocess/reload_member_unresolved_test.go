@@ -17,14 +17,20 @@ func TestNodeCellLoadsItsOtherMembersWhenOneEntryPointIsGone(t *testing.T) {
 	for _, entry := range []string{"file", "package"} {
 		for _, phase := range []string{"startup", "reload"} {
 			t.Run(entry+"/"+phase, func(t *testing.T) {
+				var texts []string
 				for _, isolation := range []string{"shared-ok", "isolated"} {
-					loaded, failures := loadWithMissingMiddleEntry(t, entry, phase, isolation)
+					loaded, failures, root := loadWithMissingMiddleEntry(t, entry, phase, isolation)
 					if !slices.Equal(loaded, []string{"first", "last"}) {
 						t.Errorf("%s: loaded %v, want first and last", isolation, loaded)
 					}
 					if len(failures) != 1 || !strings.Contains(failures[0], `"middle"`) || strings.Contains(failures[0], `"first"`) || strings.Contains(failures[0], `"last"`) {
 						t.Errorf("%s: failures %q, want the middle extension's alone", isolation, failures)
 					}
+					texts = append(texts, strings.ReplaceAll(strings.Join(failures, "\n"), root, "<root>"))
+				}
+				// A member of a shared cell reports its missing entry point as the same extension loaded isolated does.
+				if texts[0] != texts[1] {
+					t.Errorf("shared-ok reports %q, isolated reports %q: want the same text", texts[0], texts[1])
 				}
 			})
 		}
@@ -32,10 +38,10 @@ func TestNodeCellLoadsItsOtherMembersWhenOneEntryPointIsGone(t *testing.T) {
 }
 
 // loadWithMissingMiddleEntry loads three Node extensions whose configs were resolved while their files existed, with the middle one's entry point removed before the
-// load (startup) or between a load and a reload (reload). It returns the loaded extensions' names in order and the failure messages the load reported.
-func loadWithMissingMiddleEntry(t *testing.T, entry, phase, isolation string) (loaded, failures []string) {
+// load (startup) or between a load and a reload (reload). It returns the loaded extensions' names in order, the failure messages the load reported and the directory the extensions were written to.
+func loadWithMissingMiddleEntry(t *testing.T, entry, phase, isolation string) (loaded, failures []string, root string) {
 	t.Helper()
-	root := t.TempDir()
+	root = t.TempDir()
 	source := func(command string) string {
 		return `export default function (pi) {
   pi.registerCommand("` + command + `", {description: "probe", handler: async () => {}});
@@ -104,7 +110,7 @@ func loadWithMissingMiddleEntry(t *testing.T, entry, phase, isolation string) (l
 		}
 		failures = h.LastReloadReport().Issues
 	}
-	return extensionNames(h), failures
+	return extensionNames(h), failures, root
 }
 
 func extensionNames(h *Host) []string {

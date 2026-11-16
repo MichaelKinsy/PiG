@@ -306,6 +306,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-274fef9](#bf-274fef9) | ai: an images API provider now refuses a model of another api with `Mismatched api: <model api> expected… | PiG's own defect | All platforms | Unreleased |
 | [BF-27a1650](#bf-27a1650) | The keybindings manager's key text and key matching now cover every keybinding the merged table defines… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27b7a4e](#bf-27b7a4e) | Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail… | A fix Pi shipped that PiG ported | Windows, WSL | 0.7.0 |
+| [BF-27c81a5](#bf-27c81a5) | A Node extension whose entry point is gone no longer keeps the extensions that share its process from loading | PiG's own defect | All platforms | Unreleased |
 | [BF-27ddc30](#bf-27ddc30) | A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27e5b1e](#bf-27e5b1e) | `pig piglet remove <name> --source` now deletes the prompt file `pig piglet add` copied for that Piglet, so… | PiG's own defect | All platforms | Unreleased |
 | [BF-27e9bc8](#bf-27e9bc8) | `@earendil-works/pi-agent-core`, `pi-tui` and `pi-ai` (and `pi-ai/models`, `pi-ai/oauth`… | PiG's own defect | All platforms | 0.7.0 |
@@ -1413,6 +1414,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-98f0403-2](#bf-98f0403-2) | `pig --help` in a build that strips a built-in no longer shows the `pig --tools +codemode` example when… | PiG's own defect | All platforms | Unreleased |
 | [BF-9910d00](#bf-9910d00) | An extension that declared one provider name in several `registerProvider` calls while it loaded kept only… | PiG's own defect | All platforms | Unreleased |
 | [BF-992f3cb](#bf-992f3cb) | A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-994aab4](#bf-994aab4) | In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and… | PiG's own defect | All platforms | Unreleased |
 | [BF-99a06cf](#bf-99a06cf) | Interactive startup paints the editor and footer first and adds the startup header once the terminal reports… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-99d6e28](#bf-99d6e28) | Resizing an image no longer differs from Photon's by one in a channel of a rare pixel | PiG's own defect | All platforms | 0.7.0 |
 | [BF-99faf66](#bf-99faf66) | In interactive mode a frame that changed no row could follow the frame that carries a reply, when the frame… | PiG's own defect | All platforms | Unreleased |
@@ -1833,6 +1835,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d133e3d](#bf-d133e3d) | Codemode scripts that patch built-ins, for example `Array.prototype.toJSON = ...`, no longer break the tool… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-d133e3d-2](#bf-d133e3d-2) | MCP OAuth sign-in no longer fails with `invalid_redirect_uri` on OpenID Connect servers: client registration… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-d134159](#bf-d134159) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-d13855f](#bf-d13855f) | A Node extension whose file or package entry point is gone is now reported with the same error whether it… | PiG's own defect | All platforms | Unreleased |
 | [BF-d1785c8](#bf-d1785c8) | Ctrl+P and Shift+Ctrl+P now cycle to the only model in scope when the active model is outside it, instead of… | PiG's own defect | All platforms | Unreleased |
 | [BF-d1848ed](#bf-d1848ed) | extensions: `/reload` left on screen what the replaced extensions had set and Pi resets when a reload begins… | PiG's own defect | All platforms | Unreleased |
 | [BF-d1af7ae](#bf-d1af7ae) | The crash message of a deterministic code mode VM that is told a result number it cannot take now reads as… | PiG's own defect | All platforms | 0.7.0 |
@@ -6257,6 +6260,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `27b7a4ee65` (2026-10-30, #11592)
 - **Tests:** `internal/codingagent/helper_dir_test.go::TestBrowserLauncherRunsFromTheRoot`, `internal/codingagent/helper_dir_test.go::TestClipboardCommandRunsFromTheRoot`, `internal/codingagent/helper_dir_test.go::TestExtensionEditorShowsExternalEditorFailures`, `internal/codingagent/helper_dir_test.go::TestOpenExternalEditorReportsFailures`
 - **Release note:** Clipboard image paste, copy through `powershell.exe` and opening the browser for sign-in no longer fail silently on WSL when the working directory is deep: the helpers now start from `/`, because WSL cannot start Windows programs from a working directory whose `\\wsl.localhost\...` path exceeds MAX_PATH. The external editor keeps the working directory on purpose. An external editor that fails now says so (`Failed to launch external editor: <command>`, `External editor exited with code N; prompt unchanged`, or the signal name) in the status line, and inline in the extension editor dialog, instead of being redrawn over silently. Carried forward from Pi 6454d07e (earendil-works/pi#11592), past the 1.4.0+b3a29f11 pin.
+
+### BF-27c81a5
+
+**A Node extension whose entry point is gone no longer keeps the extensions that share its process from loading**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension whose entry point is gone no longer keeps the extensions that share its process from loading.
+- **Root cause:** A shared Node cell resolved the entry points of all its members before it started, and one member whose file or package entry no longer resolved failed the whole cell: every member's load was answered with that one member's error, so the extensions beside it were not loaded either. Pi loads each extension on its own and reports one error per extension that cannot be loaded (loader.ts loadExtensions), and packed mode is observationally identical to isolated mode.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `27c81a52d1` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/reload_member_unresolved_test.go::TestNodeCellLoadsItsOtherMembersWhenOneEntryPointIsGone`
+- **Release note:** A Node extension whose entry point is gone no longer keeps the extensions that share its process from loading. The extension whose file or package entry does not resolve now fails alone, with its own error, and the others load, at startup and at a reload, as Pi reports one error per extension that cannot be loaded; before, every extension of the shared Node process was reported with the missing one's error and none was loaded. Present since 0.2.0.
 
 ### BF-27ddc30
 
@@ -21606,6 +21623,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `ai/anthropic_messages_payload_oracle_test.go::TestAnthropicMessagesPayloadMatchesPi` and 8 more in docs/bug-ledger.json
 - **Release note:** A `before_provider_request` replacement that is not an object leaves Anthropic Messages as Pi's `{ ...value, stream: true }` (`null`, a number or a boolean send `{"stream":true}`, an array or string its index members), `"betas": null` sends no `anthropic-beta` header, array-index keys lead a replacement body as in JavaScript, and a Codex WebSocket body's own `type` keeps the first position; a Codex payload hook that returns `null` no longer crashes PiG.
 
+### BF-994aab4
+
+**In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and interactive modes.
+- **Root cause:** RPC mode gave its extension host the set of extensions it started with as the resolver of every reload (cli_runtime_build.go passed no reload resolver, so setExtensionConfigLoader fell back to the startup configs), where print and interactive mode discover the extension files again as Pi's resource loader does (resource-loader.ts DefaultResourceLoader.reload). In RPC mode an extension command that removed a sibling's file and awaited ctx.reload() left the removed extension configured, and in a shared Node cell its missing file failed the load of the caller beside it; a file written before the reload was never loaded.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `994aab45cb` (2026-11-16)
+- **Tests:** `coding/cli/rpc_reload_membership_test.go::TestRPCReloadDropsAnExtensionRemovedFromDisk`, `coding/cli/rpc_reload_membership_test.go::TestRPCReloadLoadsAnExtensionAddedToDisk`
+- **Release note:** In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and interactive modes. RPC mode reloaded the extensions it had started with, so an extension command that removed a sibling extension's file and awaited `ctx.reload()` left the removed extension configured, and, when the two shared a Node process, the missing file failed the load of the calling extension as well: the caller was gone after the reload. An extension file added before the reload was never loaded. Present since 0.2.0.
+
 ### BF-99a06cf
 
 **Interactive startup paints the editor and footer first and adds the startup header once the terminal reports…**
@@ -27457,6 +27488,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `d134159107` (2026-11-07)
 - **Tests:** None recorded.
+
+### BF-d13855f
+
+**A Node extension whose file or package entry point is gone is now reported with the same error whether it…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension whose file or package entry point is gone is now reported with the same error whether it runs in a process of its own or shares one with other Node extensions (`build "name": ...`, in the startup error and in the reload's issues); a member of a shared process was reported as `extension "name": stat ...` or `extension "name": package ... declares pi.extensions ... but none exist`.
+- **Root cause:** A member of a shared Node cell whose file or package entry does not resolve was reported with the cell's own wording (`extension "x": stat ...`), while the same extension loaded on its own is reported with its build's (`build "x": ...`), at startup and in a reload's issues. The member now takes the error the builder gives the same source, so the text is the same in both realizations.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d13855f45b` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/reload_member_unresolved_test.go::TestNodeCellLoadsItsOtherMembersWhenOneEntryPointIsGone`
+- **Release note:** A Node extension whose file or package entry point is gone is now reported with the same error whether it runs in a process of its own or shares one with other Node extensions (`build "name": ...`, in the startup error and in the reload's issues); a member of a shared process was reported as `extension "name": stat ...` or `extension "name": package ... declares pi.extensions ... but none exist`. Present since 0.2.0.
 
 ### BF-d1785c8
 

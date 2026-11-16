@@ -354,7 +354,15 @@ func (h *Host) stagePackedNode(ctx context.Context, cell CellSpec, oldByName map
 	}
 	if len(unresolved) != 0 {
 		// A member whose entry point does not resolve fails alone, with its own error, and the others load, as Pi's loader reports one error per extension
-		// (loader.ts loadExtensions) and as an isolated extension does. Its admission is answered here, since it takes no turn in the cell's process.
+		// (loader.ts loadExtensions) and as an isolated extension does. Its admission is answered here, since it takes no turn in the cell's process. Its error
+		// is the one an isolated extension gets from the same source, its build's.
+		for _, cfg := range cell.Extensions {
+			if _, gone := unresolved[cfg.Name]; gone && cfg.Source != "" {
+				if _, buildErr := h.builder.BuildContext(ctx, cfg.Name, cfg.Source); buildErr != nil {
+					unresolved[cfg.Name] = fmt.Errorf("build %q: %w", cfg.Name, buildErr)
+				}
+			}
+		}
 		for name, memberErr := range unresolved {
 			if admission := admissionFor(ctx, name); admission != nil {
 				admission.publish(nil, memberErr)
