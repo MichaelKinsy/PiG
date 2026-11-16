@@ -419,7 +419,7 @@ func (runtime *ModelRuntime) GetModels(providerID ...string) []*ai.Model {
 	return slices.DeleteFunc(models, func(model *ai.Model) bool { return model.ProviderMeta.ProviderID != providerID[0] })
 }
 
-// runtimeModels lists GetModels() as resolver models without building a plain bundled catalog's models: such a model's BuildNativeModel
+// runtimeModels lists GetModels() as resolver models without building a plain bundled catalog's models: such a model's BuildSource
 // builds the bound model GetModels lists.
 func (runtime *ModelRuntime) runtimeModels() []icodingagent.RuntimeModel {
 	if runtime == nil || runtime.services == nil {
@@ -427,24 +427,27 @@ func (runtime *ModelRuntime) runtimeModels() []icodingagent.RuntimeModel {
 	}
 	sources := runtime.services.Registry().GetAllModelDataSources()
 	models := make([]icodingagent.RuntimeModel, 0, len(sources))
-	for _, source := range sources {
+	// The entry is read when the model is built, so a routing variant (D199) is derived only for a model that is kept. One function builds
+	// every listed model: a model's own state is its source, which points into sources.
+	build := func(source *icodingagent.ModelDataSource) *ai.Model {
+		return runtime.bindCatalogModel(source.Entry().ToModel())
+	}
+	for i := range sources {
+		source := &sources[i]
 		generated := source.Generated
 		if generated == nil {
 			models = append(models, runtimeModelOf(runtime.bindCatalogModel(source.Model)))
 			continue
 		}
-		listed := source.Listed
 		// A catalog entry's model reasons when the entry does (ToCapabilities reports a MaxThinking only for a reasoning entry).
 		models = append(models, icodingagent.RuntimeModel{
-			Provider:  generated.Provider,
-			ID:        source.ID(),
-			Name:      source.Name(),
-			Reasoning: generated.Reasoning,
-			Headers:   ai.ProviderHeadersFromStrings(generated.Headers),
-			// The entry is read when the model is built, so a routing variant (D199) is derived only for a model that is kept.
-			BuildNativeModel: func() *ai.Model {
-				return runtime.bindCatalogModel(icodingagent.ModelDataSource{Generated: generated, Listed: listed}.Entry().ToModel())
-			},
+			Provider:    generated.Provider,
+			ID:          source.ID(),
+			Name:        source.Name(),
+			Reasoning:   generated.Reasoning,
+			Headers:     ai.ProviderHeadersFromStrings(generated.Headers),
+			Source:      source,
+			BuildSource: build,
 		})
 	}
 	return overlayVirtualModels(&runtime.virtuals, models, func(model icodingagent.RuntimeModel) (string, string) { return model.Provider, model.ID }, runtimeModelOf)
