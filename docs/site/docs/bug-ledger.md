@@ -1185,6 +1185,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8392c29](#bf-8392c29) | MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's… | PiG's own defect | All platforms | Unreleased |
 | [BF-83d0c73](#bf-83d0c73) | Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured… | PiG's own defect | All platforms | Unreleased |
 | [BF-83d5488](#bf-83d5488) | `pig install <dir>` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-83ee534](#bf-83ee534) | The exit's terminal restore is one uninterrupted sequence of writes now: a title an extension sets, an OSC 52… | PiG's own defect | All platforms | Unreleased |
 | [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
 | [BF-844d215](#bf-844d215) | Repairing a partial tool-call arguments text follows partial-json's `obj["__proto__"] = value`: a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8476760](#bf-8476760) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -1373,6 +1374,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-928e15c-78](#bf-928e15c-78) | xAI OAuth login and refresh now read the server's response the way Pi does: a body that is not a JSON object… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-8](#bf-928e15c-8) | OpenAI Codex and OpenRouter OAuth responses read ill-formed UTF-8 and a body that fails to read as `fetch`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-928e15c-9](#bf-928e15c-9) | An OpenAI Codex login or refresh whose success response is not JSON reports JavaScript's own message, as Pi… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-92adb39](#bf-92adb39) | PiG's raw mode is the one Pi's terminal is in now (libuv's `UV_TTY_MODE_RAW`, which Node's `setRawMode(true)`… | PiG's own defect | Windows | Unreleased |
 | [BF-92da987](#bf-92da987) | Codemode no longer reserves its whole 256 MiB script-memory limit when a session starts: the QuickJS linear… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-930c88e](#bf-930c88e) | Claude models with per-message effort no longer fail with `Invalid effort level` on accounts whose… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9327bc7](#bf-9327bc7) | A closed Harness or Session no longer stays reachable from Go's timer heap | PiG's own defect | All platforms | 0.7.0 |
@@ -18445,6 +18447,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/package_local_directory_extension_test.go::TestInstalledLocalDirectoryWithoutPackageResourcesLoadsAsAnExtension`, `coding/cli/package_update_workers_test.go::TestPackageUpdateChecksBoundWorkers`, `coding/extension/host/subprocess/builder_node_entry_test.go::TestResolveNodeEntrypointImportsAnIndexMjsDirectoryAsJiti`, `coding/resource_loader_extend_test.go::TestResourceLoaderInterfaceExtendsAndReloads`, `internal/codingagent/interactive_test.go::TestHasAssistantUsageAfterCompaction`, `internal/codingagent/tools/bash_spawn_hook_test.go::TestBashSpawnHookTypeIsSharedByPowerShell`, `internal/packagemanager/local_file_source_test.go::TestLocalDirectoryPackageSourceThatDescribesResourcesIsNotItselfAnExtension`, `internal/packagemanager/local_file_source_test.go::TestLocalDirectoryPackageSourceWithoutResourcesIsItselfAnExtension` and 4 more in docs/bug-ledger.json
 - **Release note:** `pig install <dir>` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/` or `themes/` directory now loads the directory itself as an extension, as `pi install` does. Previously Pig recorded the Package and loaded nothing from it.
 
+### BF-83ee534
+
+**The exit's terminal restore is one uninterrupted sequence of writes now: a title an extension sets, an OSC 52…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The exit's terminal restore is one uninterrupted sequence of writes now: a title an extension sets, an OSC 52 copy and the terminal progress keepalive, which three other goroutines wrote at any moment, no longer land inside the stop's bytes (between the cursor show and the bracketed paste off, between the alternate screen's leave and the transcript print) and, when SIGTERM or SIGHUP ended the session, no longer follow them.
+- **Root cause:** An extension's ctx.ui.setTitle, an OSC 52 copy and the OSC 9;4 progress keepalive are written by goroutines of their own. The exit's stop (cursor show, bracketed paste off, keyboard protocol pop, alternate screen leave) did not hold the terminal against them, so their bytes could land between the stop's writes, and after a signal's stop, where Pi's process.exit(0) leaves no callback to run (tui.ts stop() :1046-1056 is one synchronous call; interactive-mode.ts :4491-4494 ends the process right after it).
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `83ee534a7d` (2026-11-16)
+- **Tests:** `internal/codingagent/interactive_exit_storm_pty_test.go::TestExitStopSequenceHoldsNoWriterOfAnotherGoroutine`, `internal/codingagent/terminal_stop_transaction_test.go::TestHostWriteMadeAfterTheStopIsDroppedForASignalOnly`, `internal/codingagent/terminal_stop_transaction_test.go::TestHostWriteRequestedBeforeTheStopIsWrittenBeforeIt`, `tui/stop_transaction_test.go::TestForeignWriteStormHoldsNoByteInsideAStop`, `tui/stop_transaction_test.go::TestSealedStopDropsTheForeignWritesMadeDuringItAndAfterIt`
+- **Release note:** The exit's terminal restore is one uninterrupted sequence of writes now: a title an extension sets, an OSC 52 copy and the terminal progress keepalive, which three other goroutines wrote at any moment, no longer land inside the stop's bytes (between the cursor show and the bracketed paste off, between the alternate screen's leave and the transcript print) and, when SIGTERM or SIGHUP ended the session, no longer follow them. Pi's `stop()` is one synchronous call on a single thread, so nothing of its own event loop writes inside it and, after a signal, `process.exit(0)` follows it at once. A recording of the exit, or a terminal that handles the bytes in order, saw an `OSC 0`, an `OSC 52` or an `OSC 9;4` between PiG's reset sequences or after the last of them; the screen a user sees is the same. A write requested before the stop begins is still written, before it (a copy requested just before quit reaches the clipboard); one requested while it runs waits for it and, for a quit by keys, follows it as in Pi (the title Pi's dispose sets); one requested after a signal's stop is dropped, as the exit drops it in Pi. An external editor's or a suspend's stop holds the terminal the same way and gives it back when the TUI starts again. Present in every release from v0.2.0 through v0.7.0 (checked by tag: v0.2.0 and v0.7.0 each write the title, the progress keepalive and the OSC 52 copy from goroutines of their own, outside the restore).
+
 ### BF-83fea11
 
 **On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was…**
@@ -21063,6 +21079,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `928e15cd57` (2026-10-14)
 - **Tests:** None recorded.
 - **Release note:** An OpenAI Codex login or refresh whose success response is not JSON reports JavaScript's own message, as Pi does (for example `Unexpected token 'n', "not json" is not valid JSON`, without a PiG prefix), and one whose body is cut off reports `terminated`, as Node's fetch does.
+
+### BF-92adb39
+
+**PiG's raw mode is the one Pi's terminal is in now (libuv's `UV_TTY_MODE_RAW`, which Node's `setRawMode(true)`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** PiG's raw mode is the one Pi's terminal is in now (libuv's `UV_TTY_MODE_RAW`, which Node's `setRawMode(true)` uses), not the `cfmakeraw` mode of `golang.org/x/term`.
+- **Root cause:** Flag by flag (libuv RAW | x/term MakeRaw | what a user or program sees when they differ): iflag BRKINT ICRNL ISTRIP IXON cleared | cleared | equal iflag INPCK cleared | left | parity checking of input stays as set: a serial line only iflag IGNBRK PARMRK INLCR IGNCR left | cleared | a terminal configured with them keeps them in Pi: INLCR/IGNCR change what a key's CR/NL means oflag OPOST left | cleared | with OPOST cleared no output processing at all: ONLCR below is the visible part oflag ONLCR set | not set | a bare LF written to the terminal (a child that shares it, an extension's stray console output, a Go runtime message) returns to column 0 under Pi and moved straight down under PiG; a…
+- **User impact:** Wrong output or ordering
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Fix commits:** `92adb39502` (2026-11-16)
+- **Tests:** `tui/terminal_raw_output_unix_test.go::TestRawModeIsTheModePiRecorded`, `tui/terminal_raw_output_unix_test.go::TestRawModeKeepsTheKernelsNewlineTranslationAsLibuvDoes`
+- **Release note:** PiG's raw mode is the one Pi's terminal is in now (libuv's `UV_TTY_MODE_RAW`, which Node's `setRawMode(true)` uses), not the `cfmakeraw` mode of `golang.org/x/term`. While the TUI runs, the kernel turns a line feed into carriage return plus line feed again, as under Pi: a bare `\n` written to the terminal by a child process that shares it (an extension's stray console output, a program the bash tool starts on the terminal, a Go runtime message) returns to column 0 instead of moving straight down and leaving the next text where the previous line ended (the staircase). The input flag `INPCK` is cleared now (PiG left it as the terminal had it), `IGNBRK`, `PARMRK`, `INLCR`, `IGNCR` and `ECHONL` stay as the terminal had them (PiG cleared them; a terminal configured with `INLCR` or `IGNCR` keeps what they do to Enter, as under Pi), and the mode is applied after the output already written has drained, as libuv does. On Windows the console input mode is exactly `ENABLE_WINDOW_INPUT` plus `ENABLE_VIRTUAL_TERMINAL_INPUT`, as under Pi: selecting text in the window no longer pauses PiG's output (the quick edit flag is cleared); this part was built and vetted for Windows but not run on a console. The terminal mode the shell gets back at exit is unchanged. Present in every release from v0.2.0 through v0.7.0 (checked by tag: each calls `term.MakeRaw`).
 
 ### BF-92da987
 
@@ -34167,7 +34197,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 19
+- Follow-up to unreleased work: 20
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 3
 - test-only: 1

@@ -126,8 +126,11 @@ func exitRestoreSuffix(altActive bool) string {
 
 // RestoreOnExit is Terminal.restoreOnExit (ProcessTerminal.restoreOnExit upstream): it writes before, then this terminal's own mode resets, then after.
 // The write is one synchronous write to the output. It skips the output lock when another goroutine holds it, because
-// that goroutine may be the one stuck on a terminal that went away.
+// that goroutine may be the one stuck on a terminal that went away. It seals the terminal against the writes of other goroutines before it writes (a
+// process.exit() runs no callback after its handler) and takes no part in the stop transaction: a stop that holds the gate may be the writer stuck
+// on a terminal that went away.
 func (t *ProcessTerminal) RestoreOnExit(before, after string) {
+	t.sealForeignWrites()
 	sequence := before
 	if t.progressActiveForExit() {
 		sequence += terminalProgressClearSeq

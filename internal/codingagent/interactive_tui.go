@@ -373,6 +373,7 @@ func (m *InteractiveMode) createInteractiveTui(ctx context.Context) interactiveT
 	if m.opts.TuiMode != "fullscreen" {
 		m.tuiInst = CreateInteractiveTui(InteractiveTuiOptions{TuiMode: "regular", Output: m.rendererOut, Terminal: terminal, LogDirectory: m.opts.AgentDir})
 		m.altScreen = nil
+		m.rememberDrawTerminal()
 		m.tuiInst.SetOnDebug(m.handleDebugCommand)
 		m.theme().attach()
 		m.currentTuiCleanup = func() { cancelUI(); reads.Wait() }
@@ -386,6 +387,7 @@ func (m *InteractiveMode) createInteractiveTui(ctx context.Context) interactiveT
 		OpenURL: func(url string) error { return m.effectiveOpenURL()(url) }, OnRightClickPaste: m.handleRightClickPaste,
 	})
 	m.altScreen = m.tuiInst.(*tui.TuiAltScreen)
+	m.rememberDrawTerminal()
 	m.tuiInst.SetOnDebug(m.handleDebugCommand)
 	m.theme().attach()
 	dispatch := m.autoScrollTickDispatcher(uiCtx)
@@ -429,6 +431,8 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	}
 	m.tuiTornDown = true
 	m.tuiStopped.Store(true)
+	// upstream: interactive-mode.ts:4505-4506 and :4491-4494: a write that a callback of Pi's loop made before shutdown reached stop() ran before it. The writes that other goroutines requested before this stop began (an extension's title, an OSC 52 copy) are queued for the owner loop, which never runs them now: they are written, in order, before the stop's bytes; one requested after goes to the terminal's stop transaction (writeOutsideStop).
+	m.terminalWrites.flushAndClose()
 	// upstream: interactive-mode.ts:7293-7295 (stop() unsubscribes from the Session before it stops the TUI). A quit by keys stops the mode and then disposes the runtime (:4505-4506), so the turn that dispose aborts keeps its provider's errorMessage; a signal disposes first (:4491-4494), so that turn's message is still rewritten.
 	m.unsubscribeSessionListener()
 	m.disposeTheme()
@@ -457,11 +461,12 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	}
 	// upstream: interactive-mode.ts:7054 (stop() disposes the active selector)
 	m.disposeActiveSelector()
-	// Pi's shutdown() turns the theme's color scheme reports off and drains the input (interactive-mode.ts:4491-4493, :4502-4503) BEFORE it calls stop(),
-	// whose first writes are the selector's dispose and this progress clear; so the clear follows the drain's keyboard protocol pop, as here.
+	// upstream: tui.ts stop() (:1046-1056) is one synchronous call, and after a signal's stop() process.exit(0) ends the process (interactive-mode.ts:4491-4494). Pi's shutdown() turns the theme's color scheme reports off and drains the input (:4491-4493, :4502-4503) BEFORE it calls stop(), whose first write is the progress clear below: the callbacks of Pi's loop run until then, and the writes that other goroutines make until here are written where they are made. From here the progress clear, the renderer stops, the transcript print and the terminal restore are one transaction of the terminal: the writes of other goroutines wait behind it and, once it ended, run after it for a quit by keys (Pi's loop runs its callbacks during the dispose that follows stop(), :4506) or are dropped for a signal's. Nothing below calls a write that waits behind the stop (the terminal's own SetTitle and SetProgress).
+	stopTx := m.beginTerminalStop()
+	defer m.endTerminalStop(stopTx, m.exitEndsAtStop())
 	// upstream: interactive-mode.ts stop() at the pin (:7283-7300): disposes the active selector (:7284), then turns the terminal progress off (`this.ui.terminal.setProgress(false)`, :7285-7287) only when the setting shows it, before the footer and the renderer stop. This is the stop path's one progress-off, in Pi's order and under Pi's condition; nothing clears the title: Pi never writes an empty one. The dispose of a quit by keys follows the stop and can wait, for the run it aborts and for extension handlers: a progress still on would go on writing its keep-alive to the restored terminal.
 	if m.opts.Settings.GetShowTerminalProgress() {
-		m.setTerminalProgress(false)
+		m.stopTerminalProgress(stopTx)
 	}
 	// upstream: interactive-mode.ts:7283-7300 (stop() restores the terminal and, as its last step, removes the signal handlers, in one synchronous call, so no signal reaches a handler of the quit after the terminal is cooked; shutdown calls it at :4505, before `await this.runtimeHost.dispose()`, :4506). The quit by keys holds shutdownMu from here to its dispose's end, and a signal that finds it unmarked would wait for that lock: SIGINT for a second, SIGTERM and SIGHUP for ever.
 	if m.quitByKeys {
@@ -490,6 +495,7 @@ func (m *InteractiveMode) stopInteractiveTui() {
 		m.rawRestore()
 		m.rawRestore = nil
 	}
+	m.endTerminalStop(stopTx, m.exitEndsAtStop())
 	if m.frontendCloseErr != nil {
 		fmt.Fprintf(os.Stderr, "Closing native rendering failed: %v\n", m.frontendCloseErr)
 	}

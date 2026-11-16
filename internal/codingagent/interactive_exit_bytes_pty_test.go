@@ -37,6 +37,9 @@ const (
 	exitBytesRunEnv      = "PIG_TEST_EXIT_BYTES_RUN"
 	exitBytesTuiModeEnv  = "PIG_TEST_EXIT_BYTES_TUIMODE"
 	exitBytesRuntimeEnv  = "PIG_TEST_EXIT_BYTES_RUNTIME"
+	// exitBytesStormEnv makes the child write to the terminal from goroutines of its own, from the moment the mode is ready until the process ends: an
+	// extension's title (the path of ExtUIContext.SetTitle), an OSC 52 clipboard copy and the progress indicator's writes.
+	exitBytesStormEnv = "PIG_TEST_EXIT_BYTES_STORM"
 )
 
 // exitTitleOrProgress matches a terminal title (OSC 0) or a progress indicator (OSC 9;4) sequence.
@@ -321,6 +324,9 @@ func TestExitBytesChild(t *testing.T) {
 				mode.HandleAgentEventsOnOwnerLoop(agent.TurnStartEvent{}, agent.AgentEndEvent{})
 			}
 			readyAt = written.len()
+			if os.Getenv(exitBytesStormEnv) == "true" {
+				startExitBytesStorm(mode, terminal)
+			}
 			if err := os.WriteFile(filepath.Join(dir, "ready"), nil, 0o600); err != nil {
 				report.Failure = err.Error()
 			}
@@ -381,3 +387,23 @@ func (h *exitHookRuntime) dispose() {
 
 // close is Runtime.Close's hook step: it runs the hook when the quit's dispose did not.
 func (h *exitHookRuntime) close() { h.dispose() }
+
+// startExitBytesStorm starts the writers that Pi's single event loop would run between its own events and never inside a synchronous stop(): an
+// extension's setTitle, a clipboard OSC 52 copy and the progress indicator. Each writes at its own pace until the process ends.
+func startExitBytesStorm(mode *icodingagent.InteractiveMode, terminal *tui.ProcessTerminal) {
+	for _, write := range []func(){
+		func() { mode.SetExtensionTitleForTest(exitStormMarker) },
+		func() { _ = icodingagent.CopyToClipboard(exitStormMarker) },
+		func() { terminal.SetProgress(true) },
+	} {
+		go func() {
+			for {
+				write()
+				time.Sleep(200 * time.Microsecond)
+			}
+		}()
+	}
+}
+
+// exitStormMarker is the text of the storm's title and clipboard writes.
+const exitStormMarker = "STORM"

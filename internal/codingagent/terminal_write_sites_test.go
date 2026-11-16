@@ -17,11 +17,10 @@ import (
 var terminalWriteSites = map[string]string{
 	"OpenExternalEditor":                        "the TUI is stopped before the editor runs (handleOpenExternalEditor calls ui.stop() first), so no frame exists; Pi writes the notice with process.stdout.write at the same place",
 	"clipboardCopier.emitOSC52":                 "runs through c.ordered, which hands the write to the owner loop while a mode runs (orderClipboardWrites)",
-	"InteractiveMode.writeTerminal":             "the renderer's WriteRaw takes the writer lock; the direct writes run once the TUI stopped",
-	"remoteEditor.TerminalWrite":                "posts the write to the owner loop; the direct write runs only when the loop did not take it, after the TUI stopped",
+	"InteractiveMode.writeDirectOutsideStop":    "the renderer's WriteRaw takes the writer lock; this direct write runs once the TUI stopped or for a renderer that cannot write raw, through the terminal's stop transaction (writeOutsideStop), which orders it before or after a stop",
 	"InteractiveMode.Init":                      "the model scope notice is written before the renderer exists",
 	"presentationTheme.writeThemeNotifications": "the branch that writes to the output runs without a renderer; with one the renderer writes under its lock",
-	"InteractiveMode.setTerminalTitle":          "runs through writeBetweenFrames",
+	"InteractiveMode.setTerminalTitle":          "runs through writeBetweenFrames; the terminal's SetTitle is ordered against a stop (WriteOutsideStop)",
 	"InteractiveMode.setTerminalProgress":       "called on the owner loop (agent events and the teardown); the keepalive goes through the renderer's owner dispatcher",
 }
 

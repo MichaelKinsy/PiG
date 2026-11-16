@@ -601,6 +601,11 @@ type InteractiveMode struct {
 	remoteEditorEvents remoteEventQueue
 	// tuiStopped is set once the TUI stopped, for writers off the owner loop.
 	tuiStopped atomic.Bool
+	// terminalWrites keeps the terminal writes of goroutines other than the owner loop in the order they were made, for the loop to run between frames; the exit's stop writes what the loop never took before its own bytes and closes it (owner_loop.go).
+	terminalWrites terminalWriteQueue
+	// drawTerminal is the terminal the renderer draws on and terminalGate its stop gate, kept by createInteractiveTui for writers that run on goroutines other than the owner loop; terminalGate is unset when that terminal has none.
+	drawTerminal atomic.Pointer[tui.Terminal]
+	terminalGate atomic.Pointer[tui.StopGate]
 	// interruptExiting is set once a SIGINT's exit has begun to end the extension processes (handleInterruptSignal): a quit that the owner loop still serves prints no resume hint beside that exit.
 	interruptExiting atomic.Bool
 	// quitDisposing is set once a quit by keys hands the terminal back (stopInteractiveTui) or has stopped the TUI and begun its dispose (finishInteractiveShutdown), which holds shutdownMu until it returns. A SIGINT, SIGTERM or SIGHUP that arrives then has no shutdown event left to give: interruptShutdown does not wait for that lock, and ExitIfQuitting ends the process.

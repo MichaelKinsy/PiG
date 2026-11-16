@@ -186,11 +186,22 @@ func orderedTerminalWrite(write func()) {
 }
 
 // orderClipboardWrites makes the clipboard helper's OSC 52 writes, which an extension's host call makes on its own goroutine, run between the frames of m's
-// owner loop, as Pi's emitOsc52 is a terminal write on its one event loop. It returns the call that removes the order.
+// owner loop, as Pi's emitOsc52 is a terminal write on its one event loop, and outside the terminal's stop (writeOutsideStop): a copy requested before the exit's
+// stop began is written before it, one made during it after it for a quit by keys, and one made after a signal's stop is dropped, as Pi's process.exit(0) leaves none
+// to run. Only the escape is ordered: the system clipboard is written by the helper's direct writers (clipboardCopier.copy: the native clipboard or the platform's command)
+// on the caller's goroutine, before the escape, whatever the terminal is doing. It returns the call that removes the frame order. A signal's exit keeps the stop
+// gate instead: a copy that a goroutine requests after the stop, while the exit is still ending the process, must find the terminal sealed.
 func (m *InteractiveMode) orderClipboardWrites() (remove func()) {
-	order := m.writeBetweenFrames
+	order := func(write func()) { m.writeBetweenFrames(func() { m.writeOutsideStop(write) }) }
 	terminalWriteOrder.Store(&order)
-	return func() { terminalWriteOrder.CompareAndSwap(&order, nil) }
+	return func() {
+		if !m.exitEndsAtStop() {
+			terminalWriteOrder.CompareAndSwap(&order, nil)
+			return
+		}
+		stopped := func(write func()) { m.writeOutsideStop(write) }
+		terminalWriteOrder.CompareAndSwap(&order, &stopped)
+	}
 }
 
 // copyToClipboard writes text to the system clipboard. Ports upstream

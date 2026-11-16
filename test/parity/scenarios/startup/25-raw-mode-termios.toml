@@ -1,0 +1,32 @@
+# Behavior family: startup
+# Pi 1.5.2 ProcessTerminal.start() (packages/tui/src/terminal.ts) calls process.stdin.setRawMode(true); Node hands that to libuv's uv_tty_set_mode with UV_TTY_MODE_RAW
+# (deps/uv/src/unix/tty.c, libuv 1.52.1 in Node v24): the input flags BRKINT ICRNL INPCK ISTRIP IXON and the local flags ECHO ICANON IEXTEN ISIG are cleared, ONLCR is
+# added to the output flags (the output processing is otherwise left as the terminal had it), CS8 is added to the control flags, VMIN is 1 and VTIME 0. A terminal that
+# stops being the program's gets the mode it had before, whole. The kernel's ONLCR turns each line feed a program writes into CR LF, so Pi's `\r\n` reaches the terminal
+# as `\r\r\n` and a bare line feed written by a child that shares the terminal (or by an extension) returns to column 0; x/term's MakeRaw, which pig used, cleared OPOST
+# and so changed none of that, and cleared the flags IGNBRK PARMRK INLCR IGNCR ECHONL that libuv leaves.
+# The probe starts each binary on a pseudo-terminal whose cooked mode has every flag it reads set, and again with every flag cleared, reads the mode while the program shows
+# its screen and after it has ended (Ctrl+D), and prints the flags that differ from the cooked mode: the two outputs must be equal.
+name = "25-raw-mode-termios"
+description = "The terminal mode while the TUI runs and after it ends is Pi's libuv raw mode: the same flags set, cleared and left alone"
+covers = ["packages/tui/src/terminal.ts"]
+tags = ["fast", "hermetic", "tui", "posix-signals"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# The probe starts the verified harness build (PIG_PARITY_PIG_BIN) and the pinned Pi in extensions/sdk-ts.
+pig_args = ["python3", "test/parity/testdata/raw-termios-probe.py", "pig"]
+pi_args = ["python3", "test/parity/testdata/raw-termios-probe.py", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 120
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["\"cooked_all_flags_cleared\"", "\"cooked_all_flags_set\"", "\"+ONLCR\"", "\"-ICRNL\"", "\"-ISIG\"", "\"after_exit\": []"]
+runs = 3
