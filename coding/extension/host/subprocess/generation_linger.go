@@ -45,7 +45,7 @@ func (h *Host) lingerRemoved(old *managedExt) bool {
 	// The reload invalidated the old runner, so the generation's captured pi and ctx throw Pi's stale message; its bus listeners end with the notice.
 	invalidateGeneration(old)
 	if h.uiBridge != nil {
-		h.uiBridge.ClearExtensionConn(old.config.Name, conn)
+		h.uiBridge.RetireExtensionConn(old.config.Name, conn)
 	}
 	h.releaseMcpServers(old, nil)
 	return true

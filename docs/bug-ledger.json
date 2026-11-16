@@ -10838,6 +10838,30 @@
       ]
     },
     {
+      "id": "BF-33aa6ec",
+      "title": "An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another…",
+      "symptom": "An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another member of the command's shared Go, Rust, Python or Lisp process, as it does in Pi, where the old extension instance outlives the reload its command awaits.",
+      "rootCause": "A shared Go, Rust, Python or Lisp cell runs its members in one process. A reload that removed one member stopped that process at the commit, while the generation of the member whose command had asked for the reload waited for the command to return before it stopped: the command's connection was cut under it, `await ctx.reload()` failed, and the caller was lost. In Pi the old extension instance outlives the reload its command awaits (agent-session.ts:3828-3876), so the command resolves and goes on. A generation with a command still running now takes a hold on its cell's process before any member stops, as a lingering generation does, and its retirement releases it when the command returns.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another member of the command's shared Go, Rust, Python or Lisp process, as it does in Pi, where the old extension instance outlives the reload its command awaits. The reload stopped the shared process while the command still ran, so `await ctx.reload()` failed with a lost connection, the command stopped half way, and the calling extension was gone after the reload (an RPC session with two extensions of one shared process, one of which removed the other's file and reloaded), in the Go, Rust, Python and Lisp SDKs alike. Node extensions were not affected. Present since 0.4.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "33aa6ec15e",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_resumes_test.go::TestRPCCommandGoesOnAfterAReloadThatRemovesACellMember",
+        "coding/extension/host/subprocess/reload_caller_packed_cell_test.go::TestPackedGoCommandGoesOnAfterAReloadThatRemovesAMemberOfItsCell",
+        "test/extension-conformance/sdkscenario_test.go::TestSDKScenarios"
+      ]
+    },
+    {
       "id": "BF-33dc8a0",
       "title": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",
       "symptom": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",
@@ -12948,6 +12972,31 @@
         "ai/validate_passthrough_equivalence_test.go::TestValidateToolArgumentsPassthroughMatchesReencoding",
         "ai/validate_vectors_test.go::TestValidateToolArgumentsMatchesPiVectors",
         "internal/codingagent/tools/argument_schema_test.go::TestBuiltinArgumentSchemaIsTheDeclaredParameters"
+      ]
+    },
+    {
+      "id": "BF-3da9268",
+      "title": "A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on",
+      "symptom": "A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on.",
+      "rootCause": "A command that awaits ctx.ui.custom(...) when a /reload replaces or removes its extension went on after the reload with an undefined result: the host closed the overlay handle with nil when it cleared the retired generation, so the call resolved and the code after the await ran in the old instance. Pi leaves it pending: resetExtensionUI removes the extension overlays \"the same way done() does, but leave the promises pending\" (interactive-mode.ts:2592-2598), the screen shows nothing, and the command never goes on. In isolated mode the overlay also stayed on the screen, because the generation's stop is deferred while its command runs and nothing else took the overlay down.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on. The reload closed the overlay's call with `undefined` when it retired the extension's old instance, so the code after the `await` ran in the replaced or removed instance, and a second command could start behind it; Pi removes the overlay and leaves the call pending, so the command never goes on (probed on Pi 1.5.2 for the extension replaced and removed). The overlay also stayed on the screen in isolated mode, where the old instance stays until its command returns; it now leaves the screen at the reload in both modes. The call ends with the session, with the extension's connection or with the component's own close. A closed connection also ends the dialogs (`select`, `confirm`, `input`, `editor`) its extension still awaited: they waited for an answer nothing would take after a graceful close. Node, Go, Python and Rust components alike. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3da926800b",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/packed_go_test.go::TestAC59PackedSDKFocusedComponentsOwnInput",
+        "coding/extension/host/subprocess/reload_pending_call_test.go::TestReloadLeavesPendingCustomCallPending",
+        "coding/extension/host/subprocess/reload_pending_dialog_test.go::TestReloadLeavesPendingDialogCallsPending",
+        "internal/codingagent/remote_overlay_retire_test.go::TestRemoteOverlayRetireLeavesTheCallPending"
       ]
     },
     {

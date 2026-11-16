@@ -409,6 +409,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3351167](#bf-3351167) | The OAuth callback server reads an absolute-form request target with a scheme other than http or https, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-33558f6](#bf-33558f6) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-336d0dc](#bf-336d0dc) | Chord's plugin watcher watches a directory of the app's base code again when it comes back after its watch… | PiG's own defect | macOS, Linux | Unreleased |
+| [BF-33aa6ec](#bf-33aa6ec) | An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another… | PiG's own defect | All platforms | Unreleased |
 | [BF-33dc8a0](#bf-33dc8a0) | fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does | PiG's own defect | All platforms | Unreleased |
 | [BF-33ea9e4](#bf-33ea9e4) | fix(sdk): name the Go ModelRegistry.Find change in the upgrade rules; Node adoption survives an unbound leaf… | PiG's own defect | All platforms | Unreleased |
 | [BF-33efd9f](#bf-33efd9f) | `pi.exec` with a `maxBuffer` could keep a child's stderr bytes ahead of its stdout bytes under heavy CPU… | PiG's own defect | All platforms | 0.7.0 |
@@ -485,6 +486,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3d475c4](#bf-3d475c4) | Image resize strategy against live Pi: new `TestResizeImageDimensionStrategyMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3d49280](#bf-3d49280) | `listDir` of the local execution environment leaves out an entry whose name is not valid UTF-8, as Pi does… | PiG's own defect | All platforms | Unreleased |
 | [BF-3d98081](#bf-3d98081) | Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-3da9268](#bf-3da9268) | A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on | PiG's own defect | All platforms | Unreleased |
 | [BF-3de4b8e](#bf-3de4b8e) | A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content… | PiG's own defect | All platforms | Unreleased |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e00494](#bf-3e00494) | fix(session): a custom message entry whose content is null projects an empty list | PiG's own defect | All platforms | Unreleased |
@@ -7714,6 +7716,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkRenewsTheWatchOfAnAncestorRemovedAndMadeAgainWhileTheRecordedDirectoryIsMissing`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAway`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesTheTreeOfABaseDirectoryBackWhoseWatchesCouldNotBePutBackWhileItWasAway`
 - **Release note:** Chord's plugin watcher watches a directory of the app's base code again when it comes back after its watch had ended: moved away and back (the watch of a renamed directory ends on macOS and BSD, with kqueue), or removed and made again (inotify on Linux, where ext4 also gives the new directory the inode and birth time of the old one). An edit of the app's base code in that directory went unnoticed, so `base` was never marked and the app kept its hosts on the old code, where Pi marks it. When the watcher put a watch back and found the directory missing, it kept the recorded identity of a directory it did not watch, and the directory seen again looked like the same one; the watch now leaves no identity behind, so the directory is watched again.
 
+### BF-33aa6ec
+
+**An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another member of the command's shared Go, Rust, Python or Lisp process, as it does in Pi, where the old extension instance outlives the reload its command awaits.
+- **Root cause:** A shared Go, Rust, Python or Lisp cell runs its members in one process. A reload that removed one member stopped that process at the commit, while the generation of the member whose command had asked for the reload waited for the command to return before it stopped: the command's connection was cut under it, `await ctx.reload()` failed, and the caller was lost. In Pi the old extension instance outlives the reload its command awaits (agent-session.ts:3828-3876), so the command resolves and goes on. A generation with a command still running now takes a hold on its cell's process before any member stops, as a lingering generation does, and its retirement releases it when the command returns.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `33aa6ec15e` (2026-11-16)
+- **Tests:** `coding/cli/rpc_reload_resumes_test.go::TestRPCCommandGoesOnAfterAReloadThatRemovesACellMember`, `coding/extension/host/subprocess/reload_caller_packed_cell_test.go::TestPackedGoCommandGoesOnAfterAReloadThatRemovesAMemberOfItsCell`, `test/extension-conformance/sdkscenario_test.go::TestSDKScenarios`
+- **Release note:** An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another member of the command's shared Go, Rust, Python or Lisp process, as it does in Pi, where the old extension instance outlives the reload its command awaits. The reload stopped the shared process while the command still ran, so `await ctx.reload()` failed with a lost connection, the command stopped half way, and the calling extension was gone after the reload (an RPC session with two extensions of one shared process, one of which removed the other's file and reloaded), in the Go, Rust, Python and Lisp SDKs alike. Node extensions were not affected. Present since 0.4.0.
+
 ### BF-33dc8a0
 
 **fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does**
@@ -8762,6 +8778,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3d980815b1` (2026-11-01)
 - **Tests:** `agent/validate_oracle_test.go::TestToolArgumentValidationMatchesPi`, `ai/validate_cache_test.go::TestToolArgumentSchemaCacheIsBounded`, `ai/validate_cache_test.go::TestToolArgumentSchemaEvictionDoesNotChangeOutcomes`, `ai/validate_passthrough_equivalence_test.go::TestValidateToolArgumentsPassthroughMatchesReencoding`, `ai/validate_vectors_test.go::TestValidateToolArgumentsMatchesPiVectors`, `internal/codingagent/tools/argument_schema_test.go::TestBuiltinArgumentSchemaIsTheDeclaredParameters`
 - **Release note:** Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no longer takes exponential time: the call is rejected with its errors at once.
+
+### BF-3da9268
+
+**A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on.
+- **Root cause:** A command that awaits ctx.ui.custom(...) when a /reload replaces or removes its extension went on after the reload with an undefined result: the host closed the overlay handle with nil when it cleared the retired generation, so the call resolved and the code after the await ran in the old instance. Pi leaves it pending: resetExtensionUI removes the extension overlays "the same way done() does, but leave the promises pending" (interactive-mode.ts:2592-2598), the screen shows nothing, and the command never goes on. In isolated mode the overlay also stayed on the screen, because the generation's stop is deferred while its command runs and nothing else took the overlay down.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3da926800b` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/packed_go_test.go::TestAC59PackedSDKFocusedComponentsOwnInput`, `coding/extension/host/subprocess/reload_pending_call_test.go::TestReloadLeavesPendingCustomCallPending`, `coding/extension/host/subprocess/reload_pending_dialog_test.go::TestReloadLeavesPendingDialogCallsPending`, `internal/codingagent/remote_overlay_retire_test.go::TestRemoteOverlayRetireLeavesTheCallPending`
+- **Release note:** A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on. The reload closed the overlay's call with `undefined` when it retired the extension's old instance, so the code after the `await` ran in the replaced or removed instance, and a second command could start behind it; Pi removes the overlay and leaves the call pending, so the command never goes on (probed on Pi 1.5.2 for the extension replaced and removed). The overlay also stayed on the screen in isolated mode, where the old instance stays until its command returns; it now leaves the screen at the reload in both modes. The call ends with the session, with the extension's connection or with the component's own close. A closed connection also ends the dialogs (`select`, `confirm`, `input`, `editor`) its extension still awaited: they waited for an answer nothing would take after a graceful close. Node, Go, Python and Rust components alike. Present since 0.2.0.
 
 ### BF-3de4b8e
 

@@ -740,7 +740,7 @@ type managedExt struct {
 	// share counts the extensions hosted by this isolated Node process, which Pi's loader re-invokes factories in across reloads. procOwner is the extension that spawned it, and retainedFrom the process a pending start will re-invoke its factory in.
 	share         *processShare
 	shareReleased atomic.Bool
-	// lingerHold is set while me holds a reference on its packed cell's process as a lingering generation (packedProcessState.holdForLinger).
+	// lingerHold is set while me holds a reference on its packed cell's process: as a lingering generation (packedProcessState.holdForLinger), or as a generation whose running command keeps the process until the command returns (holdProcessForRunningCommand).
 	lingerHold   atomic.Bool
 	procOwner    *managedExt
 	retainedFrom *processShare
@@ -3320,6 +3320,16 @@ func (h *Host) commitStaged(staged []stagedManagedExt, removed []*managedExt, re
 	lingered := make(map[*managedExt]bool, len(removed))
 	for _, old := range removed {
 		lingered[old] = h.lingerRemoved(old)
+	}
+	// The same for a generation with a command still running: the command's retirement stops it when the command returns, and the process stays until then
+	// (holdProcessForRunningCommand).
+	for _, old := range replaced {
+		old.holdProcessForRunningCommand()
+	}
+	for _, old := range removed {
+		if !lingered[old] {
+			old.holdProcessForRunningCommand()
+		}
 	}
 	var stoppedNow []*managedExt
 	for _, old := range replaced {
