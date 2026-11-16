@@ -157661,7 +157661,7 @@
       "evidence": [
         "test:coding/runtime_before_invalidate_upstream_test.go#TestBeforeSessionInvalidateRunsBetweenShutdownAndRebind",
         "test:coding/cli/print_mode_exit_code_test.go#TestRunPrintModeReturnsExitCodeZeroOnSuccessAndOneOnFailureAndDisposesTheRuntime",
-        "test:coding/runtime_result_test.go#TestRuntimeBeforeSessionInvalidateRunsBetweenShutdownAndInvalidation"
+        "test:coding/runtime_quit_invalidate_test.go#TestQuitContextEmitLeavesTheInvalidateHookToClose"
       ]
     },
     {
@@ -157683,7 +157683,7 @@
       "evidence": [
         "test:coding/runtime_before_invalidate_upstream_test.go#TestBeforeSessionInvalidateRunsBetweenShutdownAndRebind",
         "test:coding/cli/print_mode_exit_code_test.go#TestRunPrintModeReturnsExitCodeZeroOnSuccessAndOneOnFailureAndDisposesTheRuntime",
-        "test:coding/runtime_result_test.go#TestRuntimeBeforeSessionInvalidateRunsBetweenShutdownAndInvalidation"
+        "test:coding/runtime_quit_invalidate_test.go#TestQuitContextEmitLeavesTheInvalidateHookToClose"
       ]
     },
     {
@@ -305303,6 +305303,7 @@
         "call:tui/terminal.go#ProcessTerminal.ModifyOtherKeysActive"
       ],
       "evidence": [
+        "test:tui/terminal_negotiation_upstream_test.go#TestUpstreamTerminalNegotiation",
         "test:tui/raw_mode_test.go#TestProcessTerminalModifyOtherKeysActiveFollowsNegotiation",
         "test:tui/terminal_negotiation_contract_test.go#TestKeyboardProtocolNegotiationConsumesOnlyWholeReplies"
       ]
@@ -313946,7 +313947,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
         "test:internal/codingagent/custom_focus_upstream_test.go#TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream",
@@ -313968,7 +313969,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
         "test:internal/codingagent/custom_focus_upstream_test.go#TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream",
@@ -315899,9 +315900,9 @@
         "call:tui/tui_alt_screen.go#newTuiAltScreen"
       ],
       "evidence": [
+        "test:tui/stop_terminal_modes_test.go#TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen",
         "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/terminal_screen_writer_autowrap_test.go#TestScreenWriterTranslatesOnlyUnderTheRenderersAutowrap"
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {
@@ -317378,7 +317379,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
         "test:internal/codingagent/custom_focus_upstream_test.go#TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream",
@@ -317400,7 +317401,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
         "test:internal/codingagent/custom_focus_upstream_test.go#TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream",

@@ -77298,6 +77298,17 @@
       "shapeHash": "sha256:f0b0c291f8882f2fef138f60524f313fa8f5c7131adbd791f37bb811f86969f2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Runtime.runQuitInvalidate",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Runtime.runQuitInvalidate",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Runtime.settleBeforeQuitDispose",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Runtime.settleBeforeQuitDispose",
@@ -269809,6 +269820,17 @@
       "shapeHash": "sha256:515ef50f501b2823204507afaa30d00299569654465d9f0aef44607bc602ea7d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.markQuitEntered",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.markQuitEntered",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.markdownThemeWithSettings",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.markdownThemeWithSettings",
@@ -270887,6 +270909,17 @@
       "shapeHash": "sha256:012549ce352cdc075bd78f45cd0d71075191a00d6051297797c78a40c9cf6fe7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.quitEnteredChan",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.quitEnteredChan",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() chan struct{}"
+      },
+      "shapeHash": "sha256:cb00e1066e2dfc91b56a7971bbe26f606b820e89ddecdc85e783f725497dac47"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.rawInputChannels",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.rawInputChannels",
@@ -271734,6 +271767,17 @@
       "shapeHash": "sha256:fac7e9740867a1462f1f02ae533606a8fc5d3c858927a25ed3019bdfc455a45f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.restartTerminal",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.restartTerminal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.restoreBuiltInHeader",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.restoreBuiltInHeader",
@@ -272183,6 +272227,17 @@
         "type": "func(ctx context.Context, work func() error) error"
       },
       "shapeHash": "sha256:7b51bfe1c32086fab2f9f9cb01d9490b22fd9e193a507251744253d7ad18d277"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runOnMainAndWaitUnless",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.runOnMainAndWaitUnless",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, abandon \u003c-chan struct{}, giveUp \u003c-chan time.Time, work func() error) error"
+      },
+      "shapeHash": "sha256:f95a86c2bf8f56dbf343709fd581942ad8a5006f2ff124a351d3d46e4511ed12"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runOnMainOK",
@@ -273272,6 +273327,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.startTerminal",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.startTerminal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(enterAltScreen bool) (restore func(), drain func() error, err error)"
+      },
+      "shapeHash": "sha256:b750d302d803f7c7beea4c0c7249696e50caa1a8c2a7d1abc1641b7c7edb491e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.startTerminalInput",
@@ -299201,6 +299267,28 @@
       "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#errOwnerLoopBlocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "errOwnerLoopBlocked",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "error"
+      },
+      "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#errOwnerLoopLeft",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "errOwnerLoopLeft",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "error"
+      },
+      "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#errOwnerLoopUnavailable",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "errOwnerLoopUnavailable",
@@ -310936,6 +311024,17 @@
         "type": "func(sc *SlashContext) error"
       },
       "shapeHash": "sha256:0cd60dad808b8abf48c43075929dca6f537de910d92da19946937c2b720c7a03"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#newHeldInteractiveTerminalReader",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "newHeldInteractiveTerminalReader",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, file *os.File, sink terminalInputSink, hold \u003c-chan struct{}) *interactiveTerminalReader"
+      },
+      "shapeHash": "sha256:d7fe960209c820bf7afd6331bb1cd564c32b5157941e53b34a96836ea3aab350"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#newInputTicket",
@@ -364695,6 +364794,17 @@
       "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.WriteStopModes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ProcessTerminal.WriteStopModes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ProcessTerminal.clearProgressInterval",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ProcessTerminal.clearProgressInterval",
@@ -378049,6 +378159,17 @@
       "shapeHash": "sha256:616e7dffe9eaaebde65799c4ccb2929c047615c1db104aa384e3c0f254da112d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.BeforeTerminalStart",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.BeforeTerminalStart",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.CancelPendingRender",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.CancelPendingRender",
@@ -379094,6 +379215,17 @@
       "shapeHash": "sha256:9fe955afca678896c9ce7f06920e4ed84a14ba56a3de3dd78566509bb9720fe3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.afterTerminalStart",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.afterTerminalStart",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.applyMouseDispatchResult",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.applyMouseDispatchResult",
@@ -379180,6 +379312,17 @@
         "type": "func(gen uint64)"
       },
       "shapeHash": "sha256:cfdfca7364cb582d9fd446539defde7c009ced3156cfbeee1e0f3b8cfed32763"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.beforeTerminalStartIfNeeded",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.beforeTerminalStartIfNeeded",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.cancelPendingRenderLocked",
@@ -379504,17 +379647,6 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.dropWindowLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.dropWindowLocked",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.enterAltScreen",
-      "package": "github.com/MichaelKinsy/PiG/tui",
-      "name": "TuiAltScreen.enterAltScreen",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -380931,6 +381063,17 @@
       "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.writeExitTerminalStop",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.writeExitTerminalStop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(options StopOptions)"
+      },
+      "shapeHash": "sha256:3a95e25e0e8d0a9898f2995fd11facc61324d78d52cd05e45f16cc6d509b07b3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.writeOwned",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.writeOwned",
@@ -380940,6 +381083,17 @@
         "type": "func(out io.Writer, data string)"
       },
       "shapeHash": "sha256:a291e1e4aa75f521f2c82b837ab8e05fbb62a8a2f44a18ab113fd88691d1a83c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.writeTerminalStopModes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.writeTerminalStopModes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreenOptions",
@@ -383032,6 +383186,17 @@
       "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.writeExitTerminalStop",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.writeExitTerminalStop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(options StopOptions)"
+      },
+      "shapeHash": "sha256:3a95e25e0e8d0a9898f2995fd11facc61324d78d52cd05e45f16cc6d509b07b3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.writeOwned",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.writeOwned",
@@ -383041,6 +383206,17 @@
         "type": "func(out io.Writer, data string)"
       },
       "shapeHash": "sha256:a291e1e4aa75f521f2c82b837ab8e05fbb62a8a2f44a18ab113fd88691d1a83c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.writeTerminalStopModes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.writeTerminalStopModes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreenRenderState",
@@ -385606,6 +385782,17 @@
       "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.writeExitTerminalStop",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.writeExitTerminalStop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(options StopOptions)"
+      },
+      "shapeHash": "sha256:3a95e25e0e8d0a9898f2995fd11facc61324d78d52cd05e45f16cc6d509b07b3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.writeOwned",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.writeOwned",
@@ -385615,6 +385802,17 @@
         "type": "func(out io.Writer, data string)"
       },
       "shapeHash": "sha256:a291e1e4aa75f521f2c82b837ab8e05fbb62a8a2f44a18ab113fd88691d1a83c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.writeTerminalStopModes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.writeTerminalStopModes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#UndoStack",
@@ -403910,6 +404108,17 @@
       "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.WriteStopModes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "rendererTerminal.WriteStopModes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#rendererTerminal.clearProgressInterval",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "rendererTerminal.clearProgressInterval",
@@ -410675,6 +410884,17 @@
       "shapeHash": "sha256:2d9901815061331839ab24581706a9a36267c7a1ff0836b5014c0554617bb335"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.writeExitTerminalStop",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.writeExitTerminalStop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(options StopOptions)"
+      },
+      "shapeHash": "sha256:3a95e25e0e8d0a9898f2995fd11facc61324d78d52cd05e45f16cc6d509b07b3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.writeOwned",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.writeOwned",
@@ -410684,6 +410904,17 @@
         "type": "func(out io.Writer, data string)"
       },
       "shapeHash": "sha256:a291e1e4aa75f521f2c82b837ab8e05fbb62a8a2f44a18ab113fd88691d1a83c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.writeTerminalStopModes",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.writeTerminalStopModes",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiKeyIDInputs",
