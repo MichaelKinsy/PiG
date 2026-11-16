@@ -172,6 +172,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-142baa3](#bf-142baa3) | Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown… | PiG's own defect | All platforms | Unreleased |
 | [BF-14886f9](#bf-14886f9) | A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-14c9304](#bf-14c9304) | fix(schema/internal/ecmaregex): modifier groups, V8's mid-pair and repeated-name rules, lone surrogates, V8… | PiG's own defect | All platforms | Unreleased |
+| [BF-154d2c5](#bf-154d2c5) | fix(coding): the quit's dispose writes the session title where Pi's does: before the resume hint of a quit… | PiG's own defect | All platforms | Unreleased |
 | [BF-155d0f3](#bf-155d0f3) | In RPC mode, SIGTERM or SIGHUP during a tool call likewise stops the run while the `session_shutdown`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1584ac1](#bf-1584ac1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-15a5c0b](#bf-15a5c0b) | The Kimi Code, Meta and xAI device logins judge the verification URI the way Pi does, and Meta and xAI open… | PiG's own defect | All platforms | 0.5.0 |
@@ -1111,6 +1112,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7a4a8e8](#bf-7a4a8e8) | fix duplicate jsstring import in tui/assistant_message_block.go | PiG's own defect | All platforms | Unreleased |
 | [BF-7a5e7d1](#bf-7a5e7d1) | fix(chord/nextnode/plugins): the bridged proxies' Go get takes the context first, as the merged host does | PiG's own defect | All platforms | Unreleased |
 | [BF-7b0f5d7](#bf-7b0f5d7) | A native extension provider's `filterAllModels` receives the models its `getAllModels` (or `getModels`)… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-7b36c4f](#bf-7b36c4f) | A fullscreen start now writes its terminal setup in Pi's order: the alternate screen is entered first… | PiG's own defect | All platforms | Unreleased |
 | [BF-7b59fe2](#bf-7b59fe2) | `pig piglet build --format binary` from a Pig source directory that is not a Git checkout (for example… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7b92429](#bf-7b92429) | `find` and `grep` trim like JavaScript: `FindTool` trimmed each fd output line with `strings.TrimSpace` where… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7ba3211](#bf-7ba3211) | A resumed session no longer holds its whole file in memory | PiG's own defect | macOS | 0.5.0 |
@@ -4407,6 +4409,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `14c930470b` (2026-10-31)
 - **Tests:** `schema/internal/ecmaregex/golden_test.go::TestGoldenCaseClasses`, `schema/internal/ecmaregex/golden_test.go::TestGoldenPropertyRanges`, `schema/internal/ecmaregex/golden_test.go::TestGoldenRegex`, `schema/internal/ecmaregex/golden_test.go::TestKnownGaps`, `schema/internal/ecmaregex/surrogate_test.go::TestAppendUnits`, `schema/internal/ecmaregex/surrogate_test.go::TestDistinctSurrogateSets`, `schema/internal/ecmaregex/surrogate_test.go::TestErrorText`, `schema/internal/ecmaregex/surrogate_test.go::TestLoneSurrogatePatterns` and 3 more in docs/bug-ledger.json
+
+### BF-154d2c5
+
+**fix(coding): the quit's dispose writes the session title where Pi's does: before the resume hint of a quit…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(coding): the quit's dispose writes the session title where Pi's does: before the resume hint of a quit, before the terminal restore of a signal
+- **Root cause:** Pi's dispose() (agent-session-runtime.ts:415-424) runs session.abort(), session_shutdown, beforeSessionInvalidate (which writes the title through resetExtensionUI) and session.dispose(), and Pi's shutdown() calls it after stop() on a quit (title, then the resume hint) and first on a signal (title, then the terminal restore). pig ran the hook only at Runtime.Close, after Run returned and after the hint. Runtime.EmitQuitShutdown, where the mode calls the dispose, now runs the hook once after session_shutdown; Close runs it only when no dispose did (print and RPC emit through EmitQuitShutdownContext).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `154d2c5776` (2026-11-16)
+- **Tests:** `coding/runtime_quit_invalidate_test.go::TestQuitContextEmitLeavesTheInvalidateHookToClose`, `coding/runtime_quit_invalidate_test.go::TestQuitDisposeRunsBeforeSessionInvalidateAfterSessionShutdown`, `internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild`, `internal/codingagent/interactive_exit_dispose_test.go::TestQuitWritesTheTitleInTheDisposeBeforeTheResumeHint`, `internal/codingagent/interactive_exit_dispose_test.go::TestSignalDisposeDoesNotWaitForAnOwnerLoopThatWaitsForItsLock`, `internal/codingagent/interactive_exit_title_pty_test.go::TestExitTitleIsWrittenInTheDisposeAtPisPlace`
 
 ### BF-155d0f3
 
@@ -16439,7 +16454,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `71e0f20510` (2026-11-16)
-- **Tests:** `internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild`, `internal/codingagent/interactive_exit_order_pty_test.go::TestExitModeResetsFollowPiStopOrder`, `internal/codingagent/interactive_teardown_test.go::TestStopInteractiveTuiFullscreenExitOutput`, `tui/stop_terminal_modes_test.go::TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen`, `tui/stop_terminal_modes_test.go::TestAltScreenSwapStopLeavesBracketedPasteOn`, `tui/stop_terminal_modes_test.go::TestMainScreenExitStopWritesCursorThenPasteReset`
+- **Tests:** `internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild`, `internal/codingagent/interactive_exit_order_pty_test.go::TestExitModeResetsFollowPiStopOrder`, `internal/codingagent/interactive_teardown_test.go::TestStopInteractiveTuiFullscreenExitOutput`, `tui/stop_terminal_modes_test.go::TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen`, `tui/stop_terminal_modes_test.go::TestMainScreenExitStopWritesCursorThenPasteReset`
 - **Release note:** A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off. PiG wrote them only after the alternate screen was left and added a trailing cursor show. A terminal that handles the resets in order, or a recording of the exit bytes, now sees Pi's order; the screen a user sees is the same. Present in v0.5.3 and v0.7.0 (checked by tag).
 
 ### BF-725e104
@@ -17405,6 +17420,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7b0f5d7da8` (2026-10-13)
 - **Tests:** `internal/codingagent/native_provider_filter_order_test.go::TestNativeProviderFilterAllModelsSeesTheProvidersOwnModels`
 - **Release note:** A native extension provider's `filterAllModels` receives the models its `getAllModels` (or `getModels`) returned, with their members in the order the provider wrote them, instead of copies with members sorted by name.
+
+### BF-7b36c4f
+
+**A fullscreen start now writes its terminal setup in Pi's order: the alternate screen is entered first…**
+
+- **Source:** PiG's own defect
+- **Symptom:** PiG started the terminal on the main screen (bracketed paste, the Kitty push and the queries, so the flags went onto the main screen's stack), then popped them, entered the alternate screen and pushed them a second time (`?2004h >7u ?u`, then `<u ?1049h >7u`), and mirrored the wrap on leaving.
+- **Root cause:** Pi's TuiBase.start() (tui.ts:956) runs beforeTerminalStart (tui-alt-screen.ts:347, the alternate screen's enter), then terminal.start (terminal.ts:207: bracketed paste on, the Kitty keyboard push and query, the Device Attributes sentinel), then hideCursor, the colour-scheme reports and the first frame. PiG started the terminal (raw mode, bracketed paste, the push and the queries) before it entered the alternate screen, so the Kitty flags were pushed on the main screen's stack, and added a pop, enter, push wrap around the enter and a mirror wrap around the leave to move them. A terminal therefore saw `?2004h >7u ?u DA1`, `<u ?1049h >7u` and a second push, where Pi writes `?1049h` first and…
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7b36c4fddd` (2026-11-16)
+- **Tests:** `internal/codingagent/interactive_keyboard_protocol_pty_test.go::TestKeyboardProtocolDriverBalancesPerScreenStacks`, `internal/codingagent/interactive_keyboard_protocol_pty_test.go::TestKeyboardProtocolDriverChild`, `internal/codingagent/interactive_keyboard_protocol_pty_test.go::TestKeyboardProtocolDriverStartsAndStopsInPisOrder`, `internal/codingagent/interactive_start_order_pty_test.go::TestStartModeWritesFollowPiStartOrder`, `tui/terminal_negotiation_upstream_test.go::TestUpstreamTerminalNegotiation`, `tui/tui_alt_screen_keyboard_protocol_test.go::TestTuiAltScreenStartAfterHandoffWritesOnlyTheRendererTail`, `tui/tui_alt_screen_keyboard_protocol_test.go::TestTuiAltScreenStartSequenceFollowsPiStart`, `tui/tui_alt_screen_keyboard_protocol_test.go::TestTuiAltScreenStopAfterDrainWritesNoKeyboardProtocol` and 1 more in docs/bug-ledger.json
+- **Release note:** A fullscreen start now writes its terminal setup in Pi's order: the alternate screen is entered first (`ESC[?1049h`), then bracketed paste on, the Kitty keyboard push and query and the Device Attributes query, with the Kitty flags pushed once, on the alternate screen's own stack. Before, PiG started the terminal on the main screen (bracketed paste, the Kitty push and the queries, so the flags went onto the main screen's stack), then popped them, entered the alternate screen and pushed them a second time (`?2004h >7u ?u`, then `<u ?1049h >7u`), and mirrored the wrap on leaving. A terminal that was killed between those writes kept keyboard flags on the shell's main screen, and a recorder or terminal multiplexer saw a pop and a second push that Pi does not write. A start after an external editor, `ctrl+z` or a renderer swap, and an extension's alternate screen, follow the same order. What the screen shows, and `ctrl+digit` and `shift+enter` in fullscreen, are unchanged. Since v0.7.0.
 
 ### BF-7b59fe2
 
