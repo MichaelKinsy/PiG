@@ -1,6 +1,9 @@
 package testenv
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -21,5 +24,21 @@ func TestShortTempBase(t *testing.T) {
 		if got := shortTempBase(test.goos, test.temp, test.localAppData, "pe"); strings.ReplaceAll(got, "/", `\`) != strings.ReplaceAll(test.want, "/", `\`) {
 			t.Errorf("%s: shortTempBase = %q, want %q", test.name, got, test.want)
 		}
+	}
+}
+
+// A package whose TestMain makes its root with MkdirShortTemp has a fixture depth that does not follow TMPDIR: the root is directly in /tmp.
+func TestMkdirShortTempIgnoresTMPDIR(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows keeps the host temp directory")
+	}
+	t.Setenv("TMPDIR", filepath.Join(t.TempDir(), "a", "b", "c", "d"))
+	root, err := MkdirShortTemp("pig-depth-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(root) })
+	if filepath.Dir(root) != "/tmp" || !strings.HasPrefix(filepath.Base(root), "pig-depth-") {
+		t.Errorf("MkdirShortTemp = %q, want a directory named pig-depth-* directly in /tmp", root)
 	}
 }
