@@ -83,6 +83,7 @@ const (
 	// one goroutine converts them all: the first publication of the built-in catalog converts about 2,500 models, one conversion costs 10 to 30 us.
 	modelObjectBlock        = 32
 	parallelModelObjectsMin = 4 * modelObjectBlock
+	// pig additive (D19): the subprocess catalog frame has no counterpart in Pi, whose extensions read the registry in process.
 	// maxModelObjectWorkers bounds the goroutines of one list: the catalog is about 80 blocks and 80 ms of work in all, which eight workers bring to
 	// ten, so a larger fan-out gains little, and a start on a host with a hundred processors must not take every one of them for it.
 	maxModelObjectWorkers = 8
