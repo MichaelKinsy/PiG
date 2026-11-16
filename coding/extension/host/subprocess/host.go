@@ -2678,9 +2678,21 @@ func TerminateHostProcesses(hosts ...*Host) {
 	for _, log := range logs {
 		log.remove()
 	}
-	// The fused extensions run in this process and no process of theirs was killed, so the log their SDK created for a diagnostic is removed here, as Shutdown removes it.
+	// The fused extensions run in this process and no process of theirs was killed, so the log their SDK created for a diagnostic is removed here, as Shutdown removes it. The host process exits without Shutdown (RPC mode ends with os.Exit, as Pi's process.exit does), so each Host's private socket directory is removed here too.
 	for _, h := range hosts {
 		h.fusedLog.remove()
+		h.removeSockRuntimeDir()
+	}
+}
+
+// errSockRuntimeRemoved is what a Host asks for a socket path after TerminateHostProcesses removed its directory.
+var errSockRuntimeRemoved = errors.New("the Host's socket directory was removed by TerminateHostProcesses")
+
+// removeSockRuntimeDir removes the Host's private socket directory and keeps the Host from making one afterwards. Running the once itself, with an error that stands for the directory it never made, is what orders this read of sockRuntimeDir after the write of a concurrent ensureSockRuntimeDir.
+func (h *Host) removeSockRuntimeDir() {
+	h.sockRuntimeOnce.Do(func() { h.sockRuntimeErr = errSockRuntimeRemoved })
+	if h.sockRuntimeDir != "" {
+		_ = os.RemoveAll(h.sockRuntimeDir)
 	}
 }
 
