@@ -364,3 +364,13 @@ func BindDequeueToAltUp(t *testing.T) {
 	harnessUserBindings = map[string][]KeyID{"app.message.dequeue": {"alt+up"}}
 	t.Cleanup(func() { harnessUserBindings = nil })
 }
+
+// HoldStartupInput makes one terminal chunk ready on the channel the owner loop reads, before a startup step that may or may not serve input. The terminal
+// reader's router keeps the channel it was built with, so nothing else arrives on this one.
+func (m *InteractiveMode) HoldStartupInput(data string) {
+	m.inputReadCh = make(chan inputChunk, 1)
+	m.inputReadCh <- inputChunk{data: []byte(data)}
+}
+
+// HeldStartupInputUnread reports whether the chunk HoldStartupInput made ready still waits for the owner loop.
+func (m *InteractiveMode) HeldStartupInputUnread() bool { return len(m.inputReadCh) == 1 }
