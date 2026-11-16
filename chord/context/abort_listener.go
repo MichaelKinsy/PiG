@@ -36,7 +36,7 @@ func (l *abortListener) fire(cause error) {
 }
 
 // dispatch runs the listeners of this context's own cancel, in the order they were added. It runs in the cancel function
-// of WithCancel, after the context is cancelled, on the goroutine that cancels.
+// of WithCancel, after the context is cancelled, on the goroutine that cancels, and only in the call that claimed the cancel.
 func (c *abortContext) dispatch() {
 	c.mu.Lock()
 	registered := c.listeners
@@ -98,6 +98,10 @@ func abortSources(ctx context.Context, out []*abortContext) ([]*abortContext, bo
 // `abort()` runs before it returns. The cause is the one the abort recorded (context.Cause). fn MUST NOT block and MUST
 // NOT take a lock the canceller may hold or enter a section of a loop: it only records and enqueues, and it runs on
 // whatever goroutine cancels, with or without a loop's section.
+//
+// The guarantee is the canceller's: when the call of the cancel function that aborts ctx returns, the listeners have run. A
+// call after it, repeated or at once on another goroutine, runs none and records no cause, as Pi's `abort()` of an aborted
+// signal does nothing; it returns once the context is cancelled, and the first call's listeners may still be running then.
 //
 // Like Pi's `awaitWithContext`, which checks `signal.aborted` before it adds its listener (context/index.ts:140), a ctx
 // that is aborted already runs fn at once, before OnAbort returns. A ctx derived from several sources (WithAbortSignal, or

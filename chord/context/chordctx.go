@@ -59,7 +59,8 @@ type abortContext struct {
 	signal context.Context
 	// detached is set on a WithoutAbortSignal context, whose embedded context is stdlib's WithoutCancel.
 	detached bool
-	// order is the place of this context's own cancel in the order of aborts (see AbortOrder); 0 until it was cancelled.
+	// order is the place of this context's own cancel in the order of aborts (see AbortOrder); 0 until the first call of the
+	// cancel function claimed it (claim).
 	order atomic.Uint64
 	// listeners are the OnAbort listeners of this context's own cancel, guarded by mu; the cancel function runs and clears them.
 	mu        sync.Mutex
@@ -68,6 +69,14 @@ type abortContext struct {
 
 // aborts numbers the aborts of the contexts WithCancel makes, in the order their cancel functions ran.
 var aborts atomic.Uint64
+
+// claim makes the caller the owner of this context's own cancel, and reports whether it is: true for the first call of the
+// cancel function, which then cancels the context and runs its listeners, false for every call after it, repeated or running at
+// once on another goroutine. The claim is made before the context is cancelled, so a second call can never take the listeners
+// of an abort that is in progress from the call that aborts: an `abort()` of an aborted signal runs nothing.
+func (c *abortContext) claim() bool {
+	return c.order.Load() == 0 && c.order.CompareAndSwap(0, aborts.Add(1))
+}
 
 // AbortOrder is when ctx was aborted relative to other contexts of this package: the number of the earliest abort that
 // ended it (its own cancel, or the one of a parent or signal it derives from), 0 for a context not aborted by this
@@ -185,11 +194,19 @@ func WithoutAbortSignal(parent context.Context) context.Context {
 }
 
 // WithCancel derives an independently cancellable child. cancel records cause, and a nil cause records context.Canceled.
+//
+// Only the first call of cancel aborts the context and runs its abort listeners (OnAbort), as Pi's `abort()` of an aborted
+// signal does nothing: a call after it, repeated or at once on another goroutine, records no cause, takes no listener and
+// returns once the context is cancelled. The listeners are the first call's to run: they may still be running, on its
+// goroutine, when a later call returns.
 func WithCancel(parent context.Context) (ctx context.Context, cancel func(cause error)) {
 	derived, cancelCause := context.WithCancelCause(parent)
 	child := &abortContext{Context: derived, parent: parent}
 	return child, func(cause error) {
-		child.order.CompareAndSwap(0, aborts.Add(1))
+		if !child.claim() {
+			<-child.Done()
+			return
+		}
 		cancelCause(cause)
 		child.dispatch()
 	}
