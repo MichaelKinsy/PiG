@@ -152,6 +152,8 @@ RPC steps search only complete new output after the command is sent. `wait_event
 
 Tmux steps that send Escape before literal text use a visible state barrier between those inputs. Without a barrier, the terminal decoder can combine `ESC` and the first character into one Alt-modified key. Wait for the actual state transition, such as the cleared tree query, rather than delaying input by an arbitrary duration.
 
+A tmux step can end with `signal = "TERM"` or `signal = "HUP"`: after the step's keys the driver sends that signal to the program itself (the only child of the pane's launch shell), the way a supervisor or a closing terminal ends it, which no key can. Pair it with `exit_code`, so the run waits for the exit status, and with a `transcript_sequences_equal` block over the stop the signal causes.
+
 `changelog_fixture = "testdata/changelog.md"` supplies one pinned document to both interactive binaries. The runner builds the current PiG CLI with a Go embed overlay before terminal timing starts. It gives Pi a private package view through Pi's `PI_PACKAGE_DIR` override. Only `CHANGELOG.md` differs from the normal package. Neither the checkout nor the installed Pi package is modified. Use this field for changelog rendering assertions instead of depending on either product's growing release notes.
 
 `openai_fixture = true` starts a harness-owned local HTTP/SSE endpoint and writes the same `strict-wire/strict` model definition into each isolated agent directory. It exercises real provider, Session, tool, and mode code without an extension provider or the mirrored faux provider. `READ` requests the read tool, a tool followup echoes its actual content, and `HTTP_ERROR` returns a deterministic HTTP 400. The test owns endpoint cleanup.

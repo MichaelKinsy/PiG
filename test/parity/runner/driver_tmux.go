@@ -409,6 +409,11 @@ func runTmuxStep(ctx context.Context, session, transcriptPath, label string, ste
 	if err := sendTmuxKeys(ctx, session, step.Keys); err != nil {
 		return watched, err
 	}
+	if step.Signal != "" {
+		if err := signalTmuxProgram(ctx, session, step.Signal); err != nil {
+			return watched, err
+		}
+	}
 	if len(step.WaitContains) > 0 {
 		if !waitForPaneAllSince(ctx, session, transcriptPath, step.WaitContains, baseline, true, timeout) {
 			return watched, fmt.Errorf("step output %q not reached within %s", step.WaitContains, timeout)
@@ -1064,6 +1069,41 @@ func sendTmuxKeys(ctx context.Context, session string, keys []string) error {
 		if err := sendTmuxKey(ctx, session, key); err != nil {
 			return fmt.Errorf("send key %q: %w", key, err)
 		}
+	}
+	return nil
+}
+
+// signalTmuxProgram sends the signal a step names ("TERM" or "HUP") to the program the pane's launch shell is running: the shell's only child, since the shell runs the program in the foreground and writes its exit status after it. A pane whose shell has no child (the program ended already) or several is an error, because the signal would not have reached what the scenario means.
+func signalTmuxProgram(ctx context.Context, session, name string) error {
+	sig := syscall.SIGTERM
+	if name == "HUP" {
+		sig = syscall.SIGHUP
+	}
+	//nolint:gosec // G204 (class a): program is literal tmux; args are fixed display-message -p -t <harness session>.
+	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("display-message", "-p", "-t", session, "#{pane_pid}")...).Output()
+	if err != nil {
+		return fmt.Errorf("pane pid of %s: %w", session, err)
+	}
+	shell, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil {
+		return fmt.Errorf("pane pid of %s: %w", session, err)
+	}
+	//nolint:gosec // G204 (class a): program is literal pgrep; the argument is the integer pane pid.
+	children, _ := exec.CommandContext(ctx, "pgrep", "-P", strconv.Itoa(shell)).Output()
+	pids := strings.Fields(string(children))
+	if len(pids) != 1 {
+		return fmt.Errorf("signal %s: the pane's shell %d has %d child process(es), want the program alone", name, shell, len(pids))
+	}
+	pid, err := strconv.Atoi(pids[0])
+	if err != nil {
+		return fmt.Errorf("signal %s: child pid %q: %w", name, pids[0], err)
+	}
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return fmt.Errorf("signal %s: %w", name, err)
+	}
+	if err := process.Signal(sig); err != nil {
+		return fmt.Errorf("signal %s to process %d: %w", name, pid, err)
 	}
 	return nil
 }

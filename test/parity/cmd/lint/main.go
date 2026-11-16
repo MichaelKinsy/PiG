@@ -264,6 +264,7 @@ type tmuxStepBlock struct {
 
 	FrameWatch *frameWatchBlock `toml:"frame_watch"`
 	FinalFrame *finalFrameBlock `toml:"final_frame"`
+	Signal     string           `toml:"signal"`
 }
 
 type finalFrameBlock struct {
