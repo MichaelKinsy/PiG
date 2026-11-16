@@ -42,6 +42,9 @@ func TestRawPayloadReplacementsAreSentAsPiSendsThem(t *testing.T) {
 		{Name: "mistral-conversations-built", API: "mistral-conversations", Model: "mistral-small"},
 		{Name: "google-generative-ai", API: "google-generative-ai", Model: "gemini-2.5-flash",
 			Replacement: `{"model":"gemini-2.5-flash","contents":[{"role":"user","parts":[{"text":"\u00e9 \ud800"}]}],"config":{"temperature":1.50,"maxOutputTokens":1E2,"systemInstruction":"\u00e9"}}`},
+		// The extension's own member order: the config before the contents, the parts before the role, the thinking budget before includeThoughts, the schema's members out of byte order.
+		{Name: "google-generative-ai-own-order", API: "google-generative-ai", Model: "gemini-2.5-flash",
+			Replacement: `{"config":{"toolConfig":{"functionCallingConfig":{"mode":"AUTO"}},"thinkingConfig":{"thinkingBudget":5,"includeThoughts":true},"tools":[{"functionDeclarations":[{"parametersJsonSchema":{"type":"object","properties":{"z":{"type":"string"},"a":{"type":"string"}}},"name":"t","description":"d"}]}],"systemInstruction":"s","maxOutputTokens":9,"temperature":0.25},"contents":[{"parts":[{"text":"hi"}],"role":"user"}],"model":"gemini-2.5-flash"}`},
 	}
 
 	var mu sync.Mutex
