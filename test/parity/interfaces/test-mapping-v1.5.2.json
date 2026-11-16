@@ -5096,9 +5096,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:81c4c210ca10c0204d64a3deb6b3c8953a69a224da9aa517cefb7bf8d74ee255",
       "evidence": [
-        "internal/codingagent/changelog_test.go#TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes"
+        "internal/codingagent/changelog_test.go#TestGetNewEntriesIgnoresPrereleaseAndBuildSuffixes",
+        "internal/codingagent/changelog_unreadable_upstream_test.go#TestParseChangelogFileUnreadableReturnsNoEntriesWithoutPrinting"
       ],
-      "rationale": "The three added Pi getNewEntries cases (#11703) are one Go table test with the same inputs: prerelease/build suffixes ignored, numeric comparison (0.10.0 vs 0.9.0), and unreadable last-seen versions ('latest', '0.1', '') reported unreadable."
+      "rationale": "The three added Pi getNewEntries cases (#11703) are one Go table test with the same inputs: prerelease/build suffixes ignored, numeric comparison (0.10.0 vs 0.9.0), and unreadable last-seen versions ('latest', '0.1', '') reported unreadable. Pi ac78a6068b38 (#12117, #11264; past the pin, the hash is the pinned file's) adds describe parseChangelog: 'returns no entries for an unreadable changelog without printing' (a directory as the changelog path, [] and no console.error). Pi's parseChangelog(path) is parseChangelogFile here; the Go test passes the same directory and asserts no entries and nothing written to the process's stdout and stderr. PiG never printed the warning, so the test passes on the code before the commit (a pin, not a red)."
     },
     {
       "path": "packages/coding-agent/test/chat-viewport.test.ts",

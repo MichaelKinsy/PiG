@@ -123,7 +123,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-SCW2O6CM.js";
+} from "./chunk-ZRWHWY44.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -7272,8 +7272,7 @@ function parseChangelog(changelogPath) {
       });
     }
     return entries;
-  } catch (error) {
-    console.error(`Warning: Could not parse changelog: ${error}`);
+  } catch {
     return [];
   }
 }

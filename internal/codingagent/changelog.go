@@ -39,8 +39,8 @@ var versionHeaderRE = lazyregexp.New(`##[\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{20
 // ParseChangelog walks the markdown content of a CHANGELOG.md and
 // returns one ChangelogEntry per `## [x.y.z]`-style header. Order is
 // the order found in the file (typical convention: newest first).
-// Malformed entries are silently skipped: matches upstream behavior
-// (errors only logged via console.error).
+// Malformed entries are silently skipped. A changelog that cannot be read
+// gives no entries and prints nothing (parseChangelogFile; Pi ac78a6068b38).
 func ParseChangelog(content string) []ChangelogEntry {
 	if content == "" {
 		return nil

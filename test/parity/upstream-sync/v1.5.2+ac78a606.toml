@@ -1,0 +1,97 @@
+from = "1.5.2+efbcd5ad"
+to = "1.5.2+ac78a606"
+
+# The range efbcd5adb4bc..ac78a6068b38 (the packages and the apps/p3 documents: git diff --stat efbcd5adb4bc ac78a6068b38 lists 25 paths; 11 are accounted here). It starts where v1.5.2+efbcd5ad.toml
+# (2145e3f6099c..efbcd5adb4bc) ends: no gap, no overlap. The product commit is ac78a6068b38 (2026-11-16, #12117, related to #11264): fix(coding-agent): remove two remaining direct terminal
+# writes. The other commits of the range change Pi's private design documents (apps/p3/docs: fifteen docs(p3) commits) and apps/p2, Pi's own web application: the ledgers here
+# list packages/ and the apps/p3 documents, as the earlier ones do, and none lists an apps/p2 path.
+# What PiG did before this commit, for each of the two changes:
+# 1. parseChangelog(path) printed `Warning: Could not parse changelog: <error>` with console.error when the file existed and could not be read. PiG never printed anything:
+#    internal/codingagent/interactive_changelog.go parseChangelogFile (the one reader of an extension package's changelog; getExtensionChangelogUpdates calls it) returns nil at
+#    the failed os.ReadFile, and ParseChangelog itself takes the content, not a path. A grep of the Go sources, the SDKs and the vendored runtime for "Could not parse changelog",
+#    for "Restored model", "Could not restore model" and "Falling back to" finds no terminal write in PiG's own code (the matches are ordinary comments and tests).
+#    Pi's own changelog is embedded in the binary (bundledChangelog), so it cannot be unreadable. This was a difference of Pi v1.5.2 that PiG did not have, not one this commit closes:
+#    PiG's behaviour does not change; the Node extension runtime and the parity oracle did print, and now carry the commit (automation/gen/pi-post-release-backports.mjs, ac78a6068b38).
+# 2. restoreModelFromSession had no PiG port (no caller upstream either), so there is nothing to delete; the interface inventories never listed it (the symbol is not exported from the
+#    package's entry point), and the declaration in extensions/sdk-ts/pi-pin.d.ts is the pinned build's, regenerated from the installed oracle at the re-pin.
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ac78a6068b38: Pi's package changelog entry (one Fixed line, #11264). PiG's user-visible change is its own changelog.d fragment."
+oracle = "not carried: Pi's changelog entry is not part of the installed package's behaviour."
+
+[[files]]
+path = "packages/coding-agent/src/utils/changelog.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/changelog_unreadable_upstream_test.go#TestParseChangelogFileUnreadableReturnsNoEntriesWithoutPrinting", "test:internal/codingagent/changelog_unreadable_upstream_test.go#TestExtensionChangelogUnreadableShowsNoNotesAndPrintsNothing"]
+rationale = "ac78a6068b38: parseChangelog returns [] for a changelog it cannot read without console.error. PiG's parseChangelogFile (the only path reader) already returned nil at the failed read and printed nothing, so the ported test is a pin: it passes on the code before the commit (not a red). It passes the same input (a directory as the changelog path) and asserts no entries and nothing written to the process's real stdout and stderr; the caller test shows an extension package whose CHANGELOG.md is unreadable gives no startup note, records no version and prints nothing, and that /changelog's text for no entries is 'No changelog entries found.' as in Pi. The stale comment on ParseChangelog that said errors were logged is corrected."
+oracle = "carried: ac78a6068b38 (pi-coding-agent/utils/changelog.js: the catch returns [] without console.error; the vendored runtime inherits it)."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-resolver.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "ac78a6068b38: restoreModelFromSession is removed (it printed with console.log and console.error, had no caller in Pi's repository and is not exported from the package) with the chalk import only it used. PiG never ported it (PORT_MAP's model-resolver.ts row names no such function; no Go symbol, no caller, no terminal write of 'Restored model', 'Could not restore model' or 'Falling back to'), so there is nothing to delete; the PORT_MAP row says so."
+oracle = "carried: ac78a6068b38 (pi-coding-agent/core/model-resolver.js: the function and the chalk import are removed; the vendored runtime inherits it)."
+
+[[files]]
+path = "packages/coding-agent/test/changelog.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/changelog_unreadable_upstream_test.go#TestParseChangelogFileUnreadableReturnsNoEntriesWithoutPrinting"]
+rationale = "ac78a6068b38: the new describe 'parseChangelog' with the case 'returns no entries for an unreadable changelog without printing' (a mkdtemp directory as the path, [] and console.error not called). Ported with the same input and expectation; see packages/coding-agent/src/utils/changelog.ts: a pin, since PiG never printed."
+oracle = "not carried: a test of the TypeScript source; the package ships no tests."
+
+[[files]]
+path = "apps/p3/docs/chord-practices.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "docs(p3): apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "docs(p3): apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/07-models.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "docs(p3): apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/17-org.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "docs(p3): apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/25-radius-sign-in.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "docs(p3): apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/28-telemetry.md"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "docs(p3): apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "docs(p3): apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."

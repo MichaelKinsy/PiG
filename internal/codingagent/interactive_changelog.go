@@ -77,7 +77,7 @@ func getExtensionChangelogUpdates(sm *SettingsManager, sourceInfos []PiSourceInf
 	return updates
 }
 
-// parseChangelogFile is parseChangelog(changelogPath) (utils/changelog.ts): the entries of the file, none when it cannot be read.
+// parseChangelogFile is parseChangelog(changelogPath) (utils/changelog.ts): the entries of the file, none when it cannot be read, and nothing printed: the caller draws the TUI, where a direct write lands over the screen (Pi ac78a6068b38, #11264).
 func parseChangelogFile(path string) []ChangelogEntry {
 	content, err := os.ReadFile(path)
 	if err != nil {
