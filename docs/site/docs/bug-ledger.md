@@ -1534,6 +1534,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a47eb1a](#bf-a47eb1a) | A tool result from a Rust or Python extension can set the collapsed-view `preview` the Go SDK already had… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a4e084f](#bf-a4e084f) | Fullscreen mode no longer leaves the `Model scope: …` startup notice in the shell after exit; it shows in… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-a4e2637](#bf-a4e2637) | fix(durable/core): revert the settings notice (ABI 12); the core resolves the settings from the snapshot the… | PiG's own defect | All platforms | Unreleased |
+| [BF-a4f9a59](#bf-a4f9a59) | A reload that retries an object whose earlier restart is still parked behind a call running on its old… | PiG's own defect | All platforms | Unreleased |
 | [BF-a53f72f](#bf-a53f72f) | A context an extension kept across a session replacement or reload now raises Pi's stale message from `cwd`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a5524c8](#bf-a5524c8) | In print and JSON mode, an extension whose `session_shutdown` handler throws after SIGTERM or SIGHUP now has… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a5524c8-2](#bf-a5524c8-2) | In print and JSON mode, SIGTERM or SIGHUP during a tool call stops the run where Pi does while the… | PiG's own defect | All platforms | 0.5.0 |
@@ -23321,6 +23322,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `a4e263792c` (2026-10-28)
 - **Tests:** `durable/core/abi/spec/spec_test.go::TestTablesUnchanged`
+
+### BF-a4f9a59
+
+**A reload that retries an object whose earlier restart is still parked behind a call running on its old…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A reload that retries an object whose earlier restart is still parked behind a call running on its old attempt, in the same reload that adds the plugin serving the type the object waited for, reported the object as `parked` with the stale cause `waiting for <type>`; it reports it as `retried`, as Pi does.
+- **Root cause:** the report read the earlier restart's readiness cause before the reload's publication woke the request of that readiness that waited for the type, where Pi reads it after; the restart readiness is new since v0.7.0
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a4f9a5907f` (2026-11-15)
+- **Tests:** `chord/next/host/host_reload_report_goonly_test.go::TestReloadReportARetriedObjectWithAnOpenOldAttemptReportsWhatItsReadinessFindsAfterTheCommitsPublicationNotBefore`, `chord/next/host/host_reload_report_goonly_test.go::TestReloadReportARetriedObjectWithAnOpenOldAttemptStillReportsTheCauseOfItsReadinessWhenNothingServesWhatItWaitsFor`
+- **Release note:** A reload that retries an object whose earlier restart is still parked behind a call running on its old attempt, in the same reload that adds the plugin serving the type the object waited for, reported the object as `parked` with the stale cause `waiting for <type>`; it reports it as `retried`, as Pi does.
 
 ### BF-a53f72f
 
