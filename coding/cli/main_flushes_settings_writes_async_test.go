@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // flushGatedSettingsStorage is a settings storage whose write waits in entered, then fails with fail or reports stored.
@@ -54,7 +55,7 @@ func runMainFlushHelper(t *testing.T, mode string) (trace string, output []byte,
 	return string(data), output, err
 }
 
-func mainFlushHelperBody(failure error, path string) {
+func mainFlushHelperBody(t *testing.T, failure error, path string) {
 	appendTrace := func(text string) {
 		file, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
 		if err != nil {
@@ -83,7 +84,7 @@ func mainFlushHelperBody(failure error, path string) {
 		// Without the flush the write is still going: wait for it, so that the trace says in which order the two ended.
 		select {
 		case <-stored:
-		case <-time.After(10 * time.Second):
+		case <-time.After(testbudget.Wait(t)):
 			appendTrace("settings write never stored")
 		}
 	}
@@ -95,7 +96,7 @@ func mainFlushHelperBody(failure error, path string) {
 // A settings write that a setter on another goroutine is performing when Main returns is finished first, as a Node process does not end while writeQueue has work (settings-manager.ts:576-588, flush :670-672): Main's deferred FlushSettingsWrites (main.go) waits for it. The write is released 700 ms after Main has started, long after a faux print run is done, so a Main that does not wait returns before it.
 func TestMainReturnsAfterASettingsWriteInProgressIsStored(t *testing.T) {
 	if path, ok := strings.CutPrefix(os.Getenv(mainFlushHelper), "ok:"); ok {
-		mainFlushHelperBody(nil, path)
+		mainFlushHelperBody(t, nil, path)
 		return
 	}
 	if testing.Short() {
@@ -113,7 +114,7 @@ func TestMainReturnsAfterASettingsWriteInProgressIsStored(t *testing.T) {
 // A settings write that fails while Main waits for it does not change what Main does: flush() awaits a queue whose rejections enqueueWrite has already caught and recorded (settings-manager.ts:576-588,670-672), so no exit code changes and no text is printed at the flush; the error waits for drainErrors, which a settings diagnostics reader makes.
 func TestMainFlushOfAFailedSettingsWriteRecordsItAndPrintsNothing(t *testing.T) {
 	if path, ok := strings.CutPrefix(os.Getenv(mainFlushHelper), "fail:"); ok {
-		mainFlushHelperBody(errors.New("EACCES: permission denied, mkdir '/agent'"), path)
+		mainFlushHelperBody(t, errors.New("EACCES: permission denied, mkdir '/agent'"), path)
 		return
 	}
 	if testing.Short() {
