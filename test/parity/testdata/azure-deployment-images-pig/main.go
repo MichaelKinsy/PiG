@@ -68,7 +68,7 @@ func run() error {
 	defer server.Close()
 	provider := ai.NewAzureOpenAIResponsesProvider(ai.AzureOpenAIResponsesConfig{APIKey: "test", Model: "gpt-4o-mini", BaseURL: server.URL})
 	defer func() { _ = provider.Close() }()
-	request := ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Describe the image.")}}, Tools: []ai.ToolSchema{{Name: "image", Parameters: ai.JsonObject{"type": "object", "properties": ai.JsonObject{}}}}}
+	request := ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Describe the image.")}}, Tools: []ai.ToolSchema{toolFromJSON(`{"name":"image","description":"","parameters":{"type":"object","properties":{}}}`)}}
 	stream, err := provider.Stream(context.Background(), ai.NormalizeContext(request), ai.StreamOptions{AzureDeploymentName: "image-deployment"})
 	if err != nil {
 		return err
@@ -89,4 +89,13 @@ func run() error {
 	one, two := <-requests, <-requests
 	fmt.Printf("logical=%s api=%s requests=%s,%s images=%d\n", first.Model, first.API, one.Model, two.Model, two.Images)
 	return nil
+}
+
+// toolFromJSON declares a tool as JSON text, the way an extension or an MCP server hands pig its schema: ai.ToolSchema keeps that member order, where a Go map carries none and is sent sorted. Pi's probe holds the same members in a literal.
+func toolFromJSON(text string) ai.ToolSchema {
+	var tool ai.ToolSchema
+	if err := json.Unmarshal([]byte(text), &tool); err != nil {
+		panic(err)
+	}
+	return tool
 }

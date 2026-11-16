@@ -411,13 +411,10 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	}
 
 	if strings.Contains(lastText, "Run: extension argument coercion") {
-		return "tool", "", []testFauxToolCall{{Name: "coercion_probe", Args: map[string]any{
-			"native": map[string]any{"integer": "2.9", "flag": "TRUE", "array": "3", "optional": nil},
-			"plain":  map[string]any{"integer": "2", "flag": "true", "optional": nil},
-		}}}
+		return "tool", "", []testFauxToolCall{{Name: "coercion_probe", ArgsJSON: `{"native":{"integer":"2.9","flag":"TRUE","array":"3","optional":null},"plain":{"integer":"2","flag":"true","optional":null}}`}}
 	}
 	if strings.Contains(lastText, "Run: noncanonical read") {
-		return "tool", "", []testFauxToolCall{{Name: "read", ArgsJSON: `{"extra":true,"limit":null,"offset":"2","path":"parity-read-target.txt"}`}}
+		return "tool", "", []testFauxToolCall{{Name: "read", ArgsJSON: `{"path":"parity-read-target.txt","offset":"2","limit":null,"extra":true}`}}
 	}
 
 	// Read tool parity.
@@ -427,7 +424,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 
 	// Write tool parity.
 	if strings.Contains(lastText, "Run: write parity-write-output.txt") {
-		return "tool", "", []testFauxToolCall{{Name: "write", ArgsJSON: `{"content":"hello from faux\nline two\n","path":"parity-write-output.txt"}`}}
+		return "tool", "", []testFauxToolCall{{Name: "write", ArgsJSON: `{"path":"parity-write-output.txt","content":"hello from faux\nline two\n"}`}}
 	}
 
 	// Same-file write+edit batch parity. Upstream runs both calls in the
@@ -435,29 +432,17 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	// order for the edit to observe the freshly-written content.
 	if strings.Contains(lastText, "Run: write then edit parity-batched-target.txt") {
 		return "tool", "", []testFauxToolCall{
-			{Name: "write", ArgsJSON: `{"content":"REPLACE_ME\n","path":"parity-batched-target.txt"}`},
-			{
-				Name: "edit",
-				Args: map[string]any{
-					"path": "parity-batched-target.txt",
-					"edits": []map[string]any{{
-						"oldText": "REPLACE_ME",
-						"newText": "DONE",
-					}},
-				},
-			},
+			{Name: "write", ArgsJSON: `{"path":"parity-batched-target.txt","content":"REPLACE_ME\n"}`},
+			{Name: "edit", ArgsJSON: `{"path":"parity-batched-target.txt","edits":[{"oldText":"REPLACE_ME","newText":"DONE"}]}`},
 		}
 	}
 
 	// Extension tool and built-in write and edit on one file in one parallel batch: file-mutation-queue.ts is shared by the built-in tools and every extension.
 	if strings.Contains(lastText, "Run: parallel extension file mutation") {
 		return "tool", "", []testFauxToolCall{
-			{Name: "write", ArgsJSON: `{"content":"base\n","path":"parity-parallel-mutation-target.txt"}`},
-			{Name: "patch_file", ArgsJSON: `{"line":"patched-A","path":"parity-parallel-mutation-target.txt"}`},
-			{Name: "edit", Args: map[string]any{
-				"path":  "parity-parallel-mutation-target.txt",
-				"edits": []map[string]any{{"oldText": "base", "newText": "BASE"}},
-			}},
+			{Name: "write", ArgsJSON: `{"path":"parity-parallel-mutation-target.txt","content":"base\n"}`},
+			{Name: "patch_file", ArgsJSON: `{"path":"parity-parallel-mutation-target.txt","line":"patched-A"}`},
+			{Name: "edit", ArgsJSON: `{"path":"parity-parallel-mutation-target.txt","edits":[{"oldText":"base","newText":"BASE"}]}`},
 		}
 	}
 
@@ -538,7 +523,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	if strings.Contains(lastText, "Run: compact reads") {
 		return "tool", "", []testFauxToolCall{
 			{Name: "read", ArgsJSON: `{"path":"skills/demo-skill/SKILL.md"}`},
-			{Name: "read", ArgsJSON: `{"limit":1,"offset":2,"path":"AGENTS.md"}`},
+			{Name: "read", ArgsJSON: `{"path":"AGENTS.md","offset":2,"limit":1}`},
 			{Name: "read", ArgsJSON: `{"path":"notes.txt"}`},
 		}
 	}
@@ -553,7 +538,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 
 	// Grep tool parity.
 	if strings.Contains(lastText, "Run: grep hello") {
-		return "tool", "", []testFauxToolCall{{Name: "grep", ArgsJSON: `{"path":"parity-read-target.txt","pattern":"hello"}`}}
+		return "tool", "", []testFauxToolCall{{Name: "grep", ArgsJSON: `{"pattern":"hello","path":"parity-read-target.txt"}`}}
 	}
 
 	// Find results are echoed, not replaced with a success token: a failed search must fail the scenario.
@@ -570,8 +555,8 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 			pattern = "**/*.txt"
 		}
 		return "tool", "", []testFauxToolCall{{
-			Name: "find",
-			Args: map[string]any{"pattern": pattern, "path": "."},
+			Name:     "find",
+			ArgsJSON: `{"pattern":"` + pattern + `","path":"."}`,
 		}}
 	}
 
@@ -582,7 +567,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 
 	// Edit tool parity.
 	if strings.Contains(lastText, "Run: edit parity-edit-target.txt") {
-		return "tool", "", []testFauxToolCall{{Name: "edit", ArgsJSON: `{"newText":"REPLACED","oldText":"REPLACE_ME","path":"parity-edit-target.txt"}`}}
+		return "tool", "", []testFauxToolCall{{Name: "edit", ArgsJSON: `{"path":"parity-edit-target.txt","oldText":"REPLACE_ME","newText":"REPLACED"}`}}
 	}
 
 	// A short line, then one line that alone overflows the bash tool's rolling tail and ends the output with its newline (Pi 935f0ac0ccfc, #12092).

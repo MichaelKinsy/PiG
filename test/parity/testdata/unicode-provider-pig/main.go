@@ -96,7 +96,7 @@ func main() {
 			id = "testtool2"
 		}
 		text := "Text with unpaired surrogate: \xed\xa0\xbd <- should be sanitized"
-		request := ai.Context{SystemPrompt: "You are a helpful assistant.", Tools: []ai.ToolSchema{{Name: "test_tool", Description: "A test tool", Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}}, Messages: []ai.Message{
+		request := ai.Context{SystemPrompt: "You are a helpful assistant.", Tools: []ai.ToolSchema{toolFromJSON(`{"name":"test_tool","description":"A test tool","parameters":{"type":"object","properties":{}}}`)}, Messages: []ai.Message{
 			ai.UserMessage{Content: ai.UserText("Use the test tool"), Timestamp: 1},
 			ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.ToolCall{ID: id, Name: "test_tool", Arguments: ai.JsonObject{}}}, API: tc.api, Provider: tc.provider, Model: tc.model, StopReason: ai.StopReasonToolUse, Timestamp: 2},
 			ai.ToolResultMessage{ToolCallID: id, ToolName: "test_tool", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}, Timestamp: 3},
@@ -117,4 +117,13 @@ func main() {
 	if err := encoder.Encode(rows); err != nil {
 		panic(err)
 	}
+}
+
+// toolFromJSON declares a tool as JSON text, the way an extension or an MCP server hands pig its schema: ai.ToolSchema keeps that member order, where a Go map carries none and is sent sorted. Pi's probe holds the same members in a literal.
+func toolFromJSON(text string) ai.ToolSchema {
+	var tool ai.ToolSchema
+	if err := json.Unmarshal([]byte(text), &tool); err != nil {
+		panic(err)
+	}
+	return tool
 }

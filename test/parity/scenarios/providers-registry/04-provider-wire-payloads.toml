@@ -69,7 +69,7 @@ timeout_seconds = 90
 
 [assert]
 exit_code = 0
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 both_not_contain = ["panic:", "UnhandledPromiseRejection", "ERR_MODULE_NOT_FOUND", '"wireBody":null']
 runtime_ratio_max = 5.0
