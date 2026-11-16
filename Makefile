@@ -403,7 +403,7 @@ test-sdk-py-311: ## Run the Python extension SDK's pytest suite under CPython 3.
 	@"$(PIG_SDK_PY_311)" -c 'import sys; sys.exit(0 if sys.version_info[:2] == (3, 11) else "test-sdk-py-311: $(PIG_SDK_PY_311) is Python %d.%d, not 3.11" % sys.version_info[:2])'
 	@PIG_CACHE_HOME="$(PIG_CACHE_HOME)" PIG_SDK_PY_PYTHON="$(PIG_SDK_PY_311)" ./automation/ci/test-sdk-py.sh
 
-.PHONY: test-sdk-py test-sdk-py-311 lint-sdk-py
+.PHONY: test-sdk-py test-sdk-py-311 lint-sdk-py lint-shell
 
 # The Python SDK's ruff check, the one the Security workflow's Source assurance job runs (ruff is pinned in automation/ci/security-tools.in; install: pip install -r automation/ci/security-tools.txt).
 # The binary embeds extensions/sdk-py (sdk.zst, bundle_pack.go): after ruff the target runs the pack drift check, so a source change without make sdk-bundles fails here and not only in CI Bookkeeping.
@@ -411,6 +411,11 @@ lint-sdk-py: ## ruff check over the Python extension SDK and the drift check of 
 	@command -v ruff >/dev/null || { echo "lint-sdk-py: ruff not found; pip install --require-hashes -r automation/ci/security-tools.txt" >&2; exit 1; }
 	ruff check extensions/sdk-py
 	@./automation/ci/sdk-bundles-drift.sh extensions/sdk-py
+
+# ShellCheck over the tracked shell scripts, the one the Security workflow's Source assurance job runs. It fails when the installed ShellCheck is not the
+# version pinned in automation/ci/install-shellcheck.sh (the one place the version lives; make pre-push shares this script).
+lint-shell: ## ShellCheck (CI's pinned version) over the tracked shell scripts under automation and docs/site/public (the Security workflow runs this target)
+	@./automation/ci/lint-shell.sh
 
 # The Lisp SDK's own tests (JSON vectors, the wire against an in-process fake host), run by the pinned SBCL that
 # automation/ci/install-sbcl.sh builds; PIG_SBCL names it. A missing SBCL fails: it is an environment failure, never a skip.
