@@ -92,10 +92,10 @@ func abortSources(ctx context.Context, out []*abortContext) ([]*abortContext, bo
 				// Its own cancel aborts it, and what a listener on it listens to besides.
 				out = append(out, c)
 			}
-			if c.signal != nil {
+			if c.signaled != nil {
 				// Cancelled by whichever of its sources aborts first.
 				out, fromParent := abortSources(c.parent, out)
-				out, fromSignal := abortSources(c.signal, out)
+				out, fromSignal := abortSources(c.signaled.signal, out)
 				return out, fromParent && fromSignal
 			}
 			ctx = c.parent

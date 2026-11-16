@@ -57,14 +57,12 @@ func (c *valueContext) String() string {
 type abortContext struct {
 	context.Context
 	parent context.Context
-	// signal is the other source of a WithAbortSignal context; nil otherwise.
-	signal context.Context
 	// detached is set on a WithoutAbortSignal context, whose embedded context is stdlib's WithoutCancel.
 	detached bool
-	// cancelCause ends the embedded context; nil on a detached one.
-	cancelCause context.CancelCauseFunc
 	// own is set on a context that has a cancel function of its own (Pi's controller): WithCancel and WithAbortSignalCancel.
 	own bool
+	// cancelCause ends the embedded context; nil on a detached one.
+	cancelCause context.CancelCauseFunc
 	// created numbers the contexts of this package in the order they were derived: Pi's composites run their listeners in
 	// the order they were created.
 	created uint64
@@ -76,10 +74,25 @@ type abortContext struct {
 	mu        sync.Mutex
 	listeners map[*abortListener]struct{}
 	links     map[*abortContext]struct{}
-	// linkedTo are the contexts whose links hold this one, and stopSignal stops the context.AfterFunc of a signal that
-	// is not of this package (nil when every source is): both are set before this context is linked, and unchanged after.
+	// signaled is set on a context derived from a signal (WithAbortSignal, WithAbortSignalCancel) before it is linked, and
+	// unchanged after; nil on every other, which is most of them, so they do not carry what only a signal needs.
+	signaled *signalLink
+}
+
+// signalLink is what a context derived from a signal holds besides what every context of this package does.
+type signalLink struct {
+	// signal is the other source of the context.
+	signal context.Context
+	// linkedTo are the contexts whose links hold the context, and stopSignal stops the context.AfterFunc of a signal that is
+	// not of this package (nil when every source is).
 	linkedTo   []*abortContext
 	stopSignal func() bool
+}
+
+// linkedContext is a context of this package with the link of its signal, made as one allocation.
+type linkedContext struct {
+	abortContext
+	link signalLink
 }
 
 // aborts numbers the aborts of the contexts WithCancel makes, in the order their cancel functions ran.
@@ -111,8 +124,8 @@ func AbortOrder(ctx context.Context) uint64 {
 		if order := c.order.Load(); order != 0 && (earliest == 0 || order < earliest) {
 			earliest = order
 		}
-		if c.signal != nil {
-			if order := AbortOrder(c.signal); order != 0 && (earliest == 0 || order < earliest) {
+		if c.signaled != nil {
+			if order := AbortOrder(c.signaled.signal); order != 0 && (earliest == 0 || order < earliest) {
 				earliest = order
 			}
 		}
@@ -187,7 +200,15 @@ func WithAbortSignalCancel(parent, signal context.Context) (ctx context.Context,
 // that is not nil.
 func derive(parent, signal context.Context, own bool) *abortContext {
 	inner, cancelCause := context.WithCancelCause(parent)
-	c := &abortContext{Context: inner, parent: parent, signal: signal, cancelCause: cancelCause, own: own, created: derivations.Add(1)}
+	var c *abortContext
+	if signal != nil {
+		linked := &linkedContext{link: signalLink{signal: signal}}
+		c = &linked.abortContext
+		c.signaled = &linked.link
+	} else {
+		c = &abortContext{}
+	}
+	c.Context, c.parent, c.cancelCause, c.own, c.created = inner, parent, cancelCause, own, derivations.Add(1)
 	if signal != nil {
 		c.link()
 	}
@@ -199,16 +220,17 @@ func derive(parent, signal context.Context, own bool) *abortContext {
 // that finds c in its links cancels a context that is complete: the registration and the check that the source is live are
 // one step under the source's mu, as OnAbort's are, so a cancel in between finds c and one before it is seen here.
 func (c *abortContext) link() {
-	if c.signal.Err() != nil {
-		c.cancelCause(context.Cause(c.signal))
+	signal := c.signaled.signal
+	if signal.Err() != nil {
+		c.cancelCause(context.Cause(signal))
 		return
 	}
 	sources, fromParent := abortSources(c.parent, nil)
-	sources, fromSignal := abortSources(c.signal, sources)
-	c.linkedTo = sources
+	sources, fromSignal := abortSources(signal, sources)
+	c.signaled.linkedTo = sources
 	if !fromSignal {
-		c.stopSignal = context.AfterFunc(c.signal, func() {
-			c.cancelCause(context.Cause(c.signal))
+		c.signaled.stopSignal = context.AfterFunc(signal, func() {
+			c.cancelCause(context.Cause(signal))
 			c.unlinkSources()
 		})
 	}
@@ -240,14 +262,17 @@ func (c *abortContext) abortFrom(cause error) {
 
 // unlink releases c's registration on every source and the hook on a signal of another package.
 func (c *abortContext) unlink() {
+	if c.signaled == nil {
+		return
+	}
 	c.unlinkSources()
-	if c.stopSignal != nil {
-		c.stopSignal()
+	if c.signaled.stopSignal != nil {
+		c.signaled.stopSignal()
 	}
 }
 
 func (c *abortContext) unlinkSources() {
-	for _, source := range c.linkedTo {
+	for _, source := range c.signaled.linkedTo {
 		source.mu.Lock()
 		delete(source.links, c)
 		if len(source.links) == 0 {
