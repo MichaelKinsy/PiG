@@ -2066,6 +2066,9 @@ func TestAdmissionACommitInFlightAtTheCut(t *testing.T) {
 		doc := mustGet(t, h, admDoc, jsonObject("id", "a"))
 		frames := admChanges(t, doc, "text")
 		held := holdNext()
+		// Released at the test's end whatever failed: a Fatalf before the release below (the `set`) leaves the commit held, and the
+		// host's close, a cleanup, waits for it.
+		t.Cleanup(held.Release)
 		writing := admStart(t, doc, "write", "kept")
 		receive(t, held.Entered())
 		// The cut, with the journal's commit admitted and its step running.
