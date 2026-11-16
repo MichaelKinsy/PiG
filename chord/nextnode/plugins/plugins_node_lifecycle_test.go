@@ -666,6 +666,13 @@ func startClosing(t *testing.T, grace time.Duration) *closingHost {
 	release := func() { _ = os.WriteFile(gate, nil, 0o644) }
 	// Runs before the host's own cleanup, so a test that failed does not leave its Close waiting for the call.
 	t.Cleanup(release)
+	// Runs before the host's own cleanup too, which closes the host and waits for the process with no deadline of its own here: the
+	// clock's deadlines never pass unless the test passes them, so a test that failed while the process is alive (it never answered
+	// the close) would leave that Close waiting for good. The process is killed and its channel read to the end (Exited) first.
+	t.Cleanup(func() {
+		node.kill()
+		<-node.Exited()
+	})
 	p := probeOn(t, serverFor(t, workerRoute(node)))
 	called := make(chan error, 1)
 	go func() {
