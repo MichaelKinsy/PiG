@@ -74,4 +74,3 @@ func TestConformance_UnawaitedEventDoesNotWaitForAWaitingHandler(t *testing.T) {
 		})
 	}
 }
-

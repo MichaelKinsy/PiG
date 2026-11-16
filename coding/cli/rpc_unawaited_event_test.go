@@ -252,7 +252,9 @@ func rpcUnawaitedReplyDoesNotWait(t *testing.T, impls []unawaitedImplementation)
 				// The reply must come while the handler waits, so a missing reply is a hang: bound it, not the run's budget.
 				budget := p.budget
 				p.budget = 20 * time.Second
-				p.awaitProgress(func() string { return "the " + call.command + " reply while the handler waits; seen " + fmt.Sprint(seen) }, func(r rpcRecord) bool {
+				p.awaitProgress(func() string {
+					return "the " + call.command + " reply while the handler waits; seen " + fmt.Sprint(seen)
+				}, func(r rpcRecord) bool {
 					seen = append(seen, fmt.Sprint(r["type"]))
 					if isNameHandlerDone(r, call.event) {
 						t.Fatalf("the handler's notification arrived before its wait ended")
