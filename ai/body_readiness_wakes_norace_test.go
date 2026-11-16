@@ -157,26 +157,7 @@ func TestObservedBodyReadinessPendingReadWakesOneGoroutine(t *testing.T) {
 // A window of wakeSamples runs with no collection, however much garbage the rest of the process makes: a goroutine that allocates as fast as it can
 // starts a collection every few megabytes, and the wakes of each would count against the code under test.
 func TestWakeSamplesWindowRunsWithoutACollection(t *testing.T) {
-	var allocated atomic.Int64
-	var live atomic.Pointer[[]byte]
-	stop, done := make(chan struct{}), make(chan struct{})
-	go func() {
-		defer close(done)
-		for {
-			select {
-			case <-stop:
-				return
-			default:
-			}
-			garbage := make([]byte, 64<<10)
-			live.Store(&garbage)
-			allocated.Add(int64(len(garbage)))
-		}
-	}()
-	defer func() {
-		close(stop)
-		<-done
-	}()
+	const budget = 64 << 20
 	collections := func() uint64 {
 		sample := []metrics.Sample{{Name: "/gc/cycles/total:gc-cycles"}}
 		metrics.Read(sample)
@@ -184,10 +165,25 @@ func TestWakeSamplesWindowRunsWithoutACollection(t *testing.T) {
 	}
 	var during uint64
 	wakeSamples(t, func() {
+		// The worker lives inside the window and allocates exactly the budget, then parks until the window ends: however long the observer
+		// is descheduled, the window allocates no more than the budget, which stays far below the memory limit's headroom.
+		var live atomic.Pointer[[]byte]
+		stop, filled, done := make(chan struct{}), make(chan struct{}), make(chan struct{})
 		started := collections()
-		for target := allocated.Load() + 64<<20; allocated.Load() < target; {
-			runtime.Gosched()
-		}
+		go func() {
+			defer close(done)
+			for allocated := 0; allocated < budget; allocated += 64 << 10 {
+				garbage := make([]byte, 64<<10)
+				live.Store(&garbage)
+			}
+			close(filled)
+			<-stop
+		}()
+		defer func() {
+			close(stop)
+			<-done
+		}()
+		<-filled
 		during = collections() - started
 	})
 	if during != 0 {
