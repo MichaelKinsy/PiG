@@ -1,5 +1,6 @@
 import { connect as ioWaitConnect } from "node:net";
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import zlib from "node:zlib";
 import { Readable } from "node:stream";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
@@ -1224,6 +1225,21 @@ export default function (pi) {
       a11y: [{ node: `${tok}-label`, name: `Label ${tok}` }],
     });
     ctx.ui.notify(`view-i-mounted:${st.state}`, "info");
+  } });
+  // D614 image id: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewImageID). The argument is the row's token and a Kitty image id only that row uses: the image node carries both, its bytes are the token's.
+  pi.registerCommand("ui_view_image_id", { description: "Mount a view whose image node carries a Kitty image id", handler: async (args, ctx) => {
+    const [tok, number] = args.trim().split(" ");
+    const bytes = Buffer.from(`pig-image-${tok}`);
+    const ref = createHash("sha256").update(bytes).digest("hex");
+    const st = await ctx.ui.mountView({
+      key: "image-id",
+      slot: "panel",
+      view: {
+        root: { kind: "image", id: `${tok}-photo`, ref, mimeType: "image/png", imageId: Number(number), filename: `${tok}.png` },
+        images: [{ ref, mimeType: "image/png", data: bytes.toString("base64") }],
+      },
+    });
+    ctx.ui.notify(`view-m-mounted:${st.state}`, "info");
   } });
   // D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
   pi.registerCommand("ui_view_bindings", { description: "Mount a view with bindings and probe what the host refuses", handler: async (args, ctx) => {

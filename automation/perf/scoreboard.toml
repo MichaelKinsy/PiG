@@ -41,6 +41,9 @@ run = "^TestCompactionPreparePerEntryAllocationGate$"
 pkg = "./coding/extension/host/subprocess"
 run = "^TestExtensionEventRoundTripAllocationGate$"
 [[measure]]
+pkg = "./coding/cli"
+run = "^TestStartupAllocationBudgetRealModel$"
+[[measure]]
 pkg = "./test/perfgate"
 run = "."
 [[measure]]
@@ -104,6 +107,26 @@ gates = [
   { ratchet = "process.print.max_rss_bytes" },
   { test = "coding/cli:TestWarmStandardStartupWorkBudgetWithHeldSDKLock" },
   { missing = "-p wall time on the cluster with the exact-CV gate", route = "k8s-bench" },
+]
+
+[[metric]]
+id = "startup.print_real_model"
+area = "startup"
+title = "Print mode (-p) round trip, model resolved through the catalog (API key, OAuth, OpenAI-compatible, default model), whole process"
+impact = 4
+owner = "go-native-perf"
+target = "under 10,000 allocations and 2 MB allocated for every provider shape, as the faux path"
+basis = "The resolution of --model reads the one provider's models and its credential, as startup.print does for the faux provider; Pi resolves the model over the registry's list without copying it."
+gates = [
+  { ratchet = "process.print_real_model.api_key.allocs" },
+  { ratchet = "process.print_real_model.api_key.bytes" },
+  { ratchet = "process.print_real_model.oauth.allocs" },
+  { ratchet = "process.print_real_model.oauth.bytes" },
+  { ratchet = "process.print_real_model.openai_compatible.allocs" },
+  { ratchet = "process.print_real_model.openai_compatible.bytes" },
+  { ratchet = "process.print_real_model.default_model.allocs" },
+  { ratchet = "process.print_real_model.default_model.bytes" },
+  { test = "coding/cli:TestStartupAllocationBudgetRealModel" },
 ]
 
 [[metric]]
