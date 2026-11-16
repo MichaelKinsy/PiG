@@ -1,0 +1,3 @@
+### Fixed
+
+- A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came. Every generation now listens on a socket path of its own and its stop removes only that file. <!-- fix: 6fe688207d8dee14cd2a64fbc01a4fb8278a2a7a -->
