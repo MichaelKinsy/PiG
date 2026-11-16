@@ -262,8 +262,14 @@ jobs:
           curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
           echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --status
           tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+          # The script fails closed (non-zero, nothing on stdout), and set -e ends this step on it, so the scan never runs on a
+          # partial range. A range whose two shas are equal is empty: the pull request adds nothing over its base.
           range=$(automation/ci/secret-scan-range.sh "$BASE_SHA" "$HEAD_SHA")
           echo "gitleaks range: $range"
+          if [ "${range%..*}" = "${range#*..}" ]; then
+            echo "the pull request adds no commit over its base: nothing to scan"
+            exit 0
+          fi
           "$RUNNER_TEMP/gitleaks" detect --redact -v --exit-code=2 --log-opts="--no-merges $range"
 
   secret-scan-trufflehog:
