@@ -197,7 +197,7 @@ func runReloadPromptProbe(t *testing.T, command string, want, wantErrors []strin
 					t.Fatalf("print: %v\n%s", err, stderr.String())
 				}
 				var reported int
-				for _, line := range strings.Split(stderr.String(), "\n") {
+				for line := range strings.SplitSeq(stderr.String(), "\n") {
 					if line == "" {
 						continue
 					}
@@ -259,7 +259,7 @@ func awaitReloadLogLine(t *testing.T, path, prefix string) {
 	defer tick.Stop()
 	for {
 		data, _ := os.ReadFile(path)
-		for _, line := range strings.Split(string(data), "\n") {
+		for line := range strings.SplitSeq(string(data), "\n") {
 			if strings.HasPrefix(line, prefix) {
 				return
 			}
