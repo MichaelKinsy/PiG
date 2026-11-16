@@ -29641,6 +29641,28 @@
       ]
     },
     {
+      "id": "BF-7781c92",
+      "title": "A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was…",
+      "symptom": "A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was handed sees them written in a fixed order: an array-index key (`\"9\"`) first, as Pi's object enumerates it, then the members the provider created in Pi's order, then the added members in byte order (a Go map keeps no insertion order).",
+      "rootCause": "The members the order table does not name were sorted with a comparator closure, which perf-lint flags, and then ordered by SortOwnKeys, a stable sort that needs a deterministic input. They are collected as keys and sorted with slices.Sort instead, and SortOwnKeys orders all the members, so an array-index key a handler adds enumerates first as it does in an ECMAScript object. TestMarshalHookPayloadWritesAddedMembersInOwnKeyOrder pins the order of several added members.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was handed sees them written in a fixed order: an array-index key (`\"9\"`) first, as Pi's object enumerates it, then the members the provider created in Pi's order, then the added members in byte order (a Go map keeps no insertion order). The order of the added members was decided by a sort of the map's iteration order before the fix, so it is the same on every call now. The unreleased change that gave a handler Pi's member order introduced the window; no release has it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7781c9298c",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/hook_payload_order_extras_test.go::TestMarshalHookPayloadWritesAddedMembersInOwnKeyOrder"
+      ]
+    },
+    {
       "id": "BF-779318a",
       "title": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now…",
       "symptom": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now place the thinking block before the text.",

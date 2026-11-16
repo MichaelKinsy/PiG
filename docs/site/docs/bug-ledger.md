@@ -1095,6 +1095,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-776b600](#bf-776b600) | fix(durable/core): the scheduler's reconcile and drain microtasks run behind the host listeners' dispatch of… | PiG's own defect | All platforms | Unreleased |
 | [BF-776d60b](#bf-776d60b) | An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-776d60b-2](#bf-776d60b-2) | A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-7781c92](#bf-7781c92) | A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was… | PiG's own defect | All platforms | Unreleased |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-77e64cd](#bf-77e64cd) | GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3)… | PiG's own defect | All platforms | Unreleased |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | 0.7.0 |
@@ -17183,6 +17184,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `776d60b196` (2026-11-02)
 - **Tests:** `internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond`, `internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64`, `tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil`
 - **Release note:** A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.
+
+### BF-7781c92
+
+**A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was handed sees them written in a fixed order: an array-index key (`"9"`) first, as Pi's object enumerates it, then the members the provider created in Pi's order, then the added members in byte order (a Go map keeps no insertion order).
+- **Root cause:** The members the order table does not name were sorted with a comparator closure, which perf-lint flags, and then ordered by SortOwnKeys, a stable sort that needs a deterministic input. They are collected as keys and sorted with slices.Sort instead, and SortOwnKeys orders all the members, so an array-index key a handler adds enumerates first as it does in an ECMAScript object. TestMarshalHookPayloadWritesAddedMembersInOwnKeyOrder pins the order of several added members.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7781c9298c` (2026-11-16)
+- **Tests:** `ai/hook_payload_order_extras_test.go::TestMarshalHookPayloadWritesAddedMembersInOwnKeyOrder`
+- **Release note:** A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was handed sees them written in a fixed order: an array-index key (`"9"`) first, as Pi's object enumerates it, then the members the provider created in Pi's order, then the added members in byte order (a Go map keeps no insertion order). The order of the added members was decided by a sort of the map's iteration order before the fix, so it is the same on every call now. The unreleased change that gave a handler Pi's member order introduced the window; no release has it.
 
 ### BF-779318a
 
