@@ -34197,7 +34197,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 20
+- Follow-up to unreleased work: 21
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 3
 - test-only: 1

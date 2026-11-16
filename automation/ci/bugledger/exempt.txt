@@ -48,3 +48,4 @@ c6ab561d18 Follow-up to unreleased work: the --listen server's isolated Node lau
 f98b572dcad57038e727d73145c89f271bb38cf5 see 4a0c240b0159238c7200ffb66f902727a74e81d7
 da08a31d17e4c10902bf4fa81cf1ddb3347214d1 see 4a0c240b0159238c7200ffb66f902727a74e81d7
 11c6a61eed2c875c4aeadd88d94cec0a1c76336d Follow-up to unreleased work: the stop transaction's storm test uses WaitGroup.Go and its progress keepalive context carries the portlint allow; no behavior changes, found by the stamping precheck before any release
+79f5b9d0231b302873e2e3fb0882cfff88152889 Follow-up to unreleased work: the exit's render hold of the frame flush fix (not in any release) skips a frontend's surface, whose editor node must show the requested exit; found by the race run of the package before any release
