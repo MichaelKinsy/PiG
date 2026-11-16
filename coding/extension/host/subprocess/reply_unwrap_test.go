@@ -43,8 +43,8 @@ func TestNoEditReplyIsUnwrappedWithoutAllocation(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if got := testing.AllocsPerRun(100, unwrap); got != 0 {
-				t.Errorf("%s reply %s (%s): %v allocations to take the result out of a reply that edits nothing, want 0", event, tc.name, raw, got)
+			if got := testing.AllocsPerRun(100, unwrap); got > raceAllocSlack {
+				t.Errorf("%s reply %s (%s): %v allocations to take the result out of a reply that edits nothing, want 0 (up to %d under the race detector)", event, tc.name, raw, got, raceAllocSlack)
 			}
 		}
 	}
