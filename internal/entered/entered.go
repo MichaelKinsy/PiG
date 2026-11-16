@@ -9,7 +9,9 @@
 //
 // A goroutine's state is read from a goroutine dump, polled after a short grace period with exponential backoff.
 // A sync.Mutex, sync.RWMutex or semaphore wait is not a wait here, except for AwaitBlocked: upstream code cannot block
-// on a lock, so a lock in Go code is part of its synchronous work, unless the caller may hold the lock.
+// on a lock, so a lock in Go code is part of its synchronous work, unless the caller may hold the lock. Nor is a wait the Go
+// runtime itself ends, such as the one of a goroutine that allocates while a collection runs: the goroutine is still on its
+// way to the wait the program gave it. Classify is the one place that tells these apart.
 package entered
 
 import (
@@ -116,13 +118,13 @@ func putBuffer(stacks *[]byte) {
 }
 
 // Parked reports whether goroutine id is parked in a wait and whether it exists, reusing (and returning) stacks as
-// its buffer. It is not parked while running, runnable, in a system call (a synchronous system call is work, as
-// upstream's synchronous I/O) or waiting for a sync.Mutex, sync.RWMutex or semaphore.
+// its buffer. It is not parked while Busy: running, runnable, in a system call (a synchronous system call is work, as
+// upstream's synchronous I/O) or stopped by the Go runtime; nor while waiting for a lock.
 func Parked(id uint64, stacks []byte) (parked, found bool, buffer []byte) {
 	return parkedOrBlocked(id, stacks, false)
 }
 
-// parkedOrBlocked is Parked; with locks, a goroutine waiting for a sync.Mutex, sync.RWMutex or semaphore is parked too.
+// parkedOrBlocked is Parked; with locks, a goroutine waiting for a lock is parked too.
 func parkedOrBlocked(id uint64, stacks []byte, locks bool) (parked, found bool, buffer []byte) {
 	if want := int(hint.Load()); cap(stacks) < want {
 		stacks = make([]byte, want)
@@ -145,15 +147,66 @@ func parkedOrBlocked(id uint64, stacks []byte, locks bool) (parked, found bool, 
 	if start == -1 {
 		return false, false, stacks
 	}
-	state := stacks[start+len(header):]
-	if end := bytes.IndexAny(state, ",]"); end != -1 {
-		state = state[:end]
+	// The dump's entry of the goroutine: its header line, then its frames, up to the blank line before the next entry.
+	entry := stacks[start:]
+	if end := bytes.Index(entry, []byte("\n\n")); end != -1 {
+		entry = entry[:end]
 	}
-	switch string(state) {
-	case "running", "runnable", "syscall", "copystack", "preempted":
+	state, frames, _ := bytes.Cut(entry[len(header):], []byte("\n"))
+	switch Classify(state, frames) {
+	case Busy:
 		return false, true, stacks
-	case "sync.Mutex.Lock", "sync.RWMutex.Lock", "sync.RWMutex.RLock", "semacquire":
+	case Lock:
 		return locks, true, stacks
 	}
 	return true, true, stacks
+}
+
+// Class is how a goroutine dump shows a goroutine that is awaited to enter a wait of the program's.
+type Class uint8
+
+const (
+	// Busy is a goroutine that has yet to reach a wait of the program's: it is running, runnable, in a system call, or stopped by
+	// the Go runtime for its own work and goes on without anything outside the process acting. A goroutine that allocates while
+	// a collection starts waits on the world lock ("semacquire"), one that allocates while it marks waits for assist credit ("GC
+	// assist wait"), and the other runtime states are the stages of a collection and of a stop of the world.
+	Busy Class = iota
+	// Lock is a goroutine waiting for a sync.Mutex, a sync.RWMutex or the lock of a file descriptor another goroutine is using.
+	Lock
+	// Waiting is a goroutine in any other wait: a channel, select, sleep, sync.Cond, sync.WaitGroup, IO wait and the like.
+	Waiting
+)
+
+// Classify returns the Class of a goroutine from its entry of a goroutine dump: header is the text of the first line after the
+// "[" that opens the state (the state, then a suffix such as " (scan)", ", 2 minutes" or ", locked to thread", then "]:"), and
+// frames are the lines that follow, up to the blank line before the next entry. "semacquire" is the world lock of a collection
+// (Busy) and also the wait of a goroutine that needs the lock of a file descriptor another goroutine is using, which only that
+// use ends (Lock): the frames of internal/poll's two waits (fdMutex.rwlock, and the semaphore FD.Close waits on), which the dump
+// lists where it hides the runtime's own, tell the two apart. Any other frame of internal/poll is code that allocates, and waits
+// for the collection.
+func Classify(header, frames []byte) Class {
+	state := header
+	if end := bytes.IndexAny(state, ",]"); end != -1 {
+		state = state[:end]
+	}
+	// Go prints "(scan)" while a collection scans the goroutine's stack and "(leaked)" for a goroutine the runtime found leaked,
+	// inside the brackets and after the state.
+	if end := bytes.Index(state, []byte(" (")); end != -1 {
+		state = state[:end]
+	}
+	switch string(state) {
+	case "running", "runnable", "syscall", "copystack", "preempted",
+		"GC assist marking", "GC assist wait", "garbage collection", "garbage collection scan", "GC mark termination",
+		"stopping the world", "flushing proc caches", "wait for GC cycle", "GC weak to strong wait",
+		"trace goroutine status", "trace proc status", "page trace flush", "dumping heap":
+		return Busy
+	case "semacquire":
+		if bytes.Contains(frames, []byte("internal/poll.(*fdMutex)")) || bytes.Contains(frames, []byte("internal/poll.runtime_Semacquire")) {
+			return Lock
+		}
+		return Busy
+	case "sync.Mutex.Lock", "sync.RWMutex.Lock", "sync.RWMutex.RLock":
+		return Lock
+	}
+	return Waiting
 }
