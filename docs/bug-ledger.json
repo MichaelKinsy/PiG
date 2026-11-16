@@ -28121,6 +28121,33 @@
       ]
     },
     {
+      "id": "BF-71e0f20",
+      "title": "A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's…",
+      "symptom": "A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off.",
+      "rootCause": "Pi stop() (tui.ts) writes showCursor and terminal.stop() between beforeTerminalStop and afterTerminalStop, so CSI ?25h CSI ?2004l come before CSI ?1049l, and a fullscreen exit that prints the transcript ends with the main screen stop (CSI ?25h CSI ?2004l) and nothing after it. pig wrote them only after the alternate screen was left, then a third CSI ?25h from the mode teardown. StopOptions.ExitTerminal (pig additive) marks the exit's stops; ProcessTerminal.WriteStopModes is terminal.stop()'s mode resets, and the restore that follows no longer repeats bracketed paste off. A renderer swap is not an exit and writes none of it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off. PiG wrote them only after the alternate screen was left and added a trailing cursor show. A terminal that handles the resets in order, or a recording of the exit bytes, now sees Pi's order; the screen a user sees is the same. Present in v0.5.3 and v0.7.0 (checked by tag).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "71e0f20510",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild",
+        "internal/codingagent/interactive_exit_order_pty_test.go::TestExitModeResetsFollowPiStopOrder",
+        "internal/codingagent/interactive_teardown_test.go::TestStopInteractiveTuiFullscreenExitOutput",
+        "tui/stop_terminal_modes_test.go::TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen",
+        "tui/stop_terminal_modes_test.go::TestAltScreenSwapStopLeavesBracketedPasteOn",
+        "tui/stop_terminal_modes_test.go::TestMainScreenExitStopWritesCursorThenPasteReset"
+      ]
+    },
+    {
       "id": "BF-725e104",
       "title": "The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks…",
       "symptom": "The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks `accessSync` and `spawnSync`, PiG's Windows alias and Unix cases match them case for case, and the native Windows check ran and passed on the Windows runner.",
