@@ -2376,6 +2376,9 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("io_wait_settled", "Make agent_settled wait on a socket read", io_wait_settled)
 
+    name_wait_addr: list[str] = []
+    ext.command("io_wait_name", "Make the session_info_changed handler wait on a socket read", lambda ctx, args: name_wait_addr.append(args))
+
     ext.command("command_error", "Return a command error", command_error)
 
     def command_awaited_error(ctx: pig_sdk.Context, args: str) -> None:
@@ -4054,7 +4057,13 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.on_event("session_start", session_start)
     ext.on_event("session_shutdown", session_shutdown)
-    ext.on_event("session_info_changed", lambda ctx, data: ctx.notify("session_info_changed:" + str(data.get("name", "")), "info"))
+    def session_info_changed(ctx, data):
+        # io_wait_name arms the handler to wait on a socket read first, as a handler that awaits does in Pi.
+        if name_wait_addr:
+            io_wait(name_wait_addr[0])
+        ctx.notify("session_info_changed:" + str(data.get("name", "")), "info")
+
+    ext.on_event("session_info_changed", session_info_changed)
     for name in ("ui_prompt_start", "ui_prompt_end"):
         ext.on_event(name, ui_prompt_event)
     ext.on_event(

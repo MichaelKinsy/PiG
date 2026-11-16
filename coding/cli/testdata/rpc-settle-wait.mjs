@@ -20,6 +20,18 @@ function wait(env) {
 export default function (pi) {
   pi.on("agent_settled", () => wait("RPC_SETTLE_ADDR"));
   pi.on("input", () => wait("RPC_SETTLE_INPUT_ADDR"));
+  // session_info_changed and thinking_level_select handlers: with RPC_NAME_ADDR they wait on the peer, with RPC_NAME_BUSY_MS they compute for that long without awaiting, and then they notify. Pi emits both events without awaiting them.
+  for (const event of ["session_info_changed", "thinking_level_select"]) {
+    pi.on(event, async (_event, ctx) => {
+      const busy = Number(process.env.RPC_NAME_BUSY_MS || 0);
+      if (!process.env.RPC_NAME_ADDR && !busy) return;
+      for (const end = Date.now() + busy; Date.now() < end; ) {
+        // computing: nothing awaits
+      }
+      if (process.env.RPC_NAME_ADDR) await wait("RPC_NAME_ADDR");
+      ctx.ui.notify("name-handler-done:" + event, "info");
+    });
+  }
   pi.registerCommand("hold", { description: "Wait on a socket read", handler: async () => {
     await wait("RPC_SETTLE_ADDR");
     if (process.env.RPC_SETTLE_DONE) writeFileSync(process.env.RPC_SETTLE_DONE, "done\n");

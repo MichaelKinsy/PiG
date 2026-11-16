@@ -998,6 +998,11 @@ export default function (pi) {
       socket.on("error", reject);
     }),
   });
+  let nameWaitAddr = "";
+  pi.registerCommand("io_wait_name", {
+    description: "Make the session_info_changed handler wait on a socket read",
+    handler: async (args) => { nameWaitAddr = String(args); },
+  });
   pi.registerCommand("command_error", { description: "Return a command error", handler: async () => { throw new Error("command exploded"); } });
   pi.registerCommand("command_awaited_error", {
     description: "Return an error after awaited work",
@@ -2989,7 +2994,20 @@ export default function (pi) {
     ctx.ui.notify(`session_shutdown:${event.reason ?? ""}`, "info");
     if (event.targetSessionFile) ctx.ui.notify(`target:${event.targetSessionFile}`, "info");
   });
-  pi.on("session_info_changed", async (event, ctx) => ctx.ui.notify(`session_info_changed:${event.name ?? ""}`, "info"));
+  pi.on("session_info_changed", async (event, ctx) => {
+    // io_wait_name arms the handler to wait on a socket read first, as a handler that awaits does in Pi.
+    if (nameWaitAddr) {
+      await new Promise((resolve, reject) => {
+        const [host, port] = nameWaitAddr.split(":");
+        const socket = ioWaitConnect({ host, port: Number(port) });
+        socket.setEncoding("utf8");
+        socket.on("connect", () => socket.write("waiting\n"));
+        socket.on("data", () => { socket.destroy(); resolve(); });
+        socket.on("error", reject);
+      });
+    }
+    ctx.ui.notify(`session_info_changed:${event.name ?? ""}`, "info");
+  });
   pi.on("session_before_compact", async (event, ctx) => ctx.ui.notify(`session_before_compact:${event.reason ?? ""}:${Boolean(event.willRetry)}`, "info"));
   pi.on("session_compact", async (event, ctx) => ctx.ui.notify(`session_compact:${event.reason ?? ""}:${Boolean(event.willRetry)}:${Boolean(event.fromExtension)}`, "info"));
   pi.on("session_compact_failed", async (event, ctx) => ctx.ui.notify(`session_compact_failed:${event.reason ?? ""}:${event.errorMessage ?? ""}:${Boolean(event.aborted)}:${Boolean(event.willRetry)}:${Boolean(event.fromExtension)}`, "info"));

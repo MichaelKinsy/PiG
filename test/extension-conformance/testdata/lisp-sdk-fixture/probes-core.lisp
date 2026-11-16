@@ -39,6 +39,8 @@
     (let ((stream (sb-bsd-sockets:socket-make-stream socket :input t :output t :buffering :none :external-format :utf-8)))
       (unwind-protect (progn (write-line "waiting" stream) (finish-output stream) (read-line stream nil nil))
         (close stream)))))
+(defvar *core-name-wait-addr* nil
+  "The address the session_info_changed handler waits on first; NIL when the handler is not armed (io_wait_name).")
 
 ;;; ---------------------------------------------------------------- tools
 
@@ -400,6 +402,8 @@
   (pig:command ext "io_wait_settled" "Make agent_settled wait on a socket read"
                (lambda (ctx args) (declare (ignore ctx))
                  (pig:on ext "agent_settled" (lambda (hctx data) (declare (ignore hctx data)) (core-io-wait args) nil))))
+  (pig:command ext "io_wait_name" "Make the session_info_changed handler wait on a socket read"
+               (lambda (ctx args) (declare (ignore ctx)) (setf *core-name-wait-addr* args)))
   (pig:command ext "usage-probe" "Report context usage" (lambda (ctx args) (declare (ignore args)) (core-info ctx (pig:to-json (or (pig:ctx-get-context-usage ctx) :null)))))
   (pig:command ext "replica-probe" "Report the replicated model, session id, name, file and context usage"
                (lambda (ctx args)
@@ -713,7 +717,12 @@
               (when (let ((f (pig:jget data "targetSessionFile"))) (and (stringp f) (plusp (length f))))
                 (core-info ctx (concatenate 'string "target:" (pig:jget data "targetSessionFile"))))
               nil))
-    (pig:on ext "session_info_changed" (lambda (ctx data) (core-info ctx (concatenate 'string "session_info_changed:" (core-key-str data "name" ""))) nil))
+    (pig:on ext "session_info_changed"
+            (lambda (ctx data)
+              ;; io_wait_name arms the handler to wait on a socket read first, as a handler that awaits does in Pi.
+              (when *core-name-wait-addr* (core-io-wait *core-name-wait-addr*))
+              (core-info ctx (concatenate 'string "session_info_changed:" (core-key-str data "name" "")))
+              nil))
     (pig:on ext "session_before_compact"
             (lambda (ctx data) (core-info ctx (format nil "session_before_compact:~A:~A" (core-key-str data "reason" "") (core-lower (pig:jget data "willRetry")))) nil))
     (pig:on ext "session_compact"

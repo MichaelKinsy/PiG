@@ -54,6 +54,9 @@ func ioWait(addr string) error {
 	return err
 }
 
+// nameWaitAddr is the address the session_info_changed handler waits on first; empty when the handler is not armed (io_wait_name).
+var nameWaitAddr atomic.Value
+
 // kitProbe is the component kit's conformance view (D107,
 // docs/plan/extension-component-kit.md §10). It logs every HandleInput and
 // HandleViewEvent call and closes on select with the log joined by ",".
@@ -1133,6 +1136,10 @@ func Extension() *sdk.Extension {
 	})
 	ext.Command("io_wait_settled", "Make agent_settled wait on a socket read", func(_ sdk.Context, addr string) error {
 		ext.OnEvent("agent_settled", func(sdk.Context, map[string]any) (any, error) { return nil, ioWait(addr) })
+		return nil
+	})
+	ext.Command("io_wait_name", "Make the session_info_changed handler wait on a socket read", func(_ sdk.Context, addr string) error {
+		nameWaitAddr.Store(addr)
 		return nil
 	})
 
@@ -4307,6 +4314,12 @@ func Extension() *sdk.Extension {
 		return nil, nil
 	})
 	ext.OnEvent("session_info_changed", func(ctx sdk.Context, data map[string]any) (any, error) {
+		// io_wait_name arms the handler to wait on a socket read first, as a handler that awaits does in Pi.
+		if addr, _ := nameWaitAddr.Load().(string); addr != "" {
+			if err := ioWait(addr); err != nil {
+				return nil, err
+			}
+		}
 		ctx.Notify("session_info_changed:"+fmt.Sprint(data["name"]), "info")
 		return nil, nil
 	})

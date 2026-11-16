@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 )
@@ -31,6 +33,23 @@ func main() {
 	ext := sdk.New("rpc-settle-wait-go")
 	ext.OnEvent(sdk.EventAgentSettled, func(sdk.Context, map[string]any) (any, error) { return nil, wait("RPC_SETTLE_ADDR") })
 	ext.OnEvent(sdk.EventInput, func(sdk.Context, map[string]any) (any, error) { return nil, wait("RPC_SETTLE_INPUT_ADDR") })
+	// Handlers of the two events Pi emits without awaiting them: with RPC_NAME_ADDR they wait on the peer, with RPC_NAME_BUSY_MS they compute for that long without waiting, and then they notify.
+	for _, event := range []string{sdk.EventSessionInfoChanged, sdk.EventThinkingLevelSelect} {
+		ext.OnEvent(event, func(ctx sdk.Context, _ map[string]any) (any, error) {
+			busy, _ := strconv.Atoi(os.Getenv("RPC_NAME_BUSY_MS"))
+			if os.Getenv("RPC_NAME_ADDR") == "" && busy == 0 {
+				return nil, nil
+			}
+			for end := time.Now().Add(time.Duration(busy) * time.Millisecond); time.Now().Before(end); {
+				// computing: nothing waits
+			}
+			if err := wait("RPC_NAME_ADDR"); err != nil {
+				return nil, err
+			}
+			ctx.Notify("name-handler-done:"+event, "info")
+			return nil, nil
+		})
+	}
 	ext.Command("hold", "wait on a socket read", func(sdk.Context, string) error {
 		if err := wait("RPC_SETTLE_ADDR"); err != nil {
 			return err
