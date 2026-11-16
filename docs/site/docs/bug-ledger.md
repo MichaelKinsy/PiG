@@ -1647,6 +1647,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-fc5baaf](#bf-fc5baaf) | `pi.exec`'s `timeout` starts once the command has been spawned, as in Pi, so time spent finding and starting… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fc749ad](#bf-fc749ad) | A task list item whose first line looks like a heading, quote, rule, bullet, fence, table row or HTML tag… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fc886e3](#bf-fc886e3) | Google and Vertex request bodies list their members in the order the `@google/genai` SDK writes them, also… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-fcd7907](#bf-fcd7907) | A closed Chord workers component forks no worker | PiG's own defect | All platforms | Unreleased |
 | [BF-fce99d3](#bf-fce99d3) | The "Your first ten minutes" and Quickstart pages now describe the first-time setup screen (theme, sprite and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fce99d4](#bf-fce99d4) | An npm or git `-e` source that fails to install stops startup and `/reload` before any extension factory… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-fd4be86](#bf-fd4be86) | OpenAI-compatible Chat Completions keeps the `"text":""` member of a user text part whose text is only a lone… | PiG's own defect | All platforms | 0.5.0 |
@@ -24225,6 +24226,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `433d232815` (2026-10-09), `2309604d80` (2026-10-10), `b4e83dbe17` (2026-10-10), `c10cde302d` (2026-10-10), `eeac307095` (2026-10-10), `f29e906cb3` (2026-10-10), `fc886e3bd2` (2026-10-10), `fe16108cc7` (2026-10-10)
 - **Tests:** `agent/assistant_member_order_oracle_test.go::TestAssistantLateMembersFollowPiCreationOrder`, `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses` and 17 more in docs/bug-ledger.json
 - **Release note:** Google and Vertex request bodies list their members in the order the `@google/genai` SDK writes them, also when an extension handles `before_provider_request`: body members (`contents`, `systemInstruction`, `tools`, `toolConfig`, then `generationConfig`), `generationConfig` members, `parts` before `role`, and the members of each part and function call. A function response lists `parts` before `id`, as Pi does.
+
+### BF-fcd7907
+
+**A closed Chord workers component forks no worker**
+
+- **Source:** PiG's own defect
+- **Symptom:** A closed Chord workers component forks no worker.
+- **Root cause:** A start that had the app's start data looked at Close in one step and forked in the next. A Close that landed between the two forked a worker into a closed component: the process was spawned and listed `starting` in the workers' state, the start's own cleanup killed it before Close returned, and the idle timer Close had stopped was armed again.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `fcd790712f` (2026-11-15)
+- **Tests:** `chord/nextnode/workers/workers_workers_test.go::TestCloseLandingAtTheEntryOfAStartsForkSectionForksNothingTheStartFailsClosed`
+- **Release note:** A closed Chord workers component forks no worker. A start whose app `start` data had arrived looked at `Close` in one step and forked in the next, so a `Close` that landed between the two spawned a worker process into the closed component: it showed as `starting` in the workers' state, the start's own cleanup killed it before `Close` returned, and the idle timer `Close` had stopped was armed again. The look and the fork are one step now, as in Pi, and a start that meets a closed component fails `released/closed` without forking. Present in v0.7.0. <!-- cause: the start looked at `closing` outside any section and forked in a later one, so a `Close` between them forked into a closed component; Pi looks at `closing` and forks in one synchronous step (workers.ts:345-348) -->
 
 ### BF-fce99d3
 

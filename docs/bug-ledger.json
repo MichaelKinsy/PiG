@@ -47513,6 +47513,28 @@
       ]
     },
     {
+      "id": "BF-fcd7907",
+      "title": "A closed Chord workers component forks no worker",
+      "symptom": "A closed Chord workers component forks no worker.",
+      "rootCause": "A start that had the app's start data looked at Close in one step and forked in the next. A Close that landed between the two forked a worker into a closed component: the process was spawned and listed `starting` in the workers' state, the start's own cleanup killed it before Close returned, and the idle timer Close had stopped was armed again.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A closed Chord workers component forks no worker. A start whose app `start` data had arrived looked at `Close` in one step and forked in the next, so a `Close` that landed between the two spawned a worker process into the closed component: it showed as `starting` in the workers' state, the start's own cleanup killed it before `Close` returned, and the idle timer `Close` had stopped was armed again. The look and the fork are one step now, as in Pi, and a start that meets a closed component fails `released/closed` without forking. Present in v0.7.0. \u003c!-- cause: the start looked at `closing` outside any section and forked in a later one, so a `Close` between them forked into a closed component; Pi looks at `closing` and forks in one synchronous step (workers.ts:345-348) --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fcd790712f",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_workers_test.go::TestCloseLandingAtTheEntryOfAStartsForkSectionForksNothingTheStartFailsClosed"
+      ]
+    },
+    {
       "id": "BF-fce99d3",
       "title": "The \"Your first ten minutes\" and Quickstart pages now describe the first-time setup screen (theme, sprite and…",
       "symptom": "They said PiG had no setup screen.",
