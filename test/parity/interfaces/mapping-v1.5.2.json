@@ -104491,9 +104491,9 @@
         "call:chord/next/store/expression.go#And"
       ],
       "evidence": [
+        "test:chord/next/host/host_example_69_test.go#TestExample69Admission",
         "test:chord/next/store/evaluate_test.go#TestEvaluator",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/expression_test.go#TestCompilingConditions"
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ]
     },
     {
@@ -104513,9 +104513,9 @@
         "call:chord/next/store/expression.go#And"
       ],
       "evidence": [
+        "test:chord/next/host/host_example_69_test.go#TestExample69Admission",
         "test:chord/next/store/evaluate_test.go#TestEvaluator",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/expression_test.go#TestCompilingConditions"
+        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
       ]
     },
     {
@@ -104924,9 +104924,9 @@
         "call:chord/next/contracts/schema.go#Bytes"
       ],
       "evidence": [
+        "test:chord/next/contracts/declare_test.go#TestAdmission",
         "test:chord/next/contracts/derived_runtime_test.go#TestDerivedShapes",
-        "test:chord/next/contracts/events_test.go#TestDeclareEventMembers",
-        "test:chord/next/contracts/events_test.go#TestEvolveEventEdits"
+        "test:chord/next/contracts/events_test.go#TestDeclareEventMembers"
       ]
     },
     {
@@ -104987,7 +104987,8 @@
       ],
       "evidence": [
         "test:chord/next/telemetry/telemetry_upstream_test.go#TestSchemaDeclaresEverySpanChordStartsAndKeepsIdsOffMetrics",
-        "test:chord/next/host/host_telemetry_test.go#TestTelemetrySchemaDeclaresEveryMetricATracedCallOverARelayRecords"
+        "test:chord/next/host/host_telemetry_test.go#TestTelemetrySchemaDeclaresEveryMetricATracedCallOverARelayRecords",
+        "test:chord/next/telemetry/schema_slice14_test.go#TestSchemaDeclaresSlice14sQueryCountersAndAdmitEvent"
       ]
     },
     {
@@ -105091,9 +105092,9 @@
         "call:chord/next/store/adapter.go#NewStoreOwnerTables"
       ],
       "evidence": [
+        "test:chord/next/store/skip_oracle_test.go#TestSkipCost",
         "test:chord/nextnode/app/archive_upstream_test.go#TestPackedEntriesAreInPisOrder",
-        "test:chord/nextnode/app/archive_upstream_test.go#TestRoundTripsAHostDirectorysKitStoreBesideItsPluginStore",
-        "test:chord/next/documents/keyed_slot_test.go#TestKeyedSlotTxRetireOfAColdKeyFindsItWithoutLoadingItAnAbsentKeyRetiresNothing"
+        "test:chord/nextnode/app/archive_upstream_test.go#TestRoundTripsAHostDirectorysKitStoreBesideItsPluginStore"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -105308,7 +105309,7 @@
       "evidence": [
         "test:chord/nextnode/app/archive_upstream_test.go#TestPackedEntriesAreInPisOrder",
         "test:chord/nextnode/app/archive_upstream_test.go#TestRoundTripsAHostDirectorysKitStoreBesideItsPluginStore",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptEagerMigrationsAThrowingRowsFailsTheObjectBrokenTheTableMigratingARetryResumesAfterTheCommittedChunks"
+        "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -105331,7 +105332,7 @@
       "evidence": [
         "test:chord/nextnode/app/archive_upstream_test.go#TestPackedEntriesAreInPisOrder",
         "test:chord/nextnode/app/archive_upstream_test.go#TestRoundTripsAHostDirectorysKitStoreBesideItsPluginStore",
-        "test:chord/next/host/host_attempt_test.go#TestAttemptEagerMigrationsAThrowingRowsFailsTheObjectBrokenTheTableMigratingARetryResumesAfterTheCommittedChunks"
+        "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -105352,9 +105353,9 @@
         "call:chord/next/store/store.go#ChordStore.Commit"
       ],
       "evidence": [
+        "test:chord/next/store/skip_oracle_test.go#TestSkipCost",
         "test:chord/next/documents/persistence_test.go#TestHostKeyedDocumentsStoreTheirKeyAsTheRecordsHostStringKeyedOnesStoreNone",
-        "test:chord/next/documents/persistence_test.go#TestStagedWritesStageARetirementBeforeARecreationAndNumberCreationsByTheirOrderInTheCommit",
-        "test:chord/next/documents/transaction_test.go#TestTablesInATransactionACommitQueuedBehindAnotherOwnersStepIsRefusedAtTheSealAnAdmittedOneIsAdopted"
+        "test:chord/next/documents/persistence_test.go#TestStagedWritesStageARetirementBeforeARecreationAndNumberCreationsByTheirOrderInTheCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -105375,9 +105376,9 @@
         "call:chord/next/store/store.go#ChordStore.Commit"
       ],
       "evidence": [
+        "test:chord/next/store/skip_oracle_test.go#TestSkipCost",
         "test:chord/next/documents/persistence_test.go#TestHostKeyedDocumentsStoreTheirKeyAsTheRecordsHostStringKeyedOnesStoreNone",
-        "test:chord/next/documents/persistence_test.go#TestStagedWritesStageARetirementBeforeARecreationAndNumberCreationsByTheirOrderInTheCommit",
-        "test:chord/next/documents/transaction_test.go#TestTablesInATransactionACommitQueuedBehindAnotherOwnersStepIsRefusedAtTheSealAnAdmittedOneIsAdopted"
+        "test:chord/next/documents/persistence_test.go#TestStagedWritesStageARetirementBeforeARecreationAndNumberCreationsByTheirOrderInTheCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -105961,8 +105962,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/host/jobs_persisted_test.go#TestPersistedASealDuringTheReservationAReservationQueuedBehindAHeldCommitQueuePastTheSealTheNextLiveAttemptInvokesTheRun",
-        "test:chord/next/host/jobs_persisted_test.go#TestPersistedASealDuringTheReservationAReservationRefusedAtAdmissionAfterTheSealTheNextLiveAttemptInvokesTheRun"
+        "test:chord/next/host/host_loop_join_test.go#TestLoopJoinCountsAPersistedRunsReservation",
+        "test:chord/next/host/host_tiling_test.go#TestTilingACommitGroupOfTwoOwners"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -105984,8 +105985,8 @@
       ],
       "evidence": [
         "test:chord/next/store/apply_batch_test.go#TestApplyBatch",
-        "test:chord/next/host/jobs_persisted_test.go#TestPersistedASealDuringTheReservationAReservationQueuedBehindAHeldCommitQueuePastTheSealTheNextLiveAttemptInvokesTheRun",
-        "test:chord/next/host/jobs_persisted_test.go#TestPersistedASealDuringTheReservationAReservationRefusedAtAdmissionAfterTheSealTheNextLiveAttemptInvokesTheRun"
+        "test:chord/next/host/host_loop_join_test.go#TestLoopJoinCountsAPersistedRunsReservation",
+        "test:chord/next/host/host_tiling_test.go#TestTilingACommitGroupOfTwoOwners"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -106153,9 +106154,9 @@
         "call:chord/next/link/channel.go#Channel.Send"
       ],
       "evidence": [
+        "test:chord/next/host/host_pace_test.go#TestPaceDoesNotHoldTheReaderForATeardownParkedOnALaterFrame",
         "test:chord/next/host/remote_hold_test.go#TestHoldFailuresWhileTheWindowIsFull",
-        "test:chord/next/link/message_test.go#TestACodecMismatch",
-        "test:chord/next/link/message_test.go#TestMessages"
+        "test:chord/next/link/message_test.go#TestACodecMismatch"
       ]
     },
     {
@@ -106175,9 +106176,9 @@
         "call:chord/next/link/channel.go#Channel.decode"
       ],
       "evidence": [
+        "test:chord/next/host/host_pace_test.go#TestPaceDoesNotHoldTheReaderForATeardownParkedOnALaterFrame",
         "test:chord/next/link/message_test.go#TestACodecMismatch",
-        "test:chord/next/link/message_test.go#TestMessages",
-        "test:chord/next/link/message_test.go#TestTheBinaryCodec"
+        "test:chord/next/link/message_test.go#TestMessages"
       ]
     },
     {
@@ -106197,9 +106198,9 @@
         "call:chord/next/link/channel.go#Channel.decode"
       ],
       "evidence": [
+        "test:chord/next/host/host_pace_test.go#TestPaceDoesNotHoldTheReaderForATeardownParkedOnALaterFrame",
         "test:chord/next/link/message_test.go#TestACodecMismatch",
-        "test:chord/next/link/message_test.go#TestMessages",
-        "test:chord/next/link/message_test.go#TestTheBinaryCodec"
+        "test:chord/next/link/message_test.go#TestMessages"
       ]
     },
     {
@@ -106302,12 +106303,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/expression.go#Eq"
+        "call:chord/next/store/expression.go#Add"
       ],
       "evidence": [
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
         "test:chord/next/host/host_refusal_test.go#TestRefusalAnIntOutOfRangeFailsOnlyItsTransactionAndTheObjectStaysLive",
-        "test:chord/next/store/proof_chord_test.go#TestExpressionBuildersMakeTheColumnRefAndTheOperationTheCompilerReads"
+        "test:chord/next/store/column_set_test.go#TestColumnSetDefine"
       ]
     },
     {
@@ -106364,7 +106365,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/expression.go#Expression.isRef"
+        "call:chord/next/store/expression.go#Add"
       ],
       "evidence": [
         "test:chord/next/store/proof_chord_test.go#TestExpressionBuildersMakeTheColumnRefAndTheOperationTheCompilerReads"
@@ -106394,7 +106395,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/expression.go#Expression.isRef"
+        "call:chord/next/store/expression.go#Add"
       ],
       "evidence": [
         "test:chord/next/store/proof_chord_test.go#TestExpressionBuildersMakeTheColumnRefAndTheOperationTheCompilerReads"
@@ -106414,12 +106415,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/expression.go#columnRefs"
+        "call:chord/next/store/column_set.go#DefineColumns"
       ],
       "evidence": [
+        "test:chord/next/store/skip_oracle_test.go#TestSkipOwnTable",
         "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionReplayOwnPutUpdateAndDeleteOverTheCommittedRowWithGet"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected"
       ]
     },
     {
@@ -106706,9 +106707,9 @@
         "call:chord/next/store/expression.go#And"
       ],
       "evidence": [
+        "test:chord/next/store/skip_oracle_test.go#TestSkipOwnTable",
         "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected"
       ]
     },
     {
@@ -106728,9 +106729,9 @@
         "call:chord/next/store/expression.go#And"
       ],
       "evidence": [
+        "test:chord/next/store/skip_oracle_test.go#TestSkipOwnTable",
         "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected"
       ]
     },
     {
@@ -106747,9 +106748,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/expression.go#CompileWhere"
+        "call:chord/next/store/expression.go#compileCondition"
       ],
       "evidence": [
+        "test:chord/next/store/expression_exists_test.go#TestReadPlanExistsData",
         "test:chord/next/store/expression_test.go#TestCompilingConditions"
       ]
     },
@@ -106767,9 +106769,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/expression.go#CompileWhere"
+        "call:chord/next/store/expression.go#compileCondition"
       ],
       "evidence": [
+        "test:chord/next/store/expression_exists_test.go#TestReadPlanExistsData",
         "test:chord/next/store/expression_test.go#TestCompilingConditions"
       ]
     },
@@ -107065,7 +107068,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/host_attempt.go#attempt.call"
+        "call:chord/next/host/host_admission.go#Decision.settleWait"
       ],
       "evidence": [
         "test:agent/agent_class_pi_oracle_test.go#TestAgentClassMatchesPi",
@@ -107114,9 +107117,9 @@
         "call:chord/next/host/host_ctx_trace.go#spanCtx.Get"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut",
         "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences",
-        "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
-        "test:chord/next/host/host_ctx_test.go#TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAtOnce"
+        "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -107137,9 +107140,9 @@
         "call:chord/next/host/host_ctx_trace.go#spanCtx.Get"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut",
         "test:chord/next/host/host_attempt_test.go#TestAttemptTheDrainAHandlerStuckPastItNoLongerCountsAsACallNorHoldsItsCtxGetReferences",
-        "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
-        "test:chord/next/host/host_ctx_test.go#TestCtxAGetStillWaitingWhenItsHandlerSettlesGivesUpItsReferenceIsReleasedAtOnce"
+        "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -107162,7 +107165,7 @@
       "evidence": [
         "test:chord/next/host/host_example_09_test.go#TestExample09Calls",
         "test:chord/next/host/host_root_test.go#TestHostRootGivesFnACallContext",
-        "test:chord/next/host/host_spans_test.go#TestCtxTraceRunsFnInAChildSpanOfTheHandlersWithAChildCtxTheSamePrincipalSignalAndReferences"
+        "test:chord/next/host/host_route_opened_test.go#TestRouteResolvesOpenedIsToldThePeersIncarnationAtTheHandshakeBeforeThePeersFirstCallIsHandledNeverForALinkClosedBeforeIt"
       ]
     },
     {
@@ -107895,9 +107898,9 @@
         "call:chord/next/store/expression.go#Eq"
       ],
       "evidence": [
+        "test:chord/next/store/skip_oracle_test.go#TestSkipOwnTable",
         "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected"
       ]
     },
     {
@@ -107917,9 +107920,9 @@
         "call:chord/next/store/expression.go#Eq"
       ],
       "evidence": [
+        "test:chord/next/store/skip_oracle_test.go#TestSkipOwnTable",
         "test:chord/next/documents/documents_telemetry_test.go#TestCommitsInTelemetryCountTheTableRowsACommitsWritesChanged",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected"
       ]
     },
     {
@@ -107984,8 +107987,8 @@
       ],
       "evidence": [
         "test:chord/next/contracts/contract_test.go#TestContractHandles",
-        "test:chord/next/contracts/declare_test.go#TestKeyedMembers",
-        "test:chord/next/contracts/declare_test.go#TestReservedMemberNames"
+        "test:chord/next/contracts/declare_test.go#TestAdmission",
+        "test:chord/next/contracts/declare_test.go#TestKeyedMembers"
       ]
     },
     {
@@ -108006,8 +108009,8 @@
       ],
       "evidence": [
         "test:chord/next/contracts/contract_test.go#TestContractHandles",
-        "test:chord/next/contracts/declare_test.go#TestKeyedMembers",
-        "test:chord/next/contracts/declare_test.go#TestReservedMemberNames"
+        "test:chord/next/contracts/declare_test.go#TestAdmission",
+        "test:chord/next/contracts/declare_test.go#TestKeyedMembers"
       ]
     },
     {
@@ -108028,8 +108031,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_22_test.go#TestExample22Migrations",
-        "test:chord/next/host/host_staging_test.go#TestStagingATableOfTheNewFactoryAtANewerVersionThanTheStoresRestartsTheObject",
-        "test:chord/next/host/host_store_host_data_test.go#TestStoreHostDataImportRefusesAnotherKindATableAtAnotherVersionAndARowWhoseKeyHoldsAnotherAddressSRow"
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing",
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth"
       ]
     },
     {
@@ -108050,8 +108053,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_22_test.go#TestExample22Migrations",
-        "test:chord/next/host/host_staging_test.go#TestStagingATableOfTheNewFactoryAtANewerVersionThanTheStoresRestartsTheObject",
-        "test:chord/next/host/host_store_host_data_test.go#TestStoreHostDataImportRefusesAnotherKindATableAtAnotherVersionAndARowWhoseKeyHoldsAnotherAddressSRow"
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing",
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth"
       ]
     },
     {
@@ -108115,6 +108118,7 @@
         "call:chord/next/store/expression.go#Add"
       ],
       "evidence": [
+        "test:chord/next/store/column_set_test.go#TestColumnSetDefine",
         "test:chord/next/store/proof_chord_test.go#TestExpressionBuildersMakeTheColumnRefAndTheOperationTheCompilerReads"
       ]
     },
@@ -108135,6 +108139,7 @@
         "call:chord/next/store/expression.go#Add"
       ],
       "evidence": [
+        "test:chord/next/store/column_set_test.go#TestColumnSetDefine",
         "test:chord/next/store/proof_chord_test.go#TestExpressionBuildersMakeTheColumnRefAndTheOperationTheCompilerReads"
       ]
     },
@@ -108170,7 +108175,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/expression.go#Expression.isRef"
+        "call:chord/next/store/expression.go#Add"
       ],
       "evidence": [
         "test:chord/next/store/proof_chord_test.go#TestExpressionBuildersMakeTheColumnRefAndTheOperationTheCompilerReads"
@@ -108190,7 +108195,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/expression.go#Expression.isRef"
+        "call:chord/next/store/expression.go#Add"
       ],
       "evidence": [
         "test:chord/next/store/proof_chord_test.go#TestExpressionBuildersMakeTheColumnRefAndTheOperationTheCompilerReads"
@@ -108878,7 +108883,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/host_attempt.go#attempt.Get"
+        "call:chord/next/host/host_admission.go#Decision.Get"
       ],
       "evidence": [
         "test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten",
@@ -109023,8 +109028,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
-        "test:chord/next/store/columns_test.go#TestHostColumnsDescribed",
-        "test:chord/next/store/expression_test.go#TestHostColumnExpressions"
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryAUsedColumnDroppedFailsExactlyTheReadsUsingItBeforeAnySQLRestoredTheyHeal",
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryTheMappingsProjectionGetsOnlyTheColumnsReadsAndPartnerReadsListAlsoWhenTheQueryOrdersOrMatchesByOthers"
       ]
     },
     {
@@ -109068,8 +109073,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
-        "test:chord/next/store/columns_test.go#TestHostColumnsDescribed",
-        "test:chord/next/store/expression_test.go#TestHostColumnExpressions"
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryAUsedColumnDroppedFailsExactlyTheReadsUsingItBeforeAnySQLRestoredTheyHeal",
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryTheMappingsProjectionGetsOnlyTheColumnsReadsAndPartnerReadsListAlsoWhenTheQueryOrdersOrMatchesByOthers"
       ]
     },
     {
@@ -109089,9 +109094,9 @@
         "call:chord/nextnode/http/upgrades.go#Upgrades.Link"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionOverALink",
         "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
-        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatRunsOneTimerPerHostOnlyWhileItHasLinksNonePerMessage",
-        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatTakesItsNumbersFromTheHostsOptions"
+        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatRunsOneTimerPerHostOnlyWhileItHasLinksNonePerMessage"
       ]
     },
     {
@@ -109111,9 +109116,9 @@
         "call:chord/nextnode/http/upgrades.go#Upgrades.Link"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionOverALink",
         "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
-        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatRunsOneTimerPerHostOnlyWhileItHasLinksNonePerMessage",
-        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatTakesItsNumbersFromTheHostsOptions"
+        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatRunsOneTimerPerHostOnlyWhileItHasLinksNonePerMessage"
       ]
     },
     {
@@ -109173,9 +109178,9 @@
         "call:chord/next/surfaces/surfaces_client.go#Client.Stop"
       ],
       "evidence": [
-        "test:chord/next/host/host_delegate_test.go#TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack",
-        "test:chord/next/host/host_delegate_test.go#TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched",
-        "test:chord/next/host/host_dependencies_test.go#TestParkedLongNamesAReferenceWhosePinnedKeyStillLoadsTheEpisodesClockIncludesTheLoadSol"
+        "test:chord/next/host/host_admission_settle_test.go#TestDecisionSettleWait",
+        "test:chord/next/host/host_admission_telemetry_test.go#TestAdmissionRecordsItsDecisionOnItsActivationSpan",
+        "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109196,9 +109201,9 @@
         "call:chord/next/surfaces/surfaces_client.go#Client.Stop"
       ],
       "evidence": [
-        "test:chord/next/host/host_delegate_test.go#TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack",
-        "test:chord/next/host/host_delegate_test.go#TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched",
-        "test:chord/next/host/host_dependencies_test.go#TestParkedLongNamesAReferenceWhosePinnedKeyStillLoadsTheEpisodesClockIncludesTheLoadSol"
+        "test:chord/next/host/host_admission_settle_test.go#TestDecisionSettleWait",
+        "test:chord/next/host/host_admission_telemetry_test.go#TestAdmissionRecordsItsDecisionOnItsActivationSpan",
+        "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109219,9 +109224,9 @@
         "call:chord/next/surfaces/surfaces_client.go#connect"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionOverALink",
         "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
-        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline",
-        "test:chord/next/host/host_example_12_test.go#TestExample12Routes"
+        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline"
       ]
     },
     {
@@ -109241,9 +109246,9 @@
         "call:chord/next/surfaces/surfaces_client.go#connect"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionOverALink",
         "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
-        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline",
-        "test:chord/next/host/host_example_12_test.go#TestExample12Routes"
+        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline"
       ]
     },
     {
@@ -109264,8 +109269,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
+        "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginRefusesAPluginThatIsNotLoadedHereAndChangesNothing",
+        "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginRemovesThatPluginsRecordsAndRowsOfTheAddressInOneCommitAndLeavesTheOthers"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109482,8 +109487,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_member_cites_test.go#TestHostIncarnationIsOneValuePerRunOfAHost",
-        "test:chord/nextnode/app/app_page_principal_test.go#TestTheAppsIngestFacetStampsAPagesSpansWithTheAppsPrincipalAttributesNotThePagesClaim",
-        "test:chord/next/telemetryingest/ingest_upstream_test.go#TestAdmittingPagesRefusesThePageOfAPrincipalTheAppDoesNotAdmitItsHoldFailsForbiddenNothingIsWritten"
+        "test:chord/next/host/host_route_opened_test.go#TestRouteResolvesOpenedIsToldThePeersIncarnationAtTheHandshakeBeforeThePeersFirstCallIsHandledNeverForALinkClosedBeforeIt",
+        "test:chord/nextnode/app/app_page_principal_test.go#TestTheAppsIngestFacetStampsAPagesSpansWithTheAppsPrincipalAttributesNotThePagesClaim"
       ]
     },
     {
@@ -109675,9 +109680,9 @@
         "call:chord/next/surfaces/surfaces_loaded.go#LoadedFacets.Reload"
       ],
       "evidence": [
+        "test:chord/next/host/host_adapted_test.go#TestReloadAHolderOfAVersionTheProviderAcceptsUnderAnotherFingerprintWaitsUnboundAsNotServed",
         "test:chord/next/host/host_adapted_test.go#TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedRestartHasANewerReferenceReadNothingDuringAParkedRestartItsWatchWaitingThenTheNewInstancesValues",
-        "test:chord/next/host/host_adapted_test.go#TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWatchOpenWhileItsVersionIsRefusedAndHealsItWhenItIsAcceptedAgain",
-        "test:chord/next/host/host_adapted_test.go#TestReloadAdaptedMembersFollowTheProvidersTopologyMapsExistingLocalWatchesWhenTheConsumersCurrentVersionBecomesAnAcceptedOlderOne"
+        "test:chord/next/host/host_adapted_test.go#TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWatchOpenWhileItsVersionIsRefusedAndHealsItWhenItIsAcceptedAgain"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109698,9 +109703,9 @@
         "call:chord/next/surfaces/surfaces_loaded.go#LoadedFacets.Reload"
       ],
       "evidence": [
+        "test:chord/next/host/host_adapted_test.go#TestReloadAHolderOfAVersionTheProviderAcceptsUnderAnotherFingerprintWaitsUnboundAsNotServed",
         "test:chord/next/host/host_adapted_test.go#TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedRestartHasANewerReferenceReadNothingDuringAParkedRestartItsWatchWaitingThenTheNewInstancesValues",
-        "test:chord/next/host/host_adapted_test.go#TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWatchOpenWhileItsVersionIsRefusedAndHealsItWhenItIsAcceptedAgain",
-        "test:chord/next/host/host_adapted_test.go#TestReloadAdaptedMembersFollowTheProvidersTopologyMapsExistingLocalWatchesWhenTheConsumersCurrentVersionBecomesAnAcceptedOlderOne"
+        "test:chord/next/host/host_adapted_test.go#TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWatchOpenWhileItsVersionIsRefusedAndHealsItWhenItIsAcceptedAgain"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109761,9 +109766,9 @@
         "call:chord/nextnode/app/owner.go#OwnerTokenFile"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut",
         "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
-        "test:chord/next/host/host_ctx_test.go#TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic",
-        "test:chord/next/host/host_ctx_test.go#TestCtxSettleReleasesTheReferencesAndForgetsThem"
+        "test:chord/next/host/host_ctx_test.go#TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109784,9 +109789,9 @@
         "call:chord/nextnode/app/owner.go#OwnerTokenFile"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut",
         "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
-        "test:chord/next/host/host_ctx_test.go#TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic",
-        "test:chord/next/host/host_ctx_test.go#TestCtxSettleReleasesTheReferencesAndForgetsThem"
+        "test:chord/next/host/host_ctx_test.go#TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -109924,8 +109929,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
+        "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginRemovesThatPluginsRecordsAndRowsOfTheAddressInOneCommitAndLeavesTheOthers",
+        "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginRunsTheReadsOverItsTablesAgainTheOwnersLiveQueryAndPinnedKeyFollowInThatCommit"
       ]
     },
     {
@@ -110425,8 +110430,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello",
-        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
+        "test:chord/next/host/host_pace_test.go#TestPaceTwoHostsChurningToEachOtherOverABlockingTransportBothFinish",
+        "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello"
       ]
     },
     {
@@ -110447,8 +110452,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_13_test.go#TestExample13Relay",
-        "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello",
-        "test:chord/next/link/ipc_test.go#TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
+        "test:chord/next/host/host_pace_test.go#TestPaceTwoHostsChurningToEachOtherOverABlockingTransportBothFinish",
+        "test:chord/next/link/channel_test.go#TestThePeersFirstMessageIsHandledAfterItsQueuedHello"
       ]
     },
     {
@@ -110666,7 +110671,7 @@
       "evidence": [
         "test:chord/next/store/evaluate_test.go#TestEvaluator",
         "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/expression_test.go#TestCompilingConditions"
+        "test:chord/next/store/expression_exists_test.go#TestReadPlanExistsData"
       ]
     },
     {
@@ -110688,7 +110693,7 @@
       "evidence": [
         "test:chord/next/store/evaluate_test.go#TestEvaluator",
         "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/expression_test.go#TestCompilingConditions"
+        "test:chord/next/store/expression_exists_test.go#TestReadPlanExistsData"
       ]
     },
     {
@@ -111176,9 +111181,9 @@
         "call:chord/next/host/host_attempt.go#attempt.Job"
       ],
       "evidence": [
-        "test:chord/next/host/host_example_19_test.go#TestExample19Jobs",
-        "test:chord/next/host/host_example_28_test.go#TestExample28PersistedJobs",
-        "test:chord/next/host/host_example_34_test.go#TestExample34Versions"
+        "test:chord/next/host/host_admission_test.go#TestAdmissionAReloadOfTheAdmittedType",
+        "test:chord/next/host/host_admission_test.go#TestAdmissionDeclarationErrors",
+        "test:chord/next/host/host_example_19_test.go#TestExample19Jobs"
       ]
     },
     {
@@ -111220,9 +111225,9 @@
         "call:chord/next/store/json_column.go#Json"
       ],
       "evidence": [
+        "test:chord/next/store/column_set_test.go#TestColumnSetDefine",
         "test:chord/next/store/columns_test.go#TestColumnDescriptors",
-        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableJsonVersionAndReader",
-        "test:chord/next/store/expression_test.go#TestCompilingSets"
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableJsonVersionAndReader"
       ]
     },
     {
@@ -111242,9 +111247,9 @@
         "call:chord/next/store/json_column.go#Json"
       ],
       "evidence": [
+        "test:chord/next/store/column_set_test.go#TestColumnSetDefine",
         "test:chord/next/store/columns_test.go#TestColumnDescriptors",
-        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableJsonVersionAndReader",
-        "test:chord/next/store/expression_test.go#TestCompilingSets"
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableJsonVersionAndReader"
       ]
     },
     {
@@ -111264,9 +111269,9 @@
         "call:chord/next/store/json_column.go#Json"
       ],
       "evidence": [
+        "test:chord/next/store/column_set_test.go#TestColumnSetDefine",
         "test:chord/next/store/columns_test.go#TestColumnDescriptors",
-        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableJsonVersionAndReader",
-        "test:chord/next/store/expression_test.go#TestCompilingSets"
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestOwnerTableJsonVersionAndReader"
       ]
     },
     {
@@ -112273,9 +112278,9 @@
         "call:chord/next/host/host_host.go#chordHost.Accept"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionOverALink",
         "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
-        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline",
-        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatRunsOneTimerPerHostOnlyWhileItHasLinksNonePerMessage"
+        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline"
       ]
     },
     {
@@ -112574,9 +112579,9 @@
         "call:chord/next/host/host_host.go#chordHost.Load"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionDeclarationErrors",
         "test:chord/next/host/host_example_32_test.go#TestExample32Startup",
-        "test:chord/next/host/host_host_test.go#TestHostALoadWhoseSetupThrowsLeavesThatPluginOutAndReportsItTheOthersPublishTheHostAndItsLinksStayOpen",
-        "test:chord/next/host/host_host_test.go#TestHostLoadLeavesOutAndReportsDuplicatePluginNamesAndDoubleServesTheLaterRefusesASecondLoad"
+        "test:chord/next/host/host_host_test.go#TestHostALoadWhoseSetupThrowsLeavesThatPluginOutAndReportsItTheOthersPublishTheHostAndItsLinksStayOpen"
       ]
     },
     {
@@ -112598,7 +112603,7 @@
       "evidence": [
         "test:chord/next/contracts/declare_test.go#TestDeclarationChecks",
         "test:chord/next/contracts/declare_test.go#TestHostKeyedMembers",
-        "test:chord/next/contracts/declare_test.go#TestReservedMemberNames"
+        "test:chord/next/contracts/declare_test.go#TestQueriesMembers"
       ]
     },
     {
@@ -113231,9 +113236,9 @@
         "call:chord/next/link/link.go#MemoryLinkPair"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionOverALink",
         "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
-        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline",
-        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatRunsOneTimerPerHostOnlyWhileItHasLinksNonePerMessage"
+        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline"
       ]
     },
     {
@@ -113253,9 +113258,9 @@
         "call:chord/next/link/link.go#MemoryLinkPair"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionOverALink",
         "test:chord/next/host/host_channel_test.go#TestACodecMismatchFailsTheFirstHelloAsAProtocolErrorNamingTheExpectedCodec",
-        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline",
-        "test:chord/next/host/host_channel_test.go#TestTheHeartbeatRunsOneTimerPerHostOnlyWhileItHasLinksNonePerMessage"
+        "test:chord/next/host/host_channel_test.go#TestTheHandshakeQueuesAConsumersMessagesUntilThePeersHelloAGetOverALinkThatNeverGreetsWaitsForItsDeadline"
       ]
     },
     {
@@ -113276,8 +113281,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_object_cycles_test.go#TestObjectCyclesAcrossHostsMissACycleEnteringAnActivationThatStartedAlreadyDocumentedLimitationBothWaitTransient",
-        "test:chord/next/host/host_revocation_test.go#TestHostRevokeEndsAGuestsReferenceOverARouteLinkThatDroppedAndNothingHoldsItOnTheNextOne",
-        "test:chord/next/host/host_revocation_test.go#TestHostRevokeEndsARelayedHoldStillWaitingForItsRoutesLink"
+        "test:chord/next/host/host_pace_test.go#TestPaceDoesNotHoldTheReaderForATeardownParkedOnALaterFrame",
+        "test:chord/next/host/host_revocation_test.go#TestHostRevokeEndsAGuestsReferenceOverARouteLinkThatDroppedAndNothingHoldsItOnTheNextOne"
       ]
     },
     {
@@ -113785,7 +113790,7 @@
       "evidence": [
         "test:chord/next/store/evaluate_test.go#TestEvaluator",
         "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/expression_test.go#TestCompilingConditions"
+        "test:chord/next/store/expression_exists_test.go#TestReadPlanExistsData"
       ]
     },
     {
@@ -113807,7 +113812,7 @@
       "evidence": [
         "test:chord/next/store/evaluate_test.go#TestEvaluator",
         "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/expression_test.go#TestCompilingConditions"
+        "test:chord/next/store/expression_exists_test.go#TestReadPlanExistsData"
       ]
     },
     {
@@ -113886,8 +113891,8 @@
       ],
       "evidence": [
         "test:chord/next/store/columns_test.go#TestColumnDescriptors",
-        "test:chord/next/store/evaluate_test.go#TestEvaluator",
-        "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite"
+        "test:chord/next/store/read_plan_test.go#TestReadPlanWrittenFor",
+        "test:chord/next/store/rows_test.go#TestDecodeScalar"
       ]
     },
     {
@@ -114166,8 +114171,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
-        "test:chord/next/host/host_store_host_data_test.go#TestStoreHostDataImportRefusesAnotherKindATableAtAnotherVersionAndARowWhoseKeyHoldsAnotherAddressSRow",
-        "test:chord/next/store/columns_test.go#TestColumnDescriptors"
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing",
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth"
       ]
     },
     {
@@ -114188,8 +114193,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
-        "test:chord/next/host/host_store_host_data_test.go#TestStoreHostDataImportRefusesAnotherKindATableAtAnotherVersionAndARowWhoseKeyHoldsAnotherAddressSRow",
-        "test:chord/next/store/columns_test.go#TestColumnDescriptors"
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing",
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth"
       ]
     },
     {
@@ -114247,7 +114252,7 @@
       "evidence": [
         "test:chord/next/store/evaluate_test.go#TestEvaluator",
         "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/expression_test.go#TestCompilingConditions"
+        "test:chord/next/store/expression_exists_test.go#TestReadPlanExistsData"
       ]
     },
     {
@@ -114269,7 +114274,7 @@
       "evidence": [
         "test:chord/next/store/evaluate_test.go#TestEvaluator",
         "test:chord/next/store/evaluate_test.go#TestEvaluatorAgreesWithSQLite",
-        "test:chord/next/store/expression_test.go#TestCompilingConditions"
+        "test:chord/next/store/expression_exists_test.go#TestReadPlanExistsData"
       ]
     },
     {
@@ -115276,9 +115281,9 @@
         "call:chord/next/host/host_host.go#chordHost.Load"
       ],
       "evidence": [
-        "test:chord/next/host/host_example_33_test.go#TestExample33Reload",
-        "test:chord/next/host/host_live_query_test.go#TestLiveQueryDeclarationStagingRefusesAQueryWithoutAValidLimitThePluginKeepsItsOldCode",
-        "test:chord/next/host/host_next_support_helpers_test.go#TestSupportLoadedCollectsErrorsAndTheFailedPlugins"
+        "test:chord/next/host/host_admission_test.go#TestAdmissionAReloadOfTheAdmittedType",
+        "test:chord/next/host/host_admission_test.go#TestAdmissionDeclarationErrors",
+        "test:chord/next/host/host_example_33_test.go#TestExample33Reload"
       ]
     },
     {
@@ -115501,7 +115506,7 @@
       "evidence": [
         "test:chord/next/documents/transaction_test.go#TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet",
         "test:chord/next/documents/transaction_test.go#TestTablesInATransactionWriteNothingOnAThrowOrAnAbortAndRefuseACallbackThatSettlesWithAPendingRead",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionTheReadRefreshIsStagedEvenWithoutAReadAReadOpenedWhileTheCommitWaitsRuns"
       ]
     },
     {
@@ -115523,7 +115528,7 @@
       "evidence": [
         "test:chord/next/documents/transaction_test.go#TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet",
         "test:chord/next/documents/transaction_test.go#TestTablesInATransactionWriteNothingOnAThrowOrAnAbortAndRefuseACallbackThatSettlesWithAPendingRead",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionTheReadRefreshIsStagedEvenWithoutAReadAReadOpenedWhileTheCommitWaitsRuns"
       ]
     },
     {
@@ -115545,7 +115550,7 @@
       "evidence": [
         "test:chord/next/documents/transaction_test.go#TestTablesInATransactionReadCommittedRowsWithPageAndRowsOverlayOwnWritesWithGet",
         "test:chord/next/documents/transaction_test.go#TestTablesInATransactionWriteNothingOnAThrowOrAnAbortAndRefuseACallbackThatSettlesWithAPendingRead",
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample"
+        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionTheReadRefreshIsStagedEvenWithoutAReadAReadOpenedWhileTheCommitWaitsRuns"
       ]
     },
     {
@@ -115571,10 +115576,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/live_query.go#NewLiveQuery"
+        "call:chord/next/store/query.go#Query.and"
       ],
       "evidence": [
-        "test:chord/next/store/query_test.go#TestQueries"
+        "test:chord/next/store/query_test.go#TestQueries",
+        "test:chord/next/store/read_plan_test.go#TestReadPlanExistsNode",
+        "test:chord/next/store/read_plan_test.go#TestReadPlanJoin"
       ]
     },
     {
@@ -115595,7 +115602,8 @@
       ],
       "evidence": [
         "test:chord/next/store/query_test.go#TestCursors",
-        "test:chord/next/store/query_test.go#TestQueries"
+        "test:chord/next/store/query_test.go#TestQueries",
+        "test:chord/next/store/read_plan_test.go#TestReadPlanJoin"
       ]
     },
     {
@@ -115616,8 +115624,8 @@
       ],
       "evidence": [
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
-        "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
-        "test:chord/next/store/query_test.go#TestCursors"
+        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
+        "test:chord/next/host/host_example_20_test.go#TestExample20Tables"
       ]
     },
     {
@@ -115638,7 +115646,7 @@
       "id": "pkg:chord/.#Query::property:table",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:cc92adc6a1099514346b493e964326956d3a0f6ff6cc0cf58f5c558673bdba31",
-      "rationale": "Derived by the interface gap detector: Query::property:table is Go chord/next/store/query.go#Query.Table (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: Query::property:table is Go chord/next/store/query.go#Query.Table (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "chord/next/store/query.go#Query.Table"
       ],
@@ -115651,7 +115659,9 @@
         "call:chord/next/store/live_query.go#CheckLiveQuery"
       ],
       "evidence": [
-        "reach:chord/next/store/live_query.go#CheckLiveQuery"
+        "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartAListsMoreDuringTheMigrationWaitsForTheSuccessorNoReadOfTheOldStatementIsRegistered",
+        "test:chord/next/host/host_named_query_restart_test.go#TestNamedQueryProvidersRestartAWriteAdmittedBeforeTheSealAndPausedAcrossItPublishesThenNoOldStatementRuns",
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryATargetIsWhatReadingItReadsAndDecodesAStoredRowAsItsPageDoes"
       ]
     },
     {
@@ -115855,7 +115865,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/host_attempt.go#attempt.retryDependencies"
+        "call:chord/next/host/host_admission.go#Decision.declare"
       ],
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot",
@@ -116082,7 +116092,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/telemetryingest/sender.go#SendPageTelemetry"
+        "call:chord/next/surfaces/surfaces_variant.go#LiveIn"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
@@ -116147,7 +116157,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/telemetryingest/sender.go#SendPageTelemetry"
+        "call:chord/next/surfaces/surfaces_variant.go#LiveIn"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
@@ -116218,9 +116228,9 @@
         "call:chord/next/host/host_host.go#chordHost.Reload"
       ],
       "evidence": [
-        "test:chord/next/host/host_example_33_test.go#TestExample33Reload",
-        "test:chord/next/host/host_host_test.go#TestHostReloadTheAPIReportsPluginsAddedChangedAndRemovedTheSameFacetObjectIsUnchangedAndUntouched",
-        "test:chord/next/host/host_live_query_test.go#TestLiveQueryReloadTheNewAttemptsQueryRunsAtItsActivationAndTakesOver"
+        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
+        "test:chord/next/host/host_admission_test.go#TestAdmissionAReloadOfAnAdmissionsSource",
+        "test:chord/next/host/host_example_33_test.go#TestExample33Reload"
       ]
     },
     {
@@ -116240,9 +116250,9 @@
         "call:chord/next/host/host_host.go#chordHost.Reload"
       ],
       "evidence": [
+        "test:chord/next/host/host_adapted_test.go#TestReloadAHolderOfAVersionTheProviderAcceptsUnderAnotherFingerprintWaitsUnboundAsNotServed",
         "test:chord/next/host/host_adapted_test.go#TestReloadAReferenceThatNeverHadValuesReadsNoneDuringAParkedRestartHasANewerReferenceReadNothingDuringAParkedRestartItsWatchWaitingThenTheNewInstancesValues",
-        "test:chord/next/host/host_adapted_test.go#TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWatchOpenWhileItsVersionIsRefusedAndHealsItWhenItIsAcceptedAgain",
-        "test:chord/next/host/host_adapted_test.go#TestReloadAdaptedMembersFollowTheProvidersTopologyMapsExistingLocalWatchesWhenTheConsumersCurrentVersionBecomesAnAcceptedOlderOne"
+        "test:chord/next/host/host_adapted_test.go#TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWatchOpenWhileItsVersionIsRefusedAndHealsItWhenItIsAcceptedAgain"
       ]
     },
     {
@@ -116262,9 +116272,9 @@
         "call:chord/next/host/host_host.go#chordHost.Reload"
       ],
       "evidence": [
-        "test:chord/next/host/host_delegate_test.go#TestDelegateHoldsKeepTheirOrderAcrossTheDelegatesRestartAndTheServersTypesNeverMove",
-        "test:chord/next/host/host_delegate_test.go#TestDelegateTheClosureRuleReadsTheStagedTableAChangedPluginsRequestForATypeTheReloadStopsServingGoesToTheDelegate",
-        "test:chord/next/host/host_example_33_test.go#TestExample33Reload"
+        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
+        "test:chord/next/host/host_admission_test.go#TestAdmissionAReloadOfAnAdmissionsSource",
+        "test:chord/next/host/host_admission_test.go#TestAdmissionAReloadOfTheAdmittedType"
       ]
     },
     {
@@ -116284,9 +116294,9 @@
         "call:chord/next/contracts/declare.go#Remote"
       ],
       "evidence": [
+        "test:chord/next/contracts/declare_test.go#TestAdmission",
         "test:chord/next/contracts/declare_test.go#TestDeclarationChecks",
-        "test:chord/next/contracts/derived_runtime_test.go#TestDeclarationTypeChecksAtRuntime",
-        "test:chord/next/contracts/derived_runtime_test.go#TestHostAddressParams"
+        "test:chord/next/contracts/derived_runtime_test.go#TestDeclarationTypeChecksAtRuntime"
       ]
     },
     {
@@ -116405,8 +116415,8 @@
         "call:chord/next/host/host_host.go#createHost"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionOverALink",
         "test:chord/next/host/host_example_15_test.go#TestExample15Revocation",
-        "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldRevocationEndsEveryReferenceSharingAHoldAndTheNextOneHoldsAnew",
         "test:chord/next/host/host_revocation_test.go#TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON"
       ]
     },
@@ -116427,8 +116437,8 @@
         "call:chord/next/host/host_host.go#createHost"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionOverALink",
         "test:chord/next/host/host_example_15_test.go#TestExample15Revocation",
-        "test:chord/next/host/host_host_test.go#TestBindRemoteReferencesSharingOneWireHoldRevocationEndsEveryReferenceSharingAHoldAndTheNextOneHoldsAnew",
         "test:chord/next/host/host_revocation_test.go#TestRevocationKeysAreComputedOncePerPrincipalObjectComparedAsCanonicalJSON"
       ]
     },
@@ -116449,9 +116459,9 @@
         "call:chord/next/host/host_host.go#chordHost.Root"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut",
         "test:chord/next/host/host_ctx_test.go#TestCallChainAMethodsCtxIsItsOwnChainNodeAboveItTheChainOfTheCallThatMadeItARootsHasNone",
-        "test:chord/next/host/host_ctx_test.go#TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic",
-        "test:chord/next/host/host_ctx_test.go#TestCtxSettleReleasesTheReferencesAndForgetsThem"
+        "test:chord/next/host/host_ctx_test.go#TestCtxAGetThatFinishedItsAcquireInTheTurnItsHandlerSettledIsReleasedAtOnceRace11Deterministic"
       ]
     },
     {
@@ -116482,7 +116492,7 @@
       "evidence": [
         "test:chord/next/host/host_delegate_test.go#TestDelegateIsRefusedForAKindThatIsNotTheHostsAddressAfterLoadAndTwice",
         "test:chord/next/host/host_example_12_test.go#TestExample12Routes",
-        "test:chord/next/host/host_example_13_test.go#TestExample13Relay"
+        "test:chord/next/host/host_route_admission_settle_test.go#TestRouteAdmissionAGenuinelyBrokenDecisionIsTold"
       ]
     },
     {
@@ -116951,7 +116961,7 @@
       "evidence": [
         "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
         "test:chord/next/host/host_follow_test.go#TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheActivationTransient",
-        "test:chord/next/host/host_registry_readers_test.go#TestOlderReadersDropAnOlderReadersLastGoodMappingAfterAContributorItWasBuiltFromFailedLive"
+        "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens"
       ]
     },
     {
@@ -116973,7 +116983,7 @@
       "evidence": [
         "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
         "test:chord/next/host/host_follow_test.go#TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheActivationTransient",
-        "test:chord/next/host/host_registry_readers_test.go#TestOlderReadersDropAnOlderReadersLastGoodMappingAfterAContributorItWasBuiltFromFailedLive"
+        "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens"
       ]
     },
     {
@@ -117344,9 +117354,9 @@
         "call:chord/nextnode/app/files.go#filesObject"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
-        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
+        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117367,9 +117377,9 @@
         "call:chord/nextnode/app/files.go#filesObject"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
-        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
+        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117391,8 +117401,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_29_test.go#TestExample29Registries",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch",
-        "test:chord/next/host/host_registry_readers_test.go#TestValuesMemoryKeepsNoOldCompositionOnceItsReadersStoppedWaitingAndNobodyFollowsItOpus"
+        "test:chord/next/host/host_list_test.go#TestListPages",
+        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch"
       ]
     },
     {
@@ -117413,8 +117423,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_29_test.go#TestExample29Registries",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch",
-        "test:chord/next/host/host_registry_readers_test.go#TestValuesMemoryKeepsNoOldCompositionOnceItsReadersStoppedWaitingAndNobodyFollowsItOpus"
+        "test:chord/next/host/host_list_test.go#TestListPages",
+        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch"
       ]
     },
     {
@@ -117888,9 +117898,9 @@
         "call:chord/next/store/engine.go#ChangeDocument"
       ],
       "evidence": [
+        "test:chord/next/store/skip_oracle_test.go#TestSkipCost",
         "test:chord/next/store/export_test.go#TestExportHostSelection",
-        "test:chord/next/store/live_query_test.go#TestLiveQueryAppliedAgainAdoptsItsLastApplicationsRunsOnlyAGroupedCommitThatRolledBackAppliesAgainAlone",
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/live_query_test.go#TestLiveQueryAppliedAgainAdoptsItsLastApplicationsRunsOnlyAGroupedCommitThatRolledBackAppliesAgainAlone"
       ]
     },
     {
@@ -118347,8 +118357,8 @@
       ],
       "evidence": [
         "test:chord/next/store/host_data_test.go#TestStepRecordsOrder",
-        "test:chord/next/store/proof_chord_test.go#TestStepRunCountedReturnsTheRowsAStatementChangedAndCountsIt",
-        "test:chord/next/store/applier_test.go#TestApplier"
+        "test:chord/next/store/live_query_test.go#TestLiveQueryAppliedAgainAdoptsItsLastApplicationsRunsOnlyAGroupedCommitThatRolledBackAppliesAgainAlone",
+        "test:chord/next/store/proof_chord_test.go#TestStepRunCountedReturnsTheRowsAStatementChangedAndCountsIt"
       ]
     },
     {
@@ -118427,10 +118437,10 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/step.go#NewStep"
+        "call:chord/next/store/reads.go#ReadRefresh.run"
       ],
       "evidence": [
-        "reach:chord/next/store/step.go#NewStep"
+        "reach:chord/next/store/reads.go#ReadRefresh.run"
       ]
     },
     {
@@ -118701,6 +118711,7 @@
       ],
       "evidence": [
         "test:chord/next/store/group_commit_test.go#TestGroupCommit",
+        "test:chord/next/store/seam_test.go#TestWrapAdopt",
         "test:chord/next/store/store_test.go#TestStore"
       ]
     },
@@ -118722,6 +118733,7 @@
       ],
       "evidence": [
         "test:chord/next/store/group_commit_test.go#TestGroupCommit",
+        "test:chord/next/store/seam_test.go#TestWrapAdopt",
         "test:chord/next/store/store_test.go#TestStore"
       ]
     },
@@ -119251,7 +119263,7 @@
       "evidence": [
         "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
         "test:chord/next/host/host_follow_test.go#TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheActivationTransient",
-        "test:chord/next/host/host_registry_readers_test.go#TestOlderReadersDropAnOlderReadersLastGoodMappingAfterAContributorItWasBuiltFromFailedLive"
+        "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens"
       ]
     },
     {
@@ -119273,7 +119285,7 @@
       "evidence": [
         "test:chord/next/host/host_follow_hold_test.go#TestFollowObserverSectionHoldsTheDeliverySchedulerSoTwoCommitsOfOneSectionAreOneCall",
         "test:chord/next/host/host_follow_test.go#TestHostFollowAnEndWhileTheObjectActivatesAfterItsSourcesAttachedFailsTheActivationTransient",
-        "test:chord/next/host/host_registry_readers_test.go#TestOlderReadersDropAnOlderReadersLastGoodMappingAfterAContributorItWasBuiltFromFailedLive"
+        "test:chord/next/host/host_query_reader_test.go#TestQueryReaderArgumentsThatHaveNoValueWhenTheReaderOpens"
       ]
     },
     {
@@ -119684,9 +119696,9 @@
         "call:chord/nextnode/app/files_index.go#NewFilesIndex"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
-        "test:chord/next/host/host_example_22_test.go#TestExample22Migrations",
-        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport"
+        "test:chord/next/host/host_example_22_test.go#TestExample22Migrations"
       ]
     },
     {
@@ -119706,9 +119718,9 @@
         "call:chord/nextnode/app/files_index.go#NewFilesIndex"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
-        "test:chord/next/host/host_example_22_test.go#TestExample22Migrations",
-        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport"
+        "test:chord/next/host/host_example_22_test.go#TestExample22Migrations"
       ]
     },
     {
@@ -119728,9 +119740,9 @@
         "call:chord/nextnode/app/files.go#filesObject"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
-        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
+        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119751,9 +119763,9 @@
         "call:chord/nextnode/app/files.go#filesObject"
       ],
       "evidence": [
+        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
-        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
-        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
+        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119775,8 +119787,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_29_test.go#TestExample29Registries",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch",
-        "test:chord/next/host/host_registry_readers_test.go#TestValuesMemoryKeepsNoOldCompositionOnceItsReadersStoppedWaitingAndNobodyFollowsItOpus"
+        "test:chord/next/host/host_list_test.go#TestListPages",
+        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch"
       ]
     },
     {
@@ -119797,8 +119809,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_29_test.go#TestExample29Registries",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch",
-        "test:chord/next/host/host_registry_readers_test.go#TestValuesMemoryKeepsNoOldCompositionOnceItsReadersStoppedWaitingAndNobodyFollowsItOpus"
+        "test:chord/next/host/host_list_test.go#TestListPages",
+        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStartsAWritableAtItsNewInitialValueAndReplacesTheContributionsInOneBatch"
       ]
     },
     {
@@ -120003,7 +120015,7 @@
       "evidence": [
         "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
         "test:chord/next/host/host_staging_test.go#TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure",
-        "test:chord/next/host/host_attempt_assertlive_test.go#TestAttemptTableReadsFromAHandlerGoroutineDoNotRaceWithTheObjectsEnd"
+        "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120026,7 +120038,7 @@
       "evidence": [
         "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
         "test:chord/next/host/host_staging_test.go#TestStagingAFactoryThatUsesTheHandlesItDeclaresIsInertNotAFailure",
-        "test:chord/next/host/host_attempt_assertlive_test.go#TestAttemptTableReadsFromAHandlerGoroutineDoNotRaceWithTheObjectsEnd"
+        "test:chord/next/host/host_admission_test.go#TestAdmissionACommitInFlightAtTheCut"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -120133,9 +120145,9 @@
         "call:chord/next/store/adapter.go#NewOwnerTable"
       ],
       "evidence": [
-        "test:chord/next/store/sql_test.go#TestSqlDDL",
-        "test:chord/next/store/sql_test.go#TestSqlStatements",
-        "test:chord/next/store/table_test.go#TestTableDefinitionKeepsItsColumnsIndexesAndEvolutionAfterNewTableDefinition"
+        "test:chord/next/store/skip_oracle_test.go#TestSkipCost",
+        "test:chord/next/store/skip_oracle_test.go#TestSkipExistsTable",
+        "test:chord/next/store/skip_oracle_test.go#TestSkipJoinedTable"
       ]
     },
     {
@@ -120220,9 +120232,9 @@
         "call:chord/next/store/expression.go#CompileSet"
       ],
       "evidence": [
+        "test:chord/next/store/rows_test.go#TestDecodeScalar",
         "test:chord/next/store/table_evolve_test.go#TestEvolveChecks",
-        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits",
-        "test:chord/next/store/table_test.go#TestTableDefinitionKeepsItsColumnsIndexesAndEvolutionAfterNewTableDefinition"
+        "test:chord/next/store/table_evolve_test.go#TestEvolveEdits"
       ]
     },
     {
@@ -120327,8 +120339,8 @@
       ],
       "evidence": [
         "test:chord/next/store/catalog_test.go#TestCatalog",
-        "test:chord/next/store/evidence_storeB_adapter_test.go#TestStoreOwnerTablesDeclareAndPrepare",
-        "test:chord/next/store/group_commit_test.go#TestGroupCommit"
+        "test:chord/next/store/column_set_test.go#TestColumnSetExposes",
+        "test:chord/next/store/evidence_storeB_adapter_test.go#TestStoreOwnerTablesDeclareAndPrepare"
       ]
     },
     {
@@ -120365,7 +120377,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/table.go#NewTableDefinition"
+        "call:chord/next/store/read_plan.go#keyedBy"
       ],
       "evidence": [
         "test:chord/next/store/table_evolve_test.go#TestEvolveEdits",
@@ -120412,9 +120424,9 @@
         "call:chord/next/store/adapter.go#OwnerTable.notJson"
       ],
       "evidence": [
+        "test:chord/next/store/skip_oracle_test.go#TestSkipCost",
         "test:chord/next/store/table_test.go#TestDefineTable",
-        "test:durable/storage/store/tables_test.go#TestTablesDeclareTheColumnsAndIndexesOfTablesTS",
-        "test:test/wiring/chord_definitions_survive_test.go#TestTableDefinitionKeepsEveryDeclaredFieldSurvivesRegistration"
+        "test:durable/storage/store/tables_test.go#TestTablesDeclareTheColumnsAndIndexesOfTablesTS"
       ]
     },
     {
@@ -120453,7 +120465,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/query.go#Query.OrderBy"
+        "call:chord/next/store/query.go#Query.Join"
       ],
       "evidence": [
         "test:chord/next/store/evaluate_test.go#TestEvaluator",
@@ -120522,7 +120534,7 @@
       "evidence": [
         "test:chord/next/store/catalog_test.go#TestCatalog",
         "test:chord/next/store/group_commit_test.go#TestGroupCommit",
-        "test:chord/next/store/store_test.go#TestStore"
+        "test:chord/next/store/seam_test.go#TestWrapAdopt"
       ]
     },
     {
@@ -120543,8 +120555,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_22_test.go#TestExample22Migrations",
-        "test:chord/next/host/host_staging_test.go#TestStagingATableOfTheNewFactoryAtANewerVersionThanTheStoresRestartsTheObject",
-        "test:chord/next/host/host_store_host_data_test.go#TestStoreHostDataImportRefusesAnotherKindATableAtAnotherVersionAndARowWhoseKeyHoldsAnotherAddressSRow"
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing",
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth"
       ]
     },
     {
@@ -120594,8 +120606,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_22_test.go#TestExample22Migrations",
-        "test:chord/next/host/host_store_host_data_test.go#TestStoreHostDataImportRefusesAnotherKindATableAtAnotherVersionAndARowWhoseKeyHoldsAnotherAddressSRow",
-        "test:chord/next/store/host_data_test.go#TestHostDataImport"
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing",
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth"
       ]
     },
     {
@@ -120616,8 +120628,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_22_test.go#TestExample22Migrations",
-        "test:chord/next/host/host_store_host_data_test.go#TestStoreHostDataImportRefusesAnotherKindATableAtAnotherVersionAndARowWhoseKeyHoldsAnotherAddressSRow",
-        "test:chord/next/store/host_data_test.go#TestHostDataImport"
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryAColumnSetAcrossItsPublishersReloadsUnchangedCodeAndAnUnusedColumnAddedNoReaderRestartsEqualRowsSendNothing",
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryASetExposedNoMoreIsNotServedTwoTablesExposingOneNameAreRefusedNamingBoth"
       ]
     },
     {
@@ -120638,8 +120650,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_22_test.go#TestExample22Migrations",
-        "test:chord/next/store/table_evolve_test.go#TestEvolveChecks",
-        "test:chord/next/store/table_migration_test.go#TestEagerMigrations"
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryAUsedColumnDroppedFailsExactlyTheReadsUsingItBeforeAnySQLRestoredTheyHeal",
+        "test:chord/next/store/column_set_test.go#TestColumnSetEvolveExposes"
       ]
     },
     {
@@ -120818,8 +120830,8 @@
       ],
       "evidence": [
         "test:chord/next/host/host_example_22_test.go#TestExample22Migrations",
-        "test:chord/next/store/import_migration_test.go#TestMigratedRows",
-        "test:chord/next/store/table_evolve_test.go#TestEvolveChecks"
+        "test:chord/next/host/host_tiling_test.go#TestTilingAPublishersMigrationThatChangesTheOrder",
+        "test:chord/next/store/import_migration_test.go#TestMigratedRows"
       ]
     },
     {
@@ -121597,7 +121609,7 @@
       "evidence": [
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected",
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets",
-        "test:chord/next/host/host_live_query_test.go#TestLiveQueryActivationARunThatFailsAtActivationFailsTheActivationBroken"
+        "test:chord/next/host/host_list_go_test.go#TestListANewTargetDecodesItsRowsAgain"
       ]
     },
     {
@@ -121619,7 +121631,7 @@
       "evidence": [
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionRefuseGetOnATableAfterAnUpdateWhereOrDeleteWhereOtherTablesAreUnaffected",
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateWhereAndDeleteWhereAreOneStatementEachWithTheirSets",
-        "test:chord/next/host/host_live_query_test.go#TestLiveQueryActivationARunThatFailsAtActivationFailsTheActivationBroken"
+        "test:chord/next/host/host_list_go_test.go#TestListANewTargetDecodesItsRowsAgain"
       ]
     },
     {
@@ -122109,7 +122121,7 @@
       "evidence": [
         "test:chord/next/host/host_ctx_test.go#TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated",
         "test:chord/next/host/host_example_28_test.go#TestExample28PersistedJobs",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart"
+        "test:chord/next/host/host_loop_join_test.go#TestLoopJoinDoesNotWaitForAHandlerInUntilAbortedAndWaitsForItsRestOnceItIsAborted"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122132,7 +122144,7 @@
       "evidence": [
         "test:chord/next/host/host_ctx_test.go#TestCtxGetOfAHandlerWhoseCallWasAbortedChecksTheSignalFirstNothingIsCreated",
         "test:chord/next/host/host_example_28_test.go#TestExample28PersistedJobs",
-        "test:chord/next/host/host_object_reload_test.go#TestReloadARestartStopsItsRoutinesAtOnceTheirCallsDrainBeforeTheNewOnesStart"
+        "test:chord/next/host/host_loop_join_test.go#TestLoopJoinDoesNotWaitForAHandlerInUntilAbortedAndWaitsForItsRestOnceItIsAborted"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122150,12 +122162,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/host_attempt.go#Expose"
+        "call:chord/next/host/host_admission.go#Decision.Derive"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:chord/next/host/host_keyed_watchable_test.go#TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag",
-        "test:chord/next/state/watchable_own_test.go#TestConstantOf"
+        "test:chord/next/host/remote_provider_test.go#TestProviderOneMessagePerLinkPerCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -122178,7 +122190,7 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:chord/next/host/host_keyed_watchable_test.go#TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag",
-        "test:chord/next/state/watchable_own_test.go#TestConstantOf"
+        "test:chord/next/host/remote_provider_test.go#TestProviderOneMessagePerLinkPerCommit"
       ]
     },
     {
@@ -122565,7 +122577,7 @@
       "evidence": [
         "test:chord/next/host/host_example_29_test.go#TestExample29Registries",
         "test:chord/next/host/host_registry_value_test.go#TestRegistryValueReadsRaceFreeWhileAContributionChanges",
-        "test:chord/next/host/host_writable_section_test.go#TestWritableSetInASectionNests"
+        "test:chord/next/host/host_route_admission_test.go#TestRouteAdmissionADecisionThatChangesWhileItIsSettledEndsDeniedWheneverTheDenialArrives"
       ]
     },
     {
@@ -122587,7 +122599,7 @@
       "evidence": [
         "test:chord/next/host/host_example_29_test.go#TestExample29Registries",
         "test:chord/next/host/host_registry_value_test.go#TestRegistryValueReadsRaceFreeWhileAContributionChanges",
-        "test:chord/next/host/host_writable_section_test.go#TestWritableSetInASectionNests"
+        "test:chord/next/host/host_route_admission_test.go#TestRouteAdmissionADecisionThatChangesWhileItIsSettledEndsDeniedWheneverTheDenialArrives"
       ]
     },
     {
@@ -122604,7 +122616,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/telemetryingest/sender.go#SendPageTelemetry"
+        "call:chord/next/surfaces/surfaces_variant.go#LiveIn"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
@@ -124878,7 +124890,7 @@
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextDerivedAbortContextsPrintAsPiPrintsThem",
         "test:chord/context/chordctx_upstream_test.go#TestContextInheritsParentCancellationAndIsolatesChildCancellation",
-        "test:chord/context/abort_order_test.go#TestAbortOrderIsTheOrderOfTheCancelCalls"
+        "test:chord/context/abort_listener_leak_test.go#TestOnAbortLeavesNothingHeldByALongLivedContext"
       ]
     },
     {
@@ -124900,7 +124912,7 @@
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextDerivedAbortContextsPrintAsPiPrintsThem",
         "test:chord/context/chordctx_upstream_test.go#TestContextInheritsParentCancellationAndIsolatesChildCancellation",
-        "test:chord/context/abort_order_test.go#TestAbortOrderIsTheOrderOfTheCancelCalls"
+        "test:chord/context/abort_listener_leak_test.go#TestOnAbortLeavesNothingHeldByALongLivedContext"
       ]
     },
     {
@@ -137893,8 +137905,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+        "test:chord/nextnode/tui/tui_launcher_end_test.go#TestCancellingTheContextEndsTheClientItsSandboxProcessAndItsSockets",
+        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8"
       ]
     },
     {
@@ -138022,9 +138034,9 @@
         "call:chord/nextnode/tui/tui_launcher.go#Launcher.reply"
       ],
       "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_end_test.go#TestAtMostAQueuesWorthOfMessagesAreHeldForASandboxThatIsNotInstalledYet",
         "test:chord/nextnode/tui/tui_launcher_finish_order_test.go#TestFramesAroundTheSandboxsExitFollowPisOrder",
-        "test:chord/nextnode/tui/tui_launcher_finish_order_test.go#TestFramesHeldWhileAPromptIsOpenAreWrittenAfterTheTerminalWasGivenBack",
-        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts"
+        "test:chord/nextnode/tui/tui_launcher_finish_order_test.go#TestFramesHeldWhileAPromptIsOpenAreWrittenAfterTheTerminalWasGivenBack"
       ]
     },
     {
@@ -138095,8 +138107,9 @@
         "call:chord/nextnode/tui/tui_launcher.go#Launcher.startSandbox"
       ],
       "evidence": [
-        "test:chord/nextnode/tui/tui_sandbox_test.go#TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePermissions",
-        "test:chord/nextnode/tui/tui_sandbox_test.go#TestTheSandboxGivesRawDownloadedCodeNoBuiltinAndNoImportWhateverItPutsOnObjectPrototype"
+        "test:chord/nextnode/tui/tui_launcher_end_test.go#TestASandboxsFirstMessageThatComesBeforeItIsInstalledIsHandledWithItInstalled",
+        "test:chord/nextnode/tui/tui_launcher_end_test.go#TestWhatASandboxSentBeforeARestartReplacedItIsNotHandledForTheNext",
+        "test:chord/nextnode/tui/tui_sandbox_test.go#TestTheSandboxStartsWithASymlinkedTemporaryDirectoryWithoutExpandingFilePermissions"
       ]
     },
     {
@@ -138206,6 +138219,8 @@
         "call:chord/nextnode/tui/tui_launcher.go#Launcher.answer"
       ],
       "evidence": [
+        "test:chord/nextnode/tui/tui_launcher_end_test.go#TestASandboxsFirstMessageThatComesBeforeItIsInstalledIsHandledWithItInstalled",
+        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestAtMostEightRequestsAreAnsweredAtOnceAndTheNextIsRefusedUntilOneEnds",
         "test:chord/nextnode/tui/tui_pipe_test.go#TestWritingTheLaunchersMessagesWithTheirTextOrBytesAsTheBody"
       ]
     },
@@ -138294,9 +138309,9 @@
         "call:chord/nextnode/tui/tui_launcher.go#Launcher.handle"
       ],
       "evidence": [
-        "test:chord/nextnode/tui/tui_launcher_finish_order_test.go#TestFramesAroundTheSandboxsExitFollowPisOrder",
-        "test:chord/nextnode/tui/tui_launcher_finish_order_test.go#TestFramesHeldWhileAPromptIsOpenAreWrittenAfterTheTerminalWasGivenBack",
-        "test:chord/nextnode/tui/tui_launcher_hazards_test.go#TestALinkSocketClosedAfterItsDialFinishedButBeforeTheLoopTookItIsClosedAndNeverOpened"
+        "test:chord/nextnode/tui/tui_launcher_end_test.go#TestASandboxsFirstMessageThatComesBeforeItIsInstalledIsHandledWithItInstalled",
+        "test:chord/nextnode/tui/tui_launcher_end_test.go#TestAtMostAQueuesWorthOfMessagesAreHeldForASandboxThatIsNotInstalledYet",
+        "test:chord/nextnode/tui/tui_launcher_end_test.go#TestWhatASandboxSentBeforeARestartReplacedItIsNotHandledForTheNext"
       ]
     },
     {
@@ -139388,7 +139403,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/telemetryingest/sender.go#SendPageTelemetry"
+        "call:chord/next/surfaces/surfaces_variant.go#LiveIn"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestNativeWatchableWatchHoldsTheCurrentValueThenOneFramePerNewValueAndEndsWithItsContext",
@@ -140084,12 +140099,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/host/host_attempt.go#Expose"
+        "call:chord/next/host/host_admission.go#Decision.Derive"
       ],
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:chord/next/host/host_keyed_watchable_test.go#TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag",
-        "test:chord/next/state/watchable_own_test.go#TestConstantOf"
+        "test:chord/next/host/remote_provider_test.go#TestProviderOneMessagePerLinkPerCommit"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -140112,7 +140127,7 @@
       "evidence": [
         "test:chord/watch_upstream_test.go#TestWatchableWatchHoldsTheCurrentValueThenOneFramePerChangeAndEndsWithItsContext",
         "test:chord/next/host/host_keyed_watchable_test.go#TestKeyedWatchableAtIsInitialWhileAbsentAStateMemberDeriveAndOnSourceRetirementArrivesWithTheFlag",
-        "test:chord/next/state/watchable_own_test.go#TestConstantOf"
+        "test:chord/next/host/remote_provider_test.go#TestProviderOneMessagePerLinkPerCommit"
       ]
     },
     {
@@ -141227,8 +141242,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_export_test.go#TestAppExportsARunningWorkersDataWithoutStoppingItTheWorkerPacksItsOwnStore",
-        "test:chord/nextnode/app/app_export_test.go#TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWorkerAfterIt",
-        "test:chord/nextnode/app/app_export_test.go#TestAppLeavesAFailedAddressFailedAfterAnExport"
+        "test:chord/nextnode/workers/workers_incarnation_test.go#TestAWorkersIncarnationIsInTheStateBeforeItsFirstCallIsHandledAReportItsStartupSendsFindsItLongBeforeReady",
+        "test:chord/nextnode/app/app_export_test.go#TestAppExportsWithoutAWorkerUnderItsLockAHoldArrivingMeanwhileStartsTheWorkerAfterIt"
       ]
     },
     {
@@ -141361,8 +141376,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseCloseKeepsTheBasesCopyUntilItsWorkersExitedACloserStillFindsItsProgram",
-        "test:chord/nextnode/workers/proof_chord_test.go#TestWorkerMainRunsTheForkedWorkerFromItsStartMessageToItsFirstServedCall",
-        "test:chord/nextnode/workers/workers_base_close_test.go#TestTheWorkerBaseAStartsWaitForTheBuildEndsClosedWhenTheBuildAndTheCloseAreBothDone"
+        "test:chord/nextnode/workers/workers_example_76_test.go#TestExample76WorkerReports",
+        "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitACommitAReportQueuedInTheStoreBeforeTheExitLandsBeforeTheExitIsPublishedUntilThenTheStateShowsTheWorkerAndNothingStarts"
       ]
     },
     {
@@ -291018,7 +291033,8 @@
       ],
       "evidence": [
         "test:telemetry/telemetry_upstream_test.go#TestTelemetryEventDefinitionAttributesSurviveTheSchemaRoundTrip",
-        "test:telemetry/telemetry_upstream_test.go#TestTelemetryUpstream"
+        "test:telemetry/telemetry_upstream_test.go#TestTelemetryUpstream",
+        "test:chord/next/telemetry/schema_slice14_test.go#TestSchemaDeclaresSlice14sQueryCountersAndAdmitEvent"
       ]
     },
     {
