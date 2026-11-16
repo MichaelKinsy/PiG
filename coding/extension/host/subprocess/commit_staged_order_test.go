@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// Reload stops the replaced generations one after another and then the removed extensions, so the providers they registered leave the registry in that order.
+// Reload stops the replaced generations one after another, so the providers they registered leave the registry in that order; a removed extension that owns a provider is not stopped.
 func TestCommitStagedUnregistersProvidersInReloadOrder(t *testing.T) {
 	const replaced, removed = 8, 8
 	for range 20 {
@@ -30,11 +30,14 @@ func TestCommitStagedUnregistersProvidersInReloadOrder(t *testing.T) {
 			old := &managedExt{config: ExtConfig{Name: name}, providerNames: []string{"old-" + name}}
 			h.exts[name] = old
 			gone = append(gone, old)
-			want = append(want, "old-"+name)
 		}
 		h.commitStaged(staged, gone, "reload replaced")
 		if !slices.Equal(order, want) {
 			t.Fatalf("providers unregistered as %v, want %v", order, want)
+		}
+		// A removed extension keeps its provider, as Pi's reload never unregisters one (model-runtime.ts:965-993): its generation lingers instead.
+		if len(h.lingering) != removed {
+			t.Fatalf("%d removed generations linger, want %d", len(h.lingering), removed)
 		}
 	}
 }

@@ -43,7 +43,7 @@ func (h *Host) claimProviderOwnershipLocked(me *managedExt, conn *Conn, id strin
 	superseded := slices.Clone(retired)
 	inheritedOAuth := false
 	var previous []providerOwner
-	for _, other := range h.exts {
+	for other := range h.generationsLocked() {
 		if other == me {
 			continue
 		}
@@ -57,6 +57,7 @@ func (h *Host) claimProviderOwnershipLocked(me *managedExt, conn *Conn, id strin
 		inheritedOAuth = inheritedOAuth || hadOAuth
 		other.providerNames = slices.DeleteFunc(other.providerNames, func(name string) bool { return name == id })
 		other.oauthProviderNames = slices.DeleteFunc(other.oauthProviderNames, func(name string) bool { return name == id })
+		h.endLingerIfEmptyLocked(other)
 	}
 	ownedBefore, oauthBefore := slices.Contains(me.providerNames, id), slices.Contains(me.oauthProviderNames, id)
 	if !ownedBefore {
@@ -107,6 +108,7 @@ func (h *Host) retireNativeProviderLocked(me *managedExt, conn *Conn, id string)
 		}
 		provider.owner.providerNames = slices.DeleteFunc(provider.owner.providerNames, func(name string) bool { return name == id })
 		provider.owner.oauthProviderNames = slices.DeleteFunc(provider.owner.oauthProviderNames, func(name string) bool { return name == id })
+		h.endLingerIfEmptyLocked(provider.owner)
 		if provider.declaration.OAuth != nil {
 			ai.UnregisterOAuthProvider(id)
 		}

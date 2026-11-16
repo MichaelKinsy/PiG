@@ -1284,6 +1284,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-905f3d0](#bf-905f3d0) | A trap of the codemode module on a Worker no longer loses the output the script printed before it: the host… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9076cd5](#bf-9076cd5) | Markdown bold and italic render next to CJK punctuation in the terminal, for example… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-9088293](#bf-9088293) | The Azure OpenAI base URL is parsed and serialized with the WHATWG URL parser, as Pi does: hosts are… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-90890e6](#bf-90890e6) | An extension that registered a provider and is then removed (its file deleted, or taken out of the extension… | PiG's own defect | All platforms | Unreleased |
 | [BF-909581e](#bf-909581e) | The terminal no longer stays in mouse-tracking, focus-reporting, Kitty keyboard, bracketed-paste or… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-909a2e2](#bf-909a2e2) | MCP OAuth metadata documents with a member whose name differs from a modeled one only in case (for example… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-90c1f0f](#bf-90c1f0f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -19833,6 +19834,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `15a5c0b670` (2026-10-09), `2c04c1445a` (2026-10-09), `31f4517fbe` (2026-10-09), `7c4d874438` (2026-10-09), `90882933f6` (2026-10-09), `c4d51d5c1a` (2026-10-09), `d80c1cd150` (2026-10-09)
 - **Tests:** `ai/authorization_input_oracle_test.go::TestAuthorizationInputParsersMatchPi`, `ai/azure_config_oracle_test.go::TestAzureBaseURLNormalizationMatchesPi`, `ai/codex_account_id_oracle_test.go::TestCodexAccountIDMatchesPi`, `ai/githubcopilot_oracle_test.go::TestGitHubCopilotHelpersMatchPi`, `ai/radius_urls_oracle_test.go::TestRadiusURLsMatchPiOnSeededProbes`, `ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode`, `internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL`
 - **Release note:** The Azure OpenAI base URL is parsed and serialized with the WHATWG URL parser, as Pi does: hosts are lowercased and converted from IDN form, any scheme Pi's `new URL` accepts is accepted (and one it rejects is rejected), and the `/openai/v1` rewrite works on the normalized host and path.
+
+### BF-90890e6
+
+**An extension that registered a provider and is then removed (its file deleted, or taken out of the extension…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that registered a provider and is then removed (its file deleted, or taken out of the extension settings) keeps answering after `/reload`, as it does in Pi: the provider stays listed in `/model`, stays selectable, and a prompt to it is answered by the old extension, even across a second `/reload`.
+- **Root cause:** Pi's reload never unregisters a provider: the model runtime keeps the registration and the extension's own streamSimple closure until the session ends or an extension unregisters the name (agent-session.ts:3815-3855 reload, model-runtime.ts:965-993). PiG stopped the removed extension and unregistered its provider, so the model vanished and a prompt failed for want of a credential.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `90890e61c1` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/generation_linger_packed_test.go::TestPackedGoMemberRemovedByAReloadKeepsItsProviderUntilShutdown`, `coding/extension/host/subprocess/generation_linger_test.go::TestRemovedExtensionKeepsItsProviderAcrossTwoReloads`, `coding/extension_provider_survives_removal_test.go::TestRemovedExtensionProviderStillAnswersAfterReload`
+- **Release note:** An extension that registered a provider and is then removed (its file deleted, or taken out of the extension settings) keeps answering after `/reload`, as it does in Pi: the provider stays listed in `/model`, stays selectable, and a prompt to it is answered by the old extension, even across a second `/reload`. PiG stopped the removed extension and dropped its provider, so the model vanished and a prompt failed with "No API key found". A removed extension that owns a provider (also a bridged OAuth login or a virtual model) keeps its process and its registrations but loses everything else (tools, commands, handlers, widgets, MCP servers, events); its process ends with the session or when another extension takes its last name over. Present in every release up to and including v0.7.0.
 
 ### BF-909581e
 

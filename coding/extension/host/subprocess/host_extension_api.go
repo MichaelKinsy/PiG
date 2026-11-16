@@ -209,7 +209,11 @@ func (h *Host) trackVirtualModel(me *managedExt, ref VirtualModelRef) {
 	if h.virtualModelOwners == nil {
 		h.virtualModelOwners = make(map[VirtualModelRef]*managedExt)
 	}
+	previous := h.virtualModelOwners[ref]
 	h.virtualModelOwners[ref] = me
+	if previous != nil && previous != me {
+		h.endLingerIfEmptyLocked(previous)
+	}
 }
 
 // untrackVirtualModel records an unregistration. Pi's unregisterVirtualModel removes the model whoever registered it (model-runtime.ts:963-970), so nobody owns it afterwards.
@@ -217,25 +221,27 @@ func (h *Host) untrackVirtualModel(me *managedExt, ref VirtualModelRef) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	me.virtualModels = slices.DeleteFunc(me.virtualModels, func(r VirtualModelRef) bool { return r == ref })
+	previous := h.virtualModelOwners[ref]
 	delete(h.virtualModelOwners, ref)
+	if previous != nil && previous != me {
+		h.endLingerIfEmptyLocked(previous)
+	}
 }
 
 // releaseExtensionAPI removes the registrations of an extension that stopped. A replacement generation that registered the same server or virtual model keeps it: reload registers the successor before it stops its predecessor. A virtual model another extension registered after this one is that extension's and stays.
 func (h *Host) releaseExtensionAPI(me, successor *managedExt) {
+	h.releaseMcpServers(me, successor)
+	h.releaseVirtualModels(me, successor)
+}
+
+// releaseMcpServers removes the MCP servers an extension registered, but those a replacement generation registered too.
+func (h *Host) releaseMcpServers(me, successor *managedExt) {
 	h.mu.Lock()
 	servers := slices.Clone(me.mcpServerNames)
-	var models []VirtualModelRef
-	for _, ref := range me.virtualModels {
-		if h.virtualModelOwners[ref] == me {
-			models = append(models, ref)
-			delete(h.virtualModelOwners, ref)
-		}
-	}
-	me.mcpServerNames, me.virtualModels = nil, nil
+	me.mcpServerNames = nil
 	var keepServers []string
-	var keepModels []VirtualModelRef
 	if successor != nil && successor != me {
-		keepServers, keepModels = successor.mcpServerNames, successor.virtualModels
+		keepServers = successor.mcpServerNames
 	}
 	h.mu.Unlock()
 	path := extConfigOrigin(me.config)
@@ -244,6 +250,24 @@ func (h *Host) releaseExtensionAPI(me, successor *managedExt) {
 			h.providerRuntime.UnregisterMcpServer(path, name)
 		}
 	}
+}
+
+// releaseVirtualModels removes the virtual models an extension registered last, but those a replacement generation registered too.
+func (h *Host) releaseVirtualModels(me, successor *managedExt) {
+	h.mu.Lock()
+	var models []VirtualModelRef
+	for _, ref := range me.virtualModels {
+		if h.virtualModelOwners[ref] == me {
+			models = append(models, ref)
+			delete(h.virtualModelOwners, ref)
+		}
+	}
+	me.virtualModels = nil
+	var keepModels []VirtualModelRef
+	if successor != nil && successor != me {
+		keepModels = successor.virtualModels
+	}
+	h.mu.Unlock()
 	for _, ref := range models {
 		if !slices.Contains(keepModels, ref) {
 			h.providerRuntime.UnregisterVirtualModel(ref.Provider, ref.ID)
