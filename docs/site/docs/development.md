@@ -36,6 +36,8 @@ Do not use `go install ./cmd/pig` in a development checkout. Keep test and candi
 
 After editing `coding/extension/host/subprocess/runtime-node/`, run `go generate ./coding/extension/host/subprocess` before a direct `go build`. Commit both `runtime-node.pack` and `runtime_node_digest_generated.go` with the source changes. The archive holds the same runtime files in a few solid zstd blocks (`noderuntimepack`); its generated content digest keys the immutable runtime cache. `make pig`, `make build`, `make install`, and `make parity-bin` regenerate it automatically. `TestNodeRuntimeArchiveMatchesSources` rejects added, removed, or changed source files that are missing from the archive.
 
+`make generate` vendors Pi's runtime for this host from the installed pinned Pi (`make vendor-pi-dist`, which needs `make parity-deps`) and then packs it (`make node-runtime`). `make vendor-pi-dist-drift` and `make node-runtime-drift` fail when either step is stale, and CI's bookkeeping job runs both.
+
 ## Release version
 
 Change the PiG release version with `make set-version VERSION=x.y.z`. Use `SET_VERSION_ARGS=--dry-run` to inspect the diff without writing files. The command updates the release pin, Standard development version, and changelog heading, then runs the version consistency tests. It preserves Go module requirements and checksums so `main` continues to resolve published dependencies between releases. It leaves Unreleased entries in place unless you pass `SET_VERSION_ARGS=--move-unreleased`.

@@ -167,6 +167,15 @@ clean: ## Remove bin/ and tmp/ (builds, eval results, profiles, benchmarks)
 node-runtime: ## Regenerate the embedded Node runtime archive and content digest
 	go generate ./coding/extension/host/subprocess
 
+node-runtime-drift: ## Fail when the embedded Node runtime archive or digest differs from runtime-node (regenerate with make node-runtime)
+	go test -count=1 ./coding/extension/host/subprocess -run "^TestNodeRuntimeArchiveMatchesSources$$"
+
+# The shims follow the installed oracle, the archive follows the shims: the two gates cover the two links, and make generate runs both writers in that order.
+vendor-pi-dist-drift: parity-deps ## Fail when the vendored Pi runtime (runtime-node/shims) differs from what make vendor-pi-dist writes from the installed oracle (regenerate with make vendor-pi-dist, then make node-runtime)
+	@./automation/ci/vendor-pi-dist-drift.sh
+
+.PHONY: node-runtime-drift vendor-pi-dist-drift
+
 build: node-runtime ## Compile every package (go build ./...)
 	go build -buildvcs=false ./...
 
@@ -199,11 +208,12 @@ build-env-daemons: ## Cross-build the pi-env daemon for every remote system SshC
 generate: export LC_ALL := C
 generate help-text: export FORCE_COLOR := 0
 
-generate: ## Regenerate committed inventories, coverage, catalogs, help, and docs mirrors
+generate: ## Regenerate committed inventories, coverage, catalogs, help, docs mirrors, the vendored Pi runtime and its embedded archive (needs the pinned Pi oracle: make parity-deps)
 	@$(MAKE) divergences
 	@$(MAKE) piglet-strip-ids
 	@$(MAKE) sdk-bundles
 	@$(MAKE) model-catalogs
+	@$(MAKE) vendor-pi-dist
 	@$(MAKE) node-runtime
 	@$(MAKE) highlight-grammars
 	@$(MAKE) help-text
@@ -594,7 +604,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift node-runtime-drift vendor-pi-dist-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo
