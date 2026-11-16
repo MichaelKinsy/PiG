@@ -3152,7 +3152,13 @@ def new_extension() -> pig_sdk.Extension:
             if isinstance(data, dict) and isinstance(data.get("servers"), list):
                 hctx.notify("event_probe_servers:%s" % ",".join(str(s.get("name")) for s in data["servers"]), "info")
             queued = event_probe_results.get(name)
-            return queued.pop(0) if queued else None
+            value = queued.pop(0) if queued else None
+            # Pi ignores what a before_provider_headers handler returns and sends the headers object the handlers edited (runner.ts emitBeforeProviderHeaders), so the queued result becomes the headers by editing event.headers in place, as the Node fixture does.
+            if name == "before_provider_headers" and isinstance(value, dict):
+                data["headers"].clear()
+                data["headers"].update(value)
+                return None
+            return value
 
         off = ext.on_event(name, probe)
         event_probe_on_offs.setdefault(name, []).append(off)
@@ -3303,19 +3309,27 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("event_echo_probe", "Subscribe to the event named by the argument with a handler that hands back the objects it was sent", event_echo_probe)
 
     def event_mutate_probe(ctx, args):
-        # Subscribe to the event named by the argument `<event> [fail]` with a handler that edits the event's payload (before_provider_request) or headers (before_provider_headers) in place, returns nothing and, with fail, raises.
-        name, _, fail = args.strip().partition(" ")
+        # Subscribe to the event named by the argument `<event> [mode]` with a handler that works on the event's payload (before_provider_request) or headers (before_provider_headers) as the mode says: no mode edits it in place and returns nothing, fail edits it and raises, replace edits nothing and returns a replacement, both edits it in place under a key of its own and returns the replacement, delete (headers) sets the header the first edit wrote to None.
+        name, _, mode = args.strip().partition(" ")
+        mode = mode.strip()
 
         def mutate(hctx, data):
-            key = "inPlaceBeforeError" if fail.strip() == "fail" else "inPlace"
-            if name == "before_provider_headers":
-                data["headers"]["x-pig-" + key] = "in-place-edit"
-            else:
+            key = {"fail": "inPlaceBeforeError", "both": "inPlaceAlongside"}.get(mode, "inPlace")
+            headers = name == "before_provider_headers"
+            if headers:
+                if mode == "delete":
+                    data["headers"]["x-pig-inPlace"] = None
+                elif mode != "replace":
+                    data["headers"]["x-pig-" + key] = "in-place-edit"
+            elif mode != "replace":
                 data["payload"][key] = "in-place-edit"
                 if "zeta" in data["payload"]:
                     data["payload"]["zeta"][key] = "in-place-edit"
-            if fail.strip() == "fail":
+            if mode == "fail":
                 raise RuntimeError("failed after the edit")
+            if mode in ("replace", "both"):
+                return {"x-pig-replaced": "returned"} if headers else {"replaced": "returned"}
+            return None
 
         ext.on_event(name, mutate)
 

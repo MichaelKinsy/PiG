@@ -2370,11 +2370,13 @@ func (r *Runner) EmitMessageEnd(ctx context.Context, event extension.MessageEndE
 
 // EmitBeforeProviderHeaders lets every "before_provider_headers" handler
 // mutate the outgoing request headers in place; a nil value deletes a header.
-// A subprocess handler cannot share the map, so a returned header map
-// replaces the current headers instead. Handler errors are reported and the
+// What a handler returns is ignored, as in Pi. A handler in another process
+// cannot share the map, so its reply carries the headers it left (raw JSON,
+// also beside its error) and they replace the current headers; the result a
+// native handler returns is no result. Handler errors are reported and the
 // chain continues.
 //
-// upstream: runner.ts:1284-1310 (emitBeforeProviderHeaders)
+// upstream: runner.ts:1399-1425 (emitBeforeProviderHeaders)
 func (r *Runner) EmitBeforeProviderHeaders(ctx context.Context, headers extension.ProviderHeaders) (extension.ProviderHeaders, error) {
 	if err := r.assertEmitOpen(); err != nil {
 		return nil, err
@@ -2390,12 +2392,9 @@ func (r *Runner) EmitBeforeProviderHeaders(ctx context.Context, headers extensio
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "before_provider_headers", err)
-				// Upstream's catch keeps the headers as the handler left them: an in-place edit before a throw is in the request. An extension in another process reports the headers it left beside its error (raw JSON); a result a native handler returns beside its error is no result in Pi.
-				if _, edited := handlerResult.(json.RawMessage); !edited {
-					continue
-				}
 			}
-			if handlerResult == nil {
+			// Upstream's catch keeps the headers as the handler left them: an in-place edit before a throw is in the request. Only an extension in another process reports them (raw JSON).
+			if _, left := handlerResult.(json.RawMessage); !left {
 				continue
 			}
 			replacement, ok := coerceResult[extension.ProviderHeaders](handlerResult)

@@ -277,7 +277,7 @@ func eventPayloadCases() []eventPayloadCase {
 			},
 		},
 		{
-			// The headers the handlers leave on the outgoing request replace it; a null value deletes one (runner.ts emitBeforeProviderHeaders). Node mutates event.headers in place as Pi does, the other SDKs return the new map; the host sees the same result.
+			// The headers the handlers leave on the outgoing request are the request's; a null value deletes one (runner.ts emitBeforeProviderHeaders). Pi ignores what a handler returns, so every fixture's probe handler realizes the queued map by editing event.headers in place (the other half, a returned map that changes nothing, is TestConformance_ProviderHookEditsAndResultsCombine).
 			event: "before_provider_headers",
 			sent:  extension.BeforeProviderHeadersEvent{Type: "before_provider_headers", Headers: extension.ProviderHeaders{"a": new("1"), "b": nil}},
 			emit: func(ctx context.Context, h *harness) (any, error) {
