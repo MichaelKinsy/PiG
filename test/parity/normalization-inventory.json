@@ -1223,6 +1223,20 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/108-rpc-reload-loads-the-extensions-on-disk.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Notifications have generated UUIDs; retain distinct identities, event order, payloads and all command responses."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
       "transforms": [
         {
