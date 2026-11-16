@@ -1971,6 +1971,13 @@ func (r *Runner) emitContext(ctx context.Context, messages []extension.AgentMess
 			}
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "context", err)
+				// upstream: the handler's list is a filtered copy over the one set of message objects, so its edit to a message stays after a throw and its change to the list does not. An extension process reports the messages it was handed as it left them beside its error.
+				if raw, ok := handlerResult.(json.RawMessage); ok {
+					if typed, ok := coerceResult[*extension.ContextEventResult](raw); ok && len(typed.Messages) == len(snapshot) {
+						current, owned = typed.Messages, true
+						wire.Changed()
+					}
+				}
 				continue
 			}
 			var returned []extension.AgentMessage

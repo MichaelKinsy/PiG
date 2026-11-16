@@ -4985,10 +4985,10 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				}
 				resp.Response.Result = reply.Result
 			}
-			// upstream: runner.ts emitMessageEnd hands every handler the one event.message and agent-session.ts stores that object, so a handler's in-place edit of it is the message the later handlers, turn_end, agent_end and the saved entry hold. A Node runtime cannot share the object: its reply carries the message it left, when that differs from the one it received, even if the handler failed.
-			if event == "message_end" && len(args) > 0 && me.hostsNodeRuntime() && len(resp.Response.Result) > 0 {
+			// upstream: runner.ts emitMessageEnd hands every handler the one event.message and agent-session.ts stores that object, so a handler's in-place edit of it is the message the later handlers, turn_end, agent_end and the saved entry hold. An extension process cannot share the object: every SDK's reply carries the message it left, when that differs from the one it received, even if the handler failed.
+			if event == "message_end" && len(args) > 0 && len(resp.Response.Result) > 0 {
 				var reply MessageEndResponsePayload
-				//portlint:allow hotpathjson one decode per message_end of a Node runtime (a message, not a delta), and only the reply's two members are read
+				//portlint:allow hotpathjson one decode per message_end of an extension (a message, not a delta), and only the reply's two members are read
 				if err := json.Unmarshal(resp.Response.Result, &reply); err != nil {
 					return nil, fmt.Errorf("decode message_end response: %w", err)
 				}
@@ -5019,9 +5019,9 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				resp.Response.Result = boundary.Result
 			}
 			if resp.Response.Error != nil {
-				// upstream: runner.ts emitBeforeProviderRequest and emitBeforeProviderHeaders hand every handler the one payload or headers object and catch a handler's error with the object as the handler left it, so an in-place edit that precedes the throw stays in the request. The extension's reply carries the object it left beside its error.
-				if (event == "before_provider_request" || event == "before_provider_headers") && len(resp.Response.Result) > 0 && strings.TrimSpace(string(resp.Response.Result)) != "null" {
-					//portlint:allow hotpathalloc the reply frame returns to the connection when this handler returns (releaseResponse) and the result outlives it; one copy of the object a failed handler left, once per provider request
+				// upstream: runner.ts emitBeforeProviderRequest and emitBeforeProviderHeaders hand every handler the one payload or headers object and catch a handler's error with the object as the handler left it, so an in-place edit that precedes the throw stays in the request; runner.ts emitContext hands a context handler a filtered copy of the list over the one set of message objects, so an edit to a message stays after a throw. The extension's reply carries the object, or the messages, it left beside its error.
+				if (event == "before_provider_request" || event == "before_provider_headers" || event == "context") && len(resp.Response.Result) > 0 && strings.TrimSpace(string(resp.Response.Result)) != "null" {
+					//portlint:allow hotpathalloc the reply frame returns to the connection when this handler returns (releaseResponse) and the result outlives it; one copy of the object or messages a failed handler left, once per provider request or context emit
 					return slices.Clone(resp.Response.Result), resp.Response.Error.ToError()
 				}
 				return nil, resp.Response.Error.ToError()

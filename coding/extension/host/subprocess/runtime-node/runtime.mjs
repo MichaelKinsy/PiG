@@ -5721,7 +5721,14 @@ export class Runtime {
           const snapshot = Array.isArray(messages) ? messages.slice() : undefined;
           // A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
           const encodedBefore = snapshot && (request.event === "context" || request.event === "context_with_system") ? contextMessagesEncoding(messages) : undefined;
-          const pending = selected.handler(event, ctx);
+          let pending;
+          try {
+            pending = selected.handler(event, ctx);
+          } catch (err) {
+            // A context handler that throws before its first await fails as one that rejects: its edit of a message is kept.
+            if (request.event !== "context" || !snapshot) throw err;
+            pending = Promise.reject(err);
+          }
           const shutdownOwner = this.requestContext.getStore();
           // The host also hears in print and JSON mode when the handler's window closes: Pi's run, held still while a signal's disposal runs synchronously, goes on from that turn of its loop.
           if (shutdownOwner?.id === id && shutdownOwner.quit && (this.contextValues.mode === "rpc" || PROMPT_END_MODES.has(this.contextValues.mode))) armRequestWindow(shutdownOwner);
@@ -5734,7 +5741,15 @@ export class Runtime {
             if (shutdownOwner?.id === id) shutdownOwner.suspensionReported = true;
           }
           if (request.event === "session_shutdown" && this.contextValues.mode === "rpc") await this.acknowledgeInvocation(id, pending);
-          let result = await pending;
+          let result;
+          try {
+            result = await pending;
+          } catch (err) {
+            if (request.event !== "context" || !snapshot) throw err;
+            // Pi hands a context handler a filtered copy of the list over the one set of message objects (runner.ts emitContext): an edit to a message stays after a throw and a change to the list does not, so the reply of a failed handler carries the messages it was handed, as it left them.
+            await this.respond(id, { messages: snapshot, _pigContextUnchanged: true }, err instanceof Error ? err : new Error(String(err)));
+            return;
+          }
           if ((request.event === "context" || request.event === "context_with_system") && snapshot) {
             const returned = result?.messages ?? messages;
             const unchanged = returned.length === snapshot.length && returned.every((message, i) => message === snapshot[i]);

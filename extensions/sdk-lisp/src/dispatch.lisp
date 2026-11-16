@@ -315,24 +315,45 @@
                       (funcall handler ctx data))
              (serious-condition (c) (setf error-message (condition-message c))))
            (values (if (hash-table-p headers) headers (obj)) error-message)))
+        ;; Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it fails afterwards. The host cannot share the table, so the reply carries the message the handler left when its JSON text differs from the one it received, and the handler's result.
+        ((equal event "message_end")
+         (let* ((message (jget data "message"))
+                (before (and (hash-table-p message) (to-json message)))
+                result error-message)
+           (handler-case
+               (progn (ticket-begin (request-ticket (ctx-request ctx)))
+                      (setf result (funcall handler ctx data)))
+             (serious-condition (c) (setf error-message (condition-message c))))
+           (let ((reply (obj "_pigMessageEndResult" result)))
+             (when before
+               (handler-case (unless (equal (to-json message) before) (setf (gethash "_pigMessageEndMessage" reply) message))
+                 (serious-condition (c) (unless error-message (setf error-message (condition-message c))))))
+             (values reply error-message))))
         (t
          (let* ((messages (jget data "messages"))
                 (context-event (member event '("context" "context_with_system") :test #'equal))
                 (snapshot (and context-event (vectorp messages) (not (stringp messages)) (coerce messages 'list)))
                 (encoded-before (and snapshot (messages-encoding messages))))
            (ticket-begin (request-ticket (ctx-request ctx)))
-           (let ((result (funcall handler ctx data)))
-             (when (equal event "user_bash")
-               (setf result (or (user-bash-operations-reply result) (user-bash-event-result result))))
-             (when (and context-event snapshot)
-               (let* ((returned (let ((r (and (hash-table-p result) (jget result "messages")))) (or r messages)))
-                      (unchanged (and (vectorp returned) (= (length returned) (length snapshot))
-                                      (every #'eq (coerce returned 'list) snapshot))))
-                 (setf result
-                       (if (and unchanged encoded-before (equal (messages-encoding returned) encoded-before))
-                           (obj "_pigContextUnchanged" t)
-                           (obj "messages" returned "_pigContextUnchanged" (if unchanged t :false))))))
-             (values result nil))))))))
+          ;; Pi hands a context handler a filtered copy of the list over the one set of message objects (runner.ts emitContext): an edit to a message stays after a throw and a change to the list does not, so the reply of a failed handler carries the messages it was handed, as it left them.
+          (let* ((failure nil)
+                 (result (handler-case (funcall handler ctx data)
+                           (serious-condition (c)
+                             (if (and (equal event "context") snapshot) (progn (setf failure c) nil) (error c))))))
+            (if failure
+                (values (obj "messages" (coerce snapshot 'vector) "_pigContextUnchanged" t) (condition-message failure))
+                (progn
+                  (when (equal event "user_bash")
+                    (setf result (or (user-bash-operations-reply result) (user-bash-event-result result))))
+                  (when (and context-event snapshot)
+                    (let* ((returned (let ((r (and (hash-table-p result) (jget result "messages")))) (or r messages)))
+                           (unchanged (and (vectorp returned) (= (length returned) (length snapshot))
+                                           (every #'eq (coerce returned 'list) snapshot))))
+                      (setf result
+                            (if (and unchanged encoded-before (equal (messages-encoding returned) encoded-before))
+                                (obj "_pigContextUnchanged" t)
+                                (obj "messages" returned "_pigContextUnchanged" (if unchanged t :false))))))
+                  (values result nil))))))))))
 
 (defvar *child-tool-handler* nil
   "(lambda (ext session-id name)) -> the handler of a custom tool of a child session (child-session.lisp), or NIL.")

@@ -3564,6 +3564,14 @@ impl Extension {
                         .and_then(|payload| serde_json::to_string(payload).ok())
                 })
                 .flatten();
+                // The message a message_end handler is handed, as the host sent it: the reply carries the message the handler left when it differs.
+                let message_end_before = (req.event.as_deref() == Some("message_end"))
+                    .then(|| {
+                        data.get("message")
+                            .filter(|message| message.is_object())
+                            .and_then(|message| serde_json::to_string(message).ok())
+                    })
+                    .flatten();
                 // The emission's shared options: a before_agent_start handler edits them through its event, and the reply carries them.
                 let mut prompt_state: Option<Arc<crate::context::SystemPromptState>> = None;
                 let result = if let Some(handler) = self.events.handler(handler_id) {
@@ -3643,6 +3651,16 @@ impl Extension {
                         });
                     }
                 }
+                // Pi hands a context handler a filtered copy of the list over the one set of message objects (runner.ts emitContext): an edit to a message stays after a throw, so the reply of a failed handler carries the messages it was handed, as it left them. The host keeps them as the messages it holds and takes none of a change to the list.
+                if req.event.as_deref() == Some("context")
+                    && error.is_some()
+                    && let Some(messages) = data.get("messages").filter(|messages| messages.is_array())
+                    && context_messages_before.as_ref().and_then(Option::as_ref) != Some(messages)
+                {
+                    value = Some(
+                        serde_json::json!({ "messages": messages, "_pigContextUnchanged": true }),
+                    );
+                }
                 if let Some(before) = provider_payload_before
                     && matches!(value, None | Some(Value::Null))
                     && let Some(after) = data.get("payload")
@@ -3672,6 +3690,16 @@ impl Extension {
                     // serde_json compares maps without their member order, and moving a member is an edit in Pi (the tool runs with the object in its new order), so compare the JSON text.
                     if serde_json::to_string(&after).ok() != serde_json::to_string(&before).ok() {
                         reply["_pigToolCallInput"] = after.unwrap_or(Value::Null);
+                    }
+                    value = Some(reply);
+                }
+                // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it failed. The reply carries the message the handler left when the JSON text differs from the one it received (member order is an edit), and the handler's result.
+                if let Some(before) = message_end_before {
+                    let mut reply = serde_json::json!({ "_pigMessageEndResult": value });
+                    if let Some(after) = data.get("message")
+                        && serde_json::to_string(after).ok().as_deref() != Some(before.as_str())
+                    {
+                        reply["_pigMessageEndMessage"] = after.clone();
                     }
                     value = Some(reply);
                 }

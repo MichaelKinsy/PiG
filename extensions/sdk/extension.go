@@ -1515,8 +1515,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	var order *json.ObjectOrder
 	var promptOptions map[string]any
 	var toolCall *toolCallInput
-	// providerHook is the reply of a before_provider_request or before_provider_headers handler for the result it returned (provider_hook.go).
-	var providerHook func(result any) any
+	// editReply is the reply of a before_provider_request, before_provider_headers or message_end handler for the result it returned: the host cannot share the objects the handler edits in place, so the reply carries what the handler left of them (provider_hook.go, message_end_reply.go).
+	var editReply func(result any) any
+	// contextSnapshot is the list a context handler was handed, whose messages it may have edited before it failed: Pi keeps an edit of a message after a throw and loses a change to the list (runner.ts emitContext), so a failed handler's reply carries the snapshot as the handler left it.
+	var contextSnapshot []any
 	defer func() {
 		if r := recover(); r != nil {
 			name := req.Tool
@@ -1538,8 +1540,11 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			if promptOptions != nil {
 				result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptOptions": promptOptions, "_pigPromptResult": nil}
 			}
-			if providerHook != nil {
-				result = providerHook(nil)
+			if editReply != nil {
+				result = editReply(nil)
+			}
+			if contextSnapshot != nil {
+				result = map[string]any{"messages": contextSnapshot, "_pigContextUnchanged": true}
 			}
 			_ = e.conn.respond(id, handedBack(req.Event, result, order), fmt.Errorf("handler panicked: %v", r))
 		}
@@ -1702,22 +1707,29 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			_ = unmarshalFrameMember(req.Args, &source)
 			toolCall = newToolCallInput(data["input"], source.Input)
 		}
+		// sentMember is the member of the event as the host sent it, decoded again: the handler may have edited its copy.
+		sentMember := func(member string) any {
+			if master == nil {
+				if unmarshalFrameMember(req.Args, &master) != nil {
+					return nil
+				}
+			}
+			return master[member]
+		}
 		if req.Event == "before_provider_request" || req.Event == "before_provider_headers" {
 			member := "payload"
 			if req.Event == "before_provider_headers" {
 				member = "headers"
 			}
 			object := data[member]
-			providerHook = func(result any) any {
-				return providerHookReply(req.Event, object, result, func() any {
-					if master == nil {
-						// The handler may have edited its copy: decode what the host sent again.
-						if unmarshalFrameMember(req.Args, &master) != nil {
-							return nil
-						}
-					}
-					return master[member]
-				})
+			editReply = func(result any) any {
+				return providerHookReply(req.Event, object, result, func() any { return sentMember(member) })
+			}
+		}
+		if req.Event == "message_end" {
+			object := data["message"]
+			editReply = func(result any) any {
+				return messageEndReply(object, result, func() any { return sentMember("message") })
 			}
 		}
 		if req.Event == "before_agent_start" {
@@ -1733,6 +1745,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			data["systemPrompt"] = ctx.systemPrompt
 		}
 		snapshot := snapshotContextMessages(req.Event, data)
+		if req.Event == "context" {
+			contextSnapshot = snapshot
+		}
 		// The member order of the objects of the event came with the decode, so no object has to be captured before the handler runs.
 		// runner.ts:1096-1125: the handlers of concurrent emits start in arrival order.
 		ctx.place.Pass()
@@ -1752,8 +1767,11 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				return messages
 			})
 		}
-		if providerHook != nil {
-			result = providerHook(result)
+		if contextSnapshot != nil && err != nil {
+			result = map[string]any{"messages": contextSnapshot, "_pigContextUnchanged": true}
+		}
+		if editReply != nil {
+			result = editReply(result)
 		}
 		if req.Event == "before_agent_start" {
 			result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptOptions": promptOptions, "_pigPromptResult": result}

@@ -792,7 +792,7 @@ func (p *ToolCallResponsePayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MessageEndResponsePayload is the result of a Node runtime's message_end handler. Message is the event's message when the handler left it different from the one it received (an in-place edit, which Pi's later handlers, turn_end, agent_end and the stored entry all hold); an omitted Message means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
+// MessageEndResponsePayload is the result of an extension's message_end handler, from every SDK. Message is the event's message when the handler left it different from the one it received (an in-place edit, which Pi's later handlers, turn_end, agent_end and the stored entry all hold); an omitted Message means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
 type MessageEndResponsePayload struct {
 	Message json.RawMessage `json:"_pigMessageEndMessage"`
 	Result  json.RawMessage `json:"_pigMessageEndResult"`
