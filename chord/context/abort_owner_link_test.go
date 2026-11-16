@@ -49,7 +49,7 @@ func TestRepeatedCancelLeavesTheListenersOfADerivedContextToTheCancelThatOwnsThe
 		close(gate.release)
 		<-firstReturned
 		<-secondReturned
-		if derived.Err() == nil || context.Cause(derived) != first {
+		if derived.Err() == nil || context.Cause(derived) != first { //nolint:errorlint // the abort reason is passed by identity: a wrapping error would be a different reason
 			t.Errorf("the derived context after both cancels returned: err %v, cause %v; want aborted with %v", derived.Err(), context.Cause(derived), first)
 		}
 		mu.Lock()

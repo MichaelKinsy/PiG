@@ -43,7 +43,7 @@ func TestLateListenerHearsTheFirstSourceThatAbortedNotADetachedAncestorsParent(t
 	cancelBehindDetached(errBehind)
 	var heard []error
 	chordctx.OnAbort(composite, func(cause error) { heard = append(heard, cause) })
-	if len(heard) != 1 || heard[0] != errOther {
+	if len(heard) != 1 || heard[0] != errOther { //nolint:errorlint // the abort reason is passed by identity: a wrapping error would be a different reason
 		t.Errorf("a listener added after the aborts heard %v, want once, %v: the first source of the composite that aborted", heard, errOther)
 	}
 }
