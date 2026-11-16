@@ -45,6 +45,12 @@ type Scenario struct {
 	Covers []string
 	// Spec is what the driver registers.
 	Spec Spec
+	// Isolation is the isolation the extensions of the scenario load with: "" is strict (each extension its own process), "shared-ok" lets the driver and
+	// its Member share one cell (one process), as extensions of one SDK do when they are discovered together.
+	Isolation string
+	// Member, when set, loads a second extension of the same SDK (a fixture that registers one command and reads no Spec) beside the driver, with the same
+	// isolation; a drop-member step removes it from what a reload loads.
+	Member bool
 	// Peer, when set, is a second extension (always the Node driver) the harness
 	// loads after Spec's, as another process registering after the first.
 	Peer *Spec
@@ -290,7 +296,7 @@ type Step struct {
 	// Op is one of: "settle", "methods", "runtime-methods", "models", "check",
 	// "login", "authjson", "setcredential", "resolve" (providers and auth);
 	// "host-calls" (the fire-and-forget host actions an extension triggered);
-	// "host-provider", "load-peer", "command", "reload", "reject-reload" (the host fails ctx.reload() with the message in Args, as Session.Reload does while the session runs or compacts), "end-input" (host events); "abort-tool"
+	// "host-provider", "load-peer", "drop-member" (the member is gone from what a reload loads, as when its file was removed), "loaded" (the extensions the host holds, counted, and whether the driver is among them), "command", "reload", "reject-reload" (the host fails ctx.reload() with the message in Args, as Session.Reload does while the session runs or compacts), "end-input" (host events); "abort-tool"
 	// (the abort rule); "registrations", "tool", "tool-wire" (a tool step that also records how its result was written on the wire: the escape \ud83d or raw surrogate bytes), "tool-result", "tool-call-event", "tool-result-event", "input-event", "before-agent-start-event", "run-signal", "abort-run-in-command", "emit-event" (the runner emits the event Name with the JSON payload Args and the step records the lines EventRecord handlers wrote), "shortcut" (tools, commands,
 	// shortcuts and flags), "footer-state" (the host's footer data).
 	Op       string

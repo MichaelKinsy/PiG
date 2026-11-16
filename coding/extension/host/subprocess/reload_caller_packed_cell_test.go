@@ -46,6 +46,9 @@ func TestPackedGoCommandGoesOnAfterAReloadThatRemovesAMemberOfItsCell(t *testing
 		t.Fatalf("loaded %v, want both members", names)
 	}
 	caller := extensionNamed(h, "reloadcaller-a")
+	h.mu.Lock()
+	oldCaller := h.exts["reloadcaller-a"]
+	h.mu.Unlock()
 	configs = configs[:1]
 	done := make(chan error, 1)
 	go func() { done <- caller.Commands["act"].Handler(context.Background(), "") }()
@@ -63,6 +66,8 @@ func TestPackedGoCommandGoesOnAfterAReloadThatRemovesAMemberOfItsCell(t *testing
 	if names := extensionNames(h); !slices.Equal(names, []string{"reloadcaller-a"}) {
 		t.Fatalf("loaded after the reload = %v, want the caller alone", names)
 	}
+	// The process the old generations shared ends once the command that kept it has returned.
+	requireExited(t, oldCaller, "the old generation of the caller")
 }
 
 // writeReloadCallerModule writes a Go extension whose command "act" awaits ctx.Reload() and then writes marker.

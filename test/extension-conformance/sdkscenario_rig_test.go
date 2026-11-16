@@ -2,6 +2,7 @@ package extensionconformance
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -65,10 +66,10 @@ const peerScenarioFile = ".sdk-scenario-peer.json"
 
 // scenarioDriverConfig is the extension config that loads the SDK's scenario
 // driver. The driver reads its extension from scenarioFile.
-func scenarioDriverConfig(t *testing.T, root string, sdk sdkscenarios.SDK, name string) subprocess.ExtConfig {
+func scenarioDriverConfig(t *testing.T, root string, sdk sdkscenarios.SDK, name, isolation string) subprocess.ExtConfig {
 	t.Helper()
 	base := filepath.Join(root, "test", "extension-conformance", "testdata")
-	config := subprocess.ExtConfig{Name: name, Enabled: true, Isolation: "strict"}
+	config := subprocess.ExtConfig{Name: name, Enabled: true, Isolation: isolation}
 	switch sdk {
 	case sdkscenarios.Node:
 		if _, err := exec.LookPath("node"); err != nil {
@@ -139,7 +140,11 @@ func newScenarioRig(t *testing.T, sdk sdkscenarios.SDK, scenario sdkscenarios.Sc
 		}
 	}
 	host.SetInboundObserver(rig.wire.observe)
-	rig.configs = []subprocess.ExtConfig{scenarioDriverConfig(t, root, sdk, "scenario-driver-"+string(sdk))}
+	isolation := cmp.Or(scenario.Isolation, "strict")
+	rig.configs = []subprocess.ExtConfig{scenarioDriverConfig(t, root, sdk, "scenario-driver-"+string(sdk), isolation)}
+	if scenario.Member {
+		rig.configs = append(rig.configs, scenarioMemberConfig(t, root, sdk, isolation))
+	}
 	host.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return slices.Clone(rig.configs), nil })
 	loaded, errs := host.LoadAll(t.Context(), slices.Clone(rig.configs))
 	if len(errs) != 0 {
@@ -219,6 +224,46 @@ func canonicalJSON(t *testing.T, body []byte) string {
 		t.Fatal(err)
 	}
 	return string(out)
+}
+
+// scenarioMemberConfig loads the SDK's scenario member, the second extension of a scenario that loads a Member: a fixture of the same SDK that registers one
+// command, which shares the driver's cell when isolation allows it.
+func scenarioMemberConfig(t *testing.T, root string, sdk sdkscenarios.SDK, isolation string) subprocess.ExtConfig {
+	t.Helper()
+	base := filepath.Join(root, "test", "extension-conformance", "testdata")
+	config := subprocess.ExtConfig{Name: "scenario-member-" + string(sdk), Enabled: true, Isolation: isolation}
+	switch sdk {
+	case sdkscenarios.Node:
+		config.Source = filepath.Join(base, "scenario-driver", "member.mjs")
+		return config
+	case sdkscenarios.Go:
+		config.Source = filepath.Join(base, "scenario-member-go")
+		config.Factory = "Extension"
+		config.SDKName = "github.com/MichaelKinsy/PiG/extensions/sdk"
+		config.ModulePath = "example.com/scenario-member-go"
+		config.Package = config.ModulePath
+	case sdkscenarios.Python:
+		config.Source = filepath.Join(base, "scenario-member-python")
+		config.Factory = "new_extension"
+		config.SDKName = "pig-sdk-py"
+		config.Package = "scenario_member"
+	case sdkscenarios.Lisp:
+		config.Source = filepath.Join(base, "scenario-member-lisp")
+		config.Factory = "new-extension"
+		config.SDKName = "pig-sdk-lisp"
+		config.Package = "scenario-member"
+	case sdkscenarios.Rust:
+		config.Source = filepath.Join(base, "scenario-member-rust")
+		config.Factory = "new_extension"
+		config.SDKName = "pig-sdk"
+		config.Package = "scenario-member-rust"
+	default:
+		t.Fatalf("unknown SDK %q", sdk)
+	}
+	config.RuntimeKind = "subprocess"
+	config.RuntimeLanguage = string(sdk)
+	config.EntrypointKind = "factory"
+	return config
 }
 
 func scenariof(lines *[]string, format string, args ...any) {

@@ -41,6 +41,32 @@ func hostEvents() []Scenario {
 			},
 		},
 		{
+			ID: "reload-removing-a-cell-member-lets-the-calling-command-go-on", Group: group,
+			Pi:        "agent-session.ts:3828-3876 reload() invalidates the old runner, rebuilds the extensions from the resources on disk and returns to the handler that awaited it: the OLD instance outlives the reload (the old runner is invalidated, not stopped), so `await ctx.reload()` resolves in the handler that called it, which runs its next line with its captured ctx now stale (runner.ts:894-896, :721-735), whichever extensions the reload removed; the new runner holds the extensions on disk, the caller's among them",
+			Covers:    []string{"notify invalidate", "call reload", "request command"},
+			Spec:      Spec{Commands: []Command{{Name: "rl", Description: "Reload and probe", Op: CommandReloadStale}}},
+			Isolation: "shared-ok", Member: true,
+			Steps: []Step{{Op: "settle"}, {Op: "drop-member"}, {Op: "command", Name: "rl"}, {Op: "loaded"}, {Op: "command", Name: "rl"}},
+			Want: []string{
+				`command rl cwd threw: This extension ctx is stale after session replacement or reload. Do not use a captured pi or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload().`,
+				`loaded 1 extension, the driver is loaded`,
+				`command rl cwd threw: This extension ctx is stale after session replacement or reload. Do not use a captured pi or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload().`,
+			},
+		},
+		{
+			ID: "reload-removing-an-isolated-member-lets-the-calling-command-go-on", Group: group,
+			Pi:        "agent-session.ts:3828-3876 (see reload-removing-a-cell-member-lets-the-calling-command-go-on): the same rule when the removed extension runs in its own process",
+			Covers:    []string{"notify invalidate", "call reload", "request command"},
+			Spec:      Spec{Commands: []Command{{Name: "rl", Description: "Reload and probe", Op: CommandReloadStale}}},
+			Isolation: "strict", Member: true,
+			Steps: []Step{{Op: "settle"}, {Op: "drop-member"}, {Op: "command", Name: "rl"}, {Op: "loaded"}, {Op: "command", Name: "rl"}},
+			Want: []string{
+				`command rl cwd threw: This extension ctx is stale after session replacement or reload. Do not use a captured pi or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload().`,
+				`loaded 1 extension, the driver is loaded`,
+				`command rl cwd threw: This extension ctx is stale after session replacement or reload. Do not use a captured pi or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload().`,
+			},
+		},
+		{
 			ID: "reload-rejected-while-running-reaches-the-caller-unchanged", Group: group,
 			Pi:     "agent-session.ts reload() (Pi c3b938e3e, #9222) throws `Wait for the current response to finish before reloading.` while the session is streaming, before any shutdown or invalidation; ctx.reload() rejects with that Error, so the command's await throws it and its own captured ctx stays live",
 			Covers: []string{"call reload", "request command"},
