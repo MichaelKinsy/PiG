@@ -2886,6 +2886,40 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("send_message_no_turn", "Send a custom message that never starts a turn", lambda ctx, args: ctx.send_message("notice", "no-turn", trigger_turn=False))
     ext.command("send_user_message", "Send a user message", lambda ctx, args: ctx.send_user_message(json.loads(args) if args else "hello-user", "followUp"))
     ext.command("send_user_message_delivery", "Send a user message with the delivery named by the argument", lambda ctx, args: ctx.send_user_message("delivery-" + args) if args == "absent" else ctx.send_user_message("delivery-" + args, args))
+    def send_refusal_order(ctx, args):
+        def first():
+            ctx.send_user_message("order-absent")
+            ctx.send_user_message("order-steer", "steer")
+            ctx.send_user_message("order-followUp", "followUp")
+
+        def after_return(send):
+            def run():
+                time.sleep(0.1)
+                send()
+            threading.Thread(target=run, daemon=True).start()
+
+        if args == "first":
+            first()
+        elif args == "between":
+            ctx.send_user_message("order-absent")
+            ctx.send_user_message("order-steer", "steer")
+            ctx.send_user_message("order-absent-2")
+        elif args == "yielded":
+            ctx.yield_now()
+            first()
+        elif args == "throws":
+            first()
+            raise RuntimeError("order-throws")
+        elif args == "blocked":
+            first()
+            time.sleep(30)
+        elif args == "detached":
+            after_return(first)
+        elif args == "detached_alone":
+            after_return(lambda: ctx.send_user_message("order-absent"))
+        else:
+            raise RuntimeError("send_refusal_order: unknown case " + args)
+    ext.command("send_refusal_order", "Send a refused user message and others in one run, as the argument names", send_refusal_order)
     ext.command("send_user_message_expand", "Send a user message with expandPromptTemplates set to the argument", lambda ctx, args: ctx.send_user_message("expand-user", "followUp", expand_prompt_templates=(args == "true")))
     ext.command("settings_probe", "Report the effective settings", lambda ctx, args: ctx.notify("settings_probe:" + json.dumps(ctx.get_settings(), separators=(",", ":")), "info"))
 

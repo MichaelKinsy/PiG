@@ -1842,6 +1842,59 @@ func Extension() *sdk.Extension {
 		return ctx.SendUserMessage("delivery-"+args, deliverAs)
 	})
 
+	// send_refusal_order makes the sends the argument names in one run of the handler, the one with no delivery (refused while the agent streams) among them,
+	// for TestSendRefusalReportedAfterSyncRunAcrossSDKs: first (refused, steer, followUp), between (refused, steer, refused), yielded (a yield, then first),
+	// throws (first, then the handler fails), blocked (first, then the handler blocks without yielding), detached (first from a goroutine after the handler
+	// returned) and detached_alone (the refused message alone, the same way).
+	ext.Command("send_refusal_order", "Send a refused user message and others in one run, as the argument names", func(ctx sdk.Context, args string) error {
+		sendFirst := func() error {
+			for _, send := range [][2]string{{"order-absent", ""}, {"order-steer", "steer"}, {"order-followUp", "followUp"}} {
+				if err := ctx.SendUserMessage(send[0], send[1]); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		switch args {
+		case "first":
+			return sendFirst()
+		case "between":
+			for _, send := range [][2]string{{"order-absent", ""}, {"order-steer", "steer"}, {"order-absent-2", ""}} {
+				if err := ctx.SendUserMessage(send[0], send[1]); err != nil {
+					return err
+				}
+			}
+		case "yielded":
+			if err := ctx.Yield(); err != nil {
+				return err
+			}
+			return sendFirst()
+		case "throws":
+			if err := sendFirst(); err != nil {
+				return err
+			}
+			return errors.New("order-throws")
+		case "blocked":
+			if err := sendFirst(); err != nil {
+				return err
+			}
+			time.Sleep(30 * time.Second)
+		case "detached":
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				_ = sendFirst()
+			}()
+		case "detached_alone":
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				_ = ctx.SendUserMessage("order-absent", "")
+			}()
+		default:
+			return fmt.Errorf("send_refusal_order: unknown case %q", args)
+		}
+		return nil
+	})
+
 	ext.Command("send_user_message_expand", "Send a user message with expandPromptTemplates set to the argument", func(ctx sdk.Context, args string) error {
 		expand := args == "true"
 		return ctx.SendUserMessageWith("expand-user", sdk.SendUserMessageOptions{DeliverAs: "followUp", ExpandPromptTemplates: &expand})
