@@ -169,10 +169,9 @@ ok  	example.com/m/pkg/conf	{wall}s
             self.assertIn("parallel-factor 0.200", lines)
 
 
-def shard_log(package, import_path, name, seconds, wall):
-    return (
-        f"[test-grouped] >>> sharded {package} shard 1 of 2\n=== RUN   {name}\n--- PASS: {name} ({seconds}s)\nPASS\nok  \t{import_path}\t{wall}s\n"
-    )
+def shard_log(package, import_path, name, seconds, wall, passed=True):
+    verdict, summary = ("PASS", "ok  ") if passed else ("FAIL", "FAIL")
+    return f"[test-grouped] >>> sharded {package} shard 1 of 2\n=== RUN   {name}\n--- {verdict}: {name} ({seconds}s)\n{verdict}\n{summary}\t{import_path}\t{wall}s\n"
 
 
 class ParseLogTest(unittest.TestCase):
@@ -190,6 +189,18 @@ class ParseLogTest(unittest.TestCase):
     def test_a_shard_takes_its_wall_time_from_its_own_packages_ok_line(self):
         text = shard_log("./pkg/conf", "example.com/m/pkg/other", "TestConf", "10.00", "300.0")
         self.assertEqual(self.parse(text)[1], [])
+
+    def test_a_failed_retry_keeps_the_passing_runs_duration(self):
+        text = shard_log("./pkg/conf", "example.com/m/pkg/conf", "TestConf", "10.00", "60.0") + shard_log("./pkg/conf", "example.com/m/pkg/conf", "TestConf", "1.00", "5.0", passed=False)
+        self.assertEqual(self.parse(text), ({"TestConf": ("serial", 10.0)}, [(10.0, 0.0, 60.0)]))
+
+    def test_a_shard_that_never_passed_contributes_no_measurement(self):
+        text = shard_log("./pkg/conf", "example.com/m/pkg/conf", "TestConf", "1.00", "5.0", passed=False)
+        self.assertEqual(self.parse(text), ({}, []))
+
+    def test_a_passing_retry_replaces_the_failed_runs_duration(self):
+        text = shard_log("./pkg/conf", "example.com/m/pkg/conf", "TestConf", "1.00", "5.0", passed=False) + shard_log("./pkg/conf", "example.com/m/pkg/conf", "TestConf", "10.00", "60.0")
+        self.assertEqual(self.parse(text), ({"TestConf": ("serial", 10.0)}, [(10.0, 0.0, 60.0)]))
 
 
 class RepositoryTest(unittest.TestCase):

@@ -202,14 +202,16 @@ def parse_log(path, package):
     """Return ({test: (kind, seconds)}, [(serial_sum, parallel_sum, wall)]) for the log's passing shards of package.
 
     A shard of another package contributes no test duration and no wall time, and a shard's wall time is taken only from its own package's ok line.
+    A shard's test durations wait in `pending` until that ok line commits them: a shard that never passed contributes nothing, and a failed
+    retry after a passing run cannot overwrite the passing run's durations.
     """
     tests, shards = {}, []
-    paused, serial, parallel, mark = set(), 0.0, 0.0, False
+    paused, pending, serial, parallel, mark = set(), {}, 0.0, 0.0, False
     with open(path, encoding="utf-8", errors="replace") as handle:
         for line in handle:
             marked = SHARD_MARK.search(line)
             if marked:
-                paused, serial, parallel, mark = set(), 0.0, 0.0, marked.group(1) == package
+                paused, pending, serial, parallel, mark = set(), {}, 0.0, 0.0, marked.group(1) == package
                 continue
             if not mark:
                 continue
@@ -222,7 +224,7 @@ def parse_log(path, package):
             if match and "/" not in match.group(2):
                 name, seconds = match.group(2), float(match.group(3))
                 kind = "parallel" if name in paused else "serial"
-                tests[name] = (kind, seconds)
+                pending[name] = (kind, seconds)
                 if kind == "serial":
                     serial += seconds
                 else:
@@ -230,6 +232,7 @@ def parse_log(path, package):
                 continue
             match = PACKAGE_OK.match(line)
             if match and package_matches(match.group(1), package):
+                tests.update(pending)
                 shards.append((serial, parallel, float(match.group(2))))
                 mark = False
     return tests, shards
