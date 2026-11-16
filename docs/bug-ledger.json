@@ -6977,6 +6977,28 @@
       ]
     },
     {
+      "id": "BF-2324030",
+      "title": "chord: a list that retired a page while that page's failed first run was waiting to be adopted could be…",
+      "symptom": "chord: a list that retired a page while that page's failed first run was waiting to be adopted could be failed by it: the store's read tested that it was still open and then adopted the failed run in a section of its own, so a close between the two handed the closed read's sink a failure.",
+      "rootCause": "OpenRead.failCompile decided closed and the compile error outside the section that adopts the failed run; a close that ran in the gap still reached the sink",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a list that retired a page while that page's failed first run was waiting to be adopted could be failed by it: the store's read tested that it was still open and then adopted the failed run in a section of its own, so a close between the two handed the closed read's sink a failure. Pi tests `closed` and adopts the failed run in one turn (open-query.ts); the test and the adoption are now one section.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2324030101",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/next/store/reads_test.go::TestReadsFailedCompileIsNotAdoptedByAReadClosedWhileItWaitsForItsSection"
+      ]
+    },
+    {
       "id": "BF-234316d",
       "title": "On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process…",
       "symptom": "On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process cannot access the file because it is being used by another process`.",
@@ -42002,6 +42024,28 @@
       ]
     },
     {
+      "id": "BF-a8b5e75",
+      "title": "chord: a worker could be forked into a component that a `Close` had begun to close: a start looked at the…",
+      "symptom": "chord: a worker could be forked into a component that a `Close` had begun to close: a start looked at the component and forked in two steps, and a Close between them found no child to stop.",
+      "rootCause": "the start checked closing on its goroutine and forked in a section of the loop of its own",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a worker could be forked into a component that a `Close` had begun to close: a start looked at the component and forked in two steps, and a Close between them found no child to stop. A worker spawned that way showed as `starting` for a moment, was killed by the start's cleanup, and the late fork re-armed the idle timer Close had stopped; a fork failing in that window reported worker_failed on a closed set. Pi checks `closing` and forks in one synchronous step (workers.ts); the check, the base's file and the fork are now one section.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a8b5e75eb3",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_workers_test.go::TestCloseLandingAtTheEntryOfAStartsForkSectionForksNothingTheStartFailsClosed"
+      ]
+    },
+    {
       "id": "BF-a8f5413",
       "title": "Fix the lint findings of the JPEG port",
       "symptom": "Fix the lint findings of the JPEG port",
@@ -57491,6 +57535,29 @@
         "ai/tool_flow_result_reset_test.go::TestTransformMessagesResultBeforeCallDoesNotAnswerIt",
         "ai/transform_messages_allocs_test.go::TestTransformMessagesDoesNotReboxUnchangedMessages",
         "test/pipeline-diff/system_only_test.go::TestSystemOnlyHistoryFailsBeforeSendingLikePi"
+      ]
+    },
+    {
+      "id": "BF-e9902cb",
+      "title": "chord: a list could show the older of two reads' rows, or a tiling installed on a list that had detached…",
+      "symptom": "chord: a list could show the older of two reads' rows, or a tiling installed on a list that had detached: `Open` tested `detached` in one section and installed its tiling after it, and a rebinding decided that a tiling was pending or current under a lock and read again in a later section, where a read for newer arguments that ran between was replaced by the older target.",
+      "rootCause": "list.Open and list.rebound decided in one section or under a lock and acted in a later section, where another read or a detach could run",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a list could show the older of two reads' rows, or a tiling installed on a list that had detached: `Open` tested `detached` in one section and installed its tiling after it, and a rebinding decided that a tiling was pending or current under a lock and read again in a later section, where a read for newer arguments that ran between was replaced by the older target. Pi decides and acts in one turn (list.ts `read`, `#rebound`); each is now one section.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e9902cbc2a",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_list_section_test.go::TestListOpenInstallsNoTilingOnAListDetachedWhileItsCheckWaitedForTheSection",
+        "chord/next/host/host_list_section_test.go::TestListRebindsNothingWhenANewerReadTookThePendingPlaceWhileItWaitedForItsSection"
       ]
     },
     {

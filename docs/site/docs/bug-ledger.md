@@ -270,6 +270,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2309604](#bf-2309604) | Tool schemas in OpenAI Completions, OpenAI Responses, Codex and Mistral request bodies keep the members in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2316fe3](#bf-2316fe3) | The Piglet JSON Schema that `pig piglet schema` prints rejected `powershell` in `tools`, which `pig piglet… | PiG's own defect | Windows | 0.5.3 |
 | [BF-2323d94](#bf-2323d94) | `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-2324030](#bf-2324030) | chord: a list that retired a page while that page's failed first run was waiting to be adopted could be… | PiG's own defect | All platforms | Unreleased |
 | [BF-234316d](#bf-234316d) | On Windows, a Go extension's source hash no longer fails, or makes a build beside it fail, with `The process… | PiG's own defect | Windows | 0.7.0 |
 | [BF-234664c](#bf-234664c) | With `codemode.mode: "on"`, a tool whose output schema is a union of objects or any other multi-line type no… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-2359a0a](#bf-2359a0a) | In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty… | A Pi defect that PiG fixed first | macOS | 0.7.0 |
@@ -1538,6 +1539,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a81ec0d](#bf-a81ec0d) | A key pressed while an extension's custom overlay is open no longer freezes `pig` when the key reaches the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a8203b7](#bf-a8203b7) | fix(chord/nextnode/plugins): a request pending when the channel ends fails with how the process ended; go fix | PiG's own defect | All platforms | Unreleased |
 | [BF-a8a04f4](#bf-a8a04f4) | `PIG_DEBUG` writes its log with mode 0600 and refuses a symlink or a file owned by another user in the shared… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a8b5e75](#bf-a8b5e75) | chord: a worker could be forked into a component that a `Close` had begun to close: a start looked at the… | PiG's own defect | All platforms | Unreleased |
 | [BF-a8f5413](#bf-a8f5413) | Fix the lint findings of the JPEG port | PiG's own defect | All platforms | Unreleased |
 | [BF-a8ff0c7](#bf-a8ff0c7) | The anthropic-messages and google-generative-ai requests build their URL as @anthropic-ai/sdk and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a901509](#bf-a901509) | OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's… | PiG's own defect | All platforms | 0.5.3 |
@@ -2057,6 +2059,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e90f6c8-2](#bf-e90f6c8-2) | Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-e9332c8](#bf-e9332c8) | fix(codingagent): session search re: reads patterns as V8 does | PiG's own defect | All platforms | Unreleased |
 | [BF-e9392fd](#bf-e9392fd) | A Google Generative AI or Vertex request with no `contents` (a history of system messages only, or one user… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e9902cb](#bf-e9902cb) | chord: a list could show the older of two reads' rows, or a tiling installed on a list that had detached… | PiG's own defect | All platforms | Unreleased |
 | [BF-e99791b](#bf-e99791b) | A Node extension's `message_end` event now carries the same message object that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-e9ca222](#bf-e9ca222) | fix(durable/host/cf): adopt Pi's address-following watches and observers (Pi) | PiG's own defect | All platforms | Unreleased |
 | [BF-e9e4fc5](#bf-e9e4fc5) | Markdown rendering matches Pi for five more shapes of text | PiG's own defect | All platforms | Unreleased |
@@ -5735,6 +5738,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2323d94ce7` (2026-11-01), `c3939f9670` (2026-11-01)
 - **Tests:** `coding/cli/extension_host_wiring_binary_test.go::TestSDKExtensionIsBusyThroughTheSynchronousPartAfterATriggeringSend`, `coding/extension/host/subprocess/runtime_node_send_idle_test.go::TestNodeIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSendMessage`, `test/extension-conformance/replicated_state_rw_test.go::TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend`
 - **Release note:** `ctx.isIdle()` read on the statement after a triggering `pi.sendMessage(..., { triggerTurn: true })` is busy as in Pi in every SDK, in print, JSON and RPC mode, isolated and packed: the Host answers busy for every extension from the send until the code that sent it yields, where a run that settled while the read was in flight made the Go, Python, Rust and Lisp SDKs report an idle session. A Go, Python, Rust or Lisp handler yields when it returns or awaits a Promise-returning member (`registerProvider` and `addAutocompleteProvider` return nothing in Pi and no longer end the hold); the Node runtime reports its first microtask checkpoint after the send, so a send from a timer's or an I/O callback that runs after the handler returned holds the Session busy as well, as it does in Pi. The Node runtime's own hold is gone; a message sent from `agent_settled` still reads the Session's idle answer, and a send the Host fails holds nothing. A Go, Python, Rust or Lisp handler that waits for the run it started with `while !isIdle: sleep` uses the SDK's new yield helper (`ctx.Sleep`/`ctx.Yield`, `ctx.sleep`/`ctx.yield_now`, `pig:ctx-sleep`/`pig:ctx-yield`), the stand-in for Pi's `await`; a raw sleep keeps the hold until the handler returns (D225).
+
+### BF-2324030
+
+**chord: a list that retired a page while that page's failed first run was waiting to be adopted could be…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a list that retired a page while that page's failed first run was waiting to be adopted could be failed by it: the store's read tested that it was still open and then adopted the failed run in a section of its own, so a close between the two handed the closed read's sink a failure.
+- **Root cause:** OpenRead.failCompile decided closed and the compile error outside the section that adopts the failed run; a close that ran in the gap still reached the sink
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2324030101` (2026-11-15)
+- **Tests:** `chord/next/store/reads_test.go::TestReadsFailedCompileIsNotAdoptedByAReadClosedWhileItWaitsForItsSection`
+- **Release note:** chord: a list that retired a page while that page's failed first run was waiting to be adopted could be failed by it: the store's read tested that it was still open and then adopted the failed run in a section of its own, so a close between the two handed the closed read's sink a failure. Pi tests `closed` and adopts the failed run in one turn (open-query.ts); the test and the adoption are now one section.
 
 ### BF-234316d
 
@@ -23356,6 +23373,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/debug_log_security_test.go::TestRedactKeyChunkHidesTypedAndPastedText`, `internal/codingagent/debug_log_security_unix_test.go::TestDebugLogRefusesASymlinkAndIsPrivate`
 - **Release note:** `PIG_DEBUG` writes its log with mode 0600 and refuses a symlink or a file owned by another user in the shared temporary directory; `PIG_DEBUG_KEYS` logs typed text and pastes only by length, so a key entered at a masked login prompt no longer reaches the log; `pig-render.log` is private (0600).
 
+### BF-a8b5e75
+
+**chord: a worker could be forked into a component that a `Close` had begun to close: a start looked at the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a worker could be forked into a component that a `Close` had begun to close: a start looked at the component and forked in two steps, and a Close between them found no child to stop.
+- **Root cause:** the start checked closing on its goroutine and forked in a section of the loop of its own
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a8b5e75eb3` (2026-11-15)
+- **Tests:** `chord/nextnode/workers/workers_workers_test.go::TestCloseLandingAtTheEntryOfAStartsForkSectionForksNothingTheStartFailsClosed`
+- **Release note:** chord: a worker could be forked into a component that a `Close` had begun to close: a start looked at the component and forked in two steps, and a Close between them found no child to stop. A worker spawned that way showed as `starting` for a moment, was killed by the start's cleanup, and the late fork re-armed the idle timer Close had stopped; a fork failing in that window reported worker_failed on a closed set. Pi checks `closing` and forks in one synchronous step (workers.ts); the check, the base's file and the fork are now one section.
+
 ### BF-a8f5413
 
 **Fix the lint findings of the JPEG port**
@@ -30532,6 +30563,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `532f5728bb` (2026-10-10), `942ecc33e7` (2026-10-10), `e9392fd158` (2026-10-10)
 - **Tests:** `ai/google_empty_contents_test.go::TestGoogleEmptyContentsChecksThePayloadOnPayloadReturned`, `ai/google_empty_contents_test.go::TestGoogleEmptyContentsFailsBeforeSending`, `ai/tool_flow_result_reset_test.go::TestTransformMessagesResultBeforeCallDoesNotAnswerIt`, `ai/transform_messages_allocs_test.go::TestTransformMessagesDoesNotReboxUnchangedMessages`, `test/pipeline-diff/system_only_test.go::TestSystemOnlyHistoryFailsBeforeSendingLikePi`
 - **Release note:** A Google Generative AI or Vertex request with no `contents` (a history of system messages only, or one user message without content) now fails with `contents are required` before it is sent, as Pi's `@google/genai` SDK does, instead of reaching the API and failing with HTTP 400. An `onPayload` hook that adds or removes `contents` is checked as sent.
+
+### BF-e9902cb
+
+**chord: a list could show the older of two reads' rows, or a tiling installed on a list that had detached…**
+
+- **Source:** PiG's own defect
+- **Symptom:** chord: a list could show the older of two reads' rows, or a tiling installed on a list that had detached: `Open` tested `detached` in one section and installed its tiling after it, and a rebinding decided that a tiling was pending or current under a lock and read again in a later section, where a read for newer arguments that ran between was replaced by the older target.
+- **Root cause:** list.Open and list.rebound decided in one section or under a lock and acted in a later section, where another read or a detach could run
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e9902cbc2a` (2026-11-15)
+- **Tests:** `chord/next/host/host_list_section_test.go::TestListOpenInstallsNoTilingOnAListDetachedWhileItsCheckWaitedForTheSection`, `chord/next/host/host_list_section_test.go::TestListRebindsNothingWhenANewerReadTookThePendingPlaceWhileItWaitedForItsSection`
+- **Release note:** chord: a list could show the older of two reads' rows, or a tiling installed on a list that had detached: `Open` tested `detached` in one section and installed its tiling after it, and a rebinding decided that a tiling was pending or current under a lock and read again in a later section, where a read for newer arguments that ran between was replaced by the older target. Pi decides and acts in one turn (list.ts `read`, `#rebound`); each is now one section.
 
 ### BF-e99791b
 
