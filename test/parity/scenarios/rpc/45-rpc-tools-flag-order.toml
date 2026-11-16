@@ -44,7 +44,7 @@ pi_args = ["--offline", "--model", "test-faux/faux-1", "--tools", "grep,ordered_
 
 [assert]
 exit_code = 0
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 runs = 3
 both_contain = ['{"description":"Extension tool placed by the --tools order.","name":"ordered_tool","parameters":{"properties":{},"type":"object"}},{"constrainedSampling":{"strict":"prefer","type":"json_schema"},"description":"Read the contents']

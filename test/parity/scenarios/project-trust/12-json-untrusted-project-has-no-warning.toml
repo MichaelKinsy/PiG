@@ -23,7 +23,7 @@ timeout_seconds = 30
 exit_code = 0
 both_contain = ['"type":"session"']
 both_not_contain = ["Trust project folder?", "This project is not trusted."]
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 runs = 3
 

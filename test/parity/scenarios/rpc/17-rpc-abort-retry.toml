@@ -33,7 +33,7 @@ pi_extensions = ["../../testdata/test-faux-provider.ts"]
 pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC retry probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
 
 [assert]
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 exit_code = 0
 both_contain = [
