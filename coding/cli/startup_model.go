@@ -299,7 +299,8 @@ func buildSelectedModel(ctx context.Context, selected *codingagent.RuntimeModel,
 // takes (ResolveCliModel, which builds every runtime model). It exists only when PIG_TEST_FAUX=1. The provider is registered in the model registry
 // (registerHarnessTestFaux), so every consumer of the registry sees it as Pi's harness-registered one; only this selection is a shortcut, and
 // the startup allocation ceilings (TestStartupAllocationBudget, test/perfgate), which only move down, are measured with it: the registry
-// resolution adds about 6,100 allocations and 380 KB to the warm first prompt. The shortcut stands for the resolution only where both select
+// resolution adds about 6,100 allocations and 380 KB to the warm first prompt. The resolution itself has its own ceilings, per provider shape
+// (TestStartupAllocationBudgetRealModel, which runs without PIG_TEST_FAUX). The shortcut stands for the resolution only where both select
 // the same model: an id the provider lists. Any other id is resolved like any provider's, as Pi resolves it for the provider its harness
 // registers from an extension: a copy of the listed model under the id, with the custom model id warning (model-resolver.ts:302-313, 518-532).
 func testFauxCLIModel(options startupModelOptions) (*codingagent.RuntimeModel, string, bool) {

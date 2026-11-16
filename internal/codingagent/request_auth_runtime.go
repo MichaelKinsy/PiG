@@ -41,14 +41,17 @@ type RuntimeModel struct {
 	Reasoning   bool
 	// Headers are the model's intrinsic catalog headers.
 	Headers ai.ProviderHeaders
-	// BuildNativeModel, set when NativeModel is nil, builds the source model; a list of many models that keeps few builds only those.
-	BuildNativeModel func() *ai.Model `json:"-"`
+	// Source and BuildSource, set when NativeModel is nil, build the source model as BuildSource(Source); a list of many models that keeps
+	// few builds only those. One BuildSource serves the whole list and Source points into the list's sources, so a listed model costs no
+	// allocation of its own.
+	Source      *ModelDataSource                 `json:"-"`
+	BuildSource func(*ModelDataSource) *ai.Model `json:"-"`
 }
 
-// SourceModel returns NativeModel, building it with BuildNativeModel first when it has not been built.
+// SourceModel returns NativeModel, building it with BuildSource first when it has not been built.
 func (m *RuntimeModel) SourceModel() *ai.Model {
-	if m.NativeModel == nil && m.BuildNativeModel != nil {
-		m.NativeModel, m.BuildNativeModel = m.BuildNativeModel(), nil
+	if m.NativeModel == nil && m.BuildSource != nil {
+		m.NativeModel, m.BuildSource, m.Source = m.BuildSource(m.Source), nil, nil
 	}
 	return m.NativeModel
 }
