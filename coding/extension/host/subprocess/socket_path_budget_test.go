@@ -2,10 +2,15 @@ package subprocess
 
 import (
 	"math"
+	"net"
+	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // Every call of newSocketPath makes a path no other call made, however many goroutines ask at once, and the longest file name the count can make is the one worstRuntimeSocketLeaf budgets, so the socket directory socketRuntimeBase keeps holds every path. A Host that has made the last path its count allows fails the next call rather than make a path again.
@@ -80,5 +85,59 @@ func TestEverySocketPathIsNewAndFitsTheBudget(t *testing.T) {
 		if got := socketRuntimeBase(goos, deepest, 0, `C:\L`); got != deepest {
 			t.Fatalf("%s: the deepest directory was not kept: %q", goos, got)
 		}
+	}
+}
+
+// The longest path a Host can make is bound for real: the widest runtime directory name os.MkdirTemp can make (h4294967295) and the widest count a uint32 holds (the last path newSocketPath makes), below the deepest socket directory socketRuntimeBase keeps. Its length is the platform's limit, so the operating system accepts every path the budget allows, and the budget is no looser than it must be (a directory one byte deeper is not kept).
+func TestTheLongestSocketPathOfTheDeepestKeptDirectoryBindsAtTheLimit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the Windows sun_path limit is bound by platform_windows_test.go, in a directory a Windows runner has")
+	}
+	base := testenv.ShortTempDir(t, "pig-long-")
+	limit := unixSocketPathLimit(runtime.GOOS)
+	deepest := filepath.Join(base, strings.Repeat("d", limit-worstRuntimeSocketSuffix-len(base)-1))
+	if len(deepest) != limit-worstRuntimeSocketSuffix {
+		t.Fatalf("the deepest kept directory %q has %d bytes, want %d", deepest, len(deepest), limit-worstRuntimeSocketSuffix)
+	}
+	if got := socketRuntimeBase(runtime.GOOS, deepest, 0, ""); got != deepest {
+		t.Fatalf("the deepest directory was not kept: %q", got)
+	}
+	if got := socketRuntimeBase(runtime.GOOS, deepest+"d", 0, ""); got == deepest+"d" {
+		t.Fatalf("a directory one byte deeper was kept: %q", got)
+	}
+	runtimeDir := filepath.Join(deepest, socketRuntimeDirPrefix+"4294967295")
+	if err := os.MkdirAll(runtimeDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	host := &Host{socketDir: deepest}
+	host.sockRuntimeOnce.Do(func() { host.sockRuntimeDir = runtimeDir })
+	host.sockSeq.Store(lastSocketCount - 1)
+	path, err := host.newSocketPath()
+	if err != nil {
+		t.Fatalf("the longest socket path: %v", err)
+	}
+	if filepath.Base(path) != socketLeaf(math.MaxUint32) || len(path) != limit {
+		t.Fatalf("the longest socket path %q has %d bytes, want %d with the leaf %q", path, len(path), limit, socketLeaf(math.MaxUint32))
+	}
+	listener, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatalf("listen on the longest socket path (%d bytes): %v", len(path), err)
+	}
+	defer listener.Close()
+	accepted := make(chan error, 1)
+	go func() {
+		conn, err := listener.Accept()
+		if err == nil {
+			err = conn.Close()
+		}
+		accepted <- err
+	}()
+	conn, err := net.Dial("unix", path)
+	if err != nil {
+		t.Fatalf("dial the longest socket path: %v", err)
+	}
+	_ = conn.Close()
+	if err := <-accepted; err != nil {
+		t.Fatalf("accept on the longest socket path: %v", err)
 	}
 }
