@@ -1096,6 +1096,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-776b600](#bf-776b600) | fix(durable/core): the scheduler's reconcile and drain microtasks run behind the host listeners' dispatch of… | PiG's own defect | All platforms | Unreleased |
 | [BF-776d60b](#bf-776d60b) | An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-776d60b-2](#bf-776d60b-2) | A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-7781c92](#bf-7781c92) | fix(ai): the hook payload writes the members a handler added in byte order without a comparator sort | PiG's own defect | All platforms | Unreleased |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-77e64cd](#bf-77e64cd) | GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3)… | PiG's own defect | All platforms | Unreleased |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | 0.7.0 |
@@ -1722,7 +1723,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c122088](#bf-c122088) | A durable nested call keeps its arguments in the member order the caller wrote them, as Pi does: the stored… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c129008](#bf-c129008) | Registering a native provider did not refresh the Session's active model from the registry, as Pi does after… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1292ec](#bf-c1292ec) | A PiG that runs without a model API no longer panics when a caller streams through pi-ai's compat functions | PiG's own defect | All platforms | Unreleased |
-| [BF-c13e751](#bf-c13e751) | fix(ai): the provider-request hook hands an extension Pi member order for Google, Vertex and pi-messages | PiG's own defect | All platforms | Unreleased |
+| [BF-c13e751](#bf-c13e751) | A `before_provider_request` handler of a subprocess extension (Node, Python, Go, Rust, Lisp) now receives the… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1524ce](#bf-c1524ce) | fix(durable/core): a registry change tells the task graph its blocked reasons may have changed | PiG's own defect | All platforms | Unreleased |
 | [BF-c15309d](#bf-c15309d) | fix(sdk): extension SDK calculateCost reports totalFromProvider=false (Pi); chord entries reach the durable… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1ed918](#bf-c1ed918) | fix(sdk-rs): give the request-start wire test's RequestMsg the batch, child_session, tool_call_index and… | PiG's own defect | All platforms | Unreleased |
@@ -17199,6 +17200,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond`, `internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64`, `tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil`
 - **Release note:** A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.
 
+### BF-7781c92
+
+**fix(ai): the hook payload writes the members a handler added in byte order without a comparator sort**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(ai): the hook payload writes the members a handler added in byte order without a comparator sort
+- **Root cause:** The members the order table does not name were sorted with a comparator closure, which perf-lint flags, and then ordered by SortOwnKeys, a stable sort that needs a deterministic input. They are collected as keys and sorted with slices.Sort instead, and SortOwnKeys orders all the members, so an array-index key a handler adds enumerates first as it does in an ECMAScript object. TestMarshalHookPayloadWritesAddedMembersInOwnKeyOrder pins the order of several added members.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7781c9298c` (2026-11-16)
+- **Tests:** `ai/hook_payload_order_extras_test.go::TestMarshalHookPayloadWritesAddedMembersInOwnKeyOrder`
+
 ### BF-779318a
 
 **OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now…**
@@ -25926,16 +25940,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-c13e751
 
-**fix(ai): the provider-request hook hands an extension Pi member order for Google, Vertex and pi-messages**
+**A `before_provider_request` handler of a subprocess extension (Node, Python, Go, Rust, Lisp) now receives the…**
 
 - **Source:** PiG's own defect
-- **Symptom:** fix(ai): the provider-request hook hands an extension Pi member order for Google, Vertex and pi-messages
+- **Symptom:** A `before_provider_request` handler of a subprocess extension (Node, Python, Go, Rust, Lisp) now receives the request a Google, Vertex or pi-messages provider is about to send with its members in the order Pi's provider creates them (the model, contents and config of Google's parameters, the part members thought, text, thoughtSignature, functionCall before thoughtSignature), where it received them sorted by name.
 - **Root cause:** Pi hands before_provider_request the object buildParams created, and JSON.stringify writes its members in creation order. PiG built a map, so a subprocess extension saw the members sorted. The provider now holds the member order of the map it hands the hook (ai.HoldHookPayload) and the subprocess host writes it with ai.MarshalHookPayload. Replayed Google parts are written in the member order of Pi convertMessages.
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `c13e751f73` (2026-11-16)
-- **Tests:** `ai/google_replayed_part_order_test.go::TestGoogleReplayedPartsHavePiMemberOrder`, `ai/pi_messages_payload_oracle_test.go::TestPiMessagesPayloadMatchesPi`, `ai/raw_payload_replacement_oracle_test.go::TestRawPayloadReplacementsAreSentAsPiSendsThem`, `coding/extension/host/subprocess/event_payload_order_test.go::TestBeforeProviderRequestWireKeepsPiMemberOrder`
+- **Tests:** `ai/google_replayed_part_order_test.go::TestGoogleReplayedPartsHavePiMemberOrder`, `ai/pi_messages_payload_oracle_test.go::TestPiMessagesPayloadMatchesPi`, `coding/extension/host/subprocess/event_payload_order_test.go::TestBeforeProviderRequestWireKeepsPiMemberOrder`
+- **Release note:** A `before_provider_request` handler of a subprocess extension (Node, Python, Go, Rust, Lisp) now receives the request a Google, Vertex or pi-messages provider is about to send with its members in the order Pi's provider creates them (the model, contents and config of Google's parameters, the part members thought, text, thoughtSignature, functionCall before thoughtSignature), where it received them sorted by name. A handler that returns the payload unchanged now sends the same bytes as no handler. The Google and Vertex payload has been a map since v0.3.0 and the pi-messages payload since v0.2.0; before them Google's was a struct. The Google request body itself also writes a replayed part's members in that order.
 
 ### BF-c1524ce
 

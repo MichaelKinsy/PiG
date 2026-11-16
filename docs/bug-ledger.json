@@ -29665,6 +29665,27 @@
       ]
     },
     {
+      "id": "BF-7781c92",
+      "title": "fix(ai): the hook payload writes the members a handler added in byte order without a comparator sort",
+      "symptom": "fix(ai): the hook payload writes the members a handler added in byte order without a comparator sort",
+      "rootCause": "The members the order table does not name were sorted with a comparator closure, which perf-lint flags, and then ordered by SortOwnKeys, a stable sort that needs a deterministic input. They are collected as keys and sorted with slices.Sort instead, and SortOwnKeys orders all the members, so an array-index key a handler adds enumerates first as it does in an ECMAScript object. TestMarshalHookPayloadWritesAddedMembersInOwnKeyOrder pins the order of several added members.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "7781c9298c",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/hook_payload_order_extras_test.go::TestMarshalHookPayloadWritesAddedMembersInOwnKeyOrder"
+      ]
+    },
+    {
       "id": "BF-779318a",
       "title": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now…",
       "symptom": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now place the thinking block before the text.",
@@ -47269,15 +47290,16 @@
     },
     {
       "id": "BF-c13e751",
-      "title": "fix(ai): the provider-request hook hands an extension Pi member order for Google, Vertex and pi-messages",
-      "symptom": "fix(ai): the provider-request hook hands an extension Pi member order for Google, Vertex and pi-messages",
+      "title": "A `before_provider_request` handler of a subprocess extension (Node, Python, Go, Rust, Lisp) now receives the…",
+      "symptom": "A `before_provider_request` handler of a subprocess extension (Node, Python, Go, Rust, Lisp) now receives the request a Google, Vertex or pi-messages provider is about to send with its members in the order Pi's provider creates them (the model, contents and config of Google's parameters, the part members thought, text, thoughtSignature, functionCall before thoughtSignature), where it received them sorted by name.",
       "rootCause": "Pi hands before_provider_request the object buildParams created, and JSON.stringify writes its members in creation order. PiG built a map, so a subprocess extension saw the members sorted. The provider now holds the member order of the map it hands the hook (ai.HoldHookPayload) and the subprocess host writes it with ai.MarshalHookPayload. Replayed Google parts are written in the member order of Pi convertMessages.",
       "rootCauseSource": "commit",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "A `before_provider_request` handler of a subprocess extension (Node, Python, Go, Rust, Lisp) now receives the request a Google, Vertex or pi-messages provider is about to send with its members in the order Pi's provider creates them (the model, contents and config of Google's parameters, the part members thought, text, thoughtSignature, functionCall before thoughtSignature), where it received them sorted by name. A handler that returns the payload unchanged now sends the same bytes as no handler. The Google and Vertex payload has been a map since v0.3.0 and the pi-messages payload since v0.2.0; before them Google's was a struct. The Google request body itself also writes a replayed part's members in that order.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "c13e751f73",
@@ -47287,7 +47309,6 @@
       "tests": [
         "ai/google_replayed_part_order_test.go::TestGoogleReplayedPartsHavePiMemberOrder",
         "ai/pi_messages_payload_oracle_test.go::TestPiMessagesPayloadMatchesPi",
-        "ai/raw_payload_replacement_oracle_test.go::TestRawPayloadReplacementsAreSentAsPiSendsThem",
         "coding/extension/host/subprocess/event_payload_order_test.go::TestBeforeProviderRequestWireKeepsPiMemberOrder"
       ]
     },
