@@ -46370,6 +46370,28 @@
       ]
     },
     {
+      "id": "BF-f9b8dba",
+      "title": "A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same…",
+      "symptom": "A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`. The hook now runs inside that call, as in Pi.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f9b8dbada8",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/prepare_loadout_sync_test.go::TestNodeRuntimeStartsPrepareLoadoutNestedInARefreshItWaitsOn"
+      ]
+    },
+    {
       "id": "BF-fa0eadb",
       "title": "A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and…",
       "symptom": "A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and before `ready`: the request was read and dropped, so the host waited for an answer that never came.",

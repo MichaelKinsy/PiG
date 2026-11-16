@@ -1597,6 +1597,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f98d129](#bf-f98d129) | Clearing the queued messages (RPC `clear_queue`, the SDK, the interactive restore-to-editor key) no longer… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f98d129-2](#bf-f98d129-2) | Omitting a failed retry attempt no longer makes the context usage jump to an estimate of the whole history | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-f98d129-3](#bf-f98d129-3) | A request carries at most the model's `inputLimits.images.maxPerRequest` images | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
+| [BF-f9b8dba](#bf-f9b8dba) | A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same… | PiG's own defect | All platforms | Unreleased |
 | [BF-fa0eadb](#bf-fa0eadb) | A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-fa3da97](#bf-fa3da97) | A wake the scheduler took at a change is still delivered to `OnWake` when the Session fails and seals before… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-fa3da97-10](#bf-fa3da97-10) | A model reply with many tool calls no longer slows down as calls finish: finished calls are not parsed again… | PiG's own defect | All platforms | 0.5.2 |
@@ -23529,6 +23530,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5731351f4e` (2026-10-09), `f98d129beb` (2026-10-09)
 - **Tests:** `agent/image_limit_test.go::TestLimitImagesPerRequestKeepsTheNewestImages`, `agent/queue_clear_user_test.go::TestClearUserMessagesKeepsCustomMessagesInOrder`, `coding/session_pi_bugs_test.go::TestAbortInOverThresholdSessionDoesNotCompactBeforeSettling`, `coding/session_pi_bugs_test.go::TestClearQueueKeepsExtensionCustomMessages`, `coding/session_pi_bugs_test.go::TestContextUsageSurvivesAnOmittedFailedRetryAttempt`, `coding/session_pi_bugs_test.go::TestPromptSendsAtMostTheModelsImagesPerRequest`, `internal/codingagent/compaction/compaction_oracle_test.go::TestCompactionMatchesPi`, `internal/codingagent/compaction/context_edit_retry_anchor_test.go::TestEstimateDropsUsageAnchorWhenTheAnchorOrEarlierInputIsEdited` and 2 more in docs/bug-ledger.json
 - **Release note:** A request carries at most the model's `inputLimits.images.maxPerRequest` images. Older images become a text placeholder in the request and stay in the session (D137, Pi #10162).
+
+### BF-f9b8dba
+
+**A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`.
+- **Root cause:** Not recorded.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f9b8dbada8` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/prepare_loadout_sync_test.go::TestNodeRuntimeStartsPrepareLoadoutNestedInARefreshItWaitsOn`
+- **Release note:** A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`. The hook now runs inside that call, as in Pi.
 
 ### BF-fa0eadb
 
