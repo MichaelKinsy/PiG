@@ -1515,6 +1515,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	var order *json.ObjectOrder
 	var promptOptions map[string]any
 	var toolCall *toolCallInput
+	// providerHook is the reply of a before_provider_request or before_provider_headers handler for the result it returned (provider_hook.go).
+	var providerHook func(result any) any
 	defer func() {
 		if r := recover(); r != nil {
 			name := req.Tool
@@ -1535,6 +1537,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 			if promptOptions != nil {
 				result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptOptions": promptOptions, "_pigPromptResult": nil}
+			}
+			if providerHook != nil {
+				result = providerHook(nil)
 			}
 			_ = e.conn.respond(id, handedBack(req.Event, result, order), fmt.Errorf("handler panicked: %v", r))
 		}
@@ -1697,6 +1702,24 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			_ = unmarshalFrameMember(req.Args, &source)
 			toolCall = newToolCallInput(data["input"], source.Input)
 		}
+		if req.Event == "before_provider_request" || req.Event == "before_provider_headers" {
+			member := "payload"
+			if req.Event == "before_provider_headers" {
+				member = "headers"
+			}
+			object := data[member]
+			providerHook = func(result any) any {
+				return providerHookReply(req.Event, object, result, func() any {
+					if master == nil {
+						// The handler may have edited its copy: decode what the host sent again.
+						if unmarshalFrameMember(req.Args, &master) != nil {
+							return nil
+						}
+					}
+					return master[member]
+				})
+			}
+		}
 		if req.Event == "before_agent_start" {
 			var err error
 			promptOptions, err = preparePromptOptions(req.Args, data)
@@ -1728,6 +1751,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				messages, _ := master["messages"].([]any)
 				return messages
 			})
+		}
+		if providerHook != nil {
+			result = providerHook(result)
 		}
 		if req.Event == "before_agent_start" {
 			result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptOptions": promptOptions, "_pigPromptResult": result}

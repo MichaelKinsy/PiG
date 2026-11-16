@@ -893,6 +893,22 @@
                                        ((equal name "tool_result") (pig:obj "content" (pig:jget data "content") "details" (pig:jget data "details")))
                                        ((equal name "message_end") (pig:obj "message" (pig:jget data "message")))
                                        (t (error "event_echo_probe has no echo for ~A" name))))))))
+      (pig:command ext "event_mutate_probe" "Subscribe to the event named by the argument `<event> [fail]` with a handler that edits its payload or headers in place and returns nothing"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let* ((trimmed (string-trim '(#\Space #\Newline #\Tab) args))
+                            (space (position #\Space trimmed))
+                            (name (subseq trimmed 0 space))
+                            (fail (and space (equal (string-trim '(#\Space #\Newline #\Tab) (subseq trimmed space)) "fail"))))
+                       (pig:on ext name
+                               (lambda (hctx data) (declare (ignore hctx))
+                                 (let ((key (if fail "inPlaceBeforeError" "inPlace")))
+                                   (if (equal name "before_provider_headers")
+                                       (setf (gethash (concatenate 'string "x-pig-" key) (pig:jget data "headers")) "in-place-edit")
+                                       (let* ((payload (pig:jget data "payload")) (zeta (pig:jget payload "zeta")))
+                                         (setf (gethash key payload) "in-place-edit")
+                                         (when (hash-table-p zeta) (setf (gethash key zeta) "in-place-edit")))))
+                                 (when fail (error "failed after the edit"))
+                                 nil)))))
       (pig:command ext "event_payload_probe" "Subscribe and report the payload of the event named by the argument"
                    (lambda (ctx args) (declare (ignore ctx))
                      (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))

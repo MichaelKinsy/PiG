@@ -5894,6 +5894,38 @@ fn main() {
             CommandResult::Ok
         },
     );
+    let event_mutate_subscriber = ext.event_subscriber();
+    let event_mutate_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_mutate_probe",
+        "Subscribe to the event named by the argument with a handler that edits its payload or headers in place and returns nothing",
+        move |_ctx, args| {
+            let (name, fail) = match args.trim().split_once(' ') {
+                Some((name, fail)) => (name.to_string(), fail.trim() == "fail"),
+                None => (args.trim().to_string(), false),
+            };
+            let edited = name.clone();
+            let subscription = subscribe(&event_mutate_subscriber, &name, move |_ctx, data| {
+                let key = if fail { "inPlaceBeforeError" } else { "inPlace" };
+                if edited == "before_provider_headers" {
+                    data["headers"][format!("x-pig-{key}")] = Value::from("in-place-edit");
+                } else {
+                    data["payload"][key] = Value::from("in-place-edit");
+                    if data["payload"]["zeta"].is_object() {
+                        data["payload"]["zeta"][key] = Value::from("in-place-edit");
+                    }
+                }
+                if fail {
+                    Err("failed after the edit".to_string())
+                } else {
+                    Ok(None)
+                }
+            });
+            event_mutate_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     ext.command("label_probe", "Label the entry named first", |ctx, args| {
         let trimmed = args.trim();
         let (id, label) = trimmed.split_once(' ').unwrap_or((trimmed, ""));

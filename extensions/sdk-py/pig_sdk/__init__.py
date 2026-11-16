@@ -6612,6 +6612,38 @@ class Extension:
                         reply["_pigToolCallInput"] = tool_input
                     self._respond(req_id, reply, error)
                     return
+                # Pi hands every before_provider_request handler the one payload and sends what the runner returns: a handler that edits it in place and returns nothing changes the request (runner.ts emitBeforeProviderRequest returns currentPayload), even when it fails afterwards. The host cannot share the dict, so a handler that returned no result sends the payload it left when its JSON text differs from the one it received (member order included). Assigning a new dict to data["payload"] changes nothing, as assigning event.payload changes nothing in Pi.
+                if req.get("event") == "before_provider_request":
+                    provider_payload = data.get("payload")
+                    before = _json_text(provider_payload) if isinstance(provider_payload, (dict, list)) else None
+                    result = None
+                    error = None
+                    try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
+                        result = handler(ctx, data)
+                    except Exception as exc:  # noqa: BLE001 - Preserve payload edits before reporting the handler error.
+                        error = {"message": str(exc)}
+                    if result is None and before is not None:
+                        try:
+                            if _json_text(provider_payload) != before:
+                                result = provider_payload
+                        except Exception as exc:  # noqa: BLE001 - A payload that cannot be written is the handler's error.
+                            error = error or {"message": str(exc)}
+                    self._respond(req_id, result, error)
+                    return
+                # Pi's before_provider_headers handlers mutate event.headers in place and the return value is ignored (runner.ts emitBeforeProviderHeaders): the reply is the headers object the handler left, even when it failed.
+                if req.get("event") == "before_provider_headers":
+                    provider_headers = data.get("headers")
+                    error = None
+                    try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
+                        handler(ctx, data)
+                    except Exception as exc:  # noqa: BLE001 - Preserve header edits before reporting the handler error.
+                        error = {"message": str(exc)}
+                    self._respond(req_id, provider_headers if provider_headers is not None else {}, error)
+                    return
                 if req.get("event") == "before_agent_start":
                     options = data["systemPromptOptions"]
                     # Pi's normalized options always carry every collection; the host omits an empty one.

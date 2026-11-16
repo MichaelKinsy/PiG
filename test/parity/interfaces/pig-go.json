@@ -231903,6 +231903,17 @@
       "shapeHash": "sha256:4c7ba8050604a777825897d7595d42103b0b6719e5cc22a93df37d2763c60fe4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#providerHookReply",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "providerHookReply",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event string, object any, result any, sent func() any) any"
+      },
+      "shapeHash": "sha256:e5fd7965d085e55dea949f36ab74e0541258295fc9bc177e86fcf211d7f15875"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#providerInvoke",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "providerInvoke",

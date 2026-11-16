@@ -2448,6 +2448,32 @@ func Extension() *sdk.Extension {
 		})
 		return nil
 	})
+	// event_mutate_probe subscribes to the event named by the argument (`<event> [fail]`) with a handler that edits the event's payload (before_provider_request) or
+	// headers (before_provider_headers) in place, returns nothing and, with fail, fails after the edit (TestConformance_InPlaceProviderHookEditsReachTheRequest).
+	ext.Command("event_mutate_probe", "Subscribe to the event named by the argument with a handler that edits its payload or headers in place and returns nothing", func(ctx sdk.Context, args string) error {
+		name, fail, _ := strings.Cut(strings.TrimSpace(args), " ")
+		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
+			failing := strings.TrimSpace(fail) == "fail"
+			key := "inPlace"
+			if failing {
+				key = "inPlaceBeforeError"
+			}
+			if name == "before_provider_headers" {
+				data["headers"].(map[string]any)["x-pig-"+key] = "in-place-edit"
+			} else {
+				payload := data["payload"].(map[string]any)
+				payload[key] = "in-place-edit"
+				if zeta, ok := payload["zeta"].(map[string]any); ok {
+					zeta[key] = "in-place-edit"
+				}
+			}
+			if failing {
+				return nil, fmt.Errorf("failed after the edit")
+			}
+			return nil, nil
+		})
+		return nil
+	})
 	// event_payload_probe reports the JSON of the event the named handler received, so a conformance test compares what every SDK was sent
 	// (TestConformance_EventPayloadsReachEverySDKUnchanged).
 	ext.Command("event_payload_probe", "Subscribe and report the payload of the event named by the argument", func(ctx sdk.Context, args string) error {
