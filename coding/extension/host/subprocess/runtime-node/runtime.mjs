@@ -5690,6 +5690,31 @@ export class Runtime {
             await this.respond(id, { ...(edited ? { _pigMessageEndMessage: message } : {}), _pigMessageEndResult: result }, error);
             return;
           }
+          // Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the event, so the reply names the members the handler left different from the ones it received, with their new values, and, of those, the ones it edited in the very object it received instead of replacing; the reply carries them also when the handler threw.
+          if (request.event === "tool_result") {
+            const names = ["content", "details", "isError", "structuredContent", "usage"];
+            const received = names.map((name) => event[name]);
+            const before = received.map((value) => JSON.stringify(value));
+            let result;
+            let error;
+            try {
+              const pending = selected.handler(event, ctx);
+              // As above: a shutdown the handler asked for in its synchronous prefix closes its window in print, JSON and RPC mode.
+              const shutdownOwner = this.requestContext.getStore();
+              if (shutdownOwner?.id === id && shutdownOwner.quit && (this.contextValues.mode === "rpc" || PROMPT_END_MODES.has(this.contextValues.mode))) armRequestWindow(shutdownOwner);
+              result = await pending;
+            } catch (err) {
+              error = err instanceof Error ? err : new Error(String(err));
+            }
+            const changed = names.filter((name, i) => JSON.stringify(event[name]) !== before[i]);
+            const edits = changed.length === 0 ? undefined : {
+              members: Object.fromEntries(changed.filter((name) => event[name] !== undefined).map((name) => [name, event[name]])),
+              changed,
+              shared: changed.filter((name) => event[name] === received[names.indexOf(name)] && typeof event[name] === "object" && event[name] !== null),
+            };
+            await this.respond(id, { ...(edits ? { _pigToolResultEdits: edits } : {}), _pigToolResultResult: result }, error);
+            return;
+          }
           // Pi hands every before_provider_request handler the one payload and sends what the runner returns, so a handler's in-place edit of event.payload is in the request when it returns nothing (runner.ts emitBeforeProviderRequest returns currentPayload), even when it throws afterwards. The host cannot share the object, so a handler that returned undefined sends the payload it left when its JSON text differs from the one it received. A handler that returns a value replaces the payload with it and the edit of the old object is dropped; assigning event.payload changes nothing (the event is made for each handler). before_provider_headers is the same without a result: its handlers mutate event.headers in place and the return value is ignored (runner.ts emitBeforeProviderHeaders), so the reply is the headers object the handler left.
           if (request.event === "before_provider_request" || request.event === "before_provider_headers") {
             const headers = request.event === "before_provider_headers";

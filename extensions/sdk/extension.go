@@ -1732,6 +1732,15 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				return messageEndReply(object, result, func() any { return sentMember("message") })
 			}
 		}
+		if req.Event == "tool_result" {
+			received := map[string]any{}
+			for _, name := range toolResultMembers {
+				if value, ok := data[name]; ok {
+					received[name] = value
+				}
+			}
+			editReply = func(result any) any { return toolResultReply(data, received, result, sentMember) }
+		}
 		if req.Event == "before_agent_start" {
 			var err error
 			promptOptions, err = preparePromptOptions(req.Args, data)

@@ -6631,6 +6631,32 @@ class Extension:
                             error = error or {"message": str(exc)}
                     self._respond(req_id, reply, error)
                     return
+                # Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the dict, so the reply names the members the handler left different from the ones it received (JSON text, member order included), with their new values, and, of those, the ones it edited in the very object it received instead of replacing; the reply carries them also when the handler failed.
+                if req.get("event") == "tool_result":
+                    names = ("content", "details", "isError", "structuredContent", "usage")
+                    received = {name: data[name] for name in names if name in data}
+                    before = {name: _json_text(value) for name, value in received.items()}
+                    result = None
+                    error = None
+                    try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
+                        result = handler(ctx, data)
+                    except Exception as exc:  # noqa: BLE001 - Preserve member edits before reporting the handler error.
+                        error = {"message": str(exc)}
+                    reply = {"_pigToolResultResult": result}
+                    try:
+                        changed = [name for name in names if (name in data) != (name in received) or (name in data and _json_text(data[name]) != before[name])]
+                        if changed:
+                            reply["_pigToolResultEdits"] = {
+                                "members": {name: data[name] for name in changed if name in data},
+                                "changed": changed,
+                                "shared": [name for name in changed if name in data and name in received and data[name] is received[name] and isinstance(data[name], (dict, list))],
+                            }
+                    except Exception as exc:  # noqa: BLE001 - A member that cannot be written is the handler's error.
+                        error = error or {"message": str(exc)}
+                    self._respond(req_id, reply, error)
+                    return
                 # Pi hands every before_provider_request handler the one payload and sends what the runner returns: a handler that edits it in place and returns nothing changes the request (runner.ts emitBeforeProviderRequest returns currentPayload), even when it fails afterwards. The host cannot share the dict, so a handler that returned no result sends the payload it left when its JSON text differs from the one it received (member order included). Assigning a new dict to data["payload"] changes nothing, as assigning event.payload changes nothing in Pi.
                 if req.get("event") == "before_provider_request":
                     provider_payload = data.get("payload")

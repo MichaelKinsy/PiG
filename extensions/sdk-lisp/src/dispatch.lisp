@@ -329,6 +329,36 @@
                (handler-case (unless (equal (to-json message) before) (setf (gethash "_pigMessageEndMessage" reply) message))
                  (serious-condition (c) (unless error-message (setf error-message (condition-message c))))))
              (values reply error-message))))
+        ;; Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the table, so the reply names the members the handler left different from the ones it received (JSON text), with their new values, and, of those, the ones it edited in the very object it received (EQ) instead of replacing; it carries them also when the handler failed.
+        ((equal event "tool_result")
+         (let* ((names '("content" "details" "isError" "structuredContent" "usage"))
+                (received (loop for name in names
+                                collect (multiple-value-bind (value present) (gethash name data)
+                                          (list name present value (and present (to-json value))))))
+                result error-message)
+           (handler-case
+               (progn (ticket-begin (request-ticket (ctx-request ctx)))
+                      (setf result (funcall handler ctx data)))
+             (serious-condition (c) (setf error-message (condition-message c))))
+           (let ((reply (obj "_pigToolResultResult" result))
+                 (members (obj))
+                 changed shared)
+             (handler-case
+                 (dolist (entry received)
+                   (destructuring-bind (name was-present was was-json) entry
+                     (multiple-value-bind (now now-present) (gethash name data)
+                       (when (or (not (eq (and was-present t) (and now-present t)))
+                                 (and now-present (not (equal (to-json now) was-json))))
+                         (push name changed)
+                         (when now-present
+                           (setf (gethash name members) now)
+                           (when (and was-present (eq now was) (or (hash-table-p now) (and (vectorp now) (not (stringp now)))))
+                             (push name shared)))))))
+               (serious-condition (c) (unless error-message (setf error-message (condition-message c)))))
+             (when changed
+               (setf (gethash "_pigToolResultEdits" reply)
+                     (obj "members" members "changed" (coerce (nreverse changed) 'vector) "shared" (coerce (nreverse shared) 'vector))))
+             (values reply error-message))))
         (t
          (let* ((messages (jget data "messages"))
                 (context-event (member event '("context" "context_with_system") :test #'equal))

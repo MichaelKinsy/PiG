@@ -4999,6 +4999,20 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				}
 				resp.Response.Result = reply.Result
 			}
+			// upstream: runner.ts emitToolResult hands every handler the one currentEvent and agent-session.ts _afterToolCall reads the caller's result back, so a handler's in-place edit of content, details or isError is what the next handler sees and, for an edit to the object the caller handed over, what the caller keeps, also when the handler throws. An extension process cannot share the event: its reply names the members it left changed. The Runner holds the chain, so the edits go to the sink the event carries.
+			if event == "tool_result" && len(args) > 0 && len(resp.Response.Result) > 0 {
+				var reply ToolResultResponsePayload
+				//portlint:allow hotpathjson one decode per tool_result handler of an extension (a tool result, not a delta), and only the reply's two members are read
+				if err := json.Unmarshal(resp.Response.Result, &reply); err != nil {
+					return nil, fmt.Errorf("decode tool_result response: %w", err)
+				}
+				if reply.Edits != nil && len(reply.Edits.Changed) > 0 {
+					if sink := extension.ToolResultEditsSink(args[0]); sink != nil {
+						sink.Members, sink.Changed, sink.Shared = reply.Edits.Members, reply.Edits.Changed, reply.Edits.Shared
+					}
+				}
+				resp.Response.Result = reply.Result
+			}
 			// pig additive (D19): both actionable boundaries return mutated proposals even when their handler fails.
 			if (event == "agent_before_settle" || event == "turn_end") && len(args) > 0 && len(resp.Response.Result) > 0 && strings.TrimSpace(string(resp.Response.Result)) != "null" {
 				var boundary struct {

@@ -810,6 +810,31 @@ func (p *MessageEndResponsePayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ToolResultResponsePayload is the result of an extension's tool_result handler, from every SDK. Edits names the members of the event the handler left different from the ones it received and, of those, the ones it edited in the object it received (see [extension.ToolResultEdits]); an omitted Edits means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
+type ToolResultResponsePayload struct {
+	Edits  *ToolResultEditsPayload `json:"_pigToolResultEdits"`
+	Result json.RawMessage         `json:"_pigToolResultResult"`
+}
+
+// ToolResultEditsPayload is the members a tool_result handler changed, as ToolResultEventResult holds them (Members), and which of them are edits to the object the handler received (Shared).
+type ToolResultEditsPayload struct {
+	Members extension.ToolResultEventResult `json:"members"`
+	Changed []string                        `json:"changed"`
+	Shared  []string                        `json:"shared"`
+}
+
+func (p *ToolResultResponsePayload) UnmarshalJSON(data []byte) error {
+	type toolResultResponsePayload ToolResultResponsePayload
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	var decoded toolResultResponsePayload
+	if err := decoder.Decode(&decoded); err != nil {
+		return err
+	}
+	*p = ToolResultResponsePayload(decoded)
+	return nil
+}
+
 // ResponsePayload is the extension's reply to a request. For tool_call, Result carries a [ToolCallResponsePayload]. For agent_before_settle and turn_end,
 // Result carries {_pigBoundaryEntries, _pigBoundaryResult}: the mutated input
 // draft list and the explicit handler result. Mutations also accompany Error;
