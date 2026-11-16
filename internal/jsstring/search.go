@@ -1,9 +1,20 @@
 package jsstring
 
-import "slices"
+import (
+	"slices"
+	"strings"
+)
 
 // IndexOf implements String.indexOf with UTF-16 positions, including searches for a surrogate half inside a pair.
 func IndexOf(text, search string, from int) int {
+	if isASCIIOnly(text) && isASCIIOnly(search) {
+		// Every unit of an ASCII string is one byte, so a byte index is the UTF-16 index and neither string needs its UTF-16 copy.
+		from = max(0, min(from, len(text)))
+		if index := strings.Index(text[from:], search); index >= 0 {
+			return from + index
+		}
+		return -1
+	}
 	units, needle := ToUTF16(text), ToUTF16(search)
 	from = max(0, min(from, len(units)))
 	for pos := from; pos+len(needle) <= len(units); pos++ {

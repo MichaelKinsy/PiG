@@ -879,6 +879,16 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                             (st (pig:ctx-mount-view ctx "ids" "panel" (pig:kit-view root)
                                                     :a11y (list (pig:obj "node" (format nil "~A-label" tok) "name" label)))))
                        (kp-notify ctx (format nil "view-i-mounted:~A" (pig:view-status-state st))))))
+      ;; D614 image id: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewImageID). The argument is the row's token and a Kitty image id only that row uses: the image node carries both, its bytes are the token's.
+      (pig:command ext "ui_view_image_id" "Mount a view whose image node carries a Kitty image id"
+                   (lambda (ctx args)
+                     (let* ((space (position #\Space args))
+                            (tok (subseq args 0 space))
+                            (number (parse-integer args :start (1+ space)))
+                            (bytes (coerce (map 'list #'char-code (format nil "pig-image-~A" tok)) '(simple-array (unsigned-byte 8) (*))))
+                            (image (pig:kit-image bytes "image/png" :id (format nil "~A-photo" tok) :image-id number :filename (format nil "~A.png" tok)))
+                            (st (pig:ctx-mount-view ctx "image-id" "panel" (pig:kit-view image))))
+                       (kp-notify ctx (format nil "view-m-mounted:~A" (pig:view-status-state st))))))
       ;; D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
       (labels ((b-intents ()
                  (list (pig:view-intent "fx.go" (pig:view-shape "object" :properties (list (cons "n" int)) :required '("n")))
