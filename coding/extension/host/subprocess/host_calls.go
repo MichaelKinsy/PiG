@@ -197,17 +197,18 @@ func (h *Host) queueCall(me *managedExt, conn *Conn, lanes *callLanes, callID st
 
 // queueCallDone is queueCall that calls done, when it is not nil, once the call ran or started: its effect is written. The request that made the call learns
 // that it applied (ackHold). A call that can wait for the session or the user (startsAsync) does not hold the acknowledgment of the handler awaiting it: the
-// handler is suspended on it, which is what the acknowledgment reports.
+// handler is suspended on it, which is what the acknowledgment reports. A call whose upstream API returns nothing (holdsForLoopTurn) is one the handler does not
+// wait for: it holds the acknowledgment until the handler's synchronous part is over (ackHold.applied).
 func (h *Host) queueCallDone(me *managedExt, conn *Conn, lanes *callLanes, callID string, call *CallPayload, done func()) {
 	if startsAsync(call.Method) {
-		conn.hostCallApplied(call.ParentRequestID)
+		conn.hostCallApplied(call.ParentRequestID, false)
 	} else {
 		applied := done
 		done = func() {
 			if applied != nil {
 				applied()
 			}
-			conn.hostCallApplied(call.ParentRequestID)
+			conn.hostCallApplied(call.ParentRequestID, holdsForLoopTurn(call.Method))
 		}
 	}
 	if done == nil {

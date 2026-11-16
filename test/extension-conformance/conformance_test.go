@@ -2818,6 +2818,12 @@ type recordingUI struct {
 	recordMu sync.Mutex
 	// calls holds the working, paste, editor-text and tools-expanded calls the host forwarded, in arrival order.
 	calls []string
+	// surfaces holds the title and widget calls the host forwarded, in arrival order.
+	surfaces []string
+	// applyDelay is how long a notify, status, title, widget or editor-text call takes to apply, a consumer that is slow to write (a terminal, a pipe).
+	applyDelay atomic.Int64
+	// stall holds every effect call at its apply until the gate's release channel closes: a consumer that is blocked.
+	stall atomic.Pointer[stallGate]
 }
 
 func newRecordingUI(notify, status *[]string) *recordingUI {
@@ -2847,6 +2853,7 @@ func (u *recordingUI) Input(ctx context.Context, title, _ string, _ extension.Ex
 }
 
 func (u *recordingUI) Notify(message, level string) {
+	u.slow()
 	defer hostEffects.notify()
 	u.recordMu.Lock()
 	defer u.recordMu.Unlock()
@@ -2910,6 +2917,7 @@ func (u *recordingUI) terminalInputVerdict(data string) (extension.TerminalInput
 	return handler(context.Background(), data), true
 }
 func (u *recordingUI) SetStatus(key, text string) {
+	u.slow()
 	defer hostEffects.notify()
 	u.recordMu.Lock()
 	defer u.recordMu.Unlock()
@@ -2959,7 +2967,8 @@ func (u *recordingUI) SetHiddenThinkingLabel(label string) {
 func (u *recordingUI) ClearHiddenThinkingLabel() { u.recordCall("hiddenThinkingLabel:<default>") }
 func (u *recordingUI) SetWidgetFactory(string, extension.WidgetFactory, *extension.ExtensionWidgetOptions) {
 }
-func (u *recordingUI) SetWidget(string, []string, *extension.ExtensionWidgetOptions) {
+func (u *recordingUI) SetWidget(key string, lines []string, _ *extension.ExtensionWidgetOptions) {
+	u.recordSurface1("widget:" + key + ":" + strings.Join(lines, "|"))
 }
 func (u *recordingUI) SetFooter(build extension.FooterFactory) {
 	factory := frameOf(build, 3)
@@ -3060,12 +3069,60 @@ func (u *recordingUI) LoginDefinitions() []string {
 	defer u.recordMu.Unlock()
 	return append([]string(nil), u.logins...)
 }
-func (u *recordingUI) SetTitle(string) {}
+func (u *recordingUI) SetTitle(title string) { u.recordSurface1("title:" + title) }
+
+// slow models a consumer that is slow to apply an effect: the call returns once it applied it.
+func (u *recordingUI) slow() {
+	if gate := u.stall.Load(); gate != nil {
+		gate.enter()
+	}
+	if delay := u.applyDelay.Load(); delay > 0 {
+		time.Sleep(time.Duration(delay))
+	}
+}
+
+// stallGate holds the effect calls of a recordingUI: entered closes when the first call is held, open lets every held call apply. A test that fails while the gate is closed opens it
+// from its cleanup, so the harness's shutdown does not wait for a consumer that nobody will release.
+type stallGate struct {
+	entered  chan struct{}
+	release  chan struct{}
+	once     sync.Once
+	openOnce sync.Once
+}
+
+func newStallGate() *stallGate {
+	return &stallGate{entered: make(chan struct{}), release: make(chan struct{})}
+}
+
+func (g *stallGate) enter() {
+	g.once.Do(func() { close(g.entered) })
+	<-g.release
+}
+
+// open lets every held call apply, and every later one; it may be called more than once.
+func (g *stallGate) open() { g.openOnce.Do(func() { close(g.release) }) }
+
+// recordSurface1 keeps a title or widget call. Surfaces returns the calls so far.
+func (u *recordingUI) recordSurface1(call string) {
+	u.slow()
+	defer hostEffects.notify()
+	u.recordMu.Lock()
+	defer u.recordMu.Unlock()
+	u.surfaces = append(u.surfaces, call)
+}
+
+// Surfaces returns a copy of the title and widget calls seen so far.
+func (u *recordingUI) Surfaces() []string {
+	u.recordMu.Lock()
+	defer u.recordMu.Unlock()
+	return append([]string(nil), u.surfaces...)
+}
 func (u *recordingUI) Custom(context.Context, extension.CustomFactory, *extension.CustomOptions) (any, error) {
 	return "gamma", nil
 }
 func (u *recordingUI) PasteToEditor(text string) { u.recordCall("paste:" + text) }
 func (u *recordingUI) SetEditorText(text string) {
+	u.slow()
 	u.recordMu.Lock()
 	defer u.recordMu.Unlock()
 	u.editorText = text
@@ -3367,6 +3424,9 @@ func conformanceActions(actions *[]string) *subprocess.HostCallbacks {
 		},
 		ResolveModel: specModel,
 		AppendEntry: func(customType string, data any, _ *subprocess.DirectEntryAppend) error {
+			if customType == "effect_probe_fails" {
+				return errors.New("append refused")
+			}
 			*actions = append(*actions, fmt.Sprintf("appendEntry:%s:%v", customType, data))
 			return nil
 		},

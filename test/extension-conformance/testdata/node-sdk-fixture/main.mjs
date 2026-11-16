@@ -1011,6 +1011,26 @@ export default function (pi) {
     description: "Set one status repeatedly without awaiting",
     handler: async (_args, ctx) => { for (let i = 0; i < 200; i++) ctx.ui.setStatus("burst", String(i)); },
   });
+  // effect_probe: one host API called in the synchronous part of an event handler, a command or a tool, which then returns (TestConformance_HandlerEffectsPrecedeTheReleaseOfItsCaller).
+  const effectProbeKinds = {
+    notify: (ctx) => ctx.ui.notify("effect_probe:notify", "info"),
+    status: (ctx) => ctx.ui.setStatus("effect_probe", "status"),
+    title: (ctx) => ctx.ui.setTitle("effect_probe:title"),
+    widget: (ctx) => ctx.ui.setWidget("effect_probe", ["effect_probe:widget"]),
+    editor: (ctx) => ctx.ui.setEditorText("effect_probe:editor"),
+    // The host actions after a slow notify: the call that follows the notify can apply only once the notify did.
+    append: (ctx) => { ctx.ui.notify("effect_probe:lead", "info"); pi.appendEntry("effect_probe", "entry"); },
+    sendUserMessage: (ctx) => { ctx.ui.notify("effect_probe:lead", "info"); pi.sendUserMessage("effect_probe:user"); },
+    failedAppend: (ctx) => { pi.appendEntry("effect_probe_fails", "entry"); ctx.ui.notify("effect_probe:notify", "info"); },
+  };
+  pi.registerCommand("effect_probe_on", { description: "Subscribe a handler that calls one host API and returns: <event> <kind> [sync|await]; a sync handler is not an async function, an await handler then awaits a timer for 20 s", handler: async (args) => { const [event, kind, style] = String(args).trim().split(" "); if (style === "sync") pi.on(event, (_event, ctx) => { effectProbeKinds[kind](ctx); }); else if (style === "await") pi.on(event, async (_event, ctx) => { effectProbeKinds[kind](ctx); await new Promise((resolve) => setTimeout(resolve, 20000)); }); else pi.on(event, async (_event, ctx) => { effectProbeKinds[kind](ctx); }); } });
+  pi.registerCommand("effect_probe_run", { description: "Call one host API and return", handler: async (args, ctx) => { effectProbeKinds[String(args).trim()](ctx); } });
+  pi.registerCommand("effect_probe_tool", {
+    description: "Register a tool that calls one host API and returns",
+    handler: async () => {
+      pi.registerTool({ name: "effect_probe_tool", label: "effect_probe_tool", description: "Call one host API and return", parameters: { type: "object", properties: { kind: { type: "string" } } }, execute: async (_id, params, _signal, _update, ctx) => { effectProbeKinds[params.kind](ctx); return { content: [{ type: "text", text: "ok" }] }; } });
+    },
+  });
   // A width handler makes a host call the way any other handler does; the host's reply must reach it (conformance TestConformance_WidthHandlerHostCall).
   let widthProbe;
   pi.registerCommand("arm_width_probe", { description: "Notify from a width handler", handler: async (_args, ctx) => { widthProbe ??= ctx.ui.onWidthChange(async (width) => { await ctx.ui.notify(`width-probe:${width}`, "info"); await ctx.ui.notify(`width-probe-returned:${width}`, "info"); }); } });
