@@ -14,6 +14,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/extensionset"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // commandFactory is the Go counterpart of `(pi) => pi.registerCommand(name, { description, handler })`: the extension it returns
@@ -177,7 +178,8 @@ func TestUpstreamResourceLoaderLeavesOutReplaceableExtensions(t *testing.T) {
 }`,
 	})
 	// The production build's own replaceable built-ins: another extension that registers /mcp takes the command, the built-in mcp is left out.
-	// A replaceable inline extension whose command a non-replaceable built-in (llama.cpp) also registers is left out too.
+	// A replaceable inline extension whose command a non-replaceable built-in (llama.cpp) also registers is left out too; a Piglet that strips
+	// llama.cpp has no such built-in, so the inline extension stays, and it is the one that owns the command.
 	result := loadProductionExtensionSetIn(t, cwd, agentDir, nil,
 		extension.NamedInlineExtension{Name: "llama", Replaceable: true, Factory: commandFactory("llama", "inline llama", nil)},
 	)
@@ -188,6 +190,12 @@ func TestUpstreamResourceLoaderLeavesOutReplaceableExtensions(t *testing.T) {
 			want = append(want, "builtin:"+name)
 		}
 	}
+	llamaStripped := pigstrip.Has(pigstrip.ListExtensions, "llama.cpp")
+	llamaDescription := "Manage llama.cpp router models"
+	if llamaStripped {
+		want = append(want, "<inline:llama>")
+		llamaDescription = "inline llama"
+	}
 	requirePaths(t, result.paths(), want)
 	for _, diagnostic := range result.Diagnostics {
 		if diagnostic.Type == "error" {
@@ -196,7 +204,7 @@ func TestUpstreamResourceLoaderLeavesOutReplaceableExtensions(t *testing.T) {
 	}
 	runner := inproc.NewRunner(result.Extensions, cwd, result.build.Runtime)
 	t.Cleanup(func() { runner.Invalidate("") })
-	for name, want := range map[string]string{"mcp": "other mcp", "llama": "Manage llama.cpp router models"} {
+	for name, want := range map[string]string{"mcp": "other mcp", "llama": llamaDescription} {
 		if got, ok := runner.Command(name); !ok || got.Description != want {
 			t.Errorf("command %q = %+v found=%t; want %q", name, got, ok, want)
 		}

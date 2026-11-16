@@ -13,7 +13,7 @@ import (
 )
 
 func TestModelRuntimeGoogleThinkingMapReachesProvider(t *testing.T) {
-	for _, api := range []ai.API{ai.APIGoogleGenerativeAI, ai.APIGoogleVertex} {
+	for _, api := range append([]ai.API{ai.APIGoogleGenerativeAI}, whenVertex(ai.APIGoogleVertex)...) {
 		t.Run(string(api), func(t *testing.T) {
 			agentDir := t.TempDir()
 			providerID := "google"

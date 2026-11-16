@@ -7,12 +7,16 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // extensions/index.ts (Pi 0.99.2) lists llama.cpp, codemode, tool-search and mcp, in that order, as the built-in
 // extensions of the CLI, and D2 adds PiG's own `pig-login` last: `pi config` shows each as a `builtin:<name>` resource, and the loader runs the ones that are enabled.
 func TestCLIBuiltInExtensionsListMCPAfterToolSearch(t *testing.T) {
-	want := []string{"llama.cpp", "codemode", "tool-search", "mcp", "pig-login"}
+	// A Piglet that strips llama.cpp lists the others (D92).
+	want := slices.DeleteFunc([]string{"llama.cpp", "codemode", "tool-search", "mcp", "pig-login"}, func(name string) bool {
+		return pigstrip.Has(pigstrip.ListExtensions, name)
+	})
 	if got := cliBuiltinExtensionNames(); !slices.Equal(got, want) {
 		t.Errorf("cliBuiltinExtensionNames() = %q, want %q", got, want)
 	}
