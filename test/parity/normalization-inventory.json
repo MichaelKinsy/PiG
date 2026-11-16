@@ -11638,6 +11638,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/startup/25-startup-restore-selects-only-from-the-published-availability.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "remember zulu-3120",
+            "capture_end": "No models available"
+          },
+          "reason": "Owned visible surface: A resumed session with an unrestorable saved model gets no model when the account lists none of the catalog, as pi's findInitialModel reads the availability snapshot.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/tools/17-tool-rpc-error-and-bash-wire.toml",
       "transforms": [
         {
