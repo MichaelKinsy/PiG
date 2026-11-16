@@ -1096,6 +1096,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-776d60b](#bf-776d60b) | An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-776d60b-2](#bf-776d60b-2) | A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-77a1d72](#bf-77a1d72) | An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed`… | PiG's own defect | All platforms | Unreleased |
 | [BF-77e64cd](#bf-77e64cd) | GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3)… | PiG's own defect | All platforms | Unreleased |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7838047](#bf-7838047) | `/resume` no longer selects an unrelated session while its list reloads after a session is deleted or… | PiG's own defect | All platforms | Unreleased |
@@ -17196,6 +17197,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `779318a6ea` (2026-10-14, #10926)
 - **Tests:** `ai/openai_completions_member_type_oracle_test.go::TestOpenAICompletionsMistypedMembersMatchPi`, `ai/openai_reasoning_pending_test.go::TestParseSSE_ReasoningDetailsApplyBeforeNonIterableToolCalls`, `ai/openai_reasoning_pending_test.go::TestParseSSE_ThinkingBeforeTextWhenOneDeltaCarriesBoth`, `ai/openai_tool_choice_stream_upstream_test.go::TestOpenAICompletionsToolChoiceStreamUpstream`
 - **Release note:** OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now place the thinking block before the text. Carried forward from Pi 63035734 (earendil-works/pi#10926), past the 1.2.0+3daa2028 pin.
+
+### BF-77a1d72
+
+**An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed` or `thinking_level_select` handler written with the Go, Rust, Python or Lisp SDK: Pi replies at once because it does not await that event, but PiG's reply was held until the handler returned, for ever when the handler waited on a socket or a timer and never came back, and now waits at most the 250 ms that already bounds the other handlers a runtime cannot report waiting.
+- **Root cause:** An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed` or `thinking_level_select` handler written with the Go, Rust, Python or Lisp SDK: Pi replies at once because it does not await that event, but PiG's reply was held until the handler returned, for ever when the handler waited on a socket or a timer and never came back, and now waits at most the 250 ms that already bounds the other handlers a runtime cannot report waiting.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `77a1d720d9` (2026-11-16)
+- **Tests:** `coding/cli/rpc_unawaited_event_test.go::TestRPCUnawaitedEventAcrossSDKs`, `test/extension-conformance/unawaited_event_wait_conformance_test.go::TestConformance_UnawaitedEventDoesNotWaitForAWaitingHandler`
+- **Release note:** An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed` or `thinking_level_select` handler written with the Go, Rust, Python or Lisp SDK: Pi replies at once because it does not await that event, but PiG's reply was held until the handler returned, for ever when the handler waited on a socket or a timer and never came back, and now waits at most the 250 ms that already bounds the other handlers a runtime cannot report waiting. A handler that computes for longer than that writes its own notification after the reply, where Pi writes it before; the handler's effect is not lost. The wait has been there since v0.7.0 and earlier.
 
 ### BF-77e64cd
 
