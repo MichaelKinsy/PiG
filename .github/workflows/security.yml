@@ -157,7 +157,7 @@ jobs:
           exit "$status"
       - name: Analyze Python SDK
         run: |
-          ruff check extensions/sdk-py
+          make lint-sdk-py
           bandit -q -r extensions/sdk-py/pig_sdk
           python - <<'PY'
           import tomllib
