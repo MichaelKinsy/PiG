@@ -25,6 +25,11 @@ func TestGoogleToolDeclarationsFollowPiMemberOrder(t *testing.T) {
 			Schema: json.RawMessage(`{"type":"object","properties":{"z":{"type":"string","description":"Z"},"a":{"type":"number"}},"required":["z"]}`)},
 		{Name: "strict tool schema in declaration order", Model: "gemini-3-pro-preview", Strict: true,
 			Schema: json.RawMessage(`{"type":"object","properties":{"z":{"type":"string"},"a":{"type":"number"}},"required":["z"]}`)},
+		// rewriteConstAsEnum (google-shared.ts) deletes const and sets enum, which then enumerates after the schema's other members, at every depth it reaches.
+		{Name: "const rewritten as enum", Model: "gemini-2.5-flash",
+			Schema: json.RawMessage(`{"type":"object","properties":{"z":{"const":"a","type":"string","description":"Z"},"a":{"type":"object","properties":{"y":{"const":3,"type":"number"},"b":{"type":"string"}}}},"required":["z"]}`)},
+		{Name: "strict const rewritten as enum", Model: "gemini-3-pro-preview", Strict: true,
+			Schema: json.RawMessage(`{"type":"object","properties":{"z":{"const":"a","type":"string"},"a":{"type":"number"}},"required":["z"]}`)},
 	}
 	const script = `(async () => {
   const http = require('node:http');
