@@ -498,7 +498,7 @@ type StopOptions struct {
 	// PreserveScreen leaves the alternate screen contents visible on exit
 	// instead of re-emitting the final frame into the main screen scrollback.
 	PreserveScreen bool
-	// ExitTerminal is pig additive: the stop also writes what Pi's terminal.stop() writes between the cursor show and the screen exit (tui.ts:1012
+	// ExitTerminal makes the stop also write what Pi's terminal.stop() writes between the cursor show and the screen exit (tui.ts:1012
 	// stop(): beforeTerminalStop, showCursor, terminal.stop(), afterTerminalStop): bracketed paste off and the Kitty keyboard pop, on the screen the
 	// flags were pushed on. Every stop of a renderer that draws on the process terminal sets it: the process exit, a renderer swap, a suspend and an
 	// external editor, each of which Pi's stop() covers; a renderer that does not own the terminal's modes leaves it false.

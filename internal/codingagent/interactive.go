@@ -659,6 +659,7 @@ type InteractiveMode struct {
 	rawDrain func() error
 	// inputHold keeps the terminal reader from reading until Init's synchronous start has written its last bytes; nil reads at once.
 	inputHold            chan struct{}
+	inputHoldOnce        sync.Once
 	rawRestore           func()
 	inputReader          *interactiveTerminalReader
 	externalEditorActive bool
@@ -1881,7 +1882,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.programStatusReporter().Report()
 	// Pi's ui.start() only requests the first frame, and init() writes the terminal color query (applyFromSettings()) before the deferred frame runs at `await waitForTerminalColors()`. The header, which bakes theme colors into its text, is built once the query completed or timed out (interactive-mode.ts init(): ui.start(), applyFromSettings(), waitForTerminalColors(), header). The color wait serves the owner loop, so it paints the requested frame: a terminal that answers nothing shows the editor and footer at once and the header after the timeout.
 	m.applyThemeFromSettings(ctx)
-	close(m.inputHold)
+	m.inputHoldOnce.Do(func() { close(m.inputHold) })
 	if err := m.waitForTerminalColors(ctx); err != nil {
 		return err
 	}
