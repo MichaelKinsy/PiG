@@ -1725,6 +1725,8 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 
 	removeWriteErrorHandler := m.exitOnDeadTerminalWrite()
 	m.onStop(func() error { removeWriteErrorHandler(); return nil })
+	removeClipboardOrder := m.orderClipboardWrites()
+	m.onStop(func() error { removeClipboardOrder(); return nil })
 	m.backgroundCtx, m.backgroundCancel = context.WithCancel(ctx)
 	m.onStop(func() error {
 		m.backgroundCancel()

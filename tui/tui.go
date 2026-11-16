@@ -1870,6 +1870,12 @@ func (t *tuiBase) SetOwnerDispatcher(dispatch func(ctx context.Context, fn func(
 	t.mu.Lock()
 	t.postToOwner = dispatch
 	t.mu.Unlock()
+	// The terminal's progress keepalive is work of the same loop: Pi's setInterval callback runs on its one event loop, between renders.
+	if terminal, ok := t.terminal.(interface {
+		setKeepaliveDispatch(dispatch func(ctx context.Context, fn func()) error)
+	}); ok {
+		terminal.setKeepaliveDispatch(dispatch)
+	}
 }
 
 // PostToOwner queues fn on the owner loop (see SetOwnerDispatcher). It never drops fn: it returns once the loop has accepted it, or ctx's error when ctx ends first. Without a dispatcher fn runs inline, as the other dispatch seams do. Thread-safe.
