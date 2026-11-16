@@ -9,7 +9,7 @@ import (
 )
 
 // maxShortTempDirBytes bounds ShortTempDir's path so a socket path of up to 37 bytes below it (for example PiG's
-// \h<uint32>\e-9999.sock under a \pig socket directory) stays within the 107 bytes a sun_path holds on Windows.
+// \h<uint32>\<count>.s under a \pig socket directory) stays within the 107 bytes a sun_path holds on Windows.
 const maxShortTempDirBytes = 70
 
 // ShortTempDir creates a directory for the test whose path leaves room for
