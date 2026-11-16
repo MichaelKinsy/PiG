@@ -1478,7 +1478,7 @@ Why: fixed ahead of upstream. The owner fixes a non-destructive inherited Pi bug
 
 Owner decision: 2026-10-04, owner Michael Kinsy (FIXLANE 2: fix the `.mjs` reload in 0.4.1 instead of deferring it; ID assigned by the lead).
 
-Call-site markers: `coding/extension/host/subprocess/runtime-node/loader.mjs` (`track`, `reevaluateEdited`), `coding/extension/host/subprocess/runtime-node/register-loader.mjs` (`trackExtensionModulesOnBun`).
+Call-site markers: `coding/extension/host/subprocess/runtime-node/loader.mjs` (`track`, `reevaluateEdited`), `coding/extension/host/subprocess/runtime-node/register-hooks.mjs` (`trackExtensionModulesOnBun`).
 
 Evidence: these tests are in `coding/extension/host/subprocess`.
 - `TestHostReloadEvaluatesOnlyAnEditedESModuleExtensionAgain` (`.mjs` and `"type": "module"` `.js`, packed and isolated):

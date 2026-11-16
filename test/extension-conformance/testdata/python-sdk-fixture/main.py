@@ -2741,6 +2741,15 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("ui_view_node_ids", "Mount a view whose container, text and box carry an id", view_node_ids_probe)
 
+    # D614 image id: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewImageID). The argument is the row's token and a Kitty image id only that row uses: the image node carries both, its bytes are the token's.
+    def view_image_id_probe(ctx, args):
+        tok, number = args.split()
+        image = kit.Image(f"pig-image-{tok}".encode(), "image/png", image_id=int(number), filename=f"{tok}.png", id=f"{tok}-photo")
+        st = ctx.mount_view("image-id", "panel", view=kit.View(image))
+        ctx.notify(f"view-m-mounted:{st.state}", "info")
+
+    ext.command("ui_view_image_id", "Mount a view whose image node carries a Kitty image id", view_image_id_probe)
+
     # D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
     def view_bindings_probe(ctx, args):
         key, number = args.split(" ")

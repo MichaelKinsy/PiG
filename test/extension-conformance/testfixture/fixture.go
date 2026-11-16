@@ -1584,6 +1584,22 @@ func Extension() *sdk.Extension {
 		ctx.Notify("view-i-mounted:"+string(st.State), "info")
 		return nil
 	})
+	// D614 image id: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewImageID). The argument is the row's token and a Kitty image id only that row uses: the image node carries both, its bytes are the token's.
+	ext.Command("ui_view_image_id", "Mount a view whose image node carries a Kitty image id", func(ctx sdk.Context, args string) error {
+		tok, number, _ := strings.Cut(strings.TrimSpace(args), " ")
+		n, err := strconv.Atoi(number)
+		if err != nil {
+			return err
+		}
+		img := kit.NewImage([]byte("pig-image-"+tok), "image/png")
+		img.ID, img.ImageID, img.Filename = tok+"-photo", &n, tok+".png"
+		st, err := ctx.MountView(sdk.ViewMount{Key: "image-id", Slot: sdk.ViewSlotPanel, View: kit.View{Root: img}})
+		if err != nil {
+			return err
+		}
+		ctx.Notify("view-m-mounted:"+string(st.State), "info")
+		return nil
+	})
 	// D614 bindings: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewBindings).
 	// The key and the number come from the test, so a binding the SDK dropped, or one it made up, is not what the host holds.
 	ext.Command("ui_view_bindings", "Mount a view with bindings and probe what the host refuses", func(ctx sdk.Context, args string) error {
