@@ -179,11 +179,7 @@ func (m *InteractiveMode) resetExtensionUIForReplacement() {
 	// a loop stuck in a write to a terminal nobody reads would otherwise hold the signal for ever, and its title write would block as well, so it is skipped.
 	var giveUp <-chan time.Time
 	if m.signalDisposing.Load() {
-		wait := m.signalShutdownWait
-		if wait == 0 {
-			wait = time.Second
-		}
-		timer := time.NewTimer(wait)
+		timer := time.NewTimer(m.signalDisposeBound())
 		defer timer.Stop()
 		giveUp = timer.C
 	}

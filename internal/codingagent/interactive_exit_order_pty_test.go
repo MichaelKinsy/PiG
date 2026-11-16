@@ -17,7 +17,8 @@ var exitModeResets = regexp.MustCompile("\x1b\\[\\?(?:25h|2004l|1049l)")
 // Pi's exit writes, in each ui.stop() (tui.ts stop(): beforeTerminalStop, terminal.showCursor(), terminal.stop(), afterTerminalStop), the cursor show and
 // bracketed paste off BEFORE the alternate screen is left. A fullscreen exit that prints the transcript stops twice: the alternate screen's stop
 // (`?25h ?2004l ?1049l ?25h`), then the main-screen stop that parks below the transcript (`?25h ?2004l`). An inline exit is the second stop alone.
-// Nothing follows the last bracketed paste off: pig's own cursor show after the stop is gone.
+// Nothing follows the last bracketed paste off (this child negotiates no keyboard protocol): pig's own cursor show after the stop is gone, and no other
+// writer of the terminal (title, OSC 52, progress keepalive) may write after it.
 // Pi 1.5.2 captured on a pty, ctrl+d, /quit, ctrl+c twice, SIGTERM and SIGHUP alike.
 func TestExitModeResetsFollowPiStopOrder(t *testing.T) {
 	ends := []struct {
@@ -65,6 +66,12 @@ func TestExitModeResetsFollowPiStopOrder(t *testing.T) {
 					got := exitModeResets.FindAllString(written, -1)
 					if len(got) < len(want) || !slices.Equal(got[len(got)-len(want):], want) {
 						t.Fatalf("%s exit mode resets end %q, want Pi's %q\nlast bytes: %q", tuiMode, got, want, written[max(0, len(written)-300):])
+					}
+					// Pi's terminal.stop() ends with the bracketed paste off and, only where the keyboard protocols were on, their pops (this child's terminal
+					// negotiates none): the exit path writes nothing after it, and the process terminal's other writers (the progress keepalive, a title, an
+					// OSC 52 copy) have none after it to make while the mode ends. The title of the dispose is outside this child (no runtime host).
+					if tail := written[strings.LastIndex(written, "\x1b[?2004l")+len("\x1b[?2004l"):]; tail != "" {
+						t.Fatalf("%s exit wrote %q after the last bracketed paste off; Pi's stop() writes nothing after it", tuiMode, tail)
 					}
 				})
 			}

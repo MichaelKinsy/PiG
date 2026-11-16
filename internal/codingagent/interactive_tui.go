@@ -391,12 +391,6 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	m.terminalWrites.flushAndClose()
 	// upstream: interactive-mode.ts:7293-7295 (stop() unsubscribes from the Session before it stops the TUI). A quit by keys stops the mode and then disposes the runtime (:4505-4506), so the turn that dispose aborts keeps its provider's errorMessage; a signal disposes first (:4491-4494), so that turn's message is still rewritten.
 	m.unsubscribeSessionListener()
-	// upstream: interactive-mode.ts:7054 (stop() disposes the active selector)
-	m.disposeActiveSelector()
-	// upstream: interactive-mode.ts stop() at the pin (:7283-7300): disposes the active selector (:7284), then turns the terminal progress off (`this.ui.terminal.setProgress(false)`, :7285-7287) only when the setting shows it, before the footer and the renderer stop. This is the stop path's one progress-off, in Pi's order and under Pi's condition; nothing clears the title: Pi never writes an empty one. The dispose of a quit by keys follows the stop and can wait, for the run it aborts and for extension handlers: a progress still on would go on writing its keep-alive to the restored terminal.
-	if m.opts.Settings.GetShowTerminalProgress() {
-		m.setTerminalProgress(false)
-	}
 	m.disposeTheme()
 	if m.statusLine != nil {
 		// upstream: interactive-mode.ts:7098 (stop() disposes the footer)
@@ -420,6 +414,14 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	}
 	if drainErr != nil {
 		m.exitIfDeadTerminal(drainErr)
+	}
+	// upstream: interactive-mode.ts:7054 (stop() disposes the active selector)
+	m.disposeActiveSelector()
+	// Pi's shutdown() turns the theme's color scheme reports off and drains the input (interactive-mode.ts:4491-4493, :4502-4503) BEFORE it calls stop(),
+	// whose first writes are the selector's dispose and this progress clear; so the clear follows the drain's keyboard protocol pop, as here.
+	// upstream: interactive-mode.ts stop() at the pin (:7283-7300): disposes the active selector (:7284), then turns the terminal progress off (`this.ui.terminal.setProgress(false)`, :7285-7287) only when the setting shows it, before the footer and the renderer stop. This is the stop path's one progress-off, in Pi's order and under Pi's condition; nothing clears the title: Pi never writes an empty one. The dispose of a quit by keys follows the stop and can wait, for the run it aborts and for extension handlers: a progress still on would go on writing its keep-alive to the restored terminal.
+	if m.opts.Settings.GetShowTerminalProgress() {
+		m.setTerminalProgress(false)
 	}
 	// upstream: interactive-mode.ts:7283-7300 (stop() restores the terminal and, as its last step, removes the signal handlers, in one synchronous call, so no signal reaches a handler of the quit after the terminal is cooked; shutdown calls it at :4505, before `await this.runtimeHost.dispose()`, :4506). The quit by keys holds shutdownMu from here to its dispose's end, and a signal that finds it unmarked would wait for that lock: SIGINT for a second, SIGTERM and SIGHUP for ever.
 	if m.quitByKeys {
@@ -574,14 +576,19 @@ func (m *InteractiveMode) shutdownExtensionsBriefly() {
 		m.shutdownFromSignal(false)
 		close(done)
 	}()
-	wait := m.signalShutdownWait
-	if wait == 0 {
-		wait = time.Second
-	}
 	select {
 	case <-done:
-	case <-time.After(wait):
+	case <-time.After(m.signalDisposeBound()):
 	}
+}
+
+// signalDisposeBound is how long a signal's dispose waits for the extension handlers, and for the owner loop: the second shutdownExtensionsBriefly has always
+// waited, or the wait a test set.
+func (m *InteractiveMode) signalDisposeBound() time.Duration {
+	if m.signalShutdownWait != 0 {
+		return m.signalShutdownWait
+	}
+	return time.Second
 }
 
 // `/model` empty-args) and applies the chosen model.
