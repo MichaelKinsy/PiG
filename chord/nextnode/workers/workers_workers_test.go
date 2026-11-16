@@ -471,6 +471,59 @@ func TestFixRound1CloseDuringAForkedStartThatNeverConnectsReturnsAtOnceNoFailure
 	notes.Release()
 }
 
+// Pi looks at `closing` and forks in one synchronous step (workers.ts:504-509): a start that has the app's start data
+// cannot fork once `close` has begun. Here the Close lands at the entry of the fork section, after the start's last look
+// at the component (the event seam `beforeForkSection`) and the Close completes while the start is held there: the start
+// forks nothing, the holder's start fails `released/closed`, and no timer was armed (a fork arms the idle check and the
+// start timer).
+func TestCloseLandingAtTheEntryOfAStartsForkSectionForksNothingTheStartFailsClosed(t *testing.T) {
+	f := newFleet(t, fleetOptions{})
+	fake, restore := f.clock.useFakeTimers()
+	defer restore()
+	atEntry := make(chan struct{})
+	release := make(chan struct{})
+	f.workers.beforeForkSection = func() {
+		close(atEntry)
+		<-release
+	}
+	notes := f.hold(fixtureNotes, "S1")
+	defer notes.Release()
+	awaitEvent(t, atEntry, "the start reaching the entry of its fork section")
+	closing := make(chan error, 1)
+	go func() { closing <- f.workers.Close(background) }()
+	awaitEvent(t, f.workers.closingCtx.Done(), "Close beginning")
+	close(release)
+	select {
+	case err := <-closing:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("Close did not return once the start was released")
+	}
+	if armed := fake.armed(); armed != 0 {
+		t.Fatalf("%d timers armed: the start forked a worker after Close began", armed)
+	}
+	if text := f.stateText(); text != `{"v":{}}` {
+		t.Fatalf("state = %s, want {}", text)
+	}
+	if errs := f.errors.all(); len(errs) != 0 {
+		t.Fatalf("errors = %+v", errs)
+	}
+	until(t, func() bool { return refKind(notes) == host.RefStateFailed })
+	requireCode(t, failedCause(t, notes).Error, data.CodeReleased, data.ReasonClosed)
+}
+
+// awaitEvent waits for event to happen, for at most 30 s; what names it in the failure.
+func awaitEvent(t testing.TB, event <-chan struct{}, what string) {
+	t.Helper()
+	select {
+	case <-event:
+	case <-time.After(30 * time.Second):
+		t.Fatalf("timed out waiting for %s", what)
+	}
+}
+
 func TestFixRound1CloseDuringAnAppsStartThatIgnoresItsSignalReturnsAtOnceNothingForksAfterIt(t *testing.T) {
 	block := make(chan struct{})
 	defer close(block)

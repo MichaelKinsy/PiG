@@ -1324,6 +1324,7 @@ func (a *attempt) pinKey(member, key string, version int, ctx context.Context) (
 		return raw, nil
 	}
 	var mapped pinnedKey
+	//portlint:allow sectioncheck not exposed: served is set once when the attempt is made (a.served = object.served) and never again, so the version the guard compared cannot change before this section
 	host.enter(func() {
 		if mapped, err = a.adaptedAt(version).key(member, raw.source); err != nil {
 			raw.release()
