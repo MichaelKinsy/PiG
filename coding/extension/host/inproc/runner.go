@@ -364,9 +364,11 @@ func (r *Runner) ExtensionCount() int { return len(r.extensions) }
 
 // Invalidate marks the runner as stale. After this returns, IsStale()
 // reports true and assertActive() (via every API method that checks it)
-// returns a *StaleError matching ErrStaleContext. Emit and EmitBoundary still
-// deliver events, as upstream emit and emitBoundary do; the ctx getters and
-// actions a handler uses report the stale runner.
+// returns a *StaleError matching ErrStaleContext. Every Emit method still
+// delivers events, as upstream's emit methods do (none calls assertActive:
+// runner.ts:1135-1560); the ctx getters and actions a handler uses report the
+// stale runner (runner.ts:883-1037). A session whose reload failed keeps the
+// runner it invalidated, and its next prompt reaches these handlers.
 //
 // First-call-wins: subsequent Invalidate calls with different messages
 // are no-ops. This mirrors upstream runner.ts:461-466 (`if (!this.staleMessage)`).
@@ -1575,9 +1577,6 @@ func withBoundaryState(base extension.BoundaryBaseEvent, state extension.Boundar
 // It returns the first blocking result or the last non-blocking result.
 // Handler errors stop dispatch and return to the caller, as in upstream.
 func (r *Runner) EmitToolCall(ctx context.Context, event extension.ToolCallEvent) (*extension.ToolCallEventResult, error) {
-	if err := r.assertActive(); err != nil {
-		return nil, err
-	}
 	if event == nil {
 		return nil, nil
 	}
@@ -1636,16 +1635,11 @@ func (r *Runner) AwaitEventLoopTurns(ctx context.Context, event string) {
 // the original input). Returns the combined modification, or nil if no
 // handler modified anything.
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
-//
 // upstream: runner.ts:707-755 (emitToolResult)
 //
 // pig-specific: handler errors route via emitError (matches upstream's
 // explicit try/catch in this method, runner.ts:733-740).
 func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultEvent) (*extension.ToolResultEventResult, error) {
-	if err := r.assertActive(); err != nil {
-		return nil, err
-	}
 	if event == nil {
 		return nil, nil
 	}
@@ -1754,17 +1748,11 @@ func toolResultUsage(usage any) *ai.Usage {
 //     Transform result with the final chained values.
 //   - Otherwise returns Continue.
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
-//
 // Handler errors are routed via emitError and the chain continues
 // (matches upstream's explicit try/catch at runner.ts:1004-1011).
 //
 // upstream: runner.ts:1196-1228 (emitInput)
 func (r *Runner) EmitInput(ctx context.Context, text string, images []extension.ImageContent, source extension.InputSource, streamingBehavior string) (extension.InputEventResult, error) {
-	if err := r.assertActive(); err != nil {
-		return nil, err
-	}
-
 	dispatchCtx := r.dispatchContext(ctx)
 	currentText := text
 	currentImages := images
@@ -1832,8 +1820,6 @@ func (r *Runner) EmitInput(ctx context.Context, text string, images []extension.
 // Upstream uses `structuredClone(messages)` to defensively deep-copy the
 // input. Pig preserves the concrete Go values while recursively copying their
 // pointers, interfaces, structs, slices, and maps.
-//
-// Returns (nil, *StaleError) if the runner has been invalidated.
 //
 // Handler errors route via emitError; chain continues.
 //
@@ -1930,10 +1916,6 @@ func (r *Runner) EmitContextTracked(ctx context.Context, messages []extension.Ag
 
 // emitContext is EmitContextTracked that also reports whether the returned list is the runner's own: it is not when every handler read its event only as JSON and none replied with a list, so there was nothing to copy and the list is messages itself.
 func (r *Runner) emitContext(ctx context.Context, messages []extension.AgentMessage) (out []extension.AgentMessage, replaced, owned bool, err error) {
-	if err := r.assertActive(); err != nil {
-		return nil, false, false, err
-	}
-
 	dispatchCtx, wire := eventwire.WithDispatch(r.dispatchContext(ctx))
 	// current is the caller's own list until a handler that reads Go values is about to run or a reply replaces it: a subprocess handler reads the event only as JSON and cannot edit the caller's messages, so a dispatch of such handlers never copies them (upstream structuredClone protects the caller from a handler's edits).
 	current := messages
@@ -2092,9 +2074,6 @@ func sameMessageIdentity(a, b reflect.Value) bool {
 //
 // upstream: runner.ts emitContext, context_with_system phase
 func (r *Runner) EmitContextWithSystem(ctx context.Context, messages []extension.AgentMessage) ([]extension.AgentMessage, error) {
-	if err := r.assertActive(); err != nil {
-		return nil, err
-	}
 	dispatchCtx, wire := eventwire.WithDispatch(r.dispatchContext(ctx))
 	// The transform is request-only (upstream structuredClone before both phases), so a handler that reads Go values and may edit messages in place gets a copy. A subprocess handler reads the event only as JSON and cannot edit the caller's messages: a dispatch of such handlers never copies them.
 	current := messages
@@ -2150,8 +2129,6 @@ var errLeadingSystemRemoved = errors.New("Handler removed the leading system mes
 // new payload; subsequent handlers see the previous handler's output.
 // The runner returns the final chained payload.
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
-//
 // Handler errors route via emitError; chain continues.
 //
 // upstream: runner.ts:841-873 (emitBeforeProviderRequest)
@@ -2160,10 +2137,6 @@ var errLeadingSystemRemoved = errors.New("Handler removed the leading system mes
 // `unknown` (provider-specific). Callers cast back to the concrete
 // provider request type after this returns.
 func (r *Runner) EmitBeforeProviderRequest(ctx context.Context, payload any) (any, error) {
-	if err := r.assertActive(); err != nil {
-		return nil, err
-	}
-
 	dispatchCtx := r.dispatchContext(ctx)
 	current := payload
 
@@ -2201,9 +2174,6 @@ func (r *Runner) EmitBeforeProviderRequest(ctx context.Context, payload any) (an
 //
 // upstream: runner.ts:1043-1080 (emitMessageEnd)
 func (r *Runner) EmitMessageEnd(ctx context.Context, event extension.MessageEndEvent) (*extension.AgentMessage, error) {
-	if err := r.assertActive(); err != nil {
-		return nil, err
-	}
 	dispatchCtx := r.dispatchContext(ctx)
 	current := event.Message
 	modified := false
@@ -2251,9 +2221,6 @@ func (r *Runner) EmitMessageEnd(ctx context.Context, event extension.MessageEndE
 //
 // upstream: runner.ts:1284-1310 (emitBeforeProviderHeaders)
 func (r *Runner) EmitBeforeProviderHeaders(ctx context.Context, headers extension.ProviderHeaders) (extension.ProviderHeaders, error) {
-	if err := r.assertActive(); err != nil {
-		return nil, err
-	}
 	if headers == nil {
 		headers = extension.ProviderHeaders{}
 	}
@@ -2291,14 +2258,8 @@ func (r *Runner) EmitBeforeProviderHeaders(ctx context.Context, headers extensio
 // result object, is reported through emitError and returned, so callers fail
 // closed instead of running the command locally (upstream #9068).
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
-//
 // upstream: runner.ts emitUserBash, isUserBashEventResult
 func (r *Runner) EmitUserBash(ctx context.Context, event extension.UserBashEvent) (*extension.UserBashEventResult, error) {
-	if err := r.assertActive(); err != nil {
-		return nil, err
-	}
-
 	dispatchCtx := r.dispatchContext(ctx)
 
 	for _, snapshot := range snapshotEventHandlers(r.extensions, "user_bash") {
@@ -2468,8 +2429,6 @@ func isUserBashNumber(value any) bool {
 // section and selectedTools edits reach later handlers and the result, and
 // they persist when the handler then fails.
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
-//
 // Handler errors route via emitError; chain continues.
 //
 // upstream: runner.ts:1427-1477 (emitBeforeAgentStart(trigger, systemPromptOptions)): each handler's event spreads the trigger, a user
@@ -2479,10 +2438,6 @@ func (r *Runner) EmitBeforeAgentStart(
 	trigger extension.BeforeAgentStartTrigger,
 	systemPromptOptions extension.BuildSystemPromptOptions,
 ) (*extension.BeforeAgentStartCombinedResult, error) {
-	if err := r.assertActive(); err != nil {
-		return nil, err
-	}
-
 	// runner.ts:1317 normalizeBuildSystemPromptOptions: handlers share one copy of the caller's options, so no edit reaches the caller's base object.
 	currentOptions := clonePromptOptions(systemPromptOptions)
 	hadSections := len(*currentOptions.Sections) > 0
@@ -2639,8 +2594,7 @@ func clonePromptOptions(options extension.BuildSystemPromptOptions) *extension.B
 // attributing each path to its source extension.
 //
 // Returns the aggregated result with empty (non-nil) slices when no
-// handler returned any paths. Returns (nil, *StaleError) if the runner
-// has been invalidated.
+// handler returned any paths.
 //
 // Handler errors route via emitError; chain continues.
 //
@@ -2650,10 +2604,6 @@ func (r *Runner) EmitResourcesDiscover(
 	cwd string,
 	reason string,
 ) (*extension.ResourcesDiscoverAggregateResult, error) {
-	if err := r.assertActive(); err != nil {
-		return nil, err
-	}
-
 	dispatchCtx := r.dispatchContext(ctx)
 	out := &extension.ResourcesDiscoverAggregateResult{
 		SkillPaths:  []extension.AttributedResourcePath{},

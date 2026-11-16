@@ -10,9 +10,6 @@ import (
 
 // EmitCacheWarmingDecision awaits handlers in registration order and returns the last supplied action, or the event's action when no handler overrides it. Handler errors are reported without stopping subsequent handlers.
 func (r *Runner) EmitCacheWarmingDecision(ctx context.Context, event extension.CacheWarmingDecisionEvent) (extension.CacheWarmingAction, error) {
-	if err := r.assertActive(); err != nil {
-		return event.Action, err
-	}
 	dispatchCtx := r.dispatchContext(ctx)
 	action := event.Action
 	type handlers struct {

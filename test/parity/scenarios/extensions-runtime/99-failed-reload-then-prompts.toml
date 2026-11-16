@@ -1,0 +1,72 @@
+# Behavior family: extensions-runtime
+# Surface: what the session does for prompts after a /reload that failed, where the old extension instance is stale and still the session's.
+#
+# Upstream evidence (Pi 1.5.2): session.reload() invalidates the old runner right
+# after session_shutdown (agent-session.ts:3825-3826) and builds the new one only
+# at _buildRuntime (:3844); the interactive mode shows "Reload failed: <message>"
+# (interactive-mode.ts:6670-6704) and the session keeps the old runner. None of
+# the runner's emit methods looks at staleness (runner.ts:1135-1560), so the next
+# prompts still reach the old instance's input, before_agent_start, tool_call and
+# tool_result handlers and its tools. The fixture's handlers read their ctx inside
+# a try and put "live" or "stale" into the text they return, so the transcript
+# shows that the handlers ran and what their ctx answered.
+
+name = "99-failed-reload-then-prompts"
+description = "After a /reload that fails, prompts still run the old extension instance's handlers and tools, whose ctx is stale."
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/reload-failed-then-prompts.mjs"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/reload-failed-then-prompts.mjs",
+]
+
+[tmux]
+width = 100
+height = 60
+ready_pattern_pig = "[Extensions]"
+ready_pattern_pi = "[Extensions]"
+ready_timeout_seconds = 30
+capture_start = "Reload failed: "
+
+[[tmux.steps]]
+keys = ["/parity-reload-fails", "Enter"]
+settle_seconds = 2
+wait_contains = ["Reload failed"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Run: ext tool b14_plain {}", "Enter"]
+settle_seconds = 2
+wait_contains = ["ext-tool-done: plain tool ran g1"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Run: ext tool b14_ctx {}", "Enter"]
+settle_seconds = 2
+wait_contains = ["ext-tool-done: ctx tool ran g1"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = [
+  "input ran g1 ctx stale",
+  "before_agent_start ran g1 ctx stale",
+  "ext-tool-done: plain tool ran g1 [tool_result g1]",
+  "ext-tool-done: ctx tool ran g1 ctx stale [tool_result g1]",
+]
+both_not_contain = ["connection closed", "unknown command", "panic:", "goroutine ", "Tool b14_plain not found", " g2"]
+output_equal = true
+runs = 3

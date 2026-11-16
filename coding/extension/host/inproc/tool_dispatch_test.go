@@ -74,15 +74,6 @@ func TestEmitToolCall_NoHandlersReturnsNil(t *testing.T) {
 	}
 }
 
-func TestEmitToolCall_StaleRunnerReturnsErrStaleContext(t *testing.T) {
-	r := inproc.NewRunner(nil, ".")
-	r.Invalidate("test invalidation")
-	_, err := r.EmitToolCall(context.Background(), extension.CustomToolCallEvent{})
-	if !errors.Is(err, extension.ErrStaleContext) {
-		t.Errorf("err = %v, want ErrStaleContext", err)
-	}
-}
-
 // TestEmitToolCall_HandlerReceivesTypedEvent: the typed Bash event
 // arrives at the handler with concrete type, exercising 's sealed
 // sum-type work end-to-end.
@@ -225,15 +216,6 @@ func TestEmitToolResult_NoHandlersReturnsNil(t *testing.T) {
 	got, err := r.EmitToolResult(context.Background(), extension.BashToolResultEvent{})
 	if err != nil || got != nil {
 		t.Errorf("got=(%v, %v), want (nil, nil)", got, err)
-	}
-}
-
-func TestEmitToolResult_StaleRunnerReturnsErrStaleContext(t *testing.T) {
-	r := inproc.NewRunner(nil, ".")
-	r.Invalidate("")
-	_, err := r.EmitToolResult(context.Background(), extension.BashToolResultEvent{})
-	if !errors.Is(err, extension.ErrStaleContext) {
-		t.Errorf("err = %v, want ErrStaleContext", err)
 	}
 }
 
