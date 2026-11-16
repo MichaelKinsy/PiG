@@ -115182,6 +115182,17 @@
       "shapeHash": "sha256:0b012d2aaa6b21e056954a831b6b5cc0d7da07ecdf2067b018190d83d0eb4bda"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#RemoteOverlayRetirer",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "RemoteOverlayRetirer",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "RemoteOverlayRetirer"
+      },
+      "shapeHash": "sha256:d236595ca01722a8f6617448647a53f442b622ecf1a078aad7da00fae6b25e3a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#RemoteOverlayState",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "RemoteOverlayState",
@@ -144024,6 +144035,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.RetireExtensionConn",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.RetireExtensionConn",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(extName string, owner *Conn)"
+      },
+      "shapeHash": "sha256:fabffbbd98824d7b6725ba2ca9ecc980e0440017768b1f9720d6b446dfa16ac6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.RunSignal",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.RunSignal",
@@ -144393,9 +144415,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(extName string, owner *Conn, ownerOnly bool)"
+        "type": "func(extName string, owner *Conn, ownerOnly bool, retire bool)"
       },
-      "shapeHash": "sha256:f32cf3890e51b437fc43507dbf82e562bcfc7fbc47fcb482ccde563ef39f1ea4"
+      "shapeHash": "sha256:c8580a9e3077e38a3c39710a06f9a43b0123385fa8e4607d3d435207e3963ef3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.clearTuiAlt",
@@ -157763,6 +157785,17 @@
       "shapeHash": "sha256:200d445a2c43edaf8c0fdc8151cbad360d8fee1f2d2ef14a811df0faa0125886"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#overlayProxy.Retire",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "overlayProxy.Retire",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#overlayProxy.SetTarget",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "overlayProxy.SetTarget",
@@ -161270,6 +161303,17 @@
         "type": "retentionGroupKey"
       },
       "shapeHash": "sha256:24e8aae6610f1ecab994cc948fc5e35c2f0b910e55143c27764b7510a405c271"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#retireOverlayTarget",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "retireOverlayTarget",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(target github.com/MichaelKinsy/PiG/coding/extension.RemoteOverlayHandle)"
+      },
+      "shapeHash": "sha256:57cf8a686189873298fa83b112a90f5c94ea94dab53a189ea3462b2f9fffd987"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#returnsPromiseInPi",
@@ -296484,6 +296528,17 @@
       "shapeHash": "sha256:6b40cbb40507b7efce1d433d06fed509e653a5671897ef0381b72bf3dce3329e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#customOverlay.Retire",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "customOverlay.Retire",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#customOverlay.SetCapturesViewportInput",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "customOverlay.SetCapturesViewportInput",
@@ -296592,6 +296647,17 @@
         "type": "func(m *InteractiveMode, active bool)"
       },
       "shapeHash": "sha256:5763f61566a551fd985bffbba862bd7843ea498fdc5d5fd8adc0b766043e4361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#customOverlay.setRetire",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "customOverlay.setRetire",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(retire func())"
+      },
+      "shapeHash": "sha256:82466fe982196b318264d57a5e85e150c0b56e4c40b8ab17321b6cee0f290c66"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#customOverlay.takeInvalidations",
