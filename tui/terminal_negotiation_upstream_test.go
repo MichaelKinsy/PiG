@@ -119,6 +119,16 @@ func TestUpstreamTerminalNegotiation(t *testing.T) {
 				t.Fatalf("premature fallback/activation: writes=%q", h.writes)
 			}
 		}},
+		// terminal.ts:417 enableModifyOtherKeys runs only on a reply (a Kitty reply with zero flags, or the Device Attributes sentinel without Kitty): a
+		// terminal that answers nothing is sent no `CSI > 4;2 m`, however long it stays silent.
+		{"sends no modifyOtherKeys fallback when the terminal answers nothing", func(t *testing.T, h *terminalNegotiationHarness) {
+			time.Sleep(10 * time.Second)
+			synctest.Wait()
+			h.writeCount(t, "\x1b[>4;2m", 0)
+			if h.terminal.KittyProtocolActive() || h.terminal.ModifyOtherKeysActive() {
+				t.Fatal("a protocol is active without a reply")
+			}
+		}},
 		// .upstream/v0.87.1/packages/tui/test/terminal.test.ts:143
 		{"activates Kitty mode for non-zero negotiated flags", func(t *testing.T, h *terminalNegotiationHarness) {
 			h.send("\x1b[?7u")

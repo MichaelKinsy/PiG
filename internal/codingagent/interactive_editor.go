@@ -26,7 +26,7 @@ func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command,
 		// the editor owns the terminal and learns of the handoff.
 		m.surface.Suspend()
 	} else {
-		m.tuiInst.Stop()
+		m.tuiInst.StopWithOptions(tui.StopOptions{ExitTerminal: true})
 	}
 	if m.inputReader != nil {
 		m.inputReader.pause()
@@ -48,7 +48,7 @@ func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command,
 			if ownerCtx.Err() != nil {
 				return
 			}
-			restore, drain, rawErr := tui.EnterRawModeWithDrain()
+			restore, drain, rawErr := m.startTerminal(m.altScreen != nil)
 			if rawErr != nil {
 				m.exitIfDeadTerminal(rawErr)
 				m.failInputLoop(rawErr)

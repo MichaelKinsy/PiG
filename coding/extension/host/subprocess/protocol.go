@@ -981,11 +981,13 @@ const (
 	CallUICustomHideOverlay = "ui.custom.hideOverlay"
 	CallUICustomSetFocus    = "ui.custom.setFocus"
 	// CallTuiAlt (ext→host) drives a TuiAltScreen the extension constructed (pi-tui's alternate-screen host) and RequestTuiAltCallback
-	// (host→ext request) asks the extension for what it owns: its Terminal, its components and its listeners. A tui.alt call the extension makes while
-	// it serves a callback names that request as its parent (CallPayload.ParentRequestID): when the host's frame goroutine sent the callback (a
-	// component's render, an overlay's visible callback, a style callback, a terminal write, an invalidate or focus it triggered), that goroutine runs
-	// the call at once, while it holds the frame lock, as Pi's render calls the screen. From such a callback the calls render, renderNow, start, stop,
-	// copyActiveSelectionToClipboard, queryTerminalColors and input fail (D208).
+	// (host→ext request) asks the extension for what it owns: its Terminal, its components and its listeners. The host sends the callbacks of one screen from
+	// one goroutine, the screen's owner, one at a time and each answered before the next, as Pi's one event loop runs a screen's frames, input and mouse events:
+	// a component's render and its handleInput never run together. A tui.alt call the extension makes while it serves a callback names that request as its
+	// parent (CallPayload.ParentRequestID): the owner waits for the callback and runs the call at once, as Pi's callbacks call the screen on its one thread;
+	// any other call runs on the owner after the task it is in. When the callback is one of a frame's (a component's render, an overlay's visible callback, a
+	// style callback, a terminal write, an invalidate or focus it triggered) the owner holds the frame lock, and from such a callback the calls render,
+	// renderNow, start, stop, copyActiveSelectionToClipboard, queryTerminalColors and input fail (D208).
 	CallTuiAlt            = "tui.alt"
 	RequestTuiAltCallback = "tui.alt.cb"
 )

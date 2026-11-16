@@ -30,19 +30,6 @@ func TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen(t *tes
 	}
 }
 
-// A stop that is not the process exit's (a mode swap) leaves bracketed paste on: Pi restarts the terminal, pig's renderer swap does not.
-func TestAltScreenSwapStopLeavesBracketedPasteOn(t *testing.T) {
-	var out bytes.Buffer
-	mouse := false
-	alt := NewTuiAltScreenWithOutput(&out, 20, 5, TuiAltScreenOptions{Mouse: &mouse})
-	alt.Start()
-	out.Reset()
-	alt.StopWithOptions(StopOptions{PreserveScreen: true})
-	if bytes.Contains(out.Bytes(), []byte("\x1b[?2004l")) {
-		t.Fatalf("swap stop reset bracketed paste: %q", out.String())
-	}
-}
-
 func TestMainScreenExitStopWritesCursorThenPasteReset(t *testing.T) {
 	var out bytes.Buffer
 	ui := NewWithOutput(&out, 80, 24)

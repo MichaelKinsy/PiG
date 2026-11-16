@@ -6,50 +6,27 @@ import (
 	"testing"
 )
 
-// The Kitty keyboard-protocol stack is per screen. Pi keeps one push on the
-// active screen: tui.ts start() enters the alternate screen before
-// terminal.start() pushes, and stop() pops in terminal.stop() before
-// afterTerminalStop() leaves it. PiG's driver pushes on the main screen first,
-// so TuiAltScreen moves an outstanding push across each screen switch and
-// writes nothing when no push is outstanding (including for renderers that
-// write to a non-terminal output).
-func TestTuiAltScreenMovesOutstandingKeyboardPushAcrossScreens(t *testing.T) {
+// The Kitty keyboard-protocol stack is per screen. Pi keeps one push on the active screen: tui.ts start() (:956) enters the alternate screen in
+// beforeTerminalStart (tui-alt-screen.ts:347) before terminal.start() pushes (terminal.ts:207, queryAndEnableKittyProtocol), and stop() pops in
+// terminal.stop() (terminal.ts:481) before afterTerminalStop() leaves it. The renderer therefore writes no pop and no push of its own, whether or
+// not a keyboard push is outstanding, at start or at stop.
+func TestTuiAltScreenWritesNoKeyboardStackOperations(t *testing.T) {
 	const (
-		pop   = "\x1b[<u"
-		push  = "\x1b[>7u"
 		enter = "\x1b[?1049h"
 		exit  = "\x1b[?1049l"
 		rest  = "\x1b[?7l\x1b[2J\x1b[H\x1b[?25l"
 	)
-	// StopWithOptions writes a teardown block, whose image-deletion content
-	// depends on the detected terminal, then the exit block asserted exactly.
+	// StopWithOptions writes a teardown block, whose image-deletion content depends on the detected terminal, then the exit block asserted exactly.
 	for _, tc := range []struct {
-		name      string
-		pushed    bool
-		preserve  bool
-		wantStart string
-		wantExit  string
+		name     string
+		pushed   bool
+		preserve bool
+		wantExit string
 	}{
-		{
-			name: "pushed preserve", pushed: true, preserve: true,
-			wantStart: pop + enter + push + rest,
-			wantExit:  "\x1b[?2026h" + pop + exit + push + "\x1b[?25h\x1b[?2026l",
-		},
-		{
-			name: "pushed document", pushed: true, preserve: false,
-			wantStart: pop + enter + push + rest,
-			wantExit:  "\x1b[?2026h" + pop + exit + push + "\x1b[?7l\x1b[0m\x1b[?7h\r\n\x1b[?25h\x1b[?2026l",
-		},
-		{
-			name: "not pushed preserve", pushed: false, preserve: true,
-			wantStart: enter + rest,
-			wantExit:  "\x1b[?2026h" + exit + "\x1b[?25h\x1b[?2026l",
-		},
-		{
-			name: "not pushed document", pushed: false, preserve: false,
-			wantStart: enter + rest,
-			wantExit:  "\x1b[?2026h" + exit + "\x1b[?7l\x1b[0m\x1b[?7h\r\n\x1b[?25h\x1b[?2026l",
-		},
+		{"pushed preserve", true, true, "\x1b[?2026h" + exit + "\x1b[?25h\x1b[?2026l"},
+		{"pushed document", true, false, "\x1b[?2026h" + exit + "\x1b[?7l\x1b[0m\x1b[?7h\r\n\x1b[?25h\x1b[?2026l"},
+		{"not pushed preserve", false, true, "\x1b[?2026h" + exit + "\x1b[?25h\x1b[?2026l"},
+		{"not pushed document", false, false, "\x1b[?2026h" + exit + "\x1b[?7l\x1b[0m\x1b[?7h\r\n\x1b[?25h\x1b[?2026l"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			resetKeyboardProtocolState(tc.pushed, false, false)
@@ -58,18 +35,9 @@ func TestTuiAltScreenMovesOutstandingKeyboardPushAcrossScreens(t *testing.T) {
 			var out bytes.Buffer
 			mouse := false
 			alt := NewTuiAltScreenWithOutput(&out, 20, 5, TuiAltScreenOptions{Mouse: &mouse})
-			alt.Start()
-			started := out.String()
-			if !strings.HasPrefix(started, tc.wantStart) {
-				t.Fatalf("Start wrote\n got %q\nwant prefix %q", started, tc.wantStart)
-			}
-			// No query or Device Attributes probe: the process terminal's
-			// negotiation already ran, and a non-terminal writer must not
-			// receive probe traffic.
-			for _, probe := range []string{"\x1b[?u", "\x1b[c"} {
-				if strings.Contains(started, probe) {
-					t.Errorf("Start wrote probe %q: %q", probe, started)
-				}
+			alt.BeforeTerminalStart()
+			if got, want := out.String(), enter+rest; got != want {
+				t.Fatalf("BeforeTerminalStart wrote\n got %q\nwant %q", got, want)
 			}
 
 			out.Reset()
@@ -77,21 +45,14 @@ func TestTuiAltScreenMovesOutstandingKeyboardPushAcrossScreens(t *testing.T) {
 			if got := out.String(); !strings.HasSuffix(got, tc.wantExit) {
 				t.Fatalf("StopWithOptions(PreserveScreen=%v) wrote\n got %q\nwant suffix %q", tc.preserve, got, tc.wantExit)
 			}
-			want := 0
-			if tc.pushed {
-				want = 1
-			}
-			if got := strings.Count(out.String(), pop) + strings.Count(out.String(), push); got != 2*want {
-				t.Errorf("StopWithOptions wrote %d keyboard-stack operations, want %d", got, 2*want)
+			if got := out.String(); strings.Contains(got, "\x1b[<u") || strings.Contains(got, "\x1b[>7u") {
+				t.Errorf("StopWithOptions moved the keyboard stack: %q", got)
 			}
 		})
 	}
 }
 
-// DrainInput pops while the alternate screen is active and clears the push
-// state, so the later exit writes neither a pop nor a push. A pop here would
-// hit the empty alternate stack, and a push would leave the Kitty flags set on
-// the main screen after exit.
+// DrainInput pops while the alternate screen is active and clears the push state, so the later exit writes neither a pop nor a push.
 func TestTuiAltScreenStopAfterDrainWritesNoKeyboardProtocol(t *testing.T) {
 	resetKeyboardProtocolState(true, false, true)
 	t.Cleanup(func() { resetKeyboardProtocolState(false, false, false) })
@@ -99,11 +60,59 @@ func TestTuiAltScreenStopAfterDrainWritesNoKeyboardProtocol(t *testing.T) {
 	var out bytes.Buffer
 	mouse := false
 	alt := NewTuiAltScreenWithOutput(&out, 20, 5, TuiAltScreenOptions{Mouse: &mouse})
-	alt.Start()
+	alt.BeforeTerminalStart()
 	NewProcessTerminalWithOutput(nil, nil, &out).disableKeyboardProtocol()
 	out.Reset()
 	alt.StopWithOptions(StopOptions{})
 	if got := out.String(); strings.Contains(got, "\x1b[<u") || strings.Contains(got, "\x1b[>7u") {
 		t.Fatalf("exit after drain touched the keyboard stack: %q", got)
+	}
+}
+
+// Pi's start() (tui.ts:956) writes, up to the first frame: the alternate screen's enter (beforeTerminalStart: tui-alt-screen.ts:347-385), the
+// terminal's start (terminal.ts:220 bracketed paste, :237 the keyboard push and query with the Device Attributes sentinel), then hideCursor
+// (tui.ts:966) and the colour-scheme reports (:967-969). The bytes of terminal.start() come from a ProcessTerminal on the same output, as the
+// driver's raw mode writes them; the fullscreen renderer's contribution is the order around them.
+func TestTuiAltScreenStartSequenceFollowsPiStart(t *testing.T) {
+	t.Setenv("PI_PROGRAM_STATUS", "0") // no OSC 7501 query: the sequence below is Pi's without it
+	resetKeyboardProtocolState(false, false, false)
+	t.Cleanup(func() { resetKeyboardProtocolState(false, false, false) })
+
+	var out bytes.Buffer
+	mouse := false
+	alt := NewTuiAltScreenWithOutput(&out, 20, 5, TuiAltScreenOptions{Mouse: &mouse})
+	terminal := NewProcessTerminalWithOutput(nil, nil, &out)
+	alt.BeforeTerminalStart()
+	terminal.writeUnlogged("\x1b[?2004h")
+	terminal.queryAndEnableKittyProtocol()
+	alt.HideCursor()
+	alt.StartRequestingRender()
+
+	want := "\x1b[?1049h\x1b[?7l\x1b[2J\x1b[H\x1b[?25l" + // beforeTerminalStart
+		"\x1b[?2004h" + "\x1b[>7u\x1b[?u" + "\x1b[c" + // terminal.start
+		"\x1b[?25l" // hideCursor
+	if got := out.String(); got != want {
+		t.Fatalf("start wrote\n got %q\nwant %q", got, want)
+	}
+}
+
+// A renderer's Start after a terminal handoff (the external editor, a suspend, a renderer swap) hides the cursor again, as the main screen's does,
+// and writes neither the alternate screen's enter nor any keyboard operation: BeforeTerminalStart and the terminal's start ran before it.
+func TestTuiAltScreenStartAfterHandoffWritesOnlyTheRendererTail(t *testing.T) {
+	resetKeyboardProtocolState(false, false, false)
+	var out bytes.Buffer
+	mouse := false
+	alt := NewTuiAltScreenWithOutput(&out, 20, 5, TuiAltScreenOptions{Mouse: &mouse})
+	alt.BeforeTerminalStart()
+	out.Reset()
+	alt.Start()
+	got := out.String()
+	if !strings.HasPrefix(got, "\x1b[?25l") {
+		t.Fatalf("Start wrote %q, want the cursor hide first", got)
+	}
+	for _, forbidden := range []string{"\x1b[?1049h", "\x1b[<u", "\x1b[>7u", "\x1b[?u", "\x1b[c"} {
+		if strings.Contains(got, forbidden) {
+			t.Errorf("Start wrote %q: %q", forbidden, got)
+		}
 	}
 }

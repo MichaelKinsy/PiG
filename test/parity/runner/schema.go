@@ -297,7 +297,9 @@ type AssertSpec struct {
 	// a repaint pins the one frame kind the divergence is about (D618) and not the whole stream.
 	FinalFrameCursorOnlyPig *int `toml:"final_frame_cursor_only_pig"`
 	FinalFrameCursorOnlyPi  *int `toml:"final_frame_cursor_only_pi"`
-	Runs                    int  `toml:"runs"`
+	// TranscriptSequencesEqual requires, for every run pair and each window it declares, that the ordered escape sequences and text runs the two binaries wrote between two points of the terminal transcript are the same list (see SequenceWindowSpec). The transcript holds every byte from the program's first write; the comparator reads output only, never the keys or terminal replies the program received.
+	TranscriptSequencesEqual []SequenceWindowSpec `toml:"transcript_sequences_equal"`
+	Runs                     int                  `toml:"runs"`
 
 	// ChangelogHeadersComplete compares all rendered release headers with each binary's own document, in reverse source order (D22).
 	ChangelogHeadersComplete bool `toml:"changelog_headers_complete"`
@@ -400,6 +402,14 @@ func validate(sc *Scenario) error {
 	}
 	if sc.Tmux.CaptureHistory && sc.Driver != "interactive-tmux" {
 		return fmt.Errorf("capture_history requires interactive-tmux")
+	}
+	if len(sc.Assert.TranscriptSequencesEqual) > 0 && sc.Driver != "interactive-tmux" {
+		return fmt.Errorf("transcript_sequences_equal requires interactive-tmux: only its panes have a terminal transcript")
+	}
+	for _, window := range sc.Assert.TranscriptSequencesEqual {
+		if err := window.validate(); err != nil {
+			return err
+		}
 	}
 	if sc.Assert.ChangelogHeadersComplete && (sc.Driver != "interactive-tmux" || !sc.Tmux.CaptureHistory) {
 		return fmt.Errorf("changelog_headers_complete requires complete tmux history")
