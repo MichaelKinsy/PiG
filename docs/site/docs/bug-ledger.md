@@ -138,7 +138,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1a893bc](#bf-1a893bc) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
 | [BF-1a89bc2](#bf-1a89bc2) | Chord: a context linked from two abort sources now reports the reason of the source that aborted first when… | PiG's own defect | All platforms | Unreleased |
 | [BF-1a9093e](#bf-1a9093e) | The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command… | PiG's own defect | macOS | Unreleased |
-| [BF-1ad2c0d](#bf-1ad2c0d) | Selecting an OpenRouter routing variant (`openrouter/<model>:nitro` or `:floor`) at startup now uses the… | PiG's own defect | All platforms | Unreleased |
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
 | [BF-1c1887a](#bf-1c1887a) | Closing a Chord host no longer hangs when a hold arrives over a link that closes at the same time | PiG's own defect | Windows | 0.7.0 |
@@ -3318,20 +3317,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1a9093eb86` (2026-11-08)
 - **Tests:** `env/daemon/pollable_unix_test.go::TestPollableLeavesOtherFilesAlone`, `env/daemon/pollable_unix_test.go::TestPollableMovesInheritedPipesIntoThePoller`
 - **Release note:** The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command output, more than a client buffers, where Pi's daemon answers between output frames. The writer now flushes after every frame as Pi's does instead of holding up to 1 MiB, and the daemon waits on its inherited stdin and stdout through the runtime poller, so a request that arrives while the runtime is busy with the output no longer waits up to 10 ms for a worker.
-
-### BF-1ad2c0d
-
-**Selecting an OpenRouter routing variant (`openrouter/<model>:nitro` or `:floor`) at startup now uses the…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Selecting an OpenRouter routing variant (`openrouter/<model>:nitro` or `:floor`) at startup now uses the window, limits and prices of your personalized OpenRouter list, as the divergence record D199 says a variant does ("API, base URL, prices, limits ... are the base model's"); the variant used to be built from the bundled catalog, with its stale window and prices, or from the provider's default model when the bundled catalog lacks the base.
-- **Root cause:** Wrong: ResolveRemoteCatalogModel matched the requested id only against the models the remote catalog overlay stores. A user whose saved OpenRouter list is personalized and who selected openrouter/<base>:nitro or :floor at startup got no match, so the model was built from the bundled catalog: the bundled window and prices of the base, or the provider's default model when the bundled catalog has no such base, instead of the window, limits and prices of the saved record.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `1ad2c0d1e2` (2026-11-16)
-- **Tests:** `coding/cli/model_remote_catalog_variant_test.go::TestResolveModel_OpenRouterRoutingVariantKeepsItsSavedBaseRecordLimits`, `internal/codingagent/remote_catalog_variant_resolution_test.go::TestResolveRemoteCatalogModelResolvesAVariantFromItsRemoteBaseRecord`
-- **Release note:** Selecting an OpenRouter routing variant (`openrouter/<model>:nitro` or `:floor`) at startup now uses the window, limits and prices of your personalized OpenRouter list, as the divergence record D199 says a variant does ("API, base URL, prices, limits ... are the base model's"); the variant used to be built from the bundled catalog, with its stale window and prices, or from the provider's default model when the bundled catalog lacks the base. The routing variants are a PiG addition (D199), so this is a fault in that addition and not a difference from Pi. Released in: no tagged release contains it (v0.7.0 has the variants and not the remote-catalog startup resolution); it affects the 0.8.0 line and main. <!-- cause: ResolveRemoteCatalogModel matched the requested id only against the ids the overlay stores, on the assumption that a stored id is the only way a model reaches the overlay, but a routing variant is never stored; it is derived from its base -->
 
 ### BF-1b5540a
 
@@ -24750,7 +24735,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 1
-- Follow-up to unreleased work: 4
+- Follow-up to unreleased work: 5
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 4
 - test-only: 1
