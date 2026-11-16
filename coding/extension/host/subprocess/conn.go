@@ -163,6 +163,8 @@ type Conn struct {
 	loopTurnsClosed bool
 	// onClosed runs once when the read loop ends.
 	onClosed func()
+	// onRequestDone runs on a request's goroutine once the request left requestStates, whether its response arrived or it was cancelled or timed out: the reports of the sends its handler made are due (sync_run_report.go).
+	onRequestDone func(requestID string)
 	// fileMutations holds the file mutation queue tickets this connection was admitted to and has not exited; sharedTurns replaces it for a connection of a process several extensions run in. turnsLeft is guarded by the registry's mutex (host_file_mutation.go).
 	fileMutations fileMutationTurns
 	sharedTurns   *fileMutationTurns
@@ -929,6 +931,9 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		delete(c.suspendedRequests, env.ID)
 		c.stateMu.Unlock()
 		c.settleCallers(env.ID)
+		if c.onRequestDone != nil {
+			c.onRequestDone(env.ID)
+		}
 		if hold := ackHoldOf(ctx); hold != nil {
 			hold.release()
 		}

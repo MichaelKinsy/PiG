@@ -62,6 +62,8 @@ type UIBridge struct {
 	}
 	// mcpServers reads the servers extensions registered; the Host installs its runtime's registry.
 	mcpServers    func() []extension.RegisteredMcpServer
+	// afterRun returns, for a send of the extension on owner, the function that makes a failure report when the sending code's run ends (Host.syncReports); nil when the Host has none.
+	afterRun func(owner *Conn, request, token string) func(report func())
 	mu            sync.RWMutex
 	headerMu      sync.Mutex
 	footerMu      sync.Mutex             // footer admission, pending state and application are one step, as for headerMu; lock headerMu first
@@ -516,6 +518,8 @@ type HostCallbacks struct {
 type SendMessageOptions struct {
 	TriggerTurn *bool  `json:"triggerTurn,omitempty"`
 	DeliverAs   string `json:"deliverAs,omitempty"` // "steer" | "followUp" | "nextTurn"
+	// AfterRun is SendUserMessageOptions.AfterRun for the failure of a message that starts or joins a run (agent-session.ts:3544-3546).
+	AfterRun func(report func()) `json:"-"`
 }
 
 // SendUserMessageOptions mirrors upstream options for sendUserMessage.
@@ -523,6 +527,9 @@ type SendUserMessageOptions struct {
 	DeliverAs string `json:"deliverAs,omitempty"` // "steer" | "followUp"
 	// ExpandPromptTemplates is Pi's option (types.ts:1792, agent-session.ts:2557): true dispatches extension commands and expands skill commands and prompt templates; absent is false.
 	ExpandPromptTemplates *bool `json:"expandPromptTemplates,omitempty"`
+	// AfterRun, when set, takes the function that reports a failure of this send. Pi reports it from a catch callback, a microtask after the sending code's run
+	// (agent-session.ts:3552-3555), so the host makes the report when that run ends (sync_run_report.go). Nil: the Session reports at once.
+	AfterRun func(report func()) `json:"-"`
 }
 
 // ToolInfo is one entry of getAllTools on the wire. Mirrors upstream ToolInfo
@@ -1650,9 +1657,9 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 
 	// ── Category 8: Agent Actions (ExtensionActions) ─────────────────────
 	case "sendMessage":
-		return b.handleSendMessage(actions, call.Args)
+		return b.handleSendMessage(owner, call, actions)
 	case "sendUserMessage":
-		return b.handleSendUserMessage(actions, call.Args)
+		return b.handleSendUserMessage(owner, call, actions)
 	case "appendEntry":
 		return b.handleAppendEntry(actions, call.Args)
 	case "exec":
@@ -3971,13 +3978,19 @@ func (b *UIBridge) handleOffTerminalInput(extName string, _ json.RawMessage) (*C
 // Category 8: Agent Actions (ExtensionActions)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-func (b *UIBridge) handleSendMessage(actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+func (b *UIBridge) handleSendMessage(owner *Conn, call *CallPayload, actions *HostCallbacks) (*CallResultPayload, error) {
 	var p struct {
-		Message extension.CustomMessageRef `json:"message"`
-		Options SendMessageOptions         `json:"options"`
+		Message    extension.CustomMessageRef `json:"message"`
+		Options    SendMessageOptions         `json:"options"`
+		YieldToken string                     `json:"yield_token"`
 	}
-	if err := json.Unmarshal(args, &p); err != nil {
+	if err := json.Unmarshal(call.Args, &p); err != nil {
 		return nil, fmt.Errorf("parse sendMessage args: %w", err)
+	}
+	// A message that starts or joins a run is the one whose Session method can reject (agent-session.ts:2339-2344). The runtime reports no yield for a send
+	// made while the agent_settled handlers run, which the Session holds back (holdAfterSend), so nothing would end its run.
+	if p.Options.TriggerTurn != nil && *p.Options.TriggerTurn && p.Options.DeliverAs != string(extension.DeliverAsNextTurn) && b.afterRun != nil && owner != nil && !inAgentSettled(owner, call.ParentRequestID) {
+		p.Options.AfterRun = b.afterRun(owner, call.ParentRequestID, p.YieldToken)
 	}
 	if actions == nil || actions.SendMessage == nil {
 		return &CallResultPayload{
@@ -3992,13 +4005,19 @@ func (b *UIBridge) handleSendMessage(actions *HostCallbacks, args json.RawMessag
 	return &CallResultPayload{}, nil
 }
 
-func (b *UIBridge) handleSendUserMessage(actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+func (b *UIBridge) handleSendUserMessage(owner *Conn, call *CallPayload, actions *HostCallbacks) (*CallResultPayload, error) {
 	var p struct {
 		Content any                    `json:"content"`
 		Options SendUserMessageOptions `json:"options"`
+		// YieldToken names the send for NotifyHandlerYielded; a runtime with an event loop sends it when the message names no delivery, the only send Pi can refuse.
+		YieldToken string `json:"yield_token"`
 	}
-	if err := json.Unmarshal(args, &p); err != nil {
+	if err := json.Unmarshal(call.Args, &p); err != nil {
 		return nil, fmt.Errorf("parse sendUserMessage args: %w", err)
+	}
+	// Only a send that names no delivery can be refused (agent-session.ts:2240-2244), so a queued one pays for no report.
+	if p.Options.DeliverAs == "" && b.afterRun != nil && owner != nil {
+		p.Options.AfterRun = b.afterRun(owner, call.ParentRequestID, p.YieldToken)
 	}
 	if actions == nil || actions.SendUserMessage == nil {
 		return &CallResultPayload{

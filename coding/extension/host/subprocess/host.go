@@ -550,6 +550,8 @@ type Host struct {
 	backgroundGate atomic.Pointer[func() <-chan struct{}]
 	// syncRuns holds the Session busy for every extension while a handler that sent a triggering message has not yet yielded (sync_run_hold.go).
 	syncRuns syncRunHolds
+	// syncReports holds the reports of failed sends until the code that sent them ends its run (sync_run_report.go).
+	syncReports syncRunReports
 
 	// widthFunc and heightFunc return the current terminal dimensions. Set by
 	// the wiring layer (interactive mode) so the host can pass real geometry
@@ -950,6 +952,7 @@ func (h *Host) forwardLoopTurned(from *Conn, raw json.RawMessage) {
 func (h *Host) SetUIBridge(bridge *UIBridge) {
 	h.uiBridge = bridge
 	if bridge != nil {
+		bridge.afterRun = h.syncReports.after
 		bridge.WatchSessionLog = h.watchSessionLog
 		bridge.OnStateChanged = h.BroadcastStateUpdate
 		bridge.onRuntimeStateMutated = h.runtimeStateMutated
@@ -5220,6 +5223,15 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			}
 			if env.Notify.Method == NotifyHandlerYielded {
 				h.endSyncRunHoldOf(conn, env.Notify.Args)
+				// A send the runtime did not wait for may still be queued: the reports of its run are made once the calls queued before the report have run.
+				var payload HandlerYieldedPayload
+				if json.Unmarshal(env.Notify.Args, &payload) == nil && payload.Token != "" {
+					applied := lanes.barrierMark()
+					h.goDrainTask(func() {
+						applied()
+						h.syncReports.endToken(conn, payload.Token)
+					})
+				}
 				continue
 			}
 			if env.Notify.Method == NotifyEventLoopTurned {

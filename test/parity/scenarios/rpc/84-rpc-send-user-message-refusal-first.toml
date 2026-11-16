@@ -52,6 +52,6 @@ kind = "timestamp"
 reason = "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
 
 [[assert.json_aliases]]
-paths = ["/**/durationMs"]
+paths = ["/**/wall_time_seconds", "/**/durationMs"]
 kind = "duration"
-reason = "Pi measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+reason = "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; Pi measures each response and tool execution (#10549) with a monotonic clock. Retain the fields' presence, position and Pi's number spelling."

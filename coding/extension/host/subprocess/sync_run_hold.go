@@ -138,6 +138,7 @@ func returnsPromiseInPi(method string) bool {
 func (h *Host) endSyncRunHold(conn *Conn, call *CallPayload) {
 	if call.ParentRequestID != "" && returnsPromiseInPi(call.Method) {
 		h.syncRuns.endRequest(conn, call.ParentRequestID)
+		h.syncReports.endRequest(conn, call.ParentRequestID)
 	}
 }
 

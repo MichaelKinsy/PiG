@@ -18,14 +18,22 @@ func (s *Session) SendCustomMessage(ctx context.Context, message extension.Custo
 
 // SendMessage is the bound extension action. The Session owns triggered work and reports failures through its extension error listeners.
 func (s *Session) SendMessage(message extension.CustomMessageRef, options *extension.SendMessageOptions) error {
-	s.reportRuntimeError("send_message", s.sendCustomMessage(s.backgroundContext(), message, options, false, nil))
+	s.reportRuntimeErrorAfter(afterRunOf(options), "send_message", s.sendCustomMessage(s.backgroundContext(), message, options, false, nil))
 	return nil
 }
 
 // SendMessageStaged is SendMessage whose idle triggerTurn run preparation and start stage places; a nil stage starts the run as SendMessage does.
 func (s *Session) SendMessageStaged(message extension.CustomMessageRef, options *extension.SendMessageOptions, stage *ExtensionRunStage) error {
-	s.reportRuntimeError("send_message", s.sendCustomMessage(s.backgroundContext(), message, options, false, stage))
+	s.reportRuntimeErrorAfter(afterRunOf(options), "send_message", s.sendCustomMessage(s.backgroundContext(), message, options, false, stage))
 	return nil
+}
+
+// afterRunOf is the report hook of a send's options, nil for none.
+func afterRunOf(options *extension.SendMessageOptions) func(report func()) {
+	if options == nil {
+		return nil
+	}
+	return options.AfterRun
 }
 
 func (s *Session) sendCustomMessage(ctx context.Context, message extension.CustomMessageRef, options *extension.SendMessageOptions, wait bool, stage *ExtensionRunStage) error {
@@ -78,7 +86,7 @@ func (s *Session) sendCustomMessage(ctx context.Context, message extension.Custo
 	}
 	if s.runState.settling.Load() {
 		s.runState.mu.Lock()
-		s.runState.deferred = append(s.runState.deferred, func() { s.reportRuntimeError("send_message", s.SendCustomMessage(ctx, message, &opts)) })
+		s.runState.deferred = append(s.runState.deferred, func() { s.reportRuntimeErrorAfter(opts.AfterRun, "send_message", s.SendCustomMessage(ctx, message, &opts)) })
 		s.runState.mu.Unlock()
 		s.pendingBashMu.Unlock()
 		return nil
@@ -89,17 +97,17 @@ func (s *Session) sendCustomMessage(ctx context.Context, message extension.Custo
 	start := s.beginRunStartLocked()
 	s.pendingBashMu.Unlock()
 	if wait {
-		return s.startCustomRun(ctx, start, app, nil)
+		return s.startCustomRun(ctx, start, app, nil, nil)
 	}
 	if stage != nil {
 		stage.Prepare(ctx, func(ctx context.Context) {
-			s.reportRuntimeError("send_message", ignoreCancellation(s.startCustomRun(ctx, start, app, stage.Start)))
+			s.reportRuntimeErrorAfter(opts.AfterRun, "send_message", ignoreCancellation(s.startCustomRun(ctx, start, app, opts.AfterRun, stage.Start)))
 		})
 		return nil
 	}
 	// Pi disposes the runtime with the triggered run still starting and reports nothing for it; a Session closing under the run cancels it the same way.
 	if err := s.startExtensionTask(func() {
-		s.reportRuntimeError("send_message", ignoreCancellation(s.startCustomRun(ctx, start, app, nil)))
+		s.reportRuntimeErrorAfter(opts.AfterRun, "send_message", ignoreCancellation(s.startCustomRun(ctx, start, app, opts.AfterRun, nil)))
 	}); err != nil {
 		start.Abandon()
 		return err
@@ -109,7 +117,7 @@ func (s *Session) sendCustomMessage(ctx context.Context, message extension.Custo
 
 // startCustomRun is _startRun for the custom message app: it prepares the run that sendCustomMessage marked busy as start. With a nil
 // schedule it then runs it; otherwise it passes schedule the step that starts the run on an extension task.
-func (s *Session) startCustomRun(ctx context.Context, start *RunStart, app agent.AgentMessage, schedule func(start func())) error {
+func (s *Session) startCustomRun(ctx context.Context, start *RunStart, app agent.AgentMessage, after func(report func()), schedule func(start func())) error {
 	fail := func(err error) error {
 		start.Abandon()
 		return err
@@ -126,8 +134,8 @@ func (s *Session) startCustomRun(ctx context.Context, start *RunStart, app agent
 		return s.beginCustomRun(ctx, start, app, prepared)
 	}
 	schedule(func() {
-		if err := s.startExtensionTask(func() { s.reportRuntimeError("send_message", s.beginCustomRun(ctx, start, app, prepared)) }); err != nil {
-			s.reportRuntimeError("send_message", fail(err))
+		if err := s.startExtensionTask(func() { s.reportRuntimeErrorAfter(after, "send_message", s.beginCustomRun(ctx, start, app, prepared)) }); err != nil {
+			s.reportRuntimeErrorAfter(after, "send_message", fail(err))
 		}
 	})
 	return nil
