@@ -5006,9 +5006,21 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				var boundary struct {
 					Entries []extension.SessionBoundaryDraft `json:"_pigBoundaryEntries"`
 					Result  json.RawMessage                  `json:"_pigBoundaryResult"`
+					// Edits are the messages a turn_end handler edited in place (agent-session.ts _dispatchTurnEndBoundary hands the turn's message objects to every handler), by position in [assistant message, ...tool results]. A malformed member is a refused reply, as in any other event's reply.
+					Edits []EventEdit `json:"_pigEventEdits"`
 				}
 				if err := json.Unmarshal(resp.Response.Result, &boundary); err != nil {
 					return nil, fmt.Errorf("decode boundary response: %w", err)
+				}
+				if event == "turn_end" {
+					if len(boundary.Edits) > 0 {
+						if err := decodeBoundaryEditsStrictly(resp.Response.Result); err != nil {
+							return nil, fmt.Errorf("decode boundary response: %w", err)
+						}
+					}
+					if err := applyEventEdits(args[0], boundary.Edits); err != nil {
+						return nil, fmt.Errorf("apply turn_end response: %w", err)
+					}
 				}
 				switch target := args[0].(type) {
 				case *extension.AgentBeforeSettleEvent:

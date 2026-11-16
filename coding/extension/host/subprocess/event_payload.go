@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -70,11 +71,18 @@ func applyToolCallInput(event any, input json.RawMessage) error {
 	return nil
 }
 
-// eventMessage is the message at position at of the messages event holds: message_end holds one. The message shares its object with the event, so a replacement written into it is what the event's next handler and the agent's transcript read.
+// eventMessage is the message at position at of the messages event holds: message_end holds one, turn_end its assistant message and then its tool results. The message shares its object with the event, so a replacement written into it is what the event's next handler and the agent's transcript read.
 func eventMessage(event any, at int) (agent.AgentMessage, bool) {
 	switch event := event.(type) {
 	case extension.MessageEndEvent:
 		return event.Message, at == 0
+	case extension.TurnEndEvent:
+		switch {
+		case at == 0:
+			return event.Message, true
+		case at > 0 && at <= len(event.ToolResults):
+			return agent.AgentMessage{ToolResult: &event.ToolResults[at-1]}, true
+		}
 	}
 	return agent.AgentMessage{}, false
 }
@@ -84,28 +92,49 @@ func applyEventEdits(event any, edits []EventEdit) error {
 	if len(edits) == 0 {
 		return nil
 	}
-	targets := make([]agent.AgentMessage, len(edits))
-	replacements := make([]agent.AgentMessage, len(edits))
-	seen := make(map[int]bool, len(edits))
+	type resolved struct{ target, replacement agent.AgentMessage }
+	var small [4]resolved
+	checked := small[:0]
 	for i, edit := range edits {
-		target, ok := eventMessage(event, edit.At)
+		if edit.At == nil {
+			return fmt.Errorf("edit %d: no position (at)", i)
+		}
+		at := *edit.At
+		if text := bytes.TrimSpace(edit.Message); len(text) == 0 || text[0] != '{' {
+			return fmt.Errorf("edit at %d: no message object", at)
+		}
+		target, ok := eventMessage(event, at)
 		if !ok {
-			return fmt.Errorf("edit at %d: the event holds no message there", edit.At)
+			return fmt.Errorf("edit at %d: the event holds no message there", at)
 		}
-		if seen[edit.At] {
-			return fmt.Errorf("edit at %d: named twice", edit.At)
+		for _, earlier := range edits[:i] {
+			if earlier.At != nil && *earlier.At == at {
+				return fmt.Errorf("edit at %d: named twice", at)
+			}
 		}
-		seen[edit.At] = true
-		if err := json.Unmarshal(edit.Message, &replacements[i]); err != nil {
-			return fmt.Errorf("edit at %d: %w", edit.At, err)
+		var replacement agent.AgentMessage
+		if err := json.Unmarshal(edit.Message, &replacement); err != nil {
+			return fmt.Errorf("edit at %d: %w", at, err)
 		}
-		if role := replacements[i].Role(); role != target.Role() {
-			return fmt.Errorf("edit at %d: the message has role %q, the event's has %q", edit.At, role, target.Role())
+		if role := replacement.Role(); role != target.Role() {
+			return fmt.Errorf("edit at %d: the message has role %q, the event's has %q", at, role, target.Role())
 		}
-		targets[i] = target
+		checked = append(checked, resolved{target, replacement})
 	}
-	for i, target := range targets {
-		agent.ReplaceMessageInPlace(target, replacements[i])
+	for _, r := range checked {
+		agent.ReplaceMessageInPlace(r.target, r.replacement)
 	}
 	return nil
+}
+
+// decodeBoundaryEditsStrictly refuses a turn_end reply that carries edits and a member this version does not know, in the reply or in an edit, as every other event's reply with edits is refused. A reply that edits nothing is read as before, ignoring members it does not name.
+func decodeBoundaryEditsStrictly(raw json.RawMessage) error {
+	var reply struct {
+		Entries json.RawMessage `json:"_pigBoundaryEntries"`
+		Result  json.RawMessage `json:"_pigBoundaryResult"`
+		Edits   []EventEdit     `json:"_pigEventEdits"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	return decoder.Decode(&reply)
 }

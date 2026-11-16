@@ -810,30 +810,10 @@ func (p *EventResponsePayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// EventEdit is one message of an event as a handler left it: At is its position in the messages the event holds (message_start and message_end: 0; turn_end: 0 for the assistant message, then the tool results; agent_end: the index in messages) and Message the message.
+// EventEdit is one message of an event as a handler left it: At is its position in the messages the event holds (message_start and message_end: 0; turn_end: 0 for the assistant message, then the tool results; agent_end: the index in messages) and Message the message. It has no decoder of its own: the reply's strict decode reaches its members, and applyEventEdits refuses an entry that names no position or no message object.
 type EventEdit struct {
-	At      int
-	Message json.RawMessage
-}
-
-func (e *EventEdit) UnmarshalJSON(data []byte) error {
-	var decoded struct {
-		At      *int            `json:"at"`
-		Message json.RawMessage `json:"message"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&decoded); err != nil {
-		return err
-	}
-	if decoded.At == nil {
-		return errors.New("an edit names no position (at)")
-	}
-	if text := bytes.TrimSpace(decoded.Message); len(text) == 0 || text[0] != '{' {
-		return errors.New("an edit carries no message object")
-	}
-	*e = EventEdit{At: *decoded.At, Message: decoded.Message}
-	return nil
+	At      *int            `json:"at"`
+	Message json.RawMessage `json:"message"`
 }
 
 // ToolResultResponsePayload is the result of an extension's tool_result handler, from every SDK. Edits names the members of the event the handler left different from the ones it received and, of those, the ones it edited in the object it received (see [extension.ToolResultEdits]); an omitted Edits means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.

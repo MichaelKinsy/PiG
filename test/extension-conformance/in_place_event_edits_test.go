@@ -315,8 +315,8 @@ return out;
 	}
 }
 
-// TestConformance_NodeEditsOutsideMessageEndStayInTheProcess probes what D541 records: an edit a Node handler makes in place to the message of message_start,
-// turn_end or agent_end stays in the extension process's object and is not saved, where Pi's one object holds it in the entry. The row passes while the record is
+// TestConformance_NodeEditsOutsideMessageEndStayInTheProcess probes what D541 records: an edit a Node handler makes in place to the message of message_start
+// or agent_end stays in the extension process's object and is not saved, where Pi's one object holds it in the entry. The row passes while the record is
 // true; a run in which the edit reaches the entry or the request means the record no longer matches.
 func TestConformance_NodeEditsOutsideMessageEndStayInTheProcess(t *testing.T) {
 	if testing.Short() {
@@ -328,7 +328,7 @@ func TestConformance_NodeEditsOutsideMessageEndStayInTheProcess(t *testing.T) {
 		if !strings.HasPrefix(tc.name, "subprocess-node") {
 			continue
 		}
-		for _, event := range []string{"message_start", "turn_end", "agent_end"} {
+		for _, event := range []string{"message_start", "agent_end"} {
 			t.Run(tc.name+"/"+event, func(t *testing.T) {
 				h := tc.make(t)
 				t.Cleanup(func() {

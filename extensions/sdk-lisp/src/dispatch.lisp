@@ -243,8 +243,12 @@
 (declaim (ftype function user-bash-operations-reply tool-start-begin tool-start-respond tool-start-end tool-start-release tool-batches-reserve))
 
 (defun event-edit-messages (event data)
-  "The message objects of an event a handler may edit in place, by the position the reply names them at (_pigEventEdits): message_end has one."
+  "The message objects of an event a handler may edit in place, by the position the reply names them at (_pigEventEdits): message_end has one, turn_end its assistant message and then its tool results."
   (cond ((equal event "message_end") (list (jget data "message")))
+        ((equal event "turn_end")
+         (let ((results (jget data "toolResults")))
+           (cons (jget data "message")
+                 (and (vectorp results) (not (stringp results)) (coerce results 'list)))))
         (t nil)))
 
 (defun snapshot-event-messages (messages)
@@ -273,13 +277,20 @@
     (let ((data (let ((d (jget req "args"))) (if (hash-table-p d) d (or d (obj))))))
       (cond
         ((member event '("agent_before_settle" "turn_end") :test #'equal)
-         (let (result error-message)
+         (let* ((messages (event-edit-messages event data))
+                (before (snapshot-event-messages messages))
+                result error-message)
            (handler-case
                (progn (ticket-begin (request-ticket (ctx-request ctx)))
                       (setf result (funcall handler ctx data)))
              (serious-condition (c) (setf error-message (condition-message c))))
-           ;; the handler appends to the event's entries: the reply carries the list it left
-           (values (obj "_pigBoundaryEntries" (or (jget data "entries") (vector)) "_pigBoundaryResult" result) error-message)))
+           ;; the handler appends to the event's entries: the reply carries the list it left, and a turn_end handler's edits of the turn's messages (Pi hands every handler the turn's message objects)
+           (let ((reply (obj "_pigBoundaryEntries" (or (jget data "entries") (vector)) "_pigBoundaryResult" result)))
+             (handler-case
+                 (let ((edits (event-message-edits messages before)))
+                   (when edits (setf (gethash "_pigEventEdits" reply) (coerce edits 'vector))))
+               (serious-condition (c) (unless error-message (setf error-message (condition-message c)))))
+             (values reply error-message))))
         ((equal event "tool_call")
          (let* ((input (jget data "input")) (before (to-json input)) result error-message)
            (handler-case

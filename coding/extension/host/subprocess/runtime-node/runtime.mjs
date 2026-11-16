@@ -248,6 +248,7 @@ function replaceMessageInPlace(target, source) {
 // eventEditMessages are the message objects of an event a handler may edit in place, by the position the reply names them at (_pigEventEdits): message_end has one. The reply is about these objects, so a handler that assigns another message to the event changes nothing, as in Pi (the event is made for each handler).
 function eventEditMessages(name, event) {
   if (name === "message_end") return [event.message];
+  if (name === "turn_end") return [event.message, ...(Array.isArray(event.toolResults) ? event.toolResults : [])];
   return [];
 }
 
@@ -5628,9 +5629,11 @@ export class Runtime {
           if (fileOps) {
             for (const key of ["read", "written", "edited"]) fileOps[key] = new Set(fileOps[key] ?? []);
           }
-          // pig additive (D19): preserve boundary mutations alongside handler errors.
+          // pig additive (D19): preserve boundary mutations alongside handler errors. A turn_end handler also edits the turn's messages in place (Pi hands every handler the turn's message objects, agent-session.ts _dispatchTurnEndBoundary): the reply carries the ones it left different, beside the boundary members.
           if (request.event === "agent_before_settle" || request.event === "turn_end") {
             const entries = event.entries;
+            const messages = eventEditMessages(request.event, event);
+            const before = snapshotEventMessages(messages);
             let result;
             let error;
             try {
@@ -5640,7 +5643,8 @@ export class Runtime {
             } catch (err) {
               error = err instanceof Error ? err : new Error(String(err));
             }
-            await this.respond(id, { _pigBoundaryEntries: entries, _pigBoundaryResult: result }, error);
+            const edits = eventMessageEdits(messages, before);
+            await this.respond(id, { _pigBoundaryEntries: entries, _pigBoundaryResult: result, ...(edits ? { _pigEventEdits: edits } : {}) }, error);
             return;
           }
           // Pi hands every tool_call handler the one event object, and a handler edits event.input in place (runner.ts emitToolCall). The host cannot share the object, so the reply carries the input the handler left, when it differs from the one it received, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so a handler that assigns a new object to event.input changes nothing the tool receives.

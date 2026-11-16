@@ -388,7 +388,6 @@ var curePending = map[string]string{
 	"message_update/top":  "the event is not one object across handlers and extensions",
 	"message_update/deep": "an edit of the partial's content is not sent back (Pi: the entry and the next request hold it)",
 	"turn_start/top":      "the event is not one object across handlers and extensions",
-	"turn_end/deep":       "an edit of the message is not sent back (Pi: entry and the next request hold it)",
 	"agent_start/top":     "the event is not one object across handlers and extensions",
 	"agent_end/top":       "the event is not one object across handlers and extensions",
 	"agent_end/deep":      "an edit of the first user message is not sent back (Pi: entry and the next request hold it)",

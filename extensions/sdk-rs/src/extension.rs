@@ -3709,9 +3709,11 @@ impl Extension {
                     value = Some(reply);
                 }
                 // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it failed. The reply carries the messages the handler left when the JSON text differs from the one it received (member order is an edit), and the handler's result.
-                if let Some(before) = event_messages_before {
+                if req.event.as_deref() == Some("message_end")
+                    && let Some(before) = &event_messages_before
+                {
                     let mut reply = serde_json::json!({ "_pigEventResult": value });
-                    let edits = event_message_edits(req.event.as_deref(), &data, &before);
+                    let edits = event_message_edits(req.event.as_deref(), &data, before);
                     if !edits.is_empty() {
                         reply["_pigEventEdits"] = Value::Array(edits);
                     }
@@ -3748,15 +3750,22 @@ impl Extension {
                     }
                     value = Some(reply);
                 }
-                // pig additive (D19): preserve boundary mutations alongside handler errors.
+                // pig additive (D19): preserve boundary mutations alongside handler errors. A turn_end handler also edits the turn's messages in place (Pi hands every handler the turn's message objects): the reply carries the ones it left different, beside the boundary members.
                 if matches!(
                     req.event.as_deref(),
                     Some("agent_before_settle" | "turn_end")
                 ) {
-                    value = Some(serde_json::json!({
+                    let mut reply = serde_json::json!({
                         "_pigBoundaryEntries": data.get("entries"),
                         "_pigBoundaryResult": value,
-                    }));
+                    });
+                    if let Some(before) = &event_messages_before {
+                        let edits = event_message_edits(req.event.as_deref(), &data, before);
+                        if !edits.is_empty() {
+                            reply["_pigEventEdits"] = Value::Array(edits);
+                        }
+                    }
+                    value = Some(reply);
                 }
                 let _ = conn.respond(id, value, error);
             }
@@ -4053,6 +4062,15 @@ pub fn report_load_failure(sock_path: &str) -> io::Result<()> {
 fn event_messages<'a>(event: Option<&str>, data: &'a Value) -> Vec<Option<&'a Value>> {
     match event {
         Some("message_end") => vec![data.get("message")],
+        Some("turn_end") => std::iter::once(data.get("message"))
+            .chain(
+                data.get("toolResults")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .map(Some),
+            )
+            .collect(),
         _ => Vec::new(),
     }
 }

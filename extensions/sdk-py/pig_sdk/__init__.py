@@ -1384,9 +1384,12 @@ def _json_text(value: Any) -> str:
 
 
 def _event_edit_messages(name: str, data: dict[str, Any]) -> list[Any]:
-    """The message objects of an event a handler may edit in place, by the position the reply names them at (``_pigEventEdits``): message_end has one. The reply is about these objects, so assigning another value to the member changes nothing, as assigning event.message changes nothing in Pi."""
+    """The message objects of an event a handler may edit in place, by the position the reply names them at (``_pigEventEdits``): message_end has one, turn_end its assistant message and then its tool results. The reply is about these objects, so assigning another value to the member changes nothing, as assigning event.message changes nothing in Pi."""
     if name == "message_end":
         return [data.get("message")]
+    if name == "turn_end":
+        results = data.get("toolResults")
+        return [data.get("message"), *(results if isinstance(results, list) else [])]
     return []
 
 
@@ -6597,9 +6600,11 @@ class Extension:
                 if handler is None:
                     raise RuntimeError(f"unknown event handler {handler_id} for {req.get('event', '')}")
                 data = req.get("args") or {}
-                # pig additive (D19): preserve boundary mutations alongside handler errors.
+                # pig additive (D19): preserve boundary mutations alongside handler errors. A turn_end handler also edits the turn's messages in place (Pi hands every handler the turn's message objects): the reply carries the ones it left different, beside the boundary members.
                 if req.get("event") in ("agent_before_settle", "turn_end"):
                     entries = data.get("entries", [])
+                    event_messages = _event_edit_messages(req["event"], data)
+                    before = _snapshot_event_messages(event_messages)
                     result = None
                     error = None
                     try:
@@ -6608,7 +6613,14 @@ class Extension:
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve mutations and report the handler error.
                         error = {"message": str(exc)}
-                    self._respond(req_id, {"_pigBoundaryEntries": entries, "_pigBoundaryResult": result}, error)
+                    reply = {"_pigBoundaryEntries": entries, "_pigBoundaryResult": result}
+                    try:
+                        edits = _event_message_edits(event_messages, before)
+                        if edits:
+                            reply["_pigEventEdits"] = edits
+                    except Exception as exc:  # noqa: BLE001 - A message that cannot be written is the handler's error.
+                        error = error or {"message": str(exc)}
+                    self._respond(req_id, reply, error)
                     return
                 # Pi's handler edits event.input in place and the runner reads it back (runner.ts emitToolCall). The host cannot share the dict, so the reply carries the input the handler left when it differs from the one it received, member order included, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall), so assigning a new dict to data["input"] changes nothing the tool receives.
                 if req.get("event") == "tool_call":

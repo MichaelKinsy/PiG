@@ -135477,17 +135477,6 @@
       "shapeHash": "sha256:ce721754cc7bda2545e01b0885182b1115f0d4c20995e75696c94f48ef97b312"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#EventEdit.UnmarshalJSON",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "EventEdit.UnmarshalJSON",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(data []byte) error"
-      },
-      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#EventResponsePayload",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "EventResponsePayload",
@@ -150171,6 +150160,17 @@
         "type": "func[T any](data encoding/json.RawMessage) (T, error)"
       },
       "shapeHash": "sha256:62add72a8043d59b5369ac34290329bc53078a1fab53d391a98e69a39d8fcfac"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#decodeBoundaryEditsStrictly",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "decodeBoundaryEditsStrictly",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(raw encoding/json.RawMessage) error"
+      },
+      "shapeHash": "sha256:a1dab8beb2d7ff2158da823104b26bd137348f73fe7503f9a60a72d56fc6f308"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#decodeCallbackResult",
@@ -225611,6 +225611,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#boundaryReply",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "boundaryReply",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(data map[string]any, result any, edits []any) map[string]any"
+      },
+      "shapeHash": "sha256:d473cb481c245fb4bc0be580eab8611bf2bf894e9a7ca8263a172201d1049249"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#branchSummaryPrefix",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "branchSummaryPrefix",
@@ -226445,6 +226456,17 @@
         "type": "func() string"
       },
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#captureEventObjects",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "captureEventObjects",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event string, data map[string]any) (eventObjects, bool)"
+      },
+      "shapeHash": "sha256:86d057e933aaeba4949582e6f1930002408a644da7086615a8f9ce00d364584e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#capturesViewportInput",
@@ -228147,20 +228169,42 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(objects []any, result any, sent func() []any) any"
+        "type": "func(result any, edits []any) any"
       },
-      "shapeHash": "sha256:81cfd87e9813c7b463c1b92ab6b38ff6948b6e0ba55e0d769c60cfd355cad9b8"
+      "shapeHash": "sha256:2fefc7b39a323c58b5d749e1263f8ff57c1690e4606c045459ff604066c66360"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#eventMessages",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#eventObjects",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "eventMessages",
+      "name": "eventObjects",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "eventObjects"
+      },
+      "shapeHash": "sha256:4b114661f5c59e515b363e4a20002da211546f186b6e4be3e038b0c97d99c381"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#eventObjects.edits",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "eventObjects.edits",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(event string, data map[string]any) []any"
+        "type": "func(event string, args []byte) []any"
       },
-      "shapeHash": "sha256:68f35eb3824f5a254b4a0433030ba217b680db3423b310b5975ef3dd05897f4b"
+      "shapeHash": "sha256:adb02f860a6cbdd7ed2c141d5637f9c37fd63f7fa6e01af710889da14ce02db1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#eventObjects.fingerprint",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "eventObjects.fingerprint",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() uint64"
+      },
+      "shapeHash": "sha256:8c2c25c05be990d156af5316d0723444537851bde41d6afa6bcb371a541de271"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#eventReplica",
@@ -228678,6 +228722,17 @@
         "type": "func(entries []map[string]any, startIndex int, endIndex int) []int"
       },
       "shapeHash": "sha256:579a800a7486ab55b45a264e21a214d9b602440c58061253c3dcf5794cb85c13"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#fingerprintSeed",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "fingerprintSeed",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "hash/maphash.Seed"
+      },
+      "shapeHash": "sha256:7ee85001cc13362c74ebd6212ab6e40a18e8b426414f3c448536be691a0b6ee2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#firstOptions",
@@ -230165,6 +230220,17 @@
       "shapeHash": "sha256:ff8d6594a4ae0e29b85e006f49cd4739342bef92a67af6c3186887eac2e3ea4e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#listMember",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "listMember",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(value any) []any"
+      },
+      "shapeHash": "sha256:33155a0be72d345cce65dd380c3c71e12eb89836f9bd2cbabbe58ebea4e3c763"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#listenersOf",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "listenersOf",
@@ -230592,6 +230658,17 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#mixFingerprint",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "mixFingerprint",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(h uint64, v uint64) uint64"
+      },
+      "shapeHash": "sha256:1285ffe402415727ac11fc57cf0703bffa7e3c7c50fdacba8a49122a8fe9540d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#modelFetchEntry",
@@ -233339,9 +233416,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(event string, sentMember func(member string) any) []any"
+        "type": "func(event string, args []byte) []any"
       },
-      "shapeHash": "sha256:05bfde05d406913dd9134317d61b5e9c68b864995ee0d6d32715749f39739f81"
+      "shapeHash": "sha256:adb02f860a6cbdd7ed2c141d5637f9c37fd63f7fa6e01af710889da14ce02db1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#sentImages",
@@ -236103,6 +236180,17 @@
         "type": "func(member string, schema any, value any) (result []byte, err error)"
       },
       "shapeHash": "sha256:dd87c7b341216f9a9fa0bb866622bdb97b15c33cfa333363c68122a2c6160911"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#valueFingerprint",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "valueFingerprint",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(value any) uint64"
+      },
+      "shapeHash": "sha256:8fcfc04789a4a590094744e8334bdfa7eba249ee24986802896c2fe59874fb15"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#valueNamespace",

@@ -1511,6 +1511,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	// mirrors upstream's per-request error isolation (a thrown handler error in
 	// the TS runtime rejects one call, it does not tear down the runtime).
 	var boundaryData map[string]any
+	// boundaryEdits are the messages a turn_end handler edited in place, each at its position (event_edits_reply.go); nil for the other boundary.
+	var boundaryEdits func() []any
 	// order is the member order of the objects of an event as the host sent them; the objects a handler hands back are written in it.
 	var order *json.ObjectOrder
 	var promptOptions map[string]any
@@ -1528,7 +1530,11 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			diagnosticf("extension: recovered from panic in %s %q: %v\n%s\n", req.Method, name, r, debug.Stack())
 			var result any
 			if boundaryData != nil {
-				result = map[string]any{"_pigBoundaryEntries": boundaryData["entries"], "_pigBoundaryResult": nil}
+				var edits []any
+				if boundaryEdits != nil {
+					edits = boundaryEdits()
+				}
+				result = boundaryReply(boundaryData, nil, edits)
 			}
 			if toolCall != nil {
 				reply := map[string]any{"_pigToolCallResult": nil}
@@ -1716,6 +1722,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 			return master[member]
 		}
+		if req.Event == "turn_end" {
+			objects, _ := captureEventObjects(req.Event, data)
+			boundaryEdits = func() []any { return objects.edits(req.Event, req.Args) }
+		}
 		if req.Event == "before_provider_request" || req.Event == "before_provider_headers" {
 			member := "payload"
 			if req.Event == "before_provider_headers" {
@@ -1727,10 +1737,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 		}
 		if req.Event == "message_end" {
-			objects := eventMessages(req.Event, data)
-			editReply = func(result any) any {
-				return eventEditsReply(objects, result, func() []any { return sentEventMessages(req.Event, sentMember) })
-			}
+			objects, _ := captureEventObjects(req.Event, data)
+			editReply = func(result any) any { return eventEditsReply(result, objects.edits(req.Event, req.Args)) }
 		}
 		if req.Event == "tool_result" {
 			received := map[string]any{}
@@ -1798,7 +1806,11 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			if err != nil {
 				result = nil
 			}
-			result = map[string]any{"_pigBoundaryEntries": data["entries"], "_pigBoundaryResult": result}
+			var edits []any
+			if boundaryEdits != nil {
+				edits = boundaryEdits()
+			}
+			result = boundaryReply(data, result, edits)
 		}
 		_ = e.conn.respond(id, handedBack(req.Event, result, order), err)
 		// A Context a handler kept must not hold the event's payload: ObjectKeys reads byte order from here on.
