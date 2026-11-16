@@ -678,6 +678,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-542b536](#bf-542b536) | fix(cli): PIG_VERSION_FORMAT=pi prints the pinned Pi package version | PiG's own defect | All platforms | Unreleased |
 | [BF-5443b6c](#bf-5443b6c) | `durable/images` is the image processor of pi-durable: `images.CreatePhotonImages()` (also `images/node` and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-54660cf](#bf-54660cf) | A custom message renderer is called once, not twice, when a message is drawn | PiG's own defect | All platforms | Unreleased |
+| [BF-549df80](#bf-549df80) | A `tool_result` handler that edits the event in place now has the edit seen by the next handler of the chain… | PiG's own defect | All platforms | Unreleased |
 | [BF-54a5bf6](#bf-54a5bf6) | The host answers a parsed frontmatter with `<`, `>`, `&` and U+2028 as they are (as `JSON.stringify` writes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-54bf1a5](#bf-54bf1a5) | Two clients that a mount's content does not fit, one shown the fallback and one shown no view, were sent the… | PiG's own defect | All platforms | Unreleased |
 | [BF-54c4ee3](#bf-54c4ee3) | fix(chord): the platform locale is the first set variable of LC_ALL, LC_MESSAGES, LANG (C and POSIX are… | PiG's own defect | All platforms | Unreleased |
@@ -1176,6 +1177,8 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-82ca8da](#bf-82ca8da) | On Windows, the host reports the load error of a Node extension that exits right after it sends the error | PiG's own defect | Windows | 0.7.0 |
 | [BF-82d1808](#bf-82d1808) | Subprocess extensions no longer slow down each streamed token in long sessions: the state sent before each… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8303e4c](#bf-8303e4c) | fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header… | PiG's own defect | All platforms | Unreleased |
+| [BF-83928e2](#bf-83928e2) | A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in… | PiG's own defect | All platforms | Unreleased |
+| [BF-83928e2-2](#bf-83928e2-2) | A `message_end` handler that edits `event.message` in place and returns nothing now changes the message the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8392c29](#bf-8392c29) | MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's… | PiG's own defect | All platforms | Unreleased |
 | [BF-83d0c73](#bf-83d0c73) | Interactive mode: a `/reload` that fails leaves the old extension instances stale, as in Pi: their captured… | PiG's own defect | All platforms | Unreleased |
 | [BF-83d5488](#bf-83d5488) | `pig install <dir>` of a local directory with no package manifest and no `extensions/`, `skills/`, `prompts/`… | PiG's own defect | All platforms | 0.5.0 |
@@ -11399,6 +11402,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** A custom message renderer is called once, not twice, when a message is drawn.
 
+### BF-549df80
+
+**A `tool_result` handler that edits the event in place now has the edit seen by the next handler of the chain…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `tool_result` handler that edits the event in place now has the edit seen by the next handler of the chain and kept for the result, as in Pi, in every extension SDK.
+- **Root cause:** Pi hands every tool_result handler of a chain the one currentEvent (runner.ts emitToolResult), so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, also when the handler throws afterwards. An edit made to an object the caller handed over (a block of the content, a member of the details) is also in the caller's result, which agent-session.ts _afterToolCall reads back; a member assigned another value reaches the caller only through a result a handler returned.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `549df8005d` (2026-11-16)
+- **Tests:** `test/extension-conformance/in_place_tool_result_test.go::TestConformance_InPlaceToolResultEditsFollowPi`
+- **Release note:** A `tool_result` handler that edits the event in place now has the edit seen by the next handler of the chain and kept for the result, as in Pi, in every extension SDK. Assigning `event.content`, `event.details` or `event.isError` is what the next handler reads; editing a block of the content or a member of the details in place also changes the result the tool returns, and an edit made before the handler throws holds as well. A member assigned another value reaches the result only through a result a handler returns, as in Pi. Until now only a result a handler returned took effect, so every in-place edit was lost, in every SDK, in every release since v0.2.0. The Go and Rust SDKs cannot tell assigning a new list or object from editing the one they received, and treat a changed list or object member as an edit of the received one.
+
 ### BF-54a5bf6
 
 **The host answers a parsed frontmatter with `<`, `>`, `&` and U+2028 as they are (as `JSON.stringify` writes…**
@@ -18307,6 +18324,34 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `8303e4c989` (2026-11-09)
 - **Tests:** `durable/harness/quiescence_test.go::TestAwaitQuiescentReturnsWithGoroutinesParkedInTheProgramsWaits`, `internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock`
+
+### BF-83928e2
+
+**A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in the request, as it does in Pi, where the handler works on a copy of the list over the one set of message objects: an edit to a message stays and a change to the list does not.
+- **Root cause:** message_end: Pi hands every message_end handler an event over the one message (runner.ts emitMessageEnd, currentMessage) and stores that object (agent-session.ts appendMessage), so a handler that edits event.message in place and returns nothing changes the message the next handlers, turn_end, agent_end, the saved entry and the next provider request hold, also when it throws afterwards. Only the Node SDK sent the edit back. The Go, Python, Rust and Lisp SDKs lost it: their reply carried only the handler's result. Each of them now sends back the message as the handler left it when its JSON text differs from the one it received, in the _pigMessageEndMessage member the Node runtime uses, with…
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `83928e2246` (2026-11-16)
+- **Tests:** `test/extension-conformance/in_place_context_test.go::TestConformance_InPlaceContextEditsFollowPi`, `test/extension-conformance/in_place_message_end_test.go::TestConformance_InPlaceMessageEndEditReachesTheTranscript`, `test/extension-conformance/in_place_message_end_test.go::TestConformance_InPlaceMessageEndEditsFollowPi`
+- **Release note:** A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in the request, as it does in Pi, where the handler works on a copy of the list over the one set of message objects: an edit to a message stays and a change to the list does not. Until now the failed handler's reply was dropped and the edit was lost, in every extension SDK. The loss was present in every release since v0.2.0.
+
+### BF-83928e2-2
+
+**A `message_end` handler that edits `event.message` in place and returns nothing now changes the message the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `message_end` handler that edits `event.message` in place and returns nothing now changes the message the next handlers, `turn_end`, `agent_end`, the saved session entry and the next provider request hold, as it does in Pi, in the Go, Python, Rust and Lisp extension SDKs, and so does an edit made before the handler throws.
+- **Root cause:** message_end: Pi hands every message_end handler an event over the one message (runner.ts emitMessageEnd, currentMessage) and stores that object (agent-session.ts appendMessage), so a handler that edits event.message in place and returns nothing changes the message the next handlers, turn_end, agent_end, the saved entry and the next provider request hold, also when it throws afterwards. Only the Node SDK sent the edit back. The Go, Python, Rust and Lisp SDKs lost it: their reply carried only the handler's result. Each of them now sends back the message as the handler left it when its JSON text differs from the one it received, in the _pigMessageEndMessage member the Node runtime uses, with…
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `83928e2246` (2026-11-16)
+- **Tests:** `test/extension-conformance/in_place_context_test.go::TestConformance_InPlaceContextEditsFollowPi`, `test/extension-conformance/in_place_message_end_test.go::TestConformance_InPlaceMessageEndEditReachesTheTranscript`, `test/extension-conformance/in_place_message_end_test.go::TestConformance_InPlaceMessageEndEditsFollowPi`
+- **Release note:** A `message_end` handler that edits `event.message` in place and returns nothing now changes the message the next handlers, `turn_end`, `agent_end`, the saved session entry and the next provider request hold, as it does in Pi, in the Go, Python, Rust and Lisp extension SDKs, and so does an edit made before the handler throws. Until now only a message a handler returned took effect in those SDKs, so an edit in place was lost (the Node SDK already kept it in the unreleased line). Each SDK sends back the message as the handler left it when it differs from the one it received. The loss was present in every release since v0.2.0.
 
 ### BF-8392c29
 
