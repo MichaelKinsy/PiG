@@ -187815,9 +187815,9 @@
         "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.SetWidgetRequestFunc"
       ],
       "evidence": [
+        "test:test/extension-conformance/handler_effect_order_test.go#TestConformance_HandlerEffectsPrecedeTheReleaseOfItsCaller",
         "test:test/extension-conformance/rpc_widget_frames_test.go#TestConformance_RPCModeDropsFrameWidgetsInEverySDK",
-        "test:coding/cli/rpc_ui_set_widget_factory_test.go#TestRPCUIContextSetWidgetFactoryRemovesOnNilAndIgnoresAFactory",
-        "test:coding/extension/host/subprocess/integration_test.go#TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI"
+        "test:coding/cli/rpc_ui_set_widget_factory_test.go#TestRPCUIContextSetWidgetFactoryRemovesOnNilAndIgnoresAFactory"
       ]
     },
     {
