@@ -19,6 +19,8 @@ func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command,
 		return
 	}
 	m.externalEditorActive = true
+	// The stop for the editor is its own transaction of the terminal: the writes of other goroutines wait behind it and run after it.
+	endStop := m.holdTerminalStop()
 	if m.surface != nil {
 		// pig additive (D91): the frontend session keeps its frames while
 		// the editor owns the terminal and learns of the handoff.
@@ -34,6 +36,7 @@ func (m *InteractiveMode) openExternalEditorBuffer(ctx context.Context, command,
 		m.rawRestore = nil
 		m.rawDrain = nil
 	}
+	endStop()
 	ownerCtx := m.runCtx
 	if ownerCtx == nil {
 		ownerCtx = ctx

@@ -442,7 +442,10 @@ func (m *InteractiveMode) updateTerminalTitle() {
 // stdout.
 func (m *InteractiveMode) setTerminalTitle(title string) {
 	m.writeBetweenFrames(func() {
-		if m.tuiInst != nil {
+		// The terminal is read from where createInteractiveTui kept it: this write may run on a goroutine that is not the owner loop, once the exit's stop began.
+		if terminal := m.drawTerminal.Load(); terminal != nil {
+			(*terminal).SetTitle(title)
+		} else if m.tuiInst != nil {
 			m.tuiInst.Terminal().SetTitle(title)
 		}
 	})

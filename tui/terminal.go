@@ -139,6 +139,8 @@ type ProcessTerminal struct {
 	exitRestored atomic.Bool
 	// stopModesWritten is set once a renderer's exit stop wrote the mode resets of Pi's terminal.stop() (WriteStopModes); the restore that follows then does not write them a second time. Entering raw mode clears it.
 	stopModesWritten atomic.Bool
+	// stopGate orders the writes of goroutines other than the one that stops the terminal against the stop (stop_transaction.go).
+	stopGate stopGate
 	// sizeCache is the window size kept between SIGWINCHs while the interactive resize handler holds it.
 	sizeCache terminalSizeCache
 }
@@ -424,6 +426,7 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 	rememberSignalRestore(fd, state)
 	t.exitRestored.Store(false)
 	t.stopModesWritten.Store(false)
+	t.openForeignWrites()
 	// On Windows, enable VT output processing so pig's ANSI renderer displays;
 	// term.MakeRaw only configures raw input. No-op on unix.
 	vtRestore := t.enableVTProcessing()
@@ -988,13 +991,21 @@ func (t *ProcessTerminal) ClearFromCursor() { t.writeUnlogged("\x1b[J") }
 func (t *ProcessTerminal) ClearScreen() { t.writeUnlogged("\x1b[2J\x1b[H") }
 
 // SetTitle writes an OSC 0 title update sequence. A BEL or ESC in the title would end the sequence early and send the rest to the terminal as escape
-// sequences (session names come from session files), so control characters become spaces (terminal.ts setTitle).
+// sequences (session names come from session files), so control characters become spaces (terminal.ts setTitle). It is a write of a goroutine other than
+// the stop's: it is ordered against a stop (WriteOutsideStop), so it is before the stop's bytes or after them.
 func (t *ProcessTerminal) SetTitle(title string) {
-	t.writeUnlogged("\x1b]0;" + widthx.ReplaceControlCharacters(title) + "\x07")
+	sequence := "\x1b]0;" + widthx.ReplaceControlCharacters(title) + "\x07"
+	t.WriteOutsideStop(func() { t.writeUnlogged(sequence) })
 }
 
 // SetProgress writes the OSC 9;4 progress indicator and keeps it alive during agent work. Clearing stops the keepalive and writes OSC 9;4;0 followed directly by BEL.
+// Like SetTitle it is ordered against a stop; a terminal that a signal's stop sealed does not start the keepalive again.
 func (t *ProcessTerminal) SetProgress(active bool) {
+	t.WriteOutsideStop(func() { t.setProgress(active) })
+}
+
+// setProgress is SetProgress without the order against a stop, for the writer that holds the terminal.
+func (t *ProcessTerminal) setProgress(active bool) {
 	if active {
 		t.writeUnlogged(terminalProgressActiveSeq)
 		t.progressMu.Lock()
@@ -1048,11 +1059,13 @@ func (t *ProcessTerminal) keepalive(ctx context.Context, stopped <-chan struct{}
 		}
 		t.writeUnlogged(terminalProgressActiveSeq)
 	}
+	// The tick is ordered against a stop like any write of another goroutine; one made during a stop runs after it and finds the progress cleared.
+	ordered := func() { t.WriteOutsideStop(write) }
 	if dispatch := t.keepaliveDispatch.Load(); dispatch != nil {
-		_ = (*dispatch)(ctx, write)
+		_ = (*dispatch)(ctx, ordered)
 		return
 	}
-	write()
+	ordered()
 }
 
 // setKeepaliveDispatch routes the progress keepalive's writes through dispatch, the renderer's owner dispatcher; nil returns them to the ticker goroutine.

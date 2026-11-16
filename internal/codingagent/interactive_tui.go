@@ -329,6 +329,7 @@ func (m *InteractiveMode) createInteractiveTui(ctx context.Context) interactiveT
 	if m.opts.TuiMode != "fullscreen" {
 		m.tuiInst = CreateInteractiveTui(InteractiveTuiOptions{TuiMode: "regular", Output: m.rendererOut, Terminal: terminal, LogDirectory: m.opts.AgentDir})
 		m.altScreen = nil
+		m.rememberDrawTerminal()
 		m.tuiInst.SetOnDebug(m.handleDebugCommand)
 		m.theme().attach()
 		m.currentTuiCleanup = func() { cancelUI(); reads.Wait() }
@@ -342,6 +343,7 @@ func (m *InteractiveMode) createInteractiveTui(ctx context.Context) interactiveT
 		OpenURL: func(url string) error { return m.effectiveOpenURL()(url) }, OnRightClickPaste: m.handleRightClickPaste,
 	})
 	m.altScreen = m.tuiInst.(*tui.TuiAltScreen)
+	m.rememberDrawTerminal()
 	m.tuiInst.SetOnDebug(m.handleDebugCommand)
 	m.theme().attach()
 	dispatch := m.autoScrollTickDispatcher(uiCtx)
@@ -385,6 +387,8 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	}
 	m.tuiTornDown = true
 	m.tuiStopped.Store(true)
+	// upstream: interactive-mode.ts:4505-4506 and :4491-4494: a write that a callback of Pi's loop made before shutdown reached stop() ran before it. The writes that other goroutines requested before this stop began (an extension's title, an OSC 52 copy) are queued for the owner loop, which never runs them now: they are written, in order, before the stop's bytes; one requested after goes to the terminal's stop transaction (writeOutsideStop).
+	m.terminalWrites.flushAndClose()
 	// upstream: interactive-mode.ts:7293-7295 (stop() unsubscribes from the Session before it stops the TUI). A quit by keys stops the mode and then disposes the runtime (:4505-4506), so the turn that dispose aborts keeps its provider's errorMessage; a signal disposes first (:4491-4494), so that turn's message is still rewritten.
 	m.unsubscribeSessionListener()
 	// upstream: interactive-mode.ts:7054 (stop() disposes the active selector)
@@ -421,6 +425,9 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	if m.quitByKeys {
 		m.quitDisposing.Store(true)
 	}
+	// upstream: tui.ts stop() (:1046-1056) is one synchronous call, and after a signal's stop() process.exit(0) ends the process (interactive-mode.ts:4491-4494). The renderer stops, the transcript print and the terminal restore below are one transaction of the terminal: the writes of other goroutines wait behind it and, once it ended, run after it for a quit by keys (Pi's loop runs its callbacks during the dispose that follows stop(), :4506) or are dropped for a signal's.
+	stopTx := m.beginTerminalStop()
+	defer m.endTerminalStop(stopTx, m.exitEndsAtStop())
 	// A fullscreen exit that prints the transcript switches to the main-screen renderer without starting it, renders there, and stops it as a regular run stops: parked below the last line, then CRLF. The resume hint keeps the alternate screen's own preserve-screen exit.
 	// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:stopInteractiveTui
 	if m.altScreen != nil && m.fullscreenExitOutput() == FullscreenExitOutputTranscript {
@@ -444,6 +451,7 @@ func (m *InteractiveMode) stopInteractiveTui() {
 		m.rawRestore()
 		m.rawRestore = nil
 	}
+	m.endTerminalStop(stopTx, m.exitEndsAtStop())
 	if m.frontendCloseErr != nil {
 		fmt.Fprintf(os.Stderr, "Closing native rendering failed: %v\n", m.frontendCloseErr)
 	}
