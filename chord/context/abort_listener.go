@@ -15,8 +15,10 @@ import (
 // abortListener is one OnAbort registration, on every cancel of this package that can abort the context it listens to.
 type abortListener struct {
 	fn func(cause error)
-	// seq orders the listeners of one cancel as they were added, as an EventTarget runs its listeners.
-	seq uint64
+	// seq orders the listeners of one signal as they were added, as an EventTarget runs its listeners; owner is the context
+	// the listener was added to, whose creation orders the listeners of different contexts (see dispatch).
+	seq   uint64
+	owner *abortContext
 	// done is set by the first of: a cancel that ran fn, the stop function.
 	done    atomic.Bool
 	sources []*abortContext
@@ -35,8 +37,11 @@ func (l *abortListener) fire(cause error) {
 	}
 }
 
-// dispatch runs the listeners of this context's own cancel, in the order they were added. It runs in the cancel function
-// of WithCancel, after the context is cancelled, on the goroutine that cancels.
+// dispatch runs the listeners the abort of this context reaches, on the goroutine that cancels it, after the context and
+// everything derived from it are aborted. Pi's order (measured on Node 24: `AbortSignal.any` marks every composite of the
+// source aborted, runs the source's own listeners in the order they were added, then each composite's in the order the
+// composites were created): by the creation of the context a listener was added to, and by when it was added within one
+// context. A context's own cancel comes first in it, as it was created before everything derived from it.
 func (c *abortContext) dispatch() {
 	c.mu.Lock()
 	registered := c.listeners
@@ -51,6 +56,10 @@ func (c *abortContext) dispatch() {
 	}
 	slices.SortFunc(ordered, func(a, b *abortListener) int {
 		switch {
+		case a.owner.created < b.owner.created:
+			return -1
+		case a.owner.created > b.owner.created:
+			return 1
 		case a.seq < b.seq:
 			return -1
 		case a.seq > b.seq:
@@ -79,13 +88,16 @@ func abortSources(ctx context.Context, out []*abortContext) ([]*abortContext, bo
 			if c.detached {
 				return out, true
 			}
+			if c.own {
+				// Its own cancel aborts it, and what a listener on it listens to besides.
+				out = append(out, c)
+			}
 			if c.signal != nil {
-				// Cancelled by whichever of its two sources aborts first.
+				// Cancelled by whichever of its sources aborts first.
 				out, fromParent := abortSources(c.parent, out)
 				out, fromSignal := abortSources(c.signal, out)
 				return out, fromParent && fromSignal
 			}
-			out = append(out, c)
 			ctx = c.parent
 		default:
 			return out, ctx.Done() == nil
@@ -93,24 +105,59 @@ func abortSources(ctx context.Context, out []*abortContext) ([]*abortContext, bo
 	}
 }
 
+// ownerOf is the context of this package whose abort signal ctx has: the one a listener added to ctx is added to in Pi (a value
+// layer or a signal alias has its wrapped context's signal). A context of another package, which no cancel function of this
+// package aborts, has none; nothing registers a listener on it.
+func ownerOf(ctx context.Context) *abortContext {
+	for {
+		switch c := ctx.(type) {
+		case *valueContext:
+			ctx = c.Context
+		case *signalContext:
+			ctx = c.Context
+		case *abortContext:
+			if c.detached {
+				return noOwner
+			}
+			return c
+		default:
+			return noOwner
+		}
+	}
+}
+
+// noOwner is the owner of a listener that no cancel function of this package reaches: it sorts first.
+var noOwner = &abortContext{}
+
 // OnAbort runs fn(cause) once, synchronously inside the cancel function that aborts ctx, on the goroutine that calls it,
 // before that function returns: Pi's abort listener (`signal.addEventListener("abort", fn, { once: true })`), which
 // `abort()` runs before it returns. The cause is the one the abort recorded (context.Cause). fn MUST NOT block and MUST
 // NOT take a lock the canceller may hold or enter a section of a loop: it only records and enqueues, and it runs on
 // whatever goroutine cancels, with or without a loop's section.
 //
-// Like Pi's `awaitWithContext`, which checks `signal.aborted` before it adds its listener (context/index.ts:140), a ctx
-// that is aborted already runs fn at once, before OnAbort returns. A ctx derived from several sources (WithAbortSignal, or
-// WithCancel under a parent that is cancelled) runs fn for the first of them to abort, with that one's cause.
+// When the cancel runs, every context of this package derived from the source that aborted is already aborted (Err, Done and
+// Cause are set), then the listeners run in Pi's order: the aborted context's own, in the order they were added, then those of
+// the contexts derived from it, in the order those were created, each context's in the order they were added. So a listener
+// added to a parent runs before a listener added to its child even when the child's was added first. Like Pi's
+// `awaitWithContext`, which checks `signal.aborted` before it adds its listener (context/index.ts:140), a ctx that is aborted
+// already runs fn at once, before OnAbort returns, and so does a ctx whose abort has begun on another goroutine; a listener
+// added by a listener, to a context aborted already, runs at once as well. A ctx derived from several sources
+// (WithAbortSignal, or WithCancel under a parent that is cancelled) runs fn for the first of them to abort, with that one's
+// cause.
 //
 // stop removes the registration and reports whether it kept fn from running; it is safe to call after fn ran, and from fn
 // itself. A caller whose wait ends without fn having run (its result came first, its owner went away) MUST call it: a
 // registration is held by every source it listens to, and a source may live much longer than the wait, until then. Once fn
-// ran no source holds the registration and stop has nothing to do. exact is false when ctx can also be aborted by a context
-// of another package (a deadline, a stdlib cancel), which OnAbort cannot listen to: the caller needs context.AfterFunc for
-// that source, which runs on a goroutine of its own.
+// ran no source holds the registration and stop has nothing to do.
+//
+// exact is false when ctx can also be aborted by a context of another package (a deadline, a stdlib cancel): OnAbort cannot
+// listen to it, Go has no hook inside a stdlib cancel, so a window remains for that source by construction, between its
+// cancel and any callback. The rule for such a ctx is one, wherever it applies: register OnAbort (it still runs fn inside the
+// cancel of every source of this package), and when exact is false register context.AfterFunc(ctx, ...) too, with fn
+// idempotent (run once by whichever comes first), and decide with an ctx.Err() sample, not with state the listener
+// maintains, where the order of the abort and another step matters.
 func OnAbort(ctx context.Context, fn func(cause error)) (stop func() bool, exact bool) {
-	l := &abortListener{fn: fn, seq: listenerSeq.Add(1)}
+	l := &abortListener{fn: fn, seq: listenerSeq.Add(1), owner: ownerOf(ctx)}
 	l.sources, exact = abortSources(ctx, nil)
 	stop = func() bool {
 		stopped := l.done.CompareAndSwap(false, true)
