@@ -4987,31 +4987,19 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			}
 			// upstream: runner.ts emitMessageEnd hands every handler the one event.message and agent-session.ts stores that object, so a handler's in-place edit of it is the message the later handlers, turn_end, agent_end and the saved entry hold. An extension process cannot share the object: every SDK's reply carries the message it left, when that differs from the one it received, even if the handler failed.
 			if event == "message_end" && len(args) > 0 && len(resp.Response.Result) > 0 {
-				var reply MessageEndResponsePayload
-				//portlint:allow hotpathjson one decode per message_end of an extension (a message, not a delta), and only the reply's two members are read
-				if err := json.Unmarshal(resp.Response.Result, &reply); err != nil {
-					return nil, fmt.Errorf("decode message_end response: %w", err)
+				result, err := unwrapMessageEndReply(args[0], resp.Response.Result)
+				if err != nil {
+					return nil, err
 				}
-				if len(reply.Message) > 0 {
-					if err := applyMessageEndEdit(args[0], reply.Message); err != nil {
-						return nil, fmt.Errorf("decode message_end message: %w", err)
-					}
-				}
-				resp.Response.Result = reply.Result
+				resp.Response.Result = result
 			}
 			// upstream: runner.ts emitToolResult hands every handler the one currentEvent and agent-session.ts _afterToolCall reads the caller's result back, so a handler's in-place edit of content, details or isError is what the next handler sees and, for an edit to the object the caller handed over, what the caller keeps, also when the handler throws. An extension process cannot share the event: its reply names the members it left changed. The Runner holds the chain, so the edits go to the sink the event carries.
 			if event == "tool_result" && len(args) > 0 && len(resp.Response.Result) > 0 {
-				var reply ToolResultResponsePayload
-				//portlint:allow hotpathjson one decode per tool_result handler of an extension (a tool result, not a delta), and only the reply's two members are read
-				if err := json.Unmarshal(resp.Response.Result, &reply); err != nil {
-					return nil, fmt.Errorf("decode tool_result response: %w", err)
+				result, err := unwrapToolResultReply(args[0], resp.Response.Result)
+				if err != nil {
+					return nil, err
 				}
-				if reply.Edits != nil && len(reply.Edits.Changed) > 0 {
-					if sink := extension.ToolResultEditsSink(args[0]); sink != nil {
-						sink.Members, sink.Changed, sink.Shared = reply.Edits.Members, reply.Edits.Changed, reply.Edits.Shared
-					}
-				}
-				resp.Response.Result = reply.Result
+				resp.Response.Result = result
 			}
 			// pig additive (D19): both actionable boundaries return mutated proposals even when their handler fails.
 			if (event == "agent_before_settle" || event == "turn_end") && len(args) > 0 && len(resp.Response.Result) > 0 && strings.TrimSpace(string(resp.Response.Result)) != "null" {
