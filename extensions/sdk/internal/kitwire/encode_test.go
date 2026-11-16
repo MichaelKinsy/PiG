@@ -34,6 +34,7 @@ func representativeView(image []byte) kit.View {
 	img := kit.NewImage(image, "image/png")
 	img.MaxWidthCells = new(20)
 	img.MaxHeightCells = new(10)
+	img.ImageID = new(4242)
 	img.Filename = "cover.png"
 	img.FallbackColor = "muted"
 	loader := kit.NewLoader("Working")
@@ -93,7 +94,7 @@ func TestEncodeMatchesTheHostViewPayload(t *testing.T) {
 		`{"kind":"spacer","lines":2},` +
 		`{"kind":"select-list","id":"tracks","items":[{"value":"k0","label":"Track 0","description":"Artist 0"},{"value":"k1","label":"Track 1"}],"maxVisible":3,"layout":{"minPrimaryColumnWidth":10,"maxPrimaryColumnWidth":20},"selectedIndex":1,"filter":"tr"},` +
 		`{"kind":"settings-list","id":"settings","items":[{"id":"theme","label":"Theme","description":"Color theme","currentValue":"dark","values":["dark","light"]},{"id":"model","label":"Model","currentValue":"a","submenu":{"kind":"text","text":"pick","paddingX":0,"paddingY":0}}],"maxVisible":5,"selectedIndex":0,"filter":"th","enableSearch":true},` +
-		`{"kind":"image","ref":"` + ref + `","mimeType":"image/png","maxWidthCells":20,"maxHeightCells":10,"filename":"cover.png","fallbackColor":"muted"},` +
+		`{"kind":"image","ref":"` + ref + `","mimeType":"image/png","maxWidthCells":20,"maxHeightCells":10,"imageId":4242,"filename":"cover.png","fallbackColor":"muted"},` +
 		`{"kind":"loader","message":"Working","spinnerColor":"accent","messageColor":"muted","indicator":{"frames":["a","b"],"intervalMs":120},"frame":1},` +
 		`{"kind":"loader","message":"Hidden","indicator":{"frames":[]}},` +
 		`{"kind":"hstack","children":[` +

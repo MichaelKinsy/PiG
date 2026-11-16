@@ -162,7 +162,52 @@ export type PiGViewImageNode = {
  * a11y, focus or drawing record names a node by it. The colour of a `text` or a `box` node is `bg`, a background token; neither has a
  * `color` member, and the host draws none it is sent.
  */
-export type PiGWireView = { root: Record<string, unknown>; focus?: string; theme?: Record<string, string>; images?: PiGViewImage[] };
+export type PiGWireView = { root: PiGViewNode; focus?: string; theme?: Record<string, string>; images?: PiGViewImage[] };
+/** D107: the options of a child of an `hstack` or a `vstack` (Pi's `StackEntryOptions` without `visible`); it rides on the child as `stack`. */
+export type PiGViewStackEntry = { basis?: number; grow?: number; shrink?: number; minSize?: number; maxSize?: number };
+/** D107: a theme-token style of a `markdown` node (Pi's `DefaultTextStyle`): `color` is a foreground token, `bgColor` a background token. */
+export type PiGViewTextStyle = { color?: string; bgColor?: string; bold?: boolean; italic?: boolean; strikethrough?: boolean; underline?: boolean };
+/** D107: one item of a `select-list` (Pi's `SelectItem`). */
+export type PiGViewSelectItem = { value: string; label?: string; description?: string };
+/** D107: one item of a `settings-list` (Pi's `SettingItem`); a `submenu` is a node. */
+export type PiGViewSettingItem = { id: string; label?: string; description?: string; currentValue?: string; values?: string[]; submenu?: PiGViewNode };
+/** D107: a loader's indicator (Pi's `LoaderIndicatorOptions`): no `frames` is the default spinner and `frames: []` hides it. */
+export type PiGViewLoaderIndicator = { frames?: string[]; intervalMs?: number };
+/** D107: an editor's or an input's cursor: a logical line and a UTF-16 column. */
+export type PiGViewCursor = { line: number; col: number };
+/** D107: one block of an assistant message (`text`, `thinking` or `toolCall`) or of a tool result (`text`, or `image` with `ref` and `mimeType`). */
+export type PiGViewContentBlock = { type: string; text?: string; thinking?: string; ref?: string; mimeType?: string };
+/** D107: the members every node kind shares. `id` names the node (required for `select-list`, `settings-list` and `grid`), `stack` sets this node's options inside an `hstack` or a `vstack`. */
+export type PiGViewNodeBase = { id?: string; stack?: PiGViewStackEntry };
+/** D107: the node kinds of the host's view contract, discriminated by `kind`. A member a kind does not have is a type error. */
+export type PiGViewNode =
+  | (PiGViewNodeBase & { kind: "container"; children?: PiGViewNode[] })
+  | (PiGViewNodeBase & { kind: "box"; children?: PiGViewNode[]; paddingX?: number; paddingY?: number; bg?: string })
+  | (PiGViewNodeBase & { kind: "text"; text?: string; paddingX?: number; paddingY?: number; bg?: string })
+  | (PiGViewNodeBase & { kind: "truncated-text"; text?: string; paddingX?: number; paddingY?: number })
+  | (PiGViewNodeBase & { kind: "markdown"; text?: string; paddingX?: number; paddingY?: number; defaultTextStyle?: PiGViewTextStyle; renderLatex?: boolean })
+  | (PiGViewNodeBase & { kind: "spacer"; lines?: number })
+  | (PiGViewNodeBase & { kind: "dynamic-border"; color?: string })
+  | (Omit<PiGViewNodeBase, "id"> & { kind: "select-list"; id: string; items?: PiGViewSelectItem[]; maxVisible?: number; layout?: { minPrimaryColumnWidth?: number; maxPrimaryColumnWidth?: number }; selectedIndex?: number; filter?: string })
+  | (Omit<PiGViewNodeBase, "id"> & { kind: "settings-list"; id: string; items?: PiGViewSettingItem[]; maxVisible?: number; enableSearch?: boolean; selectedIndex?: number; filter?: string })
+  | (PiGViewNodeBase & PiGViewImageNode)
+  | (PiGViewNodeBase & { kind: "loader" | "cancellable-loader" | "bordered-loader"; message?: string; spinnerColor?: string; messageColor?: string; indicator?: PiGViewLoaderIndicator; frame?: number; cancellable?: boolean })
+  | (PiGViewNodeBase & { kind: "hstack" | "vstack"; children?: PiGViewNode[]; gap?: number; align?: "stretch" | "start" | "center" | "end" })
+  | (PiGViewNodeBase & { kind: "lines"; content?: string[]; image?: { ref: string }; progress?: { value: number; max: number }; list?: { items: { label: string; detail?: string; columns?: string[] }[]; selectedIndex: number } })
+  | (PiGViewNodeBase & { kind: "user-message"; text?: string; outputPad?: 0 | 1 })
+  | (PiGViewNodeBase & { kind: "assistant-message"; message?: { content: PiGViewContentBlock[]; stopReason?: "stop" | "length" | "toolUse" | "error" | "aborted"; errorMessage?: string }; outputPad?: 0 | 1; hideThinkingBlock?: boolean; hiddenThinkingLabel?: string; isStreaming?: boolean })
+  | (PiGViewNodeBase & { kind: "tool-execution"; toolName: string; toolCallId?: string; args?: unknown; toolDefinition?: "builtin" | "empty"; cwd?: string; showImages?: boolean; imageWidthCells?: number; executionStarted?: boolean; argsComplete?: boolean; expanded?: boolean; result?: { content: PiGViewContentBlock[]; isError?: boolean; details?: unknown; durationMs?: number }; isPartial?: boolean; outputPad?: number })
+  | (PiGViewNodeBase & { kind: "bash-execution"; command?: string; excludeFromContext?: boolean; output?: string; complete?: { exitCode?: number; cancelled?: boolean; truncated?: boolean; fullOutputPath?: string }; expanded?: boolean; outputPad?: number })
+  | (PiGViewNodeBase & { kind: "diff"; diff?: string; filePath?: string })
+  | (PiGViewNodeBase & { kind: "scroll-view"; children: [PiGViewNode]; follow?: "none" | "end"; primary?: boolean; overscroll?: "chain" | "contain"; scrollbar?: "hidden" | "auto" | "always"; scrollbarTrackColor?: string; scrollbarThumbColor?: string; scrollbarHideDelayMs?: number; scrollTop?: number })
+  | (PiGViewNodeBase & { kind: "mouse-region"; children: [PiGViewNode]; region?: { types?: string[]; handled?: boolean; capture?: boolean; focus?: boolean; render?: boolean } })
+  | (PiGViewNodeBase & { kind: "input"; value?: string; prompt?: string; placeholder?: string; placeholderColor?: string; cursor?: PiGViewCursor; focused?: boolean })
+  | (PiGViewNodeBase & { kind: "editor"; value?: string; cursor?: PiGViewCursor; focused?: boolean; autocompleteMaxVisible?: number; borderColor?: string; disableSubmit?: boolean; history?: string[]; autocomplete?: { commands?: { name: string; description?: string; argumentHint?: string }[]; basePath?: string } })
+  | (PiGViewNodeBase & { kind: "branch-summary"; summary?: string })
+  | (PiGViewNodeBase & { kind: "compaction-summary"; summary?: string; tokensBefore?: number; expanded?: boolean })
+  | (PiGViewNodeBase & { kind: "custom-message"; customType?: string; text?: string; expanded?: boolean })
+  | (PiGViewNodeBase & { kind: "skill-invocation"; skill?: { name?: string; content?: string }; expanded?: boolean })
+  | (PiGViewGrid & Pick<PiGViewNodeBase, 'stack'>);
 /** D614: one event of a grid cell: its text (at most 256 bytes) and its colour (a theme token, "#rrggbb" or "#rrggbbaa"). */
 export type PiGViewGridChip = { text: string; color?: string };
 /**

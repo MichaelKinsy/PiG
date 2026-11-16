@@ -37,16 +37,19 @@ func TestFragmentRules(t *testing.T) {
 		files map[string]string
 		want  string // empty: no problem
 	}{
-		"valid":              {map[string]string{"loop-0123abc.md": good}, ""},
-		"name without sha":   {map[string]string{"loop.md": good}, "is named <lane>-<sha>.md"},
-		"uppercase lane":     {map[string]string{"Loop-0123abc.md": good}, "is named <lane>-<sha>.md"},
-		"short sha":          {map[string]string{"loop-012.md": good}, "is named <lane>-<sha>.md"},
-		"no heading":         {map[string]string{"loop-0123abc.md": "- The loop exits.\n"}, "before the first"},
-		"unknown section":    {map[string]string{"loop-0123abc.md": "### Misc\n\n- x\n"}, "is not one of"},
-		"paragraph":          {map[string]string{"loop-0123abc.md": "### Fixed\n\nFixed the loop.\n"}, "neither a bullet"},
-		"no bullet":          {map[string]string{"loop-0123abc.md": "### Fixed\n"}, "no bullet"},
-		"not markdown":       {map[string]string{"loop-0123abc.txt": good}, "only .md"},
-		"legacy name exempt": {map[string]string{}, ""},
+		"valid":               {map[string]string{"loop-0123abc.md": good}, ""},
+		"name without sha":    {map[string]string{"loop.md": good}, "is named <lane>-<sha>.md"},
+		"uppercase lane":      {map[string]string{"Loop-0123abc.md": good}, "is named <lane>-<sha>.md"},
+		"short sha":           {map[string]string{"loop-012.md": good}, "is named <lane>-<sha>.md"},
+		"no heading":          {map[string]string{"loop-0123abc.md": "- The loop exits.\n"}, "before the first"},
+		"unknown section":     {map[string]string{"loop-0123abc.md": "### Misc\n\n- x\n"}, "is not one of"},
+		"paragraph":           {map[string]string{"loop-0123abc.md": "### Fixed\n\nFixed the loop.\n"}, "neither a bullet"},
+		"no bullet":           {map[string]string{"loop-0123abc.md": "### Fixed\n"}, "no bullet"},
+		"not markdown":        {map[string]string{"loop-0123abc.txt": good}, "only .md"},
+		"data-only go.mod":    {map[string]string{"go.mod": "module example.com/changelog.d\n"}, ""},
+		"go.mod lookalike":    {map[string]string{"go.mod.bak": "module example.com/changelog.d\n"}, "go.mod.bak: only .md"},
+		"stray beside go.mod": {map[string]string{"go.mod": "module example.com/changelog.d\n", "notes.txt": "x"}, "notes.txt: only .md"},
+		"legacy name exempt":  {map[string]string{}, ""},
 	} {
 		t.Run(name, func(t *testing.T) {
 			saved := legacyList
@@ -178,6 +181,78 @@ func TestFoldAppendsToTheReleaseAndDeletesTheFragments(t *testing.T) {
 	}
 	fold(fragments)
 	assertFile(t, changelog, strings.Replace(want, "- Old fix. <!-- fix: 89abcdef01 -->\n", "- Old fix. <!-- fix: 89abcdef01 -->\n- Fix C. <!-- fix: 0123abcdef -->\n", 1))
+}
+
+// foldTree writes a changelog.d holding the named files, a changelog with an empty release, and a version-records file
+// that lists the directory, and returns their paths.
+func foldTree(t *testing.T, files map[string]string) (dir, changelog, legacyPath, recordsPath, records string) {
+	t.Helper()
+	root := t.TempDir()
+	dir = filepath.Join(root, "changelog.d")
+	if err := os.Mkdir(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, text := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	changelog = filepath.Join(root, "CHANGELOG.md")
+	legacyPath = filepath.Join(root, "legacy.txt")
+	recordsPath = filepath.Join(root, "version-records.toml")
+	records = "[[record]]\nversion = \"1.4.0\"\nreason = \"r\"\npaths = [\"docs/a.md\", \"" + filepath.ToSlash(dir) + "/\"]\n"
+	for path, text := range map[string]string{
+		changelog:   "# Changelog\n\n## [Unreleased]\n\n## [1.0.0] - 2026-10-15\n\n### Fixed\n\n- Fix X.\n",
+		legacyPath:  "",
+		recordsPath: records,
+	} {
+		if err := os.WriteFile(path, []byte(text), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return dir, changelog, legacyPath, recordsPath, records
+}
+
+func TestFoldKeepsTheDataOnlyGoModAndStillDropsTheRecordEntry(t *testing.T) {
+	saved := legacyList
+	defer func() { legacyList = saved }()
+	legacyList = ""
+	const goMod = "// This directory holds data only.\nmodule example.com/changelog.d\n"
+	dir, changelog, legacyPath, recordsPath, _ := foldTree(t, map[string]string{
+		"go.mod":       goMod,
+		"a-0123abc.md": "### Fixed\n\n- Fix A. <!-- fix: 0123abcdef -->\n",
+	})
+	fragments, problems := load(dir)
+	if len(problems) != 0 || len(fragments) != 1 {
+		t.Fatalf("load = %v, %v: want the one fragment and no problem", fragments, problems)
+	}
+	if err := foldInto(dir, changelog, legacyPath, recordsPath, "1.0.0", fragments); err != nil {
+		t.Fatal(err)
+	}
+	assertFile(t, filepath.Join(dir, "go.mod"), goMod)
+	if left, _ := os.ReadDir(dir); len(left) != 1 {
+		t.Fatalf("changelog.d holds %d files after the fold, want only go.mod", len(left))
+	}
+	assertFile(t, recordsPath, "[[record]]\nversion = \"1.4.0\"\nreason = \"r\"\npaths = [\"docs/a.md\"]\n")
+}
+
+func TestFoldKeepsTheRecordEntryWhileAStrayFileRemains(t *testing.T) {
+	saved := legacyList
+	defer func() { legacyList = saved }()
+	legacyList = ""
+	dir, changelog, legacyPath, recordsPath, records := foldTree(t, map[string]string{
+		"go.mod":       "module example.com/changelog.d\n",
+		"notes.txt":    "x",
+		"a-0123abc.md": "### Fixed\n\n- Fix A. <!-- fix: 0123abcdef -->\n",
+	})
+	fragments, problems := load(dir)
+	if len(problems) != 1 || !strings.Contains(problems[0].Error(), "notes.txt: only .md") || len(fragments) != 1 {
+		t.Fatalf("load = %v, %v: want the one fragment and the notes.txt problem", fragments, problems)
+	}
+	if err := foldInto(dir, changelog, legacyPath, recordsPath, "1.0.0", fragments); err != nil {
+		t.Fatal(err)
+	}
+	assertFile(t, recordsPath, records)
 }
 
 func TestFoldRefusesUnsortedFragmentsAndAMissingRelease(t *testing.T) {
