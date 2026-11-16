@@ -5661,6 +5661,33 @@
       "tests": []
     },
     {
+      "id": "BF-1ceb9fb",
+      "title": "A title an extension sets (`ctx.ui.setTitle`, or the session name an extension sets), the OSC 52 sequence of…",
+      "symptom": "A title an extension sets (`ctx.ui.setTitle`, or the session name an extension sets), the OSC 52 sequence of an extension's `copyToClipboard` and the progress indicator's keepalive are written between frames now, as in Pi: Pi writes each of them with `terminal.write` (the keepalive from a `setInterval` callback) on its one event loop, so each is before the bytes of a frame or after them.",
+      "rootCause": "the process terminal's own writes (title, progress keepalive) and the clipboard helper's direct OSC 52 write take no lock of the renderer, and the callers that run off the owner loop (an extension's host call, the keepalive's ticker) were not handed to the loop that writes the frames, as Pi's terminal.write calls are on its one event loop",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A title an extension sets (`ctx.ui.setTitle`, or the session name an extension sets), the OSC 52 sequence of an extension's `copyToClipboard` and the progress indicator's keepalive are written between frames now, as in Pi: Pi writes each of them with `terminal.write` (the keepalive from a `setInterval` callback) on its one event loop, so each is before the bytes of a frame or after them. PiG wrote them from the extension host's call or the keepalive's ticker goroutine, so they could land between two writes of a frame, and the race detector reported the writer. The interactive mode's loop writes them now. Released in v0.7.0 and earlier.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1ceb9fb95a",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/terminal_write_order_test.go::TestExtensionClipboardOSC52FromAHostGoroutineIsWrittenBetweenFrames",
+        "internal/codingagent/terminal_write_order_test.go::TestExtensionSessionNameTitleFromAHostGoroutineIsWrittenBetweenFrames",
+        "internal/codingagent/terminal_write_order_test.go::TestExtensionTitleFromAHostGoroutineIsWrittenBetweenFrames",
+        "internal/codingagent/terminal_write_order_test.go::TestOwnerLoopClipboardOSC52IsWrittenWhereItIsMade",
+        "internal/codingagent/terminal_write_sites_test.go::TestEveryTerminalWriteOutsideTheFrameIsOrdered",
+        "tui/terminal_progress_keepalive_order_test.go::TestProgressKeepaliveIsBeforeAFrameOrAfterIt"
+      ]
+    },
+    {
       "id": "BF-1d02c73",
       "title": "Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model`…",
       "symptom": "Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model` search, minimatch `nocase`) lowercase as JavaScript does (`İ` becomes `i̇`, a final sigma `ς`), not as Go's `strings.ToLower`.",
