@@ -1630,6 +1630,18 @@ class CarriedDependencyTests(unittest.TestCase):
                 with self.assertRaisesRegex(pinlib.PinError, message):
                     oracle.carried_closure(lock, [dep])
 
+    def test_a_peer_range_that_admits_both_versions_stays_and_one_that_does_not_stops_the_build(self):
+        for peer, ok in ((">=2 <3", True), (">=2.21.0 <3", True), (">=2.30.0 <3", False), (">=2.21.0 <2.32.0", False), ("^2.21.0", False), (">=2.0.0 || ^3", False)):
+            with self.subTest(peer=peer):
+                lock = self.lock()
+                other = oracle.LOCK_KEY + "/node_modules/@earendil-works/pi-ai/node_modules/openai"
+                lock["packages"][other] = {"version": "7.19.0", "peerDependencies": {"@google/genai": peer}}
+                if ok:
+                    self.assertEqual(oracle.carried_closure(lock, [GENAI])["packages"][other]["peerDependencies"], {"@google/genai": peer})
+                else:
+                    with self.assertRaisesRegex(pinlib.PinError, r"\(peerDependencies\)"):
+                        oracle.carried_closure(lock, [GENAI])
+
     def test_the_installed_tree_must_hold_one_copy_of_the_carried_version_with_the_dependencies_pis_lock_records(self):
         with tempfile.TemporaryDirectory() as root:
             modules = make_tree(Path(root) / "node_modules", {"node_modules/@earendil-works/pi-coding-agent": "@earendil-works/pi-coding-agent@1.5.2", self.SDK: "@google/genai@2.21.0"})
