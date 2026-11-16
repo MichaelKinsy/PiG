@@ -1228,6 +1228,20 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/107-extension-exec-close-order.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui-request",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "reason": "extension_ui_request ids are random UUIDs; the pattern leaves the fixed command id \"probe\" compared as written."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
       "transforms": [
         {

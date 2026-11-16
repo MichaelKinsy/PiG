@@ -83,6 +83,11 @@ type ExecResult struct {
 // context of one ExecCommand call.
 type execDrainHooksKey struct{}
 
+// execBeforeSignalKey carries the function that a test installs on the context of one ExecCommand call (export_test.go). killProcess calls it once,
+// just before the SIGTERM (Process.Kill on Windows), with the read ends of the command's stdout and stderr, so that a test can see whether the call
+// had closed them by then: it had on a cap, and it had not on a timeout or an abort (exec.ts:111-113 against exec.ts:88-98).
+type execBeforeSignalKey struct{}
+
 // ExecCommand runs a shell command synchronously and returns the result.
 // This is the default implementation backing API.Exec when the host
 // doesn't provide an override.
@@ -219,6 +224,7 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 	// Only a test installs drain hooks (export_test.go); every other call
 	// measures the grace on the wall clock.
 	hooks, _ := ctx.Value(execDrainHooksKey{}).(*childwait.Hooks)
+	beforeSignal, _ := ctx.Value(execBeforeSignalKey{}).(func(stdout, stderr *os.File))
 
 	// Like upstream, killed reports that the timeout, cancellation or cap fired,
 	// even after the child exited: upstream's abort listener and timer stay
@@ -236,6 +242,9 @@ func ExecCommand(ctx context.Context, cwd, command string, args []string, opts *
 			return
 		}
 		killed = true
+		if beforeSignal != nil {
+			beforeSignal(stdoutRead, stderrRead)
+		}
 		terminated = terminate(cmd.Process)
 		// exec.ts checks that the child has not exited (exitCode and signalCode): a signal to a reaped child fails and changes nothing.
 		forceKill = time.AfterFunc(execForceKillDelay, func() { forceTerminate(cmd.Process) })

@@ -1,0 +1,69 @@
+# Behavior family: extensions-runtime
+# Surface: when pi.exec() closes a command's output pipes in relation to the SIGTERM it sends (and what the command can still say in its handler).
+#
+# Upstream evidence (Pi packages/coding-agent/src/core/exec.ts at the pinned 1.5.2, the same lines at f6600b58f347):
+#   :111-113  the chunk that crosses maxBuffer runs proc.stdout.destroy(), proc.stderr.destroy() and then killProcess(): the descriptors are closed
+#             before the SIGTERM is sent, so a command's handler that writes meets a closed pipe.
+#   :76-98    a timeout or an abort runs killProcess() alone: the pipes stay open until the command has exited and its output has ended
+#             (waitForChildProcess), so what the handler writes is read.
+#
+# testdata/ext/parity-exec-close-order.mjs registers /exec-close-order-probe, which runs three `sh` commands that trap SIGTERM with a handler that
+# writes and exits with a status of its own, and notifies each result (code, killed, truncated, stdout, stderr):
+#   cap      maxBuffer 3 over a command that has written 5 bytes: the handler's "caught" is never read and the shell dies of the SIGPIPE its
+#            write meets (141)
+#   timeout  1500 ms: the handler's "bye" is read and the shell exits with its own 4, killed
+#   abort    the signal is aborted by the extension once the shell has trapped, written "ready" and created a file: the same as the timeout
+#
+# This is the scenario for exec ordering (the after-release row B15). PiG's ExecCommand closes first on a cap and signals alone on a timeout or an
+# abort, as Pi does. What each row decides: the cap row needs the pipes closed by the time the handler writes (a PiG that left them open reads
+# 3 and "caught"), and the timeout and abort rows need them still open after the signal (a PiG that closed them first reads 141 and no "bye").
+# The handler runs after the shell's current `sleep 0.05`, so the order of the close and the signal at the cap is not decided here: that order
+# is pinned by coding/extension/exec_close_order_test.go (the call's own sequence, by a seam) and by the exec oracle rows of exec_oracle_test.go
+# (the codes of an endless writer against Pi's execCommand).
+#
+# Tag posix-signals: the commands are `sh` scripts that trap a signal; a Windows process has none (the runner skips the scenario there).
+
+name = "107-extension-exec-close-order"
+description = "Extension pi.exec() closes a command's pipes before its SIGTERM at the maxBuffer cap and leaves them open for a timeout or an abort"
+covers = [
+  "packages/coding-agent/src/core/exec.ts",
+]
+tags = ["hermetic", "fast", "posix-signals"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+
+[[rpc.steps]]
+line = '{"id":"probe","type":"prompt","message":"/exec-close-order-probe"}'
+wait_contains = ['exec-close-order abort: code=', '"id":"probe","type":"response","command":"prompt"']
+wait_timeout_seconds = 20
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pig_extensions = ["testdata/ext/parity-exec-close-order.mjs"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/parity-exec-close-order.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+stderr_equal = true
+both_contain = [
+  'exec-close-order cap: code=141 killed=true truncated=true',
+  'exec-close-order timeout: code=4 killed=true truncated=false stdout=\"ready\\nbye\\n\"',
+  'exec-close-order abort: code=4 killed=true truncated=false stdout=\"ready\\nbye\\n\"',
+]
+both_not_contain = ["Failed to load extension", "panic:"]
+
+# normalize-rationale: each notification carries a generated request id; the alias keeps a one-to-one correspondence between the two streams'
+# ids and leaves every other field of every record compared.
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui-request"
+pattern = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+reason = "extension_ui_request ids are random UUIDs; the pattern leaves the fixed command id \"probe\" compared as written."

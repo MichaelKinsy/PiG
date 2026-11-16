@@ -119175,6 +119175,17 @@
       "shapeHash": "sha256:74b5f878c21d72187527ae512b0215ea229129e594ba192b8708bbebe0ceb5fa"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#execBeforeSignalKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "execBeforeSignalKey",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "execBeforeSignalKey"
+      },
+      "shapeHash": "sha256:8a442b389126a81afd752fb050cef8b18a86151677edfd403b39ca065e59a5d6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#execDefaultMaxBuffer",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "execDefaultMaxBuffer",
