@@ -5,6 +5,8 @@ use pig_sdk::*;
 
 pub fn new_extension() -> Extension {
     let mut extension = Extension::new("scenario-member-rust");
-    extension.command("member-ping", "The cell member's command", |_ctx, _path| CommandResult::Ok);
+    extension.command("member-ping", "The cell member's command", |_ctx, _path| {
+        CommandResult::Ok
+    });
     extension
 }
