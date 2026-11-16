@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/entered"
 )
 
 // ownedWriter is a terminal writer that knows how many goroutines are inside it. It can park one write there, and it keeps
@@ -95,11 +97,14 @@ func secondGoroutineWaitsForALock() bool {
 }
 
 // dumpShowsASecondGoroutineWaitingForALock judges a dump of all goroutines (runtime.Stack): does the entry of the goroutine inside
-// secondGoroutine show a wait for a lock of package sync.
+// secondGoroutine show a wait for a lock (a sync.Mutex or sync.RWMutex, or the lock of a file descriptor). entered.Classify reads the
+// state, the one place that tells the waits the Go runtime ends itself (the world lock of a collection a goroutine that allocates
+// waits on, assist credit, a stack scan, a trace) from the program's own.
 func dumpShowsASecondGoroutineWaitingForALock(dump string) bool {
 	for goroutine := range strings.SplitSeq(dump, "\n\n") {
-		header, _, _ := strings.Cut(goroutine, "\n")
-		if strings.Contains(goroutine, "tui.secondGoroutine(") && (strings.Contains(header, "[sync.") || strings.Contains(header, "[semacquire")) {
+		header, frames, _ := strings.Cut(goroutine, "\n")
+		_, state, found := strings.Cut(header, " [")
+		if found && strings.Contains(frames, "tui.secondGoroutine(") && entered.Classify([]byte(state), []byte(frames)) == entered.Lock {
 			return true
 		}
 	}
