@@ -145,8 +145,10 @@ type Session struct {
 	runState sessionRunState
 
 	resourceLoader atomic.Pointer[resourceLoaderRef]
-	// extensionBindings are the mode bindings the last BindExtensions call supplied; a reload applies them to the rebuilt runner (agent-session.ts hasBindings).
-	extensionBindings         atomic.Pointer[ExtensionBindings]
+	// extensionBindings are the mode bindings the last BindExtensions call supplied; a reload applies them to the rebuilt runner.
+	extensionBindings atomic.Pointer[ExtensionBindings]
+	// extensionsBound is set by BindExtensions, with any bindings: a reload restarts the extensions only for a host that bound them (agent-session.ts _extensionsBound).
+	extensionsBound           atomic.Bool
 	extensionBindingsMu       sync.Mutex
 	extensionErrorUnsubscribe func()
 	baseSystemPrompt          atomic.Pointer[string]

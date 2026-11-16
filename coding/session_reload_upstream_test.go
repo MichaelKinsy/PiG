@@ -72,7 +72,7 @@ func TestSessionReloadRebuildsTheRunnerFromTheResourceLoader(t *testing.T) {
 		t.Fatalf("the previous flag values must carry over, got %v", got)
 	}
 
-	// Without mode bindings Pi's reload rebuilds the runner but emits no session_start (hasBindings is false).
+	// A session whose host never bound the extensions: Pi's reload rebuilds the runner but emits no session_start (_extensionsBound is false).
 	unbound, err := NewSession(newTestServices(t), SessionOptions{NoSession: true, Runner: inproc.NewRunner(nil, root), ResourceLoader: loader})
 	if err != nil {
 		t.Fatal(err)
