@@ -18687,6 +18687,28 @@
       "tests": []
     },
     {
+      "id": "BF-549df80",
+      "title": "A `tool_result` handler that edits the event in place now has the edit seen by the next handler of the chain…",
+      "symptom": "A `tool_result` handler that edits the event in place now has the edit seen by the next handler of the chain and kept for the result, as in Pi, in every extension SDK.",
+      "rootCause": "Pi hands every tool_result handler of a chain the one currentEvent (runner.ts emitToolResult), so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, also when the handler throws afterwards. An edit made to an object the caller handed over (a block of the content, a member of the details) is also in the caller's result, which agent-session.ts _afterToolCall reads back; a member assigned another value reaches the caller only through a result a handler returned.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `tool_result` handler that edits the event in place now has the edit seen by the next handler of the chain and kept for the result, as in Pi, in every extension SDK. Assigning `event.content`, `event.details` or `event.isError` is what the next handler reads; editing a block of the content or a member of the details in place also changes the result the tool returns, and an edit made before the handler throws holds as well. A member assigned another value reaches the result only through a result a handler returns, as in Pi. Until now only a result a handler returned took effect, so every in-place edit was lost, in every SDK, in every release since v0.2.0. The Go and Rust SDKs cannot tell assigning a new list or object from editing the one they received, and treat a changed list or object member as an edit of the received one.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "549df8005d",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/in_place_tool_result_test.go::TestConformance_InPlaceToolResultEditsFollowPi"
+      ]
+    },
+    {
       "id": "BF-54a5bf6",
       "title": "The host answers a parsed frontmatter with `\u003c`, `\u003e`, `\u0026` and U+2028 as they are (as `JSON.stringify` writes…",
       "symptom": "The host answers a parsed frontmatter with `\u003c`, `\u003e`, `\u0026` and U+2028 as they are (as `JSON.stringify` writes them) instead of `\\u003c`-style escapes, and a packed cell's helper without a `Context` keeps a live connection when the first extension to start has stopped (Go, Rust and Python SDKs).",
@@ -32153,6 +32175,54 @@
       ]
     },
     {
+      "id": "BF-83928e2",
+      "title": "A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in…",
+      "symptom": "A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in the request, as it does in Pi, where the handler works on a copy of the list over the one set of message objects: an edit to a message stays and a change to the list does not.",
+      "rootCause": "message_end: Pi hands every message_end handler an event over the one message (runner.ts emitMessageEnd, currentMessage) and stores that object (agent-session.ts appendMessage), so a handler that edits event.message in place and returns nothing changes the message the next handlers, turn_end, agent_end, the saved entry and the next provider request hold, also when it throws afterwards. Only the Node SDK sent the edit back. The Go, Python, Rust and Lisp SDKs lost it: their reply carried only the handler's result. Each of them now sends back the message as the handler left it when its JSON text differs from the one it received, in the _pigMessageEndMessage member the Node runtime uses, with…",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in the request, as it does in Pi, where the handler works on a copy of the list over the one set of message objects: an edit to a message stays and a change to the list does not. Until now the failed handler's reply was dropped and the edit was lost, in every extension SDK. The loss was present in every release since v0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "83928e2246",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/in_place_context_test.go::TestConformance_InPlaceContextEditsFollowPi",
+        "test/extension-conformance/in_place_message_end_test.go::TestConformance_InPlaceMessageEndEditReachesTheTranscript",
+        "test/extension-conformance/in_place_message_end_test.go::TestConformance_InPlaceMessageEndEditsFollowPi"
+      ]
+    },
+    {
+      "id": "BF-83928e2-2",
+      "title": "A `message_end` handler that edits `event.message` in place and returns nothing now changes the message the…",
+      "symptom": "A `message_end` handler that edits `event.message` in place and returns nothing now changes the message the next handlers, `turn_end`, `agent_end`, the saved session entry and the next provider request hold, as it does in Pi, in the Go, Python, Rust and Lisp extension SDKs, and so does an edit made before the handler throws.",
+      "rootCause": "message_end: Pi hands every message_end handler an event over the one message (runner.ts emitMessageEnd, currentMessage) and stores that object (agent-session.ts appendMessage), so a handler that edits event.message in place and returns nothing changes the message the next handlers, turn_end, agent_end, the saved entry and the next provider request hold, also when it throws afterwards. Only the Node SDK sent the edit back. The Go, Python, Rust and Lisp SDKs lost it: their reply carried only the handler's result. Each of them now sends back the message as the handler left it when its JSON text differs from the one it received, in the _pigMessageEndMessage member the Node runtime uses, with…",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `message_end` handler that edits `event.message` in place and returns nothing now changes the message the next handlers, `turn_end`, `agent_end`, the saved session entry and the next provider request hold, as it does in Pi, in the Go, Python, Rust and Lisp extension SDKs, and so does an edit made before the handler throws. Until now only a message a handler returned took effect in those SDKs, so an edit in place was lost (the Node SDK already kept it in the unreleased line). Each SDK sends back the message as the handler left it when it differs from the one it received. The loss was present in every release since v0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "83928e2246",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/in_place_context_test.go::TestConformance_InPlaceContextEditsFollowPi",
+        "test/extension-conformance/in_place_message_end_test.go::TestConformance_InPlaceMessageEndEditReachesTheTranscript",
+        "test/extension-conformance/in_place_message_end_test.go::TestConformance_InPlaceMessageEndEditsFollowPi"
+      ]
+    },
+    {
       "id": "BF-8392c29",
       "title": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's…",
       "symptom": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's spawn is `setsid`): a server, or a child of it, no longer keeps PiG's controlling terminal and cannot take the terminal's foreground process group from PiG.",
@@ -45127,6 +45197,30 @@
       ]
     },
     {
+      "id": "BF-b30b8aa",
+      "title": "After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in…",
+      "symptom": "After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in Pi: in v0.7.0 a compiled-in extension kept using it and its event-bus subscriptions stayed.",
+      "rootCause": "the interactive reload invalidated the old runner but kept its runtime active, where Pi's runner.invalidate() invalidates the runtime too (runner.ts:729-735), and a host that keeps one runtime across reloads never made it active again, where Pi's loader creates a new runtime for each load",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in Pi: in v0.7.0 a compiled-in extension kept using it and its event-bus subscriptions stayed. The next `/reload`, or an embedder's retry of `Session.Reload`, now loads on a live runtime again: it built its extensions over the stale one, so their registrations threw the stale message.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b30b8aa06d",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/runtime_state_test.go::TestRuntimeReactivateEndsStalenessButNotTheEndedSubscriptions",
+        "coding/session_reload_runtime_reactivate_test.go::TestAReloadAfterAFailedOneRunsOnTheSharedRuntimeAgain",
+        "internal/codingagent/reload_failed_runtime_test.go::TestFailedInteractiveReloadInvalidatesTheOldRunnersRuntimeAndTheNextReloadWorks"
+      ]
+    },
+    {
       "id": "BF-b341a82",
       "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again",
       "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.",
@@ -49881,6 +49975,35 @@
         "chord/context/abort_link_test.go::TestOnAbortFromAListenerOfTheSameAbortRunsAtOnceOnce",
         "chord/context/abort_link_test.go::TestOnAbortRunsAParentsListenersBeforeItsChildrenWhateverTheOrderTheyWereAdded",
         "chord/context/abort_order_pi_oracle_test.go::TestAbortListenerOrderMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-cb54cf2",
+      "title": "After a reload that failed (an extension that no longer loads, or a settings file the resource loader…",
+      "symptom": "After a reload that failed (an extension that no longer loads, or a settings file the resource loader rejects), the session goes on with the extensions of the old load, as in Pi: the next prompt reaches their input, before_agent_start, tool_call and tool_result handlers, their tools run, and a handler that reads its stale ctx gets an extension error while the prompt goes on.",
+      "rootCause": "every emit method of the in-process runner asserted the runner active on entry (since v0.2.0), where Pi's emit methods never check staleness (runner.ts:1135-1560), so the first event of the next prompt after a failed reload returned the stale error to the session",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After a reload that failed (an extension that no longer loads, or a settings file the resource loader rejects), the session goes on with the extensions of the old load, as in Pi: the next prompt reaches their input, before_agent_start, tool_call and tool_result handlers, their tools run, and a handler that reads its stale ctx gets an extension error while the prompt goes on. PiG ended the first event after the failed reload with the stale error instead: `pig -p` exited 1 with \"This extension ctx is stale ...\", and an RPC prompt never ran. Present in every release since v0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "09139b98ee",
+          "date": "2026-11-16"
+        },
+        {
+          "hash": "cb54cf290b",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/headless_reload_prompt_test.go::TestPromptsAfterAFailedReloadRunOnTheOldInstance",
+        "coding/extension/host/inproc/stale_emit_delivery_test.go::TestEmitInputAndToolCallOnAnInvalidatedRunnerHonourTheHandlers",
+        "coding/extension/host/inproc/stale_emit_delivery_test.go::TestEveryEmitDeliversToAnInvalidatedRunner",
+        "coding/session_reload_old_runner_emit_test.go::TestAFailedReloadLeavesTheSessionDeliveringToTheOldInstance"
       ]
     },
     {
@@ -56899,6 +57022,32 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-e061002",
+      "title": "A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`)…",
+      "symptom": "A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`) now keeps the member order of the auth.json entry when anything prints or forwards it, as Pi does: an OAuth entry written `type, access, refresh, expires` is no longer returned as `type, refresh, access, expires`, and members the typed form does not model keep their place.",
+      "rootCause": "the read-only decode built its credential from a map and never recorded the entry's member order, which the writable decode records, so marshaling fell back to struct order",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`) now keeps the member order of the auth.json entry when anything prints or forwards it, as Pi does: an OAuth entry written `type, access, refresh, expires` is no longer returned as `type, refresh, access, expires`, and members the typed form does not model keep their place. Only the order changes, not which members are returned. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e061002932",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/auth_read_member_order_test.go::TestInMemoryReadKeepsDecodedMemberOrder",
+        "ai/auth_read_member_order_test.go::TestReadCredentialKeepsFileMemberOrder",
+        "ai/auth_read_member_order_test.go::TestReadCredentialMemberOrderMatchesPi",
+        "ai/auth_read_member_order_test.go::TestRefreshedCredentialKeepsFileMemberOrder",
+        "coding/auth_storage_test.go::TestReadStoredCredentialKeepsFileMemberOrder"
+      ]
     },
     {
       "id": "BF-e07e1a7",
@@ -65924,7 +66073,7 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 2,
-    "Follow-up to unreleased work": 20,
+    "Follow-up to unreleased work": 22,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 4,
     "test-only": 1
