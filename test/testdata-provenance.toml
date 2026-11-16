@@ -244,6 +244,10 @@ paths = ["tui/testdata/utf8-decoder-oracle.json"]
 owner = "pi"
 generator = "tui/testdata/utf8-decoder-oracle.mjs"
 
+# go.mod is the data-only marker that keeps the transcripts out of the root module zip.
+[[input]]
+paths = ["internal/viewcarrier/testdata/go.mod"]
+
 [[golden]]
 paths = ["internal/viewcarrier/testdata/transcripts/*.txt"]
 owner = "pig"
