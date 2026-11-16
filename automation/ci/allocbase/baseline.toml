@@ -2520,6 +2520,16 @@ allocs = 30
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeMessageEndEvent"
+allocs = 28
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeMessageEndEventEdit"
+allocs = 49
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeRuntimeMaterialization"
 allocs = 36566
 
@@ -2527,6 +2537,16 @@ allocs = 36566
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeToolCallEvent"
 allocs = 43
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeToolResultEvent"
+allocs = 86
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeToolResultEventEdit"
+allocs = 134
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
