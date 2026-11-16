@@ -293,12 +293,13 @@ func (p *WorkerProcess) ended(exit Exit, events ProcessEvents) {
 // Exited is closed when the process ended (every process it spawned is killed then); Exit is its result. What the process
 // wrote before its end was told by then, and nothing waited for a stream's end (Node's `exit`, not `close`).
 //
-// Its streams are read on after it. A process outside its tree that holds its output or its channel (one it started in a
-// session of its own) may write more, which is told as before the exit: output to OnOutput and the stderr tail, a control
-// message to Control, a frame to Link. For as long as such a process lives this side keeps the stream's descriptor and the
-// goroutine that reads it, three of each at most (stdout, stderr, the channel), as Node keeps the child's handles: until
-// the stream ends, until this side closes Link (the channel's), or until release, which the workers component calls for
-// every worker that exited when it closes.
+// Its streams are read on after it, and what its exit waited for is only what they held when it ended (workers_drain.go).
+// A process outside its tree that holds its output or its channel (one it started in a session of its own) may write more,
+// even without a pause, which is told as before the exit: output to OnOutput and the stderr tail, a control message to
+// Control, a frame to Link. For as long as such a process lives this side keeps the stream's descriptor and the goroutine
+// that reads it, three of each at most (stdout, stderr, the channel), as Node keeps the child's handles: until the stream
+// ends, until this side closes Link (the channel's), or until release, which the workers component calls for every worker
+// that exited when it closes.
 //
 // On Windows the exit is told when the streams ended, and nothing is kept after it: there is no read of them that does
 // not wait, and their end comes with the worker's job object, which nothing it starts leaves (workers_drain_windows.go).
