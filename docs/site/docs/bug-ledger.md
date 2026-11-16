@@ -25,7 +25,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-007c91d](#bf-007c91d) | Go, Python and Rust extensions: in a `before_agent_start` handler, the event's `systemPrompt` and the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-00933e5](#bf-00933e5) | `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load… | PiG's own defect | Windows | 0.5.2 |
 | [BF-00d9a1f](#bf-00d9a1f) | fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an… | PiG's own defect | All platforms | Unreleased |
-| [BF-00daef2](#bf-00daef2) | Selecting an OpenRouter routing variant (`openrouter/<model>:nitro` or `:floor`) at startup now uses the… | PiG's own defect | All platforms | Unreleased |
 | [BF-016a19a](#bf-016a19a) | A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-01a63b9](#bf-01a63b9) | The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248) | PiG's own defect | All platforms | Unreleased |
 | [BF-01d0835](#bf-01d0835) | fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is… | PiG's own defect | All platforms | Unreleased |
@@ -2381,20 +2380,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `00d9a1f01b` (2026-11-07)
 - **Tests:** `internal/codingagent/tools/grep_context_allocs_test.go::TestGrepAllocationsDoNotGrowWithContext`, `internal/codingagent/tools/read_streaming_fuzz_test.go::FuzzReadStreamingMatchesTheWholeFileAlgorithm`
-
-### BF-00daef2
-
-**Selecting an OpenRouter routing variant (`openrouter/<model>:nitro` or `:floor`) at startup now uses the…**
-
-- **Source:** PiG's own defect
-- **Symptom:** Selecting an OpenRouter routing variant (`openrouter/<model>:nitro` or `:floor`) at startup now uses the window, limits and prices of your personalized OpenRouter list, as the divergence record D199 says a variant does ("API, base URL, prices, limits ... are the base model's"); the variant used to be built from the bundled catalog, with its stale window and prices, or from the provider's default model when the bundled catalog lacks the base.
-- **Root cause:** ResolveRemoteCatalogModel matched the requested id only against the ids the overlay stores, on the assumption that a stored id is the only way a model reaches the overlay, but a routing variant is never stored; it is derived from its base
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `00daef2ceb` (2026-11-16)
-- **Tests:** `coding/cli/model_remote_catalog_variant_test.go::TestResolveModel_OpenRouterRoutingVariantKeepsItsSavedBaseRecordLimits`, `internal/codingagent/remote_catalog_variant_resolution_test.go::TestResolveRemoteCatalogModelResolvesAVariantFromItsRemoteBaseRecord`
-- **Release note:** Selecting an OpenRouter routing variant (`openrouter/<model>:nitro` or `:floor`) at startup now uses the window, limits and prices of your personalized OpenRouter list, as the divergence record D199 says a variant does ("API, base URL, prices, limits ... are the base model's"); the variant used to be built from the bundled catalog, with its stale window and prices, or from the provider's default model when the bundled catalog lacks the base. The routing variants are a PiG addition (D199), so this is a fault in that addition and not a difference from Pi. Released in: no tagged release contains it (v0.7.0 has the variants and not the remote-catalog startup resolution); it affects the 0.8.0 line and main.
 
 ### BF-016a19a
 
@@ -34032,7 +34017,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 19
+- Follow-up to unreleased work: 20
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 3
 - test-only: 1

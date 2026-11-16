@@ -161,29 +161,6 @@
       ]
     },
     {
-      "id": "BF-00daef2",
-      "title": "Selecting an OpenRouter routing variant (`openrouter/\u003cmodel\u003e:nitro` or `:floor`) at startup now uses the…",
-      "symptom": "Selecting an OpenRouter routing variant (`openrouter/\u003cmodel\u003e:nitro` or `:floor`) at startup now uses the window, limits and prices of your personalized OpenRouter list, as the divergence record D199 says a variant does (\"API, base URL, prices, limits ... are the base model's\"); the variant used to be built from the bundled catalog, with its stale window and prices, or from the provider's default model when the bundled catalog lacks the base.",
-      "rootCause": "ResolveRemoteCatalogModel matched the requested id only against the ids the overlay stores, on the assumption that a stored id is the only way a model reaches the overlay, but a routing variant is never stored; it is derived from its base",
-      "rootCauseSource": "release note",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Selecting an OpenRouter routing variant (`openrouter/\u003cmodel\u003e:nitro` or `:floor`) at startup now uses the window, limits and prices of your personalized OpenRouter list, as the divergence record D199 says a variant does (\"API, base URL, prices, limits ... are the base model's\"); the variant used to be built from the bundled catalog, with its stale window and prices, or from the provider's default model when the bundled catalog lacks the base. The routing variants are a PiG addition (D199), so this is a fault in that addition and not a difference from Pi. Released in: no tagged release contains it (v0.7.0 has the variants and not the remote-catalog startup resolution); it affects the 0.8.0 line and main.",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "00daef2ceb",
-          "date": "2026-11-16"
-        }
-      ],
-      "tests": [
-        "coding/cli/model_remote_catalog_variant_test.go::TestResolveModel_OpenRouterRoutingVariantKeepsItsSavedBaseRecordLimits",
-        "internal/codingagent/remote_catalog_variant_resolution_test.go::TestResolveRemoteCatalogModelResolvesAVariantFromItsRemoteBaseRecord"
-      ]
-    },
-    {
       "id": "BF-016a19a",
       "title": "A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the…",
       "symptom": "The derive's watchers used to receive the non-JSON frame without any report.",
@@ -65225,7 +65202,7 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 2,
-    "Follow-up to unreleased work": 19,
+    "Follow-up to unreleased work": 20,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 3,
     "test-only": 1

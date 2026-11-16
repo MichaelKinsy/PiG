@@ -47,3 +47,4 @@ c6ab561d18 Follow-up to unreleased work: the --listen server's isolated Node lau
 360170d195 Fix reverted before release: the tool declaration decode that keeps a lone surrogate was reverted by cad47e1edb in the same branch, because the decode alone did not make the request equal to Pi (the difference is recorded in ai/anthropic_wire_body_oracle_test.go)
 f98b572dcad57038e727d73145c89f271bb38cf5 see 4a0c240b0159238c7200ffb66f902727a74e81d7
 da08a31d17e4c10902bf4fa81cf1ddb3347214d1 see 4a0c240b0159238c7200ffb66f902727a74e81d7
+00daef2ceb Follow-up to unreleased work: the remote-catalog startup resolution (ResolveRemoteCatalogModel, 72f75e5e70, 2026-11-11, in no tag; v0.7.0 has the OpenRouter routing variants but not this resolution) matched only stored ids, so it mis-resolved a routing variant of a personalized base; found in review (PR 508) before any release
