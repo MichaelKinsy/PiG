@@ -133541,6 +133541,17 @@
       "shapeHash": "sha256:f15e09fbfe3e5253f2a6761cd93a4ce173abff79b90c3b8e3cad8fadafdb4a22"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CellSpec.nodeMembers",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "CellSpec.nodeMembers",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (resolved []nodeExtension, unresolved map[string]error, err error)"
+      },
+      "shapeHash": "sha256:e6a96dda0338e9e9bb240232b9e153748e09e880c50c9b9539de845cd352626e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CellStrategy",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "CellStrategy",

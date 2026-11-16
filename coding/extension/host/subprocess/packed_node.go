@@ -25,23 +25,43 @@ type nodeExtension struct {
 
 // NodeExtensions resolves each member's entrypoint the same way an isolated
 // Node extension does (resolveNodeEntrypoint), preserving the cell's plan
-// order.
+// order. It fails with the first member that does not resolve.
 func (c CellSpec) NodeExtensions() ([]nodeExtension, error) {
-	if c.Strategy != CellStrategyPackedNode {
-		return nil, fmt.Errorf("cell %s is %s, not packed-node", c.Key, c.Strategy)
+	members, unresolved, err := c.nodeMembers()
+	if err != nil {
+		return nil, err
 	}
-	out := make([]nodeExtension, 0, len(c.Extensions))
 	for _, cfg := range c.Extensions {
-		if cfg.Source == "" {
-			return nil, fmt.Errorf("extension %q missing source for packed-node cell", cfg.Name)
+		if memberErr, ok := unresolved[cfg.Name]; ok {
+			return nil, memberErr
 		}
-		entry, err := resolveNodeEntrypoint(cfg.Source)
-		if err != nil {
-			return nil, fmt.Errorf("extension %q: %w", cfg.Name, err)
-		}
-		out = append(out, nodeExtension{Name: cfg.Name, Entry: entry, Hash: valueOr(cfg.ContentHash, entry)})
 	}
-	return out, nil
+	return members, nil
+}
+
+// nodeMembers resolves each member's entrypoint like NodeExtensions and keeps the members whose entrypoint does not resolve apart, each with its own error.
+// Pi loads every extension on its own and reports the one that cannot be loaded, so one member's missing file is that member's failure and not the cell's.
+func (c CellSpec) nodeMembers() (resolved []nodeExtension, unresolved map[string]error, err error) {
+	if c.Strategy != CellStrategyPackedNode {
+		return nil, nil, fmt.Errorf("cell %s is %s, not packed-node", c.Key, c.Strategy)
+	}
+	resolved = make([]nodeExtension, 0, len(c.Extensions))
+	for _, cfg := range c.Extensions {
+		var memberErr error
+		if cfg.Source == "" {
+			memberErr = fmt.Errorf("extension %q missing source for packed-node cell", cfg.Name)
+		} else if entry, resolveErr := resolveNodeEntrypoint(cfg.Source); resolveErr != nil {
+			memberErr = fmt.Errorf("extension %q: %w", cfg.Name, resolveErr)
+		} else {
+			resolved = append(resolved, nodeExtension{Name: cfg.Name, Entry: entry, Hash: valueOr(cfg.ContentHash, entry)})
+			continue
+		}
+		if unresolved == nil {
+			unresolved = make(map[string]error)
+		}
+		unresolved[cfg.Name] = memberErr
+	}
+	return resolved, unresolved, nil
 }
 
 // nodePackedCell is the artifact for a Node cell: one copy of the embedded

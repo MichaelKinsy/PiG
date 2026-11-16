@@ -8129,6 +8129,28 @@
       ]
     },
     {
+      "id": "BF-27c81a5",
+      "title": "A Node extension whose entry point is gone no longer keeps the extensions that share its process from loading",
+      "symptom": "A Node extension whose entry point is gone no longer keeps the extensions that share its process from loading.",
+      "rootCause": "A shared Node cell resolved the entry points of all its members before it started, and one member whose file or package entry no longer resolved failed the whole cell: every member's load was answered with that one member's error, so the extensions beside it were not loaded either. Pi loads each extension on its own and reports one error per extension that cannot be loaded (loader.ts loadExtensions), and packed mode is observationally identical to isolated mode.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension whose entry point is gone no longer keeps the extensions that share its process from loading. The extension whose file or package entry does not resolve now fails alone, with its own error, and the others load, at startup and at a reload, as Pi reports one error per extension that cannot be loaded; before, every extension of the shared Node process was reported with the missing one's error and none was loaded. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "27c81a52d1",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/reload_member_unresolved_test.go::TestNodeCellLoadsItsOtherMembersWhenOneEntryPointIsGone"
+      ]
+    },
+    {
       "id": "BF-27ddc30",
       "title": "A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its…",
       "symptom": "A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its first lines and the \"(N more lines, M total\" hint as the content arrives, instead of a bare `write ...` header until the last delta.",
@@ -38425,6 +38447,29 @@
       ]
     },
     {
+      "id": "BF-994aab4",
+      "title": "In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and…",
+      "symptom": "In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and interactive modes.",
+      "rootCause": "RPC mode gave its extension host the set of extensions it started with as the resolver of every reload (cli_runtime_build.go passed no reload resolver, so setExtensionConfigLoader fell back to the startup configs), where print and interactive mode discover the extension files again as Pi's resource loader does (resource-loader.ts DefaultResourceLoader.reload). In RPC mode an extension command that removed a sibling's file and awaited ctx.reload() left the removed extension configured, and in a shared Node cell its missing file failed the load of the caller beside it; a file written before the reload was never loaded.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and interactive modes. RPC mode reloaded the extensions it had started with, so an extension command that removed a sibling extension's file and awaited `ctx.reload()` left the removed extension configured, and, when the two shared a Node process, the missing file failed the load of the calling extension as well: the caller was gone after the reload. An extension file added before the reload was never loaded. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "994aab45cb",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_membership_test.go::TestRPCReloadDropsAnExtensionRemovedFromDisk",
+        "coding/cli/rpc_reload_membership_test.go::TestRPCReloadLoadsAnExtensionAddedToDisk"
+      ]
+    },
+    {
       "id": "BF-99a06cf",
       "title": "Interactive startup paints the editor and footer first and adds the startup header once the terminal reports…",
       "symptom": "Interactive startup paints the editor and footer first and adds the startup header once the terminal reports its colors or 100 ms pass, as Pi does.",
@@ -50909,6 +50954,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-d13855f",
+      "title": "A Node extension whose file or package entry point is gone is now reported with the same error whether it…",
+      "symptom": "A Node extension whose file or package entry point is gone is now reported with the same error whether it runs in a process of its own or shares one with other Node extensions (`build \"name\": ...`, in the startup error and in the reload's issues); a member of a shared process was reported as `extension \"name\": stat ...` or `extension \"name\": package ... declares pi.extensions ... but none exist`.",
+      "rootCause": "A member of a shared Node cell whose file or package entry does not resolve was reported with the cell's own wording (`extension \"x\": stat ...`), while the same extension loaded on its own is reported with its build's (`build \"x\": ...`), at startup and in a reload's issues. The member now takes the error the builder gives the same source, so the text is the same in both realizations.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension whose file or package entry point is gone is now reported with the same error whether it runs in a process of its own or shares one with other Node extensions (`build \"name\": ...`, in the startup error and in the reload's issues); a member of a shared process was reported as `extension \"name\": stat ...` or `extension \"name\": package ... declares pi.extensions ... but none exist`. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d13855f45b",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/reload_member_unresolved_test.go::TestNodeCellLoadsItsOtherMembersWhenOneEntryPointIsGone"
+      ]
     },
     {
       "id": "BF-d1785c8",
