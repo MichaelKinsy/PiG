@@ -1208,7 +1208,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-866c7f9](#bf-866c7f9) | fix(rpc): two prompts of one batch answer in request order | PiG's own defect | All platforms | Unreleased |
 | [BF-869cef8](#bf-869cef8) | A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
-| [BF-873f87d](#bf-873f87d) | Chord: `chordctx.OnAbort` on a context derived by `WithAbortSignal` from a signal made with… | PiG's own defect | All platforms | Unreleased |
+| [BF-873f87d](#bf-873f87d) | Chord: a context linked from two abort sources now reports the reason of the source that aborted first when… | PiG's own defect | All platforms | Unreleased |
 | [BF-8780292](#bf-8780292) | The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start | PiG's own defect | All platforms | 0.7.0 |
 | [BF-87a6ac5](#bf-87a6ac5) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-87faba8](#bf-87faba8) | Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together… | PiG's own defect | All platforms | Unreleased |
@@ -1266,7 +1266,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8eb1202](#bf-8eb1202) | An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8ed6366](#bf-8ed6366) | A key received after a /reload had completed could be dropped by the input loop; the editor now receives it… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f241ca](#bf-8f241ca) | A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on… | PiG's own defect | All platforms | Unreleased |
-| [BF-8f44724](#bf-8f44724) | Chord: the cancel function `chordctx.WithCancel` returns now aborts the context, what is derived from it and… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f45099](#bf-8f45099) | Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f81668](#bf-8f81668) | The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f88d43](#bf-8f88d43) | On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is… | PiG's own defect | Windows | 0.7.0 |
@@ -18757,17 +18756,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-873f87d
 
-**Chord: `chordctx.OnAbort` on a context derived by `WithAbortSignal` from a signal made with…**
+**Chord: a context linked from two abort sources now reports the reason of the source that aborted first when…**
 
 - **Source:** PiG's own defect
-- **Symptom:** The order that picks it (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of `x`, which never reached the derived context, counted as that context's own and its cause won over the independent source's although that one aborted first (a listener added after the aborts heard `x`'s reason).
+- **Symptom:** The abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first.
 - **Root cause:** abortSources and AbortOrder each walked a context's parents on their own, and only abortSources stopped at a WithoutAbortSignal context, so the two functions disagreed about which aborts reach a context.
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `873f87dc75` (2026-11-16)
 - **Tests:** `chord/context/abort_cause_oracle_test.go::TestAbortCauseMatchesPi`, `chord/context/abort_detached_order_test.go::TestAbortOrderStopsAtADetachedAncestor`, `chord/context/abort_detached_order_test.go::TestLateListenerHearsTheFirstSourceThatAbortedNotADetachedAncestorsParent`
-- **Release note:** Chord: `chordctx.OnAbort` on a context derived by `WithAbortSignal` from a signal made with `WithCancel(WithoutAbortSignal(x))` and from an independent source now hears the reason of the source that aborted first. Before, the order that picks it (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of `x`, which never reached the derived context, counted as that context's own and its cause won over the independent source's although that one aborted first (a listener added after the aborts heard `x`'s reason). As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context; the chord host's linked abort signals rank their two sources by the same function. Released in: no release (the `WithoutAbortSignal` marker that the walk ignored came with 32168e142, which no tag contains; v0.7.0 does not have it).
+- **Release note:** Chord: a context linked from two abort sources now reports the reason of the source that aborted first when one of the sources is derived from a `chordctx.WithoutAbortSignal` context: the host's linked abort signals do, and so does `chordctx.OnAbort` on a context derived by `WithAbortSignal`. Before, the abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first. As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context. Released in: v0.7.0, and every release since (the walk came with 0b76ae5e5, which `git tag --contains` places in v0.7.0; a probe at the v0.7.0 tag ranks `WithCancel(WithoutAbortSignal(x))` before an independent source that aborted earlier).
 
 ### BF-8780292
 
@@ -19563,20 +19562,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8f241ca2fd` (2026-11-08)
 - **Tests:** `ai/connection_cause_oracle_test.go::TestConnectionErrorKeepsCauseThroughSDKsMatchesPi`, `ai/openai_sdk_transport_error_test.go::TestOpenAISDKTransportErrorConnectionReset`, `ai/transport_diagnostic_test.go::TestProviderTransportResetRecordsDiagnosticAndKeepsMessage`
 - **Release note:** A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on `openai-completions`, `openai-responses`, `google` and `anthropic-messages`, as Pi does, instead of `terminated (cause: ...)`.
-
-### BF-8f44724
-
-**Chord: the cancel function `chordctx.WithCancel` returns now aborts the context, what is derived from it and…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A repeated call (a `defer cancel()` after an explicit one, a timer and an owner) that arrived after the first call had cancelled the context and before it had taken the contexts derived from it and the listeners took them away and ran them on its own goroutine, outside the section that cancelled: a waiter's abort listener enqueues its continuation where it runs, so a loop section that resolved a promise and then cancelled its context had the abort delivered behind the settlement's reaction, and the waiter delivered the result instead of the abort.
-- **Root cause:** The cancel function took the links and the listener set on every call, on the assumption that a context is cancelled by one call, as in Pi's single thread, and nothing recorded which call owned the abort, so two calls that overlapped each took part of what only the first owns.
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `8f447242af` (2026-11-16)
-- **Tests:** `chord/context/abort_owner_link_test.go::TestRepeatedCancelLeavesTheListenersOfADerivedContextToTheCancelThatOwnsThem`, `chord/context/abort_owner_test.go::TestCancelFromAListenerReturnsAtOnce`, `chord/context/abort_owner_test.go::TestConcurrentCancelsOfOneContextRunEachListenerOnce`, `chord/context/abort_owner_test.go::TestRepeatedCancelKeepsTheFirstCause`, `chord/context/abort_owner_test.go::TestRepeatedCancelLeavesTheListenersToTheCancelThatOwnsThem`
-- **Release note:** Chord: the cancel function `chordctx.WithCancel` returns now aborts the context, what is derived from it and runs its abort listeners (`OnAbort`) only in the call that cancels it first. Before, a repeated call (a `defer cancel()` after an explicit one, a timer and an owner) that arrived after the first call had cancelled the context and before it had taken the contexts derived from it and the listeners took them away and ran them on its own goroutine, outside the section that cancelled: a waiter's abort listener enqueues its continuation where it runs, so a loop section that resolved a promise and then cancelled its context had the abort delivered behind the settlement's reaction, and the waiter delivered the result instead of the abort. A call after the first now records no cause and takes no listener, as Pi's `abort()` of an aborted signal does nothing; it returns once the first has aborted the context and what is derived from it, while the listeners are the first call's to run (they may still be running when it returns). Released in: no release (the fault came with the abort listeners' delivery inside the cancel, 6c69d7b4c, and the abort of derived contexts inside it, cb409e6c3, which no tag contains; v0.7.0 does not have them).
 
 ### BF-8f45099
 
@@ -34094,5 +34079,5 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 - Fix reverted before release: 2
 - Follow-up to unreleased work: 19
 - Repair of a merge between development branches: 9
-- Review follow-up to unreleased work: 3
+- Review follow-up to unreleased work: 4
 - test-only: 1
