@@ -2246,6 +2246,18 @@ func Extension() *sdk.Extension {
 				return nil, nil
 			}
 			eventProbeResults[name] = queued[1:]
+			// Pi ignores what a before_provider_headers handler returns and sends the headers object the handlers edited (runner.ts emitBeforeProviderHeaders), so the queued result becomes the headers by editing event.headers in place, as the Node fixture does.
+			if name == "before_provider_headers" {
+				headers, _ := data["headers"].(map[string]any)
+				replacement, _ := queued[0].(map[string]any)
+				for key := range headers {
+					delete(headers, key)
+				}
+				for key, value := range replacement {
+					headers[key] = value
+				}
+				return nil, nil
+			}
 			return queued[0], nil
 		})
 		eventProbeOn[name] = append(eventProbeOn[name], off)
@@ -2448,26 +2460,46 @@ func Extension() *sdk.Extension {
 		})
 		return nil
 	})
-	// event_mutate_probe subscribes to the event named by the argument (`<event> [fail]`) with a handler that edits the event's payload (before_provider_request) or
-	// headers (before_provider_headers) in place, returns nothing and, with fail, fails after the edit (TestConformance_InPlaceProviderHookEditsReachTheRequest).
+	// event_mutate_probe subscribes to the event named by the argument (`<event> [mode]`) with a handler that works on the event's payload (before_provider_request) or
+	// headers (before_provider_headers) as the mode says (TestConformance_InPlaceProviderHookEditsReachTheRequest, TestConformance_ProviderHookEditsAndResultsCombine):
+	// no mode edits it in place and returns nothing, fail edits it in place and fails after the edit, replace edits nothing and returns a replacement, both edits it in
+	// place under a key of its own and returns the replacement, delete (headers) sets the header the first edit wrote to null.
 	ext.Command("event_mutate_probe", "Subscribe to the event named by the argument with a handler that edits its payload or headers in place and returns nothing", func(ctx sdk.Context, args string) error {
-		name, fail, _ := strings.Cut(strings.TrimSpace(args), " ")
+		name, mode, _ := strings.Cut(strings.TrimSpace(args), " ")
+		mode = strings.TrimSpace(mode)
 		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
-			failing := strings.TrimSpace(fail) == "fail"
 			key := "inPlace"
-			if failing {
+			switch mode {
+			case "fail":
 				key = "inPlaceBeforeError"
+			case "both":
+				key = "inPlaceAlongside"
 			}
 			if name == "before_provider_headers" {
-				data["headers"].(map[string]any)["x-pig-"+key] = "in-place-edit"
+				headers := data["headers"].(map[string]any)
+				switch mode {
+				case "replace":
+				case "delete":
+					headers["x-pig-inPlace"] = nil
+				default:
+					headers["x-pig-"+key] = "in-place-edit"
+				}
+				if mode == "replace" || mode == "both" {
+					return map[string]any{"x-pig-replaced": "returned"}, nil
+				}
 			} else {
 				payload := data["payload"].(map[string]any)
-				payload[key] = "in-place-edit"
-				if zeta, ok := payload["zeta"].(map[string]any); ok {
-					zeta[key] = "in-place-edit"
+				if mode != "replace" {
+					payload[key] = "in-place-edit"
+					if zeta, ok := payload["zeta"].(map[string]any); ok {
+						zeta[key] = "in-place-edit"
+					}
+				}
+				if mode == "replace" || mode == "both" {
+					return map[string]any{"replaced": "returned"}, nil
 				}
 			}
-			if failing {
+			if mode == "fail" {
 				return nil, fmt.Errorf("failed after the edit")
 			}
 			return nil, nil

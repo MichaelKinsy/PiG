@@ -3,6 +3,7 @@ package inproc_test
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
@@ -126,6 +127,30 @@ func TestBeforeProviderHeadersSubprocessResultReplacesHeaders(t *testing.T) {
 	}
 	if got["x-remote"] == nil || *got["x-remote"] != "yes" || got["drop"] != nil || len(got) != 3 {
 		t.Fatalf("headers = %v", got)
+	}
+}
+
+// A native before_provider_headers handler's return value is ignored, as in Pi (runner.ts:1399-1425: "the return value is ignored"): the headers it edited in
+// place stay, a map it returns changes none, and a handler that returns a map and fails changes none either.
+func TestBeforeProviderHeadersNativeResultIsIgnored(t *testing.T) {
+	ext := newFakeExtension("/native")
+	ext.Handlers["before_provider_headers"] = []extension.HandlerFn{
+		func(args ...any) (any, error) {
+			args[0].(extension.BeforeProviderHeadersEvent).Headers["edited"] = new("yes")
+			return extension.ProviderHeaders{"returned": new("map")}, nil
+		},
+		func(...any) (any, error) {
+			return extension.ProviderHeaders{"returned-by-failure": new("map")}, errors.New("handler failed")
+		},
+		func(...any) (any, error) { return map[string]*string{"returned-plain": new("map")}, nil },
+	}
+	runner := inproc.NewRunner([]extension.Extension{ext}, t.TempDir())
+	got, err := runner.EmitBeforeProviderHeaders(context.Background(), extension.ProviderHeaders{"a": new("1")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || got["a"] == nil || *got["a"] != "1" || got["edited"] == nil || *got["edited"] != "yes" {
+		t.Fatalf("headers = %v, want a and the edit only", got)
 	}
 }
 

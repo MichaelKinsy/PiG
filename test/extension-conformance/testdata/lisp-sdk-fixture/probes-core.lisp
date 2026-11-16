@@ -893,22 +893,27 @@
                                        ((equal name "tool_result") (pig:obj "content" (pig:jget data "content") "details" (pig:jget data "details")))
                                        ((equal name "message_end") (pig:obj "message" (pig:jget data "message")))
                                        (t (error "event_echo_probe has no echo for ~A" name))))))))
-      (pig:command ext "event_mutate_probe" "Subscribe to the event named by the argument `<event> [fail]` with a handler that edits its payload or headers in place and returns nothing"
+      (pig:command ext "event_mutate_probe" "Subscribe to the event named by the argument `<event> [mode]` with a handler that works on the event's payload (before_provider_request) or headers (before_provider_headers) as the mode says: no mode edits it in place and returns nothing, fail edits it and fails, replace edits nothing and returns a replacement, both edits it in place under a key of its own and returns the replacement, delete (headers) sets the header the first edit wrote to null"
                    (lambda (ctx args) (declare (ignore ctx))
                      (let* ((trimmed (string-trim '(#\Space #\Newline #\Tab) args))
                             (space (position #\Space trimmed))
                             (name (subseq trimmed 0 space))
-                            (fail (and space (equal (string-trim '(#\Space #\Newline #\Tab) (subseq trimmed space)) "fail"))))
+                            (mode (if space (string-trim '(#\Space #\Newline #\Tab) (subseq trimmed space)) ""))
+                            (headers-event (equal name "before_provider_headers")))
                        (pig:on ext name
                                (lambda (hctx data) (declare (ignore hctx))
-                                 (let ((key (if fail "inPlaceBeforeError" "inPlace")))
-                                   (if (equal name "before_provider_headers")
-                                       (setf (gethash (concatenate 'string "x-pig-" key) (pig:jget data "headers")) "in-place-edit")
-                                       (let* ((payload (pig:jget data "payload")) (zeta (pig:jget payload "zeta")))
-                                         (setf (gethash key payload) "in-place-edit")
-                                         (when (hash-table-p zeta) (setf (gethash key zeta) "in-place-edit")))))
-                                 (when fail (error "failed after the edit"))
-                                 nil)))))
+                                 (let ((key (cond ((equal mode "fail") "inPlaceBeforeError") ((equal mode "both") "inPlaceAlongside") (t "inPlace"))))
+                                   (cond (headers-event
+                                          (cond ((equal mode "delete") (setf (gethash "x-pig-inPlace" (pig:jget data "headers")) :null))
+                                                ((not (equal mode "replace"))
+                                                 (setf (gethash (concatenate 'string "x-pig-" key) (pig:jget data "headers")) "in-place-edit"))))
+                                         ((not (equal mode "replace"))
+                                          (let* ((payload (pig:jget data "payload")) (zeta (pig:jget payload "zeta")))
+                                            (setf (gethash key payload) "in-place-edit")
+                                            (when (hash-table-p zeta) (setf (gethash key zeta) "in-place-edit"))))))
+                                 (when (equal mode "fail") (error "failed after the edit"))
+                                 (when (member mode '("replace" "both") :test #'equal)
+                                   (if headers-event (pig:obj "x-pig-replaced" "returned") (pig:obj "replaced" "returned"))))))))
       ;; event_edit_probe: `<event> <edit> [fail]`, a handler that makes one edit of the event's content, details, isError, message or messages (tool_result, message_end, context), returns nothing and, with fail, signals an error after the edit. Every edit writes the value `other-event-edit`, which no other test uses.
       (pig:command ext "event_edit_probe" "Subscribe to the event named by the argument with a handler that edits the event in place and returns nothing"
                    (lambda (ctx args) (declare (ignore ctx))
