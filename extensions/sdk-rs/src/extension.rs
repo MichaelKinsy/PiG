@@ -3556,13 +3556,14 @@ impl Extension {
                 )
                 .then(|| data.get("messages").cloned());
                 // Pi hands every before_provider_request handler the one payload and sends what the runner returns: a handler that edits it in place and returns nothing changes the request (runner.ts emitBeforeProviderRequest returns currentPayload). The host cannot share the value, so the reply carries the payload the handler left when it returned no result and the JSON text differs (member order is an edit, as for a tool_call input), even when the handler failed.
-                let provider_payload_before = (req.event.as_deref() == Some("before_provider_request"))
-                    .then(|| {
-                        data.get("payload")
-                            .filter(|payload| payload.is_object() || payload.is_array())
-                            .and_then(|payload| serde_json::to_string(payload).ok())
-                    })
-                    .flatten();
+                let provider_payload_before = (req.event.as_deref()
+                    == Some("before_provider_request"))
+                .then(|| {
+                    data.get("payload")
+                        .filter(|payload| payload.is_object() || payload.is_array())
+                        .and_then(|payload| serde_json::to_string(payload).ok())
+                })
+                .flatten();
                 // The emission's shared options: a before_agent_start handler edits them through its event, and the reply carries them.
                 let mut prompt_state: Option<Arc<crate::context::SystemPromptState>> = None;
                 let result = if let Some(handler) = self.events.handler(handler_id) {
@@ -3645,7 +3646,8 @@ impl Extension {
                 if let Some(before) = provider_payload_before {
                     if matches!(value, None | Some(Value::Null)) {
                         if let Some(after) = data.get("payload") {
-                            if serde_json::to_string(after).ok().as_deref() != Some(before.as_str()) {
+                            if serde_json::to_string(after).ok().as_deref() != Some(before.as_str())
+                            {
                                 value = Some(after.clone());
                             }
                         }
