@@ -193,14 +193,25 @@ PAUSE = re.compile(r"^=== PAUSE (\S+)$")
 RESULT = re.compile(r"^--- (PASS|FAIL|SKIP): (\S+) \(([0-9.]+)s\)")
 
 
-def parse_log(path):
-    """Return ({test: (kind, seconds)}, [(serial_sum, parallel_sum, wall)]) for the log's passing shards."""
+def package_matches(import_path, package):
+    """Whether the import path `go test` prints in an ok line names the package as the shard mark does (./dir or the import path)."""
+    return import_path == package or import_path.endswith("/" + package.removeprefix("./"))
+
+
+def parse_log(path, package):
+    """Return ({test: (kind, seconds)}, [(serial_sum, parallel_sum, wall)]) for the log's passing shards of package.
+
+    A shard of another package contributes no test duration and no wall time, and a shard's wall time is taken only from its own package's ok line.
+    """
     tests, shards = {}, []
     paused, serial, parallel, mark = set(), 0.0, 0.0, False
     with open(path, encoding="utf-8", errors="replace") as handle:
         for line in handle:
-            if SHARD_MARK.search(line):
-                paused, serial, parallel, mark = set(), 0.0, 0.0, True
+            marked = SHARD_MARK.search(line)
+            if marked:
+                paused, serial, parallel, mark = set(), 0.0, 0.0, marked.group(1) == package
+                continue
+            if not mark:
                 continue
             match = PAUSE.match(line)
             if match:
@@ -218,7 +229,7 @@ def parse_log(path):
                     parallel += seconds
                 continue
             match = PACKAGE_OK.match(line)
-            if match and mark:
+            if match and package_matches(match.group(1), package):
                 shards.append((serial, parallel, float(match.group(2))))
                 mark = False
     return tests, shards
@@ -250,7 +261,7 @@ def fit(points):
 def command_record(args):
     runs, points = [], []
     for log in args.logs:
-        tests, shards = parse_log(log)
+        tests, shards = parse_log(log, args.package)
         runs.append(tests)
         points += shards
     if not points:

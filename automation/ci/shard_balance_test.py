@@ -135,7 +135,7 @@ class CheckTest(unittest.TestCase):
 
 
 class RecordTest(unittest.TestCase):
-    LOG = """[test-grouped] >>> sharded pkg shard {shard} of 2
+    LOG = """[test-grouped] >>> sharded ./pkg/conf shard {shard} of 2
 === RUN   TestSerial
 --- PASS: TestSerial ({serial}s)
 === RUN   TestParallel
@@ -145,7 +145,7 @@ class RecordTest(unittest.TestCase):
 --- PASS: TestParallel/sub (1.00s)
 --- PASS: TestParallel ({parallel}s)
 PASS
-ok  	pkg	{wall}s
+ok  	example.com/m/pkg/conf	{wall}s
 """
 
     def test_record_takes_the_median_and_fits_the_shard_times(self):
@@ -167,6 +167,29 @@ ok  	pkg	{wall}s
             self.assertIn("fixed 50.0", lines)
             self.assertIn("serial-factor 1.100", lines)
             self.assertIn("parallel-factor 0.200", lines)
+
+
+def shard_log(package, import_path, name, seconds, wall):
+    return (
+        f"[test-grouped] >>> sharded {package} shard 1 of 2\n=== RUN   {name}\n--- PASS: {name} ({seconds}s)\nPASS\nok  \t{import_path}\t{wall}s\n"
+    )
+
+
+class ParseLogTest(unittest.TestCase):
+    def parse(self, text, package=PACKAGE):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "run.log"
+            path.write_text(text)
+            return sb.parse_log(str(path), package)
+
+    def test_a_log_of_two_packages_gives_only_the_named_packages_measurements(self):
+        text = shard_log("./pkg/conf", "example.com/m/pkg/conf", "TestConf", "10.00", "60.0") + shard_log("./pkg/other", "example.com/m/pkg/other", "TestOther", "99.00", "300.0")
+        self.assertEqual(self.parse(text), ({"TestConf": ("serial", 10.0)}, [(10.0, 0.0, 60.0)]))
+        self.assertEqual(self.parse(text, "./pkg/other"), ({"TestOther": ("serial", 99.0)}, [(99.0, 0.0, 300.0)]))
+
+    def test_a_shard_takes_its_wall_time_from_its_own_packages_ok_line(self):
+        text = shard_log("./pkg/conf", "example.com/m/pkg/other", "TestConf", "10.00", "300.0")
+        self.assertEqual(self.parse(text)[1], [])
 
 
 class RepositoryTest(unittest.TestCase):
