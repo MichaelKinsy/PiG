@@ -165,12 +165,15 @@ func TestAStopRemovesTheSocketFileOfItsOwnGenerationOnly(t *testing.T) {
 			h.mu.Unlock()
 			old.commands.begin()
 		}
-		// A reload that removes the extension: its generation's stop runs with no successor.
+		// A reload that removes the extension: its generation's stop runs with no successor, once its command returns. This generation keeps no provider (a removed generation that keeps one lingers instead of stopping), so the stop's work is the removal of its own file.
+		old.providerNames = nil
 		leftSocketFile(t, old.sockPath)
 		h.commitStaged(nil, []*managedExt{old}, "removed")
+		if got := socketFiles(t, h); !slices.Equal(got, []string{filepath.Base(old.sockPath)}) {
+			t.Fatalf("socket directory holds %q while the removed generation's command runs, want its own %q", got, filepath.Base(old.sockPath))
+		}
 		old.commands.end()
 		h.retirementTasks.Wait()
-		requireStopped(t, stopped)
 		if got := socketFiles(t, h); len(got) != 0 {
 			t.Fatalf("socket directory holds %q after the extension was removed", got)
 		}
