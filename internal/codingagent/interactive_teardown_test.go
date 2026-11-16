@@ -21,6 +21,8 @@ type stopSpyRenderer struct {
 
 func (s *stopSpyRenderer) Stop() { s.stops++ }
 
+func (s *stopSpyRenderer) StopWithOptions(tui.StopOptions) { s.stops++ }
+
 // TestStopInteractiveTuiIsIdempotentAndTearsDown proves the fix for the
 // cancellation/error-path teardown gap: stopInteractiveTui stops the renderer and
 // disposes the transcript view, and repeated calls (the Run() defer plus an
@@ -105,7 +107,7 @@ func TestStopInteractiveTuiFullscreenExitOutput(t *testing.T) {
 			if mode.altScreen != nil || mode.transcriptScrollView != nil {
 				t.Fatal("transcript exit kept the fullscreen renderer")
 			}
-			if !strings.HasSuffix(strings.TrimSuffix(got, "\x1b[?25h"), "\r\n") {
+			if !strings.HasSuffix(strings.TrimSuffix(got, "\x1b[?25h\x1b[?2004l"), "\r\n") {
 				t.Fatalf("main-screen stop did not end with the cursor-park newline; output=%q", got)
 			}
 		})

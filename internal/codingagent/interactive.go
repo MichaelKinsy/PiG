@@ -267,8 +267,10 @@ type InteractiveMode struct {
 	shutdownRequested atomic.Bool
 	// entriesRenderedByBoundaryCompaction holds the ids of entries after a boundary compaction that its rebuild of the transcript already drew.
 	entriesRenderedByBoundaryCompaction map[string]struct{}
-	requestExit                         atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
-	fatalRuntime                        atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
+	// exitingTui marks the renderer stops of the process exit (stopInteractiveTui), which write terminal.stop()'s mode resets; a renderer swap does not.
+	exitingTui   bool
+	requestExit  atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
+	fatalRuntime atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
 
 	// suspended is true while the session is parked by SIGTSTP. SIGINT is
 	// ignored then, mirroring upstream's ignoreSigint listener.
@@ -277,6 +279,12 @@ type InteractiveMode struct {
 	// Shutdown paths share an emission guard and join in-flight cleanup before owner-loop terminal teardown.
 	signalShutdownDone atomic.Bool
 	shutdownMu         sync.Mutex
+	// quitEntered closes when the owner loop enters finishInteractiveShutdown, before it takes shutdownMu: from then on it serves no posted task while it waits for that lock, which a signal's dispose may hold while it waits for the loop (resetExtensionUIForReplacement).
+	quitEntered          chan struct{}
+	quitEnteredOnce      sync.Once
+	quitEnteredCloseOnce sync.Once
+	// signalDisposing is set while a signal's shutdown emits and disposes; the hook's wait for the owner loop is then bounded.
+	signalDisposing atomic.Bool
 	// reloadIssues collects extension/tool reload failures from the most recent
 	// /reload so ReloadDiagnostics can surface them in-session as "Extension
 	// issues" instead of dropping them to a TUI-clobbered stderr. Reset at the
@@ -1787,8 +1795,6 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.rawDrain = drain
 	m.openFrontend()
 	m.tuiInst.HideCursor()
-	cursorTUI := m.tuiInst
-	m.onStop(func() error { cursorTUI.ShowCursor(); return nil })
 	// Centralized, idempotent renderer teardown runs before the deferred cursor and cooked-mode restoration on normal quit or graceful signal shutdown. A dead-terminal emergency exits without unwinding these terminal writes.
 	m.onStop(func() error { m.stopInteractiveTui(); return nil })
 

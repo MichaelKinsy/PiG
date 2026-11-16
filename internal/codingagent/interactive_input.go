@@ -375,7 +375,19 @@ func (m *InteractiveMode) dispatchTerminalRead(ctx context.Context, input inputC
 	}
 }
 
+// quitEnteredChan is the channel markQuitEntered closes; it is made on first use so a mode built without a constructor has it.
+func (m *InteractiveMode) quitEnteredChan() chan struct{} {
+	m.quitEnteredOnce.Do(func() { m.quitEntered = make(chan struct{}) })
+	return m.quitEntered
+}
+
+// markQuitEntered records that the owner loop left its input loop for the exit and will wait for shutdownMu.
+func (m *InteractiveMode) markQuitEntered() {
+	m.quitEnteredCloseOnce.Do(func() { close(m.quitEnteredChan()) })
+}
+
 func (m *InteractiveMode) finishInteractiveShutdown() error {
+	m.markQuitEntered()
 	m.shutdownMu.Lock()
 	defer m.shutdownMu.Unlock()
 	fromSignal := m.signalShutdownDone.Swap(true)

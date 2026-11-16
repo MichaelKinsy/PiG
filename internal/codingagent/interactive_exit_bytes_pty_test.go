@@ -35,6 +35,11 @@ const (
 	exitBytesChildEnv    = "PIG_TEST_EXIT_BYTES_CHILD"
 	exitBytesProgressEnv = "PIG_TEST_EXIT_BYTES_PROGRESS"
 	exitBytesRunEnv      = "PIG_TEST_EXIT_BYTES_RUN"
+	exitBytesTuiModeEnv  = "PIG_TEST_EXIT_BYTES_TUIMODE"
+	exitBytesRuntimeEnv  = "PIG_TEST_EXIT_BYTES_RUNTIME"
+	// exitBytesStormEnv makes the child write to the terminal from goroutines of its own, from the moment the mode is ready until the process ends: an
+	// extension's title (the path of ExtUIContext.SetTitle), an OSC 52 clipboard copy and the progress indicator's writes.
+	exitBytesStormEnv = "PIG_TEST_EXIT_BYTES_STORM"
 )
 
 // exitTitleOrProgress matches a terminal title (OSC 0) or a progress indicator (OSC 9;4) sequence.
@@ -145,7 +150,7 @@ type exitBytesChild struct {
 	waitErr  error
 }
 
-func startExitBytesChild(t *testing.T, progress, run bool) *exitBytesChild {
+func startExitBytesChild(t *testing.T, progress, run bool, extraEnv ...string) *exitBytesChild {
 	t.Helper()
 	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR|syscall.O_NOCTTY|syscall.O_CLOEXEC, 0)
 	if err != nil {
@@ -177,6 +182,7 @@ func startExitBytesChild(t *testing.T, progress, run bool) *exitBytesChild {
 	child.cmd = exec.CommandContext(ctx, executable, "-test.run=^TestExitBytesChild$", "-test.count=1")
 	child.cmd.Env = append(os.Environ(), exitBytesChildEnv+"="+child.dir, exitBytesProgressEnv+"="+strconv.FormatBool(progress),
 		exitBytesRunEnv+"="+strconv.FormatBool(run), "TERM=xterm-256color", "PIG_HOME="+t.TempDir())
+	child.cmd.Env = append(child.cmd.Env, extraEnv...)
 	child.cmd.Stdin, child.cmd.Stdout, child.cmd.Stderr = slave, slave, slave
 	child.cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
 	if err := child.cmd.Start(); err != nil {
@@ -297,8 +303,17 @@ func TestExitBytesChild(t *testing.T) {
 	terminal := tui.NewProcessTerminalWithOutput(os.Stdin, os.Stdout, io.MultiWriter(os.Stdout, &written))
 	var mode *icodingagent.InteractiveMode
 	readyAt := -1
-	mode = icodingagent.NewInteractiveMode(nil, icodingagent.InteractiveModeOptions{
-		CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, NoThemes: true,
+	// With a runtime host the mode's quit disposes through it, as the process's does: session_shutdown, then the beforeSessionInvalidate hook
+	// that writes the session title (agent-session-runtime.ts dispose), at Close when no dispose ran it.
+	var host *exitHookRuntime
+	var runtimeHost icodingagent.InteractiveRuntime
+	if os.Getenv(exitBytesRuntimeEnv) == "true" {
+		host = &exitHookRuntime{}
+		runtimeHost = host
+		defer host.close()
+	}
+	mode = icodingagent.NewInteractiveMode(runtimeHost, icodingagent.InteractiveModeOptions{
+		CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, NoThemes: true, TuiMode: os.Getenv(exitBytesTuiModeEnv),
 		SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), Terminal: terminal,
 		// The mark is made on the owner loop's goroutine, right before the loop reads input.
 		StartupMark: func(label string) {
@@ -309,6 +324,9 @@ func TestExitBytesChild(t *testing.T) {
 				mode.HandleAgentEventsOnOwnerLoop(agent.TurnStartEvent{}, agent.AgentEndEvent{})
 			}
 			readyAt = written.len()
+			if os.Getenv(exitBytesStormEnv) == "true" {
+				startExitBytesStorm(mode, terminal)
+			}
 			if err := os.WriteFile(filepath.Join(dir, "ready"), nil, 0o600); err != nil {
 				report.Failure = err.Error()
 			}
@@ -339,3 +357,53 @@ func TestExitBytesChild(t *testing.T) {
 		t.Fatal(report.Failure)
 	}
 }
+
+// exitHookRuntime is a runtime host with coding.Runtime's quit semantics for the hook: the quit's dispose runs it once, after session_shutdown, and
+// Close runs it only when no dispose did.
+type exitHookRuntime struct {
+	icodingagent.InteractiveRuntime
+	mu   sync.Mutex
+	hook func()
+	ran  bool
+}
+
+func (h *exitHookRuntime) SetBeforeSessionReplacement(func(context.Context) error) {}
+func (h *exitHookRuntime) SetBeforeSessionInvalidate(hook func())                  { h.hook = hook }
+func (h *exitHookRuntime) SetRebindSession(func(context.Context, icodingagent.InteractiveSessionHandle) error) {
+}
+func (h *exitHookRuntime) SetBeforeQuitDispose(func()) {}
+func (h *exitHookRuntime) EmitQuitShutdown()           { h.dispose() }
+func (h *exitHookRuntime) EmitQuitShutdownAfterStop()  { h.dispose() }
+
+func (h *exitHookRuntime) dispose() {
+	h.mu.Lock()
+	run := h.hook != nil && !h.ran
+	h.ran = true
+	h.mu.Unlock()
+	if run {
+		h.hook()
+	}
+}
+
+// close is Runtime.Close's hook step: it runs the hook when the quit's dispose did not.
+func (h *exitHookRuntime) close() { h.dispose() }
+
+// startExitBytesStorm starts the writers that Pi's single event loop would run between its own events and never inside a synchronous stop(): an
+// extension's setTitle, a clipboard OSC 52 copy and the progress indicator. Each writes at its own pace until the process ends.
+func startExitBytesStorm(mode *icodingagent.InteractiveMode, terminal *tui.ProcessTerminal) {
+	for _, write := range []func(){
+		func() { mode.SetExtensionTitleForTest(exitStormMarker) },
+		func() { _ = icodingagent.CopyToClipboard(exitStormMarker) },
+		func() { terminal.SetProgress(true) },
+	} {
+		go func() {
+			for {
+				write()
+				time.Sleep(200 * time.Microsecond)
+			}
+		}()
+	}
+}
+
+// exitStormMarker is the text of the storm's title and clipboard writes.
+const exitStormMarker = "STORM"
