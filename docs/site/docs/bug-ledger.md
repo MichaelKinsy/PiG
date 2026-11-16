@@ -788,6 +788,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-79f9a9e](#bf-79f9a9e) | fix(agent): convert a live partial with one clone and keep events at an unchanged publication (TU-T7 rest) | PiG's own defect | All platforms | Unreleased |
 | [BF-7a4a8e8](#bf-7a4a8e8) | fix duplicate jsstring import in tui/assistant_message_block.go | PiG's own defect | All platforms | Unreleased |
 | [BF-7a5e7d1](#bf-7a5e7d1) | fix(chord/nextnode/plugins): the bridged proxies' Go get takes the context first, as the merged host does | PiG's own defect | All platforms | Unreleased |
+| [BF-7a8d14f](#bf-7a8d14f) | A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled… | PiG's own defect | All platforms | Unreleased |
 | [BF-7b0f5d7](#bf-7b0f5d7) | A native extension provider's `filterAllModels` receives the models its `getAllModels` (or `getModels`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7b59fe2](#bf-7b59fe2) | `pig piglet build --format binary` from a Pig source directory that is not a Git checkout (for example… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7b92429](#bf-7b92429) | `find` and `grep` trim like JavaScript: `FindTool` trimmed each fd output line with `strings.TrimSpace` where… | PiG's own defect | All platforms | 0.5.0 |
@@ -12303,6 +12304,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `7a5e7d1d8b` (2026-11-01)
 - **Tests:** None recorded.
+
+### BF-7a8d14f
+
+**A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before its result settled it now fails with the cancellation, as it does in Pi, not with the result.
+- **Root cause:** Waiters.Settle (durable/harness/util.go) gave a wait the settled value even when the wait's context had already been cancelled. Pi's Waiters.add runs the abort listener at the abort itself (packages/durable/src/harness/util.ts: 22-28), so a wait whose signal was aborted is gone from the set when a later resolve looks (:38-42): it was rejected, and resolve never reaches it. Go has no listener inside the cancel: context.AfterFunc runs the callback on its own goroutine, so a Settle that came between the cancel and that goroutine resolved a wait that Pi had rejected.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7a8d14f423` (2026-11-16)
+- **Tests:** `durable/harness/harness_ownership_tools_test.go::TestOwnedConversationsFromTools`, `durable/harness/waiter_cancel_test.go::TestAWaitSettledAfterItsContextWasCancelledFailsWithTheCancellation`
+- **Release note:** A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before its result settled it now fails with the cancellation, as it does in Pi, not with the result. Pi rejects a wait at the abort itself (`Waiters.add` runs the abort listener there), so a later resolve never reaches it; PiG's cancellation reaches the wait on its own goroutine (`context.AfterFunc`), and a result that settled the wait in between was returned instead. A tool that waits for a subagent's submission, aborted with its parent's conversation, could get the child's `unanswered: aborted` record as an ordinary result, not the abort error; the harness's own test for it hung once in 2041 passes on a loaded runner. The durable library's embedders can see it (stock `pig` does not link `durable/harness`); `git tag --contains` names v0.7.0 as the first tag with the code.
 
 ### BF-7b0f5d7
 
