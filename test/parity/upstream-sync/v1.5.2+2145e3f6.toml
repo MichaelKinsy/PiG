@@ -1,0 +1,63 @@
+from = "1.5.2+f6600b58"
+to = "1.5.2+2145e3f6"
+
+# The range f6600b58f347..2145e3f6099c (8 files; four commits: 2c2a77f9f3ab, 3cdddfa70bce, 359de834831 and 2145e3f6099c). The product commit is 2c2a77f9f3ab (#12148):
+# Mistral tools are sent strict only when the model's compat.supportsStrictMode is set (absent is false), where buildChatPayload passed true; Pi's 2145e3f6099c regenerates the
+# models configuration reference for the new compat member. 3cdddfa70bce and the merge 359de834831 change Pi's private design documents (apps/p3) only. Pi's own sources were read
+# from the public upstream (https://github.com/earendil-works/pi, `git fetch` of main into a scratch clone): the origin of ~/pi-main on the build host was a bundle that no longer exists.
+
+[[files]]
+path = "packages/ai/src/api/mistral-conversations.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolsAreNonStrictUnlessTheModelEnablesStrictMode", "test:ai/mistral_test.go#TestMistralToolsWithoutStrictMode", "test:ai/mistral_strict_mode_oracle_test.go#TestMistralStrictToolsRequestBodyMatchesPi"]
+rationale = "2c2a77f9f3ab (#12148): buildChatPayload passes model.compat?.supportsStrictMode ?? false to toFunctionTools, which hands it to resolveJsonSchemaStrictSampling where it passed true; a tool with json_schema constrained sampling goes out with strict false and its own schema unless the flag is set, and a 'require' tool fails with 'Tool \"<name>\" requires JSON-schema constrained sampling, but strict tools are unsupported.' before any request. mistralProvider.Stream (ai/mistral.go) reads the shared ModelCompat.SupportsStrictMode and passes it to convertTools; the error is returned as the resolver wrote it (the 'mistral: convert tools:' prefix PiG added is gone, as Pi reports error.message). A tool without constrained sampling is unchanged (strict false before and after). TestMistralStrictToolsRequestBodyMatchesPi compares the request bytes and the error with the oracle (pinned Pi plus the 2c2a77f9f3ab backport entries)."
+
+[[files]]
+path = "packages/ai/src/providers/compat-schema.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "2c2a77f9f3ab adds supportsStrictMode (default false, 'Whether the model supports strict (schema-constrained) function tools.') to MistralConversationsCompatProperties after supportsMidConvoSystemMessages; configschema/compat_b.go MistralConversationsCompatSchema has it, and the provider-level schema (models.schema.json) already merged the property from the other APIs through its override, so that file does not change."
+
+[[files]]
+path = "packages/ai/test/mistral-tool-schema.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization", "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolsAreNonStrictUnlessTheModelEnablesStrictMode"]
+rationale = "2c2a77f9f3ab: the first case's model sets compat supportsStrictMode (TestMistralToolSchemaSerialization does too), and the case 'does not send strict tools unless the model enables strict mode' (mistral-large-4, a strict 'prefer' tool, no compat: strict false and required [path]) is TestMistralToolsAreNonStrictUnlessTheModelEnablesStrictMode."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "2c2a77f9f3ab: Pi's own changelog line; PiG records the change in changelog.d."
+
+[[files]]
+path = "packages/coding-agent/docs/models-configuration.md"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/configschema/compat_schema_exports_test.go#TestCompatSchemaExportsMatchPi"]
+rationale = "2145e3f6099c regenerates the page after 2c2a77f9f3ab: the mistral-conversations compat table gains the supportsStrictMode row. docs/site/docs/models-configuration.md has the same row, and the embedded docs bundle is regenerated from it (make docs-drift)."
+
+[[files]]
+path = "apps/p3/docs/chord-practices.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "22fc026b8 and the commits merged with it: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "22fc026b8 and the commits merged with it: apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/slices/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "3cdddfa70bce (docs(p3): slice 26, the release build): apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."

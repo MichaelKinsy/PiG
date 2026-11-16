@@ -68,7 +68,7 @@ func strictWireAPIs() []strictWireAPI {
 			tool := asFirst(t, body["tools"], "tools")
 			return tool["strict"] == true, asObject(t, tool["input_schema"], "tools[0].input_schema")
 		}},
-		{name: "mistral-conversations", api: MistralConversationsAPI, model: "mistral-large-latest", apiKey: "k", wire: nested},
+		{name: "mistral-conversations", api: MistralConversationsAPI, model: "mistral-large-latest", apiKey: "k", compat: &ModelCompat{SupportsStrictMode: &yes}, wire: nested},
 		{name: "google-generative-ai", api: GoogleGenerativeAIAPI, model: "gemini-3-pro-preview", apiKey: "k", wire: google},
 		{name: "google-vertex", api: GoogleVertexAPI, model: "gemini-3-pro-preview", apiKey: "k", wire: google},
 		{name: "bedrock-converse-stream", api: BedrockConverseStreamAPI, model: "anthropic.claude-3-haiku", apiKey: "k", compat: &ModelCompat{SupportsStrictMode: &yes}, wire: func(t *testing.T, body map[string]any) (bool, map[string]any) {

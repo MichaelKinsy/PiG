@@ -30,6 +30,7 @@ func BedrockCompatSchema() *Schema {
 func MistralConversationsCompatSchema() *Schema {
 	return OpenObject([]Prop{
 		optionalCompatBoolean("supportsMidConvoSystemMessages", D("Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message."), Default(false)),
+		optionalCompatBoolean("supportsStrictMode", D("Whether the model supports strict (schema-constrained) function tools."), Default(false)),
 	}, D("Compatibility settings for the Mistral chat API."), Opt{"additionalProperties", true})
 }
 

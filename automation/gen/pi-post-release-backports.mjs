@@ -1038,24 +1038,6 @@ packageFile("aa47cedce", "pi-ai/api/anthropic-messages.js", [
 ]);
 // END backport aa47cedce
 
-// BEGIN backport efbcd5adb
-// efbcd5adb (#12200): the coding agent moves its exact pin of undici from 8.12.3 to 8.12.4 (GHSA-mqg3-3v4r-cm32, GHSA-7xg3-fphp-28hg, GHSA-5rm8-gv32-r954, GHSA-9v6h-8rgp-m69f,
-// GHSA-3g9m-rv3r-w5w2, GHSA-r4pc-4jcp-7pqc). The lock entry is the one Pi's package-lock.json and packages/coding-agent/install-lock/package-lock.json hold at efbcd5adb; both locks
-// change that entry (version, archive, integrity) and the coding agent's range, nothing else, and 8.12.4 declares no dependencies of its own, as 8.12.3 does not.
-// The installed Pi bundles undici into its `pi` bundle (the oracle's bundle is made again from the installed copy), and vendor-pi-dist.sh copies the installed undici into
-// the vendored runtime (shims/undici), so the oracle and the vendored runtime both run 8.12.4.
-// not carried: pi-coding-agent/package.json (`"undici": "8.12.4"`): published ranges follow the pin until the re-pin; the lock the oracle installs names 8.12.4, the manifest on disk 8.12.3.
-// not carried: apps/p2/package.json and the CHANGELOG: not part of the installed package.
-dependency("efbcd5adb", "pi-coding-agent", {
-    name: "undici",
-    from: "8.12.3",
-    to: "8.12.4",
-    resolved: "https://registry.npmjs.org/undici/-/undici-8.12.4.tgz",
-    integrity: "sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==",
-    dependencies: {},
-});
-// END backport efbcd5adb
-
 // BEGIN backport f72f799a4
 // f72f799a4 (#12103; 22f456d73 #12108 after it changes Pi's changelog and a test only): the Google adapters hand the caller's fetch to @google/genai, which takes one
 // (httpOptions.fetch) from 2.32.0 on, so the commit moves pi-ai's exact pin of the SDK. The lock entry below is the one Pi's package-lock.json and
@@ -1281,6 +1263,57 @@ patch("86918f9eeb", "pi-ai/api/openai-completions.js", [
 ]);
 // END backport 86918f9eeb
 
+// BEGIN backport 2c2a77f9f3ab
+// 2c2a77f9f3ab (#12148): Mistral tools are sent non-strict unless the model's compat.supportsStrictMode is set (Mistral Large 4 goes silent for minutes before a strict tool call).
+// The compat schema's new member, which the models docs repeat. PiG's models.json schema file (pi-coding-agent/schemas/models.schema.json) is the merged provider-level schema, which
+// already holds supportsStrictMode from the other APIs (ProviderCompatPropertyOverrides), so the commit does not change it.
+patch("2c2a77f9f3ab", "pi-ai/providers/compat-schema.js", [
+    [`        description: "Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message.",
+        default: false,
+    }),
+};
+export const MistralConversationsCompatSchema`, `        description: "Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message.",
+        default: false,
+    }),
+    ${note("2c2a77f9f3ab").trim()}
+    supportsStrictMode: optionalCompatBoolean({
+        description: "Whether the model supports strict (schema-constrained) function tools.",
+        default: false,
+    }),
+};
+export const MistralConversationsCompatSchema`],
+]);
+// END backport 2c2a77f9f3ab
+
+// BEGIN backport 2c2a77f9f3ab
+// 2c2a77f9f3ab, 2145e3f6099c: the models configuration reference lists the new Mistral compat member (Pi regenerated the page in a commit of its own).
+patch("2c2a77f9f3ab", "pi-coding-agent/docs/models-configuration.md", [
+    ["| `supportsMidConvoSystemMessages` | boolean | `false` | Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message. |\n",
+     "| `supportsMidConvoSystemMessages` | boolean | `false` | Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message. |\n| `supportsStrictMode` | boolean | `false` | Whether the model supports strict (schema-constrained) function tools. |\n"],
+]);
+// END backport 2c2a77f9f3ab
+
+// BEGIN backport 2c2a77f9f3ab
+// 2c2a77f9f3ab (#12148), the behavior: buildChatPayload passes the model's compat.supportsStrictMode (default false) to toFunctionTools, which hands it to
+// resolveJsonSchemaStrictSampling where it passed true. PiG's vendored runtime carries pi-ai's mistral-conversations as a bridge stub that runs in PiG's host
+// (ai/mistral.go, which has the change), so the file is the installed Pi's only: the parity oracle is Pi with the fix.
+// not carried: packages/ai/test/mistral-tool-schema.test.ts (a test of the TypeScript source) and packages/ai/CHANGELOG.md (Pi's changelog entry): the package ships neither.
+// not carried: packages/ai/src/api/mistral-conversations.ts, packages/ai/src/providers/compat-schema.ts (TypeScript sources): the compiled output above carries the change.
+packageFile("2c2a77f9f3ab", "pi-ai/api/mistral-conversations.js", [
+    [`        payload.tools = toFunctionTools(currentTools);
+`, `        ${note("2c2a77f9f3ab").trim()}
+        payload.tools = toFunctionTools(currentTools, model.compat?.supportsStrictMode ?? false);
+`],
+    [`function toFunctionTools(tools) {
+    return tools.map((tool) => {
+        const strict = resolveJsonSchemaStrictSampling(tool, true);
+`, `function toFunctionTools(tools, supportsStrictMode) {
+    return tools.map((tool) => {
+        const strict = resolveJsonSchemaStrictSampling(tool, supportsStrictMode);
+`],
+]);
+// END backport 2c2a77f9f3ab
+
 // BEGIN backport 3567987250
 // 3567987250: pi-mcp exports mcpServerSummary, the one-line server summary the coding agent's mcp_servers section reads (an extension cannot import pi-mcp; the vendored coding agent and the oracle's `pi` do).
 // not carried: pi-mcp/naming.d.ts and pi-mcp/index.d.ts (the declaration of mcpServerSummary): declaration files; no backport table patches one, and nothing runs them.
@@ -1334,6 +1367,24 @@ function serverSummary(server) {
 `],
 ]);
 // END backport 3567987250
+
+// BEGIN backport efbcd5adb
+// efbcd5adb (#12200): the coding agent moves its exact pin of undici from 8.12.3 to 8.12.4 (GHSA-mqg3-3v4r-cm32, GHSA-7xg3-fphp-28hg, GHSA-5rm8-gv32-r954, GHSA-9v6h-8rgp-m69f,
+// GHSA-3g9m-rv3r-w5w2, GHSA-r4pc-4jcp-7pqc). The lock entry is the one Pi's package-lock.json and packages/coding-agent/install-lock/package-lock.json hold at efbcd5adb; both locks
+// change that entry (version, archive, integrity) and the coding agent's range, nothing else, and 8.12.4 declares no dependencies of its own, as 8.12.3 does not.
+// The installed Pi bundles undici into its `pi` bundle (the oracle's bundle is made again from the installed copy), and vendor-pi-dist.sh copies the installed undici into
+// the vendored runtime (shims/undici), so the oracle and the vendored runtime both run 8.12.4.
+// not carried: pi-coding-agent/package.json (`"undici": "8.12.4"`): published ranges follow the pin until the re-pin; the lock the oracle installs names 8.12.4, the manifest on disk 8.12.3.
+// not carried: apps/p2/package.json and the CHANGELOG: not part of the installed package.
+dependency("efbcd5adb", "pi-coding-agent", {
+    name: "undici",
+    from: "8.12.3",
+    to: "8.12.4",
+    resolved: "https://registry.npmjs.org/undici/-/undici-8.12.4.tgz",
+    integrity: "sha512-8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA==",
+    dependencies: {},
+});
+// END backport efbcd5adb
 
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.

@@ -1,5 +1,7 @@
-from = "1.5.2+9bd70ea1"
+from = "1.5.2+2145e3f6"
 to = "1.5.2+efbcd5ad"
+# The range 2145e3f6099c..efbcd5adb4bc (7 files; four commits: 6bacbb4b9, 110c854f4, the merge 9bd70ea1d and the product commit efbcd5adb4bc). It starts where v1.5.2+2145e3f6.toml (f6600b58f347..2145e3f6099c) ends: no gap, no overlap.
+# 6bacbb4b9 changes Pi's contributor instructions (AGENTS.md) and 110c854f4 a private design document (apps/p3); neither is carried. The product commit:
 # Pi efbcd5adb4bc (2026-11-16): fix(coding-agent): update undici to 8.12.4 for security advisories (#12200). Its apps/p2/package.json half (the same exact pin in p2's manifest) is accounted on the p2 line.
 
 [[files]]
@@ -32,3 +34,17 @@ change = "modified"
 disposition = "designed-out"
 evidence = []
 rationale = "efbcd5adb: Pi's package changelog entry. PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "AGENTS.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "6bacbb4b9 (docs: check sibling implementations before recommending a fix design): Pi's contributor instructions for Pi's own repository. PiG keeps its own AGENTS.md; no text is quoted here."
+
+[[files]]
+path = "apps/p3/docs/chord-practices.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "110c854f4 (docs(p3): practices): apps/p3 holds design documents only (docs/parity/PORT_MAP.md; automation/ci/check-port-map-drift.py --docs-only-listing); the owner decision of 2026-11-13 keeps the documents in a private copy outside every PiG repository; no text is quoted here."
