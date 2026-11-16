@@ -3,7 +3,6 @@ package ai
 import (
 	"reflect"
 	"slices"
-	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
@@ -89,40 +88,41 @@ func marshalOrderedHookValue(value any, order *HookObjectOrder) ([]byte, error) 
 func marshalOrderedHookObject(object map[string]any, order *HookObjectOrder) ([]byte, error) {
 	members := make([]jsonMember, 0, len(object))
 	known := make(map[string]bool, len(order.Keys))
-	var extra []jsonMember
 	for _, key := range order.Keys {
 		known[key] = true
 	}
-	encode := func(key string, value any) error {
+	encode := func(key string, value any) (jsonMember, error) {
 		encoded, err := marshalOrderedHookValue(value, order.Nested[key])
-		if err != nil {
-			return err
-		}
-		member := jsonMember{key: key, value: encoded}
-		if known[key] {
-			members = append(members, member)
-		} else {
-			extra = append(extra, member)
-		}
-		return nil
+		return jsonMember{key: key, value: encoded}, err
 	}
 	for _, key := range order.Keys {
 		if value, present := object[key]; present {
-			if err := encode(key, value); err != nil {
+			member, err := encode(key, value)
+			if err != nil {
 				return nil, err
 			}
+			members = append(members, member)
 		}
 	}
-	for key, value := range object {
+	// A member the order does not name is one a caller or a handler added: Pi creates it after the named ones, in the order it was assigned, which a Go map
+	// does not keep, so it follows in byte order. An array-index key (a handler's "9") enumerates first in an ECMAScript object, whoever created it.
+	var extraKeys []string
+	for key := range object {
 		if !known[key] {
-			if err := encode(key, value); err != nil {
-				return nil, err
-			}
+			extraKeys = append(extraKeys, key)
 		}
 	}
-	slices.SortFunc(extra, func(a, b jsonMember) int { return strings.Compare(a.key, b.key) })
-	jsstring.SortOwnKeys(extra, func(member jsonMember) string { return member.key })
+	slices.Sort(extraKeys)
+	extra := make([]jsonMember, 0, len(extraKeys))
+	for _, key := range extraKeys {
+		member, err := encode(key, object[key])
+		if err != nil {
+			return nil, err
+		}
+		extra = append(extra, member)
+	}
 	members = append(members, extra...)
+	jsstring.SortOwnKeys(members, func(member jsonMember) string { return member.key })
 	out := []byte{'{'}
 	for i, member := range members {
 		if i > 0 {
