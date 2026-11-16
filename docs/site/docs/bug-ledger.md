@@ -129,6 +129,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0d55b30-2](#bf-0d55b30-2) | The Python SDK reports a component whose `set_invalidate(None)` raises during cleanup in the extension log… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0dff068](#bf-0dff068) | An OpenAI Responses function call streamed with an empty `call_id` no longer makes every later request fail… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-0e05901](#bf-0e05901) | A provider an extension registers with `refreshModels` and no `streamSimple` streams through its API, as in Pi | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0e06194](#bf-0e06194) | A SIGTERM or SIGHUP that arrives while PiG is still starting up (the session_start handlers of an extension… | PiG's own defect | All platforms | Unreleased |
 | [BF-0e225b4](#bf-0e225b4) | fix(runtimecell): keep the Python runner's _run callable without the built event | PiG's own defect | All platforms | Unreleased |
 | [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-0e360a0](#bf-0e360a0) | The `tui` package's default keybindings no longer depend on the platform: undo is `ctrl+-` and the alt-screen… | PiG's own defect | Windows, WSL | 0.5.0 |
@@ -172,6 +173,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-142baa3](#bf-142baa3) | Every strict and packed Go cell of the extension conformance suite (the theme, child-session, markdown… | PiG's own defect | All platforms | Unreleased |
 | [BF-14886f9](#bf-14886f9) | A call to `Session.DeferUntilPublished` from a goroutine other than the publishing one (a Harness's wait for… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-14c9304](#bf-14c9304) | fix(schema/internal/ecmaregex): modifier groups, V8's mid-pair and repeated-name rules, lone surrogates, V8… | PiG's own defect | All platforms | Unreleased |
+| [BF-154d2c5](#bf-154d2c5) | The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes… | PiG's own defect | All platforms | Unreleased |
 | [BF-155d0f3](#bf-155d0f3) | In RPC mode, SIGTERM or SIGHUP during a tool call likewise stops the run while the `session_shutdown`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1584ac1](#bf-1584ac1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-15a5c0b](#bf-15a5c0b) | The Kimi Code, Meta and xAI device logins judge the verification URI the way Pi does, and Meta and xAI open… | PiG's own defect | All platforms | 0.5.0 |
@@ -2007,6 +2009,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-dfa57b3](#bf-dfa57b3) | An OpenAI Responses request for a conversation with no messages sends `"input": []` instead of `"input": null` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e045fa5](#bf-e045fa5) | fix(durable/codemode): count image blocks in a generateImages result as Pi does, and compare the code mode… | PiG's own defect | All platforms | Unreleased |
 | [BF-e046dd9](#bf-e046dd9) | fix(rust): resolve every clippy warning in the Rust crates | PiG's own defect | All platforms | Unreleased |
+| [BF-e07e1a7](#bf-e07e1a7) | The terminal progress indicator (`OSC 9;4;0`, with `terminal.showTerminalProgress` on) is turned off when PiG… | PiG's own defect | All platforms | Unreleased |
 | [BF-e098463](#bf-e098463) | A Gemini stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e09d2bc](#bf-e09d2bc) | fix(durable/core): Session.fail, a failing store of held changes at close rejects close, observers see a… | PiG's own defect | All platforms | Unreleased |
 | [BF-e0a4613](#bf-e0a4613) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -3819,6 +3822,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/native_provider_request_callbacks_test.go::TestNativeProviderSessionRequestHooks`, `coding/extension/host/subprocess/native_stream_callback_test.go::TestNativeStreamCallbackDispatchesByName`, `coding/provider_refresh_insecure_test.go::TestRefreshModelsRegistrationKeepsInsecure`, `test/extension-conformance/provider_object_test.go::TestProviderObjectsAcrossSDKs`
 - **Release note:** A provider an extension registers with `refreshModels` and no `streamSimple` streams through its API, as in Pi. Before, every request failed with "Provider ... has no stream implementation".
 
+### BF-0e06194
+
+**A SIGTERM or SIGHUP that arrives while PiG is still starting up (the session_start handlers of an extension…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A SIGTERM or SIGHUP that arrives while PiG is still starting up (the session_start handlers of an extension, the terminal color query, the bind of the session) ends PiG with status 0, as it ends Pi, instead of printing `Error: context canceled` and exiting with status 1.
+- **Root cause:** Pi's shutdown({ fromSignal }) disposes, stops and calls process.exit(0) whatever init() is awaiting (interactive-mode.ts:4483-4494). PiG's signal dispose runs before main cancels the root context, and the startup step it interrupted (an awaited session_start handler, an owner-loop step of the bind, the terminal colors) then returned the context error, which main prints as "Error: context canceled" with status 1. Run now reports the end of a session that shut down, not an error, when the startup error is a cancellation and the signal's dispose has run.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0e061942a9` (2026-11-16)
+- **Tests:** `coding/cli/interactive_signal_stalled_terminal_linux_test.go::TestInteractiveSignalWithAStalledTerminalDeliversShutdownAndEndsOnTheResume`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestStartupEndedByASignalShutdownIsNotAnError`
+- **Release note:** A SIGTERM or SIGHUP that arrives while PiG is still starting up (the session_start handlers of an extension, the terminal color query, the bind of the session) ends PiG with status 0, as it ends Pi, instead of printing `Error: context canceled` and exiting with status 1. The signal's shutdown ran, and the startup step it interrupted then reported the cancelled root context as a failure. Present in v0.3.0 through v0.7.0 (checked by tag: each runs the signal's shutdown before it cancels the root context and returns the startup error from the run).
+
 ### BF-0e225b4
 
 **fix(runtimecell): keep the Python runner's _run callable without the built event**
@@ -4405,6 +4422,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `14c930470b` (2026-10-31)
 - **Tests:** `schema/internal/ecmaregex/golden_test.go::TestGoldenCaseClasses`, `schema/internal/ecmaregex/golden_test.go::TestGoldenPropertyRanges`, `schema/internal/ecmaregex/golden_test.go::TestGoldenRegex`, `schema/internal/ecmaregex/golden_test.go::TestKnownGaps`, `schema/internal/ecmaregex/surrogate_test.go::TestAppendUnits`, `schema/internal/ecmaregex/surrogate_test.go::TestDistinctSurrogateSets`, `schema/internal/ecmaregex/surrogate_test.go::TestErrorText`, `schema/internal/ecmaregex/surrogate_test.go::TestLoneSurrogatePatterns` and 3 more in docs/bug-ledger.json
+
+### BF-154d2c5
+
+**The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes it when PiG ends: for a quit by keys (Ctrl+D, Ctrl+C twice, `/quit`) before the "To resume this session" line, and for SIGTERM and SIGHUP before the terminal is restored.
+- **Root cause:** Pi's dispose() (agent-session-runtime.ts:415-424) runs session.abort(), session_shutdown, beforeSessionInvalidate (which writes the title through resetExtensionUI) and session.dispose(), and Pi's shutdown() calls it after stop() on a quit (title, then the resume hint) and first on a signal (title, then the terminal restore). pig ran the hook only at Runtime.Close, after Run returned and after the hint. Runtime.EmitQuitShutdown, where the mode calls the dispose, now runs the hook once after session_shutdown; Close runs it only when no dispose did (print and RPC emit through EmitQuitShutdownContext).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `154d2c5776` (2026-11-16)
+- **Tests:** `coding/runtime_quit_invalidate_test.go::TestQuitContextEmitLeavesTheInvalidateHookToClose`, `coding/runtime_quit_invalidate_test.go::TestQuitDisposeRunsBeforeSessionInvalidateAfterSessionShutdown`, `internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild`, `internal/codingagent/interactive_exit_dispose_test.go::TestQuitWritesTheTitleInTheDisposeBeforeTheResumeHint`, `internal/codingagent/interactive_exit_dispose_test.go::TestSignalDisposeDoesNotWaitForAnOwnerLoopThatWaitsForItsLock`, `internal/codingagent/interactive_exit_title_pty_test.go::TestExitTitleIsWrittenInTheDisposeAtPisPlace`
+- **Release note:** The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes it when PiG ends: for a quit by keys (Ctrl+D, Ctrl+C twice, `/quit`) before the "To resume this session" line, and for SIGTERM and SIGHUP before the terminal is restored. PiG wrote it only when the runtime closed, after the exit had restored the terminal and, for a quit, after the resume hint, so a terminal or a recording of the exit saw the title last. A signal that arrives while the quit's last steps are running, or a terminal that has stopped taking output, no longer holds the title write or the exit behind each other. Present in v0.3.0 through v0.7.0 (checked by tag: each runs the title hook only when the runtime closes).
 
 ### BF-155d0f3
 
@@ -16438,7 +16469,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `71e0f20510` (2026-11-16)
 - **Tests:** `internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild`, `internal/codingagent/interactive_exit_order_pty_test.go::TestExitModeResetsFollowPiStopOrder`, `internal/codingagent/interactive_teardown_test.go::TestStopInteractiveTuiFullscreenExitOutput`, `tui/stop_terminal_modes_test.go::TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen`, `tui/stop_terminal_modes_test.go::TestAltScreenSwapStopLeavesBracketedPasteOn`, `tui/stop_terminal_modes_test.go::TestMainScreenExitStopWritesCursorThenPasteReset`
-- **Release note:** A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off. PiG wrote them only after the alternate screen was left and added a trailing cursor show. A terminal that handles the resets in order, or a recording of the exit bytes, now sees Pi's order; the screen a user sees is the same. Present in v0.5.3 and v0.7.0 (checked by tag).
+- **Release note:** A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off. PiG wrote them only after the alternate screen was left and added a trailing cursor show. A terminal that handles the resets in order, or a recording of the exit bytes, now sees Pi's order; the screen a user sees is the same. Present in every release from v0.2.0 through v0.7.0 (checked by tag: v0.2.0, v0.5.3 and v0.7.0 each stop the renderer first and write the bracketed paste off in the terminal restore after it).
 
 ### BF-725e104
 
@@ -29872,6 +29903,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e046dd9a93` (2026-10-31)
 - **Tests:** None recorded.
+
+### BF-e07e1a7
+
+**The terminal progress indicator (`OSC 9;4;0`, with `terminal.showTerminalProgress` on) is turned off when PiG…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The terminal progress indicator (`OSC 9;4;0`, with `terminal.showTerminalProgress` on) is turned off when PiG ends after the terminal's color scheme reports are off and the keyboard protocols are popped, as it is in Pi: Pi's shutdown writes those and drains the input before `stop()`, whose first writes are the selector dispose and this clear.
+- **Root cause:** Pi's shutdown writes the color scheme reports off (CSI ?2031l) and drains the input, popping the keyboard protocols (CSI <u), before it calls stop(); the selector dispose and the progress clear (OSC 9;4;0) are stop()'s first writes (interactive-mode.ts:4491-4503, :7283-7287). stopInteractiveTui wrote them before the theme and the drain, so the clear came ahead of both. They now follow the drain. The pty test fails on the previous order and passes here.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e07e1a737a` (2026-11-16)
+- **Tests:** `internal/codingagent/interactive_exit_drain_order_pty_test.go::TestStopInteractiveTuiWritesTheProgressClearAfterTheDrainAsPiDoes`
+- **Release note:** The terminal progress indicator (`OSC 9;4;0`, with `terminal.showTerminalProgress` on) is turned off when PiG ends after the terminal's color scheme reports are off and the keyboard protocols are popped, as it is in Pi: Pi's shutdown writes those and drains the input before `stop()`, whose first writes are the selector dispose and this clear. PiG wrote the clear first, so a recording of the exit saw it ahead of `CSI ?2031l` and `CSI <u`; the screen a user sees is the same. The order was introduced by the commit that made the exit clear the progress; no release has it.
 
 ### BF-e098463
 
