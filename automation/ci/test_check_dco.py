@@ -2,6 +2,7 @@
 import os
 from pathlib import Path
 import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -73,10 +74,10 @@ class CheckDCOTests(unittest.TestCase):
         self.git("commit", "-q", "--allow-empty", "-m", message, env=env)
         return self.git("rev-parse", "HEAD").strip()
 
-    def check(self):
+    def check(self, env=None):
         return subprocess.run(
             ["bash", str(self.script), self.base, "HEAD"],
-            cwd=self.directory.name, env=self.env, capture_output=True, text=True,
+            cwd=self.directory.name, env=env or self.env, capture_output=True, text=True,
         )
 
     def assertPasses(self, count):
@@ -315,12 +316,47 @@ class CheckDCOTests(unittest.TestCase):
             ["  %s first: remedied by %s" % (first[:10], remedy[:10]), "  %s second: remedied by %s" % (second[:10], remedy[:10])],
         )
 
-    def test_a_git_failure_is_not_a_pass(self):
+    def test_an_unknown_base_is_not_a_pass(self):
         self.commit(ALICE, "feature")
         self.base = "0" * 40
         done = self.check()
         self.assertNotEqual(done.returncode, 0)
         self.assertEqual(done.stdout, "")
+
+    def test_a_failing_git_log_is_not_a_pass(self):
+        """A valid base and head, every git subcommand real except `log`: the unsigned commit must not be waved through."""
+        self.commit(ALICE, "unsigned feature")
+        shim = tempfile.TemporaryDirectory()
+        self.addCleanup(shim.cleanup)
+        real_git = shutil.which("git", path=self.env["PATH"])
+        self.assertIsNotNone(real_git)
+        # Find the subcommand the way git does: skip global options, and the value of the ones that take one.
+        Path(shim.name, "git").write_text(
+            "#!/bin/bash\n"
+            "args=(\"$@\")\n"
+            "i=0\n"
+            "while (( i < ${#args[@]} )); do\n"
+            "  case ${args[i]} in\n"
+            "    -C|-c|--git-dir|--work-tree|--namespace|--exec-path) i=$(( i + 2 ));;\n"
+            "    -*) i=$(( i + 1 ));;\n"
+            "    *) break;;\n"
+            "  esac\n"
+            "done\n"
+            "if [[ ${args[i]:-} == log ]]; then\n"
+            "  echo 'shim: git log failed' >&2\n"
+            "  exit 7\n"
+            "fi\n"
+            "exec %s \"$@\"\n" % shlex.quote(real_git)
+        )
+        Path(shim.name, "git").chmod(0o755)
+        env = dict(self.env, PATH=shim.name + os.pathsep + self.env["PATH"])
+        # The base resolves, so the rev-parse checks pass and the failure can only come from `git log`.
+        self.assertEqual(self.git("rev-parse", "--verify", self.base + "^{commit}").strip(), self.base)
+        done = self.check(env=env)
+        self.assertEqual(done.returncode, 7, done.stdout + done.stderr)
+        self.assertEqual(done.stdout, "")
+        self.assertIn("shim: git log failed", done.stderr)
+        self.assertNotIn("lack a DCO sign-off", done.stderr)
 
 
 class CommittedIdentityMapTests(unittest.TestCase):
