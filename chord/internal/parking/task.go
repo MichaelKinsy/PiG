@@ -2,8 +2,8 @@ package parking
 
 import (
 	"context"
+	"slices"
 	"sync"
-	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
@@ -19,11 +19,23 @@ type Task struct {
 	Loop Counter
 	// Work is the function the task runs: what a report of a stalled join names.
 	Work any
-	gid  atomic.Uint64
 }
 
-// GID is the ID of the goroutine that runs the task; zero before it started.
-func (t *Task) GID() uint64 { return t.gid.Load() }
+// Goroutines are the IDs of the goroutines that run the task now, in ascending order: the one it started on (zero of them before
+// it did, and after it ended) and, while a handler's coroutine is adopted for it, the coroutine, which runs the task while the
+// goroutine that adopted it waits for the coroutine. A task is not one goroutine, so it has no ID of its own to remember: what
+// is registered is the whole answer, and ends with the adoption that made it.
+func (t *Task) Goroutines() []uint64 {
+	var ids []uint64
+	tasks.Range(func(id, found any) bool {
+		if found == t {
+			ids = append(ids, id.(uint64))
+		}
+		return true
+	})
+	slices.Sort(ids)
+	return ids
+}
 
 // Counter is the loop that counts a task.
 type Counter interface {
@@ -50,25 +62,28 @@ var tasks sync.Map
 // Enter registers the calling goroutine as the one that runs t; the returned function ends it.
 func (t *Task) Enter() (leave func()) {
 	id := goroutineid.Current()
-	t.gid.Store(id)
 	tasks.Store(id, t)
 	return func() { tasks.Delete(id) }
 }
 
 // Adopt makes the goroutine gid, a coroutine the calling goroutine switches to and waits for (a handler's), run the calling
-// goroutine's task as well, so its waits park the task. The returned function ends the adoption. Outside a task it does nothing.
+// goroutine's task as well, so its waits park the task: the registry holds gid for the task as well as the calling goroutine,
+// which waits for the coroutine, and nothing else of the task changes. The returned function ends the adoption. Outside a task
+// it does nothing.
 func Adopt(gid uint64) (end func()) {
-	task := current()
+	task := Current()
 	if task == nil {
 		return nothing
 	}
-	task.gid.Store(gid)
 	tasks.Store(gid, task)
 	return func() { tasks.CompareAndDelete(gid, task) }
 }
 
-// current is the task the calling goroutine runs, if any.
-func current() *Task {
+// Current is the task the calling goroutine runs, if any: the one it started (Enter) or the one it was adopted for (Adopt). The
+// registry behind it is the only place a goroutine's ID leads to a task, and it follows every hand-over of a task between its
+// goroutine and a handler's coroutine: whoever has to find the task of the goroutine it runs on asks here, and keeps no index
+// of goroutine IDs of its own, which the next adoption would leave stale.
+func Current() *Task {
 	found, ok := tasks.Load(goroutineid.Current())
 	if !ok {
 		return nil
@@ -82,7 +97,7 @@ func nothing() {}
 // function is called (right after the wait). ready reports, with no effect on the wait, whether the wait is over: it must not
 // consume what the wait waits for.
 func Idle(ready func() bool) (resume func()) {
-	task := current()
+	task := Current()
 	if task == nil {
 		return nothing
 	}
@@ -96,7 +111,7 @@ func Idle(ready func() bool) (resume func()) {
 // about without receiving it. The caller has parked the handler's signal already (Park).
 func Recv[V any](ctx context.Context, work <-chan V) (V, error) {
 	var zero V
-	task := current()
+	task := Current()
 	if task == nil {
 		select {
 		case value := <-work:

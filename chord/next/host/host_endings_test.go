@@ -9,7 +9,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord"
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
-	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
@@ -104,20 +103,15 @@ type endedWork struct{ _ [16]byte }
 // returnedHandlerFinishedInline is a section that ends with a handler that returned inside it to finish: the call that the
 // section settling an ending admits, as the section of a link's frame does (Loop.finish adopts the coroutine's goroutine for
 // the task of the goroutine that ended the section: parking.Adopt).
-func returnedHandlerFinishedInline(loop *Loop) {
-	loop.Run(func() {
-		signal := parking.New()
-		loop.Lend(signal, func(bool) { signal.Return() })
-	})
-}
+func returnedHandlerFinishedInline(loop *Loop) { handlerSettlingAfterItsSection(loop, func() {}) }
 
 // Nothing of an ending is kept once it ran. In Pi a settled promise holds no reaction, the async `#tearDown` frame is gone with
 // its work (host/object.ts:1623-1640), and `host.ending` drops the identity's entry once its chain emptied (host.ts:1690-1696).
-// Here the host's `endings` has no entry for the identity, the pacer has no record of any paced task (by task or by the
-// goroutine that ran it), and what the endings closed over is collected: the pacer's by-goroutine index was deleted by the
-// task's goroutine id as it is at the task's end, which a coroutine adopted since (parking.Adopt) had changed, so a task whose
-// section finished a handler inline stayed in it with its work, and the attempt the work captured (the reload cycle's
-// `referent 0 was not collected`).
+// Here the host's `endings` has no entry for the identity, the pacer has no record of any paced task, and what the endings
+// closed over is collected: the pacer used to index its tasks by goroutine ID and delete the entry by the task's ID as it is at
+// the task's end, which a coroutine adopted since (parking.Adopt) had changed, so a task whose section finished a handler
+// inline stayed in the index with its work, and the attempt the work captured (the reload cycle's `referent 0 was not
+// collected`). It keeps no such index now: the task is the identity.
 func TestEndingsOnceRanLeaveNothingOfThemInTheHostNorThePacer(t *testing.T) {
 	const endings = 3
 	const identity = "endings/ran"
@@ -144,8 +138,8 @@ func TestEndingsOnceRanLeaveNothingOfThemInTheHostNorThePacer(t *testing.T) {
 	if chain != 0 {
 		t.Fatalf("the host still records %d endings once every teardown finished, want none", chain)
 	}
-	if tasks, goroutines := pacerHolds(loop); tasks != 0 || goroutines != 0 {
-		t.Fatalf("the pacer keeps %d paced tasks and %d goroutines of tasks once every ending ran, want none", tasks, goroutines)
+	if tasks := pacerHolds(loop); tasks != 0 {
+		t.Fatalf("the pacer keeps %d paced tasks once every ending ran, want none", tasks)
 	}
 	nexttest.ExpectCollected(t, refs...)
 }

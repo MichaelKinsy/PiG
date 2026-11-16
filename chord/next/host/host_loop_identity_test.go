@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -100,42 +101,57 @@ func TestSendingMarksNothingForAGoroutineThatIsNoPacedTask(t *testing.T) {
 	}
 }
 
-// What a stalled join reports of a running task is the stack of the goroutine that runs it: the coroutine while a handler it
-// adopted runs, its own once that ended. parking.Adopt moves the task's goroutine to the coroutine, and its end must move it
-// back: the report of a task blocked on a raw channel after a handler finished in its section named the coroutine's goroutine,
-// idle by then (or gone, or running another call's handler), and the stack that says what the task waits for was not in it.
-func TestStalledNamesTheGoroutineThatRunsTheTaskAfterAHandlerItAdoptedFinished(t *testing.T) {
+// What a stalled join reports of a running task is the stack of every goroutine that runs it now. A task is not one goroutine:
+// while a handler it adopted a coroutine for runs (parking.Adopt), its own goroutine waits for the coroutine, and both are in
+// the report; once the handler finished it is the task's own alone. The report of a task blocked on a raw channel after a
+// handler finished in its section named the coroutine's goroutine, idle by then (or gone, or running another call's handler)
+// and not the task's, so the stack that says what the task waits for was not in it.
+func TestStalledNamesOnlyTheTasksOwnGoroutineAfterAHandlerItAdoptedFinished(t *testing.T) {
 	loop := NewLoop()
-	running, block := make(chan uint64, 1), make(chan struct{})
+	ids, block := make(chan [2]uint64, 1), make(chan struct{})
 	defer func() { close(block); loop.quiesce() }()
 	work := func() {
-		handlerSettlingAfterItsSection(loop, func() {})
-		running <- goroutineid.Current()
+		own := goroutineid.Current()
+		var coroutine atomic.Uint64
+		handlerSettlingAfterItsSection(loop, func() { coroutine.Store(goroutineid.Current()) })
+		ids <- [2]uint64{own, coroutine.Load()}
 		<-block // a wait the loop does not run, without saying so: the stall the report is for
 	}
 	loop.task(work, work)
-	var id uint64
-	returnsWithin(t, "the task's start", func() { id = <-running })
-	if report := loop.stalled(time.Second); !strings.Contains(report, fmt.Sprintf("goroutine %d [", id)) {
-		t.Fatalf("the report of a task blocked on goroutine %d, after a handler finished in its section, has no stack of it:\n%s", id, report)
+	var own, coroutine uint64
+	returnsWithin(t, "the task's start", func() { got := <-ids; own, coroutine = got[0], got[1] })
+	if own == coroutine || coroutine == 0 {
+		t.Fatalf("the task's goroutine is %d and the handler's coroutine %d: the case needs two goroutines", own, coroutine)
+	}
+	report := loop.stalled(time.Second)
+	if !strings.Contains(report, fmt.Sprintf("goroutine %d [", own)) {
+		t.Fatalf("the report of a task blocked on goroutine %d, after a handler finished in its section, has no stack of it:\n%s", own, report)
+	}
+	if strings.Contains(report, fmt.Sprintf("goroutine %d [", coroutine)) {
+		t.Fatalf("the report of a task blocked on goroutine %d names goroutine %d, the coroutine of a handler that finished:\n%s", own, coroutine, report)
 	}
 }
 
-// While a handler runs for the task (the task's goroutine waits for its coroutine), the report names the coroutine.
-func TestStalledNamesTheCoroutineThatRunsTheTaskWhileAHandlerItAdoptedRuns(t *testing.T) {
+// While a handler runs for the task (the task's goroutine waits for its coroutine), the report names both: where the task is
+// blocked is the coroutine, and the goroutine that waits for it is the task's own.
+func TestStalledNamesTheTasksOwnGoroutineAndTheCoroutineWhileAHandlerItAdoptedRuns(t *testing.T) {
 	loop := NewLoop()
-	running, block := make(chan uint64, 1), make(chan struct{})
+	ids, block := make(chan [2]uint64, 1), make(chan struct{})
 	defer func() { close(block); loop.quiesce() }()
 	work := func() {
+		own := goroutineid.Current()
 		handlerSettlingAfterItsSection(loop, func() {
-			running <- goroutineid.Current()
+			ids <- [2]uint64{own, goroutineid.Current()}
 			<-block
 		})
 	}
 	loop.task(work, work)
-	var id uint64
-	returnsWithin(t, "the handler's start", func() { id = <-running })
-	if report := loop.stalled(time.Second); !strings.Contains(report, fmt.Sprintf("goroutine %d [", id)) {
-		t.Fatalf("the report of a task whose handler is blocked on goroutine %d has no stack of it:\n%s", id, report)
+	var own, coroutine uint64
+	returnsWithin(t, "the handler's start", func() { got := <-ids; own, coroutine = got[0], got[1] })
+	report := loop.stalled(time.Second)
+	for _, id := range []uint64{own, coroutine} {
+		if !strings.Contains(report, fmt.Sprintf("goroutine %d [", id)) {
+			t.Fatalf("the report of a task on goroutine %d whose handler is blocked on goroutine %d has no stack of goroutine %d:\n%s", own, coroutine, id, report)
+		}
 	}
 }
