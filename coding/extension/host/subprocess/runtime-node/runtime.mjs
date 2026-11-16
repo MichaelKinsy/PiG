@@ -1266,6 +1266,10 @@ export class Connection {
     this.callEpochs = new Map();
     this.queue = [];
     this.waiters = [];
+    // Frames handed to the serve loop's waiter that it has not resumed with yet (it cannot while the thread waits on a synchronous
+    // call), and those of them a request nested in that wait applied first (Runtime.applyQueued), which the loop then skips.
+    this.handed = [];
+    this.appliedEarly = new WeakSet();
     this.held = [];
     this.closed = false;
     this.streamStarts = new Map();
@@ -1362,8 +1366,10 @@ export class Connection {
   }
 
   deliver(env) {
-    if (this.waiters.length > 0) this.waiters.shift()(env);
-    else this.queue.push(env);
+    if (this.waiters.length > 0) {
+      this.handed.push(env);
+      this.waiters.shift()(env);
+    } else this.queue.push(env);
   }
 
   releaseHeld() {
@@ -2952,9 +2958,10 @@ export class Runtime {
     liveRuntimes.delete(this);
   }
 
-  // Applies what waits in the connection's queue, notifications and call results only, in order, as the serve loop would.
-  applyQueued(conn) {
-    for (const queued of conn.queue.splice(0)) {
+  // Applies what waits in the connection's queue, after the given frames, notifications and call results only, in order, as the
+  // serve loop would.
+  applyQueued(conn, before = []) {
+    for (const queued of [...before, ...conn.queue.splice(0)]) {
       if (queued.type === "call_result") conn.resolveCall(queued);
       else if (queued.notify) this.handleNotify(queued.notify);
     }
@@ -2978,12 +2985,20 @@ export class Runtime {
     // request is refused at once, so the call waiting on it fails instead of hanging. The handler runs as its own request, so a
     // host call it makes is filed under that request and not behind the call being waited on.
     conn.nestedRequest = (env) => {
-      if (conn.held.length > 0 || conn.queue.some((queued) => queued.type !== "notify" && queued.type !== "call_result")) {
+      if (conn.held.length > 0 || [...conn.handed, ...conn.queue].some((queued) => queued.type !== "notify" && queued.type !== "call_result")) {
         conn.respond(env.id, null, new Error(`${env.request.method} arrived behind work this process has not started while it waits on a synchronous host call; refusing it rather than answering it out of order`));
         return true;
       }
-      this.applyQueued(conn);
-      this.startRequest(env, { nested: true });
+      // They apply once the request is active, so a host call a notification's handler makes is filed under it, not behind the
+      // call being waited on. The frames the serve loop's waiter holds come first: they arrived before the queued ones.
+      this.startRequest(env, {
+        nested: true,
+        before: () => {
+          const handed = conn.handed.splice(0);
+          for (const frame of handed) conn.appliedEarly.add(frame);
+          this.applyQueued(conn, handed);
+        },
+      });
       return true;
     };
     liveRuntimes.add(this);
@@ -3072,7 +3087,7 @@ export class Runtime {
   }
 
   // startRequest starts a host request's handler; it runs synchronously until the handler's first await.
-  startRequest(env, { nested = false } = {}) {
+  startRequest(env, { nested = false, before = undefined } = {}) {
     // The delta of an event stream applies where the frame is read, in arrival order (event-stream.mjs).
     if (env.request?.stream) (this.eventReplicas ??= new EventReplicas()).apply(env.request);
     this.conn.requestState(env.id, "started");
@@ -3102,6 +3117,7 @@ export class Runtime {
     if (PROMPT_END_MODES.has(this.ready?.mode) && this.runSignal === undefined) armTurnWindow(request);
     const task = this.requestContext.run(request, outsideTimer(async () => {
       try {
+        before?.();
         // A request nested in a synchronous wait does not wait for the onLoaded handlers: it may be asked from inside one.
         if (this.loadedPromise && env.request?.method !== "events.dispatch" && !nested) await this.loadedPromise;
         await this.handleRequest(env.id, env.request || {}, requestCtx);
@@ -3130,6 +3146,8 @@ export class Runtime {
       while (true) {
         const env = await this.conn.next();
         if (!env) return;
+        if (this.conn.handed[0] === env) this.conn.handed.shift();
+        if (this.conn.appliedEarly.delete(env)) continue;
         if (env.type === "call_result") {
           // Apply earlier state and stream notifications before an awaited call resumes its handler.
           this.conn.resolveCall(env);

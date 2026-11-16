@@ -14,11 +14,11 @@ import (
 // extension and the host waited on each other (a tool with prepareLoadout, and another tool registered in session_start, as
 // pi-extensible-workflows does). setActiveTools refreshes the same way, and a synchronous call made after it runs behind it in the
 // host. While a registerTool of any runtime of the process waits, or the process waits on a synchronous call while a setActiveTools
-// is unfinished, the request now starts nested in that wait: the notifications sent before it apply first, the hook runs as its own
-// request (a host call it makes is filed under that request), it does not wait for onLoaded handlers, and it answers without waiting
-// for its fire-and-forget calls. Where the order cannot be kept (a request queued ahead, frames held for a turn) it is refused at once.
-// Otherwise the serve loop's order holds. The host's call is a synchronous stub inside the real wait, so no microtask runs before the
-// answer must be out.
+// is unfinished, the request now starts nested in that wait: the notifications sent before it apply first, those already handed to
+// the serve loop's waiter included (once), inside the hook's own request, so a host call made there or in the hook is filed under
+// that request; it does not wait for onLoaded handlers, and it answers without waiting for its fire-and-forget calls. Where the
+// order cannot be kept (a request queued or handed ahead, frames held for a turn) it is refused at once. Otherwise the serve loop's
+// order holds. The host's call is a synchronous stub inside the real wait, so no microtask runs before the answer must be out.
 func TestNodeRuntimeStartsPrepareLoadoutNestedInARefreshItWaitsOn(t *testing.T) {
 	path, err := filepath.Abs("runtime-node/runtime.mjs")
 	if err != nil {
@@ -166,6 +166,53 @@ b.conn.syncWaits = 1;
 b.ask("b3");
 assert.equal(b.response("b3"), undefined);
 assert.equal(b.conn.queue.at(-1)?.id, "b3");
+
+// c's serve loop runs and waits for its next frame. A state push that arrives during the registerTool is handed to that waiter,
+// which cannot resume before the wait ends, and a notification after it is queued: the nested hook applies both first, the
+// handed one once, and a host call a notification makes is filed under the hook's request.
+const c = attach("c");
+const cSeen = [];
+c.conn.callSync = (method, args, parent) => inWait(() => (parents.push([method, parent]), null));
+c.runtime.api.registerTool({
+  name: "hooked", label: "H", description: "d", parameters: { type: "object" },
+  prepareLoadout() {
+    cSeen.push(c.runtime.state.model?.id);
+    return { descriptions: { hooked: "c" } };
+  },
+  async execute() { return { content: [] }; },
+});
+const applied = [];
+const handleNotify = c.runtime.handleNotify.bind(c.runtime);
+c.runtime.handleNotify = (notify) => {
+  if (notify.method === "probe") return void parents.push(["probe", c.runtime.activeRequest()?.id ?? ""]);
+  applied.push(notify.args?.model?.id);
+  return handleNotify(notify);
+};
+c.runtime.connect = async () => {};
+void c.runtime.serve();
+await new Promise((resolve) => setImmediate(resolve));
+onRegister = () => {
+  c.socket.emit("envelope", { type: "notify", notify: { method: "state_update", args: { model: { id: "handed", provider: "p" } } } });
+  c.socket.emit("envelope", { type: "notify", notify: { method: "probe" } });
+  c.ask("c1");
+  answeredDuringTheCall.push(c.response("c1"));
+};
+registerLate();
+assert.deepEqual(answeredDuringTheCall.at(-1), { result: { descriptions: { hooked: "c" } } });
+assert.deepEqual(cSeen, ["handed"], "the frame handed to the serve loop applied before the hook");
+assert.deepEqual(parents.at(-1), ["probe", "c1"], "a notification applied first runs under the hook's request");
+await new Promise((resolve) => setImmediate(resolve));
+assert.deepEqual(applied, ["handed"], "the serve loop does not apply it again");
+// A request handed to the waiter is work the loop has not started: the hook is refused, and the loop still runs that request.
+onRegister = () => {
+  c.socket.emit("envelope", { type: "request", id: "c-earlier", request: { method: "event", event: "x" } });
+  c.ask("c2");
+  answeredDuringTheCall.push(c.response("c2"));
+};
+registerLate();
+assert.match(answeredDuringTheCall.at(-1)?.error?.message ?? "", /refusing it rather than answering it out of order/);
+for (let i = 0; i < 5 && !c.response("c-earlier"); i++) await new Promise((resolve) => setImmediate(resolve));
+assert.ok(c.response("c-earlier"), "the loop ran the request it was handed");
 `, fileURL(path), fileURL(filepath.Join(filepath.Dir(path), "provider-socket.mjs")))
 	if output, err := exec.CommandContext(t.Context(), "node", "--input-type=module", "--eval", script).CombinedOutput(); err != nil {
 		t.Fatalf("%v\n%s", err, output)
