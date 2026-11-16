@@ -42569,6 +42569,32 @@
       ]
     },
     {
+      "id": "BF-a984ccc",
+      "title": "Starting PiG with an agent directory that cannot be made (a regular file where a parent directory should be…",
+      "symptom": "Starting PiG with an agent directory that cannot be made (a regular file where a parent directory should be, a parent that cannot be written, a read-only file system) now ends where Pi ends: with the session directory of a new session, the error is Node's own `ENOTDIR: not a directory, mkdir '\u003cagent\u003e/sessions/--\u003ccwd\u003e--'` (with `--no-session` Pi's project trust store reports it for the agent directory), and a program that gives `CreateAgentSession` its own session manager is no longer refused with `open auth storage at \u003cpath\u003e`: the credential store opens, and the first credential or settings write reports the mkdir error, as Pi's does.",
+      "rootCause": "NewAuthStorage called MkdirAll on the directory of auth.json at construction and returned its error, where Pi's constructor only reads through reload(), which keeps the last snapshot for every error; loadSettingsFile returned any stat error where Pi's existsSync returns false; MkdirSessionDir wrapped the error and created a path that exists as a file; and the new session's directory was made only inside the mode, after the project trust store had already failed on the agent directory.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting PiG with an agent directory that cannot be made (a regular file where a parent directory should be, a parent that cannot be written, a read-only file system) now ends where Pi ends: with the session directory of a new session, the error is Node's own `ENOTDIR: not a directory, mkdir '\u003cagent\u003e/sessions/--\u003ccwd\u003e--'` (with `--no-session` Pi's project trust store reports it for the agent directory), and a program that gives `CreateAgentSession` its own session manager is no longer refused with `open auth storage at \u003cpath\u003e`: the credential store opens, and the first credential or settings write reports the mkdir error, as Pi's does. PiG stopped at the credential store with its own text, read a settings file behind an unmakeable directory as a load error where Pi reads none, wrapped the session directory's error in `sessionmanager: mkdir` and tried to make a session directory that exists as a file. Since PiG 0.2.0 for the credential store (v0.7.0 is the last release).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a984cccf08",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/auth_unmakeable_directory_upstream_test.go::TestNewAuthStorageOpensWhereTheDirectoryCannotBeMadeAndTheFirstWriteReports",
+        "coding/cli/unmakeable_agent_dir_modes_test.go::TestPrintAndRPCModeEndWithNodesMkdirErrorWhereTheAgentDirectoryCannotBeMade",
+        "coding/cli/unmakeable_agent_dir_modes_test.go::TestStartupMakesTheDirectoryOfANewSessionBeforeAnythingElse",
+        "coding/sdk_unmakeable_agent_dir_test.go::TestCreateAgentSessionRejectsWithNodesMkdirErrorForTheDefaultSessionDirectory",
+        "internal/codingagent/settings_unmakeable_directory_oracle_test.go::TestSettingsOfAnAgentDirectoryThatCannotBeMadeRecordNoLoadErrorAndTheFirstWriteReportsMkdir"
+      ]
+    },
+    {
       "id": "BF-a9d41ed",
       "title": "`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a…",
       "symptom": "`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `\u003c`, `\u003e` or `\u0026` is written as `JSON.stringify` writes it.",
