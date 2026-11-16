@@ -1,0 +1,40 @@
+from = "1.5.2+c8c456c8"
+to = "1.5.2+18e99051"
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/loader.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsReportsAThrowingHandlerToTheExtensionErrorListenerInsteadOfStderr", "test:test/extension-conformance/events_handler_errors_test.go#TestConformance_PiEventsHandlerErrorIsAnExtensionError", "test:test/extension-conformance/events_handler_errors_test.go#TestConformance_PiEventsEveryFailingListenerOfOneConnectionIsReportedInOrderBeforeTheEmitReturns", "test:test/extension-conformance/events_handler_errors_test.go#TestConformance_PiEventsNodeAsyncHandlerRejectionIsReportedAfterTheEmitReturned", "scenario:test/parity/scenarios/extensions-runtime/108-events-handler-error.toml", "scenario:test/parity/scenarios/rpc/83-rpc-events-handler-error.toml"]
+rationale = "18e99051be24 (#12233, issue #11264): createExtensionAPI's `events.on` wraps the extension's handler, awaits it and sends a throw to `runtime.reportError` with the extension's path, event `events:<channel>`, the message and the stack, and createExtensionRuntime installs a no-op `reportError` until a runner exists. The bus kept its own `console.error` (event-bus.ts) for subscribers that do not go through pi.events. PiG's counterparts: the Go in-process API wraps the handler in coding/extension/factoryload/api.go (a panic is the throw; the stack is the panicking goroutine's, after the message line) and reports through ExtensionRuntime.ReportRuntimeError (coding/extension/provider_runtime.go), which drops the error while no runner has set the action. A subprocess extension's handler runs in its own process: a native SDK's (Go, Python, Rust, Lisp) runs inside the host's per-listener events.dispatch request, so its failure is that response's error and the host reports it (coding/extension/host/subprocess/event_bus.go reportEventHandlerError, replacing the host's stderr line, which stays only for a failed dispatch request itself); the Node runtime wraps the handler as Pi's loader does and sends the new `report_error` notification (NotifyReportError), because one routed request holds several listeners and an awaited rejection comes after the dispatch response. PiG had the fault by design in every host: the bus's line `Event handler error (<channel>)` on the host's stderr over the TUI, since 0.7.0 (the first tag that holds the line). The fix is in the same change for every SDK and realm."
+oracle = "carried: 18e99051be24 (pi-coding-agent/core/extensions/loader.js: the wrapper and the pre-runner no-op reportError)"
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/runner.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed", "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsReportsOnceTheRunnerExistsAndDropsBefore", "test:test/extension-conformance/events_handler_errors_test.go#TestConformance_PiEventsHandlerErrorAfterTheRunnerWentStaleIsDropped", "test:test/extension-conformance/events_handler_errors_test.go#TestConformance_PiEventsHandlerErrorBeforeTheRunnerExistsIsDropped", "test:coding/extension/host/subprocess/report_error_wire_test.go#TestReportErrorNotifyFromAReplacedGenerationIsDropped", "test:coding/extension/host/subprocess/view_rejection_runner_state_test.go#TestRejectedViewOnARunnerStaleAfterAFailedReloadIsStillReportedOnce", "scenario:test/parity/scenarios/extensions-runtime/109-events-late-failure-after-failed-reload.toml"]
+rationale = "18e99051be24: the Runner constructor sets `runtime.reportError` to call `emitError()` unless `staleMessage` is set (a handler still running when its session is replaced must not report into the replacement's UI). PiG's counterpart is NewRunner (coding/extension/host/inproc/runner.go), which calls ExtensionRuntime.SetRuntimeErrorReporter(r.reportRuntimeError); the guard is Runner.IsStale, which InvalidateForReload, Invalidate and InvalidateKeepingRuntime all set (so a runner a failed reload left stale drops the report too, as Pi's does: its staleMessage is set right after session_shutdown). It is a second action beside D107's diagnostic reporter (SetErrorReporter, bound in BindCore, no stale guard): a rejected extension view keeps reaching the runner in every state (coding/extension/host/subprocess/view_rejection_runner_state_test.go). The subprocess host drops a report of a generation a reload replaced (reportExtensionError), as it drops a failed dispatch response."
+oracle = "carried: 18e99051be24 (pi-coding-agent/core/extensions/runner.js: the constructor binds reportError)"
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/extension/host/subprocess/report_error_wire_test.go#TestReportErrorNotifyIsReportedAsTheExtensionsErrorInOrder", "test:coding/extension/host/subprocess/report_error_wire_test.go#TestMalformedReportErrorNotifyIsDroppedAndTheConnectionGoesOn"]
+rationale = "18e99051be24 adds `reportError: (error: ExtensionError) => void` to ExtensionRuntimeState (Pi's own SDK hosts do not call it: its only caller is the pi.events wrapper). PiG's counterparts are ExtensionRuntime.SetRuntimeErrorReporter and ReportRuntimeError (coding/extension/provider_runtime.go) and the wire notification `report_error` (extension to host: event, error, stack; protocol.go NotifyReportError), applied in the order the connection's frames were written. The declaration follows the pin (extensions/sdk-ts/pi-pin.d.ts) and is not an author-facing API in any SDK."
+oracle = "not carried: types.js has no runtime member to change (ExtensionRuntimeState is an interface, so the commit changes types.d.ts only, and declarations follow the pin); the runtime object that holds reportError is built in loader.js, which is carried"
+
+[[files]]
+path = "packages/coding-agent/test/suite/regressions/11264-pi-events-handler-errors.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsReportsAThrowingHandlerToTheExtensionErrorListenerInsteadOfStderr", "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed", "test:test/extension-conformance/events_handler_errors_test.go#TestConformance_PiEventsHandlerErrorIsAnExtensionError", "test:test/extension-conformance/events_handler_errors_test.go#TestConformance_PiEventsHandlerErrorAfterTheRunnerWentStaleIsDropped"]
+rationale = "18e99051be24 adds two cases: a throwing handler reaches the runner's onError with the extension's path and does not call console.error; a handler that throws after `session.dispose()` reports nothing (Pi notes the second also fails with only the stale check removed). The Go twins use the same inputs: a handler that panics reaches the error listener and writes nothing to stderr; a handler released after the runner went stale reports nothing. PiG's conformance rows run them in every SDK realm, isolated and packed, with the failure bound to a channel name and a message no SDK defaults to."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "18e99051be24: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment."

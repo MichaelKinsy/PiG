@@ -1,0 +1,51 @@
+# Behavior family: extensions-runtime
+# Surface: a throwing pi.events handler is an extension error, and the screen stays clean.
+#
+# Upstream (Pi 18e99051be24, #12233, follow-up of #11264): extensions get events two ways. pi.on handlers run in the runner, which catches their
+# errors into emitError(), so every mode shows them. pi.events.on handlers run in the shared event bus, whose only error handling was
+# console.error("Event handler error (...)"); in interactive mode that write lands on the terminal behind the TUI and corrupts the screen.
+# loader.ts wraps the handler: a throw goes to runtime.reportError() with the extension's path, event "events:<channel>", the message and the
+# stack, and the runner binds that to emitError() in its constructor. interactive-mode.ts showExtensionError shows
+# `Extension "<path>" error: <message>` and, below it, the stack without its first line (interactive-mode.ts renderStack).
+#
+# testdata/ext/events-handler-error.mjs subscribes demo:boom with a handler that throws an Error whose stack is fixed, and registers /events-boom,
+# which emits demo:boom. The crop starts at "error:", which ends the notice's path (the two binaries' snapshot paths have one length, so the notice
+# breaks at one column), and ends at the stack's last line. The oracle is the installed Pi with the commit backported.
+
+name = "108-events-handler-error"
+description = "A pi.events handler that throws is shown as an extension error with its stack, not written behind the TUI"
+covers = [
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/events-handler-error.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/events-handler-error.mjs"]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "error:"
+capture_end = "events-last-frame"
+
+[[tmux.steps]]
+keys = ["/events-boom", "Enter"]
+wait_contains = ["events-last-frame"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["error:", "demo handler failed", "  at demoFrame (demo.mjs:1:1)", "events-last-frame"]
+both_not_contain = ["Event handler error", "panic:", "goroutine "]
+output_equal = true
+runs = 3
