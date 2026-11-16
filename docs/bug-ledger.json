@@ -3284,6 +3284,28 @@
       ]
     },
     {
+      "id": "BF-18cb1a9",
+      "title": "chord: closing the workers component waits for the goroutines that read the streams of the workers that exited",
+      "symptom": "chord: closing the workers component waits for the goroutines that read the streams of the workers that exited.",
+      "rootCause": "release was written as if closing the descriptors ended the readers. A reader is also a call into the app, which a closed stream does not stop, and nothing tied the goroutine's end to the component that released it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: closing the workers component waits for the goroutines that read the streams of the workers that exited. A process outside a worker's tree that still held its output made the server keep the stream's reader after the worker's exit; Close released the stream without waiting for that reader, so a reader inside the app's OnOutput (or in a listener of the link) went on running and told what it had read to the app after Close returned, and its goroutine and descriptor outlived the component. Close now waits for those readers, bounded by its context, and nothing of a released worker's streams is told once it returned. Same origin and releases as the fix before it (no tag contains the fault; v0.7.0 does not). \u003c!-- cause: the release was written as if closing the descriptors ended the readers, but a reader is also a call into the app, which a closed stream does not stop, and nothing tied the goroutine's end to the component that released it --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "18cb1a9381",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_drain_flood_unix_test.go::TestCloseWaitsForTheReaderOfAnExitedWorkersOutputThatIsInTheAppsOnOutput"
+      ]
+    },
+    {
       "id": "BF-18daf7f",
       "title": "The Go SDK's typed branch entry keeps the text, thinking and tool calls of an assistant message whose tool…",
       "symptom": "The Go SDK's typed branch entry keeps the text, thinking and tool calls of an assistant message whose tool calls carry object arguments (Pi's `ToolCall`), and the Rust SDK's `BranchEntry` decodes Pi's nested session entries (role, text, thinking, tool calls, provider, model and usage were all empty before) and gains `id`, `first_kept_entry_id` and `UsageInfo::total_tokens`.",
@@ -22466,6 +22488,31 @@
         "mcp/oauth/parse_url_node_test.go::TestParseURLMatchesNodeNewURL",
         "mcp/oauth/url_href_oracle_test.go::TestDiscoveryRequestsTheURLWithoutItsFragment",
         "mcp/oauth/url_href_oracle_test.go::TestOAuthURLsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-7f4c44a",
+      "title": "chord: a worker's exit is told when its process ended even while a process outside its tree keeps writing the…",
+      "symptom": "chord: a worker's exit is told when its process ended even while a process outside its tree keeps writing the worker's stdout, stderr or channel.",
+      "rootCause": "the drain took a read that finds the stream empty as the sign that everything written before the exit was told. That holds only while nobody else writes the stream, and a descriptor held outside the tree is exactly someone else.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a worker's exit is told when its process ended even while a process outside its tree keeps writing the worker's stdout, stderr or channel. A process the worker started in a session of its own survives the kill of the worker's process group; when it held a stream of the worker and wrote it without a pause, the server's settlement of the exit never finished (it waited for a read that found the stream empty, and a refilled stream never is), so the worker's exit was never told and its session never learned that its worker had died. The settlement now covers what the stream held when the worker ended: all of that is told before the exit, and what the outside process writes later is told after it, as before. The fault came with the fix that made a worker's exit wait for no stream's end (2026-11-13) and is in no release (no tag contains it; v0.7.0 does not). \u003c!-- cause: the drain took a read that finds the stream empty as the sign that everything written before the exit was told, which holds only while nobody else writes the stream, and a descriptor held outside the tree is exactly someone else --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7f4c44a147",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_drain_flood_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatKeepsItsOutputFull",
+        "chord/nextnode/workers/workers_drain_unix_test.go::TestADrainDoesNotOweWhatItsReaderTookBeforeItsProcessEnded",
+        "chord/nextnode/workers/workers_drain_unix_test.go::TestADrainSettlesOnceItToldWhatItsStreamHeldWhenItsProcessEndedWhileAProcessOutsideKeepsItFull",
+        "chord/nextnode/workers/workers_drain_unix_test.go::TestADrainTellsAllThatWasWrittenBeforeItsProcessEndedWhileItsReaderReadsAndAProcessOutsideWritesWithoutPause"
       ]
     },
     {
