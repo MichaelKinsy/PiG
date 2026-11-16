@@ -29,7 +29,7 @@ func BenchmarkNodeMessageEndEvent(b *testing.B) {
 
 // BenchmarkNodeMessageEndEventEdit is the same dispatch to a handler that edits the message in place.
 func BenchmarkNodeMessageEndEventEdit(b *testing.B) {
-	benchMessageEnd(b, `export default function(pi){pi.on("message_end",(event)=>{event.message.timestamp=2})}`)
+	benchMessageEnd(b, `export default function(pi){let n=2;pi.on("message_end",(event)=>{event.message.timestamp=n++})}`)
 }
 
 func benchToolResult(b *testing.B, source string) {

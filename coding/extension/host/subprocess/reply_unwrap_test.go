@@ -133,3 +133,15 @@ func TestResultMemberNamesAreTheWrappersJSONTags(t *testing.T) {
 		}
 	}
 }
+
+// soleMember is handed frames already decoded as JSON, but it does not rely on that: text that is not a whole object is not unwrapped.
+func TestSoleMemberRefusesTextThatIsNotOneObject(t *testing.T) {
+	for _, raw := range []string{`{"k":12`, `{"k":1}x`, `{"k":1}}`, `{"k":1,"k":2}`, `{"k"`, `{`, ``, `}`, `{"k":1 "x":2}`} {
+		if got, ok := soleMember([]byte(raw), "k"); ok {
+			t.Errorf("soleMember(%q) = %q, true; want false", raw, got)
+		}
+	}
+	if got, ok := soleMember([]byte(` { "k" : [1, 2] } `), "k"); !ok || string(got) != "[1, 2]" {
+		t.Errorf("soleMember of a spaced object = %q, %v; want [1, 2], true", got, ok)
+	}
+}
