@@ -1574,6 +1574,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a967e74](#bf-a967e74) | A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a9757c8](#bf-a9757c8) | A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a97bb03](#bf-a97bb03) | Highlighted code in a markdown block or a tool card, and the label of a legacy bash entry in the session… | PiG's own defect | All platforms | Unreleased |
+| [BF-a984ccc](#bf-a984ccc) | Starting PiG with an agent directory that cannot be made (a regular file where a parent directory should be… | PiG's own defect | All platforms | Unreleased |
 | [BF-a9d41ed](#bf-a9d41ed) | `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a9ff675](#bf-a9ff675) | The terminal sandbox failed to start when the temporary directory had a symlinked ancestor, such as macOS's… | PiG's own defect | macOS | Unreleased |
 | [BF-aa2003c](#bf-aa2003c) | The edit tool's prepared arguments keep the members in the order the model sent them | PiG's own defect | All platforms | 0.5.0 |
@@ -23892,6 +23893,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a97bb034e5` (2026-11-05)
 - **Tests:** `internal/codingagent/tree_ascii_truncation_test.go::TestTreeRowCutsALegacyBashCommandAtCharacters`, `tui/bounded_terminal_writer_test.go::TestBoundedTerminalWriterNeverCutsALoneSurrogate`, `tui/markdown_highlight_surrogate_oracle_test.go::TestMarkdownHighlightedCodeWithLoneSurrogatesMatchesPi`, `tui/render_highlighted_html_oracle_test.go::TestRenderHighlightedHtmlMatchesPi`, `tui/surrogate_screens_oracle_test.go::TestSurrogateRowsMatchPiScreens`, `tui/terminal_write_encode_test.go::TestProcessTerminalWritesEncodeLoneSurrogates`
 - **Release note:** Highlighted code in a markdown block or a tool card, and the label of a legacy bash entry in the session tree, no longer measure a lone UTF-16 surrogate one cell wide. highlight.js works on UTF-16 units and can split a surrogate pair between two scopes, and PiG encoded the leftover unit as U+FFFD before wrapping and truncating the row, so a row could wrap or clip one cell earlier than in Pi. The unit now stays nonprinting while the row is measured and is encoded when it is written to the terminal, as in Pi.
+
+### BF-a984ccc
+
+**Starting PiG with an agent directory that cannot be made (a regular file where a parent directory should be…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Starting PiG with an agent directory that cannot be made (a regular file where a parent directory should be, a parent that cannot be written, a read-only file system) now ends where Pi ends: with the session directory of a new session, the error is Node's own `ENOTDIR: not a directory, mkdir '<agent>/sessions/--<cwd>--'` (with `--no-session` Pi's project trust store reports it for the agent directory), and a program that gives `CreateAgentSession` its own session manager is no longer refused with `open auth storage at <path>`: the credential store opens, and the first credential or settings write reports the mkdir error, as Pi's does.
+- **Root cause:** NewAuthStorage called MkdirAll on the directory of auth.json at construction and returned its error, where Pi's constructor only reads through reload(), which keeps the last snapshot for every error; loadSettingsFile returned any stat error where Pi's existsSync returns false; MkdirSessionDir wrapped the error and created a path that exists as a file; and the new session's directory was made only inside the mode, after the project trust store had already failed on the agent directory.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a984cccf08` (2026-11-16)
+- **Tests:** `ai/auth_unmakeable_directory_upstream_test.go::TestNewAuthStorageOpensWhereTheDirectoryCannotBeMadeAndTheFirstWriteReports`, `coding/cli/unmakeable_agent_dir_modes_test.go::TestPrintAndRPCModeEndWithNodesMkdirErrorWhereTheAgentDirectoryCannotBeMade`, `coding/cli/unmakeable_agent_dir_modes_test.go::TestStartupMakesTheDirectoryOfANewSessionBeforeAnythingElse`, `coding/sdk_unmakeable_agent_dir_test.go::TestCreateAgentSessionRejectsWithNodesMkdirErrorForTheDefaultSessionDirectory`, `internal/codingagent/settings_unmakeable_directory_oracle_test.go::TestSettingsOfAnAgentDirectoryThatCannotBeMadeRecordNoLoadErrorAndTheFirstWriteReportsMkdir`
+- **Release note:** Starting PiG with an agent directory that cannot be made (a regular file where a parent directory should be, a parent that cannot be written, a read-only file system) now ends where Pi ends: with the session directory of a new session, the error is Node's own `ENOTDIR: not a directory, mkdir '<agent>/sessions/--<cwd>--'` (with `--no-session` Pi's project trust store reports it for the agent directory), and a program that gives `CreateAgentSession` its own session manager is no longer refused with `open auth storage at <path>`: the credential store opens, and the first credential or settings write reports the mkdir error, as Pi's does. PiG stopped at the credential store with its own text, read a settings file behind an unmakeable directory as a load error where Pi reads none, wrapped the session directory's error in `sessionmanager: mkdir` and tried to make a session directory that exists as a file. Since PiG 0.2.0 for the credential store (v0.7.0 is the last release).
 
 ### BF-a9d41ed
 

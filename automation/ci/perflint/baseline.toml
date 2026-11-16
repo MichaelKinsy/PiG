@@ -4677,14 +4677,6 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "internal/codingagent/settings.go"
-func = "loadSettingsFile"
-pattern = "env-stat"
-detail = "os.Stat"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "internal/codingagent/settings.go"
 func = "settingsJSONMap"
 pattern = "json-roundtrip"
 detail = "marshal+unmarshal"

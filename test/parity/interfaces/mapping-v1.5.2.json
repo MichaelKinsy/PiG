@@ -156542,9 +156542,9 @@
         "call:coding/session.go#Session.SettingsManager"
       ],
       "evidence": [
+        "test:coding/sdk_unmakeable_agent_dir_test.go#TestCreateAgentSessionWithASuppliedSessionManagerOpensWhereTheAgentDirCannotBeMade",
         "test:coding/session_replicated_state_test.go#TestSessionReplicatedStateObserversStopAndCostNothingWhenIdle",
-        "test:coding/session_replicated_state_test.go#TestSessionReportsEveryChangeOfTheStateExtensionsReplicate",
-        "test:coding/session_resource_accessors_test.go#TestSessionSettingsManagerIsTheManagerItPersistsThrough"
+        "test:coding/session_replicated_state_test.go#TestSessionReportsEveryChangeOfTheStateExtensionsReplicate"
       ]
     },
     {
@@ -198919,6 +198919,7 @@
       ],
       "evidence": [
         "test:coding/model_runtime_members_upstream_test.go#TestModelRuntimeRuntimeApiKeyUpstream",
+        "test:coding/sdk_unmakeable_agent_dir_test.go#TestCreateAgentSessionWithASuppliedSessionManagerOpensWhereTheAgentDirCannotBeMade",
         "test:coding/model_registry_oracle_test.go#TestModelRegistryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -198941,6 +198942,7 @@
       ],
       "evidence": [
         "test:coding/model_runtime_members_upstream_test.go#TestModelRuntimeRuntimeApiKeyUpstream",
+        "test:coding/sdk_unmakeable_agent_dir_test.go#TestCreateAgentSessionWithASuppliedSessionManagerOpensWhereTheAgentDirCannotBeMade",
         "test:coding/model_registry_oracle_test.go#TestModelRegistryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."

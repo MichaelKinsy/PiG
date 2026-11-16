@@ -1,0 +1,37 @@
+# Pi 1.5.2 probe: python3 test/parity/testdata/startup-unmakeable-agent-dir.py pi starts the real CLI offline with an agent directory that cannot be made.
+# sdk.ts:198-201 awaits ModelRuntime.create, which never rejects for it (auth-storage.ts:68,99,379-392: the lock that makes the directory is inside reload(), whose catch keeps the last snapshot),
+# but the startup does not get that far: with the default session manager main.ts:744 (SessionManager.create, session-manager.ts:597-602) throws Node's mkdir error for the session directory,
+# and with --no-session the project trust store's lock (trust-manager.ts acquireTrustLockSync) throws it for the agent directory. Print and RPC both end with exit 1 and no output on stdout.
+# Both binaries run the same cases; the wrapper prints what each observed (the exit status, stdout and the Node mkdir error line, the crash dump's stack left out) and the runner compares the two outputs.
+# A parent the process can write into makes the unwritable-parent case impossible, and the wrapper then says so on both sides. A read-only file system is not made here.
+name = "25-startup-unmakeable-agent-dir"
+description = "Startup where the agent directory cannot be made: print and RPC end with exit 1 and Node's mkdir error, for the session directory with the default session manager and for the agent directory with --no-session."
+covers = [
+  "packages/coding-agent/src/core/auth-storage.ts",
+  "packages/coding-agent/src/core/sdk.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+]
+tags = ["hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "./test/parity/testdata/startup-unmakeable-agent-dir.py", "pig"]
+pi_args = ["python3", "./test/parity/testdata/startup-unmakeable-agent-dir.py", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 180
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = [
+  "file where the directory should be: print --no-session: exit=1",
+  "file where the directory should be: print default session: exit=1",
+  "file where the directory should be: rpc --no-session: exit=1",
+  "file where the directory should be: rpc default session: exit=1",
+]
+runs = 3
