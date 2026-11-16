@@ -565,6 +565,11 @@ allocs = 150
 
 [[benchmark]]
 package = "./ai"
+benchmark = "BenchmarkGoogleVertexHookedRequest"
+allocs = 81
+
+[[benchmark]]
+package = "./ai"
 benchmark = "BenchmarkInMemoryAuthStorageCredentialMetadata/models=1"
 allocs = 22
 
@@ -887,6 +892,11 @@ allocs = 3
 package = "./ai"
 benchmark = "BenchmarkPiMessagesConverterLongStream"
 allocs = 171943
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkPiMessagesHookedRequest"
+allocs = 9
 
 [[benchmark]]
 package = "./ai"
