@@ -76,6 +76,13 @@
 //
 //  16. no-behavior-assertion: non-TUI behavioral scenarios need an observable
 //     oracle; execution-only tripwires must be tagged smoke-only.
+//
+//  17. transcript-sequences-*: a transcript_sequences_equal window belongs to an
+//     interactive-tmux scenario, names `window = "startup"` or a from/until
+//     marker, and declares each floating sequence as exactly one complete escape
+//     sequence (or one OSC number) with a reason, the recorded Pi runs and at
+//     least two distinct recorded positions, under a `# floating-evidence:`
+//     comment: a sequence that never moves is compared, not skipped.
 package main
 
 import (
@@ -147,6 +154,8 @@ type assertBlock struct {
 	NormalizeReplace        []normalizeReplaceBlock `toml:"normalize_replace"`
 	Extensions              extensionAssertBlock    `toml:"extensions"`
 
+	TranscriptSequencesEqual []sequenceWindowBlock `toml:"transcript_sequences_equal"`
+
 	ArtifactNormalizedEqual bool     `toml:"artifact_normalized_equal"`
 	ArtifactBothContain     []string `toml:"artifact_both_contain"`
 	ArtifactBothNotContain  []string `toml:"artifact_both_not_contain"`
@@ -172,6 +181,21 @@ type jsonPigOnlyRecordRule struct {
 	Count      int    `toml:"count"`
 	BeforeType string `toml:"before_type"`
 	Reason     string `toml:"reason"`
+}
+
+type sequenceWindowBlock struct {
+	Window   string                  `toml:"window"`
+	From     string                  `toml:"from"`
+	Until    string                  `toml:"until"`
+	Floating []floatingSequenceBlock `toml:"floating"`
+}
+
+type floatingSequenceBlock struct {
+	Sequence          string `toml:"sequence"`
+	OSC               *int   `toml:"osc"`
+	Reason            string `toml:"reason"`
+	EvidenceRuns      int    `toml:"evidence_runs"`
+	EvidencePositions []int  `toml:"evidence_positions"`
 }
 
 type normalizeReplaceBlock struct {
@@ -653,6 +677,7 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 			out = append(out, violation{path, "normalize-rule-reason-missing", fmt.Sprintf("normalize_replace %q requires its own reason", rule.Pattern)})
 		}
 	}
+	out = append(out, lintTranscriptSequences(path, source, sc)...)
 	if sc.Assert.JSONOutputEqual && (sc.Assert.OutputNormalizedEqual || len(sc.Assert.NormalizeReplace) > 0) {
 		out = append(out, violation{path, "json-text-normalization", "full JSON comparison cannot use text normalization"})
 	}
@@ -674,6 +699,64 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 		if len(rule.Paths) == 0 || strings.TrimSpace(rule.Reason) == "" {
 			out = append(out, violation{path, "json-alias-reason-missing", "JSON alias requires explicit paths and a reason"})
 		}
+	}
+	return out
+}
+
+// oneEscapeSequence matches exactly one complete escape sequence: a CSI sequence, a string sequence (OSC, DCS, SOS, PM, APC) ending in BEL or ST, or a short escape sequence. A prefix such as ESC [ does not match.
+var oneEscapeSequence = regexp.MustCompile("^\\x1b(?:\\[[0-?]*[ -/]*[@-~]|[\\]PX^_][^\\x07\\x1b]*(?:\\x07|\\x1b\\\\)|[ -/]*[0-?@-OQ-WYZ\\\\`-~])$")
+
+// lintTranscriptSequences checks the transcript_sequences_equal windows of a scenario (rule 17); runner/transcript_sequences.go enforces the same rules when the scenario loads.
+func lintTranscriptSequences(path, source string, sc *scenario) []violation {
+	windows := sc.Assert.TranscriptSequencesEqual
+	if len(windows) == 0 {
+		return nil
+	}
+	var out []violation
+	bad := func(rule, format string, args ...any) {
+		out = append(out, violation{path, rule, fmt.Sprintf(format, args...)})
+	}
+	if sc.Driver != "interactive-tmux" {
+		bad("transcript-sequences-driver", "transcript_sequences_equal reads the terminal transcript, which only interactive-tmux panes have")
+	}
+	floats := 0
+	for _, w := range windows {
+		switch {
+		case w.Window != "" && w.Window != "startup":
+			bad("transcript-sequences-window", "transcript_sequences_equal window %q is unknown: the only name is \"startup\"", w.Window)
+		case w.Window != "" && (w.From != "" || w.Until != ""):
+			bad("transcript-sequences-window", "transcript_sequences_equal window %q replaces from and until", w.Window)
+		case w.Window == "" && w.From == "" && w.Until == "":
+			bad("transcript-sequences-window", "transcript_sequences_equal needs a window name or a from or until marker: the whole stream is not a stable comparison")
+		}
+		for _, f := range w.Floating {
+			floats++
+			label := fmt.Sprintf("%q", f.Sequence)
+			if f.OSC != nil {
+				label = fmt.Sprintf("osc %d", *f.OSC)
+			}
+			if (f.Sequence == "") == (f.OSC == nil) {
+				bad("transcript-sequences-floating", "floating needs exactly one of sequence and osc")
+			}
+			if f.Sequence != "" && !oneEscapeSequence.MatchString(f.Sequence) {
+				bad("transcript-sequences-floating", "floating sequence %q is not exactly one complete escape sequence: name one sequence kind, never a prefix or a list", f.Sequence)
+			}
+			if f.OSC != nil && *f.OSC < 0 {
+				bad("transcript-sequences-floating", "floating osc %d is not an operating system command number", *f.OSC)
+			}
+			if strings.TrimSpace(f.Reason) == "" {
+				bad("transcript-sequences-floating", "floating %s requires a reason", label)
+			}
+			positions := slices.Clone(f.EvidencePositions)
+			slices.Sort(positions)
+			positions = slices.Compact(positions)
+			if f.EvidenceRuns < 2 || len(positions) < 2 || positions[0] < 0 {
+				bad("transcript-sequences-floating", "floating %s needs evidence_runs of at least 2 and at least 2 distinct non-negative evidence_positions: a sequence that does not move does not float", label)
+			}
+		}
+	}
+	if floats > 0 && !strings.Contains(source, "# floating-evidence:") {
+		bad("floating-evidence-missing", "scenario %q declares floating sequences without a '# floating-evidence:' comment naming the Pi runs recorded, the positions seen and how they were recorded", sc.Name)
 	}
 	return out
 }

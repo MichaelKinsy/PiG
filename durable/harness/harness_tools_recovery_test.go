@@ -99,12 +99,15 @@ func TestToolRecovery(t *testing.T) {
 		taskId := trToolTaskId(t, harness)
 		mustClose(t, harness)
 
-		harness, root = trOpen(t, path, setup)
+		// The reopened Harness runs nothing until Resume, and what Resume starts runs on its own goroutine, where upstream's
+		// reads come first: the stored record is read before the Resume.
+		harness, root = openChat(t, tkOpenSqlite(t, path), setup)
 		record := tkTaskRecord(t, harness, taskId)
 		wantCheckpoint := map[string]any{"phase": "execute", "arguments": map[string]any{}, "replay": "unsafe"}
 		if record.State.Checkpoint == nil || !reflect.DeepEqual(plainObject(*record.State.Checkpoint), wantCheckpoint) {
 			t.Fatalf("checkpoint %v, want %v", record.State.Checkpoint, wantCheckpoint)
 		}
+		harness.Resume()
 		submission, err := harness.Submission(testContext, id)
 		if err != nil || submission == nil {
 			t.Fatalf("Submission %v %v", submission, err)

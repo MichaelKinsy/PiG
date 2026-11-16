@@ -4,6 +4,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 )
 
@@ -869,5 +870,54 @@ both_contain = ["Anthropic (Claude Pro/Max)", "OpenAI (ChatGPT Plus/Pro)", "GitH
 	got := lintOAuthProviderCoverage(missingDir)
 	if len(got) != 3 {
 		t.Fatalf("lintOAuthProviderCoverage missing set got %d violations, want 3: %+v", len(got), got)
+	}
+}
+
+// TestLintTranscriptSequences exercises rule 17: a transcript_sequences_equal window names a stream range, and each floating sequence is one sequence kind
+// that Pi was recorded writing at two or more places, cited under a '# floating-evidence:' comment.
+func TestLintTranscriptSequences(t *testing.T) {
+	keys := floatingSequenceBlock{Sequence: "\x1b[>4;2m", Reason: "answers a query", EvidenceRuns: 20, EvidencePositions: []int{35, 204}}
+	title := floatingSequenceBlock{OSC: func() *int { n := 0; return &n }(), Reason: "follows the keys", EvidenceRuns: 20, EvidencePositions: []int{36, 205}}
+	with := func(mutate func(*floatingSequenceBlock)) floatingSequenceBlock {
+		f := keys
+		mutate(&f)
+		return f
+	}
+	const evidence = "# floating-evidence: 20 Pi runs recorded 2026-11-16, positions 35 and 204\n"
+	for name, tc := range map[string]struct {
+		driver string
+		source string
+		window sequenceWindowBlock
+		want   []string
+	}{
+		"a recorded startup window":     {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{keys, title}}, nil},
+		"markers instead of a name":     {"interactive-tmux", evidence, sequenceWindowBlock{From: "\x1b[?1049l"}, nil},
+		"a driver without a transcript": {"cli-mode", "", sequenceWindowBlock{Window: "startup"}, []string{"transcript-sequences-driver"}},
+		"an unknown window":             {"interactive-tmux", "", sequenceWindowBlock{Window: "exit"}, []string{"transcript-sequences-window"}},
+		"the whole stream":              {"interactive-tmux", "", sequenceWindowBlock{}, []string{"transcript-sequences-window"}},
+		"a name and markers":            {"interactive-tmux", "", sequenceWindowBlock{Window: "startup", Until: "x"}, []string{"transcript-sequences-window"}},
+		"no evidence comment":           {"interactive-tmux", "", sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{keys}}, []string{"floating-evidence-missing"}},
+		"a CSI prefix":                  {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.Sequence = "\x1b[" })}}, []string{"transcript-sequences-floating"}},
+		"two sequences":                 {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.Sequence = "\x1b[>4;2m\x1b[?u" })}}, []string{"transcript-sequences-floating"}},
+		"an unfinished OSC":             {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.Sequence = "\x1b]0;title" })}}, []string{"transcript-sequences-floating"}},
+		"sequence and osc":              {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.OSC = title.OSC })}}, []string{"transcript-sequences-floating"}},
+		"no reason":                     {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.Reason = "" })}}, []string{"transcript-sequences-floating"}},
+		"one recorded position":         {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.EvidencePositions = []int{35, 35} })}}, []string{"transcript-sequences-floating"}},
+		"one recorded run":              {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.EvidenceRuns = 1 })}}, []string{"transcript-sequences-floating"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			sc := &scenario{Name: "sequences", Driver: tc.driver, Assert: assertBlock{TranscriptSequencesEqual: []sequenceWindowBlock{tc.window}}}
+			var got []string
+			for _, v := range lintTranscriptSequences("s.toml", tc.source, sc) {
+				got = append(got, v.Rule)
+			}
+			if len(tc.want) == 0 && len(got) > 0 || len(tc.want) > 0 && !slices.Contains(got, tc.want[0]) {
+				t.Fatalf("rules = %q, want %q", got, tc.want)
+			}
+		})
+	}
+	var noWindow scenario
+	if got := lintTranscriptSequences("s.toml", "", &noWindow); len(got) != 0 {
+		t.Fatalf("a scenario without a window: %v", got)
 	}
 }
