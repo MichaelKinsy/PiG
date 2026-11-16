@@ -538,7 +538,7 @@ If a Node factory throws or rejects, its captured `pi` API becomes inactive. Lat
 
 Node extensions keep Jiti's compiled-source cache under `<config-root>/cache/jiti` (D20). The loader checks source contents on each load and separates compiler and runtime versions, so a changed source is compiled again. Changing the temporary directory does not discard this cache. The cache does not retain evaluated factories between loads. `JITI_FS_CACHE=false` disables it. The transform cache is disposable and is separate from the published artifacts managed by `pig extensions cache prune`.
 
-Node also keeps native bytecode under `<config-root>/cache/node-compile` when a virtual SDK library is imported (D20). Node validates source bytes and VM compatibility before reuse. This cache contains compiled code, not evaluated factories or extension state. `NODE_DISABLE_COMPILE_CACHE=1` disables it independently of Jiti. Existing Node cache configuration remains authoritative. Like the Jiti cache, it is disposable and is not managed by `pig extensions cache prune`.
+Node also keeps native bytecode under `<config-root>/cache/node-compile` when a virtual SDK library is imported, or from process start once an earlier run has created that directory (D20). Node validates source bytes and VM compatibility before reuse. This cache contains compiled code, not evaluated factories or extension state. `NODE_DISABLE_COMPILE_CACHE=1` disables it independently of Jiti. Existing Node cache configuration remains authoritative. Like the Jiti cache, it is disposable and is not managed by `pig extensions cache prune`.
 
 ## Session replacement
 
