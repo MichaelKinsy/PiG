@@ -33235,6 +33235,29 @@
       ]
     },
     {
+      "id": "BF-8b6eb22",
+      "title": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a…",
+      "symptom": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a component it already showed with different members (it gains or loses `handleInput`, `handleMouse`, focus or `wantsKeyRelease`) no longer races the host's reads of those members: a call that named the component again stored them while a key, a mouse event, a focus change or a frame read them, with no lock between the two, so an input could be delivered or withheld by a half-stored value.",
+      "rootCause": "tuiAltScreenState.component stored a component's caps under s.mu (tui_alt_bridge.go:382) while HandleInput, WantsKeyRelease, HandleMouse, SetFocused and CapturesViewportInput (:294-357) read the same struct with no lock, on the goroutine of an input delivery, a mouse event, a focus change or a frame. Every SDK names a component's members with each call that names it, so a setFocus on one request goroutine and a key on another stored and read one struct unordered; go test -race reported it in all five readers and across the call boundary, 5 of 5 on the base. No user symptom was observed: the stores carry equal values unless an extension changes the members of a component it already showed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a component it already showed with different members (it gains or loses `handleInput`, `handleMouse`, focus or `wantsKeyRelease`) no longer races the host's reads of those members: a call that named the component again stored them while a key, a mouse event, a focus change or a frame read them, with no lock between the two, so an input could be delivered or withheld by a half-stored value. The host now keeps the members of a component as one value that a call replaces whole. Present since 0.7.0, the first release with the subprocess `TuiAltScreen`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b6eb224b8",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/tui_alt_caps_race_test.go::TestARenamedComponentsMembersAreNotRacedByTheScreensReads",
+        "coding/extension/host/subprocess/tui_alt_caps_race_test.go::TestSetFocusAndInputOfAnExtensionScreenDoNotRaceTheComponentsMembers"
+      ]
+    },
+    {
       "id": "BF-8b75dc0",
       "title": "Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection…",
       "symptom": "Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection to the first item even when the query is unchanged, Tab no longer edits the search when project mode is unavailable, and the search is a callback-mode Input so Enter no longer freezes it, all as in Pi's `ResourceList.handleInput` (`tui/config_selector_oracle_test.go`, 648 probes against pinned Pi).",

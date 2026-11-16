@@ -1228,6 +1228,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8ac653e](#bf-8ac653e) | The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native… | PiG's own defect | Windows | Unreleased |
 | [BF-8aff02e](#bf-8aff02e) | `grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8b15be3](#bf-8b15be3) | Tests: the read barrier, which lets a fixture server write its next record only when the client is reading… | PiG's own defect | Linux | Unreleased |
+| [BF-8b6eb22](#bf-8b6eb22) | A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a… | PiG's own defect | All platforms | Unreleased |
 | [BF-8b75dc0](#bf-8b75dc0) | Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8b792f9](#bf-8b792f9) | Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the… | PiG's own defect | Windows, WSL | Unreleased |
 | [BF-8b8b8d3](#bf-8b8b8d3) | A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in… | PiG's own defect | All platforms | Unreleased |
@@ -19025,6 +19026,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8b15be354a` (2026-11-13)
 - **Tests:** `ai/abort_text_pi_test.go::TestProviderAbortTextsMatchPi`, `coding/rpc33_azure_ticks_test.go::TestRPC33AzureTickOrder`
 - **Release note:** Tests: the read barrier, which lets a fixture server write its next record only when the client is reading the socket again, counted bytes per client address. Linux gives one local port to live connections to different servers, so two parallel fixture servers could see the same client address; one of them then waited until its test's deadline, or wrote two records into one read. `TestRPC33AzureTickOrder` failed that way in about one run in a hundred, more often on a loaded machine. The barrier now counts per connection (client and server address).
+
+### BF-8b6eb22
+
+**A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a component it already showed with different members (it gains or loses `handleInput`, `handleMouse`, focus or `wantsKeyRelease`) no longer races the host's reads of those members: a call that named the component again stored them while a key, a mouse event, a focus change or a frame read them, with no lock between the two, so an input could be delivered or withheld by a half-stored value.
+- **Root cause:** tuiAltScreenState.component stored a component's caps under s.mu (tui_alt_bridge.go:382) while HandleInput, WantsKeyRelease, HandleMouse, SetFocused and CapturesViewportInput (:294-357) read the same struct with no lock, on the goroutine of an input delivery, a mouse event, a focus change or a frame. Every SDK names a component's members with each call that names it, so a setFocus on one request goroutine and a key on another stored and read one struct unordered; go test -race reported it in all five readers and across the call boundary, 5 of 5 on the base. No user symptom was observed: the stores carry equal values unless an extension changes the members of a component it already showed.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8b6eb224b8` (2026-11-15)
+- **Tests:** `coding/extension/host/subprocess/tui_alt_caps_race_test.go::TestARenamedComponentsMembersAreNotRacedByTheScreensReads`, `coding/extension/host/subprocess/tui_alt_caps_race_test.go::TestSetFocusAndInputOfAnExtensionScreenDoNotRaceTheComponentsMembers`
+- **Release note:** A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a component it already showed with different members (it gains or loses `handleInput`, `handleMouse`, focus or `wantsKeyRelease`) no longer races the host's reads of those members: a call that named the component again stored them while a key, a mouse event, a focus change or a frame read them, with no lock between the two, so an input could be delivered or withheld by a half-stored value. The host now keeps the members of a component as one value that a call replaces whole. Present since 0.7.0, the first release with the subprocess `TuiAltScreen`.
 
 ### BF-8b75dc0
 
