@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // model-registry.ts getAvailable: only models of providers with configured auth are listed, and a Copilot OAuth credential's model picker list further restricts that provider's models; getAll lists every model of every provider in provider order.
@@ -61,7 +62,9 @@ func TestGetAvailableModelDataFiltersByConfiguredAuthAndCopilotAllowlist(t *test
 		}
 		all[model.ProviderMeta.ProviderID]++
 	}
-	if all["github-copilot"] != len(copilot) || all["mistral"] == 0 || all["custom-authed"] != 2 {
+	// A Piglet that strips the Mistral API lists no model of the mistral provider.
+	mistralStripped := pigstrip.Has(pigstrip.ListAPIs, "mistral-conversations")
+	if all["github-copilot"] != len(copilot) || (all["mistral"] == 0) != mistralStripped || all["custom-authed"] != 2 {
 		t.Errorf("GetAllModelData counts = %v, want every model (copilot %d)", all, len(copilot))
 	}
 	ref := registry.modelProviderIDs()

@@ -1,4 +1,4 @@
-//go:build !pig_strip_changelog
+//go:build !pig_strip_changelog && !pig_strip_mermaid
 
 package codingagent
 
