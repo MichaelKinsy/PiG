@@ -5084,7 +5084,10 @@ fn main() {
                 }
                 CommandResult::Ok
             }
-            fn after_return(ctx: &pig_sdk::Context, items: &'static [(&'static str, &'static str)]) {
+            fn after_return(
+                ctx: &pig_sdk::Context,
+                items: &'static [(&'static str, &'static str)],
+            ) {
                 let ctx = ctx.clone();
                 thread::spawn(move || {
                     thread::sleep(Duration::from_millis(100));
