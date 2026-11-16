@@ -10,11 +10,15 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/upstreammirror"
 )
 
 // upstreamIndex resolves source references against the pinned Pi mirror and digest-verified dependency snapshots.
 type upstreamIndex struct {
 	root         string
+	repoRoot     string // the repository whose BackportsScript lists the fixes the release line carries beyond the pin; empty when it has none
+	picked       map[string]bool
 	files        []string // slash paths relative to root
 	cache        map[string]string
 	dependencies map[string]string
@@ -25,11 +29,19 @@ func loadUpstreamIndex(root string) (*upstreamIndex, error) {
 	if err != nil || !info.IsDir() {
 		return nil, fmt.Errorf("upstream mirror %s is missing; run `make upstream-mirror`", root)
 	}
+	orig := root
 	// .upstream/current is a symlink to the pinned version; walk its target.
 	if resolved, err := filepath.EvalSymlinks(root); err == nil {
 		root = resolved
 	}
-	return &upstreamIndex{root: root, cache: map[string]string{}}, nil
+	index := &upstreamIndex{root: root, cache: map[string]string{}}
+	// A file a recorded post-release fix covers is read as the release line's Pi has it (Pi's SESSION_WEBSOCKET_MAX_AGE_MS is 45 minutes after bb1a2b3542b5, 55 in the pinned mirror).
+	if repoRoot, err := filepath.Abs(filepath.Join(orig, "..", "..")); err == nil {
+		if _, err := os.Stat(filepath.Join(repoRoot, upstreammirror.BackportsScript)); err == nil {
+			index.repoRoot = repoRoot
+		}
+	}
+	return index, nil
 }
 
 // list walks the mirror once, on the first reference that needs resolving.
@@ -94,12 +106,31 @@ func (u *upstreamIndex) content(rel string) (string, error) {
 	if s, ok := u.cache[rel]; ok {
 		return s, nil
 	}
-	data, err := os.ReadFile(filepath.Join(u.root, filepath.FromSlash(rel)))
+	var data []byte
+	var err error
+	if u.repoRoot != "" && u.isPicked(rel) {
+		data, err = upstreammirror.ReadPicked(u.repoRoot, rel)
+	} else {
+		data, err = os.ReadFile(filepath.Join(u.root, filepath.FromSlash(rel)))
+	}
 	if err != nil {
 		return "", err
 	}
 	u.cache[rel] = string(data)
 	return u.cache[rel], nil
+}
+
+// isPicked reports whether a recorded post-release fix covers rel.
+func (u *upstreamIndex) isPicked(rel string) bool {
+	if u.picked == nil {
+		u.picked = map[string]bool{}
+		if paths, err := upstreammirror.PickedPaths(u.repoRoot); err == nil {
+			for _, path := range paths {
+				u.picked[path] = true
+			}
+		}
+	}
+	return u.picked[rel]
 }
 
 // upstreamRefRe matches `upstream: <file>[:<symbol or line range>]`.

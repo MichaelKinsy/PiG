@@ -28,8 +28,7 @@ const (
 	codexWebSocketConnectTimeout = 15 * time.Second
 	codexWebSocketCacheTTL       = 5 * time.Minute
 	// The server closes a socket after 60 minutes, even mid-response, and the in-flight response is lost. New requests open a fresh socket after 45 minutes, leaving 15 minutes for long responses (Pi bb1a2b3542b5).
-	// upstream: packages/ai/src/api/openai-codex-responses.ts:SESSION_WEBSOCKET_MAX_AGE_MS
-	codexWebSocketMaxAge = 45 * time.Minute
+	codexWebSocketMaxAge = 45 * time.Minute // upstream: packages/ai/src/api/openai-codex-responses.ts:SESSION_WEBSOCKET_MAX_AGE_MS
 )
 
 // codexWebSocketError is a WebSocket transport failure as Node's WebSocket reports it to openai-codex-responses.ts: extractWebSocketError's "WebSocket error" for a failed handshake or a dropped connection, and extractWebSocketCloseError's WebSocketCloseError, with the close code, for a close frame (openai-codex-responses.ts:1250-1288).
@@ -845,6 +844,8 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 			break
 		}
 		websocketStarted = true
+		// onStart pushes the start event at the first event the mapper yields (openai-codex-responses.ts:333-338).
+		builder.start()
 	}
 	if err != nil && websocketStarted {
 		// An aborted request ends the same way (consumeCodexWebSocket does not call a cancelled context a transport failure).

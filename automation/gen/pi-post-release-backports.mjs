@@ -1344,6 +1344,17 @@ const SESSION_WEBSOCKET_MAX_AGE_MS = 45 * 60 * 1000;
 ]);
 // END backport bb1a2b3542b5
 
+// BEGIN backport bb1a2b3542b5
+// bb1a2b3542b5: Pi's TypeScript source of the Codex provider, which the divergence guard reads from the source mirror, with the same change as Pi's commit makes to it.
+mirrorSource("bb1a2b3542b5", "packages/ai/src/api/openai-codex-responses.ts", [
+    [`const SESSION_WEBSOCKET_MAX_AGE_MS = 55 * 60 * 1000;
+`, `// The server closes a socket after 60 minutes, even mid-response, and the in-flight response is lost.
+// New requests open a fresh socket after 45 minutes, leaving 15 minutes for long responses.
+const SESSION_WEBSOCKET_MAX_AGE_MS = 45 * 60 * 1000;
+`],
+]);
+// END backport bb1a2b3542b5
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

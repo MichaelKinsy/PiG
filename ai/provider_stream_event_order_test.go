@@ -174,7 +174,7 @@ func TestCodexWebSocketLimitAfterLeadingRateLimitsEndsTheMessage(t *testing.T) {
 	result, types := codexWSResult(t, provider, codexUpstreamContext(), StreamOptions{Transport: TransportWebSocket, OnProviderStreamEvent: recorder.observe})
 	// The oracle with the commit (Pi bb1a2b3542b5): stopReason error, "Codex error: limit", events start then error, one connection, no fetch.
 	if result.StopReason != StopReasonError || result.ErrorMessage != "Codex error: limit" || !reflect.DeepEqual(types, []AssistantEventType{EventStart, EventError}) {
-		t.Fatalf("result = %#v", result)
+		t.Fatalf("result = %#v events = %v", result, types)
 	}
 	events, _ := recorder.snapshot()
 	if want := decodedEvents(t, rateLimits, limit); !reflect.DeepEqual(events, want) {
@@ -194,9 +194,9 @@ func TestCodexWebSocketReadErrorAfterLeadingRateLimitsEndsTheMessage(t *testing.
 		return []string{rateLimits, "close"}
 	})
 	result, types := codexWSResult(t, peer.provider(t, "acc_test"), codexUpstreamContext(), StreamOptions{Transport: TransportAuto, SessionID: "rate-limits-then-close"})
-	// The oracle with the commit (Pi bb1a2b3542b5): stopReason error, "WebSocket closed 1006", a provider_transport_failure diagnostic, events start then error, one connection, no fetch.
-	if result.StopReason != StopReasonError || result.ErrorMessage != "WebSocket closed 1006" || !reflect.DeepEqual(types, []AssistantEventType{EventStart, EventError}) || len(result.Diagnostics) != 1 || result.Diagnostics[0].Type != "provider_transport_failure" {
-		t.Fatalf("result = %#v", result)
+	// The oracle with the commit (Pi bb1a2b3542b5), whose fake socket dispatches a close event with code 1006, ends "WebSocket closed 1006"; this peer drops the TCP connection, which Node reports as "WebSocket error" (extractWebSocketError). Either way: stopReason error, a provider_transport_failure diagnostic, events start then error, one connection, no fetch.
+	if result.StopReason != StopReasonError || result.ErrorMessage != "WebSocket error" || !reflect.DeepEqual(types, []AssistantEventType{EventStart, EventError}) || len(result.Diagnostics) != 1 || result.Diagnostics[0].Type != "provider_transport_failure" {
+		t.Fatalf("result = %#v events = %v", result, types)
 	}
 	if headers, bodies, fetches := peer.snapshot(); len(headers) != 1 || len(bodies) != 1 || fetches != 0 {
 		t.Fatalf("connections=%d requests=%d sse fetches=%d, want one WebSocket request and no fallback", len(headers), len(bodies), fetches)
