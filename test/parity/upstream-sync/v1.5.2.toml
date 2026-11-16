@@ -307,7 +307,7 @@ path = "packages/chord/src/store/live-query.ts"
 change = "modified"
 disposition = "ported"
 evidence = ["test:chord/next/host/host_host_data_test.go#TestHostDataLiveOwnersFollowAnImportAPinnedKeyAndALiveQueryShowTheImportedDataAResidentKeyReadsIt", "test:chord/next/host/host_host_data_test.go#TestHostDataLiveOwnersFollowADeleteThePinnedKeyReadsInitialTheLiveQueryIsEmpty"]
-rationale = "Pi 8a5da3ce6 (documents and table rows can belong to a host): Go LiveQueries.OnHostKind re-runs live queries on a host data change and a host cell reads as the address JSON, pinned by the live owners follow an import and a delete host data tests."
+rationale = "Pi 8a5da3ce6 (documents and table rows can belong to a host): Go Reads.OnHostKind (chord/next/store/reads.go: Pi's Reads.onHostKind, which reads the table's hostColumn through usesHostKind and Go's hostKindOf) re-runs the reads of live queries on a host data change and a host cell reads as the address JSON, pinned by the live owners follow an import and a delete host data tests."
 
 [[files]]
 path = "packages/chord/src/store/rows.ts"

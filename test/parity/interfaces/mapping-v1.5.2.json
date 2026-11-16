@@ -117912,7 +117912,7 @@
       ],
       "evidence": [
         "test:chord/next/store/export_test.go#TestExportHostSelection",
-        "test:chord/next/store/live_query_test.go#TestQueryRefreshAdoptsItsLastApplicationsRunsOnlyAGroupedCommitThatRolledBackAppliesAgainAlone",
+        "test:chord/next/store/live_query_test.go#TestLiveQueryAppliedAgainAdoptsItsLastApplicationsRunsOnlyAGroupedCommitThatRolledBackAppliesAgainAlone",
         "test:chord/next/store/store_test.go#TestStore"
       ]
     },
@@ -120368,7 +120368,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/live_query.go#LiveQueries.OnHostKind"
+        "call:chord/next/store/reads.go#hostKindOf"
       ],
       "evidence": [
         "test:chord/next/store/table_test.go#TestHostColumnTables"
