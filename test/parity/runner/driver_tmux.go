@@ -190,27 +190,10 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	}
 	cmdStr = "cd " + shellQuote(snap) + " && " + cmdStr
 
-	tmuxServerMu.Lock()
-	serverErr := ensureTmuxServer()
-	// The isolated server is shared by both binaries. Start each runtime clock
-	// only after that one-time setup so the first binary does not own it.
-	t0 := time.Now()
-	var createOutput []byte
-	var createErr error
-	if serverErr == nil {
-		//nolint:gosec // G204 (class a): program is literal tmux; cmdStr is a sh -c string that embeds bin.Path and scenario args, each shellQuote'd, and is the value of new-session.
-		createOutput, createErr = exec.CommandContext(ctx, "tmux", tmuxArgs(createTmuxSessionArgs(session, cmdStr, cfg)...)...).CombinedOutput()
-	}
-	tmuxServerMu.Unlock()
-	if serverErr != nil {
-		return Result{Err: serverErr}
-	}
-	if createErr != nil {
-		return Result{Err: fmt.Errorf("tmux new-session: %w: %s", createErr, strings.TrimSpace(string(createOutput)))}
-	}
-	started = true
 	transcriptPath := filepath.Join(tc.tempRoot, "terminal-transcript.log")
-	if err := attachTranscript(ctx, session, transcriptPath); err != nil {
+	t0, created, err := startTmuxSession(ctx, session, cmdStr, transcriptPath, cfg)
+	started = created
+	if err != nil {
 		return Result{Err: err}
 	}
 
@@ -686,17 +669,44 @@ func waitForPaneState(ctx context.Context, session string, includes, excludes []
 	return false
 }
 
-// attachTranscript records the raw bytes the session's pane receives in the file at path, for the waits and comparators that read the byte stream rather than the screen.
-func attachTranscript(ctx context.Context, session, path string) error {
-	command, err := transcriptReaderCommand(path)
+// startTmuxSession creates the detached session that runs command and attaches the transcript reader to its pane before command runs, so the transcript holds every byte the program writes, from its first. It returns the time taken just before the session was requested, and whether the session exists: the caller tears it down then, whatever err says.
+//
+// The pane's shell first waits on a tmux channel (tmuxGateHold). tmux runs new-session, pipe-pane and the signal that opens the channel, in that order, from one client invocation: a command list stops at the first command that fails, so the program is released only into an attached pipe, and no sleep or poll stands between the program and its pipe. The pane has its size and environment from new-session as before; the hold runs ahead of the command's own first line.
+func startTmuxSession(ctx context.Context, session, command, transcriptPath string, cfg TmuxDriverConfig) (t0 time.Time, created bool, err error) {
+	reader, err := transcriptReaderCommand(transcriptPath)
 	if err != nil {
-		return err
+		return time.Time{}, false, err
 	}
-	//nolint:gosec // G204 (class a): program is literal tmux; the pipe command is built by transcriptReaderCommand from the test binary's path and a path under the run's temp root.
-	if err := exec.CommandContext(ctx, "tmux", tmuxArgs("pipe-pane", "-o", "-t", session, command)...).Run(); err != nil {
-		return fmt.Errorf("tmux pipe-pane: %w", err)
+	gate := "pig-parity-gate-" + session
+	args := append(createTmuxSessionArgs(session, tmuxGateHold(gate, command), cfg),
+		";", "pipe-pane", "-o", "-t", session, reader,
+		";", "wait-for", "-S", gate)
+	tmuxServerMu.Lock()
+	serverErr := ensureTmuxServer()
+	// The isolated server is shared by both binaries. Start each runtime clock
+	// only after that one-time setup so the first binary does not own it.
+	t0 = time.Now()
+	var output []byte
+	var startErr error
+	if serverErr == nil {
+		//nolint:gosec // G204 (class a): program is literal tmux; command is a sh -c string that embeds bin.Path and scenario args, each shellQuote'd, and is the value of new-session; the pipe command is built by transcriptReaderCommand from the test binary's path and a path under the run's temp root.
+		output, startErr = exec.CommandContext(ctx, "tmux", tmuxArgs(args...)...).CombinedOutput()
 	}
-	return nil
+	tmuxServerMu.Unlock()
+	if serverErr != nil {
+		return t0, false, serverErr
+	}
+	if startErr != nil {
+		//nolint:gosec // G204 (class a): program is literal tmux; args are fixed has-session -t =<harness session>.
+		created = exec.CommandContext(ctx, "tmux", tmuxArgs("has-session", "-t", "="+session)...).Run() == nil
+		return t0, created, fmt.Errorf("tmux new-session with the transcript pipe: %w: %s", startErr, strings.TrimSpace(string(output)))
+	}
+	return t0, true, nil
+}
+
+// tmuxGateHold makes command wait until the channel is signalled (tmux wait-for -S). A signal that comes before the wait is kept, so the order of the two does not matter. A pane that cannot reach its server ends rather than run unrecorded.
+func tmuxGateHold(channel, command string) string {
+	return "tmux wait-for " + shellQuote(channel) + " || exit 1; " + command
 }
 
 // capturePaneHistory returns the pane's scrollback followed by the displayed text of the terminal transcript, so a wait matches displayed text only.
