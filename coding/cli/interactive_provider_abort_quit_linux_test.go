@@ -242,6 +242,9 @@ func startQuitPane(t *testing.T, cwd, stderr string, env []string, argv ...strin
 	}
 	command := "exec sh " + quitShellQuote(runner)
 	args := []string{"new-session", "-d", "-s", "keeper", "sleep 100000", ";", "set-option", "-g", "remain-on-exit", "on", ";", "new-session", "-d", "-s", "pig", "-x", "100", "-y", "32", "-c", cwd}
+	// The color level of pig (chalk's) reads FORCE_COLOR, CI and the terminal's own variables, which the pane would inherit from whoever runs the test; the quit rows
+	// match bytes, so the pane pins the level to zero (see quitBytesAfterStop).
+	args = append(args, "-e", "FORCE_COLOR=0")
 	for _, assignment := range env {
 		args = append(args, "-e", assignment)
 	}
@@ -641,6 +644,9 @@ export default function (pi) {
 // quitBytesAfterStop is what pig writes to its terminal after the stop sequence of its TUI (it ends by turning bracketed paste off) at a quit by keys: the resume
 // hint, after at most a title, and then the title, progress-off and cursor sequences of its exit. Nothing of the run that ends under the dispose is among them: no
 // text, and no progress sequence before the hint (Pi's stop() turns the terminal progress off before the TUI stops, and its mode is unsubscribed from the run).
+// The hint is plain because startQuitPane pins FORCE_COLOR=0 (chalk level 0): Pi prints it as chalk.dim, which adds the dim sequences at any nonzero level, and
+// pig's chalk level follows Pi's, so without the pin the bytes depend on the environment of the test (CI set without a known CI provider gives level 0, a TTY under
+// TERM=xterm-256color without CI gives level 2).
 var quitBytesAfterStop = regexp.MustCompile(`^(\x1b\]0;[^\x07]*\x07)?To resume this session: [^\r\n]*\r\n(\x1b\]9;4;0\x07|\x1b\]0;[^\x07]*\x07|\x1b\[\?25h)*$`)
 
 // TestInteractiveQuitWhileABuiltInProviderTurnStreams: the user quits interactive mode (ctrl+c twice, ctrl+d or /quit) while a turn of a built-in provider kind streams:
