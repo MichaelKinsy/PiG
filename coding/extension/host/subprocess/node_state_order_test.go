@@ -2,6 +2,7 @@ package subprocess
 
 import (
 	"encoding/json"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
@@ -22,16 +23,42 @@ import (
 //   - replaced: a log is replaced by a page with a lower count that holds the whole log, the page the host sends when a cursor is out of range
 //     (Session.RawEntriesPage), and the following pages extend it. A guard against lower-count pages would break that replacement, and Pi's own log has no stale page to guard against.
 //   - beforeReady: a state the host sends before the ready is applied, not dropped, and the load goes on; a handler reads it after a ready that carries no state.
+//
+// The probe orders its steps by what each observed (a gate a step opens for the next), and no timer's length decides one. A process the host starves of CPU runs every
+// timer late, and a fixed wait inverted then: limbo reported a handler b that had not read yet, under load, in 7 of 960 runs of this test at 16 in parallel. The second
+// run blocks the probe's event loop for 100 ms before every timer callback (testdata/node-timer-stall.mjs), which inverted the old waits every time.
 func TestNodeAppliesHostStateInFrameOrder(t *testing.T) {
 	nodeCellRequireNode(t)
 	runtime, err := filepath.Abs("runtime-node/runtime.mjs")
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := exec.CommandContext(t.Context(), "node", "testdata/node-state-order-probe.mjs", runtime).CombinedOutput()
+	stall, err := filepath.Abs("testdata/node-timer-stall.mjs")
 	if err != nil {
-		t.Fatalf("probe: %v\n%s", err, out)
+		t.Fatal(err)
 	}
+	for _, run := range []struct {
+		name string
+		args []string
+		env  []string
+	}{
+		{"plain", nil, nil},
+		{"every_timer_callback_late", []string{"--import", stall}, []string{"PIG_TIMER_STALL_MS=100"}},
+	} {
+		t.Run(run.name, func(t *testing.T) {
+			cmd := exec.CommandContext(t.Context(), "node", append(run.args, "testdata/node-state-order-probe.mjs", runtime)...)
+			cmd.Env = append(os.Environ(), run.env...)
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("probe: %v\n%s", err, out)
+			}
+			checkNodeStateOrder(t, out)
+		})
+	}
+}
+
+func checkNodeStateOrder(t *testing.T, out []byte) {
+	t.Helper()
 	var got map[string]any
 	if err := json.Unmarshal(out, &got); err != nil {
 		t.Fatalf("decode %q: %v", out, err)
