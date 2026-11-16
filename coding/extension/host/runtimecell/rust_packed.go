@@ -70,7 +70,7 @@ func BuildRustPackedCell(ctx context.Context, cacheRoot, key string, extensions 
 	if err != nil {
 		return nil, err
 	}
-	if cell, ok := reuseRustPackedCell(cacheRoot, key, normalized); ok {
+	if cell, ok := reuseRustPackedCell(ctx, cacheRoot, key, normalized); ok {
 		return cell, nil
 	}
 	lockCandidates := []string{os.Getenv("PIG_SDK_RS_ROOT")}
@@ -198,13 +198,15 @@ func normalizeRustExtensions(extensions []RustExtension, requireFactory bool) ([
 }
 
 // reuseRustPackedCell returns an already-built cell without the staged-SDK
-// lease; see reuseGoPackedCell for why a content-hash hit is safe.
-func reuseRustPackedCell(cacheRoot, key string, normalized []RustExtension) (*RustPackedCell, bool) {
+// lease; see reuseGoPackedCell for why a content-hash hit is safe. The cells of
+// one load read the SDK tree once between them (WithLoadTreeHashes), so for them
+// the content just read is the content the load's first cell read.
+func reuseRustPackedCell(ctx context.Context, cacheRoot, key string, normalized []RustExtension) (*RustPackedCell, bool) {
 	sdkRoot, err := findRustSDKRoot(normalized)
 	if err != nil {
 		return nil, false
 	}
-	hash := rustPackedCellHash(cacheRoot, key, normalized, sdkRoot)
+	hash := rustPackedCellHashOfSDK(cacheRoot, key, normalized, loadTreeHash(ctx, sdkRoot))
 	if strings.HasPrefix(hash, "error:") {
 		return nil, false
 	}
@@ -216,7 +218,11 @@ func reuseRustPackedCell(cacheRoot, key string, normalized []RustExtension) (*Ru
 }
 
 func rustPackedCellHash(cacheRoot, key string, extensions []RustExtension, sdkRoot string) string {
-	sdkHash := hashTree(sdkRoot)
+	return rustPackedCellHashOfSDK(cacheRoot, key, extensions, hashTree(sdkRoot))
+}
+
+// rustPackedCellHashOfSDK is the key of a cell for the hash of its SDK tree (an "error:" hash is returned as it is).
+func rustPackedCellHashOfSDK(cacheRoot, key string, extensions []RustExtension, sdkHash string) string {
 	if strings.HasPrefix(sdkHash, "error:") {
 		return sdkHash
 	}
