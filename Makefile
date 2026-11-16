@@ -168,6 +168,11 @@ clean: ## Remove bin/ and tmp/ (builds, eval results, profiles, benchmarks)
 node-runtime: ## Regenerate the embedded Node runtime archive and content digest
 	go generate ./coding/extension/host/subprocess
 
+node-runtime-drift: ## Fail when the embedded Node runtime archive or digest differs from runtime-node (regenerate with make node-runtime)
+	go test -count=1 ./coding/extension/host/subprocess -run "^TestNodeRuntimeArchiveMatchesSources$$"
+
+.PHONY: node-runtime-drift
+
 build: node-runtime ## Compile every package (go build ./...)
 	go build -buildvcs=false ./...
 
@@ -401,9 +406,11 @@ test-sdk-py-311: ## Run the Python extension SDK's pytest suite under CPython 3.
 .PHONY: test-sdk-py test-sdk-py-311 lint-sdk-py
 
 # The Python SDK's ruff check, the one the Security workflow's Source assurance job runs (ruff is pinned in automation/ci/security-tools.in; install: pip install -r automation/ci/security-tools.txt).
-lint-sdk-py: ## ruff check over the Python extension SDK (the Security workflow runs this target)
+# The binary embeds extensions/sdk-py (sdk.zst, bundle_pack.go): after ruff the target runs the pack drift check, so a source change without make sdk-bundles fails here and not only in CI Bookkeeping.
+lint-sdk-py: ## ruff check over the Python extension SDK and the drift check of its packed bundle (the Security workflow runs this target)
 	@command -v ruff >/dev/null || { echo "lint-sdk-py: ruff not found; pip install --require-hashes -r automation/ci/security-tools.txt" >&2; exit 1; }
 	ruff check extensions/sdk-py
+	@./automation/ci/sdk-bundles-drift.sh extensions/sdk-py
 
 # The Lisp SDK's own tests (JSON vectors, the wire against an in-process fake host), run by the pinned SBCL that
 # automation/ci/install-sbcl.sh builds; PIG_SBCL names it. A missing SBCL fails: it is an environment failure, never a skip.
