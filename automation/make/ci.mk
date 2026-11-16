@@ -17,12 +17,13 @@ ci-checks: ci-startup ci-drift ci-closure
 ci-checks-pr: ci-startup ci-drift-pr ci-closure
 ci-toolchains: ci-race ci-integration ci-sdk ci-extensions ci-term-engines
 # CI runs test-fast and test-cli in halves on separate jobs; each pair together is the whole target.
-ci-test-fast: test-fast-parallel
+# Both test-fast targets end with alloc-baseline-changed: the nightly's allocation ratchet for the hot packages the change touches or imports (TEST_BASE names the base), so a benchmark without a baseline row, or a count outside its row, fails the pull request and not the next nightly.
+ci-test-fast: test-fast-parallel alloc-baseline-changed
 ci-test-fast-sharded: test-fast-sharded
 # The light pull-request run's test-fast shard (automation/ci/ci-tiers.txt): the fast-parallel packages the change affects (TEST_BASE names the pull request's base), no -race so it runs what the full run does, and the whole ci-test-fast when the change touches go.mod, go.sum, go.work or go.work.sum or a file no package test reads.
 ci-test-changed: export TEST_CHANGED_FOR := fast-parallel
 ci-test-changed: export TEST_CHANGED_RACE := none
-ci-test-changed: test-changed sdk-vectors-changed
+ci-test-changed: test-changed sdk-vectors-changed alloc-baseline-changed
 # The SDK modules are not packages of the main module, so test-changed never runs their Pi vector suites. When the change touches the shared tui engine, an SDK or a vector file (automation/ci/sdk-vectors-changed.sh), run the vector check and each SDK's own suite.
 sdk-vectors-changed:
 	@if [ "$$(automation/ci/sdk-vectors-changed.sh)" = true ]; then \
