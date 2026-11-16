@@ -83,13 +83,24 @@ const (
 	// one goroutine converts them all: the first publication of the built-in catalog converts about 2,500 models, one conversion costs 10 to 30 us.
 	modelObjectBlock        = 32
 	parallelModelObjectsMin = 4 * modelObjectBlock
+	// maxModelObjectWorkers bounds the goroutines of one list: the catalog is about 80 blocks and 80 ms of work in all, which eight workers bring to
+	// ten, so a larger fan-out gains little, and a start on a host with a hundred processors must not take every one of them for it.
+	maxModelObjectWorkers = 8
 )
+
+// modelObjectWorkers is how many goroutines convert a list of count models on a host that runs procs of them at once.
+func modelObjectWorkers(count, procs int) int {
+	if count < parallelModelObjectsMin {
+		return 1
+	}
+	return max(1, min(procs, maxModelObjectWorkers, (count+modelObjectBlock-1)/modelObjectBlock))
+}
 
 // MarshalModelObjects is the JSON array of the [ModelObject] of each model, skipping nil models. The objects are joined as
 // they are, so no member is escaped again (JSON.stringify escapes no <, > or &).
 //
-// The conversions are independent, so a list of parallelModelObjectsMin models or more is converted by up to GOMAXPROCS goroutines, each taking
-// blocks of models in order; the array is the one a single goroutine writes, and a failure is the first in list order.
+// The conversions are independent, so a list of parallelModelObjectsMin models or more is converted by up to maxModelObjectWorkers goroutines (and
+// no more than GOMAXPROCS), each taking blocks of models in order; the array is the one a single goroutine writes, and a failure is the first in list order.
 func MarshalModelObjects[M ai.AnyModel](models []M) ([]byte, error) {
 	objects := make([]json.RawMessage, len(models))
 	blocks := (len(models) + modelObjectBlock - 1) / modelObjectBlock
@@ -111,10 +122,7 @@ func MarshalModelObjects[M ai.AnyModel](models []M) ([]byte, error) {
 			}
 		}
 	}
-	workers := 1
-	if len(models) >= parallelModelObjectsMin {
-		workers = min(runtime.GOMAXPROCS(0), blocks)
-	}
+	workers := modelObjectWorkers(len(models), runtime.GOMAXPROCS(0))
 	var group sync.WaitGroup
 	for range workers - 1 {
 		group.Go(convert)

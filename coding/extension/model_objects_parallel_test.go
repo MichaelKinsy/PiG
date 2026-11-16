@@ -120,3 +120,34 @@ func TestMarshalModelObjectsReportsTheFirstFailureInListOrder(t *testing.T) {
 		t.Fatalf("an array of %d bytes came with the failure", len(out))
 	}
 }
+
+// A start never takes more than maxModelObjectWorkers processors for the catalog, whatever the host has, and a short list is converted where it is.
+func TestModelObjectWorkersAreBounded(t *testing.T) {
+	for _, row := range []struct{ count, procs, want int }{
+		{0, 192, 1}, {parallelModelObjectsMin - 1, 192, 1},
+		{parallelModelObjectsMin, 192, parallelModelObjectsMin / modelObjectBlock},
+		{2500, 192, maxModelObjectWorkers}, {2500, 8, 8}, {2500, 3, 3}, {2500, 1, 1}, {2500, 0, 1},
+	} {
+		if got := modelObjectWorkers(row.count, row.procs); got != row.want {
+			t.Errorf("%d models on %d processors: %d workers, want %d", row.count, row.procs, got, row.want)
+		}
+	}
+}
+
+// The array of the whole built-in catalog, converted in parallel, is the bytes one goroutine writes.
+func TestMarshalModelObjectsOfTheBuiltInCatalogEqualsTheSerialJoin(t *testing.T) {
+	withConversion(t, ModelObject)
+	var models []*ai.Model
+	var want []string
+	for i := range ai.GeneratedModels {
+		models = append(models, ai.GeneratedModels[i].ToModel())
+		want = append(want, modelObjectString(t, models[len(models)-1]))
+	}
+	got, err := MarshalModelObjects(models)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if expected := "[" + strings.Join(want, ",") + "]"; string(got) != expected {
+		t.Fatalf("the array of %d built-in models differs from the one a single goroutine writes", len(models))
+	}
+}
