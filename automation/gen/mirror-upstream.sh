@@ -157,13 +157,12 @@ done
 
 # ── resolve the target ───────────────────────────────────────────────────────
 # TARGET_TAG names the tag (or commit) to fetch, TARGET_NAME the .upstream
-# directory, TARGET_VERSION the display version recorded in the provenance
-# marker, and PACKAGE_VERSION the version Pi's package.json files report.
+# directory, and TARGET_VERSION the display version recorded in the provenance
+# marker.
 if [[ -n "$OVERRIDE_TAG" ]]; then
   TARGET_TAG="$OVERRIDE_TAG"
   TARGET_NAME="$TARGET_TAG"
   TARGET_VERSION="${TARGET_TAG#v}"
-  PACKAGE_VERSION="$TARGET_VERSION"
   if [[ "$TARGET_VERSION" == *+* ]]; then
     # A commit build, as the ledgers name an earlier commit pin (1.4.0+b556cfe5): the mirror of exactly that commit, as
     # the pin's own mirror is, under the ledger version's directory.
@@ -175,10 +174,9 @@ if [[ -n "$OVERRIDE_TAG" ]]; then
     if [[ "$FORCE" -eq 0 && -f "$marker" ]]; then
       RESOLVED_COMMIT=$(sed -n 's/^ *"commit": *"\([0-9a-f]\{40\}\)".*$/\1/p' "$marker")
       [[ "$RESOLVED_COMMIT" == "${TARGET_VERSION#*+}"* ]] || RESOLVED_COMMIT=""
-      PACKAGE_VERSION="${TARGET_VERSION%%+*}"
     fi
     if [[ -z "$RESOLVED_COMMIT" ]]; then
-      read -r RESOLVED_COMMIT PACKAGE_VERSION BUILD_TARBALL < <(python3 "$REPO_ROOT/automation/pin/pin.py" mirror-spec "$TARGET_VERSION") || exit 1
+      read -r RESOLVED_COMMIT _ BUILD_TARBALL < <(python3 "$REPO_ROOT/automation/pin/pin.py" mirror-spec "$TARGET_VERSION") || exit 1
     fi
     valid_commit "$RESOLVED_COMMIT" || { echo "error: ${TARGET_VERSION} did not resolve to a commit" >&2; exit 1; }
     TARGET_TAG="$RESOLVED_COMMIT"
@@ -189,7 +187,6 @@ else
   TARGET_TAG=$(pin_get tag)
   TARGET_NAME=$(pin_get mirror_dir)
   TARGET_VERSION=$(pin_get version)
-  PACKAGE_VERSION=$(pin_get package_version)
   RESOLVED_COMMIT=$(pin_get commit)
   if ! valid_commit "$RESOLVED_COMMIT"; then
     echo "error: the upstream pin has no exact commit" >&2
