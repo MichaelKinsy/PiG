@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -78,36 +79,58 @@ func testSSEKeepalivesEndAfterIdleTimeout(t *testing.T, options StreamOptions) {
 	}
 }
 
-// Events that arrive within the timeout keep the stream alive for longer than the timeout, with keepalives between them.
+// Events that arrive within the timeout keep the stream alive for longer than the timeout, with keepalives between them. The gaps between the events
+// (120 ms) and the idle timeout (300 ms) are both the bubble's time (pipe_network_test.go), so no stall of the host can make a gap longer than the
+// timeout: the stream is cut only if the product cuts it. The test also requires the stream to have outlasted the timeout twice over, so that it
+// cannot pass by running short. If the product did cut the stream between two events, the test ends by the package's timeout and not by its own
+// message: net/http's drain of the closed body then waits on the body's mutex, which freezes the bubble's clock.
 func TestSSEStreamWithSlowEventsIsNotCutOff(t *testing.T) {
+	clearProxyEnvironment(t)
 	previous := ConfiguredHTTPIdleTimeoutMs()
-	if err := ConfigureHTTPDispatcher(300); err != nil {
-		t.Fatal(err)
-	}
 	t.Cleanup(func() { _ = ConfigureHTTPDispatcher(previous) })
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/event-stream")
-		flusher := w.(http.Flusher)
-		for range 6 {
-			_, _ = io.WriteString(w, ": keepalive\n\n"+`data: {"id":"c","choices":[{"index":0,"delta":{"content":"x"}}]}`+"\n\n")
-			flusher.Flush()
-			time.Sleep(120 * time.Millisecond)
+	synctest.Test(t, func(t *testing.T) {
+		if err := ConfigureHTTPDispatcher(300); err != nil {
+			t.Fatal(err)
 		}
-		_, _ = io.WriteString(w, `data: {"id":"c","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`+"\n\ndata: [DONE]\n\n")
-	}))
-	defer server.Close()
-	provider := NewOpenAIProvider(OpenAIConfig{Model: "m", APIKey: "k", BaseURL: server.URL})
-	stream, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	message := stream.Result()
-	if message.StopReason != StopReasonStop {
-		t.Fatalf("stop=%s error=%q", message.StopReason, message.ErrorMessage)
-	}
+		server := newPipeServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// A server that reads its request, as net/http then sees the client go away; a failing run ends with the test and no handler sleeps on in the bubble.
+			_, _ = io.Copy(io.Discard, r.Body)
+			w.Header().Set("Content-Type", "text/event-stream")
+			flusher := w.(http.Flusher)
+			for range 6 {
+				if _, err := io.WriteString(w, ": keepalive\n\n"+`data: {"id":"c","choices":[{"index":0,"delta":{"content":"x"}}]}`+"\n\n"); err != nil {
+					return
+				}
+				flusher.Flush()
+				select {
+				case <-r.Context().Done():
+					return
+				case <-time.After(120 * time.Millisecond):
+				}
+			}
+			_, _ = io.WriteString(w, `data: {"id":"c","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}`+"\n\ndata: [DONE]\n\n")
+		}))
+		server.attach(t)
+		provider := NewOpenAIProvider(OpenAIConfig{Model: "m", APIKey: "k", BaseURL: "http://sse.test"})
+		start := time.Now()
+		stream, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		message := stream.Result()
+		if message.StopReason != StopReasonStop {
+			t.Fatalf("stop=%s error=%q", message.StopReason, message.ErrorMessage)
+		}
+		if elapsed := time.Since(start); elapsed < 600*time.Millisecond {
+			t.Fatalf("the stream ended after %v, before it had outlasted the 300 ms idle timeout twice", elapsed)
+		}
+	})
 }
 
-// sseKeepaliveStream serves events, then keepalive comment lines until the client goes away or for = elapsed, then closes; it reports what the provider made of it.
+// runSSEWithKeepalives serves events, then keepalive comment lines until the client goes away or for keepaliveFor has elapsed, then the tail, and
+// reports what the provider made of it. It is for streams that the idle timeout is expected to end: the timer can only fire sooner on a stalled
+// host, so no margin decides the verdict, and the real clock is right. (An early close of a response body that a read is blocked on, in a bubble,
+// leaves net/http's drain of the body waiting on the body's mutex, which freezes the bubble's clock; see runSSEKeepalivesInBubble.)
 func runSSEWithKeepalives(t *testing.T, head []string, keepaliveFor time.Duration, tail []string) *AssistantMessage {
 	t.Helper()
 	previous := ConfiguredHTTPIdleTimeoutMs()
@@ -160,6 +183,62 @@ func runSSEWithKeepalives(t *testing.T, head []string, keepaliveFor time.Duratio
 	}
 }
 
+// runSSEKeepalivesInBubble is runSSEWithKeepalives for a stream that the idle timeout must NOT end. The server, the provider and the clock are the
+// bubble's (pipe_network_test.go): the 30 ms keepalives, the 300 ms idle timeout and the horizon of the keepalives are all in one clock that a stalled
+// host does not move.
+func runSSEKeepalivesInBubble(t *testing.T, head []string, keepaliveFor time.Duration, tail []string) *AssistantMessage {
+	t.Helper()
+	clearProxyEnvironment(t)
+	previous := ConfiguredHTTPIdleTimeoutMs()
+	t.Cleanup(func() { _ = ConfigureHTTPDispatcher(previous) })
+	var message *AssistantMessage
+	synctest.Test(t, func(t *testing.T) {
+		if err := ConfigureHTTPDispatcher(300); err != nil {
+			t.Fatal(err)
+		}
+		server := newPipeServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			_, _ = io.Copy(io.Discard, r.Body)
+			w.Header().Set("Content-Type", "text/event-stream")
+			flusher := w.(http.Flusher)
+			for _, event := range head {
+				_, _ = io.WriteString(w, event)
+			}
+			flusher.Flush()
+			deadline := time.After(keepaliveFor)
+			for {
+				select {
+				case <-r.Context().Done():
+					return
+				case <-deadline:
+					for _, event := range tail {
+						_, _ = io.WriteString(w, event)
+					}
+					flusher.Flush()
+					return
+				case <-time.After(30 * time.Millisecond):
+					if _, err := io.WriteString(w, ": keepalive\n\n"); err != nil {
+						return
+					}
+					flusher.Flush()
+				}
+			}
+		}))
+		server.attach(t)
+		ctx, cancel := context.WithCancel(t.Context())
+		defer cancel()
+		provider := NewOpenAIProvider(OpenAIConfig{Model: "m", APIKey: "k", BaseURL: "http://sse.test"})
+		stream, err := provider.Stream(ctx, NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		message = stream.Result()
+	})
+	if message == nil {
+		t.FailNow()
+	}
+	return message
+}
+
 const (
 	sseReasoningChunk = `data: {"id":"c","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"reasoning_content":"thinking it over"}}]}` + "\n\n"
 	sseTextChunk      = `data: {"id":"c","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"partial"}}]}` + "\n\n"
@@ -169,7 +248,7 @@ const (
 // Owner sign-off 2026-10-10 (D131): a model that reasons silently behind a gateway's keepalives has not stalled. After a reasoning event the keepalives count as
 // progress, so a pause three times the idle timeout does not end the stream.
 func TestSSEKeepalivesAfterAReasoningEventDoNotEndTheStream(t *testing.T) {
-	message := runSSEWithKeepalives(t, []string{sseReasoningChunk}, 900*time.Millisecond, []string{sseFinishChunk})
+	message := runSSEKeepalivesInBubble(t, []string{sseReasoningChunk}, 900*time.Millisecond, []string{sseFinishChunk})
 	if message.StopReason != StopReasonStop {
 		t.Fatalf("stop=%s error=%q, want a finished turn after 900 ms of keepalives behind a reasoning event", message.StopReason, message.ErrorMessage)
 	}

@@ -6,13 +6,22 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
-	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
+// The idle timeout applies to the connection once it is established, TLS included: a response that stops after it began ends the request with the
+// timeout's error and not with the caller's deadline. The deadline is armed after GotConn, so the test must hold the request's way to the server
+// open, with no clock in it: the dispatcher reads the configured timeout whenever it arms a deadline (ConfigureHTTPDispatcher applies to
+// connections already open, as Pi's reinstalled dispatcher does), so the request goes out under an hour (the transport's own header timeout is the
+// configured one when the transport is built), the server holds it until the test has configured 100 ms, and the response starts after that. The
+// deadline that ends the stalled body is armed by the read after the headers, under 100 ms; no deadline that can end the request earlier is.
 func TestHTTPIdleTimeoutStillAppliesAfterTLS(t *testing.T) {
+	const idleTimeoutMs, idleHoldMs = 100, 3_600_000
 	previous := ConfiguredHTTPIdleTimeoutMs()
-	if err := ConfigureHTTPDispatcher(100); err != nil {
+	if err := ConfigureHTTPDispatcher(idleHoldMs); err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
@@ -20,15 +29,24 @@ func TestHTTPIdleTimeoutStillAppliesAfterTLS(t *testing.T) {
 			t.Fatal(err)
 		}
 	}()
+	arrived := make(chan struct{}, 1)
 	release := make(chan struct{})
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	var releaseOnce sync.Once
+	releaseResponse := func() { releaseOnce.Do(func() { close(release) }) }
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		arrived <- struct{}{}
+		select {
+		case <-release:
+		case <-r.Context().Done():
+			return
+		}
 		_, _ = io.WriteString(w, "first")
 		w.(http.Flusher).Flush()
-		<-release
-		_, _ = io.WriteString(w, "last")
+		// The body stops here: nothing more is written until the client goes away.
+		<-r.Context().Done()
 	}))
 	defer server.Close()
-	defer close(release)
+	defer releaseResponse()
 	client := streamingHTTPClient()
 	transport := baseHTTPTransport(t, client)
 	transport.Proxy = nil
@@ -36,27 +54,50 @@ func TestHTTPIdleTimeoutStillAppliesAfterTLS(t *testing.T) {
 	roots := x509.NewCertPool()
 	roots.AddCert(server.Certificate())
 	transport.TLSClientConfig.RootCAs = roots
-	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+	ctx, cancel := context.WithCancel(testbudget.Context(t))
 	defer cancel()
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err := client.Do(request)
-	if err != nil {
+	type answer struct {
+		response *http.Response
+		err      error
+	}
+	answered := make(chan answer, 1)
+	go func() {
+		response, err := client.Do(request) //nolint:bodyclose // the response is handed to the test goroutine below, which closes its body
+		answered <- answer{response, err}
+	}()
+	select {
+	case <-arrived:
+	case <-t.Context().Done():
+		t.Fatal("the test ended while it waited for the request to reach the server")
+	}
+	if err := ConfigureHTTPDispatcher(idleTimeoutMs); err != nil {
 		t.Fatal(err)
 	}
+	releaseResponse()
+	var got answer
+	select {
+	case got = <-answered:
+	case <-t.Context().Done():
+		t.Fatal("the test ended while it waited for the response headers")
+	}
+	if got.err != nil {
+		t.Fatal(got.err)
+	}
 	defer func() {
-		if err := response.Body.Close(); err != nil {
+		if err := got.response.Body.Close(); err != nil {
 			t.Error(err)
 		}
 	}()
 	prefix := make([]byte, 5)
-	if _, err := io.ReadFull(response.Body, prefix); err != nil {
+	if _, err := io.ReadFull(got.response.Body, prefix); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := io.ReadAll(response.Body); err == nil || ctx.Err() != nil {
-		t.Fatalf("idle timeout lost or replaced by overall timeout: error=%v context=%v", err, ctx.Err())
+	if _, err := io.ReadAll(got.response.Body); err == nil || ctx.Err() != nil {
+		t.Fatalf("idle timeout lost or replaced by the budget: error=%v context=%v", err, ctx.Err())
 	}
 }
 
