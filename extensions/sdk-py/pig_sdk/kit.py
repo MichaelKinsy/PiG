@@ -466,6 +466,7 @@ class Image(_Node):
         *,
         max_width_cells: int | None = None,
         max_height_cells: int | None = None,
+        image_id: int | None = None,
         filename: str | None = None,
         fallback_color: str | None = None,
         id: str | None = None,  # noqa: A002 - the wire's name
@@ -474,6 +475,7 @@ class Image(_Node):
         self._image = _ImageData(data, mime_type)
         self.max_width_cells = max_width_cells
         self.max_height_cells = max_height_cells
+        self.image_id = image_id  # the Kitty image id (upstream ImageOptions.imageId); None: the host allocates one
         self.filename = filename
         self.fallback_color = fallback_color
 
@@ -491,6 +493,7 @@ class Image(_Node):
         out: dict[str, Any] = {"ref": self._image.ref, "mimeType": self._image.mime_type}
         _put(out, "maxWidthCells", self.max_width_cells)
         _put(out, "maxHeightCells", self.max_height_cells)
+        _put(out, "imageId", self.image_id)
         _put(out, "filename", self.filename)
         _put(out, "fallbackColor", self.fallback_color)
         enc.add_image(self._image)

@@ -532,6 +532,7 @@ pub struct Image {
     image: ImageData,
     max_width_cells: Option<u32>,
     max_height_cells: Option<u32>,
+    image_id: Option<u32>,
     filename: Option<String>,
     fallback_color: Option<String>,
 }
@@ -543,6 +544,7 @@ impl Image {
             image: ImageData::new(data, mime_type),
             max_width_cells: None,
             max_height_cells: None,
+            image_id: None,
             filename: None,
             fallback_color: None,
         }
@@ -567,6 +569,13 @@ impl Image {
 
     pub fn max_height_cells(mut self, cells: u32) -> Self {
         self.max_height_cells = Some(cells);
+        self
+    }
+
+    /// The Kitty image id (upstream `ImageOptions.imageId`); unset, the host
+    /// allocates one as upstream does.
+    pub fn image_id(mut self, id: u32) -> Self {
+        self.image_id = Some(id);
         self
     }
 
@@ -1592,6 +1601,7 @@ impl Encoder {
                 put(&mut map, "mimeType", n.image.mime_type.as_str());
                 put_opt(&mut map, "maxWidthCells", &n.max_width_cells);
                 put_opt(&mut map, "maxHeightCells", &n.max_height_cells);
+                put_opt(&mut map, "imageId", &n.image_id);
                 put_opt(&mut map, "filename", &n.filename);
                 put_opt(&mut map, "fallbackColor", &n.fallback_color);
                 self.add_image(&n.image);

@@ -1,0 +1,275 @@
+[
+ {
+  "upstream": "packages/chord/src/host/staging.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestStagingAThrowKeepsThePluginOnItsOldCodeReported",
+   "TestStagingAJobDeclaredAtItsVersionWithAnotherSchemaIsRefusedAtStaging",
+   "TestStagingAContributionOutsideAHostLifetimeObjectIsADeclarationErrorAtStaging",
+   "TestStagingDeclarationParityWithAnAttemptRefusesRetryOnOfAnAttemptOwnedWritableThePluginKeptOnItsOldCode",
+   "TestStagingPerPluginAFactoryThrowingInStagingFailsItsPluginAloneAnAddedPluginThatFailsIsLeftOut"
+  ],
+  "upstream_reference": "packages/chord/test/host/staging.test.ts",
+  "mutation": "chord/next/host/host_staging.go (recordFactory): `if err != nil {` -> `if err != nil && false {` (a throw of the factory is no longer reported: these five FAIL, as do TestNamedQueryTwoTablesOfOneObject... and TestNamedQueryStagingRefusesTheQueries... and TestAdmissionAReloadOfTheAdmittedType)"
+ },
+ {
+  "upstream": "packages/chord/src/host/staging.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestStagingARemoteTypeOnAHostWithoutAnAddressIsRefusedAsAtLoad"
+  ],
+  "upstream_reference": "packages/chord/test/host/staging.test.ts",
+  "mutation": "chord/next/host/host_staging.go (stageEntry): `host.address == nil {` -> `host.address == nil && false {` (FAIL: the reload no longer reports `a host without an address serves only local types`)"
+ },
+ {
+  "upstream": "packages/chord/src/host/staging.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestStagingPerPluginATypeMovingBetweenPluginsWhileItsOldOwnerFailsTheNewOwnerCollidesAndKeepsItsOldCodeToo"
+  ],
+  "upstream_reference": "packages/chord/test/host/staging.test.ts",
+  "mutation": "chord/next/host/host_staging.go (addStaged): `ok {` -> `ok && false {` on the types collision (FAIL: the new owner no longer collides)"
+ },
+ {
+  "upstream": "packages/chord/src/host/staging.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestStagingRecordsWithoutActivatingNoNativeOpensNoReferenceBindsNoDocumentIsMade",
+   "TestStagingPerPluginTheClosureRuleAConsumerEditedTogetherWithAFailingProviderKeepsItsOldCode",
+   "TestStagingPerPluginTakesThePluginsWhoseNewCodeFailedBeforeStagingTheClosureRuleAndTheReportSeeThem",
+   "TestStagingPerPluginTheClosureRuleChecksARequestAsARealBindDoesTheKeptProvidersHostAddressIncluded",
+   "TestStagingPerPluginTheClosureRuleCoversANameNobodyServesWhileAPluginFailedAndRunsToAFixpoint",
+   "TestStagingPerPluginWithoutAFailingPluginARequestThatDoesNotBindIsAnOrdinaryWaitTheConsumerAppliesAndParks"
+  ],
+  "upstream_reference": "packages/chord/test/host/staging.test.ts",
+  "mutation": "chord/next/host/host_staging.go (recordingSelf.Get): `r.requests = append(r.requests, request{...})` -> `_ = checked` (a recorded reference request is dropped: all six FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/host/staging.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestNamedQueryTwoTablesOfOneObjectExposingOneSetAreRefusedWhereTheyAreDeclaredNamingBoth"
+  ],
+  "upstream_reference": "packages/chord/test/host/named-query.test.ts",
+  "mutation": "chord/next/host/host_staging.go (recordingSelf.Table): `store.CheckExposedOnce(...); err != nil {` -> `...; err != nil && false {` (FAIL: staging no longer refuses two tables exposing one column set)"
+ },
+ {
+  "upstream": "packages/chord/src/host/staging.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestNamedQueryStagingRefusesTheQueriesAnAttemptRefusesTheNamedBuildersAndTheTable"
+  ],
+  "upstream_reference": "packages/chord/test/host/named-query.test.ts",
+  "mutation": "chord/next/host/host_staging.go (recordingSelf.checkNamed): `panic(namedQueryExpected(...))` -> `return` (FAIL: a reader given a table is no longer refused at staging)"
+ },
+ {
+  "upstream": "packages/chord/src/host/staging.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestAdmissionDeclarationErrors"
+  ],
+  "upstream_reference": "packages/chord/test/host/admission.test.ts",
+  "mutation": "chord/next/host/host_staging.go (servedAdmissionOf): `if contract.Kind == contracts.KindLocal {` -> `if false {` (FAIL: a local type given admit is refused with another message)"
+ },
+ {
+  "upstream": "packages/chord/src/host/staging.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestAdmissionAReloadOfTheAdmittedType"
+  ],
+  "upstream_reference": "packages/chord/test/host/admission.test.ts",
+  "mutation": "chord/next/host/host_staging.go (recordFactory): `admitted.fingerprint == entry.admission.fingerprint` -> `false` (FAIL: the new factory is no longer rehearsed with an equal admission fingerprint)"
+ },
+ {
+  "upstream": "packages/chord/src/store/live-query.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestLiveQueryDeclarationRefusals",
+   "TestLiveQueryDeclarationStagingRefusesAQueryWithoutAValidLimitThePluginKeepsItsOldCode"
+  ],
+  "upstream_reference": "packages/chord/test/store/live-query.test.ts",
+  "mutation": "chord/next/store/live_query.go (CheckLiveQuery): `if limit < 1 {` -> `if false {` (both FAIL: a query without a valid limit is accepted)"
+ },
+ {
+  "upstream": "packages/chord/src/store/live-query.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestLiveQueryPublicationAnInsertAnUpdateAndADeleteReachAWatchAsOpsInTheCommitsBatch",
+   "TestLiveQueryPublicationKeepsAnUnchangedRowTheSameObjectAcrossRunsAChangedOneNew",
+   "TestLiveQueryFailureAFailingRunIsAFailedMemberReportedOnceTheNextGoodRunHealsIt"
+  ],
+  "upstream_reference": "packages/chord/test/store/live-query.test.ts",
+  "mutation": "chord/next/store/live_query.go (sameStored): `if left != right {` -> `if false {` (a changed column no longer makes a changed row: all three FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/store/live-query.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestDecodedRowsKeepAnUnchangedRowTheSameObjectAChangedOneNew"
+  ],
+  "upstream_reference": "packages/chord/test/store/live-query.test.ts",
+  "mutation": "chord/next/store/live_query.go (sameStored): `if left != right {` -> `if false {` (FAIL: a changed row is reused)"
+ },
+ {
+  "upstream": "packages/chord/src/store/live-query.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestLiveQueryCountsTheRowsOfItsQuery"
+  ],
+  "upstream_reference": "packages/chord/test/store/live-query.test.ts",
+  "mutation": "chord/next/store/live_query.go (adopt): `query.Set(float64(run.Count))` -> `query.Set(float64(run.Count) + 1)` (FAIL: the count is one too many)"
+ },
+ {
+  "upstream": "packages/chord/src/store/live-query.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestLiveQueryARunOfAReadItClosedIsDroppedWhenItsCommitAdoptsItAfterwards",
+   "TestLiveQueryFailWithoutAReadIsAFailedMemberAndClosesItsReads"
+  ],
+  "upstream_reference": "packages/chord/test/store/live-query.test.ts",
+  "mutation": "chord/next/store/live_query.go (Fail): `query.close()` -> `_ = query` (a failure leaves its reads open: both FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/store/live-query.ts",
+  "package": "./chord/next/store",
+  "tests": [
+   "TestLiveQueryReadTakesAnotherTargetAndTheOnePreviousLeavesTheIndex"
+  ],
+  "upstream_reference": "packages/chord/test/store/live-query.test.ts",
+  "mutation": "chord/next/store/live_query.go (adopt): `query.rows.Reset()` -> `_ = query.rows` (FAIL: rows of the previous target are reused)"
+ },
+ {
+  "upstream": "packages/chord/src/telemetry.ts",
+  "package": "./chord/next/telemetry",
+  "tests": [
+   "TestOpenSpansEndOnceWithHowTheirWorkSettled",
+   "TestSpanFailedUsesAFixedCategoryAndAtMost500Characters"
+  ],
+  "upstream_reference": "packages/chord/test/telemetry.test.ts",
+  "mutation": "chord/next/telemetry/telemetry.go: `const MaxMessage = 500` -> `501` (both FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/telemetry.ts",
+  "package": "./chord/next/telemetry",
+  "tests": [
+   "TestCappedAndHostAttribute"
+  ],
+  "upstream_reference": "packages/chord/test/telemetry.test.ts",
+  "mutation": "chord/next/telemetry/telemetry.go: `const attributeLength = 256` -> `257` (FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/telemetry.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestWhatAPeerSendsCapsAnObjectsLabelItsClientChosenParamsKeyAt256CharactersInItsSpans"
+  ],
+  "upstream_reference": "packages/chord/test/telemetry.test.ts",
+  "mutation": "chord/next/telemetry/telemetry.go: `const attributeLength = 256` -> `257` (FAIL: the label of an object in its spans is one character too long)"
+ },
+ {
+  "upstream": "packages/chord/src/telemetry.ts",
+  "package": "./chord/next/telemetry",
+  "tests": [
+   "TestCarriersExtractUnknownOrAbsentAsTheAdaptersRootNeverFailing"
+  ],
+  "upstream_reference": "packages/chord/test/telemetry.test.ts",
+  "mutation": "chord/next/telemetry/telemetry.go (CarrierOf): `return propagation.Inject(span)` -> `return nil` (FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/telemetry.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestAcrossHostsFollowsACallFromTheTabThroughTheServersRelayIntoTheWorkersMethodAndItsCommit",
+   "TestAcrossHostsHoldsThroughTheRelayUnderTheTabsSpanTheWorkersStartAndItsActivationsLinkToTheirTriggers",
+   "TestAcrossHostsStartsANewRootForAWellFormedCarrierTheServersAdapterDoesNotKnow",
+   "TestReHoldsCarryTheCarrierOnlyOnAReferencesFirstHoldAReHoldAfterAReconnectIsAFreshRootLinkedToIt",
+   "TestRelayedReHoldsReHoldUpstreamAfterADropInAFreshRelayRootLinkedToTheFirstRelaySpan"
+  ],
+  "upstream_reference": "packages/chord/test/telemetry.test.ts",
+  "mutation": "chord/next/telemetry/telemetry.go (CarrierOf): `return propagation.Inject(span)` -> `return nil` (no carrier crosses a link: all five FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/telemetry.ts",
+  "package": "./chord/next/telemetry",
+  "tests": [
+   "TestSchemaDeclaresSlice14sQueryCountersAndAdmitEvent"
+  ],
+  "upstream_reference": "packages/chord/src/telemetry.ts at Pi 92e1db6ca and 8270d9af6 (the counters chord.query.probes, chord.query.skips, chord.query.rows and the event chord.admit are declared in its schema; Pi checks them with its types, so no Pi test names them)",
+  "mutation": "chord/next/telemetry/schema.go: `\"chord.query.probes\"` -> `\"chord.query.probez\"`, likewise `chord.query.rows` -> `chord.query.rowz`, and the `chord.admit` event removed from the chord.relay span (each FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/host/host-data.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostDataLiveOwnersFollowAnImportAPinnedKeyAndALiveQueryShowTheImportedDataAResidentKeyReadsIt",
+   "TestHostDataLiveOwnersAdoptEverySourceInOneBatchADeriveOverADocumentAndAQuerySeesOneFrameNeverATornState",
+   "TestHostDataLiveOwnersFollowADeleteThePinnedKeyReadsInitialTheLiveQueryIsEmpty",
+   "TestHostDataADeleteLimitedToOnePluginRunsTheReadsOverItsTablesAgainTheOwnersLiveQueryAndPinnedKeyFollowInThatCommit",
+   "TestHostDataReviewRound3ACancellationAfterTheCommitWasAdmittedChangesNothingItCommitsAndIsAdopted"
+  ],
+  "upstream_reference": "packages/chord/test/host/host-data.test.ts",
+  "mutation": "chord/next/host/host_host_data.go (coordinated): `range site.store.Reads.OnHostKind(kind)` -> `range []*store.RegisteredRead(nil)` (the host-kind rewrite reads no table with a host column: all five FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/host/host-data.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostDataLiveOwnersFollowAnImportAPinnedKeyAndALiveQueryShowTheImportedDataAResidentKeyReadsIt",
+   "TestHostDataLiveOwnersAdoptEverySourceInOneBatchADeriveOverADocumentAndAQuerySeesOneFrameNeverATornState",
+   "TestHostDataLiveOwnersFollowADeleteThePinnedKeyReadsInitialTheLiveQueryIsEmpty",
+   "TestHostDataADeleteLimitedToOnePluginRunsTheReadsOverItsTablesAgainTheOwnersLiveQueryAndPinnedKeyFollowInThatCommit",
+   "TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing",
+   "TestHostDataReviewRound3ACancellationAfterTheCommitWasAdmittedChangesNothingItCommitsAndIsAdopted"
+  ],
+  "upstream_reference": "packages/chord/test/host/host-data.test.ts",
+  "mutation": "chord/next/host/host_host_data.go (coordinated, Adopt): `if err := each.slot.AdoptChanged(key, each.changed); err != nil {` -> `if err := error(nil); err != nil {` (a live owner no longer adopts its document: these six FAIL, with two more of the file)"
+ },
+ {
+  "upstream": "packages/chord/src/host/host-data.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostDataADeleteLimitedToOnePluginWaitsForThatPluginsSlotLessOwnersAndNotForAnotherPluginsAnOwnerOfAnotherPluginWithItsLineHeldDoesNotHoldItUp"
+  ],
+  "upstream_reference": "packages/chord/test/host/host-data.test.ts",
+  "mutation": "chord/next/host/host_host_data.go (deleteFrom): `wanted {` -> `wanted || true {` (a delete limited to one plugin waits for every owner: FAIL by its 20 s timeout)"
+ },
+ {
+  "upstream": "packages/chord/src/host/host-data.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostDataObjectsAreOrderedByIdentityInUTF16CodeUnitOrderAsJavaScriptSortsThem"
+  ],
+  "upstream_reference": "packages/chord/test/host/host-data.test.ts",
+  "mutation": "chord/next/host/host_host_data.go (compareUTF16): `slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b))` -> `strings.Compare(a, b)` (code point order: FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/host/host-data.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing",
+   "TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
+  ],
+  "upstream_reference": "packages/chord/test/host/host-data.test.ts",
+  "mutation": "chord/next/host/host_host_data.go (coordinated): `Admit: func() bool { return ctx.Err() == nil }` -> `return true` (an aborted operation is admitted: both FAIL)"
+ },
+ {
+  "upstream": "packages/chord/src/host/host-data.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostDataTheGateKeepsLoadPhasesOutWhileAnOperationIsExclusiveAndAnOperationWaitsForLoadPhasesUnderWay",
+   "TestHostDataReviewRound3AnActivationDuringAnImportAViewPinningTheBoardsKeyWaitsAndReadsWhatTheImportCommitted",
+   "TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased"
+  ],
+  "upstream_reference": "packages/chord/test/host/host-data.test.ts",
+  "mutation": "chord/next/host/host_host_data.go (hostDataGate.exclusive): `g.isExclusive = true` -> `false` (activations are no longer kept out: these three FAIL by their 20 s timeout, with TestHostDataReviewRound3AReloadDuringAnImport... )"
+ },
+ {
+  "upstream": "packages/chord/src/host/host-data.ts",
+  "package": "./chord/next/host",
+  "tests": [
+   "TestHostDataTheGateAnOperationGivenUpWhileWaitingForItsTurnPassesTheTurnOn"
+  ],
+  "upstream_reference": "packages/chord/test/host/host-data.test.ts",
+  "mutation": "chord/next/host/host_host_data.go (hostDataGate.queue): `previous, g.tail = g.tail, done` -> `previous = g.tail` (operations no longer wait their turn: FAIL by its 20 s timeout)"
+ }
+]
