@@ -238,156 +238,184 @@ shards 6
 
 # The two Linux test-conformance jobs run these twenty shards, ten each, one after another, each its own go test process under go test's 10-minute package
 # timeout. Every shard process shares the extension cells (testenv.SharedCellCacheDir, built in TestMain), so a shard's wall is its tests' own time plus about
-# 20 s of process overhead. Cells built once per process instead of once per job were ~75 s of each of the 28 shards of an earlier layout, which made each job
-# 12 minutes longer than the 12-shard layout and made a test's wall depend on whether it was the first in its shard to need a fixture.
+# 14 s of process overhead.
 # The weights are generated, not tuned by hand, and can be checked: automation/ci/test-shard-timings/extension-conformance.json holds the timings they come
-# from (the go test -json of a warm run of every shard of the previous 20-shard layout, four containers of 4 CPUs at once: for each test its shard, elapsed
-# seconds, the sum of its subtests' and whether it is t.Parallel; and each shard's wall). automation/ci/shard-pack.py fits a model of a shard's wall to them,
-# wall = 19.7 + 1.015*serial + 0.292*parallel test time, with an error on the 20 fitted shards of 5% on average and 13% at worst (the same fit on the 28-shard
-# run of the first layout: 8% and 30%, and a cold run varies up to 28% on a shard that a contended host slowed). It pins the tests of 5 s or more by
-# longest-first packing on top of the hash-placed rest and picks the fewest even shard count whose modelled worst shard stays at or under half of the 600 s
-# limit on a runner 1.4x slower than the host that took the timings, allowing 20% model error (179 s): 18 shards would model at 190 to 192 s, which that
-# error takes to 230 s and 322 s on the slower runner, so the count is 20 (130 pins, model 173 to 175 s). 30 s are reserved on the first shard of each job for
-# the one-time cell build of a cold job, which TestMain does once in the first process. Regenerate when the suite changes: run every shard warm with
-# go test -json into a directory, then
+# from (the go test -json of a warm run of every shard of the previous 20-shard layout, one container of 24 CPUs, -p 2, 2026-11-15: for each test its shard,
+# elapsed seconds, the sum of its subtests' and whether it is t.Parallel; and each shard's wall). automation/ci/shard-pack.py fits a model of a shard's wall to
+# them, wall = 14.0 + 0.965*serial + 0.442*parallel test time, with an error on the 20 fitted shards of 7% on average and 18% at worst. It pins the tests of 5 s
+# or more by longest-first packing on top of the hash-placed rest (161 pins, model 203 to 354 s). The packing stays at twenty shards because TestReloadLeak, one
+# serial test of about 340 s that no shard pattern can split (its rows are subtests), is the floor: the slowest shard is the one that holds it, whatever the count.
+# 30 s are reserved on the first shard of each job for the one-time cell build of a cold job, which TestMain does once in the first process. Regenerate when the
+# suite changes (a test added since the timings were taken is hash-placed and unmeasured: the 125 tests added between 2026-11-06 and 2026-11-15, 1,265 s of
+# test time, put TestReloadLeak and 84 s of Lisp rows in shard 20, which then ran 600 s to 738 s against the 600 s limit): run every shard warm with
+# go test -json into a directory of files named shard-<n>.json, then
 #   automation/ci/shard-pack.py --package ./test/extension-conformance --emit-timings automation/ci/test-shard-timings/extension-conformance.json <dir>...
-#   automation/ci/shard-pack.py --package ./test/extension-conformance --cold 30 --cold-shards 1 --shards auto --error 1.2 --replace-shards 20 --write <this file> automation/ci/test-shard-timings/extension-conformance.json
-# (shard-pack.py states its model, errors and loads; automation/ci/shard_pack_test.py tests it.)
-# Measured in containers of 4 CPUs, fresh checkouts and cold caches, make test-conformance-1 and -2 (four jobs side by side for the twelve shards and the previous
-# weights, two for these): the twelve shards took 1,987 and 2,019 s a job (shards 268 to 355 s); these twenty
-# took 1,758 and 1,743 s with the previous weights (shards 92 to 201 s) and 2,000 and 2,063 s with these (shards 124 to 239 s) on a host that other work had made slower, where the prerequisite builds alone took 349 s against 180 s; the worst shard, 40% of the limit and 56% on a 1.4x slower runner, ran 36% over its model, as one shard did in the review's cold runs.
+#   automation/ci/shard-pack.py --package ./test/extension-conformance --cold 30 --cold-shards 1 --shards 20 --error 1.2 --replace-shards 20 --write <this file> automation/ci/test-shard-timings/extension-conformance.json
+# (shard-pack.py states its model, errors and loads; automation/ci/shard_pack_test.py tests it. With --shards auto it asks for 179 s, which no count reaches while
+# TestReloadLeak stands: the 202 shards it names still model the slowest at 344 s.)
 package ./test/extension-conformance
 shards 20
 1 TestAutocompleteSettlementAcrossSDKs
-1 TestLispSDKVirtualModelRouterReturningItsRequestStateKeepsTheRequestStateBytes
-1 TestModelTypesReadsAcrossSDKs
-1 TestNodeRegistryWritesSurviveConcurrentPublications
-1 TestPrepareLoadoutRunsBeforeEveryTurnAcrossSDKs
-1 TestSelectListThemeAcrossSDKs
-2 TestConformance_AbortedToolSettlesWithinTheGrace
-2 TestConformance_HostHelpersAgreeAcrossSDKs
-2 TestLispSDKExecuteToolAndCallableTools
-2 TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs
-2 TestOnLoadedAndFactoryEmitAcrossSDKs
-2 TestSessionGraphModelRegistryAcrossSDKs
-3 TestConformance_FileMutationQueueAgreesAcrossSDKs
-3 TestExtensionPayloadScalesLinearly
+1 TestConformance_QuitWaitsForACommandInFlight
+1 TestLispSDKToolResultCarriesStructuredContentAndIsError
+1 TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener
+1 TestPromptOptionEditsAcrossSDKs
+1 TestProviderRefreshModelsAcrossSDKs
+1 TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend
+1 TestSessionGraphSettingsManagerAcrossSDKs
+2 TestConformance_EventHandlersDoNotShareTheirPayload
+2 TestDeepEventStreamDeltasReachEverySDK
+2 TestLateProviderKeepsOperationsAcrossSDKs
+2 TestLispSDKProviderConfigWithImageAndClassifierModels
+2 TestPackedLispProcessEndedWithoutAnUnhandledConditionStopsTheWholeCell
+2 TestProviderObjectReadBackRefreshModelsAuthAcrossSDKs
+2 TestProviderProducersAcrossSDKs
+2 TestSDKScenarios
+2 TestSessionGraphAgentSessionServicesAcrossSDKs
+3 TestBeforeAgentStartTriggerAcrossSDKs
+3 TestConformance_AReloadReplacesAnExtensionWhoseRuntimeStoppedAnswering
+3 TestExecLimitsAcrossSDKs
 3 TestLispGetMcpServersKeepsRegisteredMemberOrder
-3 TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener
-3 TestPackedSessionGraphAgentSessionRuntimeAcrossSDKs
-3 TestSessionGraphSettingsManagerAcrossSDKs
-3 TestSystemPromptOptionContentAcrossSDKs
-4 TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs
-4 TestConfigRootGettersAgreeAcrossLanguages
-4 TestExtensionSourceInfoAcrossSDKs
-4 TestLispSDKExecuteToolOnUpdateErrorRejectsTheNestedCall
-4 TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs
-4 TestScopedModelsAcrossSDKs
-5 TestConformance_UIPromptStartIsAppliedBeforeTheDialogsAnswerSettles
+3 TestOnThemeChangeAcrossSDKs
+3 TestOrderingRowsAcrossSDKs
+3 TestSessionGraphMcpOptionsAcrossSDKs
+3 TestToolCallInputWithALoneSurrogateAcrossSDKs
+4 TestChildAgentSessionMembersRust
+4 TestConformance_FileMutationQueueIsTheHostsQueue
+4 TestLateProviderReRegistrationKeepsOperationsAcrossSDKs
+4 TestLispSDKExecuteToolOwnSignalOutlivesTheCallingRequest
+4 TestLispSDKHostCallStartedByAHandlerOutlivesItsResponse
+4 TestNativeEventBusStressKeepsEveryDeliveryAndBoundedState
+4 TestPromptHandlerBodyFIFOAcrossSDKs
+4 TestRawKeyHintAcrossSDKs
+4 TestSessionGraphExtensionRunnerAcrossSDKs
+5 TestChildAgentSessionMembersLisp
+5 TestChildAgentSessionMembersRustAbortNotHeld
+5 TestConformance_WaitingHandlerIsSuspended
+5 TestExtensionSoakMemoryGateSeesAnExtensionThatRetainsPerCall
 5 TestFileMutationOrderAcrossSDKs
-5 TestHighlightCodeAcrossSDKs
-5 TestLispSDKHostCallStartedByAHandlerOutlivesItsResponse
-5 TestNativeEventBusHungNativeListenerBlocksOnlyItsEmitter
-5 TestRawKeyHintAcrossSDKs
-5 TestRenderCurrentSystemPromptAcrossSDKs
-6 TestConformance_CompactionUsageHelpersAgreeAcrossSDKs
-6 TestLispSDKToolExposureFieldsAndPrepareLoadout
+5 TestLispSDKEventBusSiblingsInOneCellKeepTheirOwnListeners
+5 TestNodeRegistryVirtualWritesSurviveConcurrentPublications
+5 TestSDKModelCallsCarryPiGIdentityNeverPis
+5 TestSessionGraphLispPackedAcrossSDKs
+6 TestChildAgentSessionAbortEndsAwaitedMemberLisp
+6 TestChildAgentSessionLisp
+6 TestExtensionPayloadScalesLinearly
+6 TestModelStreamEventWithDeepToolArgumentsReachesEverySDK
 6 TestModelTypesClassifyAcrossSDKs
-6 TestModelTypesProviderOperationCancellationAcrossSDKs
-6 TestSessionGraphExtensionRunnerAcrossSDKs
-6 TestSetWidgetRendererAcrossSDKs
-6 TestThemeFaintForegroundAcrossSDKs
-7 TestChildAgentSessionLisp
-7 TestConformance_BuiltinToolDelegationAcrossSDKs
-7 TestConformance_ComponentKitWidgetsMatchPi
-7 TestConformance_HostParserHelpersAgreeAcrossSDKs
-7 TestHighlightCodeThatFailsTakesTheCodeBlockColorAcrossSDKs
-7 TestLispSDKProviderConfigWithImageAndClassifierModels
-7 TestPromptSectionMutationsAcrossSDKs
-8 TestBellAcrossSDKs
-8 TestConformance_LanguageFromPathAgreesAcrossSDKs
-8 TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs
-8 TestLispSDKEventBusSiblingsInOneCellKeepTheirOwnListeners
-8 TestLispSDKMcpServerRegistration
-8 TestModelTypesVirtualModelsAcrossSDKs
+6 TestOnToolsExpandedChangeAcrossSDKs
+6 TestSelectListThemeAcrossSDKs
+6 TestThemeAcrossSDKs
+7 TestChildAgentSessionAbortNotHeldBehindAwaitedMember
+7 TestChildAgentSessionCtxCancelLisp
+7 TestLateProviderUnregisterDropsOperationsAcrossSDKs
+7 TestLispSDKVirtualModelRouterReturningItsRequestStateKeepsTheRequestStateBytes
+7 TestProviderOAuthModifyModelsAcrossSDKs
+7 TestSessionGraphExtensionFactoriesAcrossSDKs
+7 TestSessionGraphModelRegistryAcrossSDKs
+7 TestSettingsListThemeAcrossSDKs
+8 TestChildAgentSessionSnapshotRust
+8 TestConformance_HeadlessModesNeverRunUIClosures
+8 TestExtensionSoak
+8 TestLateProviderSupersededByAnotherExtensionKeepsOperationsAcrossSDKs
+8 TestLispSDKExecuteToolOutcomeCarriesDuration
+8 TestProviderOAuthUsesCallbackServerAcrossSDKs
 8 TestSessionGraphDefaultResourceLoaderAcrossSDKs
-9 TestLateProviderKeepsOperationsAcrossSDKs
-9 TestLispSDKToolResultPreview
-9 TestModelTypesGenerateImagesAcrossSDKs
-9 TestOnThemeChangeAcrossSDKs
-9 TestPromptSelectedToolsMutationsAcrossSDKs
-9 TestToolCallInputWithALoneSurrogateAcrossSDKs
-10 TestConformance_OversizedToolResultIsAnsweredAcrossSDKs
-10 TestKeyHintAcrossSDKs
-10 TestLateProviderSupersededByAnotherExtensionKeepsOperationsAcrossSDKs
-10 TestModelTypesVirtualModelIsVisibleInTheSameTurnAcrossSDKs
-10 TestProviderProducersAcrossSDKs
-10 TestSessionGraphCreateProviderAcrossSDKs
-10 TestSessionGraphSessionManagerAcrossSDKs
-11 TestConformance_MessageConversionAgreesAcrossSDKs
+8 TestSessionGraphRowsUnderAggressiveCollector
+9 TestConformance_UIPromptStartIsAppliedBeforeTheDialogsAnswerSettles
+9 TestExtensionSourceInfoAcrossSDKs
+9 TestHighlightCodeKeepsALoneSurrogateAcrossSDKs
+9 TestLispSDKToolExposureFieldsAndPrepareLoadout
+9 TestLispSDKUnregisterVirtualModelBeforeBindFiltersTheRuntimeWidePendingList
+9 TestMarkdownAbandonedBodyKeepsOrderAcrossSDKs
+9 TestSessionGraphChildHandlesAcrossSDKs
+9 TestShutdownBeforeReadyEndsTheRunCleanly
+9 TestToolAbortKeepsTheToolsHostCalls
+10 TestChildAgentSessionRust
+10 TestConformance_AbortedToolSettlesWithinTheGrace
+10 TestConformance_TerminalInput
+10 TestLispSDKGetSettings
+10 TestPackedSessionGraphAgentSessionRuntimeAcrossSDKs
+10 TestPackedSessionGraphModelRuntimeAcrossSDKs
+10 TestScopedModelsAcrossSDKs
+10 TestToolCallInputAcrossSDKs
+11 TestAHostReplyIsNeverOlderThanTheStateItFollowsAcrossSDKs
+11 TestBellAcrossSDKs
 11 TestContextGetSystemPromptSeesTheHandlersOwnEditAcrossSDKs
-11 TestHighlightCodeKeepsALoneSurrogateAcrossSDKs
-11 TestLispSDKToolResultCarriesStructuredContentAndIsError
-11 TestModelTypesProviderObjectAcrossSDKs
-11 TestNodeRegistryVirtualWritesSurviveConcurrentPublications
-12 TestConformance_HeadlessModesNeverRunUIClosures
+11 TestKeyHintAcrossSDKs
+11 TestOnLoadedAndFactoryEmitAcrossSDKs
+11 TestPromptSelectedToolsMutationsAcrossSDKs
+11 TestProviderRegistrationFailureIsADiagnosticAcrossSDKs
+11 TestSessionGraphProjectTrustStoreAcrossSDKs
+12 TestAbortedProviderTurnWhoseAuthorNeverReactsLeavesNothingBehind
+12 TestConformance_MessageConversionAgreesAcrossSDKs
 12 TestConformance_RPCModeDropsFrameWidgetsInEverySDK
-12 TestModelTypesProviderConfigImplementationsAcrossSDKs
-12 TestReplicatedStateIsIdleStaysBusyThroughTheSynchronousRunAfterATriggeringSend
-12 TestSessionGraphLispPackedAcrossSDKs
-12 TestTuiStateAcrossSDKs
-13 TestBeforeAgentStartTriggerAcrossSDKs
-13 TestChildAgentSessionNativeSDKsLifecycleAndModelErrors
-13 TestLispSDKGetSettings
-13 TestSessionGraphAgentSessionRuntimeAcrossSDKs
-13 TestSessionGraphDefaultPackageManagerAcrossSDKs
-13 TestSessionGraphProjectTrustStoreAcrossSDKs
-14 TestConformance_ComponentKitImagesSendOnce
-14 TestConformance_FileMutationQueueSpansExtensionProcesses
-14 TestExecLimitsAcrossSDKs
-14 TestLispSDKVirtualModelRegistrationAndRouting
-14 TestNativeEventBusRuntimeCrashMidDispatchReleasesTheEmitter
-14 TestSessionGraphAgentSessionServicesAcrossSDKs
-14 TestSessionGraphMcpOptionsAcrossSDKs
-15 TestConformance_TerminalInput
-15 TestExtensionSoak
-15 TestLateProviderReRegistrationKeepsOperationsAcrossSDKs
-15 TestLispSDKUnregisterVirtualModelBeforeBindFiltersTheRuntimeWidePendingList
-15 TestReleaseBeforeReadyDoesNotFailTheLoad
-15 TestThemeQueriesAcrossSDKs
-16 TestConformance_FileMutationQueueIsTheHostsQueue
-16 TestConformance_SerializeConversationAgreesAcrossSDKs
-16 TestExtensionSoakMemoryGateSeesAnExtensionThatRetainsPerCall
-16 TestLispGetMcpServersReportsResolvedExposureAliases
-16 TestLispSDKCtxToolsIsLiveInsideOneHandler
-16 TestNativeEventBusStressKeepsEveryDeliveryAndBoundedState
-16 TestSDKScenarios
-17 TestConformance_EventUnsubscribeEveryEvent
-17 TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners
-17 TestOrderingRowsAcrossSDKs
-17 TestPackedSessionGraphExtensionRunnerAcrossSDKs
-17 TestSessionGraphModelRuntimeAcrossSDKs
-17 TestShutdownBeforeReadyEndsTheRunCleanly
-17 TestThemeAcrossSDKs
+12 TestHighlightCodeAcrossSDKs
+12 TestLispSDKCtxToolsIsLiveInsideOneHandler
+12 TestModelTypesGenerateImagesAcrossSDKs
+12 TestPrepareLoadoutRunsBeforeEveryTurnAcrossSDKs
+12 TestRenderCurrentSystemPromptAcrossSDKs
+12 TestThemeFaintForegroundAcrossSDKs
+13 TestConformance_ComponentKitImagesSendOnce
+13 TestConformance_FileMutationQueueSpansExtensionProcesses
+13 TestFileMutationOrderOfTheContextFormAcrossSDKs
+13 TestHighlightCodeThatFailsTakesTheCodeBlockColorAcrossSDKs
+13 TestLispGetMcpServersReportsResolvedExposureAliases
+13 TestOnThemeChangeDeliversEachChangesOwnThemeAcrossSDKs
+13 TestPackedSessionGraphExtensionRunnerAcrossSDKs
+13 TestProviderObjectsAcrossSDKs
+13 TestThemeTokenNamedLikeAnObjectPrototypeMemberIsUnknownAcrossSDKs
+14 TestChildAgentSessionAbortNotHeldBehindAwaitedMemberLisp
+14 TestChildAgentSessionNativeSDKsLifecycleAndModelErrors
+14 TestConfigRootGettersAgreeAcrossLanguages
+14 TestConformance_FileMutationQueueAgreesAcrossSDKs
+14 TestConformance_RunModeReachesEverySDK
+14 TestModelChangedWithoutACallReachesTheNextHandlerAcrossSDKs
+14 TestModelTypesProviderConfigImplementationsAcrossSDKs
+15 TestChildAgentSessionAbortNotHeldBehindAwaitedMemberPython
+15 TestChildAgentSessionSnapshotLisp
+15 TestConformance_OversizedToolResultIsAnsweredAcrossSDKs
+15 TestConformance_SDKDiagnosticsReachOnlyTheExtensionLog
+15 TestInitThemeAcrossSDKs
+15 TestNativeEventBusRuntimeCrashMidDispatchReleasesTheEmitter
+15 TestSessionGraphModelRuntimeAcrossSDKs
+15 TestTuiStateAcrossSDKs
+16 TestReloadLeak
+17 TestConformance_BuiltinToolDelegationAcrossSDKs
+17 TestConformance_ExtensionConsoleReachesTheTerminalInEverySDK
+17 TestDynamicToolRegistrationAcrossSDKs
+17 TestFactoryEmitReachesAnEarlierLoadedExtensionAcrossSDKs
+17 TestLispSDKExecuteToolAndCallableTools
+17 TestModelTypesVirtualModelsAcrossSDKs
+17 TestNodeRegistryWritesSurviveConcurrentPublications
+17 TestSessionGraphDefaultPackageManagerAcrossSDKs
+18 TestChildAgentSessionContextUsageLisp
+18 TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall
 18 TestExtensionRoundTripLatencyOpenLoop
-18 TestInitThemeAcrossSDKs
-18 TestLispSDKExecuteToolOutcomeCarriesDuration
-18 TestMarkdownAbandonedBodyKeepsOrderAcrossSDKs
-18 TestProviderObjectsAcrossSDKs
-18 TestToolCallInputAcrossSDKs
-19 TestConformance_RunModeReachesEverySDK
-19 TestDynamicToolRegistrationAcrossSDKs
-19 TestLateProviderUnregisterDropsOperationsAcrossSDKs
-19 TestLispSDKExecuteToolOwnSignalOutlivesTheCallingRequest
+18 TestLispSDKVirtualModelRegistrationAndRouting
+18 TestModelTypesProviderObjectAcrossSDKs
+18 TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners
+18 TestPromptSectionMutationsAcrossSDKs
+18 TestSessionGraphAgentSessionRuntimeAcrossSDKs
+18 TestSessionGraphCreateProviderAcrossSDKs
+19 TestChildAgentSessionQueueLisp
+19 TestConformance_ComponentKitWidgetsMatchPi
+19 TestConformance_HostParserHelpersAgreeAcrossSDKs
+19 TestLispSDKToolEventsAndNewEvents
 19 TestMarkdownThemeAcrossSDKs
-19 TestPromptOptionEditsAcrossSDKs
-20 TestChildAgentSessionRust
-20 TestLispSDKToolEventsAndNewEvents
-20 TestOnToolsExpandedChangeAcrossSDKs
-20 TestPromptHandlerBodyFIFOAcrossSDKs
-20 TestSessionGraphChildHandlesAcrossSDKs
-20 TestSessionGraphExtensionFactoriesAcrossSDKs
-20 TestSettingsListThemeAcrossSDKs
+19 TestModelTypesProviderOperationCancellationAcrossSDKs
+19 TestModelTypesReadsAcrossSDKs
+19 TestNativeEventBusHungNativeListenerBlocksOnlyItsEmitter
+19 TestThemeQueriesAcrossSDKs
+20 TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs
+20 TestConformance_CompactionUsageHelpersAgreeAcrossSDKs
+20 TestLispSDKExecuteToolOnUpdateErrorRejectsTheNestedCall
+20 TestLispSDKMcpServerRegistration
+20 TestLispSDKToolResultPreview
+20 TestModelTypesVirtualModelIsVisibleInTheSameTurnAcrossSDKs
+20 TestSessionGraphSessionManagerAcrossSDKs
+20 TestSetWidgetRendererAcrossSDKs
+20 TestToolParamsNestingAcrossSDKs
 
 # The tui package runs in eight shards (SHARDED_SPEC). Its 2701 tests list 118,000 characters of names: six shards bounded its time but left the longest -run
 # pattern at 21158 characters, 88% of the 24000 test-shard-pattern.sh allows, and eight keep it at 16081 (67%). The pins are generated:
