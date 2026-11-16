@@ -2,6 +2,7 @@ package subprocess
 
 import (
 	"bytes"
+	"reflect"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -27,14 +28,16 @@ func TestNoEditReplyIsUnwrappedWithoutAllocation(t *testing.T) {
 		member := map[string]string{"tool_result": "_pigToolResultResult", "message_end": "_pigMessageEndResult"}[event]
 		for _, tc := range noEditReplies {
 			raw := json.RawMessage(bytes.ReplaceAll([]byte(tc.reply), []byte("_pigX"), []byte(member)))
+			// The host holds the event as an any already: boxing it is not the unwrap's cost.
 			var toolResult extension.CustomToolResultEvent
 			toolResult.Edits = &extension.ToolResultEdits{}
+			var toolResultEvent, messageEndEvent any = toolResult, extension.MessageEndEvent{Type: "message_end"}
 			unwrap := func() {
 				var err error
 				if event == "tool_result" {
-					_, err = unwrapToolResultReply(toolResult, raw)
+					_, err = unwrapToolResultReply(toolResultEvent, raw)
 				} else {
-					_, err = unwrapMessageEndReply(extension.MessageEndEvent{Type: "message_end"}, raw)
+					_, err = unwrapMessageEndReply(messageEndEvent, raw)
 				}
 				if err != nil {
 					t.Fatal(err)
@@ -113,5 +116,20 @@ func TestMessageEndReplyWithAMessageEditsTheEventsMessage(t *testing.T) {
 	}
 	if text, err := json.Marshal(message.User.Content); err != nil || string(text) != `"changed"` {
 		t.Fatalf("the event's message holds %s, %v; want the edited \"changed\"", text, err)
+	}
+}
+
+func TestResultMemberNamesAreTheWrappersJSONTags(t *testing.T) {
+	for _, tc := range []struct {
+		wrapper any
+		member  string
+	}{
+		{MessageEndResponsePayload{}, messageEndResultMember},
+		{ToolResultResponsePayload{}, toolResultResultMember},
+	} {
+		field, ok := reflect.TypeOf(tc.wrapper).FieldByName("Result")
+		if !ok || field.Tag.Get("json") != tc.member {
+			t.Errorf("%T: the Result member's tag is %q, the shortcut reads %q", tc.wrapper, field.Tag.Get("json"), tc.member)
+		}
 	}
 }
