@@ -115,7 +115,7 @@ func TestMistralStrictToolSchema(t *testing.T) {
 			"optional_value": map[string]any{"type": "number"},
 		}, "required": []any{"required_value"}},
 		ConstrainedSampling: &ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"},
-	}})
+	}}, true)
 	if err != nil {
 		t.Fatalf("convert tools: %v", err)
 	}
@@ -138,6 +138,37 @@ func TestMistralStrictToolSchema(t *testing.T) {
 	optional := wire.Function.Parameters["properties"].(map[string]any)["optional_value"].(map[string]any)
 	if _, ok := optional["anyOf"]; !ok {
 		t.Fatalf("optional schema = %#v, want nullable anyOf", optional)
+	}
+}
+
+// Pi 2c2a77f9f3ab (#12148): without supportsStrictMode a "prefer" tool goes out non-strict with its own schema, and a "require" tool fails with resolveJsonSchemaStrictSampling's message.
+func TestMistralToolsWithoutStrictMode(t *testing.T) {
+	provider := &mistralProvider{}
+	// Decoded from JSON, so the tool records its schema's member order as a decoded tool does.
+	decode := func(strict string) ToolSchema {
+		var tool ToolSchema
+		raw := `{"name":"sample","description":"sample","parameters":{"type":"object","properties":{"required_value":{"type":"string"},"optional_value":{"type":"number"}},"required":["required_value"]},"constrainedSampling":{"type":"json_schema","strict":"` + strict + `"}}`
+		if err := json.Unmarshal([]byte(raw), &tool); err != nil {
+			t.Fatal(err)
+		}
+		return tool
+	}
+	tools, err := provider.convertTools([]ToolSchema{decode("prefer")}, false)
+	if err != nil {
+		t.Fatalf("convert tools: %v", err)
+	}
+	body, err := json.Marshal(tools[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = `{"type":"function","function":{"name":"sample","description":"sample","parameters":{"type":"object","properties":{"required_value":{"type":"string"},"optional_value":{"type":"number"}},"required":["required_value"]},"strict":false}}`
+	if string(body) != want {
+		t.Fatalf("non-strict Mistral tool = %s\nwant %s", body, want)
+	}
+
+	_, err = provider.convertTools([]ToolSchema{decode("require")}, false)
+	if err == nil || err.Error() != `Tool "sample" requires JSON-schema constrained sampling, but strict tools are unsupported.` {
+		t.Fatalf("require without strict mode: err = %v", err)
 	}
 }
 

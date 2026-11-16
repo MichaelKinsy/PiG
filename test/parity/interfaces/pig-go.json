@@ -51003,9 +51003,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(tools []ToolSchema) ([]mistralTool, error)"
+        "type": "func(tools []ToolSchema, supportsStrictMode bool) ([]mistralTool, error)"
       },
-      "shapeHash": "sha256:9ae5cead76e0a664dac879e78cfdab0d6d6d69b43806ca48c666166c87656e0e"
+      "shapeHash": "sha256:fe82c587325da5693b4dea9e7df0bce8fa5e7e70711d5f3560fd027e25fb70f0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#mistralProvider.convertUserMessage",

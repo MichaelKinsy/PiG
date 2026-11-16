@@ -9750,12 +9750,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -27690,12 +27690,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -28683,12 +28683,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -54340,12 +54340,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -73442,12 +73442,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -74479,12 +74479,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -90236,12 +90236,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -90908,12 +90908,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -91346,12 +91346,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {

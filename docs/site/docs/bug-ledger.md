@@ -1437,6 +1437,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9acb844](#bf-9acb844) | fix(chord/nextnode/plugins): the pipe to the Node subprocess buffers writes, so a process's last frame… | PiG's own defect | All platforms | Unreleased |
 | [BF-9af407c](#bf-9af407c) | fix(ai): race builds read provider sockets through syscall.Read | PiG's own defect | All platforms | Unreleased |
 | [BF-9b2165f](#bf-9b2165f) | fix(tui): quotes narrower than a border keep their whitespace tokens like Pi (Pi) | PiG's own defect | All platforms | Unreleased |
+| [BF-9b30272](#bf-9b30272) | ai: Mistral Large 4 tool calls no longer stall for minutes | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-9b33064](#bf-9b33064) | Building the compiled host with Pi-Bolt 0.7.4 crashed the compiler ("Segmentation fault at address 0x30", on… | PiG's own defect | All platforms | Unreleased |
 | [BF-9b4312b](#bf-9b4312b) | A Rust extension build that ends without a compiler diagnostic (cargo or rustc killed, cargo unable to start)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9b4312b-2](#bf-9b4312b-2) | The Rust build failure test asserts that a killed rustc is named by its program name, not its full path | PiG's own defect | All platforms | 0.5.0 |
@@ -21963,6 +21964,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `9b2165ffb6` (2026-10-23)
 - **Tests:** None recorded.
+
+### BF-9b30272
+
+**ai: Mistral Large 4 tool calls no longer stall for minutes**
+
+- **Source:** A fix Pi shipped that PiG ported
+- **Symptom:** ai: Mistral Large 4 tool calls no longer stall for minutes.
+- **Root cause:** buildChatPayload passed true as the strict-tools default to toFunctionTools, so every Mistral tool that asked for JSON-schema constrained sampling carried strict true and a converted schema, and Mistral Large 4 spends minutes before a call to a strict tool; the default is now the model's compat.supportsStrictMode, false when absent.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9b302729ad` (2026-11-16)
+- **Tests:** `ai/mistral_strict_mode_oracle_test.go::TestMistralStrictToolsRequestBodyMatchesPi`, `ai/mistral_test.go::TestMistralToolsWithoutStrictMode`, `ai/mistral_tool_schema_upstream_test.go::TestMistralToolsAreNonStrictUnlessTheModelEnablesStrictMode`
+- **Release note:** ai: Mistral Large 4 tool calls no longer stall for minutes. The model went silent before a tool call when the tools carried `strict: true`, which PiG sent on every Mistral request since 0.2.0; with strict off the call arrives in seconds (Pi 2c2a77f9f3ab, #12148).
 
 ### BF-9b33064
 
