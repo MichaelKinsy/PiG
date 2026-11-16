@@ -3460,15 +3460,15 @@
     },
     {
       "id": "BF-1a89bc2",
-      "title": "Chord: `chordctx.OnAbort` on a context derived by `WithAbortSignal` from a signal made with…",
-      "symptom": "The order that picks it (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of `x`, which never reached the derived context, counted as that context's own and its cause won over the independent source's although that one aborted first (a listener added after the aborts heard `x`'s reason).",
+      "title": "Chord: a context linked from two abort sources now reports the reason of the source that aborted first when…",
+      "symptom": "The abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first.",
       "rootCause": "What was wrong. OnAbort picks, among the sources of a context that were aborted already, the one whose abort came first (AbortOrder), because a Go context derived from two sources is cancelled by listeners on goroutines of their own, in any order. abortSources leaves a WithoutAbortSignal ancestor out of the sources, but AbortOrder walked through it into the ancestor's own parents.",
       "rootCauseSource": "commit",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Chord: `chordctx.OnAbort` on a context derived by `WithAbortSignal` from a signal made with `WithCancel(WithoutAbortSignal(x))` and from an independent source now hears the reason of the source that aborted first. Before, the order that picks it (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of `x`, which never reached the derived context, counted as that context's own and its cause won over the independent source's although that one aborted first (a listener added after the aborts heard `x`'s reason). As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context; the chord host's linked abort signals rank their two sources by the same function. Released in: no release (the `WithoutAbortSignal` marker that the walk ignored came with ee7273136, which no tag contains; v0.7.0 does not have it). \u003c!-- cause: abortSources and AbortOrder each walked a context's parents on their own, and only abortSources stopped at a WithoutAbortSignal context, so the two functions disagreed about which aborts reach a context. --\u003e",
+      "releaseNote": "Chord: a context linked from two abort sources now reports the reason of the source that aborted first when one of the sources is derived from a `chordctx.WithoutAbortSignal` context: the host's linked abort signals do, and so does `chordctx.OnAbort` on a context derived by `WithAbortSignal`. Before, the abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first. As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context. Released in: v0.7.0, and every release since (the walk came with 0b76ae5e5, which `git tag --contains` places in v0.7.0; a probe at the v0.7.0 tag ranks `WithCancel(WithoutAbortSignal(x))` before an independent source that aborted earlier). \u003c!-- cause: abortSources and AbortOrder each walked a context's parents on their own, and only abortSources stopped at a WithoutAbortSignal context, so the two functions disagreed about which aborts reach a context. --\u003e",
       "origin": "release note",
       "commits": [
         {
@@ -10838,31 +10838,6 @@
       ],
       "tests": [
         "internal/codingagent/trust_store_multi_oracle_test.go::TestProjectTrustStoreMultiEntryFilesMatchPi"
-      ]
-    },
-    {
-      "id": "BF-4b12dc8",
-      "title": "Chord: the cancel function `chordctx.WithCancel` returns now aborts the context and runs its abort listeners…",
-      "symptom": "A repeated call (a `defer cancel()` after an explicit one, a timer and an owner) that arrived after the first call had cancelled the context and before it had taken the listeners took them away and ran them on its own goroutine, outside the section that cancelled: a waiter's abort listener enqueues its continuation where it runs, so a loop section that resolved a promise and then cancelled its context had the abort delivered behind the settlement's reaction, and the waiter delivered the result instead of the abort.",
-      "rootCause": "What was wrong. The cancel function WithCancel returns recorded the cause and then took the listeners of the context and ran them, in every call. A call made while another was between the context's cancellation and its own taking of the listeners (a repeated call, or one on another goroutine: a `defer cancel()` after an explicit one, a timer and an owner) took the listeners away from the call that actually aborted and ran them on its own goroutine. Pi's `abort()` of an aborted signal does nothing at all (withCancel is `controller.abort(reason)`, packages/chord/src/context/index.ts:123-134 at v1.5.0 and v1.5.2, the same file at both), and there is only one thread, so a second `abort()` can…",
-      "rootCauseSource": "commit",
-      "userImpact": "Wrong output or ordering",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "releaseNote": "Chord: the cancel function `chordctx.WithCancel` returns now aborts the context and runs its abort listeners (`OnAbort`) only in the call that cancels it first. Before, a repeated call (a `defer cancel()` after an explicit one, a timer and an owner) that arrived after the first call had cancelled the context and before it had taken the listeners took them away and ran them on its own goroutine, outside the section that cancelled: a waiter's abort listener enqueues its continuation where it runs, so a loop section that resolved a promise and then cancelled its context had the abort delivered behind the settlement's reaction, and the waiter delivered the result instead of the abort. A call after the first now records no cause and takes no listener, as Pi's `abort()` of an aborted signal does nothing; it returns once the context is cancelled, while the listeners are the first call's to run (they may still be running when it returns). Released in: no release (the fault came with the abort listeners' delivery inside the cancel, ee7273136, which no tag contains; v0.7.0 does not have it). \u003c!-- cause: The cancel function took the listener set on every call, on the assumption that a context is cancelled by one call, as in Pi's single thread, and nothing recorded which call owned the abort, so two calls that overlapped each took part of what only the first owns. --\u003e",
-      "origin": "release note",
-      "commits": [
-        {
-          "hash": "4b12dc87bd",
-          "date": "2026-11-16"
-        }
-      ],
-      "tests": [
-        "chord/context/abort_owner_test.go::TestCancelFromAListenerReturnsAtOnce",
-        "chord/context/abort_owner_test.go::TestConcurrentCancelsOfOneContextRunEachListenerOnce",
-        "chord/context/abort_owner_test.go::TestRepeatedCancelKeepsTheFirstCause",
-        "chord/context/abort_owner_test.go::TestRepeatedCancelLeavesTheListenersToTheCancelThatOwnsThem"
       ]
     },
     {
@@ -48805,7 +48780,7 @@
     "Fix reverted before release": 1,
     "Follow-up to unreleased work": 2,
     "Repair of a merge between development branches": 9,
-    "Review follow-up to unreleased work": 3,
+    "Review follow-up to unreleased work": 4,
     "test-only": 1
   }
 }

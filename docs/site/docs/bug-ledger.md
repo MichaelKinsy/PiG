@@ -136,7 +136,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-19a2d2d](#bf-19a2d2d) | fix(durable/core): match Pi's passes in the cut-off flows: drain resumes after the async reserve, open and… | PiG's own defect | All platforms | Unreleased |
 | [BF-1a855cd](#bf-1a855cd) | The `/session` block now follows a later theme change and shows the cache-warming countdown as of each… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1a893bc](#bf-1a893bc) | fix(durable/core): report task_interrupted from the runtime's commit path for every task (Pi scheduler.ts) | PiG's own defect | All platforms | Unreleased |
-| [BF-1a89bc2](#bf-1a89bc2) | Chord: `chordctx.OnAbort` on a context derived by `WithAbortSignal` from a signal made with… | PiG's own defect | All platforms | Unreleased |
+| [BF-1a89bc2](#bf-1a89bc2) | Chord: a context linked from two abort sources now reports the reason of the source that aborted first when… | PiG's own defect | All platforms | Unreleased |
 | [BF-1a9093e](#bf-1a9093e) | The pi-env daemon on macOS: a small reply (an `lstat`, a ping) could come after megabytes of queued command… | PiG's own defect | macOS | Unreleased |
 | [BF-1b5540a](#bf-1b5540a) | `client.Client.Disconnect` takes the reason string as Pi's `Client.disconnect(reason)` does (it was an… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1b9718b](#bf-1b9718b) | fix(photonimage): register the lossless decoders Decode falls back to and decode test sources with Photon | PiG's own defect | All platforms | Unreleased |
@@ -392,7 +392,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4a70ed5](#bf-4a70ed5) | `coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4ac21c8](#bf-4ac21c8) | fix(jsloop): run a tick whose tool call already ended at once, though no wait is open | PiG's own defect | All platforms | Unreleased |
 | [BF-4afdbac](#bf-4afdbac) | `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-4b12dc8](#bf-4b12dc8) | Chord: the cancel function `chordctx.WithCancel` returns now aborts the context and runs its abort listeners… | PiG's own defect | All platforms | Unreleased |
 | [BF-4b9f5f8](#bf-4b9f5f8) | `/tree` with summarization no longer sends an attempt that was hidden from the model back to the summarizer | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4bcc7da](#bf-4bcc7da) | `StreamProxy` merges the final tool call and reports abort and timeout as Pi does, and it no longer changes a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4c032a0](#bf-4c032a0) | A description decoded from the wire is written back with every schema member in the order it was declared in… | PiG's own defect | All platforms | 0.7.0 |
@@ -3292,17 +3291,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-1a89bc2
 
-**Chord: `chordctx.OnAbort` on a context derived by `WithAbortSignal` from a signal made with…**
+**Chord: a context linked from two abort sources now reports the reason of the source that aborted first when…**
 
 - **Source:** PiG's own defect
-- **Symptom:** The order that picks it (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of `x`, which never reached the derived context, counted as that context's own and its cause won over the independent source's although that one aborted first (a listener added after the aborts heard `x`'s reason).
+- **Symptom:** The abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first.
 - **Root cause:** What was wrong. OnAbort picks, among the sources of a context that were aborted already, the one whose abort came first (AbortOrder), because a Go context derived from two sources is cancelled by listeners on goroutines of their own, in any order. abortSources leaves a WithoutAbortSignal ancestor out of the sources, but AbortOrder walked through it into the ancestor's own parents.
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `1a89bc25f7` (2026-11-16)
 - **Tests:** `chord/context/abort_cause_oracle_test.go::TestAbortCauseMatchesPi`, `chord/context/abort_detached_order_test.go::TestAbortOrderStopsAtADetachedAncestor`, `chord/context/abort_detached_order_test.go::TestLateListenerHearsTheFirstSourceThatAbortedNotADetachedAncestorsParent`
-- **Release note:** Chord: `chordctx.OnAbort` on a context derived by `WithAbortSignal` from a signal made with `WithCancel(WithoutAbortSignal(x))` and from an independent source now hears the reason of the source that aborted first. Before, the order that picks it (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of `x`, which never reached the derived context, counted as that context's own and its cause won over the independent source's although that one aborted first (a listener added after the aborts heard `x`'s reason). As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context; the chord host's linked abort signals rank their two sources by the same function. Released in: no release (the `WithoutAbortSignal` marker that the walk ignored came with ee7273136, which no tag contains; v0.7.0 does not have it). <!-- cause: abortSources and AbortOrder each walked a context's parents on their own, and only abortSources stopped at a WithoutAbortSignal context, so the two functions disagreed about which aborts reach a context. -->
+- **Release note:** Chord: a context linked from two abort sources now reports the reason of the source that aborted first when one of the sources is derived from a `chordctx.WithoutAbortSignal` context: the host's linked abort signals do, and so does `chordctx.OnAbort` on a context derived by `WithAbortSignal`. Before, the abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first. As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context. Released in: v0.7.0, and every release since (the walk came with 0b76ae5e5, which `git tag --contains` places in v0.7.0; a probe at the v0.7.0 tag ranks `WithCancel(WithoutAbortSignal(x))` before an independent source that aborted earlier). <!-- cause: abortSources and AbortOrder each walked a context's parents on their own, and only abortSources stopped at a WithoutAbortSignal context, so the two functions disagreed about which aborts reach a context. -->
 
 ### BF-1a9093e
 
@@ -6820,20 +6819,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4afdbac644` (2026-10-10)
 - **Tests:** `internal/codingagent/trust_store_multi_oracle_test.go::TestProjectTrustStoreMultiEntryFilesMatchPi`
 - **Release note:** `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map iteration reached first, so a trust.json with several wrong-typed values reported a random key; Pi's `Object.entries` order (array-index keys, then insertion order) decides, and `read` now walks `orderedjson` keys. New live-Pi oracle `TestProjectTrustStoreMultiEntryFilesMatchPi` (`internal/codingagent/trust_store_multi_oracle_test.go`; 1,200 trust.json files x 1-5 get/getEntry/set/setMany operations; symlinked cwd, missing paths, astral and BMP-high keys); red before the fix (4-5 of 1,200, varying with map order); 8 mutations red (key order, null rejected, false-as-true, non-object check, UTF-16 key sort, null entry stops the ancestor walk, null delete, BOM). Extends `TestProjectTrustStoreMatchesPi`, which passed before the fix. Not compared: the V8 text after `Failed to read trust store <path>: `, file modes, cross-process locking.
-
-### BF-4b12dc8
-
-**Chord: the cancel function `chordctx.WithCancel` returns now aborts the context and runs its abort listeners…**
-
-- **Source:** PiG's own defect
-- **Symptom:** A repeated call (a `defer cancel()` after an explicit one, a timer and an owner) that arrived after the first call had cancelled the context and before it had taken the listeners took them away and ran them on its own goroutine, outside the section that cancelled: a waiter's abort listener enqueues its continuation where it runs, so a loop section that resolved a promise and then cancelled its context had the abort delivered behind the settlement's reaction, and the waiter delivered the result instead of the abort.
-- **Root cause:** What was wrong. The cancel function WithCancel returns recorded the cause and then took the listeners of the context and ran them, in every call. A call made while another was between the context's cancellation and its own taking of the listeners (a repeated call, or one on another goroutine: a `defer cancel()` after an explicit one, a timer and an owner) took the listeners away from the call that actually aborted and ran them on its own goroutine. Pi's `abort()` of an aborted signal does nothing at all (withCancel is `controller.abort(reason)`, packages/chord/src/context/index.ts:123-134 at v1.5.0 and v1.5.2, the same file at both), and there is only one thread, so a second `abort()` can…
-- **User impact:** Wrong output or ordering
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `4b12dc87bd` (2026-11-16)
-- **Tests:** `chord/context/abort_owner_test.go::TestCancelFromAListenerReturnsAtOnce`, `chord/context/abort_owner_test.go::TestConcurrentCancelsOfOneContextRunEachListenerOnce`, `chord/context/abort_owner_test.go::TestRepeatedCancelKeepsTheFirstCause`, `chord/context/abort_owner_test.go::TestRepeatedCancelLeavesTheListenersToTheCancelThatOwnsThem`
-- **Release note:** Chord: the cancel function `chordctx.WithCancel` returns now aborts the context and runs its abort listeners (`OnAbort`) only in the call that cancels it first. Before, a repeated call (a `defer cancel()` after an explicit one, a timer and an owner) that arrived after the first call had cancelled the context and before it had taken the listeners took them away and ran them on its own goroutine, outside the section that cancelled: a waiter's abort listener enqueues its continuation where it runs, so a loop section that resolved a promise and then cancelled its context had the abort delivered behind the settlement's reaction, and the waiter delivered the result instead of the abort. A call after the first now records no cause and takes no listener, as Pi's `abort()` of an aborted signal does nothing; it returns once the context is cancelled, while the listeners are the first call's to run (they may still be running when it returns). Released in: no release (the fault came with the abort listeners' delivery inside the cancel, ee7273136, which no tag contains; v0.7.0 does not have it). <!-- cause: The cancel function took the listener set on every call, on the assumption that a context is cancelled by one call, as in Pi's single thread, and nothing recorded which call owned the abort, so two calls that overlapped each took part of what only the first owns. -->
 
 ### BF-4b9f5f8
 
@@ -24737,5 +24722,5 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 - Fix reverted before release: 1
 - Follow-up to unreleased work: 2
 - Repair of a merge between development branches: 9
-- Review follow-up to unreleased work: 3
+- Review follow-up to unreleased work: 4
 - test-only: 1
