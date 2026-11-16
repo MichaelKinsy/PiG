@@ -192,6 +192,11 @@ export default function (pi) {
     ctx.ui.notify(JSON.stringify(out), "info");
   }});
   pi.registerCommand("active_tools_set", { description: "Set the active tools to the comma-separated names", handler: async (args) => pi.setActiveTools(String(args).trim().split(",")) });
+  pi.registerCommand("host_error_probe", { description: "Report what a host error on navigateTree looks like to the extension", handler: async (_args, ctx) => {
+    let text = "no error", code = "-";
+    try { await ctx.navigateTree("entry"); } catch (error) { text = error.message; code = error.code || "-"; }
+    ctx.ui.notify(`host_error:${text}|${code}`, "info");
+  }});
   pi.registerCommand("session_actions_unbound", { description: "Report what unbound session actions answer", handler: async (_args, ctx) => {
     const parts = [];
     for (const [name, call] of [["new", () => ctx.newSession()], ["fork", () => ctx.fork("entry")], ["navigate", () => ctx.navigateTree("entry")], ["switch", () => ctx.switchSession("/s.jsonl")]]) {
@@ -1341,6 +1346,7 @@ export default function (pi) {
   pi.registerCommand("send_message_default", { description: "Send a custom message with default options", handler: async () => pi.sendMessage({ customType: "notice", content: "default", display: true }) });
   pi.registerCommand("send_message_no_turn", { description: "Send a custom message that never starts a turn", handler: async () => pi.sendMessage({ customType: "notice", content: "no-turn", display: true }, { triggerTurn: false }) });
   pi.registerCommand("send_user_message", { description: "Send a user message", handler: async (args) => pi.sendUserMessage(args ? JSON.parse(args) : "hello-user", { deliverAs: "followUp" }) });
+  pi.registerCommand("send_user_message_delivery", { description: "Send a user message with the delivery named by the argument", handler: async (args) => args === "absent" ? pi.sendUserMessage("delivery-absent") : pi.sendUserMessage("delivery-" + args, { deliverAs: args }) });
   pi.registerCommand("send_user_message_expand", { description: "Send a user message with expandPromptTemplates set to the argument", handler: async (args) => pi.sendUserMessage("expand-user", { deliverAs: "followUp", expandPromptTemplates: args === "true" }) });
   pi.registerCommand("set_session_name", { description: "Set the session name", handler: async () => pi.setSessionName("conformance-session") });
   pi.registerCommand("event_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
