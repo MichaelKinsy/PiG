@@ -361,7 +361,7 @@ func TestDefaultModelResolutionDoesNotSplitAProviderPrefix(t *testing.T) {
 	services := testServices(t, f.agentDir)
 	defer services.Close()
 	runtime := services.ModelRuntime()
-	selected, err := findInitialModel(newLazyStartupModelRuntime(runtime.RuntimeModels, runtime.HasConfiguredAuth), "bench", "bench/bench-2")
+	selected, err := findInitialModel(newLazyStartupModelRuntime(runtime.RuntimeModels, runtime.HasConfiguredAuth, runtime.AvailableRuntimeModels), "bench", "bench/bench-2")
 	if err != nil || selected == nil || selected.ID != "bench-1" {
 		t.Fatalf("selected = %#v, err = %v: Pi does not split a provider prefix, so startup falls back to the first model", selected, err)
 	}

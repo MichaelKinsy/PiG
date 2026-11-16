@@ -75098,6 +75098,17 @@
       "shapeHash": "sha256:f6a8bf860f501acd8bfdc7af4257bf546295388d280a976374b88e39ab4c30d0"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.AvailableRuntimeModels",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRuntime.AvailableRuntimeModels",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(models []github.com/MichaelKinsy/PiG/internal/codingagent.RuntimeModel) []github.com/MichaelKinsy/PiG/internal/codingagent.RuntimeModel"
+      },
+      "shapeHash": "sha256:f14c52b61f6d4a23cd82ed74808be8ed56a0acfc439bb8dcfd41343adf33a104"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.BindModelObject",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRuntime.BindModelObject",
@@ -98413,9 +98424,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(load func() []github.com/MichaelKinsy/PiG/internal/codingagent.RuntimeModel, hasAuth func(providerID string) bool) *startupModelRuntime"
+        "type": "func(load func() []github.com/MichaelKinsy/PiG/internal/codingagent.RuntimeModel, hasAuth func(providerID string) bool, availableOf func([]github.com/MichaelKinsy/PiG/internal/codingagent.RuntimeModel) []github.com/MichaelKinsy/PiG/internal/codingagent.RuntimeModel) *startupModelRuntime"
       },
-      "shapeHash": "sha256:da29b385ddb0fdc09ad34bfafc5f0e142387c8f2ccfddfacac9a0c7ca8c0b69e"
+      "shapeHash": "sha256:29a0310f422ac958d07033e47fd51ec89621f08cc2cdfe286188abdbf4ec6572"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newLoginPreviewUI",

@@ -774,6 +774,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5f4a0b2](#bf-5f4a0b2) | fix(durable/core): a Session's reports reach its report(error, info) | PiG's own defect | All platforms | Unreleased |
 | [BF-6005946](#bf-6005946) | chord: base bundles collect the fonts and images their stylesheets name: a base stylesheet with `url()`… | PiG's own defect | All platforms | Unreleased |
 | [BF-6018935](#bf-6018935) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-60285d7](#bf-60285d7) | Resuming a session (`pig -c`, `--resume`, `--session`, and the SDK's `CreateAgentSessionFromServices`) whose… | PiG's own defect | All platforms | Unreleased |
 | [BF-60473d7](#bf-60473d7) | The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-604e180](#bf-604e180) | `tool_search` (and its Durable copy) now finds a tool by property names and descriptions behind a local… | PiG's own defect | All platforms | Unreleased |
 | [BF-609d2bd](#bf-609d2bd) | fix(photonimage): decode DDS (DXT1, DXT3, DXT5) as Photon does | PiG's own defect | All platforms | Unreleased |
@@ -12735,6 +12736,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `601893581e` (2026-11-03)
 - **Tests:** None recorded.
+
+### BF-60285d7
+
+**Resuming a session (`pig -c`, `--resume`, `--session`, and the SDK's `CreateAgentSessionFromServices`) whose…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The fallback chose from every model of a provider that had credentials, so an account that lists only some models (GitHub Copilot's list of models for your plan), or a provider whose own filter hides a model, was given a model it cannot use, where Pi gives it only a listed model, or none when none is listed and shows "No models available".
+- **Root cause:** both fallback selectors listed available models as the composed catalog filtered by provider auth, not the published availability snapshot, which applies each provider's per-credential model filter
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `60285d7fbd` (2026-11-15)
+- **Tests:** `coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix`, `coding/cli/startup_model_test.go::TestLazyStartupModelRuntimeLoadsOnFirstReadOnly`
+- **Release note:** Resuming a session (`pig -c`, `--resume`, `--session`, and the SDK's `CreateAgentSessionFromServices`) whose saved model is gone no longer picks a model that your account does not list. The fallback chose from every model of a provider that had credentials, so an account that lists only some models (GitHub Copilot's list of models for your plan), or a provider whose own filter hides a model, was given a model it cannot use, where Pi gives it only a listed model, or none when none is listed and shows "No models available". The fallback now reads the same models `/model` offers. It was present in v0.7.0 and, in the startup path, in v0.3.0.
 
 ### BF-60473d7
 

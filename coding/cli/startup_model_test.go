@@ -394,7 +394,7 @@ func TestLazyStartupModelRuntimeLoadsOnFirstReadOnly(t *testing.T) {
 	rt := newLazyStartupModelRuntime(func() []codingagent.RuntimeModel {
 		loads++
 		return []codingagent.RuntimeModel{{Provider: "anthropic", ID: "a"}, {Provider: "openai", ID: "b"}}
-	}, func(string) bool { return true })
+	}, func(string) bool { return true }, func(models []codingagent.RuntimeModel) []codingagent.RuntimeModel { return models })
 	if loads != 0 {
 		t.Fatalf("loads before a read = %d, want 0", loads)
 	}
