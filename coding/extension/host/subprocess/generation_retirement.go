@@ -81,8 +81,14 @@ func (h *Host) retireGeneration(old *managedExt, stop func()) (deferred bool) {
 	h.retirementMu.Unlock()
 	if !deferred {
 		stop()
+		return false
 	}
-	return deferred
+	// Pi's reload removes the extension overlays before it reloads and leaves what awaits them pending (interactive-mode.ts:2592-2598 resetExtensionUI, from handleReloadCommand 6628); the
+	// generation's process lives on, so its overlays go now, and the ui.custom call of the command that awaits one stays pending, as in Pi, until its component ends it or the stop does.
+	if conn := old.connection(); h.uiBridge != nil && conn != nil {
+		h.uiBridge.RetireExtensionConn(old.config.Name, conn)
+	}
+	return true
 }
 
 // holdProcessForRunningCommand keeps the process of a packed cell until the retirement of me, a generation with a command still running, stops it. The members of

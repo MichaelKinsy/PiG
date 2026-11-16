@@ -56,6 +56,8 @@ type customOverlay struct {
 	// endOnHide marks a raw overlay (ExtUIContext.ShowRemoteOverlay): no ui.custom call owns it, so its handle's hide ends it.
 	// Set before the controls are bound.
 	endOnHide bool
+	// retire takes the overlay off the screen without ending the call that mounted it (Retire).
+	retire func()
 
 	closedCh  chan struct{}
 	closeOnce sync.Once
@@ -261,6 +263,25 @@ func (c *customOverlay) Close(result any) {
 	if cb != nil {
 		cb()
 	}
+}
+
+// Retire takes the overlay off the screen and leaves the ui.custom call that mounted it waiting, as Pi's resetExtensionUI does at a reload: it removes the extension
+// overlays "the same way done() does, but leave the promises pending" (interactive-mode.ts:2592-2598). The component's own close still ends the call. A raw overlay
+// (ShowRemoteOverlay) has no call to leave waiting and is not retired.
+func (c *customOverlay) Retire() {
+	c.mu.RLock()
+	retire := c.retire
+	c.mu.RUnlock()
+	if retire != nil {
+		retire()
+	}
+}
+
+// setRetire installs what Retire runs once RunRemoteOverlay mounted the overlay; it is safe to run more than once.
+func (c *customOverlay) setRetire(retire func()) {
+	c.mu.Lock()
+	c.retire = retire
+	c.mu.Unlock()
 }
 
 // Closed reports the close as it happens. Done() only answers when asked, so a

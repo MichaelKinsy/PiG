@@ -1177,6 +1177,9 @@ func (c *Conn) Close(reason string) error {
 
 	// Wait for goroutines to exit.
 	<-c.done
+	// The peer is gone, so no call it made can be answered: a host call still running on it, a dialog the extension awaited, ends. A transport failure does this when it
+	// ends the read loop (fail); a close the host asked for ends the loop without a failure, and its calls waited on a context nothing cancelled.
+	c.cancelAllHostCalls()
 
 	// Fail any pending requests without erasing a terminal error's identity.
 	failureCode := ""
