@@ -13,7 +13,7 @@ func extensionScopedModels(services *coding.AgentSessionServices, patterns []str
 		return []extension.ScopedModel{}
 	}
 	modelRuntime := services.ModelRuntime()
-	runtime := newLazyStartupModelRuntime(modelRuntime.RuntimeModels, modelRuntime.HasConfiguredAuth)
+	runtime := newLazyStartupModelRuntime(modelRuntime.RuntimeModels, modelRuntime.HasConfiguredAuth, modelRuntime.AvailableRuntimeModels)
 	scoped, _ := resolveModelScopeFromModels(patterns, runtime.getAvailable())
 	result := make([]extension.ScopedModel, 0, len(scoped))
 	for _, entry := range scoped {
