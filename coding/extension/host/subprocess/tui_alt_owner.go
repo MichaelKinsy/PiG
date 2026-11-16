@@ -156,13 +156,10 @@ func (o *tuiAltOwner) run() {
 		o.end()
 		close(o.exited)
 	}()
-	// The timer is made when a frame deadline first needs one, and stopped whenever the loop wakes (Go's timers hold no stale value after Stop or Reset).
-	var timer *time.Timer
-	defer func() {
-		if timer != nil {
-			timer.Stop()
-		}
-	}()
+	// A stopped timer, made once: the loop arms it for the frame deadline and stops it when it wakes (a channel-based timer delivers no tick of a deadline that Stop or Reset replaced), as the main screen's frame timer does.
+	timer := time.NewTimer(0)
+	timer.Stop()
+	defer timer.Stop()
 	for o.ctx.Err() == nil {
 		select {
 		case <-o.connDone:
@@ -203,11 +200,7 @@ func (o *tuiAltOwner) run() {
 		}
 		var deadline <-chan time.Time
 		if !due.IsZero() {
-			if timer == nil {
-				timer = time.NewTimer(time.Until(due))
-			} else {
-				timer.Reset(time.Until(due))
-			}
+			timer.Reset(max(time.Until(due), 0))
 			deadline = timer.C
 		}
 		select {
@@ -216,8 +209,6 @@ func (o *tuiAltOwner) run() {
 		case <-o.ctx.Done():
 		case <-o.connDone:
 		}
-		if timer != nil {
-			timer.Stop()
-		}
+		timer.Stop()
 	}
 }
