@@ -2,7 +2,6 @@
  * Model resolution, scoping, and initial selection
  */
 import { modelsAreEqual, } from "../../pi-ai/sdk-bundle/index.js";
-import chalk from "../../../chalk/source/index.js";
 import { minimatch } from "../../../minimatch/dist/esm/index.js";
 import { isValidThinkingLevel } from "../cli/args.js";
 import { DEFAULT_THINKING_LEVEL } from "./defaults.js";
@@ -425,61 +424,5 @@ export async function findInitialModel(options) {
     }
     // 4. No model found
     return { model: undefined, thinkingLevel: DEFAULT_THINKING_LEVEL, fallbackMessage: undefined };
-}
-/**
- * Restore model from session, with fallback to available models
- */
-export async function restoreModelFromSession(savedProvider, savedModelId, currentModel, shouldPrintMessages, modelRuntime) {
-    const restoredModel = modelRuntime.getModel(savedProvider, savedModelId);
-    // Check if restored model exists and still has auth configured
-    const hasConfiguredAuth = restoredModel ? modelRuntime.hasConfiguredAuth(restoredModel.provider) : false;
-    if (restoredModel && hasConfiguredAuth) {
-        if (shouldPrintMessages) {
-            console.log(chalk.dim(`Restored model: ${savedProvider}/${savedModelId}`));
-        }
-        return { model: restoredModel, fallbackMessage: undefined };
-    }
-    // Model not found or no API key - fall back
-    const reason = !restoredModel ? "model no longer exists" : "no auth configured";
-    if (shouldPrintMessages) {
-        console.error(chalk.yellow(`Warning: Could not restore model ${savedProvider}/${savedModelId} (${reason}).`));
-    }
-    // If we already have a model, use it as fallback
-    if (currentModel) {
-        if (shouldPrintMessages) {
-            console.log(chalk.dim(`Falling back to: ${currentModel.provider}/${currentModel.id}`));
-        }
-        return {
-            model: currentModel,
-            fallbackMessage: `Could not restore model ${savedProvider}/${savedModelId} (${reason}). Using ${currentModel.provider}/${currentModel.id}.`,
-        };
-    }
-    // Try to find any available model
-    const availableModels = [...modelRuntime.getAvailableSnapshot()];
-    if (availableModels.length > 0) {
-        // Try to find a default model from known providers
-        let fallbackModel;
-        for (const provider of Object.keys(defaultModelPerProvider)) {
-            const defaultId = defaultModelPerProvider[provider];
-            const match = availableModels.find((m) => m.provider === provider && m.id === defaultId);
-            if (match) {
-                fallbackModel = match;
-                break;
-            }
-        }
-        // If no default found, use first available
-        if (!fallbackModel) {
-            fallbackModel = availableModels[0];
-        }
-        if (shouldPrintMessages) {
-            console.log(chalk.dim(`Falling back to: ${fallbackModel.provider}/${fallbackModel.id}`));
-        }
-        return {
-            model: fallbackModel,
-            fallbackMessage: `Could not restore model ${savedProvider}/${savedModelId} (${reason}). Using ${fallbackModel.provider}/${fallbackModel.id}.`,
-        };
-    }
-    // No models available
-    return { model: undefined, fallbackMessage: undefined };
 }
 //# sourceMappingURL=model-resolver.js.map
