@@ -225,7 +225,10 @@ func TestChangedPackagesOnARepository(t *testing.T) {
 	hot := []string{"./a", "./c"}
 	baseFiles := map[string]string{
 		"go.mod":                                "module example.test/m\n\ngo 1.24\n",
-		"a/a.go":                                "package a\n\nimport _ \"example.test/m/b\"\n",
+		"go.work":                               "go 1.24\n\nuse (\n\t.\n\t./nested\n)\n",
+		"nested/go.mod":                         "module example.test/m/nested\n\ngo 1.24\n",
+		"nested/n/n.go":                         "package n\n",
+		"a/a.go":                                "package a\n\nimport (\n\t_ \"example.test/m/b\"\n\t_ \"example.test/m/nested/n\"\n)\n",
 		"a/a_test.go":                           "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
 		"b/b.go":                                "package b\n",
 		"c/c.go":                                "package c\n",
@@ -261,6 +264,12 @@ func TestChangedPackagesOnARepository(t *testing.T) {
 	git(t, root, "commit", "-q", "-am", "docs")
 	if got, files := run(false); got != "" || files != 1 {
 		t.Fatalf("a documentation commit selected %q from %d files", got, files)
+	}
+	// A workspace lists every module for `go list -m`, and a package of a nested module is still a package of the repository.
+	writeTree(t, root, map[string]string{"nested/n/n.go": "package n\n\nvar N = 1\n"})
+	git(t, root, "commit", "-q", "-am", "nested")
+	if got, want := func() string { g, _ := run(true); return g }(), "./a: imports changed package nested/n"; got != want {
+		t.Fatalf("a change in the nested module selected %q, want %q", got, want)
 	}
 	writeTree(t, root, map[string]string{"b/b.go": "package b\n\nvar B = 1\n"})
 	git(t, root, "commit", "-q", "-am", "b")
