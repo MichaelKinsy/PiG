@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -30,24 +31,31 @@ func TestMissingBinaryHelperProcess(t *testing.T) {
 
 func runMissingBinaryHelper(t *testing.T, resolver string, extraEnv ...string) helperOutcome {
 	t.Helper()
-	overridden := map[string]bool{missingBinaryHelperEnv: true}
-	for _, kv := range extraEnv {
+	dir := ""
+	if resolver == "pi" {
+		// The resolver finds the source-built oracle by walking up from the working directory to extensions/sdk-ts; a directory outside the repository has none.
+		dir = t.TempDir()
+	}
+	return runTestSubprocess(t, "TestMissingBinaryHelperProcess", dir, append([]string{missingBinaryHelperEnv + "=" + resolver}, extraEnv...))
+}
+
+// runTestSubprocess runs one test of this package in a child process with env applied over the inherited environment, and reports how it ended.
+func runTestSubprocess(t *testing.T, test, dir string, env []string) helperOutcome {
+	t.Helper()
+	overridden := map[string]bool{}
+	for _, kv := range env {
 		key, _, _ := strings.Cut(kv, "=")
 		overridden[key] = true
 	}
-	env := []string{missingBinaryHelperEnv + "=" + resolver}
+	childEnv := slices.Clone(env)
 	for _, kv := range os.Environ() {
 		if key, _, _ := strings.Cut(kv, "="); !overridden[key] {
-			env = append(env, kv)
+			childEnv = append(childEnv, kv)
 		}
 	}
-	env = append(env, extraEnv...)
-	cmd := exec.Command(os.Args[0], "-test.run", "^TestMissingBinaryHelperProcess$", "-test.v")
-	cmd.Env = env
-	if resolver == "pi" {
-		// The resolver finds the source-built oracle by walking up from the working directory to extensions/sdk-ts; a directory outside the repository has none.
-		cmd.Dir = t.TempDir()
-	}
+	cmd := exec.Command(os.Args[0], "-test.run", "^"+test+"$", "-test.v")
+	cmd.Env = childEnv
+	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	outcome := helperOutcome{output: string(out)}
 	var exitErr *exec.ExitError
@@ -58,9 +66,23 @@ func runMissingBinaryHelper(t *testing.T, resolver string, extraEnv ...string) h
 	case errors.As(err, &exitErr):
 		outcome.failed = true
 	default:
-		t.Fatalf("run missing-binary helper: %v\n%s", err, out)
+		t.Fatalf("run %s in a child process: %v\n%s", test, err, out)
 	}
 	return outcome
+}
+
+// The frame-pacing notice test is the one unit test of this package that needs a built pig. With no binary provided at all it skips and names the missing input; a path that is set but missing still fails, as for TestParity.
+func TestFramePacingNoticeTestSkipsOnlyWhenNoPigBinaryIsProvided(t *testing.T) {
+	const test = "TestFramePacingNoticeIsTheOnlyDifferenceUnderAdaptivePacing"
+	unset := runTestSubprocess(t, test, "", []string{"PIG_PARITY_PIG_BIN=", "PIG_BIN=", "PIG_PARITY_ALLOW_ZERO="})
+	if unset.failed || !unset.skipped || !strings.Contains(unset.output, "set PIG_PARITY_PIG_BIN") {
+		t.Fatalf("no pig binary provided: %+v, want a skip that names PIG_PARITY_PIG_BIN\n%s", unset, unset.output)
+	}
+	missing := filepath.Join(t.TempDir(), "no-such-pig")
+	set := runTestSubprocess(t, test, "", []string{"PIG_PARITY_PIG_BIN=" + missing, "PIG_BIN=", "PIG_PARITY_ALLOW_ZERO="})
+	if !set.failed || set.skipped || set.passed {
+		t.Fatalf("PIG_PARITY_PIG_BIN set to a missing path: %+v, want failed=true\n%s", set, set.output)
+	}
 }
 
 func emptyHomeEnv(t *testing.T) []string {
