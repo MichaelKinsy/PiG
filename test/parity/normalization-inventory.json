@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "5535679b376ab81ce0575cbfd4f380db98e57d0831dbbd32a2a06d935112c88e",
+      "sha256": "7d474a354637b82c9ee6a5012afc17b8b38df8341ce730c5f91846c8cc018da7",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -32,8 +32,8 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "a054e811ec73a3f5ac34821084d81ae13f023f6510a6966528a188206c448646",
-      "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
+      "sha256": "ebe8dc376aa43cba68797e34abbe9e9601f844aaad780f6826dcd82df3de4d98",
+      "reason": "Terminal state capture is not a byte-stream assertion; the terminal transcript, held from the program's first byte, is read only by wait_contains, by final_frame and by a scenario's own transcript_sequences_equal window. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
       "source": "test/parity/runner/footer_crop.go",
@@ -49,6 +49,11 @@
       "source": "test/parity/runner/json_pig_only.go",
       "sha256": "af8fb4702a202ed046990b61156373e0ed786d4367b4c6f1a6b0b9fc11b35c66",
       "reason": "A json_pig_only_records rule drops whole records from Pig's JSONL output before the comparison, for one numbered divergence's extra event that Pi never emits. It names the divergence, the complete record and the type of the record that must follow it, and every run must carry exactly its declared count of them, each at that position, so a second occurrence, a moved emission or a vanished divergence fails. Pi's output is never edited and no other record, field or order is excused."
+    },
+    {
+      "source": "test/parity/runner/transcript_sequences.go",
+      "sha256": "70dd3ccb3528a23ba107a52b221e8053b8181613536705068cd33c7b66092c94",
+      "reason": "transcript_sequences_equal compares the ordered escape sequences and text runs of one stretch of the terminal transcript token by token, byte for byte, with no normalisation. Its only exemption is a floating sequence a scenario declares: exactly one complete sequence or one OSC number, present in every run of both binaries, never written earlier than Pi's earliest recorded position, with Pi evidence of at least two distinct positions. It removes that sequence's place from the comparison and nothing else."
     },
     {
       "source": "test/parity/testdata/list-limit-number-pi.mjs",

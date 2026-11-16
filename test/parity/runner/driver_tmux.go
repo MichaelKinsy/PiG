@@ -300,11 +300,13 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	if err != nil {
 		return Result{RuntimeMs: elapsed, ReadyOK: readyOK, Err: err}
 	}
+	var sequences []SequenceWindowResult
 	// A comparator reads the byte stream only from a transcript its reader has finished: the pipe is closed, and the reader's trailer counts the bytes the file must hold. A reader that did not finish is an error, never a short transcript read as "no frame".
-	if len(finalFrameSpecs) > 0 && operationErr == nil {
+	if (len(finalFrameSpecs) > 0 || len(sc.Assert.TranscriptSequencesEqual) > 0) && operationErr == nil {
 		if err := finishTranscript(ctx, session, transcriptPath, sc.Name, bin.Label, transcriptDoneTimeout); err != nil {
 			operationErr = err
 		} else {
+			sequences = observeSequenceWindows(transcriptPath, sc.Assert.TranscriptSequencesEqual)
 			for _, spec := range finalFrameSpecs {
 				finalFrame = finalFrame.merge(observeFinalFrame(finalFrameSource(transcriptPath, spec, tc.expand), spec))
 			}
@@ -331,6 +333,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		Err:             operationErr,
 		FrameWatch:      frames,
 		FinalFrame:      finalFrame,
+		Sequences:       sequences,
 	}
 	result = withFinalCaptures(result, sc.Name, bin.Label, cfg, use, pane, escaped, cropErr)
 	// Coverage-only: Go integration coverage flushes on a clean process exit, but

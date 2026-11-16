@@ -35,6 +35,9 @@ type Result struct {
 
 	// ChangelogSource is the binary's independent document input for complete release-header assertions.
 	ChangelogSource string
+
+	// Sequences is what each of the scenario's transcript_sequences_equal windows held in the finished terminal transcript, in declaration order.
+	Sequences []SequenceWindowResult
 }
 
 // SystemResults groups multiple runs of the same binary on one scenario.
