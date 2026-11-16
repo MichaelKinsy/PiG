@@ -287,7 +287,7 @@ export const List = hostKind("list", { id: str() });
 
 <!-- quote: todos.go -->
 ```go
-// listKind is the app's host kind: a todo list, a worker process of its own with its own store (`List` of api/v1.ts).
+// listKind is the app's host kind: a to-do list, a worker process of its own with its own store (`List` of api/v1.ts).
 var listKind = func() *contracts.HostKind {
 	kind, err := contracts.NewHostKind("list", contracts.Prop("id", contracts.Str()))
 	if err != nil {

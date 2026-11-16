@@ -49,7 +49,7 @@ gitleaks_range() {
 
 ruff_sdk() {
   need ruff "pip install -r automation/ci/security-tools.txt" || return 1
-  ruff check extensions/sdk-py
+  make -s lint-sdk-py
 }
 
 staticcheck_sa() {

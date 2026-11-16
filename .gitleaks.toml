@@ -24,6 +24,16 @@ regexes = [
   '''^0123456789abcdef0123456789abcdef$''',
   # The SHA-256 of the rendered /hotkeys rows on Linux, the golden hash in internal/codingagent/interactive_whole_markdown_test.go (a digest of output, not a key).
   '''^6c6e446dd091ddae67cc390a41ffa268a9c7418088c7a9c5274abd08eb345e76$''',
+  # The eight SHA-256 digests in the Qwen Token Plan block of automation/gen/pi-post-release-backports.mjs (commit 92340eeb026c): each provider data file's digest in the release's .manifest.json
+  # and in the backported file. Digests of data files, not keys; the blob stays in history, so the values cannot be renamed away.
+  '''^0630bf7fea9d8579c7ac990e32c40c3685f9db20b6dbfaf745b361fe5203113c$''',
+  '''^54b2ec9adf8086e5c96845af2059c3335f89ddae8090f345aba0c283e3b1d74e$''',
+  '''^80824536f0c3cd83ab27424df2d664738cbe3f971b4e568a625432288fa53229$''',
+  '''^89f9e9614e1ea369f849ed3386c6cdcebb37e838f9432e0b94d6b2932874a7d7$''',
+  '''^f83c5ae4dce709924ad03a10c5f9c09a42b3670cb6ee2ed32590b9e0fcbaf8a9$''',
+  '''^28d425d7808187ed75703f2eccb66cb52b047c14e96d73e9c79a2569919045b7$''',
+  '''^fb74899c770572efbb27eb8d3398a07edaa4d62229655f9a0702ae01af22ac95$''',
+  '''^a55b1d2aec45da001d6ad758d1d4f4851885263776e7c7a7d50aa26c571739dd$''',
   # The documented example Piglet signing key ID in docs/site/docs/cli-examples.md (a public key fingerprint).
   '''^c74cf1a77b670764e896cfbf2800bb28$''',
   # A header-name constant in the vendored AWS SDK (third_party/awssdk stays verbatim; see its FORK.md).

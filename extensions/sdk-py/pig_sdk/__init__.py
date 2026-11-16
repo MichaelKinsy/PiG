@@ -142,7 +142,6 @@ from . import tui as tui  # loaded here with every other module: tests/test_stag
 from .kit import ViewComponent as ViewComponent
 from . import ui_view as _ui_view
 
-_NO_VIEW_RESULT: Any = object()
 from .ui_view import ViewAbilities as ViewAbilities, ViewAsset as ViewAsset, ViewClaim as ViewClaim, ViewDrawingAbilities as ViewDrawingAbilities, ViewNotice as ViewNotice, ViewSlotClaims as ViewSlotClaims, ViewError as ViewError, ViewInput as ViewInput, ViewIntent as ViewIntent, ViewIntentInvocation as ViewIntentInvocation, ViewIntentResult as ViewIntentResult, ViewLimits as ViewLimits, ViewRef as ViewRef, ViewShape as ViewShape, ViewStatus as ViewStatus, ViewTarget as ViewTarget
 from .event_bus import EventBus as EventBus, EventBusHandler as EventBusHandler, _EventBusHub
 from .state_feed import StateFeed
@@ -162,6 +161,9 @@ from .provider import (
     dispatch_provider as _dispatch_provider, dispatch_callback as _dispatch_provider_callback,
     dispatch_operation as _dispatch_provider_operation,
 )
+
+# Default of finish_view's result: a call that passes no result at all, told apart from one that passes None.
+_NO_VIEW_RESULT: Any = object()
 
 # Maximum frame size (128 MB). Bounds a single length-prefixed frame to guard
 # against unbounded allocation while allowing large host responses such as

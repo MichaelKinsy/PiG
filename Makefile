@@ -398,7 +398,12 @@ test-sdk-py-311: ## Run the Python extension SDK's pytest suite under CPython 3.
 	@"$(PIG_SDK_PY_311)" -c 'import sys; sys.exit(0 if sys.version_info[:2] == (3, 11) else "test-sdk-py-311: $(PIG_SDK_PY_311) is Python %d.%d, not 3.11" % sys.version_info[:2])'
 	@PIG_CACHE_HOME="$(PIG_CACHE_HOME)" PIG_SDK_PY_PYTHON="$(PIG_SDK_PY_311)" ./automation/ci/test-sdk-py.sh
 
-.PHONY: test-sdk-py test-sdk-py-311
+.PHONY: test-sdk-py test-sdk-py-311 lint-sdk-py
+
+# The Python SDK's ruff check, the one the Security workflow's Source assurance job runs (ruff is pinned in automation/ci/security-tools.in; install: pip install -r automation/ci/security-tools.txt).
+lint-sdk-py: ## ruff check over the Python extension SDK (the Security workflow runs this target)
+	@command -v ruff >/dev/null || { echo "lint-sdk-py: ruff not found; pip install --require-hashes -r automation/ci/security-tools.txt" >&2; exit 1; }
+	ruff check extensions/sdk-py
 
 # The Lisp SDK's own tests (JSON vectors, the wire against an in-process fake host), run by the pinned SBCL that
 # automation/ci/install-sbcl.sh builds; PIG_SBCL names it. A missing SBCL fails: it is an environment failure, never a skip.
@@ -647,7 +652,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard gui-import-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check model-data-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs lint-sdk-py test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard gui-import-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check model-data-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo
