@@ -226,7 +226,12 @@ func TestQueryReaderQueueACloseReleasesTheSourceItFollowedAndTheProvidersInstanc
 	reader := newReader(NewGivenQuery(handle, GivenArguments{Kind: GivenFollowing, Source: source}, f.host.batch), f.reading, func() {}, f.host.loop().Go)
 	f.args.n.Store(1)
 	opened := make(chan Opened, 1)
-	go func() { opened <- reader.Open(background) }()
+	go func() {
+		tail := reader.Open(background)
+		var got Opened
+		f.host.batch.Section(func() { got = tail() })
+		opened <- got
+	}()
 	first := <-f.reading.reads
 	close(first.release)
 	if got := <-opened; got.Kind != OpenedReady {
