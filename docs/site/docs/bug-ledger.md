@@ -406,6 +406,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3351167](#bf-3351167) | The OAuth callback server reads an absolute-form request target with a scheme other than http or https, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-33558f6](#bf-33558f6) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-336d0dc](#bf-336d0dc) | Chord's plugin watcher watches a directory of the app's base code again when it comes back after its watch… | PiG's own defect | macOS, Linux | Unreleased |
+| [BF-338965f](#bf-338965f) | A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory… | PiG's own defect | All platforms | Unreleased |
 | [BF-33aa6ec](#bf-33aa6ec) | An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another… | PiG's own defect | All platforms | Unreleased |
 | [BF-33dc8a0](#bf-33dc8a0) | fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does | PiG's own defect | All platforms | Unreleased |
 | [BF-33ea9e4](#bf-33ea9e4) | fix(sdk): name the Go ModelRegistry.Find change in the upgrade rules; Node adoption survives an unbound leaf… | PiG's own defect | All platforms | Unreleased |
@@ -7652,6 +7653,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `336d0dc96f` (2026-11-09)
 - **Tests:** `chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkRenewsTheWatchOfAnAncestorRemovedAndMadeAgainWhileTheRecordedDirectoryIsMissing`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAway`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesTheTreeOfABaseDirectoryBackWhoseWatchesCouldNotBePutBackWhileItWasAway`
 - **Release note:** Chord's plugin watcher watches a directory of the app's base code again when it comes back after its watch had ended: moved away and back (the watch of a renamed directory ends on macOS and BSD, with kqueue), or removed and made again (inotify on Linux, where ext4 also gives the new directory the inode and birth time of the old one). An edit of the app's base code in that directory went unnoticed, so `base` was never marked and the app kept its hosts on the old code, where Pi marks it. When the watcher put a watch back and found the directory missing, it kept the recorded identity of a directory it did not watch, and the directory seen again looked like the same one; the watch now leaves no identity behind, so the directory is watched again.
+
+### BF-338965f
+
+**A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed.
+- **Root cause:** RPC mode ends with os.Exit after TerminateProcesses, as Pi ends with process.exit, so Runtime.Close and Host.Shutdown, which removed the Host private socket directory, never ran on a normal RPC exit: every RPC session that started an extension left an h<uint32> directory in the temp directory. TerminateHostProcesses is the last call of a host process that is about to exit, so it removes the directory of every host it was given too and makes the Host refuse a socket path afterwards, so a generation that asks for one while the process exits cannot make a directory nobody removes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `338965f248` (2026-11-16)
+- **Tests:** `coding/cli/rpc_exit_socket_dir_test.go::TestAnRPCPigThatEndsNormallyLeavesNoSocketDirectory`, `coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesMakesNoRuntimeDirectoryAndNoneAfterIt`, `coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesRemovesTheRuntimeDirectory`
+- **Release note:** A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed. The host process now removes that directory when it terminates its processes, and a generation that asks for a socket path while the process exits no longer makes a new one.
 
 ### BF-33aa6ec
 
