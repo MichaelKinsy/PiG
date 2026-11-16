@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The module/factory cache belongs to the Node loader; exercise its shipped SDK graph through an actual source extension, not a second Go implementation of module evaluation.
@@ -68,6 +70,7 @@ func TestUpstreamExtensionFactoryCache(t *testing.T) {
 // BenchmarkFactoryCacheThroughNodeHost includes source-host startup, the inner loader case and joined shutdown with a warm artifact cache.
 func BenchmarkFactoryCacheThroughNodeHost(b *testing.B) {
 	nodeCellRequireNode(b)
+	testenv.PathOf(b, "node")
 	entry := filepath.Join(findModuleRoot(b), "test/parity/scenarios/extensions-runtime/testdata/factory-cache/probe.mjs")
 	for _, mode := range []string{"same-cwd", "direct", "reload", "cross-cwd"} {
 		b.Run(mode, func(b *testing.B) {
