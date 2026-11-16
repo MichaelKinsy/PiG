@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/chord/next/data"
+	"github.com/MichaelKinsy/PiG/chord/sqlite"
 )
 
 // Ports packages/chord/src/store/table-changes.ts
@@ -28,9 +29,9 @@ type keyWrite struct {
 
 // The kinds of keyWrite.
 const (
-	keyPut    = "put"
-	keyUpdate = "update"
-	keyDelete = "delete"
+	keyPut    = ChangePut
+	keyUpdate = ChangeUpdate
+	keyDelete = ChangeDelete
 )
 
 // TableChanges are the writes of one transaction to one table: each appended to the transaction's staged list
@@ -39,13 +40,18 @@ type TableChanges struct {
 	Handle *TableHandle
 	staged *[]StagedWrite
 	byKey  map[string][]keyWrite
+	// keys are the key values of each key of byKey, in key order, and order the keys in the order first written (Pi's Map).
+	keys  map[string][]sqlite.SqliteValue
+	order []string
+	// bulks are the columns each bulk write assigned (nil: a `deleteWhere`), for `Changes`.
+	bulks [][]string
 	// bulk is set once an `updateWhere` or `deleteWhere` was staged: `Get` is refused from then on (W10).
 	bulk bool
 }
 
 // NewTableChanges are the changes of one transaction to handle's table, staged into staged.
 func NewTableChanges(handle *TableHandle, staged *[]StagedWrite) *TableChanges {
-	return &TableChanges{Handle: handle, staged: staged, byKey: map[string][]keyWrite{}}
+	return &TableChanges{Handle: handle, staged: staged, byKey: map[string][]keyWrite{}, keys: map[string][]sqlite.SqliteValue{}}
 }
 
 // Put stages a `put` of row (an upsert).
@@ -56,7 +62,7 @@ func (changes *TableChanges) Put(row any) error {
 		return err
 	}
 	*changes.staged = append(*changes.staged, StagePut(sql.Put, sql.Table, encoded, definition.Version))
-	changes.write(encoded.ID, keyWrite{kind: keyPut, row: evaluatedOf(definition, encoded.Row)})
+	changes.write(encoded.ID, encoded.Key, keyWrite{kind: keyPut, row: evaluatedOf(definition, encoded.Row)})
 	return nil
 }
 
@@ -80,7 +86,7 @@ func (changes *TableChanges) Update(key, set any) error {
 		RecordedVersions(compiled, versions),
 		nil,
 	))
-	changes.write(encoded.ID, keyWrite{kind: keyUpdate, set: compiled})
+	changes.write(encoded.ID, encoded.Params, keyWrite{kind: keyUpdate, set: compiled})
 	return nil
 }
 
@@ -92,7 +98,7 @@ func (changes *TableChanges) Delete(key any) error {
 		return err
 	}
 	*changes.staged = append(*changes.staged, StageDelete(Statement{SQL: sql.Delete, Params: slices.Clone(encoded.Params)}, sql.Table, encoded.Key))
-	changes.write(encoded.ID, keyWrite{kind: keyDelete})
+	changes.write(encoded.ID, encoded.Params, keyWrite{kind: keyDelete})
 	return nil
 }
 
@@ -110,6 +116,7 @@ func (changes *TableChanges) UpdateWhere(where, set any) error {
 	versions := JsonVersions(definition, compiled)
 	statement := sql.UpdateWhere(condition, compiled, versions)
 	*changes.staged = append(*changes.staged, StageUpdateWhere(statement, sql.Table, condition, compiled, RecordedVersions(compiled, versions), nil))
+	changes.bulks = append(changes.bulks, compiled.Columns())
 	changes.bulk = true
 	return nil
 }
@@ -122,6 +129,7 @@ func (changes *TableChanges) DeleteWhere(where any) error {
 		return err
 	}
 	*changes.staged = append(*changes.staged, StageDeleteWhere(sql.DeleteWhere(condition), sql.Table, condition))
+	changes.bulks = append(changes.bulks, nil)
 	changes.bulk = true
 	return nil
 }
@@ -170,6 +178,32 @@ func (changes *TableChanges) Get(key any, ctx context.Context) (EvaluatedRow, er
 	return definition.Rows.Addressed(row)
 }
 
+// Changes are its writes as the skip test of the store's reads takes them (slice 14 §3.3). Built when a commit step found
+// a read over the table, from what the overlay keeps anyway: a table nothing reads costs its writes nothing more.
+func (changes *TableChanges) Changes() []Change {
+	definition := changes.Handle.Definition
+	table := changes.Handle.Sql.Table
+	result := make([]Change, 0, len(changes.bulks)+len(changes.order))
+	for _, assigned := range changes.bulks {
+		result = append(result, Change{Table: table, Kind: ChangeBulk, Assigned: assigned})
+	}
+	for _, id := range changes.order {
+		values := changes.keys[id]
+		key := make(map[string]sqlite.SqliteValue, len(definition.Key))
+		for index, name := range definition.Key {
+			key[name] = values[index]
+		}
+		for _, write := range changes.byKey[id] {
+			var assigned []string
+			if write.kind == keyUpdate {
+				assigned = write.set.Columns()
+			}
+			result = append(result, Change{Table: table, Kind: write.kind, Key: key, Assigned: assigned})
+		}
+	}
+	return result
+}
+
 func (changes *TableChanges) compileSet(set any, what string) (SetNode, error) {
 	definition := changes.Handle.Definition
 	switch typed := set.(type) {
@@ -181,7 +215,11 @@ func (changes *TableChanges) compileSet(set any, what string) (SetNode, error) {
 	return CompileSet(definition, set, what)
 }
 
-func (changes *TableChanges) write(id string, write keyWrite) {
+func (changes *TableChanges) write(id string, key []sqlite.SqliteValue, write keyWrite) {
+	if _, seen := changes.keys[id]; !seen {
+		changes.keys[id] = key
+		changes.order = append(changes.order, id)
+	}
 	changes.byKey[id] = append(changes.byKey[id], write)
 }
 

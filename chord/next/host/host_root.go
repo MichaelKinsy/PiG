@@ -106,13 +106,11 @@ func (r *rootScopes) run(fn func(ctx Ctx) (any, error), principal data.Principal
 			abort(reason)
 		}
 		r.open = append(r.open, open)
-		stopAborted = context.AfterFunc(ctx, func() {
-			loop.Run(func() { self.seal(context.Cause(ctx)) })
-		})
+		stopAborted = onAbort(loop, ctx, func() { self.seal(context.Cause(ctx)) })
 		results = make(chan rootResult, 1)
 		// Plugin code: a panic becomes the rejection. The scope is sealed before the caller is told, as Pi's `running.then`
 		// runs before the race's.
-		loop.Go(func() {
+		startTask(loop, func() {
 			value, err := tryPlugin(func() (any, error) { return fn(call) })
 			loop.Run(func() { self.seal(settledReason) })
 			results <- rootResult{value: value, err: err}

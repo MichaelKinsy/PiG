@@ -322,6 +322,30 @@ func TestRelayedCallsInTheUpstreamWindow(t *testing.T) {
 			requireAnswers(t, relayAnswersOf(t, b.Raw), relayAnswer{2, "parked"}, relayAnswer{3, "ended"})
 			requireInts(t, "calls", callIDs(b.Worker), []int{0, 1})
 		})
+
+		// Ports "failed { denied }: the waiting calls are rejected forbidden/revoked, as calls in flight are (slice 14 §2.3)".
+		t.Run("failed { denied }: the waiting calls are rejected forbidden/revoked, as calls in flight are (slice 14 §2.3)", func(t *testing.T) {
+			b := boundRelay(t, false, false)
+			b.callFrom(t, 0, 0, 1, 2)
+			settleRelay(b.rawRelayHost)
+			b.Worker.Send(&link.FailedMessage{Origin: b.Held.origin, Hold: b.Held.hold, Cause: link.WireCause{Kind: "denied", Error: wireChord("forbidden", "no access")}})
+			settleRelay(b.rawRelayHost)
+			// Call 2 waited for the worker's window: access was withdrawn under it too.
+			found := false
+			for _, message := range b.Raw.Received() {
+				if answer, ok := message.(*link.ErrorMessage); ok && answer.Call == 2 {
+					code, reason, text := chordWire(t, answer.Error)
+					if code != "forbidden" || reason != "revoked" || text != "hold 0: no access" {
+						t.Fatalf("error = %s/%s %q, want forbidden/revoked \"hold 0: no access\"", code, reason, text)
+					}
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("call 2 was not answered")
+			}
+			requireInts(t, "calls", callIDs(b.Worker), []int{0, 1})
+		})
 	})
 }
 

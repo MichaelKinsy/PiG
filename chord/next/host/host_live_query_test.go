@@ -21,7 +21,7 @@ import (
 // live, again in the commit step of every commit of the object that writes its table, and publishes the diff in that
 // commit's batch; a commit writing another table runs none; a reload restarts the object; the limit is required; a failing
 // run is a failed member; an ended attempt's query is collected. The last case (a refresh applied again) is in
-// chord/next/store/live_query_test.go, where QueryRefresh lives.
+// chord/next/store/live_query_test.go, where the reads' index and ReadRefresh it runs on are at hand.
 //
 // Forced differences: a `limit` is an int64, so Pi's fractional and absent limits cannot be written (designed out; 0 and a
 // negative one are the Go cases of "a limit is required").
@@ -37,7 +37,7 @@ var (
 	})
 	lqOther = mustTableDef("other", store.TableOptions{Version: 1, Columns: []store.ColumnProp{store.Col("id", store.Int())}, Key: []string{"id"}})
 	// lqNewest is the newest items first.
-	lqNewest = store.NewQuery(lqItems).OrderBy(func(item store.ColumnRefs) *store.ColumnRef { return item["id"] }, "desc")
+	lqNewest = store.NewQuery(lqItems).OrderBy(func(item, _ store.ColumnRefs) *store.ColumnRef { return item["id"] }, "desc")
 
 	lqItem  = contracts.Obj(contracts.Prop("id", contracts.Int()), contracts.Prop("text", contracts.Str()), contracts.Prop("meta", contracts.Opt(contracts.Obj())))
 	lqBoard = mustContract(contracts.Local("app.board", contracts.LocalDeclaration{
@@ -311,8 +311,9 @@ func TestLiveQueryPublicationACommitWritingAnotherTableRunsNoQueryAndPublishesNo
 	b.put(t, 1, "a")
 	touchingStatements, touchingRuns := statements()-beforeStatements, runs()-beforeRuns
 	turn(b.host)
-	// The same one-row put: the touching commit costs one query, one statement more.
-	if otherRuns != 0 || touchingRuns != 1 || touchingStatements != otherStatements+1 {
+	// The same one-row put: the touching commit costs one query and two statements more (slice 14 §3.3: a `put` of a row not
+	// in the window asks the keyed probe first, and it finds the row).
+	if otherRuns != 0 || touchingRuns != 1 || touchingStatements != otherStatements+2 {
 		t.Fatalf("other: %v statements %v runs; touching: %v statements %v runs", otherStatements, otherRuns, touchingStatements, touchingRuns)
 	}
 	if got := len(frames.all()); got != 1 {
@@ -335,7 +336,12 @@ func TestLiveQueryReloadTheNewAttemptsQueryRunsAtItsActivationAndTakesOver(t *te
 	turn(b.host)
 	// The old attempt detaches once the restart's teardown ran (Pi's `await flushed()`); the new attempt's query serves
 	// once it is live (a restart's new attempt starts after the old one's drain).
-	eventually(t, "the old attempt's query to detach", func() bool { _, err := queries.live[0].Value(); return err != nil })
+	// The query is a source of the host: read in one of its sections.
+	eventually(t, "the old attempt's query to detach", func() bool {
+		var err error
+		b.host.(*chordHost).enter(func() { _, err = queries.live[0].Value() })
+		return err != nil
+	})
 	eventually(t, "the new attempt's query to serve its limit", func() bool {
 		ids := idsOf(b.items(t))
 		return len(ids) == 2 && ids[0] == 3 && ids[1] == 2
@@ -421,7 +427,7 @@ func TestLiveQueryFailureAFailingRunIsAFailedMemberReportedOnceTheNextGoodRunHea
 	}
 	var reported []string
 	for _, err := range b.errors.All() {
-		reported = append(reported, string(err.Kind)+":"+err.Table)
+		reported = append(reported, string(err.Kind)+":"+err.Query)
 	}
 	if strings.Join(reported, ",") != "query_failed:items" {
 		t.Fatalf("errors = %v", reported)

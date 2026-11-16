@@ -69,9 +69,20 @@ type served struct {
 	hostLifetime bool
 	// traced is whether its calls start method spans (`serve`'s `untraced`: not).
 	traced bool
-	// local is the factory of a local type, remote of a remote one.
-	local  LocalFactory
-	remote RemoteFactory
+	// local is the factory of a local type, remote of a remote one, admitted of an admitted remote type (one whose contract
+	// declares an `admission`: only `admitted`, never `remote`, is set then).
+	local    LocalFactory
+	remote   RemoteFactory
+	admitted AdmittedFactory
+	// admission is its admission, when its contract declares one (Pi's `Served.remote.admission`).
+	admission *servedAdmission
+}
+
+// servedAdmission is a served type's admission: `admit`, plugin code run first in every attempt (what it returns is checked
+// there), and the fingerprint of its contract's admission schema, which a reload's staging compares.
+type servedAdmission struct {
+	admit       Admit
+	fingerprint string
 }
 
 // holder is what holds an object: a reference's binding, or a hold arriving over a link.
@@ -224,19 +235,26 @@ type chordObject struct {
 	chain []string
 	// documents are its documents and line, across its attempts.
 	documents *documents.Documents
-	// liveQueries are its live queries by table, across its attempts; made by the first table it declares.
-	liveQueries *store.LiveQueries
 	// ctx is the context of every attempt: its creator's, without the creator's cancellation.
 	ctx context.Context
 	// jobs are its job runs by job name, across its attempts, in the order they were declared.
 	jobs     map[string]*jobRecords
 	jobOrder []string
+	// lists is what its lists keep across its attempts, by name; made by the first.
+	lists map[string]*ListMemory
 	// instanceID is this instance's id (uuidv7), minted at its first attempt: a restarted object is a new instance (D4);
 	// empty is Pi's undefined.
 	instanceID string
 	phase      objectState
 	// holderList are the references and holds of this object, in the order they took it.
 	holderList []holder
+	// admissions are the attempts whose admission holds its requests, in the order they bound them (slice 14 §2.2, rule 4): a
+	// sealed one's are released once a later one bound its own, so a source held only by admissions never ends across a
+	// rebuild.
+	admissions []*attempt
+	// allowed is whether presence lists show an admitted object's holders (§19): from its first allow until a denial. Always
+	// true for a type without an admission.
+	allowed bool
 	// waitingFor are the dependencies its parked attempt waits for; their objects are followed to find cycles (Q5).
 	waitingFor []dependency
 	// firstOutcomeWait is its first outcome's promise, made by the first who waits for it (the start barrier, for
@@ -296,6 +314,7 @@ func newChordObject(
 	o := &chordObject{
 		host: host, served: entry, params: params, key: key, principal: principal, identity: identity, chain: chain,
 		ctx: ctx, jobs: map[string]*jobRecords{}, trigger: chordctx.Telemetry(ctx),
+		allowed: entry.kind != servedRemote || entry.admission == nil,
 	}
 	o.text = entry.contract.Name
 	if key != "" {
@@ -368,6 +387,9 @@ func (d *objectDocuments) Do(work func()) { d.object.host.enter(work) }
 
 // InSection implements documents.DocumentsOwner.
 func (d *objectDocuments) InSection() bool { return d.object.host.batch.InSection() }
+
+// Task implements documents.DocumentsOwner: an owned task of the host's loop, which its join counts (startTask).
+func (d *objectDocuments) Task(fn func()) { startTask(d.object.host.loop(), fn) }
 
 // refState is the object's state as its references show it (Pi's `state` getter).
 func (o *chordObject) refState() *RefState {
@@ -466,8 +488,13 @@ func (o *chordObject) activationChain() []string {
 	return append(slices.Clone(chain), id)
 }
 
-// holders are its holders, for a presence list made after they took it.
-func (o *chordObject) holders() []holder { return o.holderList }
+// holders are its holders, for a presence list made after they took it: none while an admitted object is not allowed.
+func (o *chordObject) holders() []holder {
+	if !o.allowed {
+		return nil
+	}
+	return o.holderList
+}
 
 // variant is the variant a live remote object's factory chose (a restart's open old attempt's meanwhile); not bound for a
 // local object and before it is live.
@@ -734,6 +761,10 @@ func (o *chordObject) followed(member string, version int) followed {
 		failure = st.shown
 	}
 	if failure != nil {
+		// A denial keeps no value (slice 14 §2.2): what the caller may read is withdrawn with its access.
+		if failure.Cause.Kind == data.FailureDenied {
+			return followed{kind: followedDenied, err: failure.Cause.Error}
+		}
 		return followed{kind: followedFailed, err: failure.Cause.Error, last: shown, instance: instance}
 	}
 	return followed{kind: followedLoading, last: shown, instance: instance}
@@ -788,6 +819,29 @@ func (o *chordObject) keyedMember(member string) (*documents.KeyedSlot, error) {
 	return live.keyedMember(member)
 }
 
+// listMemory is what its list `name` keeps across its attempts: its bookmarks, so a reload's successor opens the pages the
+// list had. It goes with the object.
+func (o *chordObject) listMemory(name string) *ListMemory {
+	if o.lists == nil {
+		o.lists = map[string]*ListMemory{}
+	}
+	memory, found := o.lists[name]
+	if !found {
+		memory = &ListMemory{open: true}
+		o.lists[name] = memory
+	}
+	return memory
+}
+
+// queryMember is the named query `name` of queries member `member` of the live object (slice 14 §3.1).
+func (o *chordObject) queryMember(member, name string) (*OwnQuery, error) {
+	live, err := o.live()
+	if err != nil {
+		return nil, err
+	}
+	return live.queryMember(member, name)
+}
+
 // pinKey pins `key` of keyed member `member` on the live instance, as a consumer of version reads it (`attempt.pinKey`). It
 // blocks, outside a section.
 func (o *chordObject) pinKey(member, key string, version int, ctx context.Context) (pinnedKey, error) {
@@ -815,7 +869,9 @@ func (o *chordObject) hold(h holder) {
 	}
 	o.stopLingering()
 	// Last: a derive over the presence list may close a link synchronously, which may release this holder again.
-	o.host.referenced(o, h, o.ctx)
+	if o.allowed {
+		o.host.referenced(o, h, o.ctx)
+	}
 }
 
 // unhold: holder was released: the object may end (`idle`).
@@ -871,14 +927,6 @@ func (o *chordObject) checkJob(definition *JobDefinition) error {
 // another owner: `invalid/args`, which fails the declaring factory.
 func (o *chordObject) claimTable(table string) error { return o.host.store.Claims.Table(table, o) }
 
-// queries are its live queries by table (`self.query`), across its attempts: what its commits writing a table re-run.
-func (o *chordObject) queries() *store.LiveQueries {
-	if o.liveQueries == nil {
-		o.liveQueries = store.NewLiveQueries()
-	}
-	return o.liveQueries
-}
-
 // owner is its type's name: the owner of its documents and tables in the store (R2).
 func (o *chordObject) owner() string { return o.served.contract.Name }
 
@@ -923,7 +971,7 @@ func (o *chordObject) failLive(a *attempt, cause liveFailure) {
 	// included), then stop. A retry's factory and hydration wait for both (its ending), so no old commit lands in a new
 	// attempt.
 	loop := o.host.loop()
-	settled := awaitTask(o.host, func() (struct{}, error) {
+	settled := awaitEnding(o.host, func() (struct{}, error) {
 		o.documents.Settled()
 		return struct{}{}, nil
 	})
@@ -932,7 +980,7 @@ func (o *chordObject) failLive(a *attempt, cause liveFailure) {
 		o.stopFollowing(a)
 		frozen.resolve(struct{}{})
 	})
-	closing := promiseAll2(loop, awaitTask(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil }), frozen)
+	closing := promiseAll2(loop, awaitEnding(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil }), frozen)
 	done := newKeyedPromise[[]*closeFailed](loop)
 	closing.then(func(failures []*closeFailed, _ error) {
 		a.detach()
@@ -985,12 +1033,12 @@ func (o *chordObject) flushHeld() {
 	now := o.host.loop().Now()
 	records := o.jobRecordsInOrder()
 	loop := o.host.loop()
-	loop.Go(func() {
+	startTask(loop, func() {
 		var wait []func()
 		for _, each := range records {
 			wait = append(wait, func() { each.flushHeld(now) })
 		}
-		runParallel(wait)
+		runParallel(loop, wait)
 		o.host.enter(func() {
 			next := int64(math.MaxInt64)
 			for _, each := range records {
@@ -1081,6 +1129,9 @@ func (o *chordObject) parked(a *attempt, shown *RefState, firstPass bool) {
 			o.failure = shown.Cause.Error
 			// A restart's successor parked on a failure: the old attempt's kept contributions leave (F-c).
 			o.dropKept()
+			if shown.Cause.Kind == data.FailureDenied {
+				o.disallow()
+			}
 		}
 		o.notify()
 	}
@@ -1119,7 +1170,7 @@ func (o *chordObject) end(err *data.ChordError) {
 	if td.kind == teardownNone {
 		return
 	}
-	torn := awaitTask(o.host, func() ([]*closeFailed, error) { return o.tearDown(td, closeEnd), nil })
+	torn := awaitAfter(o.host, td.previous, func() ([]*closeFailed, error) { return o.tearDownAfter(td, closeEnd), nil })
 	o.host.ending(o.identity, o.reported(torn))
 }
 
@@ -1135,11 +1186,28 @@ func (o *chordObject) stop() func() []*closeFailed {
 // cause (`not_served`), references with their last values, until the next object of its identity binds them (`removal`).
 func (o *chordObject) remove(cause data.FailureCause) {
 	td := o.seal(ending{kind: endingRemoved, err: o.ended(), cause: cause})
+	o.unbindSets()
 	if td.kind == teardownNone {
 		return
 	}
-	torn := awaitTask(o.host, func() ([]*closeFailed, error) { return o.tearDown(td, closeEnd), nil })
+	torn := awaitAfter(o.host, td.previous, func() ([]*closeFailed, error) { return o.tearDownAfter(td, closeEnd), nil })
 	o.host.ending(o.identity, o.reported(torn))
+}
+
+// unbindSets: the column sets its tables exposed are served no more (slice 14 §5): reads over them fail `unavailable`. A
+// table's owner has empty params, so it lives as long as its host serves its type; it leaves in two ways. An object whose
+// type a reload removed drops its sets at its seal, so another object may bind the name at once (a reload moving a set to
+// another plugin's table ends this object and starts that one in one commit; this object's teardown runs later). A closing
+// host drops them when every object is torn down: the readers end with their objects, not on a read that failed because its
+// publisher was torn down first.
+func (o *chordObject) unbindSets() {
+	chordStore := o.host.store
+	if chordStore == nil {
+		return
+	}
+	for _, set := range chordStore.Reads.BoundBy(o) {
+		chordStore.Reads.Unbind(set, o)
+	}
 }
 
 // reloadFate is what a reload does to this object, whose type is still served: a live object restarts, any other is retried.
@@ -1208,16 +1276,17 @@ func (o *chordObject) endOld(old *attempt, ready *readiness, due int64) *keyedPr
 				o.withdraw(old)
 			}
 			old.seal(o.reloaded(), cutReload)
+			o.releaseSuperseded()
 			// Sealed, it is no longer the instance its holders bind (`instance`, `stateFor`): a hold waiting for a window
 			// slot unbinds now, before an `ack` could bind it to nothing; bound holds and references follow it on until it
 			// stopped changing.
 			o.notify()
-			awaitTask(host, func() (struct{}, error) {
+			awaitEnding(host, func() (struct{}, error) {
 				o.documents.Settled()
 				return struct{}{}, nil
 			}).then(func(struct{}, error) {
 				o.stopFollowing(old)
-				awaitTask(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
+				awaitEnding(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
 					func(failures []*closeFailed, _ error) {
 						old.detach()
 						ended.resolve(failures)
@@ -1326,7 +1395,7 @@ func (o *chordObject) retryReloaded() *attempt {
 	}
 	closing := newKeyedPromise[[]*closeFailed](loop)
 	closeOld := func(struct{}, error) {
-		awaitTask(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
+		awaitEnding(host, func() ([]*closeFailed, error) { return old.close(closeReload), nil }).then(
 			func(failures []*closeFailed, _ error) {
 				old.detach()
 				old.releaseReferences()
@@ -1404,6 +1473,13 @@ func (o *chordObject) wentLive(a *attempt) {
 	o.phase = objectState{kind: objectLive, attempt: a}
 	o.exposed = a
 	o.following = true
+	if !o.allowed {
+		// An admitted object's first allow, or its first since a denial: presence lists its holders from now on (§19).
+		o.allowed = true
+		for _, each := range o.holderList {
+			o.host.referenced(o, each, o.ctx)
+		}
+	}
 	contributions := a.contributionList()
 	// A restart's kept contributions leave in the batch the new ones enter (F-c), so no reader sees a gap.
 	var leaving []*registries.RegistryContribution
@@ -1453,7 +1529,7 @@ func (o *chordObject) takeJobs(a *attempt) {
 		} else if reloaded {
 			// Pi filters synchronously inside the call, before its first await: the task gets the runs taken now.
 			if retried := records.blockedToRetry(); len(retried) != 0 {
-				o.host.loop().Go(func() { records.retryBlocked(retried, o.ctx) })
+				startTask(o.host.loop(), func() { records.retryBlocked(retried, o.ctx) })
 			}
 		}
 	}
@@ -1538,7 +1614,7 @@ func (o *chordObject) failedAttempt(a *attempt, cause data.FailureCause) {
 	o.failure = cause.Error
 	a.seal(o.ended(), cutRestart)
 	loop := o.host.loop()
-	closing := awaitTask(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil })
+	closing := awaitEnding(o.host, func() ([]*closeFailed, error) { return a.close(closeEnd), nil })
 	done := newKeyedPromise[[]*closeFailed](loop)
 	closing.then(func(failures []*closeFailed, _ error) {
 		a.detach()
@@ -1764,10 +1840,9 @@ func (o *chordObject) stopLingering() {
 	o.host.count(activityLingering, -1)
 }
 
-// tearDown, once the previous teardowns finished (a failed attempt's closes may read the documents): drains and closes a
-// sealed attempt, then releases its references (after the closes, which may use them), then waits for an admitted commit
-// step to adopt and drops the documents and job runs. It returns the closes that threw. It blocks: it is called outside a
-// section.
+// tearDown, once the previous teardowns finished (a failed attempt's closes may read the documents): see tearDownAfter. It
+// blocks, outside a section, for those teardowns: it is `host.close`'s (stop). A background ending (end, remove) does not
+// block for them: awaitAfter starts it once they finished.
 func (o *chordObject) tearDown(td teardown, reason NativeCloseReason) []*closeFailed {
 	if td.kind == teardownNone {
 		return nil
@@ -1775,6 +1850,45 @@ func (o *chordObject) tearDown(td teardown, reason NativeCloseReason) []*closeFa
 	if td.previous != nil {
 		// An ending never rejects.
 		_, _ = td.previous.await(chordctx.Background())
+	}
+	return o.tearDownAfter(td, reason)
+}
+
+// awaitAfter is `await teardown.previous; await work()` of Pi's #tearDown (object.ts:1625-1626) as control flow: the work
+// of an ending starts, as a counted task, in the section that settles previous (a promise reaction: the count never falls
+// to zero between the previous ending's last step and this one's first), and until then it is a reaction of previous (a
+// closure), not a goroutine parked on it. previous is nil when no ending of the identity runs: the work starts at once.
+// Its outcome settles the returned promise in a section, as awaitTask's. The task is paced (Loop.pace): the reader of a link
+// does not read the next frame while it can run.
+func awaitAfter[T any](host *chordHost, previous *keyedPromise[struct{}], work func() (T, error)) *keyedPromise[T] {
+	promise := newKeyedPromise[T](host.loop())
+	endingMade(host.loop())
+	start := func() {
+		goPacedTask(host.loop(), work, func() {
+			value, err := work()
+			host.enter(func() { promise.settle(value, err) })
+		})
+	}
+	if previous == nil {
+		start()
+	} else {
+		previous.then(func(struct{}, error) { start() })
+	}
+	return promise
+}
+
+// awaitEnding is awaitTask for the work of an ending that waits for no predecessor (a failed attempt's close, a restart's old
+// attempt's): a paced task, as an ending that does.
+func awaitEnding[T any](host *chordHost, work func() (T, error)) *keyedPromise[T] {
+	return awaitAfter(host, nil, work)
+}
+
+// tearDownAfter drains and closes a sealed attempt, then releases its references (after the closes, which may use them),
+// then waits for an admitted commit step to adopt and drops the documents and job runs. It returns the closes that threw.
+// It blocks: it is called outside a section, after the teardowns that came before it finished.
+func (o *chordObject) tearDownAfter(td teardown, reason NativeCloseReason) []*closeFailed {
+	if td.kind == teardownNone {
+		return nil
 	}
 	var failures []*closeFailed
 	if td.kind == teardownClose {
@@ -1784,6 +1898,13 @@ func (o *chordObject) tearDown(td teardown, reason NativeCloseReason) []*closeFa
 			td.attempt.releaseReferences()
 		})
 	}
+	// Last, as its references: nothing of it is admitted any more.
+	o.host.enter(func() {
+		for _, each := range o.admissions {
+			each.releaseAdmission()
+		}
+		o.admissions = nil
+	})
 	o.documents.Settled()
 	o.host.enter(func() {
 		o.documents.End()

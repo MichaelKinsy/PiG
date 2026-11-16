@@ -81,11 +81,10 @@ func row(id string, n int64) store.Row { return store.Row{"id": id, "n": n} }
 // testOwner is the owner of the test's table handle.
 type testOwner struct{ scope *struct{} }
 
-func (*testOwner) Label() string               { return "app.sync" }
-func (owner *testOwner) Scope() any            { return owner.scope }
-func (*testOwner) Queries() *store.LiveQueries { return store.NewLiveQueries() }
-func (*testOwner) AssertLive() error           { return nil }
-func (*testOwner) Fail(err *data.ChordError)   {}
+func (*testOwner) Label() string             { return "app.sync" }
+func (owner *testOwner) Scope() any          { return owner.scope }
+func (*testOwner) AssertLive() error         { return nil }
+func (*testOwner) Fail(err *data.ChordError) {}
 
 // commitAll commits each batch of rows to s, preparing the table first (its creation is a commit of its own).
 func commitAll(t testing.TB, s store.Store, batches ...rows) {

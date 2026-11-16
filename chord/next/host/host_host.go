@@ -113,6 +113,12 @@ type HostFacet struct {
 	Facet Facet
 }
 
+// HostDeleteOptions is what `DeleteHostData` takes besides the address (Pi's `HostDeleteOptions`): the one plugin whose data
+// of it is deleted; nil, everything.
+type HostDeleteOptions struct {
+	Plugin *string
+}
+
 // PluginFailure is a plugin left out at `Load`, or whose new code failed at a reload (it kept its old code, if it had
 // any), and why.
 type PluginFailure struct {
@@ -282,8 +288,11 @@ type Host interface {
 	// `docs/host-keyed/spec.md` §5). It returns `invalid/args` without a store, for a refused archive or existing data;
 	// `released` once ctx aborted before the commit was admitted.
 	ImportHostData(parts store.PartSource, ctx context.Context, options store.HostImportOptions) (store.HostDataCounts, error)
-	// DeleteHostData deletes the records and rows belonging to address in one commit, coordinated as ImportHostData.
-	DeleteHostData(address contracts.Address, ctx context.Context) (store.HostDataCounts, error)
+	// DeleteHostData deletes the records and rows belonging to address in one commit, coordinated as ImportHostData. With
+	// options.Plugin (slice 14 §6), only what that plugin's objects own: the documents and tables of the types it serves
+	// here now (a session moving to another app drops the old app's data of it). Data under a type the plugin served
+	// before and serves no more (a renamed type) is not its any more and stays; a plugin not loaded here is `invalid/args`.
+	DeleteHostData(address contracts.Address, ctx context.Context, options HostDeleteOptions) (store.HostDataCounts, error)
 	// Close closes its links, seals its root scopes, then ends every object at once, then drains and closes them one by one,
 	// the last to go live first (reason `close`). It returns an error joining the closes that failed.
 	Close(ctx context.Context) error
@@ -458,6 +467,9 @@ type chordHost struct {
 	plugins *namedMap[*loadedPlugin]
 	// reloading is the last reload's end, which the next one waits for (slice 7b section 1); nil before the first.
 	reloading *keyedPromise[struct{}]
+	// admissionHold is the test seam of an attempt's admission hop (internal/admitseam): set, it is handed the hop instead of the
+	// host's queue; nil outside tests. Read and written in sections.
+	admissionHold func(start func())
 	// objects are by identity, in the order they went live (the others where they were created).
 	objects     map[string]*chordObject
 	objectOrder []string
@@ -568,8 +580,8 @@ func createHost(options HostOptions) (*chordHost, error) {
 		h.heartbeat.close = durationOr(options.Heartbeat.Close, defaultHeartbeat)
 	}
 	h.routing, h.routingCancel = chordctx.WithCancel(chordctx.Background())
-	h.parent = newPath(func(pathEvent) {}, nil)
-	h.unplaced = newPath(func(pathEvent) {}, nil)
+	h.parent = newPath(func(pathEvent) {}, nil, nil)
+	h.unplaced = newPath(func(pathEvent) {}, nil, nil)
 	h.destination = newDestination(h.address, h.routes, h.parent, func(name string) bool { return h.served(name) != nil })
 	h.roots = newRootScopes(h)
 	h.hostData = newHostDataGate(events)
@@ -811,7 +823,7 @@ func (h *chordHost) Accept(l link.Link, options LinkOptions, ctx context.Context
 		if err = h.assertOpen(); err != nil {
 			return
 		}
-		h.linkOf(l, linkRoleChild, options, ctx)
+		h.linkOf(l, linkRoleChild, options, ctx, nil)
 	})
 	return err
 }
@@ -827,7 +839,7 @@ func (h *chordHost) Connect(l link.Link, options LinkOptions, ctx context.Contex
 			err = errors.New("connect: this host has an open parent link")
 			return
 		}
-		parent := h.linkOf(l, linkRoleParent, options, ctx)
+		parent := h.linkOf(l, linkRoleParent, options, ctx, nil)
 		if parent.open() {
 			h.parent.connected(parent)
 		}
@@ -1035,7 +1047,7 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 			expireNow()
 		})
 		// The host's close ends the wait at once, `released/closed` (its timer with it).
-		stopWake = context.AfterFunc(h.routing, func() { expire(h.closedError()) })
+		stopWake = onAbortNow(h.routing, func() { expire(h.closedError()) })
 	})
 	if err != nil {
 		return nil, err
@@ -1049,10 +1061,8 @@ func (h *chordHost) Registry(ctx context.Context, r registries.Registry[any, any
 	}
 	defer finish()
 	parking.Park(ctx)
-	select {
-	case <-h.publication:
-	case <-waiting.context.Done():
-		return nil, context.Cause(waiting.context)
+	if _, err := parking.Recv(waiting.context, h.publication); err != nil {
+		return nil, err
 	}
 	var value *registries.RegistryValueSource
 	h.enter(func() {
@@ -1156,13 +1166,30 @@ func (h *chordHost) ImportHostData(parts store.PartSource, ctx context.Context, 
 }
 
 // DeleteHostData implements Host. It blocks.
-func (h *chordHost) DeleteHostData(address contracts.Address, ctx context.Context) (store.HostDataCounts, error) {
+func (h *chordHost) DeleteHostData(address contracts.Address, ctx context.Context, options HostDeleteOptions) (store.HostDataCounts, error) {
 	site, err := h.dataSite("deleteHostData")
 	if err != nil {
 		return store.HostDataCounts{}, err
 	}
+	var only map[string]struct{}
+	if plugin := options.Plugin; plugin != nil {
+		var loaded bool
+		h.enter(func() {
+			loaded = h.plugins.has(*plugin)
+			// A plugin's data is what the types it serves own: their names are the owners in the store.
+			only = map[string]struct{}{}
+			for _, name := range h.types.keys() {
+				if served, _ := h.types.get(name); served.plugin == *plugin {
+					only[name] = struct{}{}
+				}
+			}
+		})
+		if !loaded {
+			return store.HostDataCounts{}, data.Invalid(data.ReasonArgs, fmt.Sprintf("deleteHostData: plugin %q is not loaded here", *plugin))
+		}
+	}
 	parking.Park(ctx)
-	return deleteFrom(site, address, ctx)
+	return deleteFrom(site, address, ctx, only)
 }
 
 // dataSite is what a host data operation needs of this host; `invalid/args` without a store, `invalid/reentrant` inside a
@@ -1637,13 +1664,13 @@ func (h *chordHost) relayOrigin(side *providerSide) int {
 }
 
 // routeLink is a route's link, its work under the route's ctx: registered with the host and its heartbeat; one closed
-// already is returned closed.
+// already is returned closed. options.opened is told the peer's incarnation once its `hello` arrived.
 func (h *chordHost) routeLink(l link.Link, options routeLinkOptions, ctx context.Context) *hostLink {
 	limits := link.PartLimits{}
 	if options.limits != nil {
 		limits = *options.limits
 	}
-	return h.linkOf(l, linkRoleRoute, LinkOptions{Principal: options.principal, Trusted: options.trusted, Codec: options.codec, Limits: limits}, ctx)
+	return h.linkOf(l, linkRoleRoute, LinkOptions{Principal: options.principal, Trusted: options.trusted, Codec: options.codec, Limits: limits}, ctx, options.opened)
 }
 
 // linkOpened: a link completed its handshake: a route's address resolves again once if it drops.
@@ -1824,14 +1851,21 @@ func (h *chordHost) isOwn(principal data.Principal, ctx context.Context) bool {
 	return data.PrincipalKey(own, ctx, h.principalKey) == data.PrincipalKey(principal, ctx, h.principalKey)
 }
 
-// linkOf is a new link of role, registered with the heartbeat while open.
-func (h *chordHost) linkOf(l link.Link, role linkRole, options LinkOptions, ctx context.Context) *hostLink {
+// principalKeyOf is the principal key of principal (`HostOptions.PrincipalKey`): a route's admission keeps one decision per
+// key. Principals on this host are its own and the ones its links stamp.
+func (h *chordHost) principalKeyOf(principal data.Principal, ctx context.Context) string {
+	return data.PrincipalKey(principal, ctx, h.principalKey)
+}
+
+// linkOf is a new link of role, registered with the heartbeat while open. opened (nil: none) is told the peer's incarnation
+// once its `hello` arrived.
+func (h *chordHost) linkOf(l link.Link, role linkRole, options LinkOptions, ctx context.Context, opened func(incarnation string)) *hostLink {
 	codec := options.Codec
 	if codec == nil {
 		codec = link.BinaryCodec
 	}
 	limits := link.LinkLimits(options.Trusted, options.Limits)
-	made := newHostLink(h, l, hostLinkOptions{role: role, principal: options.Principal, trusted: options.Trusted, codec: codec, limits: limits}, h.counted(chordctx.WithoutAbortSignal(ctx)))
+	made := newHostLink(h, l, hostLinkOptions{role: role, principal: options.Principal, trusted: options.Trusted, codec: codec, limits: limits, opened: opened}, h.counted(chordctx.WithoutAbortSignal(ctx)))
 	if !made.open() {
 		return made
 	}
@@ -2012,15 +2046,18 @@ func (h *chordHost) runClose() *closePromise {
 	for _, ending := range h.endings {
 		pending = append(pending, ending)
 	}
-	h.events.Go(func() {
+	startTask(h.events, func() {
 		for _, ending := range pending {
-			<-ending.done
+			parkedOn(ending.done)
 		}
 		var failures []*closeFailed
 		for _, tearDown := range teardowns {
 			failures = append(failures, tearDown()...)
 		}
 		h.enter(func() {
+			for _, object := range objects {
+				object.unbindSets()
+			}
 			h.types = newNamedMap[*served]()
 			// Their facets keep their factories' closures (which may keep objects' handles).
 			h.plugins = newNamedMap[*loadedPlugin]()
@@ -2184,12 +2221,19 @@ func untilUsable(loop sectionLoop, value *registries.RegistryValueSource, usable
 			return context.Cause(ctx)
 		}
 		parking.Park(ctx)
+		resume := parking.Idle(func() bool { return len(wake.changed) > 0 || len(wake.closed) > 0 || ctx.Err() != nil })
+		var result error
+		finished := true
 		select {
 		case <-wake.changed:
-		case err := <-wake.closed:
-			return err
+			finished = false
+		case result = <-wake.closed:
 		case <-ctx.Done():
-			return context.Cause(ctx)
+			result = context.Cause(ctx)
+		}
+		resume()
+		if finished {
+			return result
 		}
 	}
 }
@@ -2279,7 +2323,7 @@ func (h *chordHost) Reload(facets []HostFacet, ctx context.Context, options Relo
 	defer h.enter(func() { mine.resolve(struct{}{}) })
 	if previous != nil {
 		parking.Park(ctx)
-		<-previous.done
+		parkedOn(previous.done)
 	}
 	var plan *reloadPlan
 	var started []startedFate
@@ -2711,9 +2755,7 @@ func (h *chordHost) reloadReport(started []startedFate, committed CommittedReloa
 			objects = append(objects, ReloadedObject{Object: fate.object, Kind: fate.kind})
 			continue
 		}
-		select {
-		case <-fate.checked.done:
-		case <-ctx.Done():
+		if _, err := parking.Recv(ctx, fate.checked.done); err != nil {
 			return nil, committedAborted(committed)
 		}
 		cause := fate.checked.value

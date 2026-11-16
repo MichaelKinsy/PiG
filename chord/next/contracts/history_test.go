@@ -93,3 +93,19 @@ func TestMemberHelpers(t *testing.T) {
 		t.Error("a state member is no method")
 	}
 }
+
+// MemberNames of the queries side is the runtime form of `keyof VariantShape`'s `queries` (slice 14 §3.1: history.ts VariantShape.queries).
+func TestMemberNamesOfQueriesMembers(t *testing.T) {
+	notes := contracts.Obj(contracts.Prop("text", contracts.Str()))
+	contract := local(t, "app.store", 1, noParams(),
+		contracts.Mem("notes", contracts.Queries(notes, []contracts.Property{contracts.Prop("all", contracts.Obj())})),
+		contracts.Mem("title", contracts.Str()),
+		contracts.Mem("boards", contracts.Queries(notes, []contracts.Property{})))
+	variants := currentVariants(t, contract)
+	if got := contracts.MemberNames(variants, contracts.MemberSideQueries); !reflect.DeepEqual(got, []string{"notes", "boards"}) {
+		t.Errorf("queries names = %v", got)
+	}
+	if got := contracts.MemberNames(variants, contracts.MemberSideState); !reflect.DeepEqual(got, []string{"title"}) {
+		t.Errorf("state names = %v", got)
+	}
+}

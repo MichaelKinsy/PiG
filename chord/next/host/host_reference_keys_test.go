@@ -1033,10 +1033,7 @@ func TestReferenceKeysKeysAcrossARestartAndAFailedRePinACommitAdmittedToAWatched
 	reloaded := make(chan error, 1)
 	go func() {
 		_, err := host.Reload([]HostFacet{{Name: "@test/app", Facet: kmServeKeys(handles, func(ctx context.Context) error {
-			select {
-			case <-opening:
-			case <-ctx.Done():
-			}
+			_, _ = chordctx.Receive(ctx, opening)
 			return nil
 		})}}, background, ReloadOptions{})
 		reloaded <- err

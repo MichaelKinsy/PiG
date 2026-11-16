@@ -35,6 +35,8 @@ type hostLinkOptions struct {
 	trusted bool
 	codec   link.Codec
 	limits  link.Limits
+	// opened is a route's `opened` (`RouteOptions.resolve`): the peer's incarnation once its `hello` arrived.
+	opened func(incarnation string)
 }
 
 // inflatePart is a deflated part an owner admitted, with its decoded limit.
@@ -67,6 +69,8 @@ type hostLink struct {
 	// only from relays").
 	providers orderedTable[int, *providerSide]
 	channel   *link.Channel
+	// opened is told the peer's incarnation first thing when its `hello` arrived; nil: none.
+	opened func(incarnation string)
 	// closing is cancelled when the link closes: stops its asynchronous inflates at once.
 	closing       context.Context
 	closingCancel func(cause error)
@@ -78,7 +82,7 @@ var _ link.ChannelHandler = (*hostLink)(nil)
 func newHostLink(host *chordHost, made link.Link, options hostLinkOptions, ctx context.Context) *hostLink {
 	l := &hostLink{
 		host: host, role: options.role, principal: options.principal, trusted: options.trusted, limits: options.limits,
-		context: ctx,
+		context: ctx, opened: options.opened,
 	}
 	if !options.trusted {
 		l.calls = host.callWindow
@@ -120,7 +124,11 @@ func (l *hostLink) send(message link.Message) {
 	if l.channel == nil {
 		return
 	}
-	if err := l.channel.Send(message); err != nil {
+	// A paced ending's send may block on the transport: a real wait, which pace does not wait for (Loop.sending).
+	sending := l.host.paceSend()
+	err := l.channel.Send(message)
+	l.host.paceSent(sending)
+	if err != nil {
 		l.host.report(HostError{Kind: ErrProtocolError, Error: err})
 	}
 }
@@ -128,6 +136,25 @@ func (l *hostLink) send(message link.Message) {
 func (l *hostLink) close() {
 	if l.channel != nil {
 		l.channel.Close()
+	}
+}
+
+// fence runs then once everything the peer sent before it saw a `ping` sent now has arrived (see link.Channel.Fence). The
+// channel runs it on the link's delivery goroutine with no lock held: it enters a section of the host there, so then runs as
+// every handler of the link does. It returns what cancels the fence, to be called inside a section: a cancelled fence never
+// runs then, also when its `pong` was read already and its section is still waiting.
+func (l *hostLink) fence(then func()) (cancel func()) {
+	cancelled := false
+	cancelChannel := l.channel.Fence(func() {
+		l.host.loop().Run(func() {
+			if !cancelled {
+				then()
+			}
+		})
+	})
+	return func() {
+		cancelled = true
+		cancelChannel()
 	}
 }
 
@@ -141,6 +168,10 @@ func (l *hostLink) tick(now, paused int64, ping, close time.Duration) {
 // Opened implements link.ChannelHandler: the peer's `hello` arrived.
 func (l *hostLink) Opened() {
 	l.host.loop().Run(func() {
+		// First: whoever asked knows the peer before anything else it sent is handled, and before this host sends (host-link.ts `opened`).
+		if l.opened != nil {
+			l.opened(l.channel.Peer())
+		}
 		l.consumer.opened(l.channel.PeerCalls())
 		l.host.linkOpened(l)
 	})
@@ -204,6 +235,8 @@ func (l *hostLink) Message(message link.Message) (*link.Handling, error) {
 		}
 		handling, err = l.dispatch(message)
 	})
+	// Pi's microtask checkpoint before the next frame (Loop.pace): the reader reads on once no paced ending can run.
+	l.host.pace(l.closing)
 	return handling, err
 }
 

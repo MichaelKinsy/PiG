@@ -74,6 +74,10 @@ type providerSide struct {
 	inFlight int
 	// ownSent and ownAcked count this host's own `bound` and `state` messages sent, and acknowledged by its consumer.
 	ownSent, ownAcked int
+	// fenced are the served holds with a binding fence not acknowledged yet (design §22): each drops its fences as the `ack`s
+	// of this host's own messages arrive. Only holds that rebind are ever in it, and only until their `bound` is
+	// acknowledged. Made by the first.
+	fenced_ map[*hold]struct{}
 	// touchedHolds are the holds the current batch touched, in order; its flush sends or queues them.
 	touchedHolds []*hold
 	// waiting are the holds whose ops wait in their pending queues for a slot.
@@ -109,6 +113,20 @@ func relayedCause(wire link.WireError, hold int) (*data.ChordError, error) {
 		return nil, err
 	}
 	return data.AsChordError(received, fmt.Sprintf("hold %d", hold)), nil
+}
+
+// relayedFailure is what the calls of relayed hold `hold` still waiting for the upstream window are answered when upstream
+// fails it with cause: its error, `forbidden/revoked` for a denial (access withdrawn under a call that waits, as under one in
+// flight: slice 14 §2.3).
+func relayedFailure(cause link.WireCause, hold int) (*data.ChordError, error) {
+	err, malformed := relayedCause(cause.Error, hold)
+	if malformed != nil {
+		return nil, malformed
+	}
+	if cause.Kind == string(data.FailureDenied) {
+		return revoked(fmt.Sprintf("hold %d", hold), err), nil
+	}
+	return err, nil
 }
 
 // entryID is the id a provider entry is held under.
@@ -308,7 +326,7 @@ func (p *providerSide) forward(message link.ConsumerMessage, from *hostLink) err
 		if entry == nil {
 			return nil
 		}
-		cause, err := relayedCause(forwarded.Cause.Error, entry.id)
+		cause, err := relayedFailure(forwarded.Cause, entry.id)
 		if err != nil {
 			return err
 		}
@@ -345,6 +363,18 @@ func (p *providerSide) unlinked(l *hostLink) {
 func (p *providerSide) upstreamDropped(entry *relayedHold, err *data.ChordError) {
 	p.rejectRelayed(entry, err, true)
 	p.send(&link.LoadingMessage{Hold: entry.id})
+}
+
+// withheld: a route's admission holds relayed hold entry back with cause (slice 14 §2.3): its calls, in flight or waiting, are
+// answered with the cause's error (`forbidden/revoked` for a denial: access withdrawn under a running call), and the hold is
+// told `failed` with the cause.
+func (p *providerSide) withheld(entry *relayedHold, cause data.FailureCause) {
+	err := cause.Error
+	if cause.Kind == data.FailureDenied {
+		err = revoked(fmt.Sprintf("hold %d", entry.id), err)
+	}
+	p.rejectRelayed(entry, err, true)
+	p.send(&link.FailedMessage{Hold: entry.id, Cause: link.WireCause{Kind: string(cause.Kind), Error: wireError(cause.Error)}})
 }
 
 // rejectRelayed answers err to the calls of relayed hold entry: those still waiting for the upstream window (all false), or
@@ -395,6 +425,7 @@ func (p *providerSide) forget(entry providerEntry, err *data.ChordError) {
 	endAll(relayed)
 	if served, isServed := entry.(*hold); isServed {
 		p.unbind(served)
+		delete(p.fenced_, served)
 	}
 	p.settle()
 }
@@ -732,6 +763,11 @@ func (p *providerSide) ack() {
 	if sender == nil {
 		p.inFlight--
 		p.ownAcked++
+		for h := range p.fenced_ {
+			if h.acknowledged() {
+				delete(p.fenced_, h)
+			}
+		}
 		p.slotFreed()
 		return
 	}
@@ -776,6 +812,15 @@ func (p *providerSide) eventAck(count int) {
 
 // nextOwn is the number the next of this host's own `bound` and `state` messages gets (counted from 1).
 func (p *providerSide) nextOwn() int { return p.ownSent + 1 }
+
+// fenced: h has a binding fence its consumer has not acknowledged (a rebinding's `bound` is about to go out): the `ack`s of
+// this host's own messages tell it until none is left.
+func (p *providerSide) fenced(h *hold) {
+	if p.fenced_ == nil {
+		p.fenced_ = map[*hold]struct{}{}
+	}
+	p.fenced_[h] = struct{}{}
+}
 
 // acknowledged is whether its consumer acknowledged this host's own message number own, so applied it: a call it sent after
 // that arrives after the `ack` (one direction keeps its order).

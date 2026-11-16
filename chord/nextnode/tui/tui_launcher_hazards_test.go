@@ -145,7 +145,7 @@ func TestASandboxEndingOnAPostTheLoopMakesWithTheQueueFullDoesNotBlockTheLoop(t 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	l := &Launcher{base: base, ctx: ctx, cancel: cancel, events: make(chan func(), eventQueue), loopDone: make(chan struct{}),
-		exited: make(chan int, 1), sockets: map[int]*linkSocket{}, term: nullTerminal{}, output: io.Discard}
+		exited: make(chan int, 1), ended: make(chan struct{}), sockets: map[int]*linkSocket{}, term: nullTerminal{}, output: io.Discard}
 	generation := 1
 	l.generation = generation
 	// Terminate waits for the sandbox's exit: closed here, the child is the test's.
@@ -263,5 +263,59 @@ func TestATerminalIsNotLeftRawWhenTheSandboxEndsWhileTheLauncherStarts(t *testin
 	defer terminal.mu.Unlock()
 	if len(terminal.raw) > 0 && terminal.raw[len(terminal.raw)-1] {
 		t.Fatalf("the terminal is left in raw mode after the client ended: SetRaw calls %v", terminal.raw)
+	}
+}
+
+// The launcher answers at most maxRequests requests at once: the next is refused while they are under way, and one is accepted
+// again when an answer ended (launcher.ts:340-344, 366-368). Each answer is held in its download here, so the count does not depend
+// on how the sandbox's writes reach the launcher (the black-box flood test only sees how many were answered before the next arrived).
+func TestAtMostEightRequestsAreAnsweredAtOnceAndTheNextIsRefusedUntilOneEnds(t *testing.T) {
+	gate := make(chan struct{})
+	var release sync.Once
+	open := func() { release.Do(func() { close(gate) }) }
+	started := make(chan struct{}, 2*maxRequests)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		started <- struct{}{}
+		<-gate
+		_, _ = io.WriteString(w, `1`)
+	}))
+	t.Cleanup(server.Close)
+	t.Cleanup(open)
+	base, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l := newLauncher(context.Background(), base, "token", TerminalOptions{Client: http.DefaultClient}, nullTerminal{})
+	t.Cleanup(l.cancel)
+	sandbox := quietSandbox()
+	l.sandbox, l.generation = sandbox, 1
+	for id := range maxRequests {
+		l.answer(id, BridgeRequest{Kind: "base"})
+	}
+	for range maxRequests {
+		select {
+		case <-started:
+		case <-time.After(10 * time.Second):
+			t.Fatal("an answer's download did not reach the server")
+		}
+	}
+	refused := func(id int) LauncherMessage {
+		return LauncherMessage{Kind: "refused", ID: id, Message: "terminal: too many requests at once"}
+	}
+	l.answer(100, BridgeRequest{Kind: "base"})
+	if !posted(sandbox, refused(100)) {
+		t.Fatalf("request %d was not refused while %d were being answered (requests = %d)", 100, maxRequests, l.requests)
+	}
+	// Each answer ends with one event on the loop that gives its place back.
+	open()
+	for range maxRequests {
+		nextEvent(t, l)()
+	}
+	if l.requests != 0 {
+		t.Fatalf("%d requests still count after all %d answers ended", l.requests, maxRequests)
+	}
+	l.answer(101, BridgeRequest{Kind: "base"})
+	if posted(sandbox, refused(101)) || l.requests != 1 {
+		t.Fatalf("request 101 was refused or not counted after the places were given back (requests = %d)", l.requests)
 	}
 }

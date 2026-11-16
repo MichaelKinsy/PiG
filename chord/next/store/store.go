@@ -290,6 +290,8 @@ type closing struct {
 type ChordStore struct {
 	// Claims are the claims of its tables and documents (slice 6b).
 	Claims *Claims
+	// Reads are its reads by table and its column-set bindings (slice 14).
+	Reads *Reads
 
 	db     sqlite.SqliteDatabase
 	ids    *IdAllocator
@@ -310,6 +312,8 @@ type ChordStore struct {
 	tail <-chan struct{}
 	// open is the group the next commit joins: queued last, its turn not yet come; nil once anything queued after it.
 	open *commitGroup
+	// wrapAdopt is what the adoption of a commit that takes its place in the queue passes through; nil: none.
+	wrapAdopt func(adopt func(seq int64, ids []int64, rows int) error) func(seq int64, ids []int64, rows int) error
 	// underway counts reads and maintenance writes underway, which Close waits for.
 	underway int
 	// drained is closed, once, when no read is underway: Close's wait.
@@ -418,6 +422,7 @@ func NewChordStore(db sqlite.SqliteDatabase, meta MetaRow, catalog map[string]*T
 	close(closed)
 	store := &ChordStore{
 		Claims:          NewClaims(),
+		Reads:           NewReads(),
 		db:              db,
 		ids:             NewIdAllocator(meta.NextID),
 		lastSeq:         meta.LastSeq,
@@ -585,6 +590,16 @@ func (store *ChordStore) Detach() {
 	store.attachment = nil
 }
 
+// Settled (Pi's `settled()`) is closed once every commit queued before the call settled (stored and adopted, or rejected),
+// also on a stopped or closed store; commits queued later are not waited for. It is the commit queue's tail at the call, which
+// closes however its entry ended, so a receive never fails. For a caller that has ended a source of commits and must not go on
+// while one it queued can still be adopted (the workers component, at a worker's exit).
+func (store *ChordStore) Settled() <-chan struct{} {
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	return store.tail
+}
+
 // ticket takes the next place of the commit queue: the entry waits for previous, and closes done once it settled.
 func (store *ChordStore) ticket() (previous <-chan struct{}, done chan struct{}) {
 	done = make(chan struct{})
@@ -646,6 +661,10 @@ func (store *ChordStore) enlist(writes []StagedWrite, fence CommitFence, ctx con
 	}
 	store.mu.Lock()
 	defer store.mu.Unlock()
+	// wrapAdopt runs under the store's mutex, in the order the commits take their place, and must not call the store.
+	if wrap := store.wrapAdopt; wrap != nil {
+		queued.fence.Adopt = wrap(queued.fence.Adopt)
+	}
 	if len(writes) > 0 && store.open != nil {
 		queued.ready = make(chan struct{})
 		store.open.commits = append(store.open.commits, queued)
@@ -819,10 +838,14 @@ func (store *ChordStore) Close(ctx context.Context) error {
 	}
 }
 
-// finishClose is the close after its synchronous part: the queue's last entry, the reads underway, the backend.
+// finishClose is the close after its synchronous part: the queue's last entry, the index's tasks, the reads underway, the
+// backend.
 func (store *ChordStore) finishClose(started *closing, tail <-chan struct{}) {
 	defer close(started.done)
 	<-tail
+	// The reloads a changed binding started (Pi's unawaited `void open.load()`) are cancelled and joined: none counts as a read
+	// underway after this, none adopts a run.
+	store.Reads.Close()
 	store.mu.Lock()
 	var drained chan struct{}
 	if store.underway > 0 {

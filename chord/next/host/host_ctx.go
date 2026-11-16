@@ -18,8 +18,9 @@ import (
 //
 // Forced Go differences. `Ctx<P>`'s principal type parameter is type-level (owner class a); Principal is the JSON
 // object of `data.Principal`, nil for Pi's `undefined`. An AbortSignal is a context.Context (`signal.reason` is
-// context.Cause); a listener on a signal is a context.AfterFunc whose stop function removes it. `ctx.get` is an awaited
-// Promise, so Get blocks and returns (reference, error): it is called from a goroutine off the host's loop (a handler's)
+// context.Cause); a listener on a signal is onAbort, which runs inside the cancel as Pi's does, its stop function removing it.
+// `ctx.get` is an awaited Promise, so Get blocks and returns (reference, error): it is called from a goroutine off the host's
+// loop (a handler's)
 // and enters the loop (host.loop().Run) for each synchronous section Pi has between its awaits.
 
 // sectionLoop is what the call helpers ask of the host's loop beyond eventLoop: entering a synchronous section from the
@@ -32,6 +33,9 @@ type sectionLoop interface {
 	Go(fn func())
 	// Lend runs fn as the synchronous part of an async function inside the running section (Loop.Lend).
 	Lend(signal *parking.Signal, fn func(abandoned bool))
+	// counted is the loop whose join counts the tasks started on this one (Loop.counted): the host's loop, also under a
+	// wrapper; nil for a loop with nothing to join (a test's virtual-time loop), which says so.
+	counted() *Loop
 }
 
 // Ctx is a handler's context.
@@ -219,8 +223,9 @@ type linkedAbort struct {
 }
 
 // aborted is the reason the child aborted for, read from its sources at once: Pi's `AbortSignal.any` aborts its result in the
-// same synchronous step as the input, where the child's own Done follows on a goroutine of its own (context.AfterFunc). Nil
-// while neither source nor the child is aborted.
+// same synchronous step as the input; the child's own Done follows inside the source's cancel for the contexts of this
+// package (onAbortNow), and on a goroutine of its own for a source of another one (context.AfterFunc). Nil while neither
+// source nor the child is aborted.
 func (l linkedAbort) aborted() error {
 	if l.context.Err() != nil {
 		return context.Cause(l.context)
@@ -237,9 +242,9 @@ func (l linkedAbort) aborted() error {
 // release(), which the call runs when it settles. Without a caller's signal (ctx has no Done channel) the child is the
 // signal itself with ctx's values, as in Pi, and release does nothing: the child listens to nothing, so a signal that
 // outlives its calls (an attempt's, a reference's) keeps nothing of them. Pi avoids AbortSignal.any because it keeps
-// cleanup entries per call for as long as its sources live; the Go form of the two listeners is two context.AfterFunc
-// registrations, each removed by its stop function, never context.WithCancel's parent registration (which stays until the
-// parent ends).
+// cleanup entries per call for as long as its sources live; the Go form of the two listeners is two onAbortNow registrations
+// (inside the source's cancel, as Pi's listener runs; context.AfterFunc only for a source of another package), each removed
+// by its stop function, never context.WithCancel's parent registration (which stays until the parent ends).
 func withLinkedAbortSignal(signal context.Context, ctx context.Context) linkedAbort {
 	if ctx.Done() == nil {
 		return linkedAbort{context: chordctx.WithAbortSignal(ctx, signal), release: func() {}}
@@ -247,6 +252,8 @@ func withLinkedAbortSignal(signal context.Context, ctx context.Context) linkedAb
 	linked, abort := chordctx.WithCancel(chordctx.WithoutAbortSignal(ctx))
 	// The sources in Pi's order: the caller's first, so its reason wins a tie.
 	sources := [2]context.Context{ctx, signal}
+	// A listener runs inside the cancel of its source, and inside the registration below when a source aborted since the check
+	// above: so mu is never held while one is registered.
 	var mu sync.Mutex
 	var stops [2]func() bool
 	release := func() {
@@ -266,22 +273,26 @@ func withLinkedAbortSignal(signal context.Context, ctx context.Context) linkedAb
 			return linkedAbort{context: linked, release: release}
 		}
 	}
-	mu.Lock()
+	var registered [2]func() bool
 	for i, source := range sources {
-		stops[i] = context.AfterFunc(source, func() {
+		registered[i] = onAbortNow(source, func() {
 			release()
 			abort(linkedCause(sources))
 		})
 	}
-	// A source aborted while the listeners were added runs its listener on a goroutine of its own, which waits here for
-	// the stops.
+	mu.Lock()
+	stops = registered
 	mu.Unlock()
+	// A listener that ran before the stops were kept released nothing: the other source's registration goes now.
+	if linked.Err() != nil {
+		release()
+	}
 	return linkedAbort{context: linked, release: release, sources: sources}
 }
 
-// linkedCause is the reason of the source that aborted first (`AbortSignal.any`): the listeners of the sources run on
-// goroutines of their own, in any order, so the earliest abort is told by chordctx.AbortOrder; sources it cannot order (a
-// context of another package) rank in the order given, the caller's first.
+// linkedCause is the reason of the source that aborted first (`AbortSignal.any`): two sources can abort at the same time on
+// two goroutines, so the earliest abort is told by chordctx.AbortOrder; sources it cannot order (a context of another
+// package) rank in the order given, the caller's first.
 func linkedCause(sources [2]context.Context) error {
 	var first context.Context
 	var firstOrder uint64

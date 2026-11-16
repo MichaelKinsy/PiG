@@ -2248,7 +2248,7 @@
       "designedOutCases": [
         "keyed members (slice 6a §12) › refuse a keyed member in a remote contract, at the type level and at declaration"
       ],
-      "rationale": "Thirteen of the 14 upstream cases run in declare_test.go; the remaining one, the keyed member refused in a remote contract, is designed out under the owner class approval recorded in the release policy (the compiler refuses it: *KeyedMember is no Schema). The two host-keyed cases of Pi 1.5.2 (8a5da3ce6) run in TestHostKeyedMembers: a host-keyed member carries its kind in the data (KeyedSnapshot.Key) and its fingerprint differs from the string-keyed one's (a string-keyed member carries none and keeps its pre-host-key fingerprint, pinned in a further case), and a kind that was not declared is refused ('x: not a declared host kind'). 'refuse a remote declaration without a host address at the type level' runs as the 'a missing host address' row, because upstream asserts the runtime throw. Inside the three it.each tables every row a typed Go declaration can hold is ported; the rows whose input a Go declaration cannot hold are not: remote 'name not a string', 'unknown declaration key', 'a host address that is no function', 'unknown variant key', 'a method under state' and 'a schema under methods' (its Go form is a nil *Method, ported as 'a nil method under methods'), local 'unknown key' and 'a host address' (LocalDeclaration has no such fields).",
+      "rationale": "Thirteen of the 14 upstream cases run in declare_test.go; the remaining one, the keyed member refused in a remote contract, is designed out under the owner class approval recorded in the release policy (the compiler refuses it: *KeyedMember is no Schema). The two host-keyed cases of Pi 1.5.2 (8a5da3ce6) run in TestHostKeyedMembers: a host-keyed member carries its kind in the data (KeyedSnapshot.Key) and its fingerprint differs from the string-keyed one's (a string-keyed member carries none and keeps its pre-host-key fingerprint, pinned in a further case), and a kind that was not declared is refused ('x: not a declared host kind'). 'refuse a remote declaration without a host address at the type level' runs as the 'a missing host address' row, because upstream asserts the runtime throw. Inside the three it.each tables every row a typed Go declaration can hold is ported; the rows whose input a Go declaration cannot hold are not: remote 'name not a string', 'unknown declaration key', 'a host address that is no function', 'unknown variant key', 'a method under state' and 'a schema under methods' (its Go form is a nil *Method, ported as 'a nil method under methods'), local 'unknown key' and 'a host address' (LocalDeclaration has no such fields). Pi 92e1db6ca adds `queries members (slice 14 §3.1)` (3 cases): TestQueriesMembers (declare_test.go), TestAQueriesMemberIsNoRemoteStateAndAVariantImplementationHoldsOneNamedQueryPerName (declare_types_test.go); Pi 8270d9af6 adds `admission (slice 14 §2.1)` (3 cases): TestAdmission (declare_test.go).",
       "protects": "A keyed member cannot be declared in a remote contract.",
       "pigTest": "chord/next/contracts/declare_types_test.go#TestARemoteVariantsMembersAreTypedSoAKeyedMemberOrMethodCannotBeDeclaredInItsState pins by reflection the types that refuse it: a remote variant's state holds Schema, its methods *Method, and *KeyedMember is assignable to neither.",
       "whyNot": "The upstream case also expects a runtime error 'keyed members are only in local contracts'. Go has no runtime path to it: VariantDeclaration.State is []Property of Schema, so the declaration does not compile and no value reaches Remote. The type half is pinned; the runtime half cannot exist."
@@ -2731,7 +2731,7 @@
       "evidence": [
         "chord/next/host/host_dependencies_test.go"
       ],
-      "rationale": "All 13 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 13 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi 8270d9af6 adds the two cases of `a denied dependency (slice 14 §2.2)`: TestADeniedDependencyParksItsDependentShowingTheDenial... and TestADeniedDependencyWithTimersIsNoParkedLongReport... (host_dependencies_test.go); 15 cases at 7cc21c24."
     },
     {
       "path": "packages/chord/test/host/facet.test.ts",
@@ -2765,7 +2765,7 @@
       "evidence": [
         "chord/next/host/host_host_data_test.go"
       ],
-      "rationale": "All 15 upstream cases run in the evidence file, one Go test each: live owners (4), lifecycle (3), older and newer tables (2), the gate (2) and review round 3 (4). Forced differences are stated in the file's header: a Promise Pi leaves pending is a goroutine whose result arrives on a channel, 'await delivered()' is a wait for what the step reaches (never a duration), and the handler holding a transaction open waits with chordctx.Receive so it parks as a handler ctx should."
+      "rationale": "All 15 upstream cases run in the evidence file, one Go test each: live owners (4), lifecycle (3), older and newer tables (2), the gate (2) and review round 3 (4). Forced differences are stated in the file's header: a Promise Pi leaves pending is a goroutine whose result arrives on a channel, 'await delivered()' is a wait for what the step reaches (never a duration), and the handler holding a transaction open waits with chordctx.Receive so it parks as a handler ctx should. Pi 8270d9af6 adds three cases (delete limited to one plugin; the reads over its tables rerun; a plugin not loaded is refused invalid/args): TestHostDataADeleteLimitedToOnePlugin* in host_host_data_test.go."
     },
     {
       "path": "packages/chord/test/host/host.test.ts",
@@ -2870,7 +2870,7 @@
       "evidence": [
         "chord/next/host/host_reference_source_test.go"
       ],
-      "rationale": "All 18 upstream cases run in the evidence files. Pi 47e9d74f9 adds 3 cases (a member its reference has not seen): the three TestReferenceSourceUnseen... tests; the hash is the pin's."
+      "rationale": "All 18 upstream cases run in the evidence files. Pi 47e9d74f9 adds 3 cases (a member its reference has not seen): the three TestReferenceSourceUnseen... tests; the hash is the pin's. Pi 8270d9af6 adds the case `a denied reference's source (slice 14 §2.2)` (keeps no value): TestHostReferenceSourceADeniedReferencesSourceKeepsNoValue... (host_reference_source_test.go); 22 cases at 7cc21c24."
     },
     {
       "path": "packages/chord/test/host/reference.test.ts",
@@ -3088,7 +3088,7 @@
         "chord/next/link/message_test.go",
         "chord/next/link/message_trace_test.go"
       ],
-      "rationale": "All 41 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 41 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi 8270d9af6: the failure-cause byte case expects 3 denied and refuses 4, the text codec writes [\"f\",2,\"d\",...], EVERY_KIND gains failed denied: message_test.go (TestTheBinaryCodec, TestTheTextCodec, TestMessages)."
     },
     {
       "path": "packages/chord/test/link/part.test.ts",
@@ -3926,7 +3926,7 @@
       "evidence": [
         "chord/next/host/remote_provider_test.go"
       ],
-      "rationale": "All 55 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the cases the t6 lane added are TestProviderTelemetryRunsACallsMethodUnderItsCarrier…, TestProviderTelemetryCountsHoldsPlacedHere…, TestProviderTelemetryRecordsHowLongStateWaitedForASlotOfTheWindow (remote_provider_test.go))."
+      "rationale": "All 55 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words in the evidence files on this branch; the cases the t6 lane added are TestProviderTelemetryRunsACallsMethodUnderItsCarrier…, TestProviderTelemetryCountsHoldsPlacedHere…, TestProviderTelemetryRecordsHowLongStateWaitedForASlotOfTheWindow (remote_provider_test.go)). Pi f6600b58f adds the case `a derive read between two changes of its source in one commit travels once`: TestProviderOneMessagePerLinkPerCommit (remote_provider_test.go, both codecs)."
     },
     {
       "path": "packages/chord/test/remote/relay.test.ts",
@@ -4055,7 +4055,7 @@
         "chord/next/state/derive_test.go",
         "chord/next/host/host_state_sources_test.go"
       ],
-      "rationale": "All 18 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 18 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi f6600b58f adds the 5 cases of `a watched derive read between two changes of its source in one batch`: TestDeriveReadBetweenTwoChangesInOneBatch (derive_test.go)."
     },
     {
       "path": "packages/chord/test/state/native-source.test.ts",
@@ -4257,7 +4257,7 @@
         "chord/next/host/host_live_query_test.go",
         "chord/next/store/live_query_test.go"
       ],
-      "rationale": "All 12 upstream cases run in the evidence files: eleven in host_live_query_test.go (the objects, the host and the reload), the refresh applied again in live_query_test.go. The reload case reports the object `restarted`, as Pi does since a5d209afd; the limit cases take an int64, so the fractional and absent limits Pi's type admits cannot be written."
+      "rationale": "All 12 upstream cases run in the evidence files: eleven in host_live_query_test.go (the objects, the host and the reload), the refresh applied again in live_query_test.go. The reload case reports the object `restarted`, as Pi does since a5d209afd; the limit cases take an int64, so the fractional and absent limits Pi's type admits cannot be written. Pi 92e1db6ca changes three expectations (a touching put costs two statements more than another table's: the keyed probe; query_failed names `query`; a refresh applied again goes through ReadRefresh and Reads): host_live_query_test.go and live_query_test.go."
     },
     {
       "path": "packages/chord/test/store/outbox.test.ts",

@@ -70,7 +70,7 @@ func TestExample66HostData(t *testing.T) {
 					if found != nil {
 						title, _ = found.Value("title").(string)
 					}
-					rows, err := table.Page(ctx, store.NewQuery(labels).Where(func(t store.ColumnRefs) store.Condition {
+					rows, err := table.Page(ctx, store.NewQuery(labels).Where(func(t, _ store.ColumnRefs) store.Condition {
 						return store.Eq(t["project"], address(id.(string)))
 					}), 10, store.PageOptions{})
 					if err != nil {
@@ -141,7 +141,7 @@ func TestExample66HostData(t *testing.T) {
 	}
 
 	// 5. Delete p1: its document and rows go; p2 and p9 stay.
-	deleted, err := server.DeleteHostData(address("p1"), background)
+	deleted, err := server.DeleteHostData(address("p1"), background, HostDeleteOptions{})
 	must(t, err)
 	if deleted != (store.HostDataCounts{Documents: 1, Rows: 2}) {
 		t.Fatalf("5. deleted = %+v, want {Documents:1 Rows:2}", deleted)

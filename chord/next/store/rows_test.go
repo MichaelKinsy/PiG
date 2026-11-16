@@ -207,3 +207,27 @@ func TestHostCells(t *testing.T) {
 		}
 	})
 }
+
+// Pi 92e1db6ca rows.ts `decodeScalar` has no test of its own in Pi (row decoding and named queries reach it); these
+// are its three arms and the pass-through, on the columns of the fixtures above.
+func TestDecodeScalar(t *testing.T) {
+	session := hostColKind(t, "session")
+	pins := qDefine(t, "pins", TableOptions{
+		Version: 1,
+		Columns: []ColumnProp{Col("id", Str()), Col("session", Host(session)), Col("b", Bool()), Col("x", Num()), Col("n", Int())},
+		Key:     []string{"id"},
+	})
+	decode := func(name string, value sqlite.SqliteValue) any {
+		t.Helper()
+		column := pins.ByName[name]
+		got, err := DecodeScalar(column, value)
+		must(t, err)
+		return got
+	}
+	qEqual(t, decode("b", int64(1)), true)
+	qEqual(t, decode("b", int64(0)), false)
+	qEqual(t, decode("session", "session|S1"), hostColAddress(session, "S1"))
+	qEqual(t, decode("id", "a"), "a")
+	qEqual(t, decode("n", int64(3)), int64(3))
+	qEqual(t, decode("x", int64(2)), float64(2))
+}

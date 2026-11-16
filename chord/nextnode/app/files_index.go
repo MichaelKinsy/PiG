@@ -361,7 +361,7 @@ func (index *FilesIndex) Get(space, path string, version int64, ctx context.Cont
 
 // ByKey is the version written with key in space, or nil.
 func (index *FilesIndex) ByKey(space, key string, ctx context.Context) (*FileInfo, error) {
-	q := store.NewQuery(fileRows).Where(func(f store.ColumnRefs) store.Condition {
+	q := store.NewQuery(fileRows).Where(func(f, _ store.ColumnRefs) store.Condition {
 		return store.And(store.Eq(f["space"], space), store.Eq(f["key"], key))
 	})
 	page, err := index.files.Page(ctx, q, 1, store.PageOptions{})
@@ -375,10 +375,10 @@ func (index *FilesIndex) ByKey(space, key string, ctx context.Context) (*FileInf
 // ByRef is a page of the versions with ref in space, oldest first.
 func (index *FilesIndex) ByRef(space, ref string, limit int64, after *string, ctx context.Context) (Page[FileInfo], error) {
 	q := store.NewQuery(fileRows).
-		Where(func(f store.ColumnRefs) store.Condition {
+		Where(func(f, _ store.ColumnRefs) store.Condition {
 			return store.And(store.Eq(f["space"], space), store.Eq(f["ref"], ref))
 		}).
-		OrderBy(func(f store.ColumnRefs) *store.ColumnRef { return f["created"] }, "asc")
+		OrderBy(func(f, _ store.ColumnRefs) *store.ColumnRef { return f["created"] }, "asc")
 	page, err := index.files.Page(ctx, q, limit, pageOptions(after))
 	if err != nil {
 		return Page[FileInfo]{}, err
@@ -389,10 +389,10 @@ func (index *FilesIndex) ByRef(space, ref string, limit int64, after *string, ct
 // Versions is a page of the versions of the file at path, newest first.
 func (index *FilesIndex) Versions(space, path string, limit int64, after *string, ctx context.Context) (Page[FileInfo], error) {
 	q := store.NewQuery(fileRows).
-		Where(func(f store.ColumnRefs) store.Condition {
+		Where(func(f, _ store.ColumnRefs) store.Condition {
 			return store.And(store.Eq(f["space"], space), store.Eq(f["path"], path))
 		}).
-		OrderBy(func(f store.ColumnRefs) *store.ColumnRef { return f["version"] }, "desc")
+		OrderBy(func(f, _ store.ColumnRefs) *store.ColumnRef { return f["version"] }, "desc")
 	page, err := index.files.Page(ctx, q, limit, pageOptions(after))
 	if err != nil {
 		return Page[FileInfo]{}, err
@@ -409,15 +409,15 @@ func (index *FilesIndex) List(space, folder string, limit int64, after *string, 
 	}
 	entries := []FolderEntry{}
 	folders := store.NewQuery(folderRows).
-		Where(func(f store.ColumnRefs) store.Condition {
+		Where(func(f, _ store.ColumnRefs) store.Condition {
 			return store.And(store.Eq(f["space"], space), store.Eq(f["parent"], folder))
 		}).
-		OrderBy(func(f store.ColumnRefs) *store.ColumnRef { return f["path"] }, "asc")
+		OrderBy(func(f, _ store.ColumnRefs) *store.ColumnRef { return f["path"] }, "asc")
 	files := store.NewQuery(fileRows).
-		Where(func(f store.ColumnRefs) store.Condition {
+		Where(func(f, _ store.ColumnRefs) store.Condition {
 			return store.And(store.Eq(f["space"], space), store.Eq(f["folder"], folder), store.Eq(f["latest"], int64(1)))
 		}).
-		OrderBy(func(f store.ColumnRefs) *store.ColumnRef { return f["path"] }, "asc")
+		OrderBy(func(f, _ store.ColumnRefs) *store.ColumnRef { return f["path"] }, "asc")
 	if cursor.part == "folders" {
 		page, err := index.folders.Page(ctx, folders, limit, pageOptions(cursor.after))
 		if err != nil {
@@ -738,7 +738,7 @@ func (index *FilesIndex) Move(space, from, to string, ctx context.Context) error
 // target's.
 func (index *FilesIndex) movedMarks(space, from string, renamed func(string) string, ctx context.Context) ([]store.Row, error) {
 	marks := []store.Row{}
-	q := store.NewQuery(markRows).Where(func(m store.ColumnRefs) store.Condition {
+	q := store.NewQuery(markRows).Where(func(m, _ store.ColumnRefs) store.Condition {
 		return store.And(store.Eq(m["space"], space), store.Or(store.Eq(m["path"], from), store.Prefix(m["path"], from+"/")))
 	})
 	rows := index.marks.Rows(ctx, q)
@@ -781,10 +781,10 @@ func (index *FilesIndex) Remove(id string, ctx context.Context) (*Removed, error
 	space, path := stringOf(row, "space"), stringOf(row, "path")
 	if int64Of(row, "latest") == 1 {
 		q := store.NewQuery(fileRows).
-			Where(func(f store.ColumnRefs) store.Condition {
+			Where(func(f, _ store.ColumnRefs) store.Condition {
 				return store.And(store.Eq(f["space"], space), store.Eq(f["path"], path), store.Lt(f["version"], int64Of(row, "version")))
 			}).
-			OrderBy(func(f store.ColumnRefs) *store.ColumnRef { return f["version"] }, "desc")
+			OrderBy(func(f, _ store.ColumnRefs) *store.ColumnRef { return f["version"] }, "desc")
 		page, err := index.files.Page(ctx, q, 1, store.PageOptions{})
 		if err != nil {
 			return nil, err
@@ -837,7 +837,7 @@ func rowsOf(handle store.Table, q *store.Query, ctx context.Context) ([]store.Ro
 
 // RemovePath removes the file at path (every version) or the folder at path and everything under it.
 func (index *FilesIndex) RemovePath(space, path string, ctx context.Context) ([]string, error) {
-	rows, err := rowsOf(index.files, store.NewQuery(fileRows).Where(func(f store.ColumnRefs) store.Condition {
+	rows, err := rowsOf(index.files, store.NewQuery(fileRows).Where(func(f, _ store.ColumnRefs) store.Condition {
 		return store.And(store.Eq(f["space"], space), under(f["path"], path))
 	}), ctx)
 	if err != nil {
@@ -857,7 +857,7 @@ func (index *FilesIndex) RemovePath(space, path string, ctx context.Context) ([]
 
 // RemoveSpace removes everything in space, its summary included.
 func (index *FilesIndex) RemoveSpace(space string, ctx context.Context) ([]string, error) {
-	rows, err := rowsOf(index.files, store.NewQuery(fileRows).Where(func(f store.ColumnRefs) store.Condition { return store.Eq(f["space"], space) }), ctx)
+	rows, err := rowsOf(index.files, store.NewQuery(fileRows).Where(func(f, _ store.ColumnRefs) store.Condition { return store.Eq(f["space"], space) }), ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -901,8 +901,8 @@ func (index *FilesIndex) drop(space string, rows []store.Row, files int64, kept 
 		bytes += int64Of(row, "size")
 	}
 	q := store.NewQuery(fileRows).
-		Where(func(f store.ColumnRefs) store.Condition { return store.And(store.Eq(f["space"], space), kept) }).
-		OrderBy(func(f store.ColumnRefs) *store.ColumnRef { return f["created"] }, "desc")
+		Where(func(f, _ store.ColumnRefs) store.Condition { return store.And(store.Eq(f["space"], space), kept) }).
+		OrderBy(func(f, _ store.ColumnRefs) *store.ColumnRef { return f["created"] }, "desc")
 	newest, err := index.files.Page(ctx, q, Newest, store.PageOptions{})
 	if err != nil {
 		return nil, err
@@ -998,7 +998,7 @@ func (index *FilesIndex) release(tx documents.Tx, released released) error {
 
 // version is version version of path (its newest without one: 0).
 func (index *FilesIndex) version(space, path string, version int64, ctx context.Context) (store.Row, error) {
-	q := store.NewQuery(fileRows).Where(func(f store.ColumnRefs) store.Condition {
+	q := store.NewQuery(fileRows).Where(func(f, _ store.ColumnRefs) store.Condition {
 		which := store.Eq(f["latest"], int64(1))
 		if version != 0 {
 			which = store.Eq(f["version"], version)
@@ -1014,7 +1014,7 @@ func (index *FilesIndex) version(space, path string, version int64, ctx context.
 
 // folder is the folder at path.
 func (index *FilesIndex) folder(space, path string, ctx context.Context) (store.Row, error) {
-	q := store.NewQuery(folderRows).Where(func(f store.ColumnRefs) store.Condition {
+	q := store.NewQuery(folderRows).Where(func(f, _ store.ColumnRefs) store.Condition {
 		return store.And(store.Eq(f["space"], space), store.Eq(f["path"], path))
 	})
 	page, err := index.folders.Page(ctx, q, 1, store.PageOptions{})

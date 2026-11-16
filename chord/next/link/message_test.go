@@ -76,6 +76,8 @@ func everyKind() []link.Message {
 		&link.FailedMessage{Hold: 0, Cause: transientCause(), RetryIn: some(0)},
 		// Not the object's fault (dependency model §2): no backoff window, an event wakes it.
 		&link.FailedMessage{Hold: 0, Cause: link.WireCause{Kind: "waiting", Error: chordError("contract_mismatch", "m")}},
+		// An admission refused the caller (slice 14 §2.4): no backoff window, the decision wakes it.
+		&link.FailedMessage{Hold: 0, Cause: link.WireCause{Kind: "denied", Error: chordError("forbidden", "no access")}},
 		// The wire error format in `failed` and `gone`: a plugin's error travels too.
 		&link.FailedMessage{Hold: 0, Cause: link.WireCause{Kind: "broken", Error: pluginError("config", "m")}},
 		&link.GoneMessage{Hold: 1, Error: pluginError("config", "m", object("at", 1.0))},
@@ -325,17 +327,17 @@ func TestTheBinaryCodec(t *testing.T) {
 		}
 	})
 
-	t.Run("writes a failure's cause as one byte, 0 transient, 1 broken, 2 waiting (dependency model §2); refuses another", func(t *testing.T) {
+	t.Run("writes a failure's cause as one byte, 0 transient, 1 broken, 2 waiting, 3 denied (slice 14 §2.4); refuses another", func(t *testing.T) {
 		failed := func(kind string) link.Message {
 			return &link.FailedMessage{Hold: 0, Cause: link.WireCause{Kind: kind, Error: chordError("unavailable", "m")}}
 		}
-		for want, kind := range []string{"transient", "broken", "waiting"} {
+		for want, kind := range []string{"transient", "broken", "waiting", "denied"} {
 			if got := enc(failed(kind))[2]; int(got) != want {
 				t.Fatalf("%s = %d", kind, got)
 			}
 		}
 		forged := enc(failed("waiting"))
-		forged[2] = 3
+		forged[2] = 4
 		_, err := binary.Decode(forged)
 		requireErrorContains(t, err, "an unknown failure kind")
 	})
@@ -483,6 +485,7 @@ func TestTheTextCodec(t *testing.T) {
 		wire := `{"kind":"chord","error":{"code":"unavailable","message":"m"}}`
 		check(&link.FailedMessage{Hold: 2, Cause: transientCause()}, `["f",2,"t",`+wire+`]`)
 		check(&link.FailedMessage{Hold: 2, Cause: transientCause(), RetryIn: some(750)}, `["f",2,"t",`+wire+`,750]`)
+		check(&link.FailedMessage{Hold: 2, Cause: link.WireCause{Kind: "denied", Error: chordError("unavailable", "m")}}, `["f",2,"d",`+wire+`]`)
 		check(&link.FailedMessage{Hold: 2, Cause: link.WireCause{Kind: "waiting", Error: chordError("unavailable", "m")}}, `["f",2,"w",`+wire+`]`)
 		_, err := decodeText(`["f",2,"x",{}]`)
 		requireErrorContains(t, err, "an unknown failure kind")

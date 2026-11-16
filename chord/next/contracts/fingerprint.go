@@ -57,10 +57,19 @@ type normalEntry struct {
 }
 
 // variantNormal is the members as a sorted dictionary of `{ state }`, `{ args, result }`, `{ keyed }` (`{ keyed, key }`
-// keyed by a host kind) or `{ event }` (slice 6a §12, decision "Events: fire-and-forget members": a node of its own per
-// kind, so contracts without keyed or event members keep their fingerprints and NormalFormVersion stays).
+// keyed by a host kind), `{ event }` (slice 6a §12, decision "Events: fire-and-forget members": a node of its own per
+// kind, so contracts without keyed or event members keep their fingerprints and NormalFormVersion stays) or
+// `{ queries, args }` (slice 14: a node of its own, `args` a sorted dictionary of the named queries' argument schemas, so
+// contracts without a queries member keep their fingerprints).
 func variantNormal(variant *VariantData) delta.JsonValue {
-	entries := make([]normalEntry, 0, variant.State.Len()+variant.Events.Len()+variant.Keyed.Len()+variant.Methods.Len())
+	entries := make([]normalEntry, 0, variant.Queries.Len()+variant.State.Len()+variant.Events.Len()+variant.Keyed.Len()+variant.Methods.Len())
+	for member, queries := range variant.Queries.All() {
+		named := make([]normalEntry, 0, queries.Args.Len())
+		for query, schema := range queries.Args.All() {
+			named = append(named, normalEntry{query, schema.Normal})
+		}
+		entries = append(entries, normalEntry{member, delta.JsonObjectOf("queries", queries.Item.Normal, "args", sortedDict(named))})
+	}
 	for member, schema := range variant.State.All() {
 		entries = append(entries, normalEntry{member, delta.JsonObjectOf("state", schema.Normal)})
 	}

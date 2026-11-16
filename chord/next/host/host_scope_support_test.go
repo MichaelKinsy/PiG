@@ -34,27 +34,43 @@ type scopeLoop struct {
 var _ sectionLoop = (*scopeLoop)(nil)
 
 // The starters scopeLoop.Go recognizes are named by the functions themselves, not by literals: renaming one of them
-// changes these names with it (or no longer compiles here), so the counted waits cannot silently stop waiting.
+// changes these names with it (or no longer compiles here), so the counted waits cannot silently stop waiting. awaitAfter is
+// the start of an ending (an awaitTask that waits for the identity's previous ending first).
 var (
 	awaitTaskName       = strings.TrimSuffix(runtime.FuncForPC(reflect.ValueOf(awaitTask[int]).Pointer()).Name(), "[...]")
+	awaitAfterName      = strings.TrimSuffix(runtime.FuncForPC(reflect.ValueOf(awaitAfter[int]).Pointer()).Name(), "[...]")
 	afterDeliveriesName = runtime.FuncForPC(reflect.ValueOf((*onRoutine).afterDeliveries).Pointer()).Name()
+	goTaskName          = runtime.FuncForPC(reflect.ValueOf(goTask).Pointer()).Name()
+	goPacedTaskName     = runtime.FuncForPC(reflect.ValueOf(goPacedTask).Pointer()).Name()
+	startTaskName       = runtime.FuncForPC(reflect.ValueOf(startTask).Pointer()).Name()
 )
 
 func newScopeLoop() *scopeLoop { return &scopeLoop{fakeLoop: newFakeLoop(), real: NewLoop()} }
 
 func (l *scopeLoop) Run(work func()) { l.real.Run(work) }
 
-// Go starts fn as the real loop does, counting it when the host starts it as an awaitTask or a settle task: the starter
-// is told by its function, so the host keeps no counter for the test.
+// starterOf is the function that called scopeLoop.Go, goTask, goPacedTask and startTask (the host's counted start of a task)
+// not counting as callers.
+func starterOf() string {
+	pcs := make([]uintptr, 8)
+	frames := runtime.CallersFrames(pcs[:runtime.Callers(3, pcs)])
+	for {
+		frame, more := frames.Next()
+		if (frame.Function != goTaskName && frame.Function != goPacedTaskName && frame.Function != startTaskName) || !more {
+			return frame.Function
+		}
+	}
+}
+
+// Go starts fn as the real loop does, counting it when the host starts it as an awaitTask, an ending (awaitAfter) or a
+// settle task: the starter is told by its function, so the host keeps no counter for the test.
 func (l *scopeLoop) Go(fn func()) {
 	var running *atomic.Int64
-	if pc, _, _, ok := runtime.Caller(1); ok {
-		switch name := runtime.FuncForPC(pc).Name(); {
-		case strings.HasPrefix(name, awaitTaskName+"["):
-			running = &l.awaiting
-		case name == afterDeliveriesName:
-			running = &l.settling
-		}
+	switch name := starterOf(); {
+	case strings.HasPrefix(name, awaitTaskName+"["), strings.HasPrefix(name, awaitAfterName+"["):
+		running = &l.awaiting
+	case name == afterDeliveriesName:
+		running = &l.settling
 	}
 	if running == nil {
 		l.real.Go(fn)
@@ -67,6 +83,7 @@ func (l *scopeLoop) Go(fn func()) {
 	})
 }
 
+func (l *scopeLoop) counted() *Loop                                       { return nil }
 func (l *scopeLoop) Queue(job func())                                     { l.real.Queue(job) }
 func (l *scopeLoop) Lend(signal *parking.Signal, fn func(abandoned bool)) { l.real.Lend(signal, fn) }
 func (l *scopeLoop) barrier()                                             { l.real.Run(func() {}) }

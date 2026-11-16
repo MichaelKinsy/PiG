@@ -39,6 +39,11 @@ type FacetHost interface {
 
 // ServeOptions is what `host.serve` takes besides the type and the factory.
 type ServeOptions struct {
+	// Admit is the type's admission (slice 14 §2.1; remote types whose contract declares an `admission`, and only those:
+	// either without the other, or on a `local` type, is a declaration error): run first in every attempt, it reads data
+	// about the caller and returns a watchable of `Allow(value)` or `Deny(reason)`; the factory (an AdmittedFactory) is handed
+	// the value.
+	Admit Admit
 	// Accepts are the older versions of the type this provider still binds, with the mappings their edits need (Q10,
 	// `checkAccepts`): an older consumer's state members mapped per binding, its calls' arguments and results mapped. Checked
 	// at declaration: a declaration error fails the load or the reload of its plugin.

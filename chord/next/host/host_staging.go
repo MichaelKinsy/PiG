@@ -208,16 +208,28 @@ func stageEntry(plugin string, entry servedEntry, types *namedMap[*served], regi
 	if err != nil {
 		return err
 	}
+	admission, err := servedAdmissionOf(contract, contractData.Admission, entry.options.Admit)
+	if err != nil {
+		return err
+	}
 	var local LocalFactory
 	var remote RemoteFactory
+	var admitted AdmittedFactory
 	kind := servedLocal
-	if contract.Kind == contracts.KindLocal {
+	switch {
+	case contract.Kind == contracts.KindLocal:
 		factory, ok := entry.factory.(LocalFactory)
 		if !ok {
 			return fmt.Errorf("%s: a local type is served with a LocalFactory, not %T", contract.Name, entry.factory)
 		}
 		local = factory
-	} else {
+	case admission != nil:
+		factory, ok := entry.factory.(AdmittedFactory)
+		if !ok {
+			return fmt.Errorf("%s: an admitted type is served with an AdmittedFactory, not %T", contract.Name, entry.factory)
+		}
+		kind, admitted = servedRemote, factory
+	default:
 		factory, ok := entry.factory.(RemoteFactory)
 		if !ok {
 			return fmt.Errorf("%s: a remote type is served with a RemoteFactory, not %T", contract.Name, entry.factory)
@@ -233,9 +245,30 @@ func stageEntry(plugin string, entry servedEntry, types *namedMap[*served], regi
 		contract:     contract,
 		local:        local,
 		remote:       remote,
+		admitted:     admitted,
+		admission:    admission,
 		hostLifetime: contract.Kind == contracts.KindLocal && len(contractData.Params.Fields) == 0,
 	})
 	return nil
+}
+
+// servedAdmissionOf is a served type's admission (slice 14 §2.1; declaration policy): a remote contract that declares an
+// `admission` is served with `admit`, and only such a contract is; anything else refuses the plugin.
+func servedAdmissionOf(contract *contracts.Contract, declared *contracts.AdmissionData, admit Admit) (*servedAdmission, error) {
+	if declared == nil && admit == nil {
+		return nil, nil
+	}
+	if contract.Kind == contracts.KindLocal {
+		return nil, fmt.Errorf("%s: only a remote type takes an admission (admit)", contract.Name)
+	}
+	if declared == nil {
+		return nil, fmt.Errorf("%s: admit needs the contract to declare its admission", contract.Name)
+	}
+	if admit == nil {
+		return nil, fmt.Errorf("%s: its contract declares an admission: serve it with admit", contract.Name)
+	}
+	// Plugin code: what it returns is checked when an attempt runs it.
+	return &servedAdmission{admit: admit, fingerprint: declared.Fingerprint}, nil
 }
 
 // Recorded is what a recorded factory declared: what a reload's fate and checks need, nothing activated.
@@ -282,7 +315,20 @@ func recordFactory(object *chordObject, entry *served, ctx context.Context) (Rec
 			return entry.local(object.params, recording)
 		}
 		// A remote object's identity has its principal.
-		return entry.remote(object.params, object.principal, recording)
+		if entry.admission == nil {
+			return entry.remote(object.params, object.principal, recording)
+		}
+		// An admitted type (slice 14 §2.5): its new `admit` runs first, against what an admission declares with; its new factory
+		// is rehearsed with the object's admitted value only when it was decided under an admission schema of the new one's
+		// fingerprint (otherwise a limit accepted: its declaration errors appear at its activation, its requests are not
+		// recorded).
+		if _, err := entry.admission.admit(object.params, object.principal, recording); err != nil {
+			return nil, err
+		}
+		if admitted := object.admittedValue(); admitted != nil && admitted.fingerprint == entry.admission.fingerprint {
+			return entry.admitted(object.params, object.principal, admitted.value, recording)
+		}
+		return nil, nil
 	})
 	if err != nil {
 		return Recorded{}, named(err, fmt.Sprintf("plugin %q, %s", entry.plugin, object.text))
@@ -315,6 +361,8 @@ type recordingSelf struct {
 	jobs          *namedMap[*JobDefinition]
 	contributions *namedMap[registries.Registry[any, any]]
 	requests      []request
+	// listed are the names of the lists the factory declared; made by the first.
+	listed map[string]struct{}
 	// inert are the documents of the handles State returns and token their seal token; made by the first.
 	inert *documents.Documents
 	token *documents.SealToken
@@ -402,11 +450,10 @@ func (*recordingDocuments) Fail(*data.ChordError) {}
 // inertTableOwner is the owner of a recording's table handles: never live, so every read and query returns errInert.
 type inertTableOwner struct{ label string }
 
-func (o inertTableOwner) Label() string               { return o.label }
-func (o inertTableOwner) Scope() any                  { return nil }
-func (o inertTableOwner) Queries() *store.LiveQueries { return nil }
-func (o inertTableOwner) AssertLive() error           { return errInert }
-func (o inertTableOwner) Fail(*data.ChordError)       {}
+func (o inertTableOwner) Label() string         { return o.label }
+func (o inertTableOwner) Scope() any            { return nil }
+func (o inertTableOwner) AssertLive() error     { return errInert }
+func (o inertTableOwner) Fail(*data.ChordError) {}
 
 // Table implements StoreSelf.
 func (r *recordingSelf) Table(definition *store.TableDefinition) store.Table {
@@ -418,6 +465,14 @@ func (r *recordingSelf) Table(definition *store.TableDefinition) store.Table {
 	object := r.object
 	sqlName := store.TableSqlName(object.served.contract.Name, definition.Name)
 	if err := chordStore.Claims.AssertTable(sqlName, object); err != nil {
+		panic(err)
+	}
+	exposers := make([]store.Exposer, 0, r.tables.len())
+	for _, name := range r.tables.keys() {
+		declared, _ := r.tables.get(name)
+		exposers = append(exposers, store.Exposer{Name: declared.Name, Exposes: declared.Exposes})
+	}
+	if err := store.CheckExposedOnce(store.Exposer{Name: definition.Name, Exposes: definition.Exposes}, exposers, object.text); err != nil {
 		panic(err)
 	}
 	r.tables.set(definition.Name, definition)
@@ -432,12 +487,93 @@ func (r *recordingSelf) Query(_ store.Table, q *store.Query, limit int64) chord.
 	label := r.object.text
 	table, declared := r.tables.get(q.Table.Name)
 	if !declared || table != q.Table {
-		panic(declarationError("%s: self.query: the table is not one this factory declared", label))
+		panic(undeclaredTable(label, "query"))
 	}
 	if err := store.CheckLiveQuery(table, q, limit, label); err != nil {
 		panic(err)
 	}
 	return state.ConstantOf[delta.JsonValue](nil)
+}
+
+// inertNamed is what a recording's `self.queries` returns for each name: what readers take, and `self.query` does not (Pi's
+// INERT_NAMED). A page of it reads nothing.
+type inertNamed struct{}
+
+func (inertNamed) Page(delta.JsonValue, int64, context.Context, contracts.QueryPageOptions) (contracts.QueryPage[delta.JsonValue], error) {
+	return contracts.QueryPage[delta.JsonValue]{}, errInert
+}
+
+// Queries implements StoreSelf: the checks an attempt makes on its declarations (`read-declarations.ts`), then inert named
+// queries. Staging has no effects: nothing is compiled, read or bound.
+func (r *recordingSelf) Queries(given store.Table, _ QueriesOptions, builders map[string]QueryBuilder) map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue] {
+	r.assertDeclaring("queries")
+	label := r.object.text
+	handle, _ := given.(*store.TableHandle)
+	// A recorded handle says what it stands for: a table this recording declared.
+	if handle == nil {
+		panic(undeclaredTable(label, "queries"))
+	}
+	if _, recorded := handle.Owner.(inertTableOwner); !recorded || !r.tables.has(handle.Definition.Name) {
+		panic(undeclaredTable(label, "queries"))
+	}
+	checked, err := namedBuilders(label, builders)
+	if err != nil {
+		panic(err)
+	}
+	named := make(map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue], len(checked))
+	for _, each := range checked {
+		named[each.name] = inertNamed{}
+	}
+	return named
+}
+
+// LiveQuery implements Self: the checks an attempt makes on its declaration (the page size, the query given), no read.
+func (r *recordingSelf) LiveQuery(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], _ any, first int64) chord.Watchable[delta.JsonValue] {
+	r.assertDeclaring("liveQuery")
+	if err := firstOf(r.object.text, "liveQuery", first); err != nil {
+		panic(err)
+	}
+	r.checkNamed(query, "liveQuery")
+	return state.ConstantOf[delta.JsonValue](nil)
+}
+
+// Count implements Self.
+func (r *recordingSelf) Count(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], _ any) chord.Watchable[delta.JsonValue] {
+	r.assertDeclaring("count")
+	r.checkNamed(query, "count")
+	return state.ConstantOf[delta.JsonValue](nil)
+}
+
+// List implements Self: the checks an attempt makes on its declaration (the page size, the one source, the name, the query
+// given), no read, no bookmark touched.
+func (r *recordingSelf) List(name string, sources []ListSource, options ListOptions) *ListHandle {
+	r.assertDeclaring("list")
+	label := r.object.text
+	if err := firstOf(label, "list", int64(options.First)); err != nil {
+		panic(err)
+	}
+	source, err := oneSource(label, sources)
+	if err != nil {
+		panic(err)
+	}
+	if r.listed == nil {
+		r.listed = map[string]struct{}{}
+	}
+	if err := listName(label, name, r.listed); err != nil {
+		panic(err)
+	}
+	r.checkNamed(source.Query, `list "`+name+`"`)
+	return &ListHandle{value: state.ConstantOf[delta.JsonValue](nil), more: func(context.Context) error { return errInert }}
+}
+
+// checkNamed refuses what a reader was given when it cannot be a named query: a table, or no handle of this recording (a
+// recorded `Queries`' or an inert reference's).
+func (r *recordingSelf) checkNamed(query contracts.NamedQuery[delta.JsonValue, delta.JsonValue], declaration string) {
+	switch query.(type) {
+	case inertNamed, *ReferenceQuery:
+		return
+	}
+	panic(namedQueryExpected(r.object.text, declaration))
 }
 
 // Derive implements Self.
@@ -553,6 +689,9 @@ func (r *recordingSelf) OnLive(OnLiveHandler) { r.assertDeclaring("onLive") }
 // Job implements Self.
 func (r *recordingSelf) Job(definition *JobDefinition, _ JobImplementation) JobHandle {
 	r.assertDeclaring("job")
+	if err := refuseAdmittedJob(r.served, r.object.text); err != nil {
+		panic(err)
+	}
 	if r.jobs.has(definition.Name) {
 		panic(declarationError(`%s: job "%s" is declared twice`, r.object.text, definition.Name))
 	}

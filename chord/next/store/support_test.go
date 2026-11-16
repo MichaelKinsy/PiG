@@ -326,13 +326,6 @@ func holdingWrite() (held StagedWrite, entered <-chan struct{}, release func()) 
 	return held, reached, func() { once.Do(func() { close(gate) }) }
 }
 
-// queueTail is the store's commit queue tail: it changes whenever an entry takes its place.
-func (store *ChordStore) queueTail() <-chan struct{} {
-	store.mu.Lock()
-	defer store.mu.Unlock()
-	return store.tail
-}
-
 // startQueued runs call (a Commit, a Replay, an ApplyBatch) on a goroutine, as Pi starts a promise it awaits later, and
 // returns its result channel once call has taken its place in store's commit queue (or settled without one: a
 // refusal at the call). Entries started one after another through it queue in that order.
@@ -401,21 +394,18 @@ func exported(t testing.TB, store Store, ctx context.Context) []ArchivePart {
 type testOwner struct {
 	failures []*data.ChordError
 	scope    *struct{}
-	queries  *LiveQueries
 }
 
 func (owner *testOwner) Label() string { return "app.store" }
 
 func (owner *testOwner) Scope() any { return owner.scope }
 
-func (owner *testOwner) Queries() *LiveQueries { return owner.queries }
-
 func (owner *testOwner) AssertLive() error { return nil }
 
 func (owner *testOwner) Fail(err *data.ChordError) { owner.failures = append(owner.failures, err) }
 
 // tableOwner is a fresh owner for table handles; its failures are the ones its handles reported.
-func tableOwner() *testOwner { return &testOwner{scope: new(struct{}), queries: NewLiveQueries()} }
+func tableOwner() *testOwner { return &testOwner{scope: new(struct{})} }
 
 // tableIn creates definition (and its indexes) in store as `app.store:<name>` and returns a handle to it; owner is
 // the handle's owner (a fresh one by default).

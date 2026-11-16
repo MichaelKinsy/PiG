@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"reflect"
+	"strings"
 	"testing"
 	"weak"
 
@@ -819,6 +820,56 @@ func TestReloadAVersionRefusalKeepsTheWaitingReferencesLastValuesKeepsAnOlderWat
 		t.Fatal("the older watch closed: it must stay open while its version is refused and after it heals")
 	}
 	old.Release()
+}
+
+// Go-only: host/object.ts `#unfit` (object.ts:1413) offers a refusal only to a holder whose version AND fingerprint the new
+// provider binds (`binds(provider, version, fingerprint)`); one holding the same version under another fingerprint is told the
+// version is not served here, even though the provider accepts that version number for its own fingerprint.
+func TestReloadAHolderOfAVersionTheProviderAcceptsUnderAnotherFingerprintWaitsUnboundAsNotServed(t *testing.T) {
+	accepted := mustContract(declareLocal("app.fingerprint.moved", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int())},
+	}))
+	held := mustContract(declareLocal("app.fingerprint.moved", contracts.LocalDeclaration{
+		Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{contracts.Mem("n", contracts.Int()), contracts.Mem("other", contracts.Int())},
+	}))
+	if held.Fingerprint == accepted.Fingerprint {
+		t.Fatal("the two version 1 contracts share a fingerprint")
+	}
+	next := adaptedEvolve(accepted, func(e *contracts.LocalEditor) *contracts.LocalEditor {
+		return e.State("n", contracts.Obj(contracts.Prop("value", contracts.Int())))
+	})
+	first := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(held, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+				"n": constant(1.0), "other": constant(2.0),
+			}}}, nil
+		}, ServeOptions{})
+	})
+	second := DefineFacet(func(h FacetHost, _ FacetSelf) error {
+		return h.Serve(next, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{
+				"n": constant(jsonObject("value", 4.0)),
+			}}}, nil
+		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
+			State: []contracts.Entry[contracts.StateMapping]{{Name: "n", Value: contracts.StateMapping{
+				Func: func(v delta.JsonValue) (delta.JsonValue, error) { return v.(*delta.JsonObject).Value("value"), nil },
+			}}},
+		}}}})
+	})
+	host := newHost(t, HostOptions{OnError: func(HostError) {}})
+	defer closeHosts(t, host)
+	mustLoad(t)(host.Load([]HostFacet{{Name: "@app/fingerprint", Facet: first}}, background))
+	ref := mustGet(t, host, held, jsonObject())
+	reloadMust(t)(host.Reload([]HostFacet{{Name: "@app/fingerprint", Facet: second}}, background, ReloadOptions{}))
+	deliveredOn(host)
+	state := stateOfRef(ref)
+	if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureWaiting {
+		t.Fatalf("state = %+v, want failed waiting: the provider binds no version 1 of this fingerprint", state)
+	}
+	if message := state.Cause.Error.Message; !strings.Contains(message, "app.fingerprint.moved v1 is not served here") {
+		t.Fatalf("message = %q, want it to say app.fingerprint.moved v1 is not served here", message)
+	}
+	ref.Release()
 }
 
 // Mirrors "› heals a watch of the previous current version once a later provider accepts it (Sol)".

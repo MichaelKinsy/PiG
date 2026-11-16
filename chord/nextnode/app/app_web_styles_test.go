@@ -370,6 +370,11 @@ func TestAPagesPluginStylesheetsReportAStylesheetThatFailsApplyTheNewCodeAndLoad
 	if !reflect.DeepEqual(failed, [][]string{{"@test/e", "error"}}) {
 		t.Fatalf("stylesheet failures = %v", failed)
 	}
+	// Pi's case asserts the colour at this same point, and the window is Pi's too: the page keeps the plugin's old rules until it
+	// drew a frame after the reload (styles.ts settle: afterDrawn), while part-e's text is "v2" from the reload's own render. Pi's
+	// run reads the colour before that frame only when its evaluate wins the race; this run's Chromium, on a loaded host, was seen
+	// to read the old rgb(1, 1, 1). So wait for what the assertion is about: the old link gone, the failed one alone.
+	s.browser.Wait("(" + linksOf("e") + ").length === 1")
 	if got := s.browser.String(color("part-e")); got != "rgb(0, 0, 0)" {
 		t.Fatalf("part-e colour = %s, want unstyled", got)
 	}

@@ -298,7 +298,7 @@ func (handle *job) invoke(run *jobRun) {
 	}
 	owner, records := handle.owner, handle.records
 	settle := owner.admit(nil)
-	records.loop.Go(func() {
+	startTask(records.loop, func() {
 		_, err := owner.documents.Tx(func(tx *documents.Transaction) (any, error) {
 			var err error
 			owner.documents.Do(func() { err = records.reserve(tx, run) })
@@ -345,7 +345,7 @@ func (handle *job) start(run *jobRun, current *invocation) {
 	handle.invocations.add(run)
 	// Its own version's args: a run started by old work during a restart runs on the old code (its definition).
 	args, argsErr := records.argsOf(run, handle.definition)
-	records.loop.Go(func() {
+	startTask(records.loop, func() {
 		var result any
 		err := argsErr
 		if err == nil {
@@ -373,7 +373,7 @@ func (handle *job) start(run *jobRun, current *invocation) {
 // it without a report or a count; the next live attempt finishes the run.
 func (handle *job) finish(run *jobRun) {
 	settle := handle.owner.admit(nil)
-	handle.records.loop.Go(func() {
+	startTask(handle.records.loop, func() {
 		handle.finishRun(run)
 		settle(nil)
 	})

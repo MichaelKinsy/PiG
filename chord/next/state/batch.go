@@ -125,6 +125,25 @@ func (b *Batch) Section(work func()) {
 	b.section(work)
 }
 
+// CheckAct runs check, and the act it returns, as ONE section of the host: acted is whether check returned an act (nil: it
+// refused, nothing ran). Pi's check and the act that depends on it are consecutive statements of one turn, with nothing
+// between them: `if (this.#generation !== generation) return undefined; site.batch.within(() => read.adopt(run), context)`
+// (store open-query.ts:206-207), `if (this.#closed) return undefined; if ("error" in compiled) { ...; site.batch.within(() =>
+// this.#sink.adopt(failed), context) }` (open-query.ts:194-198), `if (this.detached) return Promise.resolve(); ... this.#next =
+// tiling` (host list.ts:57-61). A Go section is a critical region of its own, and a goroutine that checks outside it leaves a
+// gap before the section it acts in, in which another section (a commit's adoption, a close) changes what was checked. So the
+// check is a func the section runs, not a value taken before it: it reads the state, and returns what to do about it. It must
+// not block, as nothing in a section does. The same rule for a check that follows an await is the host's awaitTail.
+func (b *Batch) CheckAct(check func() (act func())) (acted bool) {
+	b.Section(func() {
+		if act := check(); act != nil {
+			acted = true
+			act()
+		}
+	})
+	return acted
+}
+
 // ReportListener reports a failing watch listener's error (to the host's report function): what watches get as their
 // report. Pi's `reportListener` field is a function value; the method value b.ReportListener is the same.
 func (b *Batch) ReportListener(err error) {

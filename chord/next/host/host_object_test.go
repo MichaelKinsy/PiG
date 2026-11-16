@@ -354,7 +354,7 @@ func TestObjectRetriesStartANewInstanceOnlyAfterThePreviousOneClosed(t *testing.
 		return h.Serve(objSvc, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			// The instance's native closes only when the test lets it.
 			self.Open(func(context.Context) (any, error) { return nil, nil },
-				func(any, NativeCloseReason, context.Context) error { closing.wait(t); return nil })
+				func(_ any, _ NativeCloseReason, ctx context.Context) error { closing.await(t, ctx); return nil })
 			n := factory.Add(1)
 			return contracts.Implementation{Members: contracts.VariantImplementation{State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(float64(n))}}}, nil
 		}, ServeOptions{})
