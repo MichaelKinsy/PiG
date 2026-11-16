@@ -257,12 +257,10 @@ func TestAWaitAddedWhileItsContextIsCancelledIsNeverLeftPending(t *testing.T) {
 		ctx, cancel := chordctx.WithCancel(chordctx.Background())
 		var start, finished sync.WaitGroup
 		start.Add(1)
-		finished.Add(1)
-		go func() {
-			defer finished.Done()
+		finished.Go(func() {
 			start.Wait()
 			cancel(cause)
-		}()
+		})
 		start.Done()
 		waiter := waiters.Add(ctx, nil, 1)
 		finished.Wait()
