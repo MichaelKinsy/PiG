@@ -2006,22 +2006,22 @@ allocs = 11806
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementCycle/1ext"
-allocs = 9768
+allocs = 9730
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementCycle/4ext"
-allocs = 15682
+allocs = 15606
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementPhases/1ext"
-allocs = 18496
+allocs = 17826
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementPhases/4ext"
-allocs = 22098
+allocs = 21334
 
 [[benchmark]]
 package = "./coding/cli"
@@ -2316,27 +2316,27 @@ allocs = 254
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/cross-cwd"
-allocs = 717
+allocs = 700
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/direct"
-allocs = 716
+allocs = 700
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/reload"
-allocs = 716
+allocs = 700
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/same-cwd"
-allocs = 716
+allocs = 701
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFailedFactoryAPIThroughNodeCell"
-allocs = 845
+allocs = 817
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2501,12 +2501,12 @@ allocs = 6672
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAdmissionStartup/one-node"
-allocs = 654
+allocs = 624
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAdmissionStartup/three-node"
-allocs = 1105
+allocs = 1064
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2996,12 +2996,12 @@ allocs = 14
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkInteractiveSessionReload/0"
-allocs = 948
+allocs = 853
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkInteractiveSessionReload/1000"
-allocs = 21895
+allocs = 21801
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3201,12 +3201,12 @@ allocs = 133
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRuntimeInteractiveRebind/0"
-allocs = 3694
+allocs = 3608
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRuntimeInteractiveRebind/1000"
-allocs = 48984
+allocs = 46711
 
 [[benchmark]]
 package = "./internal/codingagent"
