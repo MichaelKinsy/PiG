@@ -221,6 +221,7 @@ func TestObjectRetriesRetryATransientFailureAfter1sDoublingUpTo60sAndStartOverAf
 		got <- ref
 	}()
 	until(t, "the first attempt", func() bool { return len(flaky.all()) == 1 })
+	until(t, "the first attempt's backoff window", func() bool { return hasTimerAt(loop, 1_000) })
 	advanceSettled(loop, host, 183_000)
 	receive(t, got).Release()
 	want := []int64{0, 1000, 3000, 7000, 15000, 31000, 63000, 123000, 183000}
@@ -231,6 +232,7 @@ func TestObjectRetriesRetryATransientFailureAfter1sDoublingUpTo60sAndStartOverAf
 	again := make(chan *Reference, 1)
 	go func() { again <- mustGet(t, host, objSvc, jsonObject("id", 1.0)) }()
 	until(t, "the next attempt", func() bool { return len(flaky.all()) == 10 })
+	until(t, "the tenth attempt's backoff window", func() bool { return hasTimerAt(loop, 184_000) })
 	advanceSettled(loop, host, 1000)
 	ref := receive(t, again)
 	if v, _ := ref.Member("n").Value(); v != 11.0 {
@@ -303,6 +305,7 @@ func TestObjectRetriesEndAFailedObjectWithItsLastReferenceItsBackoffEntryExpires
 	}
 	first := get(500 * time.Millisecond)
 	until(t, "the first attempt", func() bool { return len(flaky.all()) == 1 })
+	until(t, "the first attempt's backoff window", func() bool { return hasTimerAt(loop, 1_000) })
 	advanceSettled(loop, host, 500)
 	wantChordError(t, receive(t, first), data.CodeUnavailable, "", "app.svc(1): offline")
 	advanceSettled(loop, host, 4500)
@@ -312,6 +315,7 @@ func TestObjectRetriesEndAFailedObjectWithItsLastReferenceItsBackoffEntryExpires
 	// The entry expired: a new object tries at once and its window starts over at 1 s.
 	second := get(1500 * time.Millisecond)
 	until(t, "the second attempt", func() bool { return len(flaky.all()) == 2 })
+	until(t, "the second attempt's backoff window", func() bool { return hasTimerAt(loop, 6_000) })
 	advanceSettled(loop, host, 1500)
 	_ = receive(t, second)
 	if got := flaky.all(); !reflect.DeepEqual(got, []int64{0, 5000, 6000}) {
@@ -332,6 +336,7 @@ func TestObjectRetriesMakeAGetRightAfterAFailureWaitForTheScheduledRetry(t *test
 		first <- err
 	}()
 	until(t, "the first attempt", func() bool { return len(flaky.all()) == 1 })
+	until(t, "the first attempt's backoff window", func() bool { return hasTimerAt(loop, 1_000) })
 	advanceSettled(loop, host, 500)
 	_ = receive(t, first)
 	second := make(chan *Reference, 1)
@@ -442,6 +447,7 @@ func TestObjectParkedKeepsItsReferencesWhileParkedAGetterRejectsWithTheWaitingCa
 		got <- err
 	}()
 	until(t, "the dependency's first attempt", func() bool { return len(svc.all()) == 1 })
+	until(t, "the dependency's backoff window", func() bool { return hasTimerAt(loop, 1_000) })
 	advanceSettled(loop, host, 1500)
 	wantChordError(t, receive(t, got), data.CodeUnavailable, "", "waiting for app.svc(1): app.svc(1): offline")
 	advanceSettled(loop, host, 10_000)
@@ -671,6 +677,7 @@ func TestObjectGCOfFailedObjectsCollectsOneAfterItsLastReferenceWhileItsBackoffE
 		got <- err
 	}()
 	until(t, "the attempt", func() bool { mu.Lock(); defer mu.Unlock(); return len(attempts) == 1 })
+	until(t, "the failed attempt's backoff window", func() bool { return hasTimerAt(loop, 1_000) })
 	advanceSettled(loop, host, 100)
 	_ = receive(t, got)
 	if got := loop.TimerCount(); got != 1 {
