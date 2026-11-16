@@ -241,6 +241,7 @@ func Extension() *sdk.Extension {
 ### Go names
 
 - Nodes: `kit.NewContainer(children...)` (a column), `kit.NewBox(paddingX, paddingY, children...)`, `kit.NewText(text, paddingX, paddingY)`, `kit.NewTruncatedText(text, paddingX, paddingY)`, `kit.NewMarkdown(text, paddingX, paddingY)`, `kit.NewLines(lines)`, `kit.NewSpacer(lines)`, `kit.NewDynamicBorder(color)`, `kit.NewSelectList(id, items, maxVisible)`, `kit.NewSettingsList(id, items, maxVisible)`, `kit.NewInput(id)`, `kit.NewEditor(id)`, `kit.NewMouseRegion(id, child)`, `kit.NewScrollView(id, child)` and `kit.NewGrid(id, columns, cells)`. Set the other members on the struct that a constructor returns.
+- Images: `kit.NewImage(data, mimeType)` takes the decoded bytes of a photograph and returns a `*kit.Image`. Set `MaxWidthCells` and `MaxHeightCells` (both `*int`), `Filename`, `FallbackColor` and `ID` on the struct. The node carries the bytes in the view's `images` list; the kit does this for you.
 - Ids: only the constructors with an `id` argument make a node with an id. A box, a text, a container and a markdown node have none in Go. To give a drawing a node, name a `kit.NewScrollView(id, child)` in `Node`, or leave `Node` empty.
 - Content: `sdk.ViewContent{Title, View, Intents, Bindings, Alternatives, Drawing, A11y, Focus, Fallback}`. `View` is a `kit.View{Root: node}`, `Fallback` is a node and `Drawing` is a `*sdk.ViewDrawing`. `sdk.ViewMount{Key, Slot, Target, ViewContent}` and `sdk.ViewUpdate{Mount, ViewContent}` embed it. The slots are constants such as `sdk.ViewSlotPanel` and `sdk.ViewSlotDialog`.
 - Intents: `sdk.ViewIntent{Name, NodeKey, Arg, Answer, Cancellable, TimeoutMs, WhenHidden, Dismiss}`. `Arg` is a `sdk.ViewShape` and `Answer` is a `*sdk.ViewShape`. In the handler, `in.Arg` and the result's `Answer` are `json.RawMessage`.
@@ -283,8 +284,13 @@ A node is a JSON object with a `kind`. Give a node an `id` when an intent, an `a
 | `mouse-region` | a button: a click activates it. It needs a pointer (`abilities.input.pointer`), which the terminal has only in fullscreen mode, so also give its action a binding | `children` (an array of one node, for example a `text` with the label), `region: { types: ["press"] }` |
 | `scroll-view` | one child that scrolls | `children` (an array of one node), `follow: "end"` |
 | `grid` | a calendar-style grid of equal columns; the user chooses a cell | `id` (required), `columns` (1 to 16), `head` (one label for each column), `chipRows` (1 to 8, default 3), `selected` (a cell's `value`), `cells: [{ value, label, mark: "current", dim, color, chips: [{ text, color }], more }]` |
+| `image` | a photograph or other bitmap. The bytes ride in the view's `images` list, not in the node | `ref` (the lowercase hex SHA-256 of the bytes), `mimeType` (`image/png`, `image/jpeg`, `image/gif` or `image/webp`), `maxWidthCells` (60 when absent), `maxHeightCells`, `filename`, `fallbackColor` (a theme token); the view carries `images: [{ ref, mimeType, data }]` with `data` in base64 |
 
 A `grid` has at most 128 cells in at most 32 rows, and a cell has at most 8 chips. A cell without a `value` cannot be chosen. `more` counts the events that you left out. A `bg`, a `color` and the colors of a `defaultTextStyle` name theme tokens ([Themes](themes.md)); a grid `color` is a theme token, `#rrggbb` or `#rrggbbaa`.
+
+A photograph or any other bitmap belongs in an `image` node. The `pixels` and `shapes` drawing profiles ([Drawings](#drawings)) are for drawings that your extension computes. The terminal draws no drawing profile, and it draws an `image` node.
+
+The bytes of an image are not text: they count in the snapshot bytes of the mount and not in its text bytes. The terminal's 262144 snapshot bytes hold a photograph of about 195,000 bytes. The `ref` is the SHA-256 of the bytes. The terminal declares `abilities.imageFormats` as `["png", "jpeg", "gif", "webp"]`. Pi has no mount view; this node is the D107 view kit's image node (Pi's `Image` component) under D614.
 
 ```js
 // week.mjs: a grid, and a view that the user hides and opens again.
@@ -497,6 +503,8 @@ Every SDK has every call, and its mount takes the same members. The Go, Python, 
 | diagnostics | `viewDiagnostics` | `ViewDiagnostics` | `view_diagnostics` | `ctx-view-diagnostics` |
 | answer intents | `pi.onViewIntent` | `ext.OnViewIntent` | `ext.on_view_intent` | `on-view-intent` |
 
+Every SDK builds the `image` node. Go: `kit.NewImage(data, mimeType)`. Rust: `kit::Image::new(data, mime_type)`, with `max_width_cells`, `max_height_cells`, `filename` and `fallback_color` as builder methods. Python: `kit.Image(data, mime_type, max_width_cells=..., max_height_cells=..., filename=..., fallback_color=...)`. Lisp: `kit-image` (`data mime-type &key max-width-cells max-height-cells filename fallback-color id`). Node: write the `{ kind: "image", ref, mimeType }` node as JSON and the bytes in `images: [{ ref, mimeType, data }]` of the `view`. A `ctx.ui.custom` component of a Node extension may use Pi's own `Image` component instead.
+
 ## What the clients draw
 
 | Capability | Terminal (`viewClient: terminal`) | Reference web page (`examples/ui-view-web`) |
@@ -504,6 +512,7 @@ Every SDK has every call, and its mount takes the same members. The Go, Python, 
 | Slots | `widget-above` and `widget-below` (at most 10 rows each), `panel` (at most half the terminal's rows), `dialog`; every other slot is not drawn at this version | all twelve slots, each in its own section of the page |
 | `dialog` | a titled frame centred over the screen, eight tenths of the terminal's columns and rows; its `size.columns` and `size.rows` claims are the cells inside the frame. It takes the keys when it is shown, unless the user types in the editor: then it waits as one row above the editor (`<title>: F6 to enter`) and leaves an `unfocused` notice. Escape returns the keys to the editor, and the mount stays live; with a `dismiss` intent, the first Escape raises it instead. Several dialogs stack, the last on top. A hidden dialog is not listed | drawn in its section of the page, like every other slot |
 | Node kinds | every kind of [Nodes](#nodes) | every kind of [Nodes](#nodes) |
+| Image node | drawn from `png`, `jpeg`, `gif` and `webp` bytes, at most as tall as the slot's rows. In kitty and Ghostty: one Kitty transmission, then placeholder cells that scroll and erase like text. In another Kitty terminal and in iTerm2: the image in its rows. Without an image protocol (tmux, a plain terminal): half-block cells. Bytes that cannot be decoded: one line of text with the file name, the type and the size | drawn as an image |
 | Limits of one mount | 512 nodes, depth 16, 262144 snapshot bytes, 65536 text bytes, 16 mounts, 4096 intent argument bytes | 2048 nodes, depth 32, 4194304 snapshot bytes, 65536 text bytes, 32 mounts, 65536 intent argument bytes |
 | `title` | panels are tabs, labelled by `title`, or by `key` without one; a dialog frame carries it | the heading of the mount, and the label of a panel's tab, or `key` without one |
 | Intents with `nodeKey` | raised by the keys and clicks of the node | raised by the keys and clicks of the node |

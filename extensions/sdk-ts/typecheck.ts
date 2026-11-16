@@ -33,6 +33,8 @@ import type {
   PiGViewAbilities,
   PiGViewClaim,
   PiGViewGrid,
+  PiGViewImage,
+  PiGViewImageNode,
   PiGViewNotice,
   PiGViewLines,
   PiGViewStatus,
@@ -91,6 +93,20 @@ export default function extension(pi: ExtensionAPI): void {
       fallback: { kind: "text", text: "November" },
     });
     await ctx.ui.updateView(mounted.mount, { view: { root: grid } });
+    const photo: PiGViewImageNode = { kind: "image", id: "photo", ref: "a".repeat(64), mimeType: "image/jpeg", maxWidthCells: 66, maxHeightCells: 20, filename: "r1.jpg", fallbackColor: "muted" };
+    const photoBytes: PiGViewImage = { ref: photo.ref, mimeType: photo.mimeType, data: "AAAA" };
+    await ctx.ui.updateView(mounted.mount, { view: { root: { kind: "container", children: [photo] }, images: [photoBytes] } });
+    // A later view names the image by its ref alone.
+    await ctx.ui.updateView(mounted.mount, { view: { root: photo } });
+    // @ts-expect-error an image record carries ref, mimeType and data: the bytes are required
+    const noBytes: PiGViewImage = { ref: photo.ref, mimeType: "image/png" };
+    // @ts-expect-error the member of an image record is `data`, not `bytes`
+    const wrongField: PiGViewImage = { ref: photo.ref, mimeType: "image/png", data: "AAAA", bytes: "AAAA" };
+    // @ts-expect-error a view's images is a list of records
+    await ctx.ui.updateView(mounted.mount, { view: { root: photo, images: photoBytes } });
+    // @ts-expect-error an image node needs its ref
+    const noRef: PiGViewImageNode = { kind: "image", mimeType: "image/png" };
+    void [noBytes, wrongField, noRef];
     const notices: PiGViewNotice[] = await ctx.ui.viewDiagnostics("k");
     const colors = abilities?.claims?.find((claim: PiGViewClaim) => claim.name === "display.colors")?.value;
     const finished: PiGViewStatus = await ctx.ui.finishView(mounted.mount, { colors, notices: notices.length });
