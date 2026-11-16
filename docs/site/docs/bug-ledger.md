@@ -1556,6 +1556,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ab1d070-2](#bf-ab1d070-2) | A script that ends in its first run while a journaled tool call replays after a restart no longer shows that… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ab5be97](#bf-ab5be97) | Long streamed answers render each frame faster: the Markdown view re-wraps and re-renders only the lines and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab68fb7](#bf-ab68fb7) | When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits | PiG's own defect | All platforms | Unreleased |
+| [BF-ab82b4d](#bf-ab82b4d) | A `/login`, slash command or prompt typed while PiG is still starting no longer runs before the start-up… | PiG's own defect | All platforms | Unreleased |
 | [BF-ab8e9e4](#bf-ab8e9e4) | Tool output and `!` command output no longer show the parameters of control sequences with a `<`, `=` or `>`… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-ab99da4](#bf-ab99da4) | fix(chord/delta): the tracker holds its one open change without a weak registration | PiG's own defect | All platforms | Unreleased |
 | [BF-abc54d0](#bf-abc54d0) | `pi.sendUserMessage(content, { expandPromptTemplates: true })` and the same option on a `withSession` context… | PiG's own defect | All platforms | Unreleased |
@@ -23603,6 +23604,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `851af29834` (2026-11-13), `ab68fb7b65` (2026-11-13)
 - **Tests:** None recorded.
 - **Release note:** When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits. The runtime process of a Node extension whose event loop was still alive, for example one that holds a timer, stayed behind. Nothing more is written to the session file at that exit. PiG 0.2.0 through 0.7.0 have the defect.
+
+### BF-ab82b4d
+
+**A `/login`, slash command or prompt typed while PiG is still starting no longer runs before the start-up…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `/login`, slash command or prompt typed while PiG is still starting no longer runs before the start-up notices: PiG reads no key typed ahead while it binds the session, as Pi reads none there, unless a `session_start` or `resources_discover` handler is running, and it then serves the terminal while that handler runs, as Pi does.
+- **Root cause:** Init ran the whole rebind through awaitExtensionUI, which starts the owner loop even when no handler can pend. The rebind runs its owner steps with runOnMainAndWait, and the loop reads terminal input ahead of posted tasks (interactive_input.go, priorityInput), so under a CPU limit the keys queued during start-up (the scenarios' /login, Escape, Enter, the pasted code) ran the whole login before the rebind's last owner step, showLoadedResources, renderInitialMessages and showInitNotices. The window exists since the awaited rebind of Release 0.3.0 (), is unchanged in v0.7.0, and was seen when parity scenarios 35 and 36 () typed /login at the first frame: with eight busy loops in an eight-cpu…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ab82b4db0c` (2026-11-15)
+- **Tests:** `internal/codingagent/startup_bind_input_pty_test.go::TestInitReadsATypedAheadKeyWhileASessionStartHandlerPends`, `internal/codingagent/startup_bind_input_pty_test.go::TestInitReadsNoTypedAheadKeyBeforeTheStartupNoticesWhenNoHandlerPends`
+- **Release note:** A `/login`, slash command or prompt typed while PiG is still starting no longer runs before the start-up notices: PiG reads no key typed ahead while it binds the session, as Pi reads none there, unless a `session_start` or `resources_discover` handler is running, and it then serves the terminal while that handler runs, as Pi does. PiG ran the whole bind through a loop that read typed input ahead of the bind's last owner step, so the command could run before the start-up warnings (such as `Warning: No models available. Use /login ...`), the loaded resources list and a resumed session's history were shown, and those appeared below its output, for example the warning below `Error: Failed to login to <provider>`. Every release from 0.3.0 to 0.7.0 has it; it shows only when a key is typed within the first moments of a start on a busy machine.
 
 ### BF-ab8e9e4
 
