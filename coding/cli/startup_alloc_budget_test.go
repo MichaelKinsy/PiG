@@ -322,6 +322,9 @@ type startupFixture struct {
 	binary, cwd, home, agentDir, tmp string
 	// env is added to the measured environment.
 	env []string
+	// production leaves PIG_TEST_FAUX unset, so the run is the process a user starts: no registered test-faux provider and no --model shortcut
+	// (testFauxCLIModel), the model resolved through the registry.
+	production bool
 }
 
 func newStartupFixture(t *testing.T) *startupFixture {
@@ -339,16 +342,27 @@ func newStartupFixture(t *testing.T) *startupFixture {
 // measure runs pig with args from cwd and returns its PIG_PROFILE=metrics record.
 func (f *startupFixture) measure(ctx context.Context, t *testing.T, cwd string, args ...string) profiling.ProcessMetrics {
 	t.Helper()
+	stats, _ := f.run(ctx, t, cwd, args...)
+	return stats
+}
+
+// run is measure with the process's standard output.
+func (f *startupFixture) run(ctx context.Context, t *testing.T, cwd string, args ...string) (profiling.ProcessMetrics, string) {
+	t.Helper()
 	dir, err := os.MkdirTemp(f.tmp, "profile-")
 	if err != nil {
 		t.Fatal(err)
 	}
 	command := exec.CommandContext(ctx, f.binary, args...)
 	command.Dir = cwd
-	command.Env = append(append(measuredEnvironment(os.Environ()), f.env...), "TMPDIR="+f.tmp, "PIG_HOME="+f.home, "PIG_CODING_AGENT_DIR="+f.agentDir, "PIG_PROFILE=metrics", "PIG_PROFILE_DIR="+dir, "GOMAXPROCS=1",
-		"PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic")
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("pig %v: %v\n%s", args, err, output)
+	command.Env = append(append(measuredEnvironment(os.Environ()), f.env...), "TMPDIR="+f.tmp, "PIG_HOME="+f.home, "PIG_CODING_AGENT_DIR="+f.agentDir, "PIG_PROFILE=metrics", "PIG_PROFILE_DIR="+dir, "GOMAXPROCS=1")
+	if !f.production {
+		command.Env = append(command.Env, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic")
+	}
+	var stdout, stderr strings.Builder
+	command.Stdout, command.Stderr = &stdout, &stderr
+	if err := command.Run(); err != nil {
+		t.Fatalf("pig %v: %v\n%s%s", args, err, stdout.String(), stderr.String())
 	}
 	files, _ := filepath.Glob(filepath.Join(dir, "pig-*-metrics.json"))
 	if len(files) != 1 {
@@ -362,7 +376,7 @@ func (f *startupFixture) measure(ctx context.Context, t *testing.T, cwd string, 
 	if err := json.Unmarshal(data, &stats); err != nil || stats.AllocBytes == 0 || stats.AllocObjects == 0 {
 		t.Fatalf("stats %q: %v", data, err)
 	}
-	return stats
+	return stats, stdout.String()
 }
 
 // warmPrompt is the smallest of three first-prompt measurements from cwd, after a run has staged the embedded docs and SDKs.
