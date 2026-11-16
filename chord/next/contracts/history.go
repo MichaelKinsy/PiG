@@ -26,8 +26,8 @@ type Change struct {
 	Side    ChangeSide
 }
 
-// MemberSide names a part of a variant: its state members, its methods, its keyed members or its event members
-// (upstream's `keyof VariantShape`).
+// MemberSide names a part of a variant: its state members, its methods, its keyed members, its event members or its
+// queries members (upstream's `keyof VariantShape`).
 type MemberSide string
 
 // The parts of a variant.
@@ -36,6 +36,8 @@ const (
 	MemberSideMethods MemberSide = "methods"
 	MemberSideKeyed   MemberSide = "keyed"
 	MemberSideEvents  MemberSide = "events"
+	// MemberSideQueries is a local contract's queries members (slice 14 §3.1: history.ts VariantShape.queries).
+	MemberSideQueries MemberSide = "queries"
 )
 
 // MemberNames lists the names of the members of side in any variant, each once, in order of first appearance.
@@ -53,6 +55,8 @@ func MemberNames(variants *NamedMap[*VariantData], side MemberSide) []string {
 			keys = variant.Keyed.Keys()
 		case MemberSideEvents:
 			keys = variant.Events.Keys()
+		case MemberSideQueries:
+			keys = variant.Queries.Keys()
 		}
 		for _, name := range keys {
 			if !seen[name] {

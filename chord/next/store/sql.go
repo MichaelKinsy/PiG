@@ -324,23 +324,45 @@ func exprSql(node ExprNode, params *[]sqlite.SqliteValue) string {
 
 var comparisons = map[WhereOp]string{WhereEq: "=", WhereNe: "<>", WhereLt: "<", WhereLte: "<=", WhereGt: ">", WhereGte: ">="}
 
-// WhereSql is a condition with its operands bound; SQL's `NULL` rules are the vocabulary's.
-func WhereSql(node WhereNode, params *[]sqlite.SqliteValue) string {
+// ConditionSql is how the parts of a condition that depend on where it runs are rendered: a column's name, and an
+// `exists`.
+type ConditionSql struct {
+	Column func(name string) string
+	Exists func(node ExistsNode, params *[]sqlite.SqliteValue) string
+}
+
+// ownColumns is a write's condition: its table's columns unqualified; an `exists` never reaches one (refused when
+// compiled).
+var ownColumns = ConditionSql{
+	Column: Quote,
+	Exists: func(ExistsNode, *[]sqlite.SqliteValue) string { panic("exists is rendered by a read") },
+}
+
+// WhereSql is a condition with its operands bound; SQL's `NULL` rules are the vocabulary's. The optional render
+// is Pi's `render` argument (default: a write's own columns).
+func WhereSql(node WhereNode, params *[]sqlite.SqliteValue, renders ...ConditionSql) string {
+	render := ownColumns
+	if len(renders) > 0 {
+		render = renders[0]
+	}
+	name := render.Column
 	switch node.Op {
 	case WhereAnd:
 		if len(node.Nodes) == 0 {
 			return "1"
 		}
-		return "(" + joinWhere(node.Nodes, " AND ", params) + ")"
+		return "(" + joinWhere(node.Nodes, " AND ", params, render) + ")"
 	case WhereOr:
 		if len(node.Nodes) == 0 {
 			return "0"
 		}
-		return "(" + joinWhere(node.Nodes, " OR ", params) + ")"
+		return "(" + joinWhere(node.Nodes, " OR ", params, render) + ")"
 	case WhereNot:
-		return "(NOT " + WhereSql(node.Nodes[0], params) + ")"
+		return "(NOT " + WhereSql(node.Nodes[0], params, render) + ")"
+	case WhereExists:
+		return render.Exists(*node.Exists, params)
 	case WhereIsNull:
-		return Quote(node.Column) + " IS NULL"
+		return name(node.Column) + " IS NULL"
 	case WhereInArray:
 		values := make([]any, len(node.Values))
 		for index, value := range node.Values {
@@ -348,29 +370,29 @@ func WhereSql(node WhereNode, params *[]sqlite.SqliteValue) string {
 		}
 		text, _ := jsstring.MarshalJSON(values)
 		*params = append(*params, string(text))
-		return Quote(node.Column) + " IN (SELECT value FROM json_each(?))"
+		return name(node.Column) + " IN (SELECT value FROM json_each(?))"
 	case WherePrefix:
 		prefix, _ := node.Value.(string)
 		upper, bounded := PrefixUpperBound(prefix)
 		*params = append(*params, prefix)
 		if !bounded {
-			return Quote(node.Column) + " >= ?"
+			return name(node.Column) + " >= ?"
 		}
 		*params = append(*params, upper)
-		return "(" + Quote(node.Column) + " >= ? AND " + Quote(node.Column) + " < ?)"
+		return "(" + name(node.Column) + " >= ? AND " + name(node.Column) + " < ?)"
 	}
 	operator, ok := comparisons[node.Op]
 	if !ok {
 		panic(fmt.Sprintf("store: unknown condition operator %q", node.Op))
 	}
 	*params = append(*params, ToSqlite(node.Value))
-	return Quote(node.Column) + " " + operator + " ?"
+	return name(node.Column) + " " + operator + " ?"
 }
 
-func joinWhere(nodes []WhereNode, separator string, params *[]sqlite.SqliteValue) string {
+func joinWhere(nodes []WhereNode, separator string, params *[]sqlite.SqliteValue, render ConditionSql) string {
 	parts := make([]string, len(nodes))
 	for index, node := range nodes {
-		parts[index] = WhereSql(node, params)
+		parts[index] = WhereSql(node, params, render)
 	}
 	return strings.Join(parts, separator)
 }

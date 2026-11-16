@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 )
 
@@ -57,9 +58,18 @@ func (p *keyedPromise[T]) then(callback func(value T, err error)) {
 	p.loop.Queue(func() { callback(value, err) })
 }
 
-// thenWithContext is `awaitWithContext(promise, context)`: callback gets the promise's result, or the abort reason
-// (`context.Cause(ctx)`) once ctx is aborted first. Cancellation ends only this waiter; the promise goes on. A context
-// that cannot be aborted waits on the promise alone.
+// thenWithContext is `awaitWithContext(promise, context)` (context/index.ts:138-153): callback gets the promise's result, or
+// the abort reason (`context.Cause(ctx)`) once ctx is aborted first. Cancellation ends only this waiter; the promise goes
+// on. A context that cannot be aborted waits on the promise alone.
+//
+// Pi orders the two events by when they happen. Its abort listener runs inside `abort()` and rejects the wait there, at
+// once; the settlement reaches the wait through a reaction, a microtask. So an abort inside a section wins over a
+// settlement of the same section (whichever came first in it), whose reaction has not run, and a reaction that ran decides
+// for the result. The listener here is chordctx.OnAbort, which runs inside the cancel function: when that is a section of
+// this loop it decides the wait at once and queues the continuation, and an abort from another goroutine is queued as an
+// event of its own, at the time it is observed (Pi: an external abort signal fires in a task of its own). A source
+// OnAbort cannot listen to (a deadline, a context of another package) is observed by context.AfterFunc on a goroutine of
+// its own, that enters the loop when it can.
 func (p *keyedPromise[T]) thenWithContext(ctx context.Context, callback func(value T, err error)) {
 	if ctx.Done() == nil {
 		p.then(callback)
@@ -73,23 +83,63 @@ func (p *keyedPromise[T]) thenWithContext(ctx context.Context, callback func(val
 		})
 		return
 	}
+	// fired is set by the first of the abort and the settlement to decide the wait; its owner is the loop's sections.
 	fired := false
-	stop := context.AfterFunc(ctx, func() {
-		p.loop.Run(func() {
+	var stopListening, stopAfter func() bool
+	// end is the wait's end: it keeps no registration on ctx.
+	end := func() {
+		stopListening()
+		if stopAfter != nil {
+			stopAfter()
+		}
+	}
+	inSection := onLoopOf(p.loop)
+	var exact bool
+	stopListening, exact = chordctx.OnAbort(ctx, func(cause error) {
+		if inSection != nil && inSection() {
+			// Inside the cancelling section: the wait is decided here, before the settlement's reaction (a microtask, queued
+			// earlier or later) can run; the continuation is a microtask queued at the abort.
 			if fired {
 				return
 			}
 			fired = true
+			p.loop.Queue(func() {
+				end()
+				var zero T
+				callback(zero, cause)
+			})
+			return
+		}
+		// From another goroutine: an event of its own, queued now, in order with the settlements queued before and after.
+		p.loop.Queue(func() {
+			if fired {
+				return
+			}
+			fired = true
+			end()
 			var zero T
-			callback(zero, context.Cause(ctx))
+			callback(zero, cause)
 		})
 	})
+	if !exact {
+		stopAfter = context.AfterFunc(ctx, func() {
+			p.loop.Run(func() {
+				if fired {
+					return
+				}
+				fired = true
+				end()
+				var zero T
+				callback(zero, context.Cause(ctx))
+			})
+		})
+	}
 	p.then(func(value T, err error) {
 		if fired {
 			return
 		}
 		fired = true
-		stop()
+		end()
 		callback(value, err)
 	})
 }
@@ -98,7 +148,7 @@ func (p *keyedPromise[T]) thenWithContext(ctx context.Context, callback func(val
 // waits parks (its call's section goes on) before it blocks.
 func (p *keyedPromise[T]) await(ctx context.Context) (T, error) {
 	parking.Park(ctx)
-	<-p.done
+	parkedOn(p.done)
 	return p.value, p.err
 }
 

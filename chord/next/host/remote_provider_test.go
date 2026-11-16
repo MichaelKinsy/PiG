@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -501,6 +503,58 @@ func TestProviderOneMessagePerLinkPerCommit(t *testing.T) {
 			}
 		})
 
+		// Ports "a derive read between two changes of its source in one commit travels once: no protocol error, the link stays open"
+		// (Pi 36c709e720b6..f6600b58f347). Go forms: the commit is `server.batch.commit` run on the host's section loop; the
+		// contract's one variant is the helper's `v`.
+		t.Run("a derive read between two changes of its source in one commit travels once: no protocol error, the link stays open", func(t *testing.T) {
+			gauge := remoteOneVariant("test.gauge", contracts.Params{}, contracts.VariantDeclaration{
+				State: []contracts.Property{contracts.Prop("reading", contracts.Obj(contracts.Prop("n", contracts.Int())))},
+			})
+			var level state.Writable[any]
+			var reading chord.Watchable[delta.JsonValue]
+			l := linked(t, func(h FacetHost) error {
+				return h.Serve(gauge, func(_ *delta.JsonObject, _ data.Principal, self Self) (contracts.Implementation, error) {
+					source := self.Writable(float64(1))
+					derived := self.Derive([]any{source}, func(values []any) (delta.JsonValue, error) {
+						return jsonObject("n", values[0]), nil
+					})
+					level, reading = source, derived
+					return contracts.Implementation{Variant: "v", Members: contracts.VariantImplementation{
+						State: map[string]chord.Watchable[delta.JsonValue]{"reading": derived},
+					}}, nil
+				}, ServeOptions{})
+			}, linkedOptions{})
+			held := mustGet(t, l.Client, gauge, jsonObject())
+			if got, err := held.Member("reading").Value(); err != nil || !reflect.DeepEqual(got, any(jsonObject("n", float64(1)))) {
+				t.Fatalf("reading = %v, %v, want {n:1}", got, err)
+			}
+			// One commit of the server: its source changes, something reads the derive (as a reference of the host that keeps or
+			// binds the member in that commit does), its source changes again.
+			server := l.Server.(*chordHost)
+			server.events.Run(func() {
+				err := server.batch.Commit(func() error {
+					must(t, level.Set(float64(2)))
+					if got := reading.Value(); !reflect.DeepEqual(got, any(jsonObject("n", float64(2)))) {
+						t.Errorf("read in the commit = %v, want {n:2}", got)
+					}
+					must(t, level.Set(float64(3)))
+					return nil
+				}, background)
+				must(t, err)
+			})
+			transported(l.Links[0], l.Links[1])
+			if l.ServerErrors.Len() != 0 || l.ClientErrors.Len() != 0 {
+				t.Fatalf("errors = server %v, client %v; want none", l.ServerErrors.All(), l.ClientErrors.All())
+			}
+			if kind := stateOfRef(held).Kind; kind != RefStateLive {
+				t.Fatalf("state = %v, want live", kind)
+			}
+			if got, err := held.Member("reading").Value(); err != nil || !reflect.DeepEqual(got, any(jsonObject("n", float64(3)))) {
+				t.Fatalf("reading after = %v, %v, want {n:3}", got, err)
+			}
+			held.Release()
+		})
+
 		// Ports "a derive travels with its source in the same part".
 		t.Run("a derive travels with its source in the same part", func(t *testing.T) {
 			s := notesServer(t, nil)
@@ -654,9 +708,9 @@ func TestProviderRaces(t *testing.T) {
 					self.Open(func(context.Context) (any, error) {
 						events.add("open")
 						return nil, nil
-					}, func(any, NativeCloseReason, context.Context) error {
+					}, func(_ any, _ NativeCloseReason, ctx context.Context) error {
 						events.add("closing")
-						<-finish
+						_, _ = chordctx.Receive(context.WithoutCancel(ctx), finish)
 						events.add("closed")
 						return nil
 					})

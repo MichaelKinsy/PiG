@@ -1,6 +1,8 @@
 package host
 
 import (
+	"context"
+
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/state"
@@ -56,16 +58,44 @@ type blocker struct {
 	state blockerState
 }
 
+// blocked is what a check names its blocker to: a parking episode's `parked_long` clock (parkedLong), or nothing (a route's
+// decision is no attempt: it reports no long wait). nil names none: a denial alone blocks, and a denial is no report.
+type blocked interface{ blockedBy(found *blocker) }
+
+// parkingKind is what a parked attempt does after one check.
+type parkingKind uint8
+
+const (
+	// parkingReady: it goes on.
+	parkingReady parkingKind = iota
+	// parkingParked: it stays parked showing shown.
+	parkingParked
+	// parkingBroken: it breaks with err.
+	parkingBroken
+)
+
+// parkResult is what a parked attempt does after one check (of its dependencies, of its readers, or of its admission): it goes
+// on; it stays parked showing shown (firstPass as in check; cause: why it parked, for a reload's report, nil when only a
+// pinned key failed to load); or it breaks. Only the fields of its kind are set.
+type parkResult struct {
+	kind      parkingKind
+	shown     *RefState
+	firstPass bool
+	cause     *data.FailureCause
+	err       *data.ChordError
+}
+
 // check is what the dependencies say, by kind. Only the fields of its kind are set. shown, firstPass, blocker and loadingOn
 // are of a parked check: what the attempt shows, whether its first pass is over (no blocker, loading or failed, is an
-// object here still without its first outcome), its first blocker in declaration order (`parked_long` names it), and the
+// object here still without its first outcome), its first blocker in declaration order (`parked_long` names it; nil when only
+// denials block: a denial is no report), and the
 // first blocker in declaration order that is only loading (a reload's report names it; nil when none). err is of a broken
 // check.
 type check struct {
 	kind      checkKind
 	shown     *RefState
 	firstPass bool
-	blocker   blocker
+	blocker   *blocker
 	loadingOn *string
 	err       *data.ChordError
 }
@@ -76,6 +106,7 @@ func checkDependencies(dependencies []dependency) check {
 	firstPass := true
 	var first *blocker
 	var loadingOn *string
+	parked := false
 	for _, dependency := range dependencies {
 		if dependency.kind == dependencyRegistry {
 			value := dependency.value
@@ -87,6 +118,7 @@ func checkDependencies(dependencies []dependency) check {
 			if firstFailed == nil {
 				firstFailed = waitingOn(label, data.AsChordError(start.Error, label))
 			}
+			parked = true
 			if first == nil {
 				first = &blocker{label: label, state: blockerFailed}
 			}
@@ -101,6 +133,14 @@ func checkDependencies(dependencies []dependency) check {
 			return check{kind: checkBroken, err: current.Error}
 		case RefStateFailed:
 			err := current.Cause.Error
+			parked = true
+			// Before `healsNever`: a denial's error is `forbidden`, and it heals when the dependency is admitted.
+			if current.Cause.Kind == data.FailureDenied {
+				if firstFailed == nil {
+					firstFailed = &RefState{Kind: RefStateFailed, Cause: current.Cause}
+				}
+				continue
+			}
 			if healsNever(err) {
 				return check{kind: checkBroken, err: err}
 			}
@@ -119,6 +159,7 @@ func checkDependencies(dependencies []dependency) check {
 				label := binding.label()
 				loadingOn = &label
 			}
+			parked = true
 			if first == nil {
 				first = &blocker{label: binding.label(), state: blockerLoading}
 			}
@@ -127,14 +168,14 @@ func checkDependencies(dependencies []dependency) check {
 			}
 		}
 	}
-	if first == nil {
+	if !parked {
 		return check{kind: checkLive}
 	}
 	shown := refLoading
 	if firstFailed != nil {
 		shown = firstFailed
 	}
-	return check{kind: checkParked, shown: shown, firstPass: firstPass, blocker: *first, loadingOn: loadingOn}
+	return check{kind: checkParked, shown: shown, firstPass: firstPass, blocker: first, loadingOn: loadingOn}
 }
 
 // healsNever reports whether a dependency that failed with err never heals by itself, so its dependent breaks too: a cycle
@@ -160,6 +201,38 @@ func parkedCause(parked check) data.FailureCause {
 // waitingOn is a parked attempt's state for a blocker label that failed with err.
 func waitingOn(label string, err *data.ChordError) *failed {
 	return &RefState{Kind: RefStateFailed, Cause: data.WaitingFor(label, err), RetryAt: nil}
+}
+
+// pinKeys loads the keys a factory (or an admission) pinned on bindings' keyed members (`at(key)`), each reference named to
+// long as the blocker while they load (`failed` when they failed); it resolves nil once all are, else what the parked attempt
+// shows for the first that failed to load (`waiting` on its reference).
+func pinKeys(loop sectionLoop, bindings []*binding, long blocked, ctx context.Context) *keyedPromise[*failed] {
+	result := newKeyedPromise[*failed](loop)
+	var next func(index int)
+	next = func(index int) {
+		if index == len(bindings) {
+			result.resolve(nil)
+			return
+		}
+		bound := bindings[index]
+		label := bound.label()
+		pinning := bound.pinKeys(ctx)
+		if pinning == nil {
+			next(index + 1)
+			return
+		}
+		long.blockedBy(&blocker{label: label, state: blockerLoading})
+		pinning.then(func(_ struct{}, err error) {
+			if err != nil {
+				long.blockedBy(&blocker{label: label, state: blockerFailed})
+				result.resolve(waitingOn(label, data.AsChordError(err, label)))
+				return
+			}
+			next(index + 1)
+		})
+	}
+	next(0)
+	return result
 }
 
 // parkedLong is the `parked_long` report of one parking episode (dependency model §7, audit A11): once, when the attempt has
@@ -190,7 +263,7 @@ func newParkedLong(loop eventLoop, object *chordObject) *parkedLong {
 }
 
 // blockedBy is what the latest check found blocking.
-func (p *parkedLong) blockedBy(found blocker) { p.last = &found }
+func (p *parkedLong) blockedBy(found *blocker) { p.last = found }
 
 // stop: the episode ended: no report from now on.
 func (p *parkedLong) stop() { p.timer.Stop() }

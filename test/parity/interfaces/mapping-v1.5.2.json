@@ -109271,26 +109271,18 @@
     },
     {
       "id": "pkg:chord/.#Host::property:deleteHostData::call:0",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:c52b6271184a1c6158205540568b6f43c4fd3d5fe5d370f8fe76deffd6a7c867",
-      "rationale": "Derived by the interface gap detector: Host::property:deleteHostData::call:0 is Go chord/next/host/host_host.go#Host.DeleteHostData (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/chord/src/host/host.ts:392) declares `deleteHostData(address: Address, context: Context): Promise<HostDataCounts>`; Pi f6600b58f347 (host.ts:426, 1246) adds `options?: HostDeleteOptions` (`{ readonly plugin?: string }`, host.ts:435): with a plugin, only what that plugin's objects own of the address is deleted, and a plugin not loaded here is invalid/args. PiG implements the successor, not the pin's shape: Host.DeleteHostData(address, ctx, options HostDeleteOptions) (chord/next/host/host_host.go:295, implemented at 1169), with HostDeleteOptions{Plugin *string} (host_host.go:118) whose zero value is Pi's absent options, everything of the address. The signature rules read Pi's Context as Go's ctx and have no Go parameter for the pin's missing third one, so they refute the row against the pin's two parameters; Remove condition: at the pin bump to a Pi release that carries this declaration the row derives as ported; delete this entry then. Exercised by the Go ports of host-data.test.ts's three delete-by-plugin cases (test/host/host-data.test.ts:289, 302, 316) and a fourth, the slot wait: TestHostDataADeleteLimitedToOnePlugin* (chord/next/host/host_host_data_test.go).",
       "pigTargets": [
         "chord/next/host/host_host.go#Host.DeleteHostData"
       ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/app/app.go#App.DeleteData"
-      ],
       "evidence": [
-        "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsReleased",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
-      ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
+        "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginRemovesThatPluginsRecordsAndRowsOfTheAddressInOneCommitAndLeavesTheOthers",
+        "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginRunsTheReadsOverItsTablesAgainTheOwnersLiveQueryAndPinnedKeyFollowInThatCommit",
+        "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginRefusesAPluginThatIsNotLoadedHereAndChangesNothing",
+        "test:chord/next/host/host_host_data_test.go#TestHostDataADeleteLimitedToOnePluginWaitsForThatPluginsSlotLessOwnersAndNotForAnotherPluginsAnOwnerOfAnotherPluginWithItsLineHeldDoesNotHoldItUp"
+      ]
     },
     {
       "id": "pkg:chord/.#Host::property:exportHostData",
@@ -115630,24 +115622,16 @@
     },
     {
       "id": "pkg:chord/.#Query::property:orderBy::call:0",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:e9f496da6be6c7ea8b95b23e0173a847e3d24ce1f54e977f98ecadd280934420",
-      "rationale": "Derived by the interface gap detector: Query::property:orderBy::call:0 is Go chord/next/store/query.go#Query.OrderBy (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/chord/src/store/query.ts:57) declares `orderBy(fn: (row: ColumnRefs<C>) => ColumnRef<unknown, \"str\" | \"int\">, direction?: \"asc\" | \"desc\"): Query<C, K>`; Pi f6600b58f347 (query.ts:141) declares `orderBy(fn: (row: ColumnRefs<C>, partner: ColumnRefs<J>) => ColumnRef<unknown, \"str\" | \"int\">, direction = \"asc\"): Query<C, K, J>`: the callback also gets the columns of the joined set, and a partner column (`<set>:<column>`) may order the query (slice 14 joins). PiG implements the successor, not the pin's shape: Query.OrderBy(fn func(row, partner ColumnRefs) *ColumnRef, direction string) (chord/next/store/query.go:157; direction \"\" is \"asc\"; a query without a join passes an empty partner, query.go:236). The signature rules see the pin's one callback parameter against Go's two (S4) and refute the row. Remove condition: at the pin bump to a Pi release that carries this declaration the row derives as ported; delete this entry then. Exercised by TestReadPlanJoin (OrderBy with a partner column in the callback: the order, the refusals of an opt, bool, missing or twice-named one; Pi read-plan.test.ts:248), TestReadPlanRowsJoin (the rows come in that order) and TestSkipsJoinedAndExistsTables (OrderBy on a partner column).",
       "pigTargets": [
         "chord/next/store/query.go#Query.OrderBy"
       ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/next/store/query.go#Query.OrderBy"
-      ],
       "evidence": [
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
-        "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
-        "test:chord/next/store/query_test.go#TestCursors"
+        "test:chord/next/store/read_plan_test.go#TestReadPlanJoin",
+        "test:chord/next/store/read_plan_rows_test.go#TestReadPlanRowsJoin",
+        "test:chord/next/store/skip_test.go#TestSkipsJoinedAndExistsTables"
       ]
     },
     {
@@ -115694,24 +115678,15 @@
     },
     {
       "id": "pkg:chord/.#Query::property:where::call:0",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:a5a200b4a62dfb393ac9c07ef83ea5c91d2d3adf29099651473cea81527d9f68",
-      "rationale": "Derived by the interface gap detector: Query::property:where::call:0 is Go chord/next/store/query.go#Query.Where (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/chord/src/store/query.ts:46) declares `where(fn: (row: ColumnRefs<C>) => Condition): Query<C, K>`; Pi f6600b58f347 (query.ts:86) declares `where(fn: (row: ColumnRefs<C>, partner: ColumnRefs<J>) => Condition): Query<C, K, J>`: the callback also gets the columns of the joined set, so a condition may be written over a partner column (slice 14 joins). PiG implements the successor, not the pin's shape: Query.Where(fn func(row, partner ColumnRefs) Condition) (chord/next/store/query.go:64; a query without a join passes an empty partner, query.go:236). The signature rules see the pin's one callback parameter against Go's two (S4) and refute the row. Remove condition: at the pin bump to a Pi release that carries this declaration the row derives as ported; delete this entry then. Exercised by TestReadPlanJoin and TestReadPlanRowsJoin (each calls Where with a partner column in the callback; Pi read-plan.test.ts:248).",
       "pigTargets": [
         "chord/next/store/query.go#Query.Where"
       ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/next/store/query.go#Query.Where"
-      ],
       "evidence": [
-        "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
-        "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
-        "test:chord/next/host/host_example_66_test.go#TestExample66HostData"
+        "test:chord/next/store/read_plan_test.go#TestReadPlanJoin",
+        "test:chord/next/store/read_plan_rows_test.go#TestReadPlanRowsJoin"
       ]
     },
     {
@@ -117914,7 +117889,7 @@
       ],
       "evidence": [
         "test:chord/next/store/export_test.go#TestExportHostSelection",
-        "test:chord/next/store/live_query_test.go#TestQueryRefreshAdoptsItsLastApplicationsRunsOnlyAGroupedCommitThatRolledBackAppliesAgainAlone",
+        "test:chord/next/store/live_query_test.go#TestLiveQueryAppliedAgainAdoptsItsLastApplicationsRunsOnlyAGroupedCommitThatRolledBackAppliesAgainAlone",
         "test:chord/next/store/store_test.go#TestStore"
       ]
     },
@@ -120370,7 +120345,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/next/store/live_query.go#LiveQueries.OnHostKind"
+        "call:chord/next/store/reads.go#hostKindOf"
       ],
       "evidence": [
         "test:chord/next/store/table_test.go#TestHostColumnTables"

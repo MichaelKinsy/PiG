@@ -602,7 +602,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	core = append(core, options.Facets...)
 	for _, kind := range options.Workers {
-		created, err := a.workersOf(kind, opened.layout, workerHosts, ctx)
+		created, err := a.workersOf(opened.store, kind, opened.layout, workerHosts, ctx)
 		if err != nil {
 			return err
 		}
@@ -829,8 +829,9 @@ func hostPackagesOf(api AppAPI, kind AppKindEntry) []string {
 }
 
 // workersOf is the workers component of one worker kind (its base copied after the listen, into the kind's directory under
-// `cache/workers/`): started with the kit's part of the start data beside the app's.
-func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts, ctx context.Context) (*workers.Workers, error) {
+// `cache/workers/`): started with the kit's part of the start data beside the app's. The server's store is the workers' (Pi's `store`):
+// a worker's exit is published after the commits its calls queued there.
+func (a *App) workersOf(serverStore store.Store, kind AppWorkerKind, layout AppLayout, hosts *workerHosts, ctx context.Context) (*workers.Workers, error) {
 	dataDir := layout.DataDir
 	options := a.options
 	facet := kind.Facet
@@ -866,6 +867,7 @@ func (a *App) workersOf(kind AppWorkerKind, layout AppLayout, hosts *workerHosts
 			return workerLock(options.Name, dataDir, address.Key), nil
 		},
 		IdleMs:    idle,
+		Store:     serverStore,
 		Plugins:   a.Plugins.Component,
 		OnError:   func(err workers.WorkersError) { a.report(AppErrorWorkers, err) },
 		Forgotten: func(address contracts.Address) { hosts.forget(address.Key) },
@@ -1185,7 +1187,7 @@ func (a *App) placeAndCommit(dir, staging, aside, server, kitServer string, addr
 	if kitServer == "" {
 		// No part of the Go host's: its data of the address is replaced by nothing (a replace removes the address's data), or refused if it has any.
 		if existing == store.ExistingReplace {
-			_, err := a.Host.DeleteHostData(address, ctx)
+			_, err := a.Host.DeleteHostData(address, ctx, host.HostDeleteOptions{})
 			return true, err
 		}
 		// Refuse: Pi's one `importHostData` refuses an address that has data in the store whatever the archive holds, so the Go host's
@@ -1248,7 +1250,7 @@ func (a *App) DeleteData(address contracts.Address, ctx context.Context) error {
 		if err := a.nodeData.DeleteHostData(address, ctx); err != nil {
 			return err
 		}
-		if _, err := a.Host.DeleteHostData(address, ctx); err != nil {
+		if _, err := a.Host.DeleteHostData(address, ctx, host.HostDeleteOptions{}); err != nil {
 			return err
 		}
 		return os.RemoveAll(dir)

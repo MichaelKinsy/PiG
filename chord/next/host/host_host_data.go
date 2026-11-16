@@ -3,7 +3,6 @@ package host
 import (
 	"context"
 	"slices"
-	"strings"
 	"sync"
 
 	chordctx "github.com/MichaelKinsy/PiG/chord/context"
@@ -112,8 +111,8 @@ func (g *hostDataGate) turn(work func(exclusive func(section func() error) error
 	previous, done := g.queue()
 	if _, err := chordctx.Receive(ctx, previous); err != nil {
 		// Given up while waiting for its turn: the next one waits for the earlier ones still.
-		g.loop.Go(func() {
-			<-previous
+		startTask(g.loop, func() {
+			parkedOn(previous)
 			close(done)
 		})
 		return err
@@ -218,7 +217,7 @@ func importInto(site hostDataSite, parts store.PartSource, ctx context.Context, 
 					if _, found := histories[table]; found {
 						continue
 					}
-					if owner := ownerOf(table); !slices.Contains(missing, owner) {
+					if owner := store.OwnerOfTable(table); !slices.Contains(missing, owner) {
 						missing = append(missing, owner)
 					}
 				}
@@ -267,13 +266,9 @@ func compareUTF16(a, b string) int {
 	return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b))
 }
 
-// ownerOf is the owner of table `table` (its SQL name `<owner>:<table>`).
-func ownerOf(table string) string {
-	return table[:strings.IndexByte(table, ':')]
-}
-
-// deleteFrom deletes the data of address from the site's store, coordinated with the live owners (spec §5).
-func deleteFrom(site hostDataSite, address contracts.Address, ctx context.Context) (store.HostDataCounts, error) {
+// deleteFrom deletes the data of address from the site's store, coordinated with the live owners (spec §5); with only (nil:
+// all), the data of those owners (the object types of one plugin: slice 14 §6) and nothing else.
+func deleteFrom(site hostDataSite, address contracts.Address, ctx context.Context, only map[string]struct{}) (store.HostDataCounts, error) {
 	key, err := store.StoredText(address.Key, "deleteHostData: address")
 	if err != nil {
 		return store.HostDataCounts{}, err
@@ -281,12 +276,21 @@ func deleteFrom(site hostDataSite, address contracts.Address, ctx context.Contex
 	var counts store.HostDataCounts
 	err = site.gate.turn(func(exclusive func(section func() error) error) error {
 		return exclusive(func() error {
-			owners, err := hostdata.Owners(site.store, key, nil, ctx)
+			all, err := hostdata.Owners(site.store, key, nil, ctx)
 			if err != nil {
 				return err
 			}
+			owners := all
+			if only != nil {
+				owners = map[string]struct{}{}
+				for owner := range all {
+					if _, wanted := only[owner]; wanted {
+						owners[owner] = struct{}{}
+					}
+				}
+			}
 			counts, err = coordinated(site, owners, key, ctx, func(commit hostdata.Commit) (store.HostDataCounts, error) {
-				return hostdata.Delete(site.store, key, commit, ctx)
+				return hostdata.Delete(site.store, key, commit, only, ctx)
 			})
 			return err
 		})
@@ -313,10 +317,10 @@ type slotRead struct {
 	changed documents.ChangedDocument
 }
 
-// queryRead is a live query a change re-runs and adopts.
+// queryRead is a read of the store a change runs again and adopts.
 type queryRead struct {
-	query *store.LiveQuery
-	run   store.QueryRun
+	read *store.RegisteredRead
+	run  store.ReadRun
 }
 
 // hostDataReads is what the live owners hold of a host's data, read again inside the commit step, after its writes.
@@ -370,10 +374,9 @@ func coordinated[T any](site hostDataSite, owners map[string]struct{}, key strin
 				}
 			}
 		}
-		for _, object := range objects {
-			for _, query := range object.queries().OnHostKind(kind) {
-				queries = append(queries, &queryRead{query: query})
-			}
+		// Every read over a table with a host column of the kind, joined and `exists` tables included (slice 14 §5).
+		for _, read := range site.store.Reads.OnHostKind(kind) {
+			queries = append(queries, &queryRead{read: read})
 		}
 	})
 	// Counted and adopted under the caller's telemetry; nothing after admission is cancelled by its signal.
@@ -387,7 +390,8 @@ func coordinated[T any](site hostDataSite, owners map[string]struct{}, key strin
 			each.changed = changed
 		}
 		for _, each := range queries {
-			each.run = each.query.Rerun(step, quiet)
+			each.run = each.read.Run(step, quiet)
+			each.read.Ran(step.Executor, each.run)
 		}
 		return nil
 	}}
@@ -409,7 +413,7 @@ func coordinated[T any](site hostDataSite, owners map[string]struct{}, key strin
 						}
 						// Each read ran in the step before `COMMIT`.
 						for _, each := range queries {
-							each.query.Adopt(each.run)
+							each.read.Adopt(each.run)
 						}
 						return nil
 					}, quiet)

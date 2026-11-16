@@ -8,6 +8,7 @@ import (
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -295,7 +296,10 @@ func TestHostReferencesWaitingInTheIndexEndAtTheStartOfTheHostsClose(t *testing.
 	host := newHost(t, HostOptions{OnError: func(HostError) {}})
 	facet := DefineFacet(func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(core, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			selfOpen(self, func(context.Context) error { return nil }, func(NativeCloseReason) { <-closeGate })
+			self.Open(func(context.Context) (any, error) { return nil, nil }, func(_ any, _ NativeCloseReason, ctx context.Context) error {
+				_, _ = chordctx.Receive(context.WithoutCancel(ctx), closeGate)
+				return nil
+			})
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(float64(1))},
 			}}, nil

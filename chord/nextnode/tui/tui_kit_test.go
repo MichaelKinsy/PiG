@@ -193,6 +193,8 @@ type launched struct {
 	terminal *pipeTerminal
 	running  *RunningTerminal
 	code     chan int
+	// cancel cancels the context the launcher was started with.
+	cancel context.CancelFunc
 }
 
 // launch starts a launcher against port with credentials. Pairing waits for the owner's approval inside `StartTerminal`, so
@@ -210,7 +212,7 @@ func launch(t testing.TB, port int, credentials TerminalCredentials) *launched {
 		},
 	}
 	ctx, cancel := context.WithCancel(background)
-	l := &launched{t: t, terminal: terminal, code: make(chan int, 1)}
+	l := &launched{t: t, terminal: terminal, code: make(chan int, 1), cancel: cancel}
 	begun := make(chan struct{})
 	start := func() {
 		defer close(begun)

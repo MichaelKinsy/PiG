@@ -78,8 +78,8 @@ func TestTableHandle(t *testing.T) {
 		t.Run("page fetches limit + 1 for next, and the cursor continues in order with the key tie-break", func(t *testing.T) {
 			_, edits, definition := filledHandle(t, 10)
 			q := NewQuery(definition).
-				Where(func(e ColumnRefs) Condition { return Prefix(e["path"], "p/") }).
-				OrderBy(func(e ColumnRefs) *ColumnRef { return e["path"] }, "desc")
+				Where(func(e, _ ColumnRefs) Condition { return Prefix(e["path"], "p/") }).
+				OrderBy(func(e, _ ColumnRefs) *ColumnRef { return e["path"] }, "desc")
 			noError(t, q.Err())
 			label := func(row Row) string { return fmt.Sprintf("%s:%s", row["path"], row["id"]) }
 			var seen []string
@@ -124,7 +124,7 @@ func TestTableHandle(t *testing.T) {
 
 		t.Run("rows reads every page; count counts", func(t *testing.T) {
 			_, edits, definition := filledHandle(t, 250)
-			rows := edits.Rows(background, NewQuery(definition).Where(func(e ColumnRefs) Condition { return Gte(e["at"], 10) }))
+			rows := edits.Rows(background, NewQuery(definition).Where(func(e, _ ColumnRefs) Condition { return Gte(e["at"], 10) }))
 			defer rows.Close()
 			var ids []string
 			for {
@@ -138,12 +138,12 @@ func TestTableHandle(t *testing.T) {
 			if len(ids) != 240 || ids[0] != "e010" {
 				t.Fatalf("rows = %d first %q, want 240 first e010", len(ids), ids[0])
 			}
-			count, err := edits.Count(background, NewQuery(definition).Where(func(e ColumnRefs) Condition { return Eq(e["path"], "p/0") }))
+			count, err := edits.Count(background, NewQuery(definition).Where(func(e, _ ColumnRefs) Condition { return Eq(e["path"], "p/0") }))
 			noError(t, err)
 			if count != 84 {
 				t.Fatalf("count(p/0) = %d, want 84", count)
 			}
-			count, err = edits.Count(background, NewQuery(definition).Where(func(e ColumnRefs) Condition { return IsNull(e["note"]) }))
+			count, err = edits.Count(background, NewQuery(definition).Where(func(e, _ ColumnRefs) Condition { return IsNull(e["note"]) }))
 			noError(t, err)
 			if count != 250 {
 				t.Fatalf("count(note is null) = %d, want 250", count)

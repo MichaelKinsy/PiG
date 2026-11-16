@@ -158,16 +158,7 @@ func (c *fakeClock) Advance(ms int64) {
 }
 
 // object is a documents owner: the object's name, batch, context, store and live failures.
-// liveQueries are the object's live queries, made by the first use (the tests have none, the store asks for them).
-func (o *object) liveQueries() *store.LiveQueries {
-	if o.queries == nil {
-		o.queries = store.NewLiveQueries()
-	}
-	return o.queries
-}
-
 type object struct {
-	queries   *store.LiveQueries
 	t         *testing.T
 	label     string
 	loop      *loop
@@ -236,6 +227,10 @@ func (o *object) Metrics() *chordtelemetry.Instruments {
 func (o *object) Do(work func())  { o.loop.do(work) }
 func (o *object) InSection() bool { return o.loop.holder.Load() == goroutineID() }
 func (o *object) Now() int64      { return o.clock.Now() }
+
+// Task runs fn on a goroutine of its own: the harness has no join, its tests wait for what the task does.
+func (o *object) Task(fn func()) { go fn() }
+
 func (o *object) AfterFunc(d time.Duration, job func()) func() {
 	return o.clock.AfterFunc(d, func() { job() })
 }

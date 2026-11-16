@@ -1,6 +1,7 @@
 package store
 
 import (
+	"errors"
 	"maps"
 	"strconv"
 
@@ -62,6 +63,9 @@ func truthOf(node WhereNode, row EvaluatedRow) truth {
 			return truthFalse
 		}
 		return truthTrue
+	case WhereExists:
+		// Only a read's condition tests `exists`, and reads run in the database (slice 14 §3.3: no second evaluator).
+		panic(errors.New("exists is not evaluated in memory"))
 	case WhereIsNull:
 		_, present := row[node.Column]
 		return fromBool(!present)

@@ -10,6 +10,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/chord/delta"
+	"github.com/MichaelKinsy/PiG/chord/next/contracts"
+	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/sqlite/node"
 	"github.com/MichaelKinsy/PiG/chord/telemetrysqlite"
 	"github.com/MichaelKinsy/PiG/internal/browsertest"
@@ -140,6 +143,75 @@ func TestReactBindingsCallTheLatestListenerOfUseEventsFollowItsMemberAndStopAtUn
 	if got := beats(); got != `["first:0","second:1","second:3"]` {
 		t.Fatalf("beats = %s after the unmount, want the three before it", got)
 	}
+}
+
+// deskMode is the Go form of the desk plugin's local `test.desk.mode` (contracts are data): the mode the desk's admission reads.
+var deskMode = mustLocal("test.desk.mode", contracts.LocalDeclaration{Version: 1, Params: contracts.Params{}, Members: []contracts.LocalEntry{
+	contracts.Mem("mode", contracts.Str()), contracts.Mem("set", contracts.NewMethod(contracts.Str())),
+}})
+
+// deskPlugin is Pi's DESK_PLUGIN (hooks.test.ts): a server plugin serving the fixture's `Desk`, a reader or an editor by `DeskMode`
+// (`reader` at first), else denied.
+var deskPlugin = map[string]string{
+	"server.ts": strings.Join([]string{
+		`import { allow, defineFacet, deny, hostKind, local, method, oneOf, remote, str } from "@test/app/v1";`,
+		`const DeskMode = local("test.desk.mode", { version: 1, params: {}, members: { mode: str(), set: method(str()) } });`,
+		`const text = { state: { text: str() } };`,
+		`const Desk = remote("test.desk", { version: 1, params: {}, hostAddress: () => hostKind("server")(), admission: oneOf("reader", "editor"), variants: { reader: text, editor: { ...text, methods: { write: method(str()) } } } });`,
+		`export default defineFacet((h) => {`,
+		`	h.serve(DeskMode, (_params, self) => {`,
+		`		const mode = self.writable("reader");`,
+		`		return { mode: self.derive([mode], ([value]) => value), set: async (next) => { mode.set(next); return null; } };`,
+		`	});`,
+		`	h.serve(Desk, (_params, _principal, mode, self) => {`,
+		`		const text = self.writable("a desk");`,
+		`		const shown = self.derive([text], ([value]) => value);`,
+		`		if (mode === "reader") return { variant: "reader", members: { text: shown } };`,
+		`		return { variant: "editor", members: { text: shown, write: async (next) => { text.set(next); return null; } } };`,
+		`	}, {`,
+		`		admit: (_params, _principal, self) => self.derive([self.get(DeskMode, {}).mode], ([mode]) =>`,
+		`			mode === "reader" || mode === "editor" ? allow(mode) : deny("no access")),`,
+		`	});`,
+		`});`,
+	}, "\n"),
+}
+
+// hooks.test.ts "reads a reference in the variant it is live in, following a change of its variant while mounted" (Pi f57cd9484):
+// the fixture's `Desk` on the server, shown by the page on request with `useVariant`.
+func TestReactBindingsReadAReferenceInTheVariantItIsLiveInFollowingAChangeOfItsVariantWhileMounted(t *testing.T) {
+	browser := browsertest.Start(t)
+	s := webBrowserApp(t, versionedEntry(t, "1", ""), freePort(t), map[string]map[string]string{"desk": deskPlugin}, nil)
+	admit := func(mode string) {
+		t.Helper()
+		// The plugin's local lives in the server's plugin host: reached through the app's node, as the plugin tests do.
+		modes, err := s.app.Node.Get(background, deskMode, delta.NewJsonObject(0), host.GetOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer modes.Release()
+		if _, err := modes.Call("set", mode, background); err != nil {
+			t.Fatal(err)
+		}
+	}
+	variant := func(name string) string { return `document.getElementById("desk")?.dataset.variant === "` + name + `"` }
+	signIn(browser, s.app.OwnerLink())
+	browser.Run(`globalThis.showDesk()`)
+	browser.Wait(variant("reader"))
+	// A reader's reference is no editor's: the click writes nothing.
+	browser.Run(`document.getElementById("desk").click()`)
+	// Another allowed value while the component is mounted: the same reference, now the editor's.
+	admit("editor")
+	browser.Wait(variant("editor"))
+	if got := browser.String(`document.getElementById("desk").textContent`); got != "a desk" {
+		t.Fatalf("desk = %q, want a desk", got)
+	}
+	browser.Run(`document.getElementById("desk").click()`)
+	browser.Wait(`document.getElementById("desk").textContent === "edited"`)
+	// Denied: no variant is live. Allowed again as a reader: the reader's.
+	admit("none")
+	browser.Wait(variant("none"))
+	admit("reader")
+	browser.Wait(variant("reader"))
 }
 
 func TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick(t *testing.T) {

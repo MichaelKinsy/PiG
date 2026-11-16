@@ -757,14 +757,32 @@ func (tx *Transaction) cutError() error {
 	}, nil)
 }
 
-// refreshQueries stages the re-run of the live queries over the tables this transaction wrote (decision "Live queries over
-// an object's own tables"): read in the commit step after every table write staged so far (the callback's), published in
-// the commit's batch. None when no written table has a live query.
+// refreshQueries stages the refresh of the store's reads over the tables this transaction wrote (slice 14 §3.2; Pi
+// transaction.ts `#refreshQueries`, 549-560): the reads are chosen and tested in the commit step, after every table write
+// staged so far (the callback's), and published in the commit's batch. Staged whether or not a read exists now: one opened
+// while this commit waits is refreshed too (the index is read in the step, Pi reads.ts `ReadRefresh.#refresh`, 241-248).
+//
+// The ordering contract: the refresh is the last staged write of the commit (`OrderWrite`, after the table writes, so a run
+// sees them); it runs in the commit's backend transaction, so what it reads is what the commit leaves; its runs are adopted
+// by the commit's fence, inside the commit's batch, only once the step committed. A refused or rolled back step adopts
+// nothing, and a group that rolled back applies it again alone (only the last application's runs count). What a failed
+// refresh does: a run that fails (a row the code cannot read, a statement that threw) is a failed run handed to its read,
+// not a failure of the transaction (Pi `Read.run` catches into a failed run, read.ts 83-88: the member fails, the commit stands); an
+// error of the step itself (a skip test's probe the backend refused, Pi `skips` awaiting the step) refuses the commit as any
+// staged write's error does.
 func (tx *Transaction) refreshQueries() error {
-	refresh := store.RefreshOf(tx.tableList, tx.ctx)
-	if refresh == nil {
-		return nil
+	written := make([]string, len(tx.tableList))
+	for index, handle := range tx.tableList {
+		written[index] = handle.Sql.Table
 	}
+	changes := func() []store.Change {
+		var all []store.Change
+		for _, handle := range tx.tableList {
+			all = append(all, tx.tables[handle].Changes()...)
+		}
+		return all
+	}
+	refresh := store.NewReadRefresh(tx.writes.store.Reads, written, changes, tx.ctx)
 	tx.writes.staged = append(tx.writes.staged, refresh.Write)
 	_, err := tx.Stage(refresh, func() Staged { return refresh })
 	return err

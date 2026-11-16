@@ -63,7 +63,7 @@ const (
 	// holdUnplaced: in the unbound index until the host's publication places it.
 	holdUnplaced holdStateKind = iota
 	// holdPending: until its object is live (the activation, parking and retries; told: the failure its consumer was told, so
-	// the next attempt is announced with `loading` and a call that crossed the failure on the wire gets it).
+	// the next attempt is announced with `loading`).
 	holdPending
 	// holdBinding: its object is live and its `bound` waits for a slot.
 	holdBinding
@@ -88,22 +88,30 @@ type holdState struct {
 	names contracts.VariantNames
 	// instance is the attempt a bound hold was bound to: it follows it on while it still changes (a restart's open old attempt).
 	instance any
-	// previous (a pending hold unbound with `loading`, and the binding after it):
-	// the names the consumer still holds it bound with, which its calls sent before it learnt of the `loading` are decoded by.
-	previous *boundNames
-	// rebinding (a bound hold): a rebinding's names before it; until is its `bound`, this host's own message number. Calls its
-	// consumer sent before it applied that `bound` carry their indexes, so they are decoded by them until its `ack`.
-	rebinding *boundNames
-	until     int
 	// followed are the members it follows, in the order they were subscribed.
 	followed []*holdFollowed
 }
 
 // boundNames is what calls need of a binding: its variant's data at the hold's version and the names the wire's indexes
-// point into.
+// point into. Only contract data: kept after an unbind, it keeps no instance and no source.
 type boundNames struct {
 	variant *contracts.VariantData
 	names   contracts.VariantNames
+}
+
+// holdDecoding is what a call is decoded by: the names of a binding (bound set: while the hold rebinds after a `loading`
+// its object's gate takes the call by name, design §22), or the failure its consumer was told (refused set: the call is
+// refused with it: sent before the consumer learnt of the failure, its indexes are of a binding that is gone).
+type holdDecoding struct {
+	bound   *boundNames
+	refused *data.ChordError
+}
+
+// holdFence is a binding fence (design §22): until its consumer acknowledged the `bound` numbered until (this host's own
+// message number), a call it sends was made before it applied that `bound`, so it is decoded by before.
+type holdFence struct {
+	until  int
+	before *holdDecoding
 }
 
 // hold is one hold served here: a reference to its object acting as its caller (the hold's principal). While pending, each
@@ -125,6 +133,13 @@ type hold struct {
 	request *holdRequest
 	// object is the held object, from its binding until the hold is released.
 	object *chordObject
+	// latest is what decodes a call of a consumer that applied everything sent so far: the names of the last `bound`, or the
+	// failure it was told since; nil before either.
+	latest *holdDecoding
+	// fences is one fence per `bound` its consumer has not acknowledged, oldest first: A, B, C sent before the first `ack`
+	// are two fences, and a call sent between B's and C's application is decoded by B's names. Each goes with the `ack` of
+	// its `bound` (`acknowledged`).
+	fences []holdFence
 	// changes are the members the current batch changed, with their ops, in order.
 	changes []heldChange
 	// failures are the members that failed since the last message that carried this hold.
@@ -178,33 +193,46 @@ func (h *hold) bound() bool { return h.state.kind == holdBound }
 
 // callable is whether calls on it reach its object: bound, or by the names it was bound with while it rebinds (after a
 // `loading` unbind: its fresh `bound` not sent yet).
-func (h *hold) callable() bool { return h.names() != nil }
+func (h *hold) callable() bool {
+	decoding := h.decoding()
+	return decoding != nil && decoding.bound != nil
+}
 
-// refusal is what a call it does not take is refused with: the failure its consumer was told (refused, or failed while
-// pending: the call crossed that `failed` on the wire, and its consumer shows that cause), else `not_ready` (not bound yet).
+// refusal is what a call it does not take is refused with: the failure its consumer was told (the call crossed that
+// `failed` on the wire, and its consumer shows that cause), else `not_ready` (not bound yet).
 func (h *hold) refusal() *data.ChordError {
-	switch {
-	case h.state.kind == holdRefused:
+	if h.state.kind == holdRefused {
 		return h.state.cause.Error
-	case h.state.kind == holdPending && h.state.told != nil:
-		return h.state.told
+	}
+	if decoding := h.decoding(); decoding != nil && decoding.refused != nil {
+		return decoding.refused
 	}
 	return data.NewChordError(data.ChordErrorInit{Code: data.CodeNotReady, Message: fmt.Sprintf("hold %d: not bound yet", h.id)}, nil)
 }
 
-// names are the names its calls are decoded by: its binding's (its previous ones until its consumer acknowledged the `bound`
-// that brought them: another variant's indexes name other methods), or the ones it was bound with while it rebinds.
-func (h *hold) names() *boundNames {
-	switch h.state.kind {
-	case holdBound:
-		if h.state.rebinding != nil && !h.provider.acknowledged(h.state.until) {
-			return h.state.rebinding
-		}
-		return &boundNames{variant: h.state.variant, names: h.state.names}
-	case holdPending, holdBinding:
-		return h.state.previous
+// decoding is what a call arriving now is decoded by: what its consumer had applied when it sent it, which is what the
+// oldest `bound` it has not acknowledged replaced (another variant's indexes name other methods), else the latest.
+func (h *hold) decoding() *holdDecoding {
+	fences := h.acknowledge()
+	if len(fences) > 0 {
+		return fences[0].before
 	}
-	return nil
+	return h.latest
+}
+
+// acknowledged is whether its consumer acknowledged one of this host's own messages so that no fence is left: the fences
+// that `ack` ends go (and what they keep: a binding's names, a failure). Its provider side asks it no more until it is
+// fenced again.
+func (h *hold) acknowledged() bool { return len(h.acknowledge()) == 0 }
+
+// acknowledge drops the fences its consumer acknowledged (acks arrive in order: they are the first ones) and returns the
+// rest: a hold keeps one fence per `bound` not acknowledged yet, never one per rebinding of its life.
+func (h *hold) acknowledge() []holdFence {
+	for len(h.fences) > 0 && h.provider.acknowledged(h.fences[0].until) {
+		h.fences[0] = holdFence{}
+		h.fences = h.fences[1:]
+	}
+	return h.fences
 }
 
 // contract is its consumer's contract version and fingerprint (its request's): the provider binds them or it waits.
@@ -323,11 +351,11 @@ func (h *hold) moved() {
 			h.untap()
 			return
 		}
-		var cause *data.ChordError
+		var cause *data.FailureCause
 		if shown.Kind == RefStateFailed {
-			cause = shown.Cause.Error
+			cause = &shown.Cause
 		}
-		h.unbind(cause)
+		h.unbind(cause, object)
 	}
 	h.pending(object)
 }
@@ -367,8 +395,7 @@ func (h *hold) memberHealed(index int) {
 // names it was bound with keep arriving (sent before its consumer learnt of the `loading`): each gets exactly one answer from
 // what it waits on, the instance it already runs on (its result, or `released` at the seal) or its object's gate (the new
 // instance's result, its failure, `park_timeout`, its end), design §22.
-func (h *hold) unbind(err *data.ChordError) {
-	previous := h.names()
+func (h *hold) unbind(cause *data.FailureCause, object *chordObject) {
 	if h.state.kind == holdBound {
 		h.stopFollowing(&h.state)
 	}
@@ -376,13 +403,17 @@ func (h *hold) unbind(err *data.ChordError) {
 	h.failures = nil
 	h.retired = link.NoRetired
 	h.touchedFlag = false
-	if err != nil {
-		h.provider.unbound(h, err)
+	if cause != nil {
+		refusal := cause.Error
+		if cause.Kind == data.FailureDenied {
+			refusal = revoked(object.label(), refusal)
+		}
+		h.provider.unbound(h, refusal)
 		h.state = holdState{kind: holdPending}
 		return
 	}
 	h.provider.unbind(h)
-	h.state = holdState{kind: holdPending, previous: previous}
+	h.state = holdState{kind: holdPending}
 	h.provider.send(&link.LoadingMessage{Hold: h.id})
 }
 
@@ -411,8 +442,7 @@ func (h *hold) pending(object *chordObject) {
 	shown := h.shown(object)
 	switch shown.Kind {
 	case RefStateLive:
-		// Calls by the names it was bound with are still answered until the fresh `bound` is sent.
-		h.state = holdState{kind: holdBinding, previous: current.previous}
+		h.state = holdState{kind: holdBinding}
 		h.provider.bind(h, h.provider.link.context)
 	case RefStateFailed:
 		// Each failure and each new cause (a parked object's blocker changed) is a message of its own.
@@ -424,7 +454,14 @@ func (h *hold) pending(object *chordObject) {
 			message.RetryIn = link.Some(int(max(0, *shown.RetryAt-h.provider.link.host.loop().Now())))
 		}
 		h.provider.send(message)
-		// Told a failure, its consumer rejects what it still waits on: calls by the old names are not taken any more.
+		// Told a failure, its consumer rejects what it still waits on: calls by the old names are not taken any more. One that
+		// still arrives was sent before its consumer learnt of the failure; for a denial that is access withdrawn under the
+		// call (`forbidden/revoked`), whether it had reached this host or not.
+		refusal := shown.Cause.Error
+		if shown.Cause.Kind == data.FailureDenied {
+			refusal = revoked(object.label(), refusal)
+		}
+		h.latest = &holdDecoding{refused: refusal}
 		h.state = holdState{kind: holdPending, told: shown.Cause.Error}
 	case RefStateLoading:
 		if current.told != nil {
@@ -455,11 +492,13 @@ func (h *hold) call(method string, args any, ctx context.Context, parent telemet
 // method is the method at index of the bound variant and whether its result carries byte segments (its schema has a
 // `bytes()` leaf). It fails on an index outside the variant (a protocol error); a hold that is not callable has none.
 func (h *hold) method(index int) (name string, resultBytes bool, err error) {
-	// While it rebinds: by the names the consumer still has (its object answers by name).
-	names := h.names()
-	if names != nil && index >= 0 && index < len(names.names.Methods) {
-		name = names.names.Methods[index]
-		return name, names.variant.Methods.Value(name).Result.Bytes, nil
+	decoding := h.decoding()
+	if decoding != nil && decoding.bound != nil {
+		bound := decoding.bound
+		if index >= 0 && index < len(bound.names.Methods) {
+			name = bound.names.Methods[index]
+			return name, bound.variant.Methods.Value(name).Result.Bytes, nil
+		}
 	}
 	return "", false, fmt.Errorf("hold %d: no method %d", h.id, index)
 }
@@ -638,8 +677,8 @@ func (h *hold) end(err *data.ChordError) {
 	h.provider.send(&link.GoneMessage{Hold: h.id, Error: wireError(err)})
 }
 
-// bindTo is the binding: its variant and names at the hold's version, with no member followed yet, and the names its consumer
-// still has (a rebinding's) until it acknowledged this `bound`, the next of this host's own messages.
+// bindTo is the binding: its variant and names at the hold's version, with no member followed yet. What its consumer's calls
+// were decoded by so far is fenced until it acknowledged this `bound`, the next of this host's own messages.
 func (h *hold) bindTo(instance *attempt) *holdState {
 	variants, err := contracts.VariantsAt(instance.served.contract, h.contract().version)
 	if err != nil {
@@ -647,11 +686,13 @@ func (h *hold) bindTo(instance *attempt) *holdState {
 	}
 	variant, _ := instance.variantName()
 	data := variants.Value(variant)
-	previous := h.names()
-	h.state = holdState{kind: holdBound, variant: data, names: contracts.VariantNamesOf(data), instance: instance}
-	if previous != nil {
-		h.state.rebinding, h.state.until = previous, h.provider.nextOwn()
+	names := contracts.VariantNamesOf(data)
+	h.state = holdState{kind: holdBound, variant: data, names: names, instance: instance}
+	if h.latest != nil {
+		h.fences = append(h.fences, holdFence{until: h.provider.nextOwn(), before: h.latest})
+		h.provider.fenced(h)
 	}
+	h.latest = &holdDecoding{bound: &boundNames{variant: data, names: names}}
 	return &h.state
 }
 
@@ -807,6 +848,7 @@ func (h *hold) touch() {
 // publication starts it again), for a `retry` otherwise.
 func (h *hold) refuse(request holdRequest, cause data.FailureCause) {
 	h.state = holdState{kind: holdRefused, request: owned(request), cause: cause}
+	h.latest = &holdDecoding{refused: cause.Error}
 	if cause.Kind == data.FailureWaiting {
 		h.provider.link.host.index(request.Type, h, &cause)
 	}

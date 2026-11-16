@@ -73,7 +73,7 @@ func Pending(loop sectionLoop) *Handled { return &Handled{later: newKeyedPromise
 // the loop, and its error (nil: resolved) settles the returned Handled in a section. It runs inside a section.
 func Awaiting(loop sectionLoop, work func() error) *Handled {
 	handled := Pending(loop)
-	loop.Go(func() {
+	startTask(loop, func() {
 		err := work()
 		loop.Run(func() {
 			if err != nil {
@@ -255,7 +255,7 @@ func (l *liveRoutine) sleep() {
 			loop.Queue(l.run)
 		})
 	})
-	stopAbort = context.AfterFunc(owner.context, func() {
+	stopAbort = onAbort(loop, owner.context, func() {
 		owner.host.enter(func() { timer.Stop() })
 	})
 }
@@ -503,10 +503,10 @@ func (o *onRoutine) watching(failing failingKind, opened openedWatch, err error)
 		return
 	}
 	// The owner's end ends the watch, from a section.
-	stopAbort := context.AfterFunc(o.owner.context, func() { o.owner.host.enter(opened.stop) })
+	stopAbort := onAbort(loop, o.owner.context, func() { o.owner.host.enter(opened.stop) })
 	// `void watch.closed.then((end) => this.#end(end))`: an owned task waits for the close.
-	loop.Go(func() {
-		<-opened.closed
+	startTask(loop, func() {
+		parkedOn(opened.closed)
 		stopAbort()
 		o.owner.host.enter(func() { o.end(opened.end()) })
 	})
@@ -605,7 +605,7 @@ func (o *onRoutine) firstValue(source state.SourceHandle, then func(got bool)) {
 		return
 	}
 	source.Subscribe(subscriber)
-	stopAbort = context.AfterFunc(ctx, func() {
+	stopAbort = onAbort(loop, ctx, func() {
 		o.owner.host.enter(func() { subscriber.done(false) })
 	})
 }
@@ -760,7 +760,7 @@ func (d *deliveriesWait) Stop() bool { return !d.stopped.Swap(true) }
 func (o *onRoutine) afterDeliveries() Timer {
 	wait := &deliveriesWait{}
 	host := o.owner.host
-	host.loop().Go(func() {
+	startTask(host.loop(), func() {
 		host.scheduler.Wait()
 		host.enter(func() {
 			if !wait.stopped.Swap(true) {

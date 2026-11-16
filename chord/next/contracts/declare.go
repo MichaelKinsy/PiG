@@ -53,6 +53,10 @@ type RemoteDeclaration struct {
 	// HostAddress is the address of the host serving an object for these params; never part of the fingerprint.
 	HostAddress HostAddress
 	Variants    []VariantEntry
+	// Admission is the schema of the value the type's admission hands its factory: small, about the caller (a mode, a
+	// role). It selects the variant and the members. Never part of the fingerprint, never validated at runtime; nil for a
+	// contract without one.
+	Admission *Schema
 }
 
 // LocalDeclaration is the declaration of a local contract.
@@ -61,7 +65,7 @@ type LocalDeclaration struct {
 	Version float64
 	Params  Params
 	// Members is one flat map of members, where a schema is state, a *Method a method, a *KeyedMember a keyed state
-	// member and an *EventDeclaration an event member.
+	// member, an *EventDeclaration an event member and a *QueriesMember a queries member.
 	Members []LocalEntry
 }
 
@@ -88,11 +92,35 @@ func Remote(name string, declaration RemoteDeclaration) (*Contract, error) {
 		}
 		read.Set(entry.Name, data)
 	}
-	return declare(KindRemote, name, declaration.Version, declaration.Params, read, declaration.HostAddress)
+	var admitted *AdmissionData
+	if declaration.Admission != nil {
+		var err error
+		if admitted, err = ReadAdmission(*declaration.Admission, name+".admission"); err != nil {
+			return nil, err
+		}
+	}
+	return declare(KindRemote, name, declaration.Version, declaration.Params, read, declaration.HostAddress, admitted)
+}
+
+// ReadAdmission is an admission schema as Chord-owned data, with its fingerprint: JSON only (declaration policy: no
+// `bytes()` leaf). Upstream's `admissionData`; the Go type of that name is AdmissionData.
+func ReadAdmission(schema Schema, path string) (*AdmissionData, error) {
+	snapshot, err := SnapshotSchema(schema, path)
+	if err != nil {
+		return nil, err
+	}
+	if snapshot.Bytes {
+		return nil, fail("%s: an admission's value is JSON only (no bytes())", path)
+	}
+	fingerprint, err := FingerprintOf(snapshot.Normal)
+	if err != nil {
+		return nil, err
+	}
+	return &AdmissionData{Schema: snapshot, Fingerprint: fingerprint}, nil
 }
 
 // Local declares a local contract: one flat map of members, where a schema is state, `method(...)` a method,
-// `keyed(schema)` a keyed state member and `event(schema)` an event member.
+// `keyed(schema)` a keyed state member, `event(schema)` an event member and `queries(item, args)` a queries member.
 func Local(name string, declaration LocalDeclaration) (*Contract, error) {
 	if err := CheckName(name, "A contract name"); err != nil {
 		return nil, err
@@ -101,7 +129,7 @@ func Local(name string, declaration LocalDeclaration) (*Contract, error) {
 	if err != nil {
 		return nil, err
 	}
-	variant := &VariantData{State: NewNamedMap[*Snapshot](0), Methods: NewNamedMap[*MethodData](0), Keyed: NewNamedMap[*KeyedSnapshot](0), Events: NewNamedMap[*Snapshot](0)}
+	variant := &VariantData{State: NewNamedMap[*Snapshot](0), Methods: NewNamedMap[*MethodData](0), Keyed: NewNamedMap[*KeyedSnapshot](0), Events: NewNamedMap[*Snapshot](0), Queries: NewNamedMap[*QueriesData](0)}
 	for _, entry := range members {
 		path := name + "." + LocalVariant + "." + entry.Name
 		switch member := entry.Value.(type) {
@@ -114,6 +142,15 @@ func Local(name string, declaration LocalDeclaration) (*Contract, error) {
 				return nil, err
 			}
 			variant.Methods.Set(entry.Name, method)
+		case *QueriesMember:
+			if member == nil {
+				return nil, notAMember(path)
+			}
+			queries, err := readQueries(member, path)
+			if err != nil {
+				return nil, err
+			}
+			variant.Queries.Set(entry.Name, queries)
 		case *KeyedMember:
 			if member == nil {
 				return nil, notAMember(path)
@@ -144,7 +181,7 @@ func Local(name string, declaration LocalDeclaration) (*Contract, error) {
 	}
 	variants := NewNamedMap[*VariantData](1)
 	variants.Set(LocalVariant, variant)
-	return declare(KindLocal, name, declaration.Version, declaration.Params, variants, nil)
+	return declare(KindLocal, name, declaration.Version, declaration.Params, variants, nil, nil)
 }
 
 func notAMember(path string) error {
@@ -191,7 +228,7 @@ func readVariant(source VariantDeclaration, path string) (*VariantData, error) {
 		}
 		events.Set(entry.Name, snapshot)
 	}
-	return &VariantData{State: state, Methods: methods, Keyed: NewNamedMap[*KeyedSnapshot](0), Events: events}, nil
+	return &VariantData{State: state, Methods: methods, Keyed: NewNamedMap[*KeyedSnapshot](0), Events: events, Queries: NewNamedMap[*QueriesData](0)}, nil
 }
 
 // eventSnapshot is an event member's snapshot: JSON only (declaration policy: no `bytes()` leaf, events travel as JSON
@@ -205,6 +242,27 @@ func eventSnapshot(schema Schema, path string) (*Snapshot, error) {
 		return nil, fail("%s: an event's values are JSON only (no bytes())", path)
 	}
 	return snapshot, nil
+}
+
+// readQueries is a queries member as Chord-owned snapshots: its items' schema, and each named query's arguments, closed.
+func readQueries(member *QueriesMember, path string) (*QueriesData, error) {
+	entries, err := entriesOf(member.Args, path+".args")
+	if err != nil {
+		return nil, err
+	}
+	args := NewNamedMap[*Snapshot](len(entries))
+	for _, entry := range entries {
+		snapshot, err := SnapshotArguments(entry.Value, path+".args."+entry.Name)
+		if err != nil {
+			return nil, err
+		}
+		args.Set(entry.Name, snapshot)
+	}
+	item, err := SnapshotSchema(member.Item, path+".item")
+	if err != nil {
+		return nil, err
+	}
+	return &QueriesData{Item: item, Args: args}, nil
 }
 
 // keyedSnapshot is a keyed member's snapshot: its schema's and, keyed by a host kind, the kind (declaration policy: a
@@ -235,7 +293,7 @@ func readMethod(method *Method, path string) (*MethodData, error) {
 	return &MethodData{Args: args, Result: result}, nil
 }
 
-func declare(kind Kind, name string, version float64, params Params, variants *NamedMap[*VariantData], hostAddress HostAddress) (*Contract, error) {
+func declare(kind Kind, name string, version float64, params Params, variants *NamedMap[*VariantData], hostAddress HostAddress, admission *AdmissionData) (*Contract, error) {
 	if version != math.Trunc(version) || math.Abs(version) > 1<<53-1 || version < 1 {
 		return nil, fail("%s.version: expected a positive integer", name)
 	}
@@ -259,7 +317,7 @@ func declare(kind Kind, name string, version float64, params Params, variants *N
 	if err != nil {
 		return nil, err
 	}
-	return CreateContract(ContractData{Kind: kind, Name: name, Params: paramsData, HostAddress: hostAddress, Versions: []VersionData{first}, Kinds: kinds}), nil
+	return CreateContract(ContractData{Kind: kind, Name: name, Params: paramsData, HostAddress: hostAddress, Versions: []VersionData{first}, Kinds: kinds, Admission: admission}), nil
 }
 
 // checkMembers checks the members of every variant: a name keeps one kind across variants and the whole history
@@ -267,6 +325,11 @@ func declare(kind Kind, name string, version float64, params Params, variants *N
 func checkMembers(variants *NamedMap[*VariantData], kinds map[string]MemberKind, path func(variant, member string, kind MemberKind) string) error {
 	signatures := map[string]string{}
 	for variant, data := range variants.All() {
+		for member := range data.Queries.All() {
+			if err := recordKind(kinds, member, MemberKindQueries, path(variant, member, MemberKindQueries)); err != nil {
+				return err
+			}
+		}
 		for member := range data.State.All() {
 			if err := recordKind(kinds, member, MemberKindState, path(variant, member, MemberKindState)); err != nil {
 				return err
@@ -328,11 +391,11 @@ func memberPath(base string, kind Kind, variant, member string, memberKind Membe
 	return base + "." + variant + "." + sectionOf(memberKind) + "." + member
 }
 
-// sectionOf is the section of a remote variant a member of each kind is declared in (keyed members: only local
-// contracts).
+// sectionOf is the section of a remote variant a member of each kind is declared in (keyed and queries members: only
+// local contracts).
 func sectionOf(kind MemberKind) string {
 	switch kind {
-	case MemberKindState, MemberKindKeyed:
+	case MemberKindState, MemberKindKeyed, MemberKindQueries:
 		return "state"
 	case MemberKindEvent:
 		return "events"

@@ -15,6 +15,7 @@ import (
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -299,6 +300,48 @@ func TestReloadFatesShowsTheOldAttemptLiveWhileItDrainsClosesItsNativesWithReaso
 		t.Fatalf("closes = %v, want %v", got, want)
 	}
 	reloadUntilLabel(t, pure, "v2")
+}
+
+// Go-only: object.ts:355 `stateFor` shows `live` only to a consumer whose version and fingerprint the open old attempt BINDS
+// (`oldServes`, object.ts:367 `binds(old.served.provider, version, fingerprint)`); a consumer of the new version, which only the
+// restart's successor serves, sees what the object shows (`loading`) while the old attempt drains.
+func TestReloadFatesShowsTheOldAttemptLiveOnlyToTheConsumersItsVersionBindsNotToOnesOfTheNewVersionWhileItDrains(t *testing.T) {
+	next := adaptedEvolve(reloadPure, func(e *contracts.LocalEditor) *contracts.LocalEditor {
+		return e.State("n", contracts.Obj(contracts.Prop("value", contracts.Int())))
+	})
+	held := newReloadGate()
+	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error { return reloadServePure(t, h, "v1", 1, reloadGates(held)) }, loadedOptions{})
+	defer closeHosts(t, host)
+	pure := mustGet(t, host, reloadPure, jsonObject())
+	// Nobody serves the new version yet: its consumer waits not served.
+	waiting := mustHold(t, host, next, jsonObject())
+	untilKind(t, waiting, RefStateFailed)
+	running := startReloadCall(pure, "bump", nil)
+	held.entered.wait(t)
+	reloadMust(t)(reloadApp(host, func(h FacetHost) error {
+		return h.Serve(next, func(*delta.JsonObject, Self) (contracts.Implementation, error) {
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				State: map[string]chord.Watchable[delta.JsonValue]{"n": constant(jsonObject("value", 5.0)), "label": constant("v2")},
+				Methods: map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) {
+					return 1.0, nil
+				}},
+			}}, nil
+		}, ServeOptions{Accepts: contracts.AcceptsTable{{Name: "1", Value: contracts.VersionMappings{
+			State: []contracts.Entry[contracts.StateMapping]{{Name: "n", Value: contracts.StateMapping{
+				Func: func(v delta.JsonValue) (delta.JsonValue, error) { return v.(*delta.JsonObject).Value("value"), nil },
+			}}},
+		}}}})
+	}))
+	deliveredOn(host)
+	if state := stateOfRef(pure); state.Kind != RefStateLive {
+		t.Fatalf("the consumer of the old version: state = %+v, want live while the old attempt drains", state)
+	}
+	if state := stateOfRef(waiting); state.Kind != RefStateLoading {
+		t.Fatalf("the consumer of the new version: state = %+v, want loading while the old attempt, which does not bind its version, drains", state)
+	}
+	held.open.fire()
+	running.wait(t)
+	untilKind(t, waiting, RefStateLive)
 }
 
 func TestReloadFatesEndsTheObjectsOfARemovedTypeItsHoldersWaitNotServedAndBindAgainWhenItIsServedAgain(t *testing.T) {
@@ -1146,10 +1189,8 @@ func TestANativeRestartReferencesTakeTheirLastValuesAfterTheAdmittedCommitsKeeps
 	}()
 	receive(t, held.Entered())
 	reloadMust(t)(host.Reload([]HostFacet{{Name: "@app/restart", Facet: facet(func(ctx context.Context) error {
-		select {
-		case <-opening:
-		case <-ctx.Done():
-		}
+		// The new native stays opening on purpose: the wait is the host's (the open's task is parked, not one a join waits for).
+		_, _ = chordctx.Receive(ctx, (<-chan struct{})(opening))
 		return nil
 	})}}, background, ReloadOptions{}))
 	deliveredOn(host)

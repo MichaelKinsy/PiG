@@ -1,0 +1,323 @@
+from = "1.5.2+7cc21c24"
+to = "1.5.2+f57cd948"
+
+# The range 7cc21c24f6b5..f57cd9484 under packages/chord (45 files; the two apps/p2 files of the commit are the p2 line's and are not in this ledger): the workers
+# (a worker's exit is published after its link's work ended, a worker's incarnation in its state), the route's `opened`,
+# the store's `settled`, and the variant a reference is live in (`liveIn`, `useVariant`, `TuiScope.variant`). The Go chord ports it on
+# port/chord-slice-14-* (integration tip 66388b0e9). The vendored Pi blobs under chord/nextnode/{surfaces/client,plugins/node}/pi are re-vendored at
+# f57cd9484 (345dfa280: Pi f57cd9484 plus []). `deferred` rows name what they wait on; `designed-out` rows are Pi's documents.
+
+[[files]]
+path = "packages/chord/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: Pi's Chord changelog entries (a worker's incarnation, the variant a reference is live in, a worker's exit published after its link's work). PiG's user-visible statement is its own changelog.d fragment. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: the package README's one-line change. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/docs/decisions.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: the decisions of a worker's exit published after its link's work ended, the route's `opened`, and the variant bindings. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: the design text of the same decisions. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/docs/plugin-authoring.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: how a plugin reads a reference in the variant it is live in. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/docs/slices.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: the slice list notes the workers and variant work. Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/host/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: the folder's README (the new members and their rules). Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/node/workers/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: the folder's README (the new members and their rules). Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/react/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: the folder's README (the new members and their rules). Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/store/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: the folder's README (the new members and their rules). Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/surfaces/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: the folder's README (the new members and their rules). Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/tui/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "f57cd9484: the folder's README (the new members and their rules). Pi's chord documents are not ported (chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/host/host.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_route_opened_test.go#TestRouteResolvesOpenedIsToldThePeersIncarnationAtTheHandshakeBeforeThePeersFirstCallIsHandledNeverForALinkClosedBeforeIt", "test:chord/next/host/host_route_opened_test.go#TestRouteResolvesOpenedIsToldBeforeThisHostsOwnSideOfTheLinkIsOpened"]
+rationale = "f57cd9484: `routeLink(link, options, context, opened?)`: the optional `opened` callback is told the peer's incarnation once its `hello` arrived and reaches the link as its `opened` option. Ported: chord/next/host/host_route.go (ResolvedLink.Opened, handed to the link as its `opened` option); the Pi case of test/host/route.test.ts runs in host_route_opened_test.go (122555b4b..b08224f6c, 9a42105d3)."
+
+[[files]]
+path = "packages/chord/src/host/route.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_route_opened_test.go#TestRouteResolvesOpenedIsToldThePeersIncarnationAtTheHandshakeBeforeThePeersFirstCallIsHandledNeverForALinkClosedBeforeIt", "test:chord/next/host/host_route_opened_test.go#TestRouteResolvesOpenedIsToldBeforeThisHostsOwnSideOfTheLinkIsOpened"]
+rationale = "f57cd9484: a route's resolve gets `opened`, told the peer's incarnation at the handshake before the peer's first call is handled, and never for a link closed before it. Ported: chord/next/host/host_route.go (b08224f6c); the Go-only case that `opened` is told before this host's own side of the link is opened (9a42105d3) is in the same test file."
+
+[[files]]
+path = "packages/chord/src/remote/host-link.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_route_opened_test.go#TestRouteResolvesOpenedIsToldThePeersIncarnationAtTheHandshakeBeforeThePeersFirstCallIsHandledNeverForALinkClosedBeforeIt", "test:chord/next/host/host_route_opened_test.go#TestRouteResolvesOpenedIsToldBeforeThisHostsOwnSideOfTheLinkIsOpened"]
+rationale = "f57cd9484: `LinkOptions.opened` is called with the channel's peer first, before anything the peer sent is handled and before this host sends. Ported: chord/next/host/remote_host_link.go; covered by the route's `opened` cases in host_route_opened_test.go."
+
+[[files]]
+path = "packages/chord/src/node/app/app.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_workers_store_test.go#TestAppGivesItsWorkersTheServersStoreAWorkersExitIsPublishedAfterTheCommitsQueuedThere"]
+rationale = "f57cd9484: `workersOf(host, store, ...)` gives the workers component the server's store, so a worker's exit is published after the commits its calls queued there. Ported: chord/nextnode/app/app.go (bd1e23318); TestAppGivesItsWorkersTheServersStore... asserts the wiring."
+
+[[files]]
+path = "packages/chord/src/node/workers/process.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_process_end_unix_test.go#TestAWorkerProcessClosesItsLinkAtItsExitBeforeTheExitIsToldAsNeitherALostNorAClosedLink", "test:chord/nextnode/workers/workers_process_end_unix_test.go#TestAWorkerProcessLinkClosedByTheKillOfItsTreeWhileItsExitWaitsForItsOutputIsNeitherALostNorAClosedLink"]
+rationale = "f57cd9484: a worker process closes its link at its exit, before the exit is told, as neither a lost nor a closed link; what the channel still holds is never handled. Ported: chord/nextnode/workers/workers_process.go (d3f63d62e); the Pi case and the case of a link closed by the kill of its tree run in workers_process_end_unix_test.go (df049a5a7)."
+
+[[files]]
+path = "packages/chord/src/node/workers/workers.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAWorkerThatReportsAndExitsInTheSameTurnItsLinkIsClosedBeforeItsExitIsPublishedNoTransactionOfItsReportsCommits", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitACommitAReportQueuedInTheStoreBeforeTheExitLandsBeforeTheExitIsPublishedUntilThenTheStateShowsTheWorkerAndNothingStarts", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAStopResolvesOnceTheExitWasPublishedAfterTheCommitsItsWorkerQueued", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitCloseDuringTheSettleWaitReturnsWithItsContextAndTheExitIsPublishedOnceTheCommitSettled", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAFailedStartRejectsOnceTheExitWasPublishedAfterTheCommitsQueuedInTheStore", "test:chord/nextnode/workers/workers_incarnation_test.go#TestAWorkersIncarnationIsInTheStateBeforeItsFirstCallIsHandledAReportItsStartupSendsFindsItLongBeforeReady"]
+rationale = "f57cd9484: a worker's exit is published after its link's work ended (its link closed, the commits its reports queued in the server's store settled, `store.settled()`), a stop resolves once the exit was published, and the state of a worker carries its incarnation from the handshake on (`#opened`). Ported: chord/nextnode/workers/workers_workers.go, workers_exit.go (3e6624687, e2d10ffa6, 902aeb00f); the four cases of workers.test.ts and the Go-only cases of a close during the settle wait and of a failed start run in workers_workers_exit_test.go and workers_incarnation_test.go."
+
+[[files]]
+path = "packages/chord/src/store/store.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/store/store_settled_test.go#TestSettled"]
+rationale = "f57cd9484: `ChordStore.settled()` resolves once the commits queued before the call were adopted or rejected (the commit queue's tail at the call), and on a closed store. Ported: chord/next/store/store.go (ChordStore.Settled, 122555b4b); both Pi cases of test/store/store.test.ts run in TestSettled."
+
+[[files]]
+path = "packages/chord/src/surfaces/variant.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_variant_test.go#TestLiveIn"]
+rationale = "f57cd9484: `liveIn(ref, variant)`, a reference narrowed to the variant it is live in, and the types InVariant, VariantOf and VariantRef. Ported: chord/next/surfaces/surfaces_variant.go (LiveIn, 6882f651d). The third case of test/surfaces/variant.test.ts (a held and a got reference narrow to the variant's members) is type-level in Pi (InVariant, VariantOf); Go has no counterpart of the types, and TestLiveIn's third subtest is the documented runtime check (a reference narrowed to `editor` has `write`, one narrowed to `reader` has not)."
+
+[[files]]
+path = "packages/chord/src/tui/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeVendoredFilesAreExactlyTheManifests", "test:chord/next/tui/tui_scope_test.go#TestScopeReferenceInOneVariantReadsItNarrowedWhileLiveInTheVariantAChangeOfItsVariantCallsChangedOncePerState"]
+rationale = "f57cd9484: the barrel exports the variant types. Vendored client: this file is shipped byte for byte (D601, chord/nextnode/surfaces/client, plugins/node/pi) and the vendored trees are Pi f57cd9484 plus [] (345dfa280: vendor-chord-carried-check), which the manifest tests re-check on every run."
+
+[[files]]
+path = "packages/chord/src/tui/scope.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/tui/tui_scope_test.go#TestScopeReferenceInOneVariantReadsItNarrowedWhileLiveInTheVariantAChangeOfItsVariantCallsChangedOncePerState", "test:chord/next/tui/tui_scope_test.go#TestScopeReferenceInOneVariantFollowsAReferenceTheScopeDoesNotHoldUntilDispose", "test:chord/next/tui/tui_scope_test.go#TestScopeReferenceInOneVariantKeepsNoReferenceItsHolderReleasedWhileTheScopeLivesGC"]
+rationale = "f57cd9484: `TuiScope.variant(reference, name)` reads a reference narrowed while it is live in the variant and calls `changed` once per state when its variant changes; it follows a reference the scope does not hold until dispose and keeps no reference its holder released. Ported: chord/next/tui/tui_scope.go (TuiScope.Variant, 1aec80cd8)."
+
+[[files]]
+path = "packages/chord/src/react/hooks.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestReactBindingsReadAReferenceInTheVariantItIsLiveInFollowingAChangeOfItsVariantWhileMounted", "test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeVendoredFilesAreExactlyTheManifests"]
+rationale = "f57cd9484: `useVariant(ref, name)`: a reference read in the variant it is live in, following a change of its variant while mounted. Vendored client: this file is shipped byte for byte (D601, chord/nextnode/surfaces/client, plugins/node/pi) and the vendored trees are Pi f57cd9484 plus [] (345dfa280: vendor-chord-carried-check), which the manifest tests re-check on every run. The hook runs in the Chromium test of chord/nextnode/app (b38e52063)."
+
+[[files]]
+path = "packages/chord/src/react/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/surfaces/client_manifest_test.go#TestClientVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/plugins/plugins_node_test.go#TestNodeVendoredFilesAreExactlyTheManifests", "test:chord/nextnode/app/app_web_browser_test.go#TestReactBindingsReadAReferenceInTheVariantItIsLiveInFollowingAChangeOfItsVariantWhileMounted"]
+rationale = "f57cd9484: the barrel exports `useVariant` and the variant types. Vendored client: this file is shipped byte for byte (D601, chord/nextnode/surfaces/client, plugins/node/pi) and the vendored trees are Pi f57cd9484 plus [] (345dfa280: vendor-chord-carried-check), which the manifest tests re-check on every run."
+
+[[files]]
+path = "packages/chord/test/bench/workers.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_bench_test.go#BenchmarkWorkerColdStart", "test:chord/nextnode/workers/workers_bench_test.go#BenchmarkServerHeapPerIdleWorker"]
+rationale = "f57cd9484: the benchmark's server host has no store (`store: undefined`). Ported: workers_bench_test.go, unchanged: the Go server's Options.Store is nil by default."
+
+[[files]]
+path = "packages/chord/test/host/route.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/host/host_route_opened_test.go#TestRouteResolvesOpenedIsToldThePeersIncarnationAtTheHandshakeBeforeThePeersFirstCallIsHandledNeverForALinkClosedBeforeIt", "test:chord/next/host/host_route_opened_test.go#TestRouteResolvesOpenedIsToldBeforeThisHostsOwnSideOfTheLinkIsOpened"]
+rationale = "f57cd9484: the case `resolve's opened is told the peer's incarnation at the handshake, before the peer's first call is handled; never for a link closed before it`. Ported: host_route_opened_test.go (TestRouteResolvesOpenedIsToldThePeersIncarnation...), plus the Go-only case of the order against this host's own side."
+
+[[files]]
+path = "packages/chord/test/node/react/hooks.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestReactBindingsReadAReferenceInTheVariantItIsLiveInFollowingAChangeOfItsVariantWhileMounted"]
+rationale = "f57cd9484: the case `reads a reference in the variant it is live in, following a change of its variant while mounted` (a desk served as reader or editor by admission). Ported: the hook twin in chord/nextnode/app/app_web_browser_test.go (b38e52063), which serves the desk plugin and clicks through Chromium."
+
+[[files]]
+path = "packages/chord/test/node/workers/process.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_process_end_unix_test.go#TestAWorkerProcessClosesItsLinkAtItsExitBeforeTheExitIsToldAsNeitherALostNorAClosedLink", "test:chord/nextnode/workers/workers_process_end_unix_test.go#TestAWorkerProcessLinkClosedByTheKillOfItsTreeWhileItsExitWaitsForItsOutputIsNeitherALostNorAClosedLink"]
+rationale = "f57cd9484: the case `closes its link at its exit, before the exit is told, as neither a lost nor a closed link`. Ported: workers_process_end_unix_test.go."
+
+[[files]]
+path = "packages/chord/test/node/workers/support.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAWorkerThatReportsAndExitsInTheSameTurnItsLinkIsClosedBeforeItsExitIsPublishedNoTransactionOfItsReportsCommits", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitACommitAReportQueuedInTheStoreBeforeTheExitLandsBeforeTheExitIsPublishedUntilThenTheStateShowsTheWorkerAndNothingStarts", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAStopResolvesOnceTheExitWasPublishedAfterTheCommitsItsWorkerQueued", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitCloseDuringTheSettleWaitReturnsWithItsContextAndTheExitIsPublishedOnceTheCommitSettled", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAFailedStartRejectsOnceTheExitWasPublishedAfterTheCommitsQueuedInTheStore", "test:chord/nextnode/workers/workers_incarnation_test.go#TestAWorkersIncarnationIsInTheStateBeforeItsFirstCallIsHandledAReportItsStartupSendsFindsItLongBeforeReady"]
+rationale = "f57cd9484: the helper takes `facets`, `store` and `onError`, and `Server` moves to the fixture's control file. Go form: the fleet helpers of workers_fixture_test.go and workers_fleet_test.go (`Reporter` for the report methods, the server's store option); used by the exit and incarnation cases."
+
+[[files]]
+path = "packages/chord/test/node/workers/workers.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAWorkerThatReportsAndExitsInTheSameTurnItsLinkIsClosedBeforeItsExitIsPublishedNoTransactionOfItsReportsCommits", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitACommitAReportQueuedInTheStoreBeforeTheExitLandsBeforeTheExitIsPublishedUntilThenTheStateShowsTheWorkerAndNothingStarts", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAStopResolvesOnceTheExitWasPublishedAfterTheCommitsItsWorkerQueued", "test:chord/nextnode/workers/workers_incarnation_test.go#TestAWorkersIncarnationIsInTheStateBeforeItsFirstCallIsHandledAReportItsStartupSendsFindsItLongBeforeReady"]
+rationale = "f57cd9484: the four new cases (a worker that reports and exits in one turn; a commit a report queued lands before the exit is published; a stop resolves after the exit was published; a worker's incarnation is in the state before its first call is handled). Ported: the first three in workers_workers_exit_test.go, the fourth in workers_incarnation_test.go; two Go-only cases (a close during the settle wait, a failed start) are beside them."
+
+[[files]]
+path = "packages/chord/test/store/store.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/store/store_settled_test.go#TestSettled"]
+rationale = "f57cd9484: the two cases of `settled`. Ported: TestSettled (store_settled_test.go)."
+
+[[files]]
+path = "packages/chord/test/support.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_variant_test.go#TestLiveIn", "test:chord/next/tui/tui_scope_test.go#TestScopeReferenceInOneVariantReadsItNarrowedWhileLiveInTheVariantAChangeOfItsVariantCallsChangedOncePerState"]
+rationale = "f57cd9484: the `Desk` contract (a reader or an editor variant by admission) and the `desk()` fixture. Go form: chord/next/internal/deskfix (Desk, the fixture), used by TestLiveIn and the scope cases."
+
+[[files]]
+path = "packages/chord/test/surfaces/variant.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/next/surfaces/surfaces_variant_test.go#TestLiveIn"]
+rationale = "f57cd9484: the three cases of `liveIn` (nothing before it binds or for no reference; follows the variant an admission rebinds; narrows a held and a got reference). Ported: TestLiveIn runs the three as subtests; the third is type-level in Pi (no Go counterpart of the types) and is the documented runtime check (what the narrowing promises at run time)."
+
+[[files]]
+path = "packages/chord/test/tui/scope.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/tui/tui_scope_test.go#TestScopeReferenceInOneVariantReadsItNarrowedWhileLiveInTheVariantAChangeOfItsVariantCallsChangedOncePerState", "test:chord/next/tui/tui_scope_test.go#TestScopeReferenceInOneVariantFollowsAReferenceTheScopeDoesNotHoldUntilDispose", "test:chord/next/tui/tui_scope_test.go#TestScopeReferenceInOneVariantKeepsNoReferenceItsHolderReleasedWhileTheScopeLivesGC"]
+rationale = "f57cd9484: the three cases of a scope's reference in one variant. Ported: tui_scope_test.go (TestScopeReferenceInOneVariant...)."
+
+[[files]]
+path = "packages/chord/test/node/fixtures/web/api.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestReactBindingsReadAReferenceInTheVariantItIsLiveInFollowingAChangeOfItsVariantWhileMounted"]
+rationale = "f57cd9484: the web fixture's `Desk` contract, a reader or editor variant by admission. Vendored fixture of the Chromium tests: the Go form is the deskPlugin and fixture of app_web_browser_test.go, run by the hook twin."
+
+[[files]]
+path = "packages/chord/test/node/fixtures/web/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/app/app_web_browser_test.go#TestReactBindingsReadAReferenceInTheVariantItIsLiveInFollowingAChangeOfItsVariantWhileMounted"]
+rationale = "f57cd9484: the page fixture shows the server's desk through `useVariant`. Go form: the page the Chromium test of chord/nextnode/app builds (hook twin)."
+
+[[files]]
+path = "packages/chord/test/node/fixtures/workers/child.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_process_end_unix_test.go#TestAWorkerProcessClosesItsLinkAtItsExitBeforeTheExitIsToldAsNeitherALostNorAClosedLink", "test:chord/nextnode/workers/workers_process_end_unix_test.go#TestAWorkerProcessLinkClosedByTheKillOfItsTreeWhileItsExitWaitsForItsOutputIsNeitherALostNorAClosedLink"]
+rationale = "f57cd9484: the child's grandchild inherits its IPC channel (fd 3), so the channel stays open after the child's exit. Go form: workers_fixture_channel_unix_test.go, used by the process-end cases."
+
+[[files]]
+path = "packages/chord/test/node/fixtures/workers/control.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAWorkerThatReportsAndExitsInTheSameTurnItsLinkIsClosedBeforeItsExitIsPublishedNoTransactionOfItsReportsCommits", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitACommitAReportQueuedInTheStoreBeforeTheExitLandsBeforeTheExitIsPublishedUntilThenTheStateShowsTheWorkerAndNothingStarts", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAStopResolvesOnceTheExitWasPublishedAfterTheCommitsItsWorkerQueued", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitCloseDuringTheSettleWaitReturnsWithItsContextAndTheExitIsPublishedOnceTheCommitSettled", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAFailedStartRejectsOnceTheExitWasPublishedAfterTheCommitsQueuedInTheStore", "test:chord/nextnode/workers/workers_incarnation_test.go#TestAWorkersIncarnationIsInTheStateBeforeItsFirstCallIsHandledAReportItsStartupSendsFindsItLongBeforeReady"]
+rationale = "f57cd9484: the fixture contracts gain the server's kind, `Reports`, `report`/`reportAndExit` methods and the start options `reportAtStart` and `holdsChannel`. Go form: workers_fixture_test.go and workers_fixture_worker_test.go; used by the exit and incarnation cases."
+
+[[files]]
+path = "packages/chord/test/node/fixtures/workers/worker.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAWorkerThatReportsAndExitsInTheSameTurnItsLinkIsClosedBeforeItsExitIsPublishedNoTransactionOfItsReportsCommits", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitACommitAReportQueuedInTheStoreBeforeTheExitLandsBeforeTheExitIsPublishedUntilThenTheStateShowsTheWorkerAndNothingStarts", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAStopResolvesOnceTheExitWasPublishedAfterTheCommitsItsWorkerQueued", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitCloseDuringTheSettleWaitReturnsWithItsContextAndTheExitIsPublishedOnceTheCommitSettled", "test:chord/nextnode/workers/workers_workers_exit_test.go#TestAWorkersExitAFailedStartRejectsOnceTheExitWasPublishedAfterTheCommitsQueuedInTheStore", "test:chord/nextnode/workers/workers_incarnation_test.go#TestAWorkersIncarnationIsInTheStateBeforeItsFirstCallIsHandledAReportItsStartupSendsFindsItLongBeforeReady"]
+rationale = "f57cd9484: the fixture worker reports to the server (held `Reports`), exits after a report, reports at its start and keeps an IPC-holding process. Go form: workers_fixture_worker_test.go; used by the exit and incarnation cases."
+
+[[files]]
+path = "packages/chord/test/examples/41-workers/main.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "f57cd9484: the example's server host has no store (`store: undefined`), which in Go is the nil workers.Options.Store (the default). Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this change's (as in the ledger of ff7414d51)."
+
+[[files]]
+path = "packages/chord/test/examples/42-worker-crash/main.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "f57cd9484: the example's server host has no store (`store: undefined`), which in Go is the nil workers.Options.Store (the default). Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this change's (as in the ledger of ff7414d51)."
+
+[[files]]
+path = "packages/chord/test/examples/43-rollout/main.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "f57cd9484: the example's server host has no store (`store: undefined`), which in Go is the nil workers.Options.Store (the default). Not ported here, scope open: no Go twin of this example exists and PORT_MAP has no row for it (its rows of Pi's chord examples stop at 32-startup.ts); whether Pi's chord examples after 32 are in the port's scope is the owner's decision, not this change's (as in the ledger of ff7414d51)."
+
+[[files]]
+path = "packages/chord/test/examples/76-worker-reports/main.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_example_76_test.go#TestExample76WorkerReports"]
+rationale = "f57cd9484: the worker-reports example (a worker reports to the server and its exit is published after the commits its reports queued). Ported: chord/nextnode/workers/workers_example_76_test.go (TestExample76WorkerReports, ffcb39c74) runs the example's inputs and asserts its output."
+
+[[files]]
+path = "packages/chord/test/examples/76-worker-reports/contract.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_example_76_test.go#TestExample76WorkerReports"]
+rationale = "f57cd9484: the worker-reports example (a worker reports to the server and its exit is published after the commits its reports queued). Ported: chord/nextnode/workers/workers_example_76_test.go (TestExample76WorkerReports, ffcb39c74) runs the example's inputs and asserts its output."
+
+[[files]]
+path = "packages/chord/test/examples/76-worker-reports/worker.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:chord/nextnode/workers/workers_example_76_test.go#TestExample76WorkerReports"]
+rationale = "f57cd9484: the worker-reports example (a worker reports to the server and its exit is published after the commits its reports queued). Ported: chord/nextnode/workers/workers_example_76_test.go (TestExample76WorkerReports, ffcb39c74) runs the example's inputs and asserts its output."

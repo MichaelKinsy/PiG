@@ -1542,3 +1542,56 @@ func TestReferenceSourceUnseenOnceSeenStartsAtTheMembersLastValueAndStaysSeen(t 
 		t.Fatalf("start after seen = %+v, want failed with last 7 still", start)
 	}
 }
+
+// Own test, mirrors reference-source.ts:235 (`deny`: `state.error === error`): a denial the source is already failed with is not
+// delivered again, a wrapping error or an equal one is another denial and is.
+func TestReferenceSourceADenialIsComparedByIdentityAsPiDoes(t *testing.T) {
+	h := newMemberHarness(t)
+	doc := newMemberDoc(h.batch, memberCount(1))
+	count, _ := h.counting(t, doc, -1)
+	m := h.member(count)
+	calls := nexttest.ChangesOf(h.watch(t, m))
+	init := data.ChordErrorInit{Code: data.CodeForbidden, Reason: data.ReasonRevoked, Message: "no access"}
+	denial := data.NewChordError(init, nil)
+	h.within(t, func() { m.deny(denial, memberBackground) })
+	h.within(t, func() { m.deny(denial, memberBackground) })
+	h.delivered()
+	expectEqual(t, "frames after the same denial twice", nexttest.ValuesOf(calls.Items()), []any{nexttest.FailedValue{Failed: "no access"}})
+	h.within(t, func() { m.deny(data.NewChordError(init, denial), memberBackground) })
+	h.within(t, func() { m.deny(data.NewChordError(init, nil), memberBackground) })
+	h.delivered()
+	expectEqual(t, "frames after a wrapping and an equal denial", nexttest.ValuesOf(calls.Items()), []any{
+		nexttest.FailedValue{Failed: "no access"}, nexttest.FailedValue{Failed: "no access"}, nexttest.FailedValue{Failed: "no access"},
+	})
+	// And the other way round: the source failed with the wrapping error, then denied with what it wraps.
+	h.within(t, func() { m.deny(data.NewChordError(init, denial), memberBackground) })
+	h.within(t, func() { m.deny(denial, memberBackground) })
+	h.delivered()
+	expectEqual(t, "frames after the wrapped denial", len(nexttest.ValuesOf(calls.Items())), 5)
+}
+
+// reference-source.test.ts: a denied reference's source (slice 14 §2.2) › keeps no value: reads throw the denial, a watch
+// opened now has nothing to start at, the next bind is whole
+func TestHostReferenceSourceADeniedReferencesSourceKeepsNoValueReadsThrowTheDenialAWatchOpenedNowHasNothingToStartAtTheNextBindIsWhole(t *testing.T) {
+	batch := state.NewBatch(func(state.BatchError) {}, nil)
+	source := newReferenceSource(batch, nil, msNone{})
+	subscriber := &recorded{}
+	denial := data.NewChordError(data.ChordErrorInit{Code: data.CodeForbidden, Message: "no access"}, nil)
+	replicaCommit(t, batch, func() { source.bind(state.NewConstant(float64(1))) })
+	source.Subscribe(subscriber)
+	replicaCommit(t, batch, func() { source.deny(denial, background) })
+	if _, err := source.Value(); err == nil || err.Error() != "no access" {
+		t.Fatalf("read = %v, want the denial no access", err)
+	}
+	// Unlike a failed target's source: no last value to show.
+	if start := source.Start(); start.Kind != state.StartFailed || !errors.Is(start.Error, denial) || start.HasLast {
+		t.Fatalf("start = %+v, want failed with the denial and no last value", start)
+	}
+	if _, err := source.OpenWatch(background); err == nil || err.Error() != "no access" {
+		t.Fatalf("OpenWatch error = %v, want no access", err)
+	}
+	// The same denial told again (its object notifies for another reason) is no second call.
+	replicaCommit(t, batch, func() { source.deny(denial, background) })
+	replicaCommit(t, batch, func() { source.bind(state.NewConstant(float64(1))) })
+	expectEqual(t, "events", subscriber.events, []any{"no access", rootReplacement(1)})
+}

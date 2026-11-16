@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/data"
@@ -47,6 +48,10 @@ const (
 	WhereAnd     WhereOp = "and"
 	WhereOr      WhereOp = "or"
 	WhereNot     WhereOp = "not"
+	// WhereExists is the node of an `exists` (a query's condition only); WhereExistsNode is the Condition builder
+	// that takes its inner condition as data. Compilation turns both into a WhereExists node.
+	WhereExists     WhereOp = "exists"
+	WhereExistsNode WhereOp = "existsNode"
 )
 
 // isComparison reports the six comparison operators (Pi's `Comparison`).
@@ -58,7 +63,9 @@ func (op WhereOp) isComparison() bool {
 	return false
 }
 
-// WhereNode is a compiled condition: column comparisons with checked operands, combined by `and`, `or`, `not`.
+// WhereNode is a compiled condition: column comparisons with checked operands, combined by `and`, `or`, `not`. A
+// query's condition may also test `exists` (slice 14 §5): `[set, [[setColumn, column], …], inner]`, true for a row
+// when the set's table has a row equal in the matched columns that satisfies `inner`. Writes take no `exists`.
 //
 //	eq ne lt lte gt gte: Column, Value        {"eq":[column,value]}
 //	inArray:             Column, Values       {"inArray":[column,[values]]}
@@ -66,12 +73,24 @@ func (op WhereOp) isComparison() bool {
 //	prefix:              Column, Value string {"prefix":[column,prefix]}
 //	and or:              Nodes                {"and":[nodes]}
 //	not:                 Nodes[0]             {"not":node}
+//	exists:              Exists               {"exists":[set,[[setColumn,column],…],inner|null]}
 type WhereNode struct {
 	Op     WhereOp
 	Column string
 	Value  Scalar
 	Values []Scalar
 	Nodes  []WhereNode
+	Exists *ExistsNode
+}
+
+// MatchPair is one pair an `exists` matches: a column of the set and the column of the enclosing side it equals.
+type MatchPair struct{ SetColumn, Column string }
+
+// ExistsNode is the data of an `exists`: the set's name, the matched pairs, the inner condition (nil for none).
+type ExistsNode struct {
+	Set   string
+	Pairs []MatchPair
+	Inner *WhereNode
 }
 
 // ExprOp is the operator of an Expression and of an ExprNode.
@@ -137,6 +156,15 @@ func (set SetNode) Get(column string) (ExprNode, bool) {
 	return ExprNode{}, false
 }
 
+// Columns are the assigned columns, in order (Pi's `Object.keys(set)`).
+func (set SetNode) Columns() []string {
+	columns := make([]string, len(set))
+	for index, entry := range set {
+		columns[index] = entry.Column
+	}
+	return columns
+}
+
 // With is set with column set to node, after the others (an existing entry is replaced in place): Pi's
 // `{ ...set, [column]: node }`.
 func (set SetNode) With(column string, node ExprNode) SetNode {
@@ -162,9 +190,13 @@ type undefinedValue struct{}
 type Expression struct {
 	Op   ExprOp
 	Args []any
+	// Set is a ColumnRef's column set (`Set.refs`); empty for a reference of a table's own columns.
+	Set string
 }
 
-// ColumnRef is a reference to a column of the row, as `(t) => …` callbacks get them.
+// ColumnRef is a reference to a column of the row, as `(t) => …` callbacks get them. One of a column set
+// (ColumnSet.Refs) carries the set's name in Set: a condition names the side it means by it (a query's own table, a
+// joined set, an `exists`).
 type ColumnRef = Expression
 
 // ColumnRefs are the column references a table's callbacks get, by column name: `t["path"]`.
@@ -172,6 +204,11 @@ type ColumnRefs map[string]*ColumnRef
 
 // NewColumnRef is the reference to column.
 func NewColumnRef(column string) *ColumnRef { return &Expression{Op: ExprCol, Args: []any{column}} }
+
+// NewSetColumnRef is the reference to column of the column set named set.
+func NewSetColumnRef(column, set string) *ColumnRef {
+	return &Expression{Op: ExprCol, Args: []any{column}, Set: set}
+}
 
 // isRef reports whether e is a column reference, and its column.
 func (e *Expression) isRef() (string, bool) {
@@ -250,31 +287,57 @@ func conditionArgs(conditions []Condition) []any {
 }
 
 // Add is `a + b` over integers; a result outside ±(2^53 - 1) fails (rule 10).
-func Add(a, b any) *Expression { return &Expression{ExprAdd, []any{a, b}} }
+func Add(a, b any) *Expression { return &Expression{Op: ExprAdd, Args: []any{a, b}} }
 
 // Sub is `a - b` over integers; a result outside ±(2^53 - 1) fails (rule 10).
-func Sub(a, b any) *Expression { return &Expression{ExprSub, []any{a, b}} }
+func Sub(a, b any) *Expression { return &Expression{Op: ExprSub, Args: []any{a, b}} }
 
 // Max is the larger of a and b (`int` or `num`).
-func Max(a, b any) *Expression { return &Expression{ExprMax, []any{a, b}} }
+func Max(a, b any) *Expression { return &Expression{Op: ExprMax, Args: []any{a, b}} }
 
 // Min is the smaller of a and b (`int` or `num`).
-func Min(a, b any) *Expression { return &Expression{ExprMin, []any{a, b}} }
+func Min(a, b any) *Expression { return &Expression{Op: ExprMin, Args: []any{a, b}} }
 
 // Concat is a followed by b.
-func Concat(a, b any) *Expression { return &Expression{ExprConcat, []any{a, b}} }
+func Concat(a, b any) *Expression { return &Expression{Op: ExprConcat, Args: []any{a, b}} }
 
 // ReplacePrefix is value with its prefix from replaced by to; a value without the prefix stays as it is.
 func ReplacePrefix(value any, from, to string) *Expression {
-	return &Expression{ExprReplacePrefix, []any{value, from, to}}
+	return &Expression{Op: ExprReplacePrefix, Args: []any{value, from, to}}
 }
 
 // Coalesce is a unless it is `NULL`, else b.
-func Coalesce(a, b any) *Expression { return &Expression{ExprCoalesce, []any{a, b}} }
+func Coalesce(a, b any) *Expression { return &Expression{Op: ExprCoalesce, Args: []any{a, b}} }
 
 // When is a where condition holds for the row, else b.
 func When(condition Condition, a, b any) *Expression {
-	return &Expression{ExprWhen, []any{condition, a, b}}
+	return &Expression{Op: ExprWhen, Args: []any{condition, a, b}}
+}
+
+// MatchEntry is one column of a set matched to a column of the enclosing row; Match keeps the order Pi's object has.
+type MatchEntry struct {
+	Column string
+	Ref    *ColumnRef
+}
+
+// Match are the columns of a set matched to columns of the enclosing row: `{ setColumn: column }`, in order.
+type Match []MatchEntry
+
+// Exists is: set's table has a row equal to the enclosing row in the matched columns (a leading prefix of the set's
+// key or of one of its declared indexes) that satisfies inner (nil for none). In queries only.
+func Exists(set *ColumnSet, match Match, inner func(row ColumnRefs) Condition) Condition {
+	var condition any
+	if inner != nil {
+		condition = inner(set.Refs)
+	}
+	return Condition{WhereExists, []any{set, match, condition}}
+}
+
+// ExistsNodeOf is Exists with its inner condition as data (Compile's result): for a condition handed over as an
+// argument. A trust boundary: inner is whatever arrived (a WhereNode, or decoded JSON), and is checked whole before
+// anything is rendered.
+func ExistsNodeOf(set *ColumnSet, match Match, inner any) Condition {
+	return Condition{WhereExistsNode, []any{set, match, inner}}
 }
 
 // columnRefs is one ColumnRef per column, for a definition's `(t) => …` callbacks.
@@ -298,27 +361,144 @@ func invalidArgs(format string, args ...any) error {
 	return data.Invalid(data.ReasonArgs, fmt.Sprintf(format, args...))
 }
 
-// CompileWhere compiles a plugin's condition over table's columns (a trust boundary: plugin values): known scalar
-// columns, operands of their type made storable (`invalid/args` otherwise, `Undefined` included: ask with `IsNull`,
-// rule 16). condition is a Condition (or *Condition).
+// Resolved is a column as a scope resolved it: the column and its name in compiled nodes.
+type Resolved struct {
+	Column Column
+	Name   string
+}
+
+// Scope is where a condition's columns are looked up: one side of a query, or two for a joined one.
+type Scope struct {
+	// Name is named in errors.
+	Name string
+	// Resolve is the column ref names here and its name in compiled nodes; false when it is of no side of this scope.
+	// ref is a column reference (Op ExprCol).
+	Resolve func(ref *ColumnRef) (Resolved, bool)
+	// Exists is whether a condition here may test `exists` (a query's may, a write's may not).
+	Exists bool
+}
+
+// TableScope is the scope of one table: its own references, and those of the set it exposes.
+func TableScope(table *TableDefinition, exists bool) Scope {
+	return Scope{
+		Name:   table.Name,
+		Exists: exists,
+		Resolve: func(ref *ColumnRef) (Resolved, bool) {
+			if ref.Set != "" && (table.Exposes == nil || ref.Set != table.Exposes.Name) {
+				return Resolved{}, false
+			}
+			name, _ := ref.isRef()
+			column, found := table.ByName[name]
+			return Resolved{Column: column, Name: column.Name}, found
+		},
+	}
+}
+
+// SetScope is the scope of a column set alone: its own references (`Compile`, an `exists`' inner condition).
+func SetScope(set Side) Scope {
+	return Scope{
+		Name:   set.Name,
+		Exists: true,
+		Resolve: func(ref *ColumnRef) (Resolved, bool) {
+			if ref.Set != set.Name {
+				return Resolved{}, false
+			}
+			name, _ := ref.isRef()
+			column, found := set.ByName[name]
+			return Resolved{Column: column, Name: column.Name}, found
+		},
+	}
+}
+
+// PartnerName is the name of a joined set's column in compiled nodes, orders and cursors: `<set>:<column>`.
+func PartnerName(set, column string) string { return set + ":" + column }
+
+// JoinedScope is the scope of a query of own joined with set: the partner's columns are named `<set>:<column>`.
+func JoinedScope(own Scope, set Side) Scope {
+	return Scope{
+		Name:   own.Name,
+		Exists: true,
+		Resolve: func(ref *ColumnRef) (Resolved, bool) {
+			if ref.Set != set.Name {
+				return own.Resolve(ref)
+			}
+			name, _ := ref.isRef()
+			column, found := set.ByName[name]
+			return Resolved{Column: column, Name: PartnerName(set.Name, column.Name)}, found
+		},
+	}
+}
+
+// CompileWhere compiles a plugin's condition over table's columns for a write (a trust boundary: plugin values): known
+// scalar columns, operands of their type made storable (`invalid/args` otherwise, `Undefined` included: ask with
+// `IsNull`, rule 16). No `exists`. condition is a Condition (or *Condition).
 func CompileWhere(table *TableDefinition, condition any, what string) (WhereNode, error) {
+	return compileCondition(TableScope(table, false), condition, what, &Expected{})
+}
+
+// Compile is a condition over set's columns as plain data (slice 14 §6), for `Query.WhereNode` and `ExistsNodeOf`.
+func Compile(set *ColumnSet, condition Condition) (WhereNode, error) {
+	return compileCondition(SetScope(set.Side()), condition, "compile", &Expected{})
+}
+
+// ExpectedSet is the columns of one set an `exists` was written for, in the order they were first used.
+type ExpectedSet struct {
+	Set     string
+	Columns []Column
+}
+
+// Expected are the columns of other plugins' sets a condition was written for, by set name (in the order the sets
+// were first used): what `Exists(Set, …)` matched and compared, as the builder's `Set` declares them. A read checks
+// them against the table bound to the set when it opens (slice 14 §5: no versions, checked by name and type).
+type Expected []ExpectedSet
+
+// Clone is a copy that adding to does not change e.
+func (e Expected) Clone() Expected {
+	copied := make(Expected, len(e))
+	for i, each := range e {
+		copied[i] = ExpectedSet{Set: each.Set, Columns: slices.Clone(each.Columns)}
+	}
+	return copied
+}
+
+// add records column of set; a column already recorded keeps its place (a Map's `set`).
+func (e *Expected) add(set string, column Column) {
+	for i := range *e {
+		if (*e)[i].Set != set {
+			continue
+		}
+		for j, each := range (*e)[i].Columns {
+			if each.Name == column.Name {
+				(*e)[i].Columns[j] = column
+				return
+			}
+		}
+		(*e)[i].Columns = append((*e)[i].Columns, column)
+		return
+	}
+	*e = append(*e, ExpectedSet{Set: set, Columns: []Column{column}})
+}
+
+// compileCondition compiles a plugin's condition in scope (a trust boundary), as CompileWhere does for one table. The
+// set columns its `exists` use are added to expected.
+func compileCondition(scope Scope, condition any, what string, expected *Expected) (WhereNode, error) {
 	var c Condition
 	switch typed := condition.(type) {
 	case Condition:
 		c = typed
 	case *Condition:
 		if typed == nil {
-			return WhereNode{}, invalidArgs("%s: %s: expected a condition", table.Name, what)
+			return WhereNode{}, invalidArgs("%s: %s: expected a condition", scope.Name, what)
 		}
 		c = *typed
 	default:
-		return WhereNode{}, invalidArgs("%s: %s: expected a condition", table.Name, what)
+		return WhereNode{}, invalidArgs("%s: %s: expected a condition", scope.Name, what)
 	}
 	switch c.Op {
 	case WhereAnd, WhereOr:
 		nodes := make([]WhereNode, len(c.Args))
 		for i, each := range c.Args {
-			node, err := CompileWhere(table, each, what)
+			node, err := compileCondition(scope, each, what, expected)
 			if err != nil {
 				return WhereNode{}, err
 			}
@@ -326,71 +506,233 @@ func CompileWhere(table *TableDefinition, condition any, what string) (WhereNode
 		}
 		return WhereNode{Op: c.Op, Nodes: nodes}, nil
 	case WhereNot:
-		node, err := CompileWhere(table, argAt(c.Args, 0), what)
+		node, err := compileCondition(scope, argAt(c.Args, 0), what, expected)
 		if err != nil {
 			return WhereNode{}, err
 		}
 		return WhereNode{Op: WhereNot, Nodes: []WhereNode{node}}, nil
+	case WhereExists, WhereExistsNode:
+		exists, err := compileExists(scope, c, what, expected)
+		if err != nil {
+			return WhereNode{}, err
+		}
+		return WhereNode{Op: WhereExists, Exists: exists}, nil
 	case WhereIsNull:
-		column, err := scalarColumn(table, argAt(c.Args, 0), what)
+		resolved, err := scalarColumn(scope, argAt(c.Args, 0), what)
 		if err == nil {
-			column, err = ordered(table, column, c.Op, what)
+			resolved, err = ordered(scope, resolved, c.Op, what)
 		}
 		if err != nil {
 			return WhereNode{}, err
 		}
-		return WhereNode{Op: WhereIsNull, Column: column.Name}, nil
+		return WhereNode{Op: WhereIsNull, Column: resolved.Name}, nil
 	case WherePrefix:
-		column, err := scalarColumn(table, argAt(c.Args, 0), what)
+		resolved, err := scalarColumn(scope, argAt(c.Args, 0), what)
 		if err != nil {
 			return WhereNode{}, err
 		}
-		if column, err = ordered(table, column, c.Op, what); err != nil {
+		if resolved, err = ordered(scope, resolved, c.Op, what); err != nil {
 			return WhereNode{}, err
 		}
-		if column.Type != ColStr {
-			return WhereNode{}, invalidArgs("%s: %s: prefix needs a str() column", table.Name, what)
+		if resolved.Column.Type != ColStr {
+			return WhereNode{}, invalidArgs("%s: %s: prefix needs a str() column", scope.Name, what)
 		}
-		value, err := operand(column, argAt(c.Args, 1), what)
+		value, err := operand(resolved.Column, argAt(c.Args, 1), what)
 		if err != nil {
 			return WhereNode{}, err
 		}
-		return WhereNode{Op: WherePrefix, Column: column.Name, Value: value}, nil
+		return WhereNode{Op: WherePrefix, Column: resolved.Name, Value: value}, nil
 	case WhereInArray:
-		column, err := scalarColumn(table, argAt(c.Args, 0), what)
+		resolved, err := scalarColumn(scope, argAt(c.Args, 0), what)
 		if err != nil {
 			return WhereNode{}, err
 		}
 		list, ok := sliceOf(argAt(c.Args, 1))
 		if !ok {
-			return WhereNode{}, invalidArgs("%s: %s: inArray needs an array", table.Name, what)
+			return WhereNode{}, invalidArgs("%s: %s: inArray needs an array", scope.Name, what)
 		}
 		values := make([]Scalar, len(list))
 		for i, each := range list {
-			value, err := operand(column, each, what)
+			value, err := operand(resolved.Column, each, what)
 			if err != nil {
 				return WhereNode{}, err
 			}
 			values[i] = value
 		}
-		return WhereNode{Op: WhereInArray, Column: column.Name, Values: values}, nil
+		return WhereNode{Op: WhereInArray, Column: resolved.Name, Values: values}, nil
 	default:
 		// Pi's default arm: any other op is read as one of the six comparisons (an unknown op becomes that shape too).
-		column, err := scalarColumn(table, argAt(c.Args, 0), what)
+		resolved, err := scalarColumn(scope, argAt(c.Args, 0), what)
 		if err != nil {
 			return WhereNode{}, err
 		}
 		if c.Op != WhereEq && c.Op != WhereNe {
-			if column, err = ordered(table, column, c.Op, what); err != nil {
+			if resolved, err = ordered(scope, resolved, c.Op, what); err != nil {
 				return WhereNode{}, err
 			}
 		}
-		value, err := operand(column, argAt(c.Args, 1), what)
+		value, err := operand(resolved.Column, argAt(c.Args, 1), what)
 		if err != nil {
 			return WhereNode{}, err
 		}
-		return WhereNode{Op: c.Op, Column: column.Name, Value: value}, nil
+		return WhereNode{Op: c.Op, Column: resolved.Name, Value: value}, nil
 	}
+}
+
+// compileExists compiles an `exists` of scope: the set's matched columns are a leading prefix of its key or of one of
+// its declared indexes, each of the type (and host kind) of the enclosing column it is matched to; the inner
+// condition is the callback's, compiled over the set, or a node, checked as `WhereNode` checks one.
+//
+// Go forced difference: a condition's set argument is a *ColumnSet by its type; a hand-built Condition with another
+// value there is refused (Pi's TypeError), and so is a match that is not a Match.
+func compileExists(scope Scope, condition Condition, what string, expected *Expected) (*ExistsNode, error) {
+	set, isSet := argAt(condition.Args, 0).(*ColumnSet)
+	if !isSet || set == nil {
+		return nil, invalidArgs("%s: %s: exists needs a column set", scope.Name, what)
+	}
+	inner := argAt(condition.Args, 2)
+	if !scope.Exists {
+		return nil, invalidArgs("%s: %s: exists is for queries, not for writes", scope.Name, what)
+	}
+	match, isMatch := argAt(condition.Args, 1).(Match)
+	if !isMatch {
+		return nil, invalidArgs("%s: %s: exists needs a match", scope.Name, what)
+	}
+	pairs := make([]MatchPair, len(match))
+	names := make([]string, len(match))
+	for i, entry := range match {
+		column, found := set.ByName[entry.Column]
+		var outer Resolved
+		var resolved bool
+		if _, isRef := entry.Ref.isRef(); isRef {
+			outer, resolved = scope.Resolve(entry.Ref)
+		}
+		if !found || !resolved {
+			return nil, invalidArgs("%s: %s: exists(%s): %s is matched to no column", scope.Name, what, set.Name, quote(entry.Column))
+		}
+		if err := CheckPair(set.Name, column, outer.Column, scope.Name+": "+what); err != nil {
+			return nil, err
+		}
+		pairs[i] = MatchPair{SetColumn: entry.Column, Column: outer.Name}
+		names[i] = entry.Column
+	}
+	if err := CheckMatch(set.Matched(), names, scope.Name+": "+what); err != nil {
+		return nil, err
+	}
+	var node *WhereNode
+	if condition.Op == WhereExistsNode {
+		raw := nodeData(inner)
+		if err := CheckNode(raw, &Side{Name: set.Name, ByName: set.ByName}, fmt.Sprintf("%s: %s: existsNode(%s)", scope.Name, what, set.Name)); err != nil {
+			return nil, err
+		}
+		decoded, err := DecodeWhereNode(raw)
+		if err != nil {
+			return nil, err
+		}
+		node = &decoded
+	} else if inner != nil {
+		compiled, err := compileCondition(SetScope(set.Side()), inner, what, expected)
+		if err != nil {
+			return nil, err
+		}
+		node = &compiled
+	}
+	// What this `exists` uses of the set, as its author's `Set` declares it.
+	used := names
+	if node != nil {
+		used = append(slices.Clone(names), ColumnsOf(*node)...)
+	}
+	for _, name := range used {
+		expected.add(set.Name, set.ByName[name])
+	}
+	return &ExistsNode{Set: set.Name, Pairs: pairs, Inner: node}, nil
+}
+
+// nodeData is a condition handed over as data in the form CheckNode reads: a compiled node as its JSON, anything else
+// (decoded JSON) as it is.
+func nodeData(inner any) any {
+	if node, isNode := inner.(WhereNode); isNode {
+		return node.JSON()
+	}
+	return inner
+}
+
+// ColumnsOf is the columns a condition uses of its own side: the ones it compares, and the ones its `exists` are
+// matched to. An `exists`' inner condition is another side's.
+func ColumnsOf(node WhereNode) []string {
+	switch node.Op {
+	case WhereAnd, WhereOr, WhereNot:
+		var columns []string
+		for _, each := range node.Nodes {
+			columns = append(columns, ColumnsOf(each)...)
+		}
+		return columns
+	case WhereExists:
+		columns := make([]string, len(node.Exists.Pairs))
+		for i, pair := range node.Exists.Pairs {
+			columns[i] = pair.Column
+		}
+		return columns
+	}
+	// isNull and the remaining nodes are `{ [op]: [column, operand] }`.
+	return []string{node.Column}
+}
+
+// ExistsIn is the `exists` a condition tests on its own side (not the ones nested inside them).
+func ExistsIn(node WhereNode) []*ExistsNode {
+	switch node.Op {
+	case WhereAnd, WhereOr, WhereNot:
+		var found []*ExistsNode
+		for _, each := range node.Nodes {
+			found = append(found, ExistsIn(each)...)
+		}
+		return found
+	case WhereExists:
+		return []*ExistsNode{node.Exists}
+	}
+	return nil
+}
+
+// MatchedSet is a set as a match is checked against it: its name, columns, key and declared indexes.
+type MatchedSet struct {
+	Side
+	Key     []string
+	Indexes IndexRecords
+}
+
+// CheckMatch refuses a match that is no leading prefix of set's key or of one of its declared indexes
+// (`invalid/args`, listing them): two tables are matched only by such an equality (the bounding rule, slice 14 §5).
+func CheckMatch(set MatchedSet, matched []string, what string) error {
+	paths := [][]string{set.Key}
+	for _, index := range set.Indexes {
+		paths = append(paths, index.Columns)
+	}
+	for _, path := range paths {
+		if len(matched) > 0 && len(matched) <= len(path) {
+			fits := true
+			for _, column := range path[:len(matched)] {
+				fits = fits && slices.Contains(matched, column)
+			}
+			if fits {
+				return nil
+			}
+		}
+	}
+	listed := []string{fmt.Sprintf("key (%s)", strings.Join(set.Key, ", "))}
+	for _, index := range set.Indexes {
+		listed = append(listed, fmt.Sprintf("%s (%s)", index.Name, strings.Join(index.Columns, ", ")))
+	}
+	return invalidArgs("%s: %s is matched by (%s), no leading prefix of its %s", what, set.Name, strings.Join(matched, ", "), strings.Join(listed, " or "))
+}
+
+// CheckPair refuses a pair of matched columns of different types or host kinds (`invalid/args`, naming the set's
+// column).
+func CheckPair(set string, column, outer Column, what string) error {
+	a, b := ColumnRecordOf(column), ColumnRecordOf(outer)
+	if a.Type == ColJson || a.Type != b.Type || (a.Host == nil) != (b.Host == nil) || (a.Host != nil && *a.Host != *b.Host) {
+		return invalidArgs("%s: %s column %s and the column it is matched to differ in type", what, set, quote(column.Name))
+	}
+	return nil
 }
 
 // sliceOf is value as a list when it is a slice of any element type (`Array.isArray`).
@@ -634,30 +976,30 @@ func argText(value any) string {
 	return fmt.Sprint(value)
 }
 
-// scalarColumn is the column a condition compares: a reference to a known scalar column.
-func scalarColumn(table *TableDefinition, ref any, what string) (Column, error) {
+// scalarColumn is the column a condition compares: a reference to a known scalar column of scope.
+func scalarColumn(scope Scope, ref any, what string) (Resolved, error) {
 	expression, _ := ref.(*Expression)
 	name, isRef := expression.isRef()
 	if !isRef {
-		return Column{}, invalidArgs("%s: %s: expected a column reference", table.Name, what)
+		return Resolved{}, invalidArgs("%s: %s: expected a column reference", scope.Name, what)
 	}
-	column, found := table.ByName[name]
+	resolved, found := scope.Resolve(expression)
 	if !found {
-		return Column{}, invalidArgs("%s: %s: no column %s", table.Name, what, quote(name))
+		return Resolved{}, invalidArgs("%s: %s: no column %s", scope.Name, what, quote(name))
 	}
-	if column.Type == ColJson {
-		return Column{}, invalidArgs("%s: %s: json(...) column %s is not queryable", table.Name, what, quote(name))
+	if resolved.Column.Type == ColJson {
+		return Resolved{}, invalidArgs("%s: %s: json(...) column %s is not queryable", scope.Name, what, quote(name))
 	}
-	return column, nil
+	return resolved, nil
 }
 
-// ordered is column for a comparison by order, `IsNull` or `Prefix`: a `host(...)` column compares only with Eq, Ne and
-// InArray.
-func ordered(table *TableDefinition, column Column, op WhereOp, what string) (Column, error) {
-	if column.Host != nil {
-		return Column{}, invalidArgs("%s: %s: %s on host(...) column %s (eq, ne, inArray only)", table.Name, what, op, quote(column.Name))
+// ordered is resolved for a comparison by order, `IsNull` or `Prefix`: a `host(...)` column compares only with Eq, Ne
+// and InArray.
+func ordered(scope Scope, resolved Resolved, op WhereOp, what string) (Resolved, error) {
+	if column := resolved.Column; column.Host != nil {
+		return Resolved{}, invalidArgs("%s: %s: %s on host(...) column %s (eq, ne, inArray only)", scope.Name, what, op, quote(column.Name))
 	}
-	return column, nil
+	return resolved, nil
 }
 
 // operand is an operand compared with column, made storable (an address as its key for a `host(...)` column);
@@ -688,6 +1030,16 @@ func (node WhereNode) JSON() any {
 		return delta.JsonObjectOf(string(node.Op), nodes)
 	case WhereNot:
 		return delta.JsonObjectOf("not", node.Nodes[0].JSON())
+	case WhereExists:
+		pairs := make([]any, len(node.Exists.Pairs))
+		for i, each := range node.Exists.Pairs {
+			pairs[i] = []any{each.SetColumn, each.Column}
+		}
+		var inner any
+		if node.Exists.Inner != nil {
+			inner = node.Exists.Inner.JSON()
+		}
+		return delta.JsonObjectOf("exists", []any{node.Exists.Set, pairs, inner})
 	case WhereIsNull:
 		return delta.JsonObjectOf("isNull", node.Column)
 	case WhereInArray:
@@ -822,6 +1174,37 @@ func DecodeWhereNode(raw any) (WhereNode, error) {
 			return WhereNode{}, err
 		}
 		return WhereNode{Op: op, Nodes: []WhereNode{inner}}, nil
+	case op == WhereExists:
+		parts, err := pair(value, 3, what)
+		if err != nil {
+			return WhereNode{}, err
+		}
+		set, isText := parts[0].(string)
+		list, isList := parts[1].([]any)
+		if !isText || !isList {
+			return WhereNode{}, decodeError(what, "exists expects [set, pairs, inner]")
+		}
+		exists := &ExistsNode{Set: set, Pairs: make([]MatchPair, len(list))}
+		for i, each := range list {
+			entry, ok := each.([]any)
+			if !ok || len(entry) != 2 {
+				return WhereNode{}, decodeError(what, "an exists pair is [setColumn, column]")
+			}
+			setColumn, isSetColumn := entry[0].(string)
+			column, isColumn := entry[1].(string)
+			if !isSetColumn || !isColumn {
+				return WhereNode{}, decodeError(what, "an exists pair is [setColumn, column]")
+			}
+			exists.Pairs[i] = MatchPair{SetColumn: setColumn, Column: column}
+		}
+		if parts[2] != nil {
+			inner, err := DecodeWhereNode(parts[2])
+			if err != nil {
+				return WhereNode{}, err
+			}
+			exists.Inner = &inner
+		}
+		return WhereNode{Op: op, Exists: exists}, nil
 	case op == WhereIsNull:
 		column, ok := value.(string)
 		if !ok {
@@ -959,4 +1342,201 @@ func DecodeSetNode(raw any) (SetNode, error) {
 		set = append(set, SetEntry{Column: column, Node: node})
 	}
 	return set, nil
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Conditions handed over as data (slice 14 §6).
+
+// NodeDepth is how deep a condition handed over as data may nest (`and`, `or`, `not`, `exists`).
+const NodeDepth = 16
+
+// Side is the parts of a table or a column set a condition is checked against: its name and columns.
+type Side struct {
+	Name   string
+	ByName map[string]Column
+}
+
+// isHostKey reports whether key is the canonical stored key of an address of host's kind.
+func isHostKey(host *HostColumn, key string) bool {
+	address, err := host.Address(key)
+	if err != nil {
+		return false
+	}
+	canonical, err := host.Key(address, "")
+	return err == nil && canonical == key
+}
+
+// CheckNode checks a condition handed over as data (a decoded *delta.JsonObject, as WhereNode.JSON writes it) against
+// side's columns (a trust boundary): one known kind per node, operand shapes and types (a `host(...)` column's operands
+// are stored keys), every column in side, a depth bound. A nil side checks the structure only: the inner condition of
+// a nested `exists` is over another set, its columns checked when the read opens and the set's table is known.
+// `invalid/args` otherwise.
+func CheckNode(node any, side *Side, what string) error { return checkNode(node, side, what, 0) }
+
+func checkNode(node any, side *Side, what string, depth int) error {
+	refuse := func(message string) error { return invalidArgs("%s: %s", what, message) }
+	if depth > NodeDepth {
+		return refuse(fmt.Sprintf("nested deeper than %d", NodeDepth))
+	}
+	object, isObject := node.(*delta.JsonObject)
+	if !isObject || object == nil {
+		return refuse("a condition node is an object")
+	}
+	if object.Len() != 1 {
+		return refuse("a condition node has one kind")
+	}
+	var kind string
+	var value any
+	for key, each := range object.All() {
+		kind, value = key, each
+	}
+	column := func(name any) (*Column, error) {
+		text, isText := name.(string)
+		if !isText {
+			return nil, refuse("a column is named by a string")
+		}
+		if side == nil {
+			return nil, nil
+		}
+		found, ok := side.ByName[text]
+		if !ok {
+			return nil, refuse(fmt.Sprintf("no column %s in %s", quote(text), side.Name))
+		}
+		if found.Type == ColJson {
+			return nil, refuse(fmt.Sprintf("json(...) column %s is not queryable", quote(text)))
+		}
+		return &found, nil
+	}
+	operand := func(of *Column, each any) error {
+		_, isText := each.(string)
+		_, isFlag := each.(bool)
+		number, isNumber := numberOf(each)
+		if !isText && !isFlag && !(isNumber && isFinite(number)) {
+			return refuse("an operand is a string, a number or a boolean")
+		}
+		if of == nil {
+			return nil
+		}
+		if _, err := CheckScalar(of.Type, each, what); err != nil {
+			return err
+		}
+		// A `host(...)` column holds canonical address keys: anything else would silently match nothing.
+		if of.Type == ColStr && of.Host != nil && !isHostKey(of.Host, each.(string)) {
+			return refuse(fmt.Sprintf("%s is no address key of %s (column %s)", quote(each.(string)), of.Host.Kind.Kind, quote(of.Name)))
+		}
+		return nil
+	}
+	// A `host(...)` column compares only with eq, ne and inArray, as `compile` has it.
+	ordered := func(of *Column) error {
+		if of != nil && of.Type == ColStr && of.Host != nil {
+			return refuse(fmt.Sprintf("%s on host(...) column %s", kind, quote(of.Name)))
+		}
+		return nil
+	}
+	pair := func() ([]any, error) {
+		list, ok := value.([]any)
+		if !ok || len(list) != 2 {
+			return nil, refuse(kind + " takes [column, operand]")
+		}
+		return list, nil
+	}
+	switch kind {
+	case "and", "or":
+		list, ok := value.([]any)
+		if !ok {
+			return refuse(kind + " takes an array")
+		}
+		for _, each := range list {
+			if err := checkNode(each, side, what, depth+1); err != nil {
+				return err
+			}
+		}
+		return nil
+	case "not":
+		return checkNode(value, side, what, depth+1)
+	case "isNull":
+		of, err := column(value)
+		if err != nil {
+			return err
+		}
+		return ordered(of)
+	case "inArray":
+		parts, err := pair()
+		if err != nil {
+			return err
+		}
+		of, err := column(parts[0])
+		if err != nil {
+			return err
+		}
+		values, ok := parts[1].([]any)
+		if !ok {
+			return refuse("inArray takes an array of operands")
+		}
+		for _, each := range values {
+			if err := operand(of, each); err != nil {
+				return err
+			}
+		}
+		return nil
+	case "prefix":
+		parts, err := pair()
+		if err != nil {
+			return err
+		}
+		of, err := column(parts[0])
+		if err != nil {
+			return err
+		}
+		if err := ordered(of); err != nil {
+			return err
+		}
+		if _, isText := parts[1].(string); !isText || (of != nil && of.Type != ColStr) {
+			return refuse("prefix takes a str() column and a string")
+		}
+		return nil
+	case "eq", "ne", "lt", "lte", "gt", "gte":
+		parts, err := pair()
+		if err != nil {
+			return err
+		}
+		of, err := column(parts[0])
+		if err != nil {
+			return err
+		}
+		if kind != "eq" && kind != "ne" {
+			if err := ordered(of); err != nil {
+				return err
+			}
+		}
+		return operand(of, parts[1])
+	case "exists":
+		parts, ok := value.([]any)
+		if !ok || len(parts) != 3 {
+			return refuse("exists takes [set, pairs, inner]")
+		}
+		_, isText := parts[0].(string)
+		pairs, isList := parts[1].([]any)
+		if !isText || !isList || len(pairs) == 0 {
+			return refuse("exists takes a set name and its matched pairs")
+		}
+		for _, each := range pairs {
+			entry, ok := each.([]any)
+			if !ok || len(entry) != 2 {
+				return refuse("an exists pair is [setColumn, column]")
+			}
+			if _, isText := entry[0].(string); !isText {
+				return refuse("an exists pair is [setColumn, column]")
+			}
+			if _, err := column(entry[1]); err != nil {
+				return err
+			}
+		}
+		if parts[2] != nil {
+			return checkNode(parts[2], nil, what, depth+1)
+		}
+		return nil
+	default:
+		return refuse(fmt.Sprintf("unknown kind %s", quote(kind)))
+	}
 }

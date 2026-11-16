@@ -59,8 +59,9 @@ const (
 	// emit is dropped for that version only; once per failure episode, the next mapped emit ends it (Object, Member,
 	// Version, Error).
 	ErrEventMappingFailed HostErrorKind = "event_mapping_failed"
-	// ErrQueryFailed: a live query's run in a commit threw (a row its code cannot read), once per failure episode (a good
-	// run ends it): the query is a failed member until then (Object, Table, Error; `self.query`).
+	// ErrQueryFailed: a live read's run in a commit threw (a row its code cannot read), once per failure episode (a good
+	// run ends it): the query is a failed member until then (Object, Query, Error; `self.query`, and the named queries of
+	// slice 14).
 	ErrQueryFailed HostErrorKind = "query_failed"
 	// ErrRoutineFailed: a routine's call threw, or its source failed for good (Object, Routine, Error).
 	ErrRoutineFailed HostErrorKind = "routine_failed"
@@ -99,8 +100,9 @@ type HostError struct {
 	Routine Position
 	Address string
 	Member  string
-	// Table is a query_failed's table (its name in the object).
-	Table    string
+	// Query is a query_failed's query: the table's name for `self.query`, the named query's label for `self.liveQuery`,
+	// `self.count` and `self.list` (slice 14).
+	Query    string
 	Job      string
 	ID       string
 	Restarts int
