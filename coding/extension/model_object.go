@@ -2,6 +2,9 @@ package extension
 
 import (
 	"encoding/json"
+	"runtime"
+	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
@@ -72,15 +75,67 @@ func (v ModelValue) MarshalJSON() ([]byte, error) {
 	return data, err
 }
 
+// modelObjectOf converts one model for MarshalModelObjects; it is ModelObject and is replaced only by the tests that observe the conversions.
+var modelObjectOf = ModelObject
+
+const (
+	// modelObjectBlock is how many consecutive models a conversion worker takes at a time, and parallelModelObjectsMin the model count below which
+	// one goroutine converts them all: the first publication of the built-in catalog converts about 2,500 models, one conversion costs 10 to 30 us.
+	modelObjectBlock        = 32
+	parallelModelObjectsMin = 4 * modelObjectBlock
+)
+
 // MarshalModelObjects is the JSON array of the [ModelObject] of each model, skipping nil models. The objects are joined as
 // they are, so no member is escaped again (JSON.stringify escapes no <, > or &).
+//
+// The conversions are independent, so a list of parallelModelObjectsMin models or more is converted by up to GOMAXPROCS goroutines, each taking
+// blocks of models in order; the array is the one a single goroutine writes, and a failure is the first in list order.
 func MarshalModelObjects[M ai.AnyModel](models []M) ([]byte, error) {
-	out := []byte{'['}
-	for _, model := range models {
-		object, err := ModelObject(model)
+	objects := make([]json.RawMessage, len(models))
+	blocks := (len(models) + modelObjectBlock - 1) / modelObjectBlock
+	failures := make([]error, blocks)
+	var next atomic.Int64
+	convert := func() {
+		for {
+			block := int(next.Add(1) - 1)
+			if block >= blocks {
+				return
+			}
+			for i := block * modelObjectBlock; i < min(len(models), (block+1)*modelObjectBlock); i++ {
+				object, err := modelObjectOf(models[i])
+				if err != nil {
+					failures[block] = err
+					break
+				}
+				objects[i] = object
+			}
+		}
+	}
+	workers := 1
+	if len(models) >= parallelModelObjectsMin {
+		workers = min(runtime.GOMAXPROCS(0), blocks)
+	}
+	var group sync.WaitGroup
+	for range workers - 1 {
+		group.Go(convert)
+	}
+	convert()
+	group.Wait()
+	for _, err := range failures {
 		if err != nil {
 			return nil, err
 		}
+	}
+	size, count := len("[]"), 0
+	for _, object := range objects {
+		if object != nil {
+			size += len(object)
+			count++
+		}
+	}
+	out := make([]byte, 1, size+max(count-1, 0))
+	out[0] = '['
+	for _, object := range objects {
 		if object == nil {
 			continue
 		}

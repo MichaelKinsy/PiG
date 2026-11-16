@@ -108,15 +108,20 @@ func (c *extensionCatalogEncoding) state(registry *ModelRegistry, catalog []*ai.
 			values[i] = &normalized[i]
 			records[i] = ai.CatalogRecordRefOf(model)
 		}
-		input, ok := cloneCatalogInput(reflect.ValueOf(values))
-		if !ok {
-			c.mu.Unlock()
-			return c.uncached(registry, catalog)
-		}
-		snapshot := input.Interface().([]*ai.Model)
+		// The snapshot and the encoding read the same copies and write nothing, so they are made together: the snapshot is a tenth of the work of a first build.
+		var snapshot []*ai.Model
+		var snapshotOK bool
+		var cloned sync.WaitGroup
+		cloned.Go(func() {
+			var input reflect.Value
+			if input, snapshotOK = cloneCatalogInput(reflect.ValueOf(values)); snapshotOK {
+				snapshot = input.Interface().([]*ai.Model)
+			}
+		})
 		// The copies keep each model's catalog record, which orders its model object's members; the snapshot does not.
 		encoded, err := extension.MarshalModelObjects(values)
-		if err != nil {
+		cloned.Wait()
+		if !snapshotOK || err != nil {
 			c.mu.Unlock()
 			return c.uncached(registry, catalog)
 		}

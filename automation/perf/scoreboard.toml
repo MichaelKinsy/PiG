@@ -131,6 +131,7 @@ gates = [
   { test = "coding/extension/host/subprocess:TestNodeRuntimeMaterializesOncePerContentHash" },
   { test = "coding/extension/host/subprocess:TestNodeJitiCachePersistsWithoutStaleSource" },
   { test = "coding/extension/pigsdk:TestWarmBundleCheckDecodesNothing" },
+  { test = "coding/extension:TestMarshalModelObjectsConvertsALongListConcurrently" },
   { missing = "host allocations, bytes and frames per extension spawn (Go and Node cells), and the ten-extension start", route = "go-native-perf" },
   { missing = "ten-extension start time on the cluster with the exact-CV gate", route = "k8s-bench" },
 ]
