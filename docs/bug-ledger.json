@@ -21034,6 +21034,29 @@
       "tests": []
     },
     {
+      "id": "BF-60285d7",
+      "title": "Resuming a session (`pig -c`, `--resume`, `--session`, and the SDK's `CreateAgentSessionFromServices`) whose…",
+      "symptom": "The fallback chose from every model of a provider that had credentials, so an account that lists only some models (GitHub Copilot's list of models for your plan), or a provider whose own filter hides a model, was given a model it cannot use, where Pi gives it only a listed model, or none when none is listed and shows \"No models available\".",
+      "rootCause": "both fallback selectors listed available models as the composed catalog filtered by provider auth, not the published availability snapshot, which applies each provider's per-credential model filter",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Resuming a session (`pig -c`, `--resume`, `--session`, and the SDK's `CreateAgentSessionFromServices`) whose saved model is gone no longer picks a model that your account does not list. The fallback chose from every model of a provider that had credentials, so an account that lists only some models (GitHub Copilot's list of models for your plan), or a provider whose own filter hides a model, was given a model it cannot use, where Pi gives it only a listed model, or none when none is listed and shows \"No models available\". The fallback now reads the same models `/model` offers. It was present in v0.7.0 and, in the startup path, in v0.3.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "60285d7fbd",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
+        "coding/cli/startup_model_test.go::TestLazyStartupModelRuntimeLoadsOnFirstReadOnly"
+      ]
+    },
+    {
       "id": "BF-60473d7",
       "title": "The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full…",
       "symptom": "The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full window requests at most 32,768 output tokens, as in Pi, so OpenRouter's higher token count for the same input no longer makes it reject the request with a 400 that PiG then treated as a context overflow and compacted.",
