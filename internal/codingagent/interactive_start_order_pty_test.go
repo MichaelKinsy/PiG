@@ -71,8 +71,9 @@ func TestStartModeWritesFollowPiStartOrder(t *testing.T) {
 				}
 				modify := strings.Index(all, "\x1b[>4;2m")
 				switch {
-				case terminal.modifies && (modify < strings.Index(all, "\x1b[c") || strings.Count(all, "\x1b[>4;2m") != 1):
-					t.Errorf("modifyOtherKeys: want one write after the sentinel, got %q", startModeTokens.FindAllString(all, -1))
+				case terminal.modifies && (modify < strings.Index(all, "\x1b]11;?") || strings.Count(all, "\x1b[>4;2m") != 1):
+					// Pi reads the reply only after start() and init()'s colour query ran (tui.ts:956, interactive-mode.ts init()), so the fallback follows those writes.
+					t.Errorf("modifyOtherKeys: want one write after the sentinel and the colour query, got %q", startModeTokens.FindAllString(all, -1))
 				case !terminal.modifies && modify >= 0:
 					t.Errorf("modifyOtherKeys written without a reply that asks for it: %q", startModeTokens.FindAllString(all, -1))
 				}
