@@ -30,18 +30,6 @@ need() { # tool install-hint
   command -v "$1" >/dev/null 2>&1 || { echo "pre-push-gate: $1 not found ($2)" >&2; return 1; }
 }
 
-shellcheck_ci() {
-  need shellcheck "install ShellCheck $SHELLCHECK_CI_VERSION: brew install shellcheck, or automation/ci/install-shellcheck.sh on Linux" || return 1
-  local have
-  have=$(shellcheck --version | awk '/^version:/ {print $2}')
-  if [ "$have" != "$SHELLCHECK_CI_VERSION" ]; then
-    echo "pre-push-gate: shellcheck $have, CI runs $SHELLCHECK_CI_VERSION; install that version so the findings match" >&2
-    return 1
-  fi
-  # The tracked files, as CI's fresh checkout has them: untracked trees (an installed npm toolchain) hold scripts CI never sees.
-  git ls-files -z 'automation/*.sh' 'docs/site/public/*.sh' | xargs -0 shellcheck
-}
-
 gitleaks_range() {
   need gitleaks "brew install gitleaks" || return 1
   gitleaks git --no-banner --redact --log-opts="$base..$head" .
@@ -64,7 +52,7 @@ staticcheck_sa() {
 
 step "DCO sign-offs ($base..$head)" ./automation/ci/check-dco.sh "$base" "$head"
 step "source-hygiene (diff base $base)" make -s source-hygiene SOURCE_HYGIENE_BASE="$base"
-step "shellcheck $SHELLCHECK_CI_VERSION" shellcheck_ci
+step "shellcheck $SHELLCHECK_CI_VERSION" ./automation/ci/lint-shell.sh
 step "gitleaks ($base..$head)" gitleaks_range
 step "ruff" ruff_sdk
 step "docs-drift" make -s docs-drift
