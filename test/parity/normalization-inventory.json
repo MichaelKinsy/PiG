@@ -1223,6 +1223,29 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/107-removed-extension-provider-after-reload.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A removed extension's provider stays selected and answered by its old closure across two reloads",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "hello 1",
+            "capture_end": "served by closure of load 1, call 3"
+          },
+          "reason": "Owned visible surface: A removed extension's provider stays selected and answered by its old closure across two reloads",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
       "transforms": [
         {
