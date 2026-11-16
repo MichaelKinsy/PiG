@@ -111838,6 +111838,17 @@
       "shapeHash": "sha256:7ca847f29a212f4a450b221f654f7d1aad097cb41f44591c852dd3c107e12667"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.Reactivate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ExtensionRuntime.Reactivate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.RegisterMcpServer",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "ExtensionRuntime.RegisterMcpServer",
@@ -125599,6 +125610,17 @@
       "shapeHash": "sha256:e7dae146e9d1693f88eb2c07ce5ba10c048b7ca6c99a50f3ebaa6f8c39fafc83"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.InvalidateForReload",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.InvalidateForReload",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(message string)"
+      },
+      "shapeHash": "sha256:e7dae146e9d1693f88eb2c07ce5ba10c048b7ca6c99a50f3ebaa6f8c39fafc83"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.InvalidateKeepingRuntime",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
       "name": "Runner.InvalidateKeepingRuntime",
@@ -125819,6 +125841,17 @@
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.assertEmitOpen",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.assertEmitOpen",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.beginCommand",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
       "name": "Runner.beginCommand",
@@ -125982,6 +126015,17 @@
         "type": "func() []github.com/MichaelKinsy/PiG/coding/extension.ResolvedCommand"
       },
       "shapeHash": "sha256:d900bf0f2a913aa34ceac11bb2262376dee5f0a75f0f29a9e15758fa9dae9310"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.retiredError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.retiredError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.startMcpServersChange",
