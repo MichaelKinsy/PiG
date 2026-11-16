@@ -225,6 +225,7 @@ fn image_ref_is_the_sha256_of_its_bytes() {
     let image = Image::new(b"png-bytes".to_vec(), "image/png")
         .max_width_cells(20)
         .max_height_cells(10)
+        .image_id(4242)
         .filename("cover.png")
         .fallback_color("dim");
     assert_eq!(image.reference(), sha(b"png-bytes"));
@@ -232,7 +233,7 @@ fn image_ref_is_the_sha256_of_its_bytes() {
     assert_eq!(
         encoded.body["root"],
         json!({"kind": "image", "ref": sha(b"png-bytes"), "mimeType": "image/png", "maxWidthCells": 20,
-               "maxHeightCells": 10, "filename": "cover.png", "fallbackColor": "dim"})
+               "maxHeightCells": 10, "imageId": 4242, "filename": "cover.png", "fallbackColor": "dim"})
     );
     assert_eq!(encoded.images.len(), 1);
 }
