@@ -36,12 +36,11 @@ func transcriptReaderCommand(path string) (string, error) {
 	return transcriptCopyEnv + "=" + shellQuote(path) + " " + shellQuote(exe), nil
 }
 
-// copyTranscript appends everything read from in to the file at path, one write per read so nothing waits in a buffer, and on end of input writes the trailer with the byte count. It returns the process exit status.
-func copyTranscript(path string, in io.Reader, diag io.Writer) int {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600) //nolint:gosec // G304: the path is the run's transcript under its temp root, passed by the runner.
+// copyTranscript appends everything read from in to the file at path, one write per read so nothing waits in a buffer, and on end of input writes the trailer with the byte count. It returns the first error it met, which the caller turns into the process exit status.
+func copyTranscript(path string, in io.Reader) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0o600)
 	if err != nil {
-		fmt.Fprintf(diag, "transcript reader: %v\n", err)
-		return 1
+		return fmt.Errorf("transcript reader: %w", err)
 	}
 	buf := make([]byte, 64<<10)
 	var total int64
@@ -49,8 +48,7 @@ func copyTranscript(path string, in io.Reader, diag io.Writer) int {
 		n, readErr := in.Read(buf)
 		if n > 0 {
 			if _, err := f.Write(buf[:n]); err != nil {
-				fmt.Fprintf(diag, "transcript reader: %v\n", err)
-				return 1
+				return fmt.Errorf("transcript reader: %w", err)
 			}
 			total += int64(n)
 		}
@@ -58,24 +56,20 @@ func copyTranscript(path string, in io.Reader, diag io.Writer) int {
 			break
 		}
 		if readErr != nil {
-			fmt.Fprintf(diag, "transcript reader: %v\n", readErr)
-			return 1
+			return fmt.Errorf("transcript reader: %w", readErr)
 		}
 	}
 	if err := f.Close(); err != nil {
-		fmt.Fprintf(diag, "transcript reader: %v\n", err)
-		return 1
+		return fmt.Errorf("transcript reader: %w", err)
 	}
 	done := path + transcriptDoneSuffix
 	if err := os.WriteFile(done+".tmp", []byte(strconv.FormatInt(total, 10)+"\n"), 0o600); err != nil {
-		fmt.Fprintf(diag, "transcript reader: %v\n", err)
-		return 1
+		return fmt.Errorf("transcript reader: %w", err)
 	}
 	if err := os.Rename(done+".tmp", done); err != nil {
-		fmt.Fprintf(diag, "transcript reader: %v\n", err)
-		return 1
+		return fmt.Errorf("transcript reader: %w", err)
 	}
-	return 0
+	return nil
 }
 
 // finishTranscript closes the session's pipe, so the reader sees end of input, and returns once the reader has reported that it wrote every byte it read. A comparator reads the transcript only after this returns nil. The pipe is the transcript's only reader of the pane: the frame watch and the final capture read the screen with capture-pane and are not affected.

@@ -26,12 +26,11 @@ func TestTranscriptReaderKeepsEveryChunkWhenCatStalls(t *testing.T) {
 	}
 	bin := t.TempDir()
 	stall := "#!/bin/sh\nhead -c1 >/dev/null\nexec sleep 30\n"
-	if err := os.WriteFile(filepath.Join(bin, "cat"), []byte(stall), 0o755); err != nil { //nolint:gosec // a fixture script must be executable.
+	if err := os.WriteFile(filepath.Join(bin, "cat"), []byte(stall), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	socket := fmt.Sprintf("pig-parity-transcript-%d", os.Getpid())
 	tmux := func(args ...string) *exec.Cmd {
-		//nolint:gosec // G204 (class a): program is literal tmux; args are fixed options and test-local names.
 		cmd := exec.Command("tmux", append([]string{"-L", socket, "-f", os.DevNull}, args...)...)
 		cmd.Env = append(os.Environ(), "PATH="+bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 		return cmd
@@ -71,9 +70,8 @@ func TestTranscriptReaderKeepsEveryChunkWhenCatStalls(t *testing.T) {
 func TestCopyTranscriptWritesEachReadAndATrailerAtEOF(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "terminal-transcript.log")
 	in, out := io.Pipe()
-	status := make(chan int, 1)
-	var diag strings.Builder
-	go func() { status <- copyTranscript(path, in, &diag) }()
+	status := make(chan error, 1)
+	go func() { status <- copyTranscript(path, in) }()
 	waitFor := func(want string) {
 		t.Helper()
 		deadline := time.Now().Add(5 * time.Second)
@@ -100,8 +98,8 @@ func TestCopyTranscriptWritesEachReadAndATrailerAtEOF(t *testing.T) {
 	}
 	waitFor("abcde")
 	_ = out.Close()
-	if code := <-status; code != 0 {
-		t.Fatalf("exit status %d on end of input: %s", code, diag.String())
+	if err := <-status; err != nil {
+		t.Fatalf("copyTranscript on end of input: %v", err)
 	}
 	if got, _ := os.ReadFile(path + transcriptDoneSuffix); string(got) != "5\n" {
 		t.Fatalf("trailer = %q, want \"5\\n\"", got)

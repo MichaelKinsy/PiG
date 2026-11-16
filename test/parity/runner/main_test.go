@@ -3,6 +3,7 @@
 package runner
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -29,7 +30,11 @@ import (
 func TestMain(m *testing.M) {
 	// tmux pipe-pane starts this binary as the transcript reader (transcriptReaderCommand): copy standard input to the file the runner named and exit.
 	if path := os.Getenv(transcriptCopyEnv); path != "" {
-		os.Exit(copyTranscript(path, os.Stdin, os.Stderr))
+		if err := copyTranscript(path, os.Stdin); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		os.Exit(0)
 	}
 	if strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe") == fakeHTName {
 		os.Exit(runFakeHT(os.Args[1:]))
