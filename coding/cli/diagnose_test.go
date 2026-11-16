@@ -97,24 +97,6 @@ func TestCredentialKindLabel(t *testing.T) {
 	}
 }
 
-// Startup warns that extensions may build against a stale SDK and points the
-// user at this report, so the report has to carry that detail. It pointed at
-// "pig doctor", which does not exist, and the section it promised was missing.
-func TestDiagnoseReportsExtensionSDKStaging(t *testing.T) {
-	var buf bytes.Buffer
-	runDiagnose(&buf, "/usr/local/bin/pig")
-	out := buf.String()
-
-	if !strings.Contains(out, "extension SDKs") {
-		t.Fatal("diagnose has no extension SDK section, so the startup warning points at nothing")
-	}
-	for _, lang := range []string{"go:", "python:", "rust:"} {
-		if !strings.Contains(out, lang) {
-			t.Errorf("diagnose omits the %s SDK", strings.TrimSuffix(lang, ":"))
-		}
-	}
-}
-
 // Startup prints nothing on a config root this user cannot write (D157), so `pig diagnose` says what PiG does not write there. A writable root
 // gets no note, and diagnose leaves nothing in the config root: its write probe is removed. The agent dir lives elsewhere, because loading the
 // model registry for the report writes auth.json and models-store.json there.

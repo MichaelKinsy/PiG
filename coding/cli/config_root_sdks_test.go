@@ -1,4 +1,4 @@
-//go:build !pig_strip_extension_sdk_go
+//go:build !pig_strip_extension_sdk_go && !pig_strip_extension_sdk_python && !pig_strip_extension_sdk_rust
 
 package cli
 
