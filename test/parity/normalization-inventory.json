@@ -11100,6 +11100,28 @@
       "scenario": "test/parity/scenarios/startup/00-startup-banner.toml",
       "transforms": [
         {
+          "kind": "transcript_sequences_floating",
+          "window": "startup",
+          "sequence": "\u001b[>4;2m",
+          "reason": "Pi writes it when the terminal answers its Kitty keyboard query; the answer's time moves it across the first frame.",
+          "evidence_runs": 20,
+          "evidence_positions": [
+            35,
+            204
+          ]
+        },
+        {
+          "kind": "transcript_sequences_floating",
+          "window": "startup",
+          "osc": 0,
+          "reason": "Pi sets the window title in the same step as the CSI > 4 ; 2 m above, and the title ends in the run's random working directory name.",
+          "evidence_runs": 20,
+          "evidence_positions": [
+            36,
+            205
+          ]
+        },
+        {
           "kind": "cwd_snapshot_digits",
           "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
         }
