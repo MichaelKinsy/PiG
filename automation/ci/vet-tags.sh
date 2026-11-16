@@ -40,8 +40,10 @@ find . \( -name .git -o -name .upstream -o -name node_modules -o -name testdata 
 status=0
 while IFS= read -r tag; do
   if grep -Eq "$oses" <<<"$tag"; then
+    # shellcheck disable=SC2016 # awk program: $1 is awk's field, not a shell expansion
     covered='$1 == "native" || $1 == "platform" || $1 == "os-other"'
   else
+    # shellcheck disable=SC2016 # awk program: $1 is awk's field, not a shell expansion
     covered='$1 == "vet" || $1 == "other"'
   fi
   if ! awk -v t="$tag" "($covered) { if (\$2 == t) found = 1 } \$1 == \"prefix\" { if (index(t, \$2) == 1) found = 1 } END { exit !found }" "$list"; then
