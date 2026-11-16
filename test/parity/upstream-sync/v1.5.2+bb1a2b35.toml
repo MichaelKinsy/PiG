@@ -1,0 +1,44 @@
+from = "1.5.2+e03dca7a"
+to = "1.5.2+bb1a2b35"
+
+[[files]]
+path = "packages/ai/src/utils/retry.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/assistant_retry_websocket_limit_upstream_test.go#TestIsRetryableAssistantErrorCodexWebSocketConnectionLimit", "test:ai/assistant_retry_classifier_oracle_test.go#TestIsRetryableAssistantErrorMatchesPiOracle", "test:durable/core/turn/classify_carried_test.go#TestCodexWebSocketConnectionLimitIsRetryable", "test:extensions/sdk/pi_ai_helpers_test.go#TestCodexWebSocketConnectionLimitIsRetryable", "test:coding/session_websocket_limit_retry_upstream_test.go#TestIssue12124WebSocketConnectionLifetimeRetry"]
+rationale = "bb1a2b3542b5 (#12229, closes #12124) adds one entry to the WebSocket section of RETRYABLE_PROVIDER_ERROR_PATTERN, after \"websocket.?error\": websocket.?connection.?limit.?reached, which matches the Codex error code websocket_connection_limit_reached and the text \"Responses websocket connection limit reached (60 minutes)\" (case-insensitive, over the error text, after the non-retryable quota patterns). The turn that hit the limit after output had started ended with stopReason error and no agent-level retry. PiG's copies of the list are ai/assistant_retry.go, extensions/sdk/pi_ai_models.go (hand kept) and the Python, Rust and Lisp SDKs (hand kept), and durable/core/turn/patterns.go (generated from the vendored retry.js by make generate); each has the entry in Pi's position, and the SDK vectors (test/parity/sdk-vectors/pi-ai/isRetryableAssistantError.json, produced by Pi's own function with the backport) hold the rows for every copy."
+
+[[files]]
+path = "packages/ai/src/api/openai-codex-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream", "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket", "test:ai/provider_stream_event_order_test.go#TestCodexWebSocketLimitAfterLeadingRateLimitsEndsTheMessage", "test:ai/provider_stream_event_order_test.go#TestCodexWebSocketReadErrorAfterLeadingRateLimitsEndsTheMessage"]
+rationale = "bb1a2b3542b5: SESSION_WEBSOCKET_MAX_AGE_MS is 45 minutes instead of 55 (codexWebSocketMaxAge in ai/openai_codex_websocket.go; the existing age test of TestCodexWebSocketUpstream now ages the cached socket by 46 minutes and fails with the old 55). The commit also relies on websocketStarted, which Pi sets at the first event the mapper yields, a leading codex.rate_limits event included: PiG skipped leading rate-limit frames and decided as if nothing had started, so it reconnected inside the provider for the connection limit and retried or fell back to SSE after a read error. startCodexWebSocketAttempt now has the one flag, set where Pi sets it and read where Pi reads it, and a started stream ends in an error message that the caller's retry handles."
+
+[[files]]
+path = "packages/ai/test/retry.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/assistant_retry_websocket_limit_upstream_test.go#TestIsRetryableAssistantErrorCodexWebSocketConnectionLimit"]
+rationale = "bb1a2b3542b5 adds \"matches the Codex websocket connection lifetime limit: %s\" (the message and the code) and \"does not match a generic connection limit\". The three rows are subtests of TestIsRetryableAssistantErrorCodexWebSocketConnectionLimit with the same text and expectation, plus the separators `.?` accepts, the case-insensitive flag and near misses; the oracle test and the SDK vectors run them through Pi's classifier."
+
+[[files]]
+path = "packages/ai/test/openai-codex-stream.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket", "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream"]
+rationale = "bb1a2b3542b5 adds \"retries a connection lifetime limit after $name on a fresh websocket\" (response metadata, rate-limit metadata, partial thinking) and moves the age test from 56 to 46 minutes. The three rows are the three subtests of TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket (same events, same expectations: two attempts, the first an error, the first socket closed, no previous_response_id, no SSE fetch); the age test is the 46 minute row of TestCodexWebSocketUpstream."
+
+[[files]]
+path = "packages/coding-agent/test/suite/regressions/12124-websocket-connection-limit-retry.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:coding/session_websocket_limit_retry_upstream_test.go#TestIssue12124WebSocketConnectionLifetimeRetry"]
+rationale = "bb1a2b3542b5: a tool call, then partial thinking ending with the connection limit error, then recovery; the tool runs once, the failed message is not sent on the retry, auto_retry_start and auto_retry_end carry the error and attempt 1, and the last assistant text is the recovery."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "bb1a2b3542b5: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment."
