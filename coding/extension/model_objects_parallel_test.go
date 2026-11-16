@@ -126,7 +126,7 @@ func TestModelObjectWorkersAreBounded(t *testing.T) {
 	for _, row := range []struct{ count, procs, want int }{
 		{0, 192, 1}, {parallelModelObjectsMin - 1, 192, 1},
 		{parallelModelObjectsMin, 192, parallelModelObjectsMin / modelObjectBlock},
-		{2500, 192, maxModelObjectWorkers}, {2500, 8, 8}, {2500, 3, 3}, {2500, 1, 1}, {2500, 0, 1},
+		{2500, 192, 8}, {2500, 8, 8}, {2500, 3, 3}, {2500, 1, 1}, {2500, 0, 1},
 	} {
 		if got := modelObjectWorkers(row.count, row.procs); got != row.want {
 			t.Errorf("%d models on %d processors: %d workers, want %d", row.count, row.procs, got, row.want)
