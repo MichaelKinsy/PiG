@@ -50972,6 +50972,34 @@
       ]
     },
     {
+      "id": "BF-d2ab7d8",
+      "title": "A Node extension handler's host effects are written before the RPC reply or interactive prompt drain that…",
+      "symptom": "A Node extension handler's host effects are written before the RPC reply or interactive prompt drain that waited for the handler's first suspension, as Pi writes them.",
+      "rootCause": "Pi runs a handler synchronously to its first await inside emit (runner.ts:1110), so a host API the handler calls there (ui.notify, setStatus, setWidget, setTitle, setEditorText, pi.appendEntry, pi.sendUserMessage) is written before the caller that went on after `void this._extensionRunner.emit(...)` (agent-session.ts:2788 thinking_level_select, :4108 session_info_changed): the RPC reply of set_session_name and set_thinking_level follows the handler's notification, and the interactive prompt drain releases its dialog answer after it.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension handler's host effects are written before the RPC reply or interactive prompt drain that waited for the handler's first suspension, as Pi writes them. A `session_info_changed` or `thinking_level_select` handler that calls `ctx.ui.notify`, `ctx.ui.setStatus`, `ctx.ui.setWidget`, `ctx.ui.setTitle`, `ctx.ui.setEditorText`, `pi.appendEntry` or `pi.sendUserMessage` synchronously now has that effect written before the reply of `set_session_name` or `set_thinking_level` (RPC mode) and before the prompt drain releases its dialog answer. PiG wrote the reply first, so a client saw the reply and then the notification, status or widget that Pi writes before it (isolated and packed Node extensions, since 0.2.0, the first release with the call lanes that queue those calls). A notification that followed a refused call, such as a failed `pi.appendEntry`, could also be applied after the caller went on outside RPC mode. The host releases the caller only after every call the same extension sent before its report has been applied: the wait is per extension connection, has no timer, and ends with the request, so a handler that ends or goes on, a cancelled caller or a closing session releases it, and a dialog, a model request or a child process the handler starts never holds it. Go, Python, Rust and Lisp subprocess extensions already wrote in Pi's order; the same rows now pin them in isolated and packed mode.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d2ab7d89f0",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_handler_effect_order_test.go::TestRPCHandlerEffectsPrecedeTheReplyOfTheCommandThatEmittedTheEvent",
+        "coding/extension/host/subprocess/ack_hold_test.go::TestBlockedAcknowledgmentOfAnEffectCallWaitsForTheHandlersProgress",
+        "coding/extension/host/subprocess/ack_hold_test.go::TestBlockedAcknowledgmentWaitsForTheCallsReadBeforeIt",
+        "test/extension-conformance/handler_effect_bounds_test.go::TestConformance_HandlerEffectWaitEndsWithTheCallersContext",
+        "test/extension-conformance/handler_effect_bounds_test.go::TestConformance_HandlerEffectWaitEndsWithTheSession",
+        "test/extension-conformance/handler_effect_bounds_test.go::TestConformance_HandlerEffectsPrecedeTheReleaseUnderLoad",
+        "test/extension-conformance/handler_effect_order_test.go::TestConformance_HandlerEffectsPrecedeTheReleaseOfItsCaller"
+      ]
+    },
+    {
       "id": "BF-d2b1fc1",
       "title": "GitHub Copilot login reads an enterprise domain the way Pi does: an IPv6 host keeps its brackets, an…",
       "symptom": "GitHub Copilot login reads an enterprise domain the way Pi does: an IPv6 host keeps its brackets, an internationalized name becomes its `xn--` form, a numeric host is normalized (`1.2.3` is `1.2.0.3`) or refused when out of range, a backslash ends the host, and a port above 65535 refuses the domain.",
