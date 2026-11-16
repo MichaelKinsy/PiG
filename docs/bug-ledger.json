@@ -58756,6 +58756,30 @@
       ]
     },
     {
+      "id": "BF-ec9984a",
+      "title": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) is now sent the…",
+      "symptom": "The host sent a frame from the renderer's timer goroutine or from the call that asked for it, and an input or mouse event from the call that delivered it, with nothing between them, so an extension that keeps state across the two could draw a half-applied input.",
+      "rootCause": "Pi runs a TuiAltScreen on one event loop: the terminal's input (tui.ts:995-997), the throttled frame (requestRender arms one setTimeout, :1067-1120) and the extension's own calls are tasks of it, so a component's render and its handleInput never run together and a render never reads what a handler half applied. The subprocess bridge had no such loop: the frame ran on the renderer's timer goroutine or the caller's, input and mouse events on the call goroutine that delivered them, and the extension (which answers each request on a goroutine or thread of its own) was sent a render while it was still answering an input.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) is now sent the callbacks of its components one at a time, as Pi runs them on one event loop: a component's `render` no longer reaches the extension while its `handleInput`, `handleMouse` or focus callback is still being answered, and a frame that a handler asks for with `requestRender` runs after the handler returns. Before, the host sent a frame from the renderer's timer goroutine or from the call that asked for it, and an input or mouse event from the call that delivered it, with nothing between them, so an extension that keeps state across the two could draw a half-applied input. Each screen now has one goroutine that sends every callback, runs the throttled frame and runs every call the extension does not make from a callback. Present since 0.7.0, the first release with the subprocess `TuiAltScreen`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ec9984ae6c",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/tui_alt_owner_order_test.go::TestAnExtensionScreensInputAndRenderNeverRunAtOnce",
+        "coding/extension/host/subprocess/tui_alt_owner_test.go::TestAScheduledFrameRunsOnTheOwner",
+        "coding/extension/host/subprocess/tui_alt_owner_test.go::TestAnInputHandlersRenderRequestRunsAfterTheHandlerAnswers"
+      ]
+    },
+    {
       "id": "BF-ecc7b76",
       "title": "fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop",
       "symptom": "fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop",
