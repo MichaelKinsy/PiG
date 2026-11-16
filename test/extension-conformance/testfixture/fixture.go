@@ -1849,6 +1849,47 @@ func Extension() *sdk.Extension {
 		})
 		return nil
 	})
+	// event_level_edit_probe subscribes to the event named by the argument (`<event> <top|deep>`) with a handler that edits it in place and returns nothing: `top` assigns a
+	// member of the event itself (probeTop), `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text
+	// block, else a string content, else a `probe` member. Every edit writes `other-event-edit` (TestInPlaceMessageEventEditsMatchPi).
+	ext.Command("event_level_edit_probe", "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place", func(ctx sdk.Context, args string) error {
+		name, level, _ := strings.Cut(strings.TrimSpace(args), " ")
+		const edited = "other-event-edit"
+		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
+			if level == "top" {
+				data["probeTop"] = edited
+				return nil, nil
+			}
+			target, _ := data["message"].(map[string]any)
+			if list, ok := data["messages"].([]any); ok && target == nil && len(list) > 0 {
+				target, _ = list[0].(map[string]any)
+				for _, item := range list {
+					if m, ok := item.(map[string]any); ok && m["role"] == "user" {
+						target = m
+						break
+					}
+				}
+			}
+			if target == nil {
+				return nil, nil
+			}
+			blocks, _ := target["content"].([]any)
+			var first map[string]any
+			if len(blocks) > 0 {
+				first, _ = blocks[0].(map[string]any)
+			}
+			switch {
+			case first != nil && first["type"] == "text":
+				first["text"] = edited
+			case isStringContent(target):
+				target["content"] = edited
+			default:
+				target["probe"] = edited
+			}
+			return nil, nil
+		})
+		return nil
+	})
 	ext.Command("host_state_probe", "Report the thinking level and the session commands", func(ctx sdk.Context, _ string) error {
 		level, err := ctx.GetThinkingLevel()
 		if err != nil {
@@ -5074,4 +5115,10 @@ func lastRenderLine(render sdk.ToolRenderContext) string {
 		return "none"
 	}
 	return render.LastComponent.Lines[0]
+}
+
+// isStringContent reports whether the message's content is a string.
+func isStringContent(message map[string]any) bool {
+	_, ok := message["content"].(string)
+	return ok
 }

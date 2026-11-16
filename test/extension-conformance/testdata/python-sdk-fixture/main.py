@@ -3089,6 +3089,33 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, lambda hctx, data: hctx.notify("event_field:%s.%s=%s" % (name, field, json.dumps(data[field], separators=(",", ":")) if field in data else "absent"), "info"))
 
     ext.command("event_field_probe", "Report a field of the events named by the argument `<event> <field>`", event_field_probe)
+
+    def event_level_edit_probe(ctx, args):
+        # `<event> <top|deep>`: subscribe to the event with a handler that edits it in place and returns nothing. `top` assigns a member of the event itself (probeTop); `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text block, else a string content, else a `probe` member. Every edit writes `other-event-edit`.
+        name, level = args.split()
+        edited = "other-event-edit"
+
+        def make(hctx, data):
+            if level == "top":
+                data["probeTop"] = edited
+                return
+            target = data.get("message")
+            if target is None and isinstance(data.get("messages"), list) and data["messages"]:
+                target = next((m for m in data["messages"] if isinstance(m, dict) and m.get("role") == "user"), data["messages"][0])
+            if not isinstance(target, dict):
+                return
+            content = target.get("content")
+            first = content[0] if isinstance(content, list) and content else None
+            if isinstance(first, dict) and first.get("type") == "text":
+                first["text"] = edited
+            elif isinstance(content, str):
+                target["content"] = edited
+            else:
+                target["probe"] = edited
+
+        ext.on_event(name, make)
+
+    ext.command("event_level_edit_probe", "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place", event_level_edit_probe)
     event_probe_on_offs: dict = {}
 
     event_probe_results: dict = {}
