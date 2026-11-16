@@ -1657,6 +1657,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b78cdae](#bf-b78cdae) | A YAML parse error on a block scalar used as an implicit key (`name: x` followed by `\|description: ...`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b7d2c07](#bf-b7d2c07) | Azure OpenAI Responses requests hold the members Pi's Azure requests hold | PiG's own defect | All platforms | Unreleased |
 | [BF-b7d9b2b](#bf-b7d9b2b) | `pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-b829321](#bf-b829321) | Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK… | PiG's own defect | All platforms | Unreleased |
 | [BF-b84facb](#bf-b84facb) | fix(codingagent,tui): extension editor follows the terminal rows; title and image fallback close only the… | PiG's own defect | All platforms | Unreleased |
 | [BF-b85fd68](#bf-b85fd68) | fix(chord/host): compile the frame schema once, not for every frame a link carries | PiG's own defect | All platforms | Unreleased |
 | [BF-b88044f](#bf-b88044f) | A login flow's text prompt accepts an empty answer, as Pi's does, instead of failing with "<prompt> is… | PiG's own defect | All platforms | 0.5.0 |
@@ -25024,6 +25025,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b7d9b2b676` (2026-10-25)
 - **Tests:** `coding/cli/npm_command_name_test.go::TestNpmCommandClassificationAtInstallAndRemove`, `coding/cli/package_batch_upstream_test.go::TestPackageBatchedConcurrentUpdatesOriginal`, `coding/cli/package_cli_output_test.go::TestPackageChildOutputAndFailure`, `internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASymlink`, `internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand`
 - **Release note:** `pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when the agent directory is reached through a symlink, such as `~/.pi` linked into a dotfiles repository. PiG now passes the resolved real path to npm as `--prefix` (or `--cwd` for Bun).
+
+### BF-b829321
+
+**Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK and as Pi does.
+- **Root cause:** pi.sendUserMessage(content) passes options?.deliverAs to prompt() as streamingBehavior (agent-session.ts:2565-2573): an idle agent runs the message at once, a streaming agent refuses it ("Agent is already processing. Specify streamingBehavior ...", prompt() :2240-2244), and the bound action reports that refusal as the extension error event send_user_message while the call returns (:3565-3572). The Go SDK omitted an empty deliverAs, the Rust SDK sent an empty string (the host reads it as absent), and the Python and Lisp SDKs defaulted to "followUp": a Python or Lisp extension that sent without a mode while the agent streamed got a queued follow-up where Pi, a Node extension and a Go…
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b829321657` (2026-11-16)
+- **Tests:** `internal/codingagent/interactive_extension_delivery_test.go::TestSendMessageFailureIsReportedNotReturned`, `internal/codingagent/interactive_extension_delivery_test.go::TestSendUserMessageWithoutDeliveryModeWhileStreamingIsReportedNotReturned`, `test/extension-conformance/host_call_error_surface_test.go::TestHostCallErrorSurfaceAcrossSDKs`, `test/extension-conformance/send_user_message_delivery_test.go::TestSendUserMessageDeliveryAcrossSDKs`, `test/parity/scenarios/rpc/83-rpc-send-user-message-delivery-streaming.toml`
+- **Release note:** Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK and as Pi does. The Python and Lisp SDKs defaulted the mode to `"followUp"` (since 0.7.0), so an extension that sent while the agent was running got a queued follow-up where Pi, a Node extension and a Go extension get Pi's refusal. Python `send_user_message(content)` and Lisp `(ctx-send-user-message ctx content)` now send no `deliverAs`: an idle agent runs the message at once, and a running agent refuses it with `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.`, reported as the extension error `send_user_message` while the call returns. Pass `deliver_as="followUp"` (Lisp `:deliver-as "followUp"`) for the old behaviour; `steer` and `followUp` are unchanged. Interactive mode now reports a refused `sendUserMessage` and a failed `sendMessage` as those extension errors instead of returning the error to the extension, as print, JSON and RPC mode do, and the Lisp `host-call-error` prints `CODE: MESSAGE` as the other SDKs write a host error.
 
 ### BF-b84facb
 
