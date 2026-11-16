@@ -1675,7 +1675,15 @@ func (e *Editor) renderCursorAt(line string, col int, emitMarker bool) string {
 // produced by handlePasteFlush. Mirrors upstream's literal regex in
 // expandPasteMarkers.
 func pasteMarkerRegexp(id int) *regexp.Regexp {
-	return regexp.MustCompile(fmt.Sprintf(`\[paste #%d( (\+\d+ lines|\d+ chars))?\]`, id))
+	return pasteMarkerRegexps.Get(id, compilePasteMarkerRegexp)
+}
+
+// pasteMarkerRegexps holds the marker expression of each paste id a message has held, so expanding the markers of a submitted message compiles one
+// for an id once, not once for every paste of every submit (the ids count up through a session and are bounded by the cache).
+var pasteMarkerRegexps = lazyregexp.NewCache[int](256)
+
+func compilePasteMarkerRegexp(id int) *regexp.Regexp {
+	return regexp.MustCompile(fmt.Sprintf(`\[paste #%d( (\+\d+ lines|\d+ chars))?\]`, id)) //perf:ok compiled once per paste id: pasteMarkerRegexps caches it
 }
 
 // handlePasteFlush inserts a buffered bracketed paste. Large pastes
