@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
 
 // ─── Canned responses for compaction / branch summarization ──────────────────
@@ -555,7 +557,8 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 			pattern = "**/*.txt"
 		}
 		// The pattern is written as JSON text whatever it holds (the fixture's order is pattern, path).
-		quoted, _ := json.Marshal(pattern)
+		raw, _ := json.Marshal(pattern)
+		quoted, _ := jsonstringify.Canonicalize(raw)
 		return "tool", "", []testFauxToolCall{{
 			Name:     "find",
 			ArgsJSON: `{"pattern":` + string(quoted) + `,"path":"."}`,
