@@ -32681,6 +32681,30 @@
       ]
     },
     {
+      "id": "BF-873f87d",
+      "title": "Chord: `chordctx.OnAbort` on a context derived by `WithAbortSignal` from a signal made with…",
+      "symptom": "The order that picks it (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of `x`, which never reached the derived context, counted as that context's own and its cause won over the independent source's although that one aborted first (a listener added after the aborts heard `x`'s reason).",
+      "rootCause": "abortSources and AbortOrder each walked a context's parents on their own, and only abortSources stopped at a WithoutAbortSignal context, so the two functions disagreed about which aborts reach a context.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: `chordctx.OnAbort` on a context derived by `WithAbortSignal` from a signal made with `WithCancel(WithoutAbortSignal(x))` and from an independent source now hears the reason of the source that aborted first. Before, the order that picks it (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of `x`, which never reached the derived context, counted as that context's own and its cause won over the independent source's although that one aborted first (a listener added after the aborts heard `x`'s reason). As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context; the chord host's linked abort signals rank their two sources by the same function. Released in: no release (the `WithoutAbortSignal` marker that the walk ignored came with 32168e142, which no tag contains; v0.7.0 does not have it).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "873f87dc75",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "chord/context/abort_cause_oracle_test.go::TestAbortCauseMatchesPi",
+        "chord/context/abort_detached_order_test.go::TestAbortOrderStopsAtADetachedAncestor",
+        "chord/context/abort_detached_order_test.go::TestLateListenerHearsTheFirstSourceThatAbortedNotADetachedAncestorsParent"
+      ]
+    },
+    {
       "id": "BF-8780292",
       "title": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start",
       "symptom": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start.",
@@ -34493,6 +34517,32 @@
         "ai/connection_cause_oracle_test.go::TestConnectionErrorKeepsCauseThroughSDKsMatchesPi",
         "ai/openai_sdk_transport_error_test.go::TestOpenAISDKTransportErrorConnectionReset",
         "ai/transport_diagnostic_test.go::TestProviderTransportResetRecordsDiagnosticAndKeepsMessage"
+      ]
+    },
+    {
+      "id": "BF-8f44724",
+      "title": "Chord: the cancel function `chordctx.WithCancel` returns now aborts the context, what is derived from it and…",
+      "symptom": "A repeated call (a `defer cancel()` after an explicit one, a timer and an owner) that arrived after the first call had cancelled the context and before it had taken the contexts derived from it and the listeners took them away and ran them on its own goroutine, outside the section that cancelled: a waiter's abort listener enqueues its continuation where it runs, so a loop section that resolved a promise and then cancelled its context had the abort delivered behind the settlement's reaction, and the waiter delivered the result instead of the abort.",
+      "rootCause": "The cancel function took the links and the listener set on every call, on the assumption that a context is cancelled by one call, as in Pi's single thread, and nothing recorded which call owned the abort, so two calls that overlapped each took part of what only the first owns.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: the cancel function `chordctx.WithCancel` returns now aborts the context, what is derived from it and runs its abort listeners (`OnAbort`) only in the call that cancels it first. Before, a repeated call (a `defer cancel()` after an explicit one, a timer and an owner) that arrived after the first call had cancelled the context and before it had taken the contexts derived from it and the listeners took them away and ran them on its own goroutine, outside the section that cancelled: a waiter's abort listener enqueues its continuation where it runs, so a loop section that resolved a promise and then cancelled its context had the abort delivered behind the settlement's reaction, and the waiter delivered the result instead of the abort. A call after the first now records no cause and takes no listener, as Pi's `abort()` of an aborted signal does nothing; it returns once the first has aborted the context and what is derived from it, while the listeners are the first call's to run (they may still be running when it returns). Released in: no release (the fault came with the abort listeners' delivery inside the cancel, 6c69d7b4c, and the abort of derived contexts inside it, cb409e6c3, which no tag contains; v0.7.0 does not have them).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8f447242af",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "chord/context/abort_owner_link_test.go::TestRepeatedCancelLeavesTheListenersOfADerivedContextToTheCancelThatOwnsThem",
+        "chord/context/abort_owner_test.go::TestCancelFromAListenerReturnsAtOnce",
+        "chord/context/abort_owner_test.go::TestConcurrentCancelsOfOneContextRunEachListenerOnce",
+        "chord/context/abort_owner_test.go::TestRepeatedCancelKeepsTheFirstCause",
+        "chord/context/abort_owner_test.go::TestRepeatedCancelLeavesTheListenersToTheCancelThatOwnsThem"
       ]
     },
     {
