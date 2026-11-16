@@ -242,6 +242,9 @@ type Workers struct {
 	routing   bool
 	idleTimer host.Timer
 	tasks     taskGroup
+	// beforeForkSection is a test seam: `start` calls it, outside any section, just before the section that forks the
+	// address's worker, the window in which a `Close` can land between a start's last look at the component and its fork.
+	beforeForkSection func()
 }
 
 func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
@@ -507,12 +510,24 @@ func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedL
 		}
 		return host.ResolvedLink{}, c.failLocked(record, cause{err: err, public: &startFailed}, "")
 	}
-	if c.isClosing() {
-		return host.ResolvedLink{}, closed()
+	if c.beforeForkSection != nil {
+		c.beforeForkSection()
 	}
+	// Pi looks at `closing` and forks in one synchronous step (workers.ts:345-348): a Close landing between the two would
+	// fork a worker into a closed component, so both are one section.
 	var forked *child
 	var forkErr error
-	c.loop.Run(func() { forked, forkErr = c.fork(record) })
+	var refused bool
+	c.loop.Run(func() {
+		if c.isClosing() {
+			refused = true
+			return
+		}
+		forked, forkErr = c.fork(record)
+	})
+	if refused {
+		return host.ResolvedLink{}, closed()
+	}
 	if forkErr != nil {
 		return host.ResolvedLink{}, c.failLocked(record, cause{err: forkErr, public: &startFailed}, "")
 	}

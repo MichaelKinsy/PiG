@@ -317,6 +317,13 @@ func (c *fakeClock) afterFunc(d time.Duration, job func()) host.Timer {
 	return timer
 }
 
+// armed is how many timers the component ever armed on the clock, pending, fired or stopped.
+func (c *fakeClock) armed() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.timers)
+}
+
 func (t *fakeTimer) Stop() bool {
 	t.clock.mu.Lock()
 	defer t.clock.mu.Unlock()
