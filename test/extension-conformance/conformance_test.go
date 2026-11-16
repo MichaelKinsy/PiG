@@ -1999,6 +1999,17 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					return recordUserContent(actions, content, "followUp", nil)
 				},
 			},
+			"send_user_message_delivery": {
+				Name:        "send_user_message_delivery",
+				Description: "Send a user message with the delivery named by the argument",
+				Handler: func(_ context.Context, args string) error {
+					deliverAs := args
+					if args == "absent" {
+						deliverAs = ""
+					}
+					return recordUserContent(actions, "delivery-"+args, deliverAs, nil)
+				},
+			},
 			"send_user_message_expand": {
 				Name:        "send_user_message_expand",
 				Description: "Send a user message with expandPromptTemplates set to the argument",

@@ -2500,6 +2500,18 @@ fn main() {
         },
     );
     ext.command(
+        "host_error_probe",
+        "Report what a host error on navigateTree looks like to the extension",
+        |ctx, _| {
+            let text = match ctx.navigate_tree("entry", serde_json::json!({})) {
+                Ok(_) => "no error".to_string(),
+                Err(err) => err.to_string(),
+            };
+            ctx.notify(&format!("host_error:{text}|-"), "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "session_actions_unbound",
         "Report what unbound session actions answer",
         |ctx, _| {
@@ -5044,6 +5056,17 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         }
     });
+    ext.command(
+        "send_user_message_delivery",
+        "Send a user message with the delivery named by the argument",
+        |ctx, args| match ctx.send_user_message(
+            format!("delivery-{args}"),
+            if args == "absent" { "" } else { args },
+        ) {
+            Ok(_) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
     ext.command(
         "send_user_message_expand",
         "Send a user message with expandPromptTemplates set to the argument",

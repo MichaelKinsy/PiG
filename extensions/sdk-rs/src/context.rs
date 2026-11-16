@@ -3406,7 +3406,10 @@ impl Context {
         )?)
     }
 
-    /// Send a user message containing a string or text/image content blocks.
+    /// Send a user message containing a string or text/image content blocks. `deliver_as` is `"steer"` or `"followUp"`; the empty
+    /// string sends no `deliverAs`, as `pi.sendUserMessage(content)` does: an idle agent runs the message at once and a streaming
+    /// agent refuses it with Pi's error (`Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue
+    /// the message.`, an extension error event `send_user_message`; the call itself returns).
     pub fn send_user_message(
         &self,
         content: impl serde::Serialize,
@@ -3424,7 +3427,10 @@ impl Context {
         deliver_as: &str,
         expand_prompt_templates: Option<bool>,
     ) -> io::Result<()> {
-        let mut options = serde_json::json!({"deliverAs": deliver_as});
+        let mut options = serde_json::json!({});
+        if !deliver_as.is_empty() {
+            options["deliverAs"] = serde_json::json!(deliver_as);
+        }
         if let Some(expand) = expand_prompt_templates {
             options["expandPromptTemplates"] = serde_json::json!(expand);
         }

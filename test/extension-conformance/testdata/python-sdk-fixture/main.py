@@ -1713,6 +1713,14 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(json.dumps(out), "info")
     ext.command("replicated-accessors", "Read the replicated accessors after each write", replicated_accessors)
     ext.command("active_tools_set", "Set the active tools to the comma-separated names", lambda ctx, args: ctx.set_active_tools(args.strip().split(",")))
+    def host_error_probe(ctx, _args):
+        text, code = "no error", "-"
+        try:
+            ctx.navigate_tree("entry")
+        except Exception as error:
+            text, code = str(error), getattr(error, "code", None) or "-"
+        ctx.notify("host_error:%s|%s" % (text, code), "info")
+    ext.command("host_error_probe", "Report what a host error on navigateTree looks like to the extension", host_error_probe)
     def session_actions_unbound(ctx, _args):
         parts = []
         for name, call in (("new", lambda: ctx.new_session()), ("fork", lambda: ctx.fork("entry")), ("navigate", lambda: ctx.navigate_tree("entry")), ("switch", lambda: ctx.switch_session("/s.jsonl"))):
@@ -2877,6 +2885,7 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("send_message_default", "Send a custom message with default options", lambda ctx, args: ctx.send_message("notice", "default"))
     ext.command("send_message_no_turn", "Send a custom message that never starts a turn", lambda ctx, args: ctx.send_message("notice", "no-turn", trigger_turn=False))
     ext.command("send_user_message", "Send a user message", lambda ctx, args: ctx.send_user_message(json.loads(args) if args else "hello-user", "followUp"))
+    ext.command("send_user_message_delivery", "Send a user message with the delivery named by the argument", lambda ctx, args: ctx.send_user_message("delivery-" + args) if args == "absent" else ctx.send_user_message("delivery-" + args, args))
     ext.command("send_user_message_expand", "Send a user message with expandPromptTemplates set to the argument", lambda ctx, args: ctx.send_user_message("expand-user", "followUp", expand_prompt_templates=(args == "true")))
     ext.command("settings_probe", "Report the effective settings", lambda ctx, args: ctx.notify("settings_probe:" + json.dumps(ctx.get_settings(), separators=(",", ":")), "info"))
 

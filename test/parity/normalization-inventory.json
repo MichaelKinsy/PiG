@@ -9520,6 +9520,43 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/rpc/83-rpc-send-user-message-delivery-streaming.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/wall_time_seconds",
+            "/**/durationMs"
+          ],
+          "reason": "Pi measures each response and tool execution (#10549) with a monotonic clock, and bash.ts:392 rounds the command's wall clock to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; the values vary per run. Retain presence, type, position and Pi's one-decimal number spelling."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/selectors/01-config-empty.toml",
       "transforms": [
         {

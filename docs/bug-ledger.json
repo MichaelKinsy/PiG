@@ -45864,6 +45864,32 @@
       ]
     },
     {
+      "id": "BF-b829321",
+      "title": "Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK…",
+      "symptom": "Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK and as Pi does.",
+      "rootCause": "pi.sendUserMessage(content) passes options?.deliverAs to prompt() as streamingBehavior (agent-session.ts:2565-2573): an idle agent runs the message at once, a streaming agent refuses it (\"Agent is already processing. Specify streamingBehavior ...\", prompt() :2240-2244), and the bound action reports that refusal as the extension error event send_user_message while the call returns (:3565-3572). The Go SDK omitted an empty deliverAs, the Rust SDK sent an empty string (the host reads it as absent), and the Python and Lisp SDKs defaulted to \"followUp\": a Python or Lisp extension that sent without a mode while the agent streamed got a queued follow-up where Pi, a Node extension and a Go…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK and as Pi does. The Python and Lisp SDKs defaulted the mode to `\"followUp\"` (since 0.7.0), so an extension that sent while the agent was running got a queued follow-up where Pi, a Node extension and a Go extension get Pi's refusal. Python `send_user_message(content)` and Lisp `(ctx-send-user-message ctx content)` now send no `deliverAs`: an idle agent runs the message at once, and a running agent refuses it with `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.`, reported as the extension error `send_user_message` while the call returns. The Python signature changes from `send_user_message(content, deliver_as=\"followUp\", ...)` to `deliver_as=None`, so an author who relied on the default now gets Pi's refusal while the agent runs; the old behaviour is `deliver_as=\"followUp\"` (Lisp `:deliver-as \"followUp\"`), and `steer` and `followUp` are unchanged. Interactive mode now reports a refused `sendUserMessage` and a failed `sendMessage` as those extension errors instead of returning the error to the extension, as print, JSON and RPC mode do, and the Lisp `host-call-error` prints `CODE: MESSAGE` as the other SDKs write a host error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b829321657",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_extension_delivery_test.go::TestSendMessageFailureIsReportedNotReturned",
+        "internal/codingagent/interactive_extension_delivery_test.go::TestSendUserMessageWithoutDeliveryModeWhileStreamingIsReportedNotReturned",
+        "test/extension-conformance/host_call_error_surface_test.go::TestHostCallErrorSurfaceAcrossSDKs",
+        "test/extension-conformance/send_user_message_delivery_test.go::TestSendUserMessageDeliveryAcrossSDKs",
+        "test/parity/scenarios/rpc/83-rpc-send-user-message-delivery-streaming.toml"
+      ]
+    },
+    {
       "id": "BF-b84facb",
       "title": "fix(codingagent,tui): extension editor follows the terminal rows; title and image fallback close only the…",
       "symptom": "fix(codingagent,tui): extension editor follows the terminal rows; title and image fallback close only the foreground",

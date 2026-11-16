@@ -9,6 +9,8 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -75,16 +77,56 @@ func TestDeliverUserMessageIsNotDroppedWhenTheUIQueueIsFull(t *testing.T) {
 	<-loopDone
 }
 
-// Upstream prompt() throws when a run is active and sendUserMessage gave no
-// deliverAs; interactive mode silently turned it into a follow-up.
-func TestDeliverUserMessageWithoutDeliveryModeWhileStreamingFails(t *testing.T) {
+// Upstream prompt() throws when a run is active and sendUserMessage gave no deliverAs (agent-session.ts:2240-2244); interactive mode silently
+// turned it into a follow-up, then returned the refusal to the extension. Pi's sendUserMessage is void and its bound action reports the refusal
+// as the extension error `send_user_message` (:3565-3572), as the Session's binding does in print, JSON and RPC: the host action, which every SDK's
+// call reaches, returns nil, the error event is emitted once with Pi's text, and nothing is queued.
+func TestSendUserMessageWithoutDeliveryModeWhileStreamingIsReportedNotReturned(t *testing.T) {
 	m, _, _ := newStreamingRoutingMode(t)
-	err := m.deliverUserMessage("no mode", "")
+	m.newRunner = inproc.NewRunner(nil, t.TempDir())
+	var reported []extension.ExtensionError
+	m.newRunner.AddErrorListener(func(err *extension.ExtensionError) { reported = append(reported, *err) })
+	bridge := &captureUIBridge{}
+	m.opts.SubprocessUIBridge = bridge
+	m.wireSubprocessHostCallbacks()
+	send, ok := bridge.actions["sendUserMessage"].(func(any, subprocess.SendUserMessageOptions) error)
+	if !ok {
+		t.Fatalf("sendUserMessage host action missing or wrong type: %T", bridge.actions["sendUserMessage"])
+	}
+
+	if err := send("no mode", subprocess.SendUserMessageOptions{}); err != nil {
+		t.Fatalf("the host action returned %v, want nil: Pi's call returns and the refusal is an extension error", err)
+	}
 	const want = "Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message."
-	if err == nil || err.Error() != want {
-		t.Fatalf("deliverUserMessage error = %v, want %q", err, want)
+	if len(reported) != 1 || reported[0].Event != "send_user_message" || reported[0].ExtensionPath != "<runtime>" || reported[0].Error != want {
+		t.Fatalf("extension errors = %+v, want one send_user_message error %q", reported, want)
 	}
 	if steering, followUps := m.agent.PendingMessages(); len(steering)+len(followUps) != 0 {
 		t.Fatalf("a rejected message was queued: steering=%d followUps=%d", len(steering), len(followUps))
+	}
+	if err := send("queued", subprocess.SendUserMessageOptions{DeliverAs: "followUp"}); err != nil {
+		t.Fatalf("a followUp send returned %v", err)
+	}
+	if len(reported) != 1 {
+		t.Fatalf("a followUp send was reported: %+v", reported)
+	}
+}
+
+// Pi's sendMessage is void as well: the Promise it starts that rejects is reported as the extension error `send_message` (agent-session.ts:3556-3564),
+// so the host action returns nil in interactive mode as the Session's binding does. A Session that is not there is the failure the harness has.
+func TestSendMessageFailureIsReportedNotReturned(t *testing.T) {
+	m, _, _ := newSendUserMessageHarness(t)
+	m.newRunner = inproc.NewRunner(nil, t.TempDir())
+	var reported []extension.ExtensionError
+	m.newRunner.AddErrorListener(func(err *extension.ExtensionError) { reported = append(reported, *err) })
+	send, ok := m.opts.SubprocessUIBridge.(*captureUIBridge).actions["sendMessage"].(func(extension.CustomMessageRef, subprocess.SendMessageOptions) error)
+	if !ok {
+		t.Fatal("sendMessage host action missing or wrong type")
+	}
+	if err := send(extension.CustomMessageRef{CustomType: "notice", Display: true}, subprocess.SendMessageOptions{}); err != nil {
+		t.Fatalf("the host action returned %v, want nil: Pi's call returns and a failure is an extension error", err)
+	}
+	if len(reported) != 1 || reported[0].Event != "send_message" || reported[0].ExtensionPath != "<runtime>" || reported[0].Error == "" {
+		t.Fatalf("extension errors = %+v, want one send_message error", reported)
 	}
 }

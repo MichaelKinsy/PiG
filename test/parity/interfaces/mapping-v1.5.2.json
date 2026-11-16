@@ -155060,7 +155060,8 @@
       ],
       "evidence": [
         "test:coding/session_queue_upstream_test.go#TestUpstreamSessionQueue",
-        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
+        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi",
+        "test:test/extension-conformance/send_user_message_delivery_test.go#TestSendUserMessageDeliveryAcrossSDKs"
       ]
     },
     {
@@ -155081,7 +155082,8 @@
       ],
       "evidence": [
         "test:coding/session_queue_upstream_test.go#TestUpstreamSessionQueue",
-        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
+        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi",
+        "test:test/extension-conformance/send_user_message_delivery_test.go#TestSendUserMessageDeliveryAcrossSDKs"
       ]
     },
     {

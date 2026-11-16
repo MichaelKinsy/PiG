@@ -384,6 +384,12 @@
                (lambda (ctx args) (declare (ignore args)) (pig:ctx-send-message ctx "notice" "default")))
   (pig:command ext "send_user_message" "Send a user message"
                (lambda (ctx args) (pig:ctx-send-user-message ctx (if (plusp (length args)) (pig:from-json args) "hello-user") :deliver-as "followUp")))
+  (pig:command ext "send_user_message_delivery" "Send a user message with the delivery named by the argument"
+               (lambda (ctx args)
+                 (let ((text (concatenate 'string "delivery-" args)))
+                   (if (string= args "absent")
+                       (pig:ctx-send-user-message ctx text)
+                       (pig:ctx-send-user-message ctx text :deliver-as args)))))
   (pig:command ext "send_user_message_expand" "Send a user message with expandPromptTemplates set to the argument"
                (lambda (ctx args) (pig:ctx-send-user-message ctx "expand-user" :deliver-as "followUp" :expand-prompt-templates (if (string= args "true") t :false))))
   (pig:command ext "status" "Set a status entry" (lambda (ctx args) (declare (ignore args)) (pig:ctx-set-status ctx "conformance" "ok")))

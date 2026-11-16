@@ -493,6 +493,15 @@ func Extension() *sdk.Extension {
 		ctx.SetActiveTools(strings.Split(strings.TrimSpace(args), ","))
 		return nil
 	})
+	// host_error_probe makes the host fail navigateTree (a call Pi rejects) and reports what the extension sees: the error's text, then `|`, then its typed code ("-" where the SDK has none).
+	ext.Command("host_error_probe", "Report what a host error on navigateTree looks like to the extension", func(ctx sdk.Context, _ string) error {
+		text := "no error"
+		if _, err := ctx.NavigateTree("entry", nil); err != nil {
+			text = err.Error()
+		}
+		ctx.Notify("host_error:"+text+"|-", "info")
+		return nil
+	})
 	// session_actions_unbound drives the session actions of a command context the host never bound; Pi answers { cancelled: false } and a no-op reload (runner.ts:383-387).
 	ext.Command("session_actions_unbound", "Report what unbound session actions answer", func(ctx sdk.Context, _ string) error {
 		var parts []string
@@ -1822,6 +1831,15 @@ func Extension() *sdk.Extension {
 			}
 		}
 		return ctx.SendUserMessage(content, "followUp")
+	})
+
+	// send_user_message_delivery sends "delivery-<arg>" with the delivery the argument names: absent (no mode given), steer or followUp.
+	ext.Command("send_user_message_delivery", "Send a user message with the delivery named by the argument", func(ctx sdk.Context, args string) error {
+		deliverAs := args
+		if args == "absent" {
+			deliverAs = ""
+		}
+		return ctx.SendUserMessage("delivery-"+args, deliverAs)
 	})
 
 	ext.Command("send_user_message_expand", "Send a user message with expandPromptTemplates set to the argument", func(ctx sdk.Context, args string) error {

@@ -65,10 +65,11 @@ func (m *InteractiveMode) deliverUserMessage(content any, deliverAs extension.De
 	// message. The run goroutine clears turnActive before it queues the cleanup
 	// that restores isIdle, so a task landing in that window reads isIdle false
 	// with no goroutine left to drain a steering queue, and the message is lost.
-	// Upstream prompt() throws when a run is active and no streaming
-	// behavior was given.
+	// Upstream prompt() throws when a run is active and no streaming behavior was given (agent-session.ts:2240-2244); the bound action reports
+	// the refusal as the extension error `send_user_message` and the call returns (:3565-3572), as the Session's binding does in print, JSON and RPC.
 	if deliverAs == "" && m.runStreaming() {
-		return errors.New("Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.")
+		m.reportRuntimeError("send_user_message", errors.New("Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message."))
+		return nil
 	}
 	return m.postToMain(m.runCtx, func() {
 		if m.agent == nil {
@@ -276,7 +277,8 @@ func (m *InteractiveMode) wireInprocContextActions() {
 				if opts != nil {
 					options = *opts
 				}
-				return m.sendExtensionMessage(msg, options)
+				m.reportRuntimeError("send_message", m.sendExtensionMessage(msg, options))
+				return nil
 			},
 			// upstream: agent-session.ts:3416-3465 (_bindExtensionCore) binds these in every mode; the mode's bind replaces the Session's.
 			AppendEntry:      m.appendExtensionEntry,
@@ -712,7 +714,8 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	})
 	b.SetHostAction("setSessionName", m.setExtensionSessionName)
 	b.SetHostAction("sendMessage", func(msg extension.CustomMessageRef, opts subprocess.SendMessageOptions) error {
-		return m.sendExtensionMessage(msg, extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs)})
+		m.reportRuntimeError("send_message", m.sendExtensionMessage(msg, extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs)}))
+		return nil
 	})
 	b.SetHostAction("sendUserMessage", func(content any, opts subprocess.SendUserMessageOptions) error {
 		deliver := func() { _ = m.deliverUserMessage(content, extension.DeliverAs(opts.DeliverAs)) }
