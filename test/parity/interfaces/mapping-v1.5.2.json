@@ -30556,8 +30556,8 @@
       ],
       "evidence": [
         "test:ai/github_copilot_filter_test.go#TestGitHubCopilotProviderFiltersModelsByTheAccountsAvailableModelIDs",
-        "test:coding/model_availability_native_test.go#TestAvailabilityUsesNativeAuthAndAccountFilters",
-        "test:coding/model_registration_snapshot_test.go#TestProviderRegistrationWidensOtherProvidersUntilTheQueuedRefresh"
+        "test:coding/cli/startup_restore_availability_test.go#TestStartupRestoreFallbackAppliesANativeProvidersFilter",
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -76396,8 +76396,8 @@
       ],
       "evidence": [
         "test:ai/github_copilot_filter_test.go#TestGitHubCopilotProviderFiltersModelsByTheAccountsAvailableModelIDs",
-        "test:coding/model_availability_native_test.go#TestAvailabilityUsesNativeAuthAndAccountFilters",
-        "test:coding/model_registration_snapshot_test.go#TestProviderRegistrationWidensOtherProvidersUntilTheQueuedRefresh"
+        "test:coding/cli/startup_restore_availability_test.go#TestStartupRestoreFallbackAppliesANativeProvidersFilter",
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -86910,8 +86910,8 @@
       ],
       "evidence": [
         "test:ai/github_copilot_filter_test.go#TestGitHubCopilotProviderFiltersModelsByTheAccountsAvailableModelIDs",
-        "test:coding/model_availability_native_test.go#TestAvailabilityUsesNativeAuthAndAccountFilters",
-        "test:coding/model_registration_snapshot_test.go#TestProviderRegistrationWidensOtherProvidersUntilTheQueuedRefresh"
+        "test:coding/cli/startup_restore_availability_test.go#TestStartupRestoreFallbackAppliesANativeProvidersFilter",
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -166735,7 +166735,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -166758,7 +166758,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -166781,7 +166781,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -166909,7 +166909,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -166930,8 +166930,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesRestoresTheSavedModelOrFallsBackToTheDefault"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter",
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackSelectsFromThePublishedAvailability"
       ]
     },
     {
@@ -167317,7 +167317,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -167358,9 +167358,9 @@
         "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackSelectsFromThePublishedAvailability",
         "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesRestoresTheSavedModelOrFallsBackToTheDefault",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesSelectsTheInitialModelOrReportsNone"
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesRestoresTheSavedModelOrFallsBackToTheDefault"
       ]
     },
     {
@@ -167382,7 +167382,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
