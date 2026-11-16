@@ -236,11 +236,35 @@ jobs:
         run: git for-each-ref --format='delete %(refname)' refs/remotes refs/tags | git update-ref --no-deref --stdin
       # gitleaks-action supports only push, pull_request, workflow_dispatch and schedule; on merge_group it exits with an
       # error. The commits a merge group adds are the queued pull request's own, which the pull_request run scanned.
+      # It also scans a pull request over "<its oldest commit>^..<its newest commit>" with --first-parent, which is wrong for
+      # a branch that merges member branches cut from an older main: the range reaches back into main's own history, and
+      # --first-parent hides the member commits behind the merge. The pull request is scanned by the next step instead.
       - name: Gitleaks
-        if: github.event_name != 'merge_group'
+        if: github.event_name != 'merge_group' && github.event_name != 'pull_request'
         uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # A pull request is scanned over what it adds to its base (secret-scan-range.sh, tested in test_secret_scan_range.py),
+      # every commit of it including those of merged member branches: no --first-parent. gitleaks is the release gitleaks-action
+      # installs (8.24.3), pinned by checksum.
+      - name: Gitleaks (pull request)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          GITLEAKS_VERSION: 8.24.3
+          GITLEAKS_SHA256: 9991e0b2903da4c8f6122b5c3186448b927a5da4deef1fe45271c3793f4ee29c
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/$archive" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/$archive"
+          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --status
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" gitleaks
+          range=$(automation/ci/secret-scan-range.sh "$BASE_SHA" "$HEAD_SHA")
+          echo "gitleaks range: $range"
+          "$RUNNER_TEMP/gitleaks" detect --redact -v --exit-code=2 --log-opts="--no-merges $range"
 
   secret-scan-trufflehog:
     name: Secret scanning (TruffleHog)

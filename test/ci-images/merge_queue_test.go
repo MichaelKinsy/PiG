@@ -852,7 +852,7 @@ func TestChangeClassifierReadsMergeGroups(t *testing.T) {
 // scanners are separate jobs so each has its own timeout, and the result job requires both.
 func TestSecretScanRunsInTheMergeGroup(t *testing.T) {
 	workflow := readWorkflow(t, "security.yml")
-	var gitleaks, trufflehog bool
+	var gitleaks, pullRequestGitleaks, trufflehog bool
 	for _, name := range []string{"secret-scan-gitleaks", "secret-scan-trufflehog"} {
 		job, ok := workflow.Jobs[name]
 		if !ok {
@@ -868,9 +868,17 @@ func TestSecretScanRunsInTheMergeGroup(t *testing.T) {
 				if name != "secret-scan-gitleaks" {
 					t.Errorf("%s runs Gitleaks", name)
 				}
-				if step.If != "github.event_name != 'merge_group'" {
-					t.Errorf("the Gitleaks step has if: %q, want it skipped on merge_group, which the action rejects", step.If)
+				if step.If != "github.event_name != 'merge_group' && github.event_name != 'pull_request'" {
+					t.Errorf("the Gitleaks step has if: %q, want it skipped on merge_group, which the action rejects, and on pull_request, which secret-scan-range.sh scans", step.If)
 				}
+			case step.Name == "Gitleaks (pull request)":
+				if name != "secret-scan-gitleaks" || step.If != "github.event_name == 'pull_request'" {
+					t.Errorf("the pull request Gitleaks step is in %s with if: %q", name, step.If)
+				}
+				if !strings.Contains(step.Run, "automation/ci/secret-scan-range.sh") || strings.Contains(step.Run, "--first-parent") {
+					t.Errorf("the pull request Gitleaks step must scan the range of secret-scan-range.sh without --first-parent, which hides merged member commits: %s", step.Run)
+				}
+				pullRequestGitleaks = true
 			case strings.HasPrefix(step.Uses, "trufflesecurity/trufflehog@"):
 				trufflehog = true
 				if name != "secret-scan-trufflehog" {
@@ -885,8 +893,8 @@ func TestSecretScanRunsInTheMergeGroup(t *testing.T) {
 			}
 		}
 	}
-	if !gitleaks || !trufflehog {
-		t.Fatalf("secret scan jobs have gitleaks = %v, trufflehog = %v", gitleaks, trufflehog)
+	if !gitleaks || !pullRequestGitleaks || !trufflehog {
+		t.Fatalf("secret scan jobs have gitleaks = %v, pull request gitleaks = %v, trufflehog = %v", gitleaks, pullRequestGitleaks, trufflehog)
 	}
 }
 
