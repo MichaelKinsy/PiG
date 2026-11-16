@@ -1,0 +1,3 @@
+### Changed
+
+- A start with a Node extension waits less before the extension's first handler runs. The host built the model catalog it hands the extension (about 2,500 models) on one processor; it now converts the models on every processor the machine has. The frame the extension receives is byte for byte the same. Measured with 30 warm starts on a loaded machine with four processors for pig, a Node extension in json mode: the first reply began after 317 ms (median), now 275 ms; Pi with the same extension began after 336 ms. A machine with one free processor gains nothing. Extensions in Go, Python, Rust and Lisp, which ask the host for the catalog when they read it, are not affected.
