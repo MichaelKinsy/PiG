@@ -281,7 +281,7 @@ sdk-bundles: ## Regenerate the packed SDK bundles (sdk.zst, bundle_pack.go) of t
 sdk-bundles-drift: ## Fail when a packed SDK bundle differs from its sources (regenerate with make sdk-bundles)
 	@./automation/ci/sdk-bundles-drift.sh
 
-.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift help-text highlight-grammars zone-names intl-tables windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build piglet-strip-matrix piglet-strip-guard changelog-unreleased changelog-check changelog-fold
+.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift divergence-approve help-text highlight-grammars zone-names intl-tables windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build piglet-strip-matrix piglet-strip-guard changelog-unreleased changelog-check changelog-fold
 
 ##@ Test and lint
 
@@ -571,8 +571,14 @@ compliance: ## Check badge and OpenSSF evidence: files, pins, workflow hardening
 divergence-consistency: ## Match every docs/parity/DIVERGENCES.md entry to its call-site marker
 	@./automation/ci/check-divergence-consistency.sh
 
-divergence-quality: ## Validate divergence records as enforceable contracts
+divergence-quality: ## Validate divergence records as enforceable contracts, each approval bound to the hash of its record's text
+	@python3 -B -m unittest discover -s automation/ci -p test_check_divergence_quality.py
 	@./automation/ci/check-divergence-quality.py
+
+divergence-approve: ## OWNER ONLY: approve the current text of record ID=D<N> (writes the date and text hash on its approval line, drops its pending entry, regenerates the ledger)
+	@test -n "$(ID)" || { echo "divergence-approve: set ID=D<N>" >&2; exit 2; }
+	@./automation/ci/check-divergence-quality.py --stamp $(ID)
+	@$(MAKE) --no-print-directory divergences
 
 # gui-import-guard keeps the dependency one-way: plugin UI code may import chord, chord never imports it.
 gui-import-guard: ## Fail when chord imports a plugin UI package

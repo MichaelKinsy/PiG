@@ -111,6 +111,9 @@ func TestDivergenceQualityRejectsNodeOnlyParityProse(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
+			if stamped, err := exec.Command("python3", script, "--root", root, "--initial-stamp").CombinedOutput(); err != nil {
+				t.Fatalf("binding the fixture records failed:\n%s", stamped)
+			}
 			output, err := exec.Command("python3", script, "--root", root).CombinedOutput()
 			if c.fail && (err == nil || !strings.Contains(string(output), "docs/extension-sdk-exports.md")) {
 				t.Fatalf("Node-only prose passed:\n%s", output)
@@ -157,6 +160,9 @@ func TestDivergenceQualityRequiresIntentionOnTestLevelRecords(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(name)), []byte(data), 0o644); err != nil {
 				t.Fatal(err)
 			}
+		}
+		if stamped, err := exec.Command("python3", script, "--root", root, "--initial-stamp").CombinedOutput(); err != nil {
+			t.Fatalf("binding the fixture records failed:\n%s", stamped)
 		}
 		output, err := exec.Command("python3", script, "--root", root).CombinedOutput()
 		return string(output), err
