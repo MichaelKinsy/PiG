@@ -483,6 +483,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3d475c4](#bf-3d475c4) | Image resize strategy against live Pi: new `TestResizeImageDimensionStrategyMatchesPi`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3d49280](#bf-3d49280) | `listDir` of the local execution environment leaves out an entry whose name is not valid UTF-8, as Pi does… | PiG's own defect | All platforms | Unreleased |
 | [BF-3d98081](#bf-3d98081) | Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-3da9268](#bf-3da9268) | A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on | PiG's own defect | All platforms | Unreleased |
 | [BF-3de4b8e](#bf-3de4b8e) | A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content… | PiG's own defect | All platforms | Unreleased |
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e00494](#bf-3e00494) | fix(session): a custom message entry whose content is null projects an empty list | PiG's own defect | All platforms | Unreleased |
@@ -8712,6 +8713,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `3d980815b1` (2026-11-01)
 - **Tests:** `agent/validate_oracle_test.go::TestToolArgumentValidationMatchesPi`, `ai/validate_cache_test.go::TestToolArgumentSchemaCacheIsBounded`, `ai/validate_cache_test.go::TestToolArgumentSchemaEvictionDoesNotChangeOutcomes`, `ai/validate_passthrough_equivalence_test.go::TestValidateToolArgumentsPassthroughMatchesReencoding`, `ai/validate_vectors_test.go::TestValidateToolArgumentsMatchesPiVectors`, `internal/codingagent/tools/argument_schema_test.go::TestBuiltinArgumentSchemaIsTheDeclaredParameters`
 - **Release note:** Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no longer takes exponential time: the call is rejected with its errors at once.
+
+### BF-3da9268
+
+**A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on.
+- **Root cause:** A command that awaits ctx.ui.custom(...) when a /reload replaces or removes its extension went on after the reload with an undefined result: the host closed the overlay handle with nil when it cleared the retired generation, so the call resolved and the code after the await ran in the old instance. Pi leaves it pending: resetExtensionUI removes the extension overlays "the same way done() does, but leave the promises pending" (interactive-mode.ts:2592-2598), the screen shows nothing, and the command never goes on. In isolated mode the overlay also stayed on the screen, because the generation's stop is deferred while its command runs and nothing else took the overlay down.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3da926800b` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/packed_go_test.go::TestAC59PackedSDKFocusedComponentsOwnInput`, `coding/extension/host/subprocess/reload_pending_call_test.go::TestReloadLeavesPendingCustomCallPending`, `coding/extension/host/subprocess/reload_pending_dialog_test.go::TestReloadLeavesPendingDialogCallsPending`, `internal/codingagent/remote_overlay_retire_test.go::TestRemoteOverlayRetireLeavesTheCallPending`
+- **Release note:** A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on. The reload closed the overlay's call with `undefined` when it retired the extension's old instance, so the code after the `await` ran in the replaced or removed instance, and a second command could start behind it; Pi removes the overlay and leaves the call pending, so the command never goes on (probed on Pi 1.5.2 for the extension replaced and removed). The overlay also stayed on the screen in isolated mode, where the old instance stays until its command returns; it now leaves the screen at the reload in both modes. The call ends with the session, with the extension's connection or with the component's own close. A closed connection also ends the dialogs (`select`, `confirm`, `input`, `editor`) its extension still awaited: they waited for an answer nothing would take after a graceful close. Node, Go, Python and Rust components alike. Present since 0.2.0.
 
 ### BF-3de4b8e
 

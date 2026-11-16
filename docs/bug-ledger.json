@@ -12898,6 +12898,31 @@
       ]
     },
     {
+      "id": "BF-3da9268",
+      "title": "A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on",
+      "symptom": "A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on.",
+      "rootCause": "A command that awaits ctx.ui.custom(...) when a /reload replaces or removes its extension went on after the reload with an undefined result: the host closed the overlay handle with nil when it cleared the retired generation, so the call resolved and the code after the await ran in the old instance. Pi leaves it pending: resetExtensionUI removes the extension overlays \"the same way done() does, but leave the promises pending\" (interactive-mode.ts:2592-2598), the screen shows nothing, and the command never goes on. In isolated mode the overlay also stayed on the screen, because the generation's stop is deferred while its command runs and nothing else took the overlay down.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on. The reload closed the overlay's call with `undefined` when it retired the extension's old instance, so the code after the `await` ran in the replaced or removed instance, and a second command could start behind it; Pi removes the overlay and leaves the call pending, so the command never goes on (probed on Pi 1.5.2 for the extension replaced and removed). The overlay also stayed on the screen in isolated mode, where the old instance stays until its command returns; it now leaves the screen at the reload in both modes. The call ends with the session, with the extension's connection or with the component's own close. A closed connection also ends the dialogs (`select`, `confirm`, `input`, `editor`) its extension still awaited: they waited for an answer nothing would take after a graceful close. Node, Go, Python and Rust components alike. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3da926800b",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/packed_go_test.go::TestAC59PackedSDKFocusedComponentsOwnInput",
+        "coding/extension/host/subprocess/reload_pending_call_test.go::TestReloadLeavesPendingCustomCallPending",
+        "coding/extension/host/subprocess/reload_pending_dialog_test.go::TestReloadLeavesPendingDialogCallsPending",
+        "internal/codingagent/remote_overlay_retire_test.go::TestRemoteOverlayRetireLeavesTheCallPending"
+      ]
+    },
+    {
       "id": "BF-3de4b8e",
       "title": "A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content…",
       "symptom": "A Go extension that reorders, filters, sorts, copies or edits the objects of an event in place (the content blocks of a message, a provider request's `tools`, a list of messages or entries, a string of a message) and hands them back no longer re-sorts their keys, so tool-call arguments, tool schemas and message members reach the session and the provider in the order the host sent them.",
