@@ -61,7 +61,7 @@ func TestQuitWritesTheTitleInTheDisposeBeforeTheResumeHint(t *testing.T) {
 		}
 	})
 	cooked, title, hint := strings.Index(got, "<cooked>"), strings.Index(got, "\x1b]0;"), strings.Index(got, "To resume this session:")
-	if cooked < 0 || title < 0 || hint < 0 || !(cooked < title && title < hint) {
+	if cooked < 0 || title < 0 || hint < 0 || cooked >= title || title >= hint {
 		t.Fatalf("order of the cooked restore (%d), the title (%d) and the resume hint (%d) is not Pi's; output %q", cooked, title, hint, got)
 	}
 }

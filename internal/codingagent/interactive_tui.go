@@ -568,14 +568,19 @@ func (m *InteractiveMode) shutdownExtensionsBriefly() {
 		m.shutdownFromSignal(false)
 		close(done)
 	}()
-	wait := m.signalShutdownWait
-	if wait == 0 {
-		wait = time.Second
-	}
 	select {
 	case <-done:
-	case <-time.After(wait):
+	case <-time.After(m.signalDisposeBound()):
 	}
+}
+
+// signalDisposeBound is how long a signal's dispose waits for the extension handlers, and for the owner loop: the second shutdownExtensionsBriefly has always
+// waited, or the wait a test set.
+func (m *InteractiveMode) signalDisposeBound() time.Duration {
+	if m.signalShutdownWait != 0 {
+		return m.signalShutdownWait
+	}
+	return time.Second
 }
 
 // `/model` empty-args) and applies the chosen model.
