@@ -13,10 +13,10 @@ import (
 func TestFooterContextUsageOfACacheReadDominatedTurn(t *testing.T) {
 	usage := &ai.Usage{Input: 2, CacheRead: 294000, CacheWrite: 1400, Output: 860}
 	for _, tc := range []struct {
-		name   string
-		window int
-		unkown bool
-		want   string
+		name    string
+		window  int
+		unknown bool
+		want    string
 	}{
 		{"window known", 1_000_000, false, "29.6%/1.0M (auto)"},
 		{"window unknown to the model", 0, false, "0.0%/0 (auto)"},
@@ -25,7 +25,7 @@ func TestFooterContextUsageOfACacheReadDominatedTurn(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			status := NewFooterComponent(&ai.Model{Capabilities: ai.ModelCapabilities{ContextWindow: tc.window}}, "", nil)
 			status.SetTurnContextUsage(usage)
-			if tc.unkown {
+			if tc.unknown {
 				status.SetContextUsage(nil, tc.window)
 			}
 			if got := stripANSI(strings.Join(status.Render(120), "\n")); !strings.Contains(got, tc.want) {
