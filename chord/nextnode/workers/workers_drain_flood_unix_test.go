@@ -4,6 +4,8 @@ package workers
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"os"
 	"regexp"
 	"runtime"
@@ -223,4 +225,61 @@ func TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatKeepsItsOutputFu
 	}
 	// What the holder writes after the exit is still told.
 	until(t, func() bool { return afterExit.Load() >= 1<<16 })
+}
+
+// Close waits for the readers of an exited worker's streams: a reader that is in the app's OnOutput with a chunk a process
+// outside the worker's tree wrote after the exit is not left running when Close returns. Close is bounded by its context,
+// which ends the wait of an OnOutput that does not return; the reader returns once it does, as the stream was closed.
+func TestCloseWaitsForTheReaderOfAnExitedWorkersOutputThatIsInTheAppsOnOutput(t *testing.T) {
+	entered, gate := make(chan struct{}), make(chan struct{})
+	var enter, open sync.Once
+	letGo := func() { open.Do(func() { close(gate) }) }
+	f := newFleet(t, fleetOptions{
+		env: map[string]string{lastWordsGrandchild: "before", outsideTreeHolds: "stdout,stderr,channel"},
+		onOutput: func(stream string, chunk []byte) bool {
+			if stream == "stdout" && strings.Contains(string(chunk), strings.TrimSpace(holderLate)) {
+				enter.Do(func() { close(entered) })
+				<-gate
+			}
+			return true
+		},
+	})
+	t.Cleanup(letGo)
+	worker, _ := f.startWorker(t, "S1")
+	holder := f.outsideTree(t, 1)
+	f.stopWorker(t, "S1", worker)
+	if err := syscall.Kill(holder, syscall.SIGUSR1); err != nil {
+		t.Fatal(err)
+	}
+	<-entered
+	if !alive(holder) || !worker.process.stillRead() {
+		t.Fatalf("holder alive = %v, the worker's streams still read = %v: it proved nothing", alive(holder), worker.process.stillRead())
+	}
+	ctx, cancel := context.WithCancel(background)
+	defer cancel()
+	closed := make(chan error, 1)
+	go func() { closed <- f.workers.Close(ctx) }()
+	for {
+		select {
+		case err := <-closed:
+			t.Fatalf("Close returned (%v) while the reader of the exited worker's stdout was still in the app's OnOutput: it did not wait for the readers", err)
+		default:
+		}
+		if goroutineIn("(*Workers).Close", "awaitReaders") {
+			break
+		}
+		runtime.Gosched()
+	}
+	cancel()
+	if err := <-closed; !errors.Is(err, context.Canceled) {
+		t.Errorf("Close = %v after its context ended, want the context's cause", err)
+	}
+	letGo()
+	until(t, func() bool { return !worker.process.stillRead() })
+	if err := f.workers.Close(background); err != nil {
+		t.Errorf("Close once the reader returned = %v, want nil", err)
+	}
+	if readers := streamReaders(); readers != 0 {
+		t.Errorf("%d goroutines read a worker's stream after Close", readers)
+	}
 }

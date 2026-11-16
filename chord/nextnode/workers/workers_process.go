@@ -1,6 +1,7 @@
 package workers
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"slices"
@@ -158,7 +159,7 @@ func NewWorkerProcess(options ForkOptions, events ProcessEvents) (*WorkerProcess
 		parent.reads = told.reader
 		//portlint:allow golifetime the channel's reader returns at its stream's end, once every holder of the child's end is gone, or when this side closes the channel; ended waits until it settled what the process wrote
 		go func() { //portlint:allow asyncorder process.ts:68 child.on("message", ...) is an event of the child with no ordering against other work; its ordering point is the drain's settled channel, which the exit waits for
-			defer told.settle()
+			defer told.finish()
 			defer process.reading.Add(-1)
 			parent.run()
 		}()
@@ -214,7 +215,7 @@ func (p *WorkerProcess) pump(file *os.File, stream string, onOutput func(stream 
 	reader := told.reader(file)
 	//portlint:allow golifetime the reader returns at the stream's end, once every holder of its write end is gone; ended waits until it settled what the process wrote
 	go func() { //portlint:allow asyncorder process.ts:61 child[stream].on("data", ...) is an event of the child with no ordering against other work; its ordering point is the drain's settled channel, which the exit waits for
-		defer told.settle()
+		defer told.finish()
 		defer p.reading.Add(-1)
 		defer func() { _ = file.Close() }()
 		buffer := make([]byte, 32*1024)
@@ -299,7 +300,7 @@ func (p *WorkerProcess) ended(exit Exit, events ProcessEvents) {
 // Control, a frame to Link. For as long as such a process lives this side keeps the stream's descriptor and the goroutine
 // that reads it, three of each at most (stdout, stderr, the channel), as Node keeps the child's handles: until the stream
 // ends, until this side closes Link (the channel's), or until release, which the workers component calls for every worker
-// that exited when it closes.
+// that exited when it closes, and whose readers it then waits for (awaitReaders).
 //
 // On Windows the exit is told when the streams ended, and nothing is kept after it: there is no read of them that does
 // not wait, and their end comes with the worker's job object, which nothing it starts leaves (workers_drain_windows.go).
@@ -309,15 +310,37 @@ func (p *WorkerProcess) Exited() <-chan struct{} { return p.done }
 // tree holds its output or its channel.
 func (p *WorkerProcess) stillRead() bool { return p.reading.Load() > 0 }
 
-// release ends what this side still reads of a process that exited: its channel and its output streams are closed, their
-// readers return, and nothing more is told of it but the link's close to who listens to the link. Go's part of the rule:
-// Node's handles end with the server's process, a Go server's goroutines and descriptors with the component that owns them.
+// release ends what this side still reads of a process that exited: its channel and its output streams are closed, which
+// returns a read that waits for them (a process outside the tree that holds them idle, or writes without a pause, does not
+// matter), and nothing more is told of it but the link's close to who listens to the link. It does not wait for the readers:
+// one may be in the app's OnOutput or in a listener of the link with what it read before; awaitReaders waits for those.
+// Go's part of the rule: Node's handles end with the server's process, a Go server's goroutines and descriptors with the
+// component that owns them.
 func (p *WorkerProcess) release() {
 	p.telling.release()
 	p.channel.finish()
 	for _, output := range p.outputs {
 		_ = output.Close()
 	}
+}
+
+// awaitReaders waits until every goroutine that reads what the process writes returned, which release makes them do once
+// the call they are in returns, or until ctx ends (that of an OnOutput that does not return): it reports ctx's cause then,
+// and the readers go on until their call returns. Nothing of the process's streams is told after it returned nil.
+func (p *WorkerProcess) awaitReaders(ctx context.Context) error {
+	for _, told := range p.drains {
+		select {
+		case <-told.returned:
+			continue
+		default:
+		}
+		select {
+		case <-told.returned:
+		case <-ctx.Done():
+			return context.Cause(ctx)
+		}
+	}
+	return nil
 }
 
 // Exit is how the process ended; it is valid once Exited is closed.
