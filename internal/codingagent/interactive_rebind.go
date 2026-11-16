@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"sync/atomic"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -14,6 +15,13 @@ import (
 
 // runOnMainAndWait waits for an accepted owner operation, including its awaited work. A cancelled queued operation does not mutate the UI, and a caller whose ctx ends before the loop starts the operation abandons it.
 func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() error) error {
+	return m.runOnMainAndWaitUnless(ctx, nil, nil, work)
+}
+
+// runOnMainAndWaitUnless is runOnMainAndWait for a caller that holds a lock the owner loop may be waiting for: when abandon closes before the loop has
+// started the operation, the caller abandons it (errOwnerLoopLeft) and runs the work itself, as the loop no longer serves tasks. giveUp, when it fires
+// before the loop started the operation, abandons it as errOwnerLoopBlocked: the loop is stuck, and the caller must not touch the UI it owns.
+func (m *InteractiveMode) runOnMainAndWaitUnless(ctx context.Context, abandon <-chan struct{}, giveUp <-chan time.Time, work func() error) error {
 	if m.onOwnerLoop() {
 		// Queueing and waiting from the owner loop would wait for work only this goroutine can run.
 		if err := ctx.Err(); err != nil {
@@ -50,8 +58,24 @@ func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() erro
 		return <-result
 	case <-stopped:
 		return context.Cause(m.runCtx)
+	case <-abandon:
+		if claimed.CompareAndSwap(false, true) {
+			return errOwnerLoopLeft
+		}
+		return <-result
+	case <-giveUp:
+		if claimed.CompareAndSwap(false, true) {
+			return errOwnerLoopBlocked
+		}
+		return <-result
 	}
 }
+
+// errOwnerLoopBlocked reports an owner operation abandoned because the owner loop did not start it in time.
+var errOwnerLoopBlocked = errors.New("owner loop blocked")
+
+// errOwnerLoopLeft reports an owner operation abandoned because the owner loop left its input loop and serves no more tasks.
+var errOwnerLoopLeft = errors.New("owner loop left")
 
 // rebindCurrentSession captures the Session before awaiting extension binding. A replaced startup bind cannot subscribe or update the replacement's title on completion.
 func (m *InteractiveMode) rebindCurrentSession(ctx context.Context, renderBeforeBind bool) error {

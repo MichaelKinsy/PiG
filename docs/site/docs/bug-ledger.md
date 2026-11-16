@@ -1040,6 +1040,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7160ad4](#bf-7160ad4) | Chord: a table read made while its object ended no longer races with the end | PiG's own defect | All platforms | Unreleased |
 | [BF-7163ab3](#bf-7163ab3) | A pi-env connection whose daemon exits (or fails) before `hello` now adds the end of the daemon's stderr (the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7177d5f](#bf-7177d5f) | fix(tui): card of an unregistered tool is Pi's formatToolExecution | PiG's own defect | All platforms | Unreleased |
+| [BF-71e0f20](#bf-71e0f20) | A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's… | PiG's own defect | All platforms | Unreleased |
 | [BF-725e104](#bf-725e104) | The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks… | PiG's own defect | Windows | 0.5.2 |
 | [BF-72bf4f2](#bf-72bf4f2) | extensions (MCP): a server an extension registers at run time (`pi.registerMcpServer` and its SDK forms)… | PiG's own defect | All platforms | Unreleased |
 | [BF-72db80f](#bf-72db80f) | fix(durable): a streamed partial commits the text of its own events | PiG's own defect | All platforms | Unreleased |
@@ -16424,6 +16425,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `7177d5f92b` (2026-10-11)
 - **Tests:** `tui/summary_output_pad_test.go::TestToolAndBashBlocksFollowOutputPad`, `tui/tool_execution_test.go::TestToolExecutionStreamingFallbackUsesLeadingPreview`, `tui/tool_execution_test.go::TestUnregisteredToolCardIsUpstreamFormatToolExecution`
+
+### BF-71e0f20
+
+**A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off.
+- **Root cause:** Pi stop() (tui.ts) writes showCursor and terminal.stop() between beforeTerminalStop and afterTerminalStop, so CSI ?25h CSI ?2004l come before CSI ?1049l, and a fullscreen exit that prints the transcript ends with the main screen stop (CSI ?25h CSI ?2004l) and nothing after it. pig wrote them only after the alternate screen was left, then a third CSI ?25h from the mode teardown. StopOptions.ExitTerminal (pig additive) marks the exit's stops; ProcessTerminal.WriteStopModes is terminal.stop()'s mode resets, and the restore that follows no longer repeats bracketed paste off. A renderer swap is not an exit and writes none of it.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `71e0f20510` (2026-11-16)
+- **Tests:** `internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild`, `internal/codingagent/interactive_exit_order_pty_test.go::TestExitModeResetsFollowPiStopOrder`, `internal/codingagent/interactive_teardown_test.go::TestStopInteractiveTuiFullscreenExitOutput`, `tui/stop_terminal_modes_test.go::TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen`, `tui/stop_terminal_modes_test.go::TestAltScreenSwapStopLeavesBracketedPasteOn`, `tui/stop_terminal_modes_test.go::TestMainScreenExitStopWritesCursorThenPasteReset`
+- **Release note:** A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off. PiG wrote them only after the alternate screen was left and added a trailing cursor show. A terminal that handles the resets in order, or a recording of the exit bytes, now sees Pi's order; the screen a user sees is the same. Present in v0.5.3 and v0.7.0 (checked by tag).
 
 ### BF-725e104
 

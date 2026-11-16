@@ -18,9 +18,11 @@ type upstreamShutdownRenderer struct {
 	order *[]string
 }
 
-func (r *upstreamShutdownRenderer) Stop() {
+func (r *upstreamShutdownRenderer) Stop() { r.StopWithOptions(tui.StopOptions{}) }
+
+func (r *upstreamShutdownRenderer) StopWithOptions(options tui.StopOptions) {
 	*r.order = append(*r.order, "stop")
-	r.TuiMainScreen.Stop()
+	r.TuiMainScreen.StopWithOptions(options)
 }
 
 func upstreamShutdownMode(t *testing.T, order *[]string, persisted bool) *InteractiveMode {
