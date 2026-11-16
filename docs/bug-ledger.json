@@ -41817,6 +41817,29 @@
       ]
     },
     {
+      "id": "BF-e3f1505",
+      "title": "CI only: a pull request's secret scan now covers what the pull request adds over its base (the merge base to…",
+      "symptom": "A batch pull request that merged member branches cut from an older main used to fail the scan on secret-shaped test values already on main, and, because the scan followed only the first parent (`--first-parent`), the commits inside a merged member branch were not scanned at all.",
+      "rootCause": "A batch pull request that merged member branches cut from an older main used to fail the scan on secret-shaped test values already on main, and, because the scan followed only the first parent (`--first-parent`), the commits inside a merged member branch were not scanned at all.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI only: a pull request's secret scan now covers what the pull request adds over its base (the merge base to its head) instead of everything from the parent of its oldest commit. A batch pull request that merged member branches cut from an older main used to fail the scan on secret-shaped test values already on main, and, because the scan followed only the first parent (`--first-parent`), the commits inside a merged member branch were not scanned at all. Released versions: none (CI only). \u003c!-- cause: gitleaks-action scanned `\u003coldest pull request commit\u003e^..\u003cnewest\u003e` with --first-parent, which reaches back into main's history for an older-based member and skips every commit behind a merge, and no test built a batch of merged member branches --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e3f150557b",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "automation/ci/test_secret_scan_range.py",
+        "test/ci-images/merge_queue_test.go::TestSecretScanRunsInTheMergeGroup"
+      ]
+    },
+    {
       "id": "BF-e3f39b7",
       "title": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\"",
       "symptom": "Automatic retry now triggers for the gateway error \"Unable to forward upstream stream\".",
