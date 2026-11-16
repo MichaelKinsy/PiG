@@ -279,6 +279,10 @@ type InteractiveMode struct {
 	// Shutdown paths share an emission guard and join in-flight cleanup before owner-loop terminal teardown.
 	signalShutdownDone atomic.Bool
 	shutdownMu         sync.Mutex
+	// quitEntered closes when the owner loop enters finishInteractiveShutdown, before it takes shutdownMu: from then on it serves no posted task while it waits for that lock, which a signal's dispose may hold while it waits for the loop (resetExtensionUIForReplacement).
+	quitEntered          chan struct{}
+	quitEnteredOnce      sync.Once
+	quitEnteredCloseOnce sync.Once
 	// reloadIssues collects extension/tool reload failures from the most recent
 	// /reload so ReloadDiagnostics can surface them in-session as "Extension
 	// issues" instead of dropping them to a TUI-clobbered stderr. Reset at the

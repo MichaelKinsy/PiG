@@ -14,6 +14,12 @@ import (
 
 // runOnMainAndWait waits for an accepted owner operation, including its awaited work. A cancelled queued operation does not mutate the UI, and a caller whose ctx ends before the loop starts the operation abandons it.
 func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() error) error {
+	return m.runOnMainAndWaitUnless(ctx, nil, work)
+}
+
+// runOnMainAndWaitUnless is runOnMainAndWait for a caller that holds a lock the owner loop may be waiting for: when abandon closes before the loop has
+// started the operation, the caller abandons it (errOwnerLoopLeft) and runs the work itself, as the loop no longer serves tasks.
+func (m *InteractiveMode) runOnMainAndWaitUnless(ctx context.Context, abandon <-chan struct{}, work func() error) error {
 	if m.onOwnerLoop() {
 		// Queueing and waiting from the owner loop would wait for work only this goroutine can run.
 		if err := ctx.Err(); err != nil {
@@ -50,8 +56,16 @@ func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() erro
 		return <-result
 	case <-stopped:
 		return context.Cause(m.runCtx)
+	case <-abandon:
+		if claimed.CompareAndSwap(false, true) {
+			return errOwnerLoopLeft
+		}
+		return <-result
 	}
 }
+
+// errOwnerLoopLeft reports an owner operation abandoned because the owner loop left its input loop and serves no more tasks.
+var errOwnerLoopLeft = errors.New("owner loop left")
 
 // rebindCurrentSession captures the Session before awaiting extension binding. A replaced startup bind cannot subscribe or update the replacement's title on completion.
 func (m *InteractiveMode) rebindCurrentSession(ctx context.Context, renderBeforeBind bool) error {

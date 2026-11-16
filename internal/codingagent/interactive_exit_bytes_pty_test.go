@@ -36,6 +36,7 @@ const (
 	exitBytesProgressEnv = "PIG_TEST_EXIT_BYTES_PROGRESS"
 	exitBytesRunEnv      = "PIG_TEST_EXIT_BYTES_RUN"
 	exitBytesTuiModeEnv  = "PIG_TEST_EXIT_BYTES_TUIMODE"
+	exitBytesRuntimeEnv  = "PIG_TEST_EXIT_BYTES_RUNTIME"
 )
 
 // exitTitleOrProgress matches a terminal title (OSC 0) or a progress indicator (OSC 9;4) sequence.
@@ -299,7 +300,16 @@ func TestExitBytesChild(t *testing.T) {
 	terminal := tui.NewProcessTerminalWithOutput(os.Stdin, os.Stdout, io.MultiWriter(os.Stdout, &written))
 	var mode *icodingagent.InteractiveMode
 	readyAt := -1
-	mode = icodingagent.NewInteractiveMode(nil, icodingagent.InteractiveModeOptions{
+	// With a runtime host the mode's quit disposes through it, as the process's does: session_shutdown, then the beforeSessionInvalidate hook
+	// that writes the session title (agent-session-runtime.ts dispose), at Close when no dispose ran it.
+	var host *exitHookRuntime
+	var runtimeHost icodingagent.InteractiveRuntime
+	if os.Getenv(exitBytesRuntimeEnv) == "true" {
+		host = &exitHookRuntime{}
+		runtimeHost = host
+		defer host.close()
+	}
+	mode = icodingagent.NewInteractiveMode(runtimeHost, icodingagent.InteractiveModeOptions{
 		CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, NoThemes: true, TuiMode: os.Getenv(exitBytesTuiModeEnv),
 		SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), Terminal: terminal,
 		// The mark is made on the owner loop's goroutine, right before the loop reads input.
@@ -341,3 +351,33 @@ func TestExitBytesChild(t *testing.T) {
 		t.Fatal(report.Failure)
 	}
 }
+
+// exitHookRuntime is a runtime host with coding.Runtime's quit semantics for the hook: the quit's dispose runs it once, after session_shutdown, and
+// Close runs it only when no dispose did.
+type exitHookRuntime struct {
+	icodingagent.InteractiveRuntime
+	mu   sync.Mutex
+	hook func()
+	ran  bool
+}
+
+func (h *exitHookRuntime) SetBeforeSessionReplacement(func(context.Context) error) {}
+func (h *exitHookRuntime) SetBeforeSessionInvalidate(hook func())                  { h.hook = hook }
+func (h *exitHookRuntime) SetRebindSession(func(context.Context, icodingagent.InteractiveSessionHandle) error) {
+}
+func (h *exitHookRuntime) SetBeforeQuitDispose(func()) {}
+func (h *exitHookRuntime) EmitQuitShutdown()           { h.dispose() }
+func (h *exitHookRuntime) EmitQuitShutdownAfterStop()  { h.dispose() }
+
+func (h *exitHookRuntime) dispose() {
+	h.mu.Lock()
+	run := h.hook != nil && !h.ran
+	h.ran = true
+	h.mu.Unlock()
+	if run {
+		h.hook()
+	}
+}
+
+// close is Runtime.Close's hook step: it runs the hook when the quit's dispose did not.
+func (h *exitHookRuntime) close() { h.dispose() }

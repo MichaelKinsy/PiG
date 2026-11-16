@@ -174,7 +174,8 @@ func (m *InteractiveMode) resetExtensionUIForReplacement() {
 		reset()
 		return
 	}
-	if err := m.runOnMainAndWait(m.runCtx, func() error { reset(); return nil }); err != nil {
+	// A signal's dispose holds shutdownMu while it waits for the owner loop; a quit that entered finishInteractiveShutdown meanwhile waits for that lock and serves nothing, so the wait ends and the reset runs here: the loop is parked and touches the UI no more.
+	if err := m.runOnMainAndWaitUnless(m.runCtx, m.quitEnteredChan(), func() error { reset(); return nil }); err != nil {
 		reset()
 	}
 }
