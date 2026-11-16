@@ -839,7 +839,12 @@ func runThrottled(b *testing.B, relayed bool, pause relayPause, throttle *thrott
 		settle()
 	}
 	b.ReportAllocs()
-	if b.Loop() {
+	// Each metric is the mean over the benchmark's iterations, reported once after the loop: ReportMetric keeps only the last value it is given.
+	// The commit times are already pooled over every iteration (the timers and counts above are not reset), so they are reported as they stand.
+	var iterations int
+	var recoveredSum, wireSum, heapSum, longestSum float64
+	for b.Loop() {
+		iterations++
 		for range 2000 / relayStep {
 			step(true, false)
 		}
@@ -863,13 +868,18 @@ func runThrottled(b *testing.B, relayed bool, pause relayPause, throttle *thrott
 				recovered = clock - stallEnd
 			}
 		}
-		b.ReportMetric(float64(recovered)/1000, "s-to-catch-up")
-		b.ReportMetric(float64(throttle.deliveredBytes()-delivered0), "wire-B-until-then")
-		b.ReportMetric(float64(heap)/1024, "heap-KiB-during-pause")
-		b.ReportMetric(float64(outside.Microseconds())/float64(max(outsideCount, 1)), "commit-us-outside")
-		b.ReportMetric(float64(during.Microseconds())/float64(max(duringCount, 1)), "commit-us-during")
-		b.ReportMetric(float64(providerEnd.longestHandling().Microseconds()), "longest-handling-us")
+		recoveredSum += float64(recovered) / 1000
+		wireSum += float64(throttle.deliveredBytes() - delivered0)
+		heapSum += float64(heap) / 1024
+		longestSum += float64(providerEnd.longestHandling().Microseconds())
 	}
+	n := float64(max(iterations, 1))
+	b.ReportMetric(recoveredSum/n, "s-to-catch-up")
+	b.ReportMetric(wireSum/n, "wire-B-until-then")
+	b.ReportMetric(heapSum/n, "heap-KiB-during-pause")
+	b.ReportMetric(float64(outside.Microseconds())/float64(max(outsideCount, 1)), "commit-us-outside")
+	b.ReportMetric(float64(during.Microseconds())/float64(max(duringCount, 1)), "commit-us-during")
+	b.ReportMetric(longestSum/n, "longest-handling-us")
 	store.Release()
 	view.Release()
 }
@@ -936,7 +946,7 @@ func BenchmarkRelayCalls(b *testing.B) {
 		b.ReportMetric(float64(len(alone)), "calls")
 	})
 	b.Run("tab B while tab A has 10,000 calls in flight or queued; tab A until the last result", func(b *testing.B) {
-		if b.Loop() {
+		for b.Loop() {
 			var done sync.WaitGroup
 			finished := make(chan struct{})
 			start := time.Now()
