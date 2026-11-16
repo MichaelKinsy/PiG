@@ -111,18 +111,25 @@ func (l *Loop) start(work any, fn func(), paced bool) {
 	})
 }
 
-// goTask is Loop.task for a host's loop; a loop that is not a *Loop (a test's virtual-time loop) has nothing to join.
+// counted is the loop whose join counts the tasks started on l: l itself. A loop that wraps another (jobSections) embeds
+// sectionLoop and so answers for the loop it wraps; one that only fronts it must say it (a compile error otherwise), so
+// a wrapper cannot hide the host's loop from the tasks started on it (goTask would take it for a loop with nothing to join,
+// and a test's `delivered()` would run ahead of them: a job's reservation, run, outcome and finish).
+func (l *Loop) counted() *Loop { return l }
+
+// goTask is Loop.task for a host's loop; a loop that counts nothing (counted is nil: a test's virtual-time loop) has
+// nothing to join.
 func goTask(loop sectionLoop, work any, fn func()) {
-	if l, ok := loop.(*Loop); ok {
+	if l := loop.counted(); l != nil {
 		l.task(work, fn)
 		return
 	}
 	loop.Go(fn)
 }
 
-// goPacedTask is Loop.pacedTask for a host's loop; a loop that is not a *Loop has nothing to join and nobody to pace.
+// goPacedTask is Loop.pacedTask for a host's loop; a loop that counts nothing has nothing to join and nobody to pace.
 func goPacedTask(loop sectionLoop, work any, fn func()) {
-	if l, ok := loop.(*Loop); ok {
+	if l := loop.counted(); l != nil {
 		l.pacedTask(work, fn)
 		return
 	}
@@ -131,7 +138,7 @@ func goPacedTask(loop sectionLoop, work any, fn func()) {
 
 // endingMade counts an ending of loop that is made, pending until its paced task ends (Loop.endingMade).
 func endingMade(loop sectionLoop) {
-	if l, ok := loop.(*Loop); ok {
+	if l := loop.counted(); l != nil {
 		l.endingMade()
 	}
 }

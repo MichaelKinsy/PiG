@@ -83,6 +83,7 @@ func (l *scopeLoop) Go(fn func()) {
 	})
 }
 
+func (l *scopeLoop) counted() *Loop                                       { return nil }
 func (l *scopeLoop) Queue(job func())                                     { l.real.Queue(job) }
 func (l *scopeLoop) Lend(signal *parking.Signal, fn func(abandoned bool)) { l.real.Lend(signal, fn) }
 func (l *scopeLoop) barrier()                                             { l.real.Run(func() {}) }

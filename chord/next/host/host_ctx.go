@@ -33,6 +33,9 @@ type sectionLoop interface {
 	Go(fn func())
 	// Lend runs fn as the synchronous part of an async function inside the running section (Loop.Lend).
 	Lend(signal *parking.Signal, fn func(abandoned bool))
+	// counted is the loop whose join counts the tasks started on this one (Loop.counted): the host's loop, also under a
+	// wrapper; nil for a loop with nothing to join (a test's virtual-time loop), which says so.
+	counted() *Loop
 }
 
 // Ctx is a handler's context.

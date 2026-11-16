@@ -190,7 +190,7 @@ func (o *jobsOpened) Finished() []Outcome {
 // hang is `() => new Promise(() => {})`: a run that never settles until the test ends.
 func hang(t *testing.T) func(any, JobCtx) (any, error) {
 	return func(any, JobCtx) (any, error) {
-		<-t.Context().Done()
+		parkedOn(t.Context().Done())
 		return nil, errors.New("the test ended")
 	}
 }
@@ -293,7 +293,18 @@ func (o *jobsOpened) Close() {
 // Crash is a crash: the store's backend closes under the live host, which is left behind.
 func (o *jobsOpened) Crash() { must(o.t, o.Store.Close(background)) }
 
-func (o *jobsOpened) settle() {
+// settle is Pi's `delivered()` (test/support.ts:138, a `setTimeout(0)`): the host's deliveries are made and every chain
+// of microtasks the host started has run to its next wait for something outside it, a persisted run's reservation (the
+// store write of its `running` phase) and the invocation after it included (deliveredOn, joining the loop's counted
+// tasks: no sleep, no poll). A run that waits for the test (a gate, the test's end) waits parked, which the join does
+// not wait for.
+func (o *jobsOpened) settle() { deliveredOn(o.Host) }
+
+// settleHeld is settle for the two cases that hold a reservation's commit on purpose (a commit queue or a backend transaction
+// the test holds): the task that waits for the held commit waits for something outside the host that the host cannot say
+// it waits for (the store's step is a raw wait), so the join would wait for the test. The clock barrier (the host's deliveries
+// and nexttest.Flushed) stands for Pi's `await delivered()` there, as it did for every case.
+func (o *jobsOpened) settleHeld() {
 	hostDelivered(o.Host)
 	nexttest.Flushed()
 }
@@ -480,7 +491,7 @@ func TestPersistedCrashesAStateChangeResetsTheRestartCountStoredAtOnce(t *testin
 			return nil, err
 		}
 		reset.Open()
-		<-t.Context().Done()
+		parkedOn(t.Context().Done())
 		return nil, errors.New("the test ended")
 	}, nil)
 	reset.Wait()
@@ -672,7 +683,7 @@ func TestPersistedASealDuringTheReservationAReservationQueuedBehindAHeldCommitQu
 	<-gate.Entered()
 	release := heldCommitQueue(t, st, gate)
 	run := <-started
-	jobs.settle()
+	jobs.settleHeld()
 	failLive(jobs.Self, data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "seal queued reservation"}, nil))
 	jobs.Retry()
 	release()
@@ -707,7 +718,7 @@ func TestPersistedASealDuringTheReservationAnAbortJoinedToAReservationThatCommit
 		must(t, err)
 		aborting <- result
 	}()
-	jobs.settle()
+	jobs.settleHeld()
 	failLive(jobs.Self, data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: "seal after reservation"}, nil))
 	second.Release()
 	if result := <-aborting; result != AbortMarked {
@@ -974,7 +985,7 @@ func TestPersistedLoadingALoadThatFailsLosesNothingTheRetryLoadsTheRunsAgainAndC
 		mu.Lock()
 		invocations++
 		mu.Unlock()
-		<-t.Context().Done()
+		parkedOn(t.Context().Done())
 		return nil, errors.New("the test ended")
 	}, nil)
 	var activationFailed bool
@@ -1313,7 +1324,7 @@ func TestPersistedDeferredStateFoldsHeldWrites100SetsOfOneLeafKeepOneOp(t *testi
 			return nil, err
 		}
 		changed.Open()
-		<-t.Context().Done()
+		parkedOn(t.Context().Done())
 		return nil, errors.New("the test ended")
 	}, nil)
 	jobStart(t, jobs.Imports, pathArgs("a"), background)
@@ -1361,7 +1372,7 @@ func TestPersistedDeferredStateAnOverflowOfHeldOpsStoresTheNextChangeAsABase(t *
 			return nil, err
 		}
 		changed.Open()
-		<-t.Context().Done()
+		parkedOn(t.Context().Done())
 		return nil, errors.New("the test ended")
 	}, nil, declared)
 	jobStart(t, jobs.Imports, pathArgs("a"), background)
@@ -1383,7 +1394,7 @@ func TestPersistedDeferredStateIsStoredByTheCloseWriterAtACleanStopAndAfterWithi
 			return nil, err
 		}
 		held.Open()
-		<-t.Context().Done()
+		parkedOn(t.Context().Done())
 		return nil, errors.New("the test ended")
 	}, nil)
 	run := jobStart(t, jobs.Imports, pathArgs("a"), background)
@@ -1404,7 +1415,7 @@ func TestPersistedDeferredStateIsStoredByTheCloseWriterAtACleanStopAndAfterWithi
 			return nil, err
 		}
 		timed.Open()
-		<-t.Context().Done()
+		parkedOn(t.Context().Done())
 		return nil, errors.New("the test ended")
 	}, nil)
 	timed.Wait()
@@ -1474,7 +1485,7 @@ func TestPersistedGCSettledRunsCancelledAbortWaitsAndAnEndedObjectWithAHeldChang
 				return nil, err
 			}
 			held.Open()
-			<-ctx.Done()
+			untilDone(ctx)
 			return nil, ctx.Err()
 		}, nil, nil)
 		settled := jobStart(t, jobs.Abandoned, pathArgs("a"), background)
@@ -1566,8 +1577,7 @@ func TestPersistedVersionsResolvedByAReloadAPersistedRunBlockedForItsVersionAtIt
 	}
 	host := newJobHost(t, HostOptions{Store: st, OnError: func(HostError) {}})
 	mustLoad(t)(host.Load([]HostFacet{{Name: "notes", Facet: serve(jobImportV2)}}, background))
-	hostDelivered(host)
-	nexttest.Flushed()
+	deliveredOn(host)
 	mu.Lock()
 	if len(finished) != 0 {
 		t.Fatalf("finished = %+v before the reload", finished)
@@ -1582,8 +1592,8 @@ func TestPersistedVersionsResolvedByAReloadAPersistedRunBlockedForItsVersionAtIt
 		defer mu.Unlock()
 		return len(finished) == 1
 	})
-	// Pi's `toMatchObject([one outcome])` after its sleep: a second, spurious finish would show once a turn passed.
-	nexttest.Flushed()
+	// Pi's `toMatchObject([one outcome])` after its sleep: a second, spurious finish would show once the chain ran on.
+	deliveredOn(host)
 	mu.Lock()
 	all := append([]Outcome(nil), finished...)
 	mu.Unlock()

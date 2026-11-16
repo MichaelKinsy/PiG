@@ -119,6 +119,41 @@ func TestProductionStartsNoGoroutineTheJoinDoesNotCount(t *testing.T) {
 	}
 }
 
+// answersCounted is a method that answers sectionLoop.counted (a receiver without a name too).
+var answersCounted = regexp.MustCompile(`^func \((\w+ )?\*?\w+\) counted\(\)`)
+
+// Go-only (no Pi case): a loop that fronts the host's loop must not hide it from the tasks started on it. goTask starts a task on
+// loop.counted(); a loop that answers nil has nothing to join, and a test's `delivered()` runs ahead of every task started on it
+// (jobSections did, until sectionLoop asked: a persisted run's reservation, its run, its outcome and its finish were invisible to
+// the join, so a test that asserted on what they write failed at a rate under load). A wrapper that embeds sectionLoop answers for
+// the loop it wraps; only *Loop answers for itself, and only a test's loop (a _test.go file) says it counts nothing.
+func TestNoProductionLoopHidesTheHostsCount(t *testing.T) {
+	files, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var answers []string
+	for _, file := range files {
+		if strings.HasSuffix(file, "_test.go") {
+			continue
+		}
+		source, err := os.ReadFile(file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for line := range strings.SplitSeq(string(source), "\n") {
+			if answersCounted.MatchString(line) {
+				answers = append(answers, file+": "+strings.TrimSpace(withoutComment(line)))
+			}
+		}
+	}
+	want := "host_loop_seam.go: func (l *Loop) counted() *Loop { return l }"
+	if len(answers) != 1 || answers[0] != want {
+		t.Fatalf("the production answers of sectionLoop.counted are %q, want only %q: a production loop that wraps the host's embeds sectionLoop, "+
+			"and one that counts nothing is a test's", answers, want)
+	}
+}
+
 // withoutComment is line up to its `//` comment, if any (a `//` inside a string or a rune literal is not one).
 func withoutComment(line string) string {
 	var quote byte
