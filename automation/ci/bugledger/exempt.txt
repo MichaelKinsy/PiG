@@ -27,3 +27,4 @@ f3fd868442 see ab1d07097c
 ee03bf520b Follow-up to unreleased work: commits the vendored node_modules of the Chord plugins Node evaluator that the .gitignore hid (701 generated files), no product behaviour
 # f26dfe2355 corrects f06ba8fd15, which hid the symptom of the same bug (its trailer names f06ba8fd15 back): the entry is the correction's.
 f06ba8fd15 see f26dfe2355
+4b12dc87bd84 Review follow-up to unreleased work: a repeated call of the cancel function took the abort listeners of the first call, because ee72731368c7 (in no tag; v0.7.0 has no abort listeners) put the taking of them into every call, and the fix lets only the call that claims the cancel take them
