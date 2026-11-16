@@ -12554,6 +12554,26 @@
       "tests": []
     },
     {
+      "id": "BF-55fbbcb",
+      "title": "CI only: a pull request's secret scan now stops, with one error line, when it cannot compute the range of…",
+      "symptom": "CI only: a pull request's secret scan now stops, with one error line, when it cannot compute the range of commits to scan.",
+      "rootCause": "The range script printed an open-ended `..\u003chead\u003e` and exited 0 when the base had no merge base with the head (unrelated histories, or a clone too shallow to reach the fork point), so the scan could cover no commits and pass; a missing or empty argument or a ref that is not a commit was not checked either.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI only: a pull request's secret scan now stops, with one error line, when it cannot compute the range of commits to scan. The range script printed an open-ended `..\u003chead\u003e` and exited 0 when the base had no merge base with the head (unrelated histories, or a clone too shallow to reach the fork point), so the scan could cover no commits and pass; a missing or empty argument or a ref that is not a commit was not checked either. A pull request that adds no commit over its base is now reported as having nothing to scan. Released versions: none (CI only). \u003c!-- cause: secret-scan-range.sh took the merge base inside the arguments of printf, where a failing command does not trip set -e, so a failed git merge-base left an empty first sha and the script still printed the range and exited 0; no test ran it without a merge base. --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "55fbbcbe12",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-5654e71",
       "title": "MCP OAuth discovery and resource selection now read URLs the way Node's `URL` does (default ports, dot…",
       "symptom": "MCP OAuth discovery and resource selection now read URLs the way Node's `URL` does (default ports, dot segments, backslashes, punycode hosts), and `WWW-Authenticate` challenges with quoted or odd values parse as Pi parses them.",
@@ -41943,6 +41963,29 @@
         "chord/delta/append_text_retention_norace_test.go::TestTrackerAppendTextReleasesBuffersOfReleasedKeys",
         "chord/delta/text_tails_test.go::TestTextTailsForgetCollectedBuffers",
         "chord/delta/text_tails_test.go::TestTrackerAppendTextStreamKeepsEarlierRevisions"
+      ]
+    },
+    {
+      "id": "BF-e3f1505",
+      "title": "CI only: a pull request's secret scan now covers what the pull request adds over its base (the merge base to…",
+      "symptom": "A batch pull request that merged member branches cut from an older main used to fail the scan on secret-shaped test values already on main, and, because the scan followed only the first parent (`--first-parent`), the commits inside a merged member branch were not scanned at all.",
+      "rootCause": "A batch pull request that merged member branches cut from an older main used to fail the scan on secret-shaped test values already on main, and, because the scan followed only the first parent (`--first-parent`), the commits inside a merged member branch were not scanned at all.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI only: a pull request's secret scan now covers what the pull request adds over its base (the merge base to its head) instead of everything from the parent of its oldest commit. A batch pull request that merged member branches cut from an older main used to fail the scan on secret-shaped test values already on main, and, because the scan followed only the first parent (`--first-parent`), the commits inside a merged member branch were not scanned at all. Released versions: none (CI only). \u003c!-- cause: gitleaks-action scanned `\u003coldest pull request commit\u003e^..\u003cnewest\u003e` with --first-parent, which reaches back into main's history for an older-based member and skips every commit behind a merge, and no test built a batch of merged member branches --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e3f150557b",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "automation/ci/test_secret_scan_range.py",
+        "test/ci-images/merge_queue_test.go::TestSecretScanRunsInTheMergeGroup"
       ]
     },
     {
