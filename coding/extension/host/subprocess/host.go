@@ -2468,7 +2468,7 @@ func (h *Host) EndInput() {
 	}
 }
 
-// TerminateProcesses kills hosted processes without running extension callbacks or waiting for their handlers. It is only for a host process that is about to exit; ordinary owners use Shutdown to release all resources.
+// TerminateProcesses kills hosted processes without running extension callbacks or waiting for their handlers, and removes the Host's private socket directory: the host process that calls it is about to exit without Shutdown (RPC mode ends with os.Exit, as Pi's process.exit does), so nothing else would remove the directory. It is only for a host process that is about to exit; ordinary owners use Shutdown to release all resources.
 func (h *Host) TerminateProcesses() {
 	// pig additive (D19): subprocess runtimes must not outlive a forced host exit.
 	h.shuttingDown.Store(true)
@@ -2495,6 +2495,18 @@ func (h *Host) TerminateProcesses() {
 	}
 	for process := range processes {
 		_ = process.Kill()
+	}
+	h.removeSockRuntimeDir()
+}
+
+// errSockRuntimeRemoved is what a Host asks for a socket path after TerminateProcesses removed its directory.
+var errSockRuntimeRemoved = errors.New("the Host's socket directory was removed by TerminateProcesses")
+
+// removeSockRuntimeDir removes the Host's private socket directory and keeps the Host from making one afterwards. Running the once itself, with an error that stands for the directory it never made, is what orders this read of sockRuntimeDir after the write of a concurrent ensureSockRuntimeDir.
+func (h *Host) removeSockRuntimeDir() {
+	h.sockRuntimeOnce.Do(func() { h.sockRuntimeErr = errSockRuntimeRemoved })
+	if h.sockRuntimeDir != "" {
+		_ = os.RemoveAll(h.sockRuntimeDir)
 	}
 }
 
