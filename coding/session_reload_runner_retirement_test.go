@@ -91,3 +91,41 @@ func TestAReloadThatLoadedRetiresTheOldRunner(t *testing.T) {
 	}
 	requireRetired(t, "superseded", previous, old)
 }
+
+// Exactly one instance receives an event at every point of a good reload that follows a failed one: the Session reads its current runner once per emit, the old runner (stale, after the
+// failed reload) stays current until the swap, the new runner is current from the swap, and the old one is retired by the same step. A hook that runs inside the reload (where an extension
+// factory runs) reaches the old instance alone; every emit after it reaches the new instance alone.
+func TestAnEventAroundAReloadThatFollowsAFailedOneReachesExactlyOneInstance(t *testing.T) {
+	old, fresh := newEmitCounter(), newEmitCounter()
+	loader := &swapLoader{ResourceLoader: NoResources, err: errors.New("resource reload failed")}
+	session := newReloadableEmitSession(t, old, loader)
+	if err := session.Reload(t.Context()); !errors.Is(err, loader.err) {
+		t.Fatalf("Reload error = %v, want %v", err, loader.err)
+	}
+	driveEveryEmitOfTheSession(t, session)
+	inWindow := map[string][2]int{}
+	loader.err, loader.extensions = nil, []extension.Extension{fresh.extension("<new>")}
+	loader.during = func() {
+		driveEveryEmitOfTheSession(t, session)
+		for _, event := range emitCounterEvents {
+			inWindow[event] = [2]int{old.count(event), fresh.count(event)}
+		}
+	}
+	if err := session.Reload(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	for _, event := range emitCounterEvents {
+		if got := inWindow[event]; got != [2]int{2, 0} {
+			t.Errorf("%s inside the reload: old and new instance counts = %v, want the old instance alone ([2 0])", event, got)
+		}
+	}
+	driveEveryEmitOfTheSession(t, session)
+	for _, event := range emitCounterEvents {
+		if got := old.count(event); got != 2 {
+			t.Errorf("%s: the old instance ran %d times in all, want 2 (the failed reload's prompt and the window)", event, got)
+		}
+		if got := fresh.count(event); got != 1 {
+			t.Errorf("%s: the new instance ran %d times, want 1", event, got)
+		}
+	}
+}

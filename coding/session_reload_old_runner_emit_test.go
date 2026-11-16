@@ -94,15 +94,22 @@ func driveEveryEmitOfTheSession(t *testing.T, session *Session) {
 	}
 }
 
-// swapLoader is a resource loader whose reload fails, or loads the extensions it holds, registered against runtime when it has one.
+// swapLoader is a resource loader whose reload fails, or loads the extensions it holds, registered against runtime when it has one. during, when set, runs inside
+// Reload: between the old runner's invalidation and the swap, where the extension factories of a real loader run.
 type swapLoader struct {
 	ResourceLoader
 	extensions []extension.Extension
 	runtime    *extension.ExtensionRuntime
 	err        error
+	during     func()
 }
 
-func (l *swapLoader) Reload(...ResourceLoaderReloadOptions) error { return l.err }
+func (l *swapLoader) Reload(...ResourceLoaderReloadOptions) error {
+	if l.during != nil {
+		l.during()
+	}
+	return l.err
+}
 
 func (l *swapLoader) GetExtensions() LoadExtensionsResult {
 	return LoadExtensionsResult{Extensions: l.extensions, Runtime: l.runtime}

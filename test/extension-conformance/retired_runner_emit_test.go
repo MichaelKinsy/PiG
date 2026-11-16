@@ -111,3 +111,65 @@ export default function (pi) {
 		}
 	}
 }
+
+// The same five states over every SDK's fixture, isolated and packed. The retired check is the in-process Runner's, before any call reaches an extension, so it does not depend on the
+// SDK; what depends on it is that a runner a failed reload left stale still gets its event answered by the extension behind the host the interactive reload invalidated. The fixture's
+// cache_warming_decision handler answers stop, so a delivery is an answer and a refusal is the stale error.
+func TestConformance_RetiredRunnerRefusesAndAStaleOneDeliversInEverySDK(t *testing.T) {
+	states := []struct {
+		name      string
+		apply     func(r *inproc.Runner, host *subprocess.Host)
+		delivered bool
+	}{
+		{"failed reload", func(r *inproc.Runner, host *subprocess.Host) {
+			r.InvalidateForReload("")
+			if host != nil {
+				host.Invalidate(r.StaleMessage())
+			}
+		}, true},
+		{"closed", func(r *inproc.Runner, _ *subprocess.Host) { r.Invalidate("runtime closed") }, false},
+		{"superseded by a reload that loaded", func(r *inproc.Runner, _ *subprocess.Host) { r.InvalidateKeepingRuntime("") }, false},
+		{"failed reload, then Close", func(r *inproc.Runner, host *subprocess.Host) {
+			r.InvalidateForReload("")
+			if host != nil {
+				host.Invalidate(r.StaleMessage())
+			}
+			r.Invalidate("runtime closed")
+		}, false},
+		{"failed reload, then a reload that loaded", func(r *inproc.Runner, host *subprocess.Host) {
+			r.InvalidateForReload("")
+			if host != nil {
+				host.Invalidate(r.StaleMessage())
+			}
+			r.InvalidateKeepingRuntime("")
+		}, false},
+	}
+	cases := append(allHarnessCases(), packedSDKHarnessCases()...)
+	for _, tc := range cases {
+		for _, state := range states {
+			t.Run(tc.name+"/"+state.name, func(t *testing.T) {
+				h := tc.make(t)
+				t.Cleanup(func() {
+					if h.cleanup != nil {
+						h.cleanup()
+					}
+					if h.host != nil {
+						h.host.Shutdown("test done")
+					}
+				})
+				state.apply(h.runner, h.host)
+				event := extension.CacheWarmingDecisionEvent{Type: "cache_warming_decision", WarmCost: 0.05, MissCost: 0.5, ContinuationProbability: 0.15, Action: extension.CacheWarmingActionWarm}
+				action, err := h.runner.EmitCacheWarmingDecision(t.Context(), event)
+				if state.delivered {
+					if err != nil || action != extension.CacheWarmingActionStop {
+						t.Fatalf("a stale runner still in service: action %q, error %v, want the extension's stop", action, err)
+					}
+					return
+				}
+				if !errors.Is(err, extension.ErrStaleContext) {
+					t.Fatalf("a retired runner's emit = action %q, error %v, want the stale-context error", action, err)
+				}
+			})
+		}
+	}
+}
