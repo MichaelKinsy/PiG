@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os/exec"
+	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
@@ -25,6 +26,10 @@ func TestBuiltinSlashCommandsMatchPi(t *testing.T) {
 	if err := json.Unmarshal(output, &expected); err != nil {
 		t.Fatal(err)
 	}
+	// A build that strips the changelog has no /changelog: Pi's list without it.
+	expected = slices.DeleteFunc(expected, func(command struct{ Name, Description, ArgumentHint string }) bool {
+		return strippedFeatureCommand(command.Name)
+	})
 	divergent := map[string]bool{"share": true, "bug": true}
 	var got []BuiltinSlashCommand
 	for _, command := range BuiltinSlashCommands() {

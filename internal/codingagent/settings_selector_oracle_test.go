@@ -1,3 +1,5 @@
+//go:build !pig_strip_changelog
+
 package codingagent
 
 import (

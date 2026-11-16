@@ -428,6 +428,9 @@ func TestSettingsItems_UpstreamCoreRosterPresentAndOrdered(t *testing.T) {
 		"fullscreen-wheel-scroll-lines",
 		"theme",
 	} {
+		if settingStripped(id) { // a build that strips a built-in does not offer its row
+			continue
+		}
 		if !slices.Contains(ids, id) {
 			t.Fatalf("settings rows missing %q in %v", id, ids)
 		}
@@ -457,6 +460,9 @@ func TestSettingsItems_UpstreamDefaults(t *testing.T) {
 		"terminal-progress":         "false",
 		"install-telemetry":         "true",
 	} {
+		if settingStripped(id) { // a build that strips a built-in does not offer its row
+			continue
+		}
 		if got := lookup[id].CurrentValue; got != want {
 			t.Fatalf("%s default = %q, want %q", id, got, want)
 		}

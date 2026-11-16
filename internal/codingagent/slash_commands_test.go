@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -369,7 +370,7 @@ func TestBuiltinSlashCommands_MatchesRegistry(t *testing.T) {
 	if len(got) == 0 {
 		t.Fatal("BuiltinSlashCommands returned empty")
 	}
-	want := defaultBuiltins()
+	want := slices.DeleteFunc(defaultBuiltins(), func(command BuiltinSlashCommand) bool { return strippedFeatureCommand(command.Name) })
 	if len(got) != len(want) {
 		t.Fatalf("BuiltinSlashCommands len=%d, defaultBuiltins len=%d", len(got), len(want))
 	}
@@ -754,6 +755,7 @@ func TestBuiltinSlashCommandsFollowUpstreamOrder(t *testing.T) {
 		"copy", "name", "session", "changelog", "hotkeys", "fork", "clone", "trust", "login", "logout",
 		"new", "compact", "resume", "reload", "quit",
 	}
+	want = slices.DeleteFunc(want, strippedFeatureCommand) // a build that strips the changelog has no /changelog
 	var got []string
 	for _, cmd := range BuiltinSlashCommands() {
 		if cmd.Hidden || strings.HasPrefix(cmd.Name, "probe-") {

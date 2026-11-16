@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // Ports packages/coding-agent/test/suite/agent-session-codemode.test.ts (Pi 1.0.0, 21 cases: 19 here, and 2 session-free cases plus the session-free half of "declares models only for the session's own codemode tool" in coding/extension/builtin/codemode/session_free_upstream_test.go). The built-in codemode
@@ -708,7 +709,12 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 		}
 		// upstream CODEMODE_DOCS_PATH is join(getDocsPath(), "codemode.md"), never empty; an empty path would make the
 		// containment check below pass vacuously.
-		if docs := codemode.DocsPath(); docs == "" || !strings.Contains(description, docs) {
+		// pig additive (D92): a build that strips docs writes no page, so no text points at one.
+		if docs := codemode.DocsPath(); pigstrip.Has(pigstrip.ListFeatures, pigstrip.Docs) {
+			if docs != "" || strings.Contains(description, "codemode.md") {
+				t.Errorf("a build without docs names the codemode docs path %q: %q", docs, description)
+			}
+		} else if docs == "" || !strings.Contains(description, docs) {
 			t.Errorf("description lacks the codemode docs path %q: %q", docs, description)
 		}
 
@@ -997,7 +1003,6 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 			{"noModel", value.NoModel, "models.classify() expects a classifier model as its first argument, got a string."},
 			{"undefinedModel", value.UndefinedModel, "models.getModelOfType() returns undefined for an unknown provider or id."},
 			{"noState", value.NoState, "models.classify() context.state must be an object, got undefined."},
-			{"noState", value.NoState, "codemode.md"},
 			{"badQuestion", value.BadQuestion, `context.questions.kind is a "choice" question, so criteria must map each label to its meaning.`},
 			{"badImage", value.BadImage, "models.generateImages() context.input must be a non-empty array of blocks, got undefined."},
 			{"badSplit", value.BadSplit, "The provider and the id are separate arguments"},
@@ -1015,6 +1020,10 @@ func TestUpstreamCodemodeModels(t *testing.T) {
 			if !strings.Contains(check.got, check.want) {
 				t.Errorf("%s = %q, want it to contain %q", check.name, check.got, check.want)
 			}
+		}
+		// The error points at the docs page; a build that strips docs writes none and names none.
+		if stripped := pigstrip.Has(pigstrip.ListFeatures, pigstrip.Docs); strings.Contains(value.NoState, "codemode.md") == stripped {
+			t.Errorf("noState = %q, docs stripped = %v", value.NoState, stripped)
 		}
 		calls := codemodeDetailsOf(t, result).Calls
 		if len(calls) != 2 || calls[0].Name != "models.classify" || calls[0].Status != "error" || calls[0].Error != "classifier exploded" ||

@@ -7,6 +7,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // agent-session.ts::_preparePromptAndToolLoadout persists section patches with
@@ -66,6 +67,10 @@ func TestSessionDefaultSectionsReachEventsProviderAndPersistenceOnce(t *testing.
 			t.Fatal(err)
 		}
 	}
+	want := []string{"preamble", "tools", "rules", "docs", "cwd"}
+	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.Docs) {
+		want = []string{"preamble", "tools", "rules", "cwd"} // a Piglet that strips docs has no docs section
+	}
 	check := func(messages []agent.AgentMessage) {
 		t.Helper()
 		systems := 0
@@ -78,7 +83,6 @@ func TestSessionDefaultSectionsReachEventsProviderAndPersistenceOnce(t *testing.
 			for _, section := range message.System.Sections {
 				names = append(names, section.Name)
 			}
-			want := []string{"preamble", "tools", "rules", "docs", "cwd"}
 			if !reflect.DeepEqual(names, want) || message.System.Content != ai.SystemText("") {
 				t.Fatalf("system %#v", message.System)
 			}
@@ -99,7 +103,7 @@ func TestSessionDefaultSectionsReachEventsProviderAndPersistenceOnce(t *testing.
 				systems = append(systems, system)
 			}
 		}
-		if len(systems) != 1 || systems[0].Content != ai.SystemText("") || len(systems[0].Sections) != 5 {
+		if len(systems) != 1 || systems[0].Content != ai.SystemText("") || len(systems[0].Sections) != len(want) {
 			t.Fatalf("provider system %#v", systems)
 		}
 	}
