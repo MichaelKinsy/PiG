@@ -835,7 +835,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/rpc/rpc-mode.js",
-      "sha256": "505297dba2df1de3003c0399b3312fd581359a4e27a5e9262b274b6cb5cb4ef3"
+      "sha256": "d681e6b9c279b4a778da1ac65eb1af85b5108c424a597d3f4eec9f082a4472d3"
     },
     {
       "path": "pi-dist/pi-coding-agent/package-manager-cli.js",
