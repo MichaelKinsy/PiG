@@ -1551,6 +1551,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a808864](#bf-a808864) | Grep match lines, codemode output and previews, compaction summaries of tool results, and MCP server… | PiG's own defect | All platforms | Unreleased |
 | [BF-a81ec0d](#bf-a81ec0d) | A key pressed while an extension's custom overlay is open no longer freezes `pig` when the key reaches the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a8203b7](#bf-a8203b7) | fix(chord/nextnode/plugins): a request pending when the channel ends fails with how the process ended; go fix | PiG's own defect | All platforms | Unreleased |
+| [BF-a8428a1](#bf-a8428a1) | A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled… | PiG's own defect | All platforms | Unreleased |
 | [BF-a8a04f4](#bf-a8a04f4) | `PIG_DEBUG` writes its log with mode 0600 and refuses a symlink or a file owned by another user in the shared… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a8b5e75](#bf-a8b5e75) | chord: a worker could be forked into a component that a `Close` had begun to close: a start looked at the… | PiG's own defect | All platforms | Unreleased |
 | [BF-a8f5413](#bf-a8f5413) | Fix the lint findings of the JPEG port | PiG's own defect | All platforms | Unreleased |
@@ -23558,6 +23559,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `a8203b7e39` (2026-10-31)
 - **Tests:** `chord/nextnode/plugins/plugins_examples_test.go::TestExample39BrowserBuild`
+
+### BF-a8428a1
+
+**A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before its result settled it now fails with the cancellation, as it does in Pi, not with the result.
+- **Root cause:** Waiters.Settle (durable/harness/util.go) gave a wait the settled value even when the wait's context had already been cancelled. Pi's Waiters.add runs the abort listener at the abort itself (packages/durable/src/harness/util.ts: 22-28), so a wait whose signal was aborted is gone from the set when a later resolve looks (:38-42): it was rejected, and resolve never reaches it. Go has no listener inside the cancel: context.AfterFunc runs the callback on its own goroutine, so a Settle that came between the cancel and that goroutine resolved a wait that Pi had rejected.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a8428a1f79` (2026-11-16)
+- **Tests:** `durable/harness/waiter_cancel_test.go::TestAWaitSettledAfterItsContextWasCancelledFailsWithTheCancellation`
+- **Release note:** A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before its result settled it now fails with the cancellation, as it does in Pi, not with the result. Pi rejects a wait at the abort itself (`Waiters.add` runs the abort listener there), so a later resolve never reaches it; PiG's cancellation reaches the wait on its own goroutine (`context.AfterFunc`), and a result that settled the wait in between was returned instead. A tool that waits for a subagent's submission, aborted with its parent's conversation, could get the child's `unanswered: aborted` record as an ordinary result, not the abort error; the harness's own test for it hung once in 2041 passes on a loaded runner. The durable library's embedders can see it (stock `pig` does not link `durable/harness`); `git tag --contains` names v0.7.0 as the first tag with the code.
 
 ### BF-a8a04f4
 
