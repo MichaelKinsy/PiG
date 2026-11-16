@@ -21,9 +21,13 @@ func WriteStringify(encoder *jsontext.Encoder, appendTo func([]byte) ([]byte, er
 	if err == nil {
 		err = encoder.WriteValue(text)
 	}
+	// The holder goes back whatever the text's size: a buffer over the bound is dropped, not its holder, which the pool would otherwise make again
+	// (one allocation) for the next call.
 	if cap(text) <= maxPooledText {
 		*buffer = text[:0]
-		textBuffers.Put(buffer)
+	} else {
+		*buffer = nil
 	}
+	textBuffers.Put(buffer)
 	return err
 }

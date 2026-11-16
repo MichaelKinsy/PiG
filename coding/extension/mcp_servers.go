@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/changeobservers"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 	"github.com/MichaelKinsy/PiG/internal/mcpshared"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
@@ -339,11 +340,19 @@ func isExposure(value string) bool {
 // toolPatternRegExp is upstream's `new RegExp("^" + parts.join(".*") + "$")`.
 // A JavaScript `.` matches anything but a line terminator.
 func toolPatternRegExp(pattern string) *regexp.Regexp {
+	return toolPatternRegExps.Get(pattern, compileToolPatternRegExp)
+}
+
+// toolPatternRegExps holds the expression of each wildcard pattern of a configuration: GetMcpToolExposure asks for every pattern of a server for
+// every tool it resolves. The patterns come from configuration, so the cache is bounded.
+var toolPatternRegExps = lazyregexp.NewCache[string](256)
+
+func compileToolPatternRegExp(pattern string) *regexp.Regexp {
 	parts := strings.Split(pattern, "*")
 	for i, part := range parts {
 		parts[i] = regexp.QuoteMeta(part)
 	}
-	return regexp.MustCompile("^" + strings.Join(parts, `[^\n\r\x{2028}\x{2029}]*`) + "$")
+	return regexp.MustCompile("^" + strings.Join(parts, `[^\n\r\x{2028}\x{2029}]*`) + "$") //perf:ok compiled once per pattern: toolPatternRegExps caches it
 }
 
 // GetMcpToolExposure is the exposure of one tool of a server: its

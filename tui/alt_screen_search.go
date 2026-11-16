@@ -188,13 +188,21 @@ func matchSegments(spans []searchSourceSpan, spanIndex, start, end int) []AltScr
 	return segments
 }
 
+// searchExpressions holds the expression of each query the search has settled on: the incremental search and a one-shot search of the same query,
+// and a user who types a query again, compile it once. Upstream compiles one for every call (`new RegExp(...)`); the result is the same.
+var searchExpressions = lazyregexp.NewCache[string](64)
+
+func compileSearchExpression(query string) *regexp.Regexp {
+	return regexp.MustCompile("(?i)" + regexp.QuoteMeta(query)) //perf:ok compiled once per query: searchExpressions caches it
+}
+
 // findSearchCorpusMatches maps case-insensitive literal matches back to
 // rendered cells. Mirrors upstream findSearchCorpusMatches.
 func findSearchCorpusMatches(corpus searchCorpus, normalizedQuery string) []AltScreenSearchMatch {
 	if normalizedQuery == "" {
 		return nil
 	}
-	expression := regexp.MustCompile("(?i)" + regexp.QuoteMeta(normalizedQuery))
+	expression := searchExpressions.Get(normalizedQuery, compileSearchExpression)
 	var matches []AltScreenSearchMatch
 	spanIndex := 0
 	for _, location := range expression.FindAllStringIndex(corpus.text, -1) {

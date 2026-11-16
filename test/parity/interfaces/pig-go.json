@@ -118955,6 +118955,17 @@
       "shapeHash": "sha256:0b10d3d9fe69440ad369d6f61206c37b87e445cf2f3054ef709167d4400c6b98"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#compileToolPatternRegExp",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "compileToolPatternRegExp",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(pattern string) *regexp.Regexp"
+      },
+      "shapeHash": "sha256:b00ea62621ffcebe0068928ce6f84e4458b99f70068f77bd966fa9a42147ee6b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#contentBlockMemberOrder",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "contentBlockMemberOrder",
@@ -120537,6 +120548,17 @@
         "type": "func(pattern string) *regexp.Regexp"
       },
       "shapeHash": "sha256:b00ea62621ffcebe0068928ce6f84e4458b99f70068f77bd966fa9a42147ee6b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#toolPatternRegExps",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "toolPatternRegExps",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Cache[string]"
+      },
+      "shapeHash": "sha256:103ea6585ff272d2c65dba86b19c95ad60c8bfc530e85277242d72aa83dd6be7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#toolRegistry",
@@ -130819,9 +130841,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(cacheRoot string, key string, normalized []RustExtension) (*RustPackedCell, bool)"
+        "type": "func(ctx context.Context, cacheRoot string, key string, normalized []RustExtension) (*RustPackedCell, bool)"
       },
-      "shapeHash": "sha256:688f75cb030c9874a050c2318ff33ae57134b629f18a29828d640c1e1c65ad4e"
+      "shapeHash": "sha256:cf79e4f63a71e53bc4793c566da9bd770362507be7b528d61e3e9a7757038d64"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustExtensionVerifiers",
@@ -130844,6 +130866,17 @@
         "type": "func(cacheRoot string, key string, extensions []RustExtension, sdkRoot string) string"
       },
       "shapeHash": "sha256:5a0326b81c58d0d674c6e1d8086269ed45e357013cf34c51e6321a5a5153fbaf"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustPackedCellHashOfSDK",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "rustPackedCellHashOfSDK",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cacheRoot string, key string, extensions []RustExtension, sdkHash string) string"
+      },
+      "shapeHash": "sha256:61c66f3735f654dd786a0d4a8c103491dcab42c22c6542d0b7414e0da365f7a6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#rustPrebuiltExtensions",
@@ -390391,6 +390424,28 @@
       "shapeHash": "sha256:3f44ebeb8542eed43f8bd339059f8b067433d1d9db17abb908eb516c9500e33f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#compilePasteMarkerRegexp",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "compilePasteMarkerRegexp",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id int) *regexp.Regexp"
+      },
+      "shapeHash": "sha256:a2c07d1993bd280985ec2e85e20b9f7faebd34e740e3fdea53e320e838d37a60"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#compileSearchExpression",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "compileSearchExpression",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(query string) *regexp.Regexp"
+      },
+      "shapeHash": "sha256:c48284ca63b0db5c0c6549a38169ff6250f08c15037fa3a2d4ebc512e1e0d636"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#completionDirtying",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "completionDirtying",
@@ -402656,6 +402711,17 @@
       "shapeHash": "sha256:a2c07d1993bd280985ec2e85e20b9f7faebd34e740e3fdea53e320e838d37a60"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#pasteMarkerRegexps",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "pasteMarkerRegexps",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Cache[int]"
+      },
+      "shapeHash": "sha256:0875bef5551d1923edcb020ad04a5aa2537fb9b92a73fa7c301c6bdb7f28d61a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#pasteMarkerSingle",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "pasteMarkerSingle",
@@ -405041,6 +405107,17 @@
         "type": "searchCorpus"
       },
       "shapeHash": "sha256:5b141069f218ffa829d56879c0f6331920f4d1514717ccea4bc50f656de807b8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#searchExpressions",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "searchExpressions",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "*github.com/MichaelKinsy/PiG/internal/lazyregexp.Cache[string]"
+      },
+      "shapeHash": "sha256:103ea6585ff272d2c65dba86b19c95ad60c8bfc530e85277242d72aa83dd6be7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#searchHighlightRange",
@@ -407791,6 +407868,17 @@
         "type": "func(data []byte) (int, error)"
       },
       "shapeHash": "sha256:164259c36cebad819cd5946353fe78cf7fb4ae757d60270a368e45bee283250e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#terminalWriter.WriteString",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "terminalWriter.WriteString",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data string) (int, error)"
+      },
+      "shapeHash": "sha256:0580a3d44b5424323d1b0269e3425d10fb162dc02a9173a06aaef6053003611c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#textBeforePrefix",

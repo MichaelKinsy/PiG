@@ -2036,14 +2036,6 @@ count = 1
 class = "cold: status and tool listing, not per event"
 
 [[hit]]
-file = "coding/extension/mcp_servers.go"
-func = "toolPatternRegExp"
-pattern = "compile-in-func"
-detail = "regexp.MustCompile"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
 file = "coding/extension/pigsdk/pigsdk.go"
 func = "settleStaging"
 pattern = "env-stat"
@@ -5252,26 +5244,10 @@ count = 1
 class = "hot-kept:a regex class holds up to thousands of ranges and compiles on the first turn"
 
 [[hit]]
-file = "tui/alt_screen_search.go"
-func = "findSearchCorpusMatches"
-pattern = "compile-in-func"
-detail = "regexp.MustCompile"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
 file = "tui/custom_message.go"
 func = "CustomMessageText"
 pattern = "json-roundtrip"
 detail = "marshal+unmarshal"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "tui/editor.go"
-func = "pasteMarkerRegexp"
-pattern = "compile-in-func"
-detail = "regexp.MustCompile"
 count = 1
 class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 

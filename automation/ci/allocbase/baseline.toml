@@ -3850,8 +3850,43 @@ allocs = 152
 
 [[benchmark]]
 package = "./tui"
+benchmark = "BenchmarkExpandPasteMarkers"
+allocs = 45
+
+[[benchmark]]
+package = "./tui"
 benchmark = "BenchmarkExtensionDialogRemapping"
 allocs = 201
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFindSearchCorpusMatches/quick_brown"
+allocs = 422
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFindSearchCorpusMatches/token"
+allocs = 1223
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFindSearchCorpusMatches/zzz"
+allocs = 3
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFrameLineRegexps/kitty-metadata/image-line"
+allocs = 8
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFrameLineRegexps/kitty-metadata/plain-line"
+allocs = 0
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFrameLineRegexps/osc133-prompt-start/plain-line"
+allocs = 5
 
 [[benchmark]]
 package = "./tui"
@@ -3862,6 +3897,36 @@ allocs = 0
 package = "./tui"
 benchmark = "BenchmarkImageFallbackRender"
 allocs = 13
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/is-mouse-sequence/key"
+allocs = 0
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/is-mouse-sequence/mouse"
+allocs = 0
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/kitty-csi-u-key"
+allocs = 3
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/modify-other-keys"
+allocs = 2
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/sgr-mouse-report"
+allocs = 21
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/sgr-wheel-report"
+allocs = 2
 
 [[benchmark]]
 package = "./tui"
@@ -4236,12 +4301,12 @@ allocs = 0
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkProcessTerminalFullRedrawCJK/turns=500"
-allocs = 46
+allocs = 45
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkProcessTerminalFullRedrawCJK/turns=5000"
-allocs = 315
+allocs = 285
 
 [[benchmark]]
 package = "./tui"
@@ -4511,32 +4576,32 @@ allocs = 10487
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/ascii/2097152"
-allocs = 4
+allocs = 1
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/ascii/512"
-allocs = 2
+allocs = 1
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/ascii/65536"
-allocs = 2
+allocs = 1
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/cjk/2097152"
-allocs = 4
+allocs = 1
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/cjk/512"
-allocs = 2
+allocs = 1
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/cjk/65536"
-allocs = 2
+allocs = 1
 
 [[benchmark]]
 package = "./tui"
