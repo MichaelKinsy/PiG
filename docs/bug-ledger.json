@@ -32019,6 +32019,32 @@
       ]
     },
     {
+      "id": "BF-83ee534",
+      "title": "The exit's terminal restore is one uninterrupted sequence of writes now: a title an extension sets, an OSC 52…",
+      "symptom": "The exit's terminal restore is one uninterrupted sequence of writes now: a title an extension sets, an OSC 52 copy and the terminal progress keepalive, which three other goroutines wrote at any moment, no longer land inside the stop's bytes (between the cursor show and the bracketed paste off, between the alternate screen's leave and the transcript print) and, when SIGTERM or SIGHUP ended the session, no longer follow them.",
+      "rootCause": "An extension's ctx.ui.setTitle, an OSC 52 copy and the OSC 9;4 progress keepalive are written by goroutines of their own. The exit's stop (cursor show, bracketed paste off, keyboard protocol pop, alternate screen leave) did not hold the terminal against them, so their bytes could land between the stop's writes, and after a signal's stop, where Pi's process.exit(0) leaves no callback to run (tui.ts stop() :1046-1056 is one synchronous call; interactive-mode.ts :4491-4494 ends the process right after it).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The exit's terminal restore is one uninterrupted sequence of writes now: a title an extension sets, an OSC 52 copy and the terminal progress keepalive, which three other goroutines wrote at any moment, no longer land inside the stop's bytes (between the cursor show and the bracketed paste off, between the alternate screen's leave and the transcript print) and, when SIGTERM or SIGHUP ended the session, no longer follow them. Pi's `stop()` is one synchronous call on a single thread, so nothing of its own event loop writes inside it and, after a signal, `process.exit(0)` follows it at once. A recording of the exit, or a terminal that handles the bytes in order, saw an `OSC 0`, an `OSC 52` or an `OSC 9;4` between PiG's reset sequences or after the last of them; the screen a user sees is the same. A write requested before the stop begins is still written, before it (a copy requested just before quit reaches the clipboard); one requested while it runs waits for it and, for a quit by keys, follows it as in Pi (the title Pi's dispose sets); one requested after a signal's stop is dropped, as the exit drops it in Pi. An external editor's or a suspend's stop holds the terminal the same way and gives it back when the TUI starts again. Present in every release from v0.2.0 through v0.7.0 (checked by tag: v0.2.0 and v0.7.0 each write the title, the progress keepalive and the OSC 52 copy from goroutines of their own, outside the restore).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "83ee534a7d",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_exit_storm_pty_test.go::TestExitStopSequenceHoldsNoWriterOfAnotherGoroutine",
+        "internal/codingagent/terminal_stop_transaction_test.go::TestHostWriteMadeAfterTheStopIsDroppedForASignalOnly",
+        "internal/codingagent/terminal_stop_transaction_test.go::TestHostWriteRequestedBeforeTheStopIsWrittenBeforeIt",
+        "tui/stop_transaction_test.go::TestForeignWriteStormHoldsNoByteInsideAStop",
+        "tui/stop_transaction_test.go::TestSealedStopDropsTheForeignWritesMadeDuringItAndAfterIt"
+      ]
+    },
+    {
       "id": "BF-83fea11",
       "title": "On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was…",
       "symptom": "On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was reported as a retryable `fetch failed`.",
@@ -36885,6 +36911,29 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-92adb39",
+      "title": "PiG's raw mode is the one Pi's terminal is in now (libuv's `UV_TTY_MODE_RAW`, which Node's `setRawMode(true)`…",
+      "symptom": "PiG's raw mode is the one Pi's terminal is in now (libuv's `UV_TTY_MODE_RAW`, which Node's `setRawMode(true)` uses), not the `cfmakeraw` mode of `golang.org/x/term`.",
+      "rootCause": "Flag by flag (libuv RAW | x/term MakeRaw | what a user or program sees when they differ): iflag BRKINT ICRNL ISTRIP IXON cleared | cleared | equal iflag INPCK cleared | left | parity checking of input stays as set: a serial line only iflag IGNBRK PARMRK INLCR IGNCR left | cleared | a terminal configured with them keeps them in Pi: INLCR/IGNCR change what a key's CR/NL means oflag OPOST left | cleared | with OPOST cleared no output processing at all: ONLCR below is the visible part oflag ONLCR set | not set | a bare LF written to the terminal (a child that shares it, an extension's stray console output, a Go runtime message) returns to column 0 under Pi and moved straight down under PiG; a…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "PiG's raw mode is the one Pi's terminal is in now (libuv's `UV_TTY_MODE_RAW`, which Node's `setRawMode(true)` uses), not the `cfmakeraw` mode of `golang.org/x/term`. While the TUI runs, the kernel turns a line feed into carriage return plus line feed again, as under Pi: a bare `\\n` written to the terminal by a child process that shares it (an extension's stray console output, a program the bash tool starts on the terminal, a Go runtime message) returns to column 0 instead of moving straight down and leaving the next text where the previous line ended (the staircase). The input flag `INPCK` is cleared now (PiG left it as the terminal had it), `IGNBRK`, `PARMRK`, `INLCR`, `IGNCR` and `ECHONL` stay as the terminal had them (PiG cleared them; a terminal configured with `INLCR` or `IGNCR` keeps what they do to Enter, as under Pi), and the mode is applied after the output already written has drained, as libuv does. On Windows the console input mode is exactly `ENABLE_WINDOW_INPUT` plus `ENABLE_VIRTUAL_TERMINAL_INPUT`, as under Pi: selecting text in the window no longer pauses PiG's output (the quick edit flag is cleared); this part was built and vetted for Windows but not run on a console. The terminal mode the shell gets back at exit is unchanged. Present in every release from v0.2.0 through v0.7.0 (checked by tag: each calls `term.MakeRaw`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "92adb39502",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "tui/terminal_raw_output_unix_test.go::TestRawModeIsTheModePiRecorded",
+        "tui/terminal_raw_output_unix_test.go::TestRawModeKeepsTheKernelsNewlineTranslationAsLibuvDoes"
+      ]
     },
     {
       "id": "BF-92da987",
