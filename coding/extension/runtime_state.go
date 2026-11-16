@@ -112,6 +112,15 @@ func (r *ExtensionRuntime) Invalidate(message ...string) {
 	}
 }
 
+// Reactivate ends the staleness of a runtime a reload that failed invalidated, for the reload that follows and builds on it again. Pi's loader creates a new runtime for
+// every load (loader.ts createExtensionRuntime), so a reload that failed never reaches the next one; a host keeps one runtime across reloads, and without this the next
+// reload's factories and runner would start on a stale one. The subscriptions Invalidate ended stay ended, and a later Invalidate takes effect again.
+func (r *ExtensionRuntime) Reactivate() {
+	r.mu.Lock()
+	r.staleMessage = ""
+	r.mu.Unlock()
+}
+
 // eventBusSubscription is one retained event-bus subscription, a node of the runtime's insertion-ordered list (Pi's Set of trackedUnsubscribe closures: each
 // subscription is its own member, even for the same handler, and unsubscribing deletes it in constant time). run is idempotent. prev, next and linked are
 // guarded by runtime.mu.

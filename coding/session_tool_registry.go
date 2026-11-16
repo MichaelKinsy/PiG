@@ -625,7 +625,10 @@ func (s *Session) Reload(ctx context.Context, options ...ReloadOption) error {
 				return err
 			}
 		}
-		// upstream: agent-session.ts:3663-3664 marks the old runner stale right after session_shutdown. Its runtime stays active until the reload knows whether the rebuilt runner keeps it: a loader whose extensions registered against the same runtime hands it to the new runner, and invalidating it would make the new runner stale too.
+		// upstream: agent-session.ts:3663-3664 marks the old runner stale right after session_shutdown. Its runtime stays active until the reload knows whether the rebuilt runner keeps it: a loader whose extensions registered against the same runtime hands it to the new runner, and invalidating it would make the new runner stale too. A runtime an earlier failed reload invalidated is made active again here, for the loader that registers against it.
+		if previous.Runtime() != nil {
+			previous.Runtime().Reactivate()
+		}
 		previous.InvalidateKeepingRuntime("")
 		defer func() {
 			if !keepsRuntime && previous.Runtime() != nil {

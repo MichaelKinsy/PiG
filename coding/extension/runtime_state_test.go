@@ -30,6 +30,29 @@ func TestRuntimeInvalidateMakesItStale(t *testing.T) {
 	}
 }
 
+// A host keeps one runtime across reloads, where Pi creates a new one per load (loader.ts createExtensionRuntime): a reload that failed invalidates the runtime, and the
+// next reload makes it active again. What the invalidation ended (event-bus subscriptions) stays ended, and a later invalidation takes effect again.
+func TestRuntimeReactivateEndsStalenessButNotTheEndedSubscriptions(t *testing.T) {
+	runtime := CreateExtensionRuntime()
+	var unsubscribed int
+	runtime.TrackEventBusSubscription(func() { unsubscribed++ })
+	runtime.Invalidate()
+	if unsubscribed != 1 {
+		t.Fatalf("Invalidate ended %d subscriptions, want 1", unsubscribed)
+	}
+	runtime.Reactivate()
+	if err := runtime.AssertActive(); err != nil {
+		t.Fatalf("AssertActive = %v after Reactivate", err)
+	}
+	runtime.Invalidate("again")
+	if err := runtime.AssertActive(); err == nil || err.Error() != "again" {
+		t.Fatalf("a second round of Invalidate: %v", err)
+	}
+	if unsubscribed != 1 {
+		t.Fatalf("the subscription ended %d times, want once", unsubscribed)
+	}
+}
+
 // upstream: loader.ts:217-225 registerNativeProvider queues {provider, extensionPath = "<unknown>"} until bindCore, and unregisterProvider(name) removes queued registrations whose provider id is name.
 func TestRuntimeQueuesNativeProvidersUntilBound(t *testing.T) {
 	runtime := CreateExtensionRuntime()
