@@ -44,6 +44,9 @@ type relayedHold struct {
 	traceOrder []string
 	// holds is how many times it was held upstream.
 	holds int
+	// heldBack is what its downstream was told holds it back (withheld), until it is told that it is admitted again; nil
+	// while none.
+	heldBack *data.FailureCause
 }
 
 var _ upstream = (*relayedHold)(nil)
@@ -140,6 +143,9 @@ func (h *relayedHold) kind() string { return "relayed" }
 // caller is whom the hold acts for.
 func (h *relayedHold) caller() caller { return h.from }
 
+// principal is the principal the hold acts for (Pi's `caller.principal`).
+func (h *relayedHold) principal() data.Principal { return h.from.principal }
+
 // start takes the pending hold's place downstream and holds upstream (now, or when the path has a link).
 func (h *relayedHold) start() {
 	h.downstream.relayed(h)
@@ -188,6 +194,32 @@ func (h *relayedHold) unreachable(err *data.ChordError) {
 	h.downstream.send(&link.FailedMessage{Hold: h.id, Cause: link.WireCause{Kind: string(data.FailureWaiting), Error: wireError(err)}})
 }
 
+// withheld: its route's admission holds it back with cause (slice 14 §2.3): released upstream when it is held there (what
+// still arrives for it from that link is dropped: a link answers only for what is relayed over it); downstream its calls, in
+// flight and waiting, are rejected and it is told `failed` with the cause. It stays on its path: an allow holds it again,
+// under its id.
+func (h *relayedHold) withheld(cause data.FailureCause) {
+	upstream := h.upstream
+	h.upstream = nil
+	if upstream != nil {
+		upstream.link.send(&link.ReleaseMessage{Origin: link.Some(upstream.origin), Hold: h.id})
+	}
+	h.relayed("error", cause.Error)
+	h.heldBack = &cause
+	h.downstream.withheld(h, cause)
+}
+
+// admitted: its route's admission allows it: a hold that was told what held it back is `loading` downstream from here on,
+// through the fence and its host's start, until its next `bound` (the caller has access again: it is not shown "no access"
+// meanwhile). A hold never told anything is loading already.
+func (h *relayedHold) admitted() {
+	if h.heldBack == nil {
+		return
+	}
+	h.heldBack = nil
+	h.downstream.send(&link.LoadingMessage{Hold: h.id})
+}
+
 // waiting reports whether it waits for its path's link (a route still resolving, or a dropped link's next): a
 // revocation ends it then, since the link it is held on next gets no past `revoke` (§4).
 func (h *relayedHold) waiting() bool { return h.upstream == nil }
@@ -207,16 +239,30 @@ func (h *relayedHold) lost() {
 
 // submit: a call from downstream (registered there under its id) waits in its upstream link's window for this origin and
 // is forwarded (`call`) as a slot frees, at once when one is free and nothing waits (a trusted upstream announced no
-// window); its reply comes back by the origin. Without an upstream link it is answered `unavailable` at once (it crossed
-// the `loading` notice).
+// window); its reply comes back by the origin. Without an upstream link it is answered at once: `unavailable` (it crossed
+// the `loading` notice), or, held back by its route's admission, what held it back (it crossed that `failed`:
+// `forbidden/revoked` for a denial, access withdrawn under a call already made).
 func (h *relayedHold) submit(call *relayedCall) {
 	upstream := h.upstream
 	if upstream == nil {
-		err := data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: fmt.Sprintf("hold %d: its upstream link is down", h.id)}, nil)
+		err := h.unreached()
 		h.downstream.reply(call.message.Call, &link.ErrorMessage{Call: call.message.Call, Error: link.WireErrorOf(err)})
 		return
 	}
 	call.queue(upstream.link.consumer.relayWindow(upstream.origin))
+}
+
+// unreached is what a call that finds it on no upstream link is answered.
+func (h *relayedHold) unreached() *data.ChordError {
+	cause := h.heldBack
+	label := fmt.Sprintf("hold %d", h.id)
+	if cause == nil {
+		return data.NewChordError(data.ChordErrorInit{Code: data.CodeUnavailable, Message: label + ": its upstream link is down"}, nil)
+	}
+	if cause.Kind == data.FailureDenied {
+		return revoked(label, cause.Error)
+	}
+	return cause.Error
 }
 
 // call forwards a submitted call upstream, now that its window has a slot; it returns its `chord.relay` span when this

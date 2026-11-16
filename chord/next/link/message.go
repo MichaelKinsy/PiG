@@ -77,7 +77,7 @@ const RETRY_HOPS = 16
 
 // CauseKinds are the kinds of a `failed` message's cause, in their codes' order (the binary codec's byte, the text
 // codec's letter).
-var CauseKinds = [3]string{"transient", "broken", "waiting"}
+var CauseKinds = [4]string{"transient", "broken", "waiting", "denied"}
 
 // NoRetired is the `retired` list of a state entry without retirements, shared (no allocation per message).
 var NoRetired = []int{}

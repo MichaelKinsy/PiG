@@ -43,11 +43,10 @@ var (
 // tickOwner is the owner of the tests' table handles: nothing to refuse, nothing live.
 type tickOwner struct{}
 
-func (tickOwner) Label() string               { return "ticks" }
-func (tickOwner) Scope() any                  { return nil }
-func (tickOwner) Queries() *store.LiveQueries { return store.NewLiveQueries() }
-func (tickOwner) AssertLive() error           { return nil }
-func (tickOwner) Fail(*data.ChordError)       {}
+func (tickOwner) Label() string         { return "ticks" }
+func (tickOwner) Scope() any            { return nil }
+func (tickOwner) AssertLive() error     { return nil }
+func (tickOwner) Fail(*data.ChordError) {}
 
 var openFence = store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
 

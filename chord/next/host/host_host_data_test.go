@@ -136,7 +136,7 @@ func (w *hdWorld) waitBetween(ctx context.Context) error {
 
 // hdRowsOf is a page of the rows of session id in table.
 func hdRowsOf(ctx context.Context, table store.Table, definition *store.TableDefinition, id string) (store.Page, error) {
-	return table.Page(ctx, store.NewQuery(definition).Where(func(t store.ColumnRefs) store.Condition {
+	return table.Page(ctx, store.NewQuery(definition).Where(func(t, _ store.ColumnRefs) store.Condition {
 		return store.Eq(t["session"], Session.Address(jsonObject("id", id)))
 	}), 10, store.PageOptions{})
 }
@@ -154,7 +154,7 @@ func (w *hdWorld) setup(metaDefinition *documents.StateDefinition, labelsDefinit
 			if err != nil {
 				return contracts.Implementation{}, err
 			}
-			rows := self.Query(labels, store.NewQuery(labelsDefinition).Where(func(t store.ColumnRefs) store.Condition { return store.Eq(t["session"], hdS1) }), 10)
+			rows := self.Query(labels, store.NewQuery(labelsDefinition).Where(func(t, _ store.ColumnRefs) store.Condition { return store.Eq(t["session"], hdS1) }), 10)
 			return contracts.Implementation{Members: contracts.VariantImplementation{
 				State: map[string]chord.Watchable[delta.JsonValue]{
 					"meta":   Expose(pinned),
@@ -458,7 +458,7 @@ func TestHostDataLiveOwnersFollowADeleteThePinnedKeyReadsInitialTheLiveQueryIsEm
 	live := w.board(t, memoryStore(t), hdMeta)
 	h := live.host
 	exCall(t, live.board, "write", jsonObject("id", "S1", "title", "one", "labels", []any{"a"}))
-	counts, err := h.DeleteHostData(hdS1, background)
+	counts, err := h.DeleteHostData(hdS1, background, HostDeleteOptions{})
 	must(t, err)
 	if counts != (store.HostDataCounts{Documents: 1, Rows: 1}) {
 		t.Fatalf("deleted = %+v, want {Documents:1 Rows:1}", counts)
@@ -479,7 +479,7 @@ func TestHostDataLiveOwnersWaitForATransactionOfATablesOwnerWithoutSlotsOrQuerie
 	w.setBetween(gate)
 	reads := hdGo(func() (delta.JsonValue, error) { return live.ledger.Call("twice", "S1", background) })
 	exReceive(t, "the ledger's transaction waiting", w.entered)
-	deleting := hdGo(func() (store.HostDataCounts, error) { return h.DeleteHostData(hdS1, background) })
+	deleting := hdGo(func() (store.HostDataCounts, error) { return h.DeleteHostData(hdS1, background, HostDeleteOptions{}) })
 	hdEventually(t, "the delete waiting for the ledger's line", func() bool { return hdWaitingOnLine(h, "test.ledger") > 0 })
 	hdPending(t, "the delete", deleting)
 	close(gate)
@@ -490,6 +490,148 @@ func TestHostDataLiveOwnersWaitForATransactionOfATablesOwnerWithoutSlotsOrQuerie
 	must(t, err)
 	if count := hdCount(t, live.ledger); count != 0 {
 		t.Fatalf("count = %v, want 0", count)
+	}
+	w.setBetween(hdClosed())
+	closeHosts(t, h)
+}
+
+// --- a delete limited to one plugin --------------------------------------------------------------------------------
+
+// hdOnly is the delete limited to plugin.
+func hdOnly(plugin string) HostDeleteOptions { return HostDeleteOptions{Plugin: &plugin} }
+
+// hdOwning is a facet host that serves only the types named names: `setup()` serves every type, each plugin takes its own.
+type hdOwning struct {
+	FacetHost
+	names []string
+}
+
+func (o hdOwning) Serve(served any, implementation any, options ServeOptions) error {
+	if typ, ok := served.(*contracts.Contract); ok && !slices.Contains(o.names, typ.Name) {
+		return nil
+	}
+	return o.FacetHost.Serve(served, implementation, options)
+}
+
+// hdTwoPlugins is `setup()` over two plugins: `@test/board` serves the board and its view, `@test/ledger` the ledger; S1 has
+// a board and a ledger entry.
+func hdTwoPlugins(t *testing.T, chordStore *store.ChordStore, w *hdWorld) hdBoardHost {
+	t.Helper()
+	errs := &hostErrors{}
+	h := newHost(t, HostOptions{Store: chordStore, OnError: errs.push})
+	only := func(names ...string) Facet {
+		return DefineFacet(func(host FacetHost, self FacetSelf) error {
+			return w.setup(hdMeta, hdLabels)(hdOwning{FacetHost: host, names: names}, self)
+		})
+	}
+	mustLoad(t)(h.Load([]HostFacet{
+		{Name: "@test/board", Facet: only(hdBoard.Name, hdView.Name)},
+		{Name: "@test/ledger", Facet: only(hdLedger.Name)},
+	}, background))
+	live := hdBoardHost{host: h, board: mustGet(t, h, hdBoard, jsonObject()), ledger: mustGet(t, h, hdLedger, jsonObject()), errors: errs}
+	exCall(t, live.board, "write", jsonObject("id", "S1", "title", "one", "labels", []any{"a"}))
+	exCall(t, live.ledger, "put", "S1")
+	return live
+}
+
+// host-data.test.ts › a delete limited to one plugin (slice 14 §6, test 16) › removes that plugin's records and rows of the
+// address in one commit and leaves the others'.
+func TestHostDataADeleteLimitedToOnePluginRemovesThatPluginsRecordsAndRowsOfTheAddressInOneCommitAndLeavesTheOthers(t *testing.T) {
+	chordStore := memoryStore(t)
+	live := hdTwoPlugins(t, chordStore, newHdWorld())
+	h := live.host
+	before := chordStore.LastSeq()
+	counts, err := h.DeleteHostData(hdS1, background, hdOnly("@test/ledger"))
+	must(t, err)
+	if counts != (store.HostDataCounts{Documents: 0, Rows: 1}) {
+		t.Fatalf("deleted = %+v, want {Documents:0 Rows:1}", counts)
+	}
+	if got := chordStore.LastSeq(); got != before+1 {
+		t.Fatalf("lastSeq = %d, want %d: one commit", got, before+1)
+	}
+	if count := hdCount(t, live.ledger); count != 0 {
+		t.Fatalf("count = %v, want 0", count)
+	}
+	// The board's plugin keeps its document and its rows of the address.
+	exEqual(t, "meta", hdMember(t, live.board, "meta"), jsonObject("title", "one"))
+	exEqual(t, "labels", hdLabelsOf(hdMember(t, live.board, "labels")), []any{"a"})
+	closeHosts(t, h)
+}
+
+// host-data.test.ts › a delete limited to one plugin › runs the reads over its tables again: the owner's live query and
+// pinned key follow in that commit.
+func TestHostDataADeleteLimitedToOnePluginRunsTheReadsOverItsTablesAgainTheOwnersLiveQueryAndPinnedKeyFollowInThatCommit(t *testing.T) {
+	live := hdTwoPlugins(t, memoryStore(t), newHdWorld())
+	h := live.host
+	watch, err := live.board.Member("summary").Watch(background)
+	must(t, err)
+	frames := nexttest.FramesOf(watch)
+	counts, err := h.DeleteHostData(hdS1, background, hdOnly("@test/board"))
+	must(t, err)
+	if counts != (store.HostDataCounts{Documents: 1, Rows: 1}) {
+		t.Fatalf("deleted = %+v, want {Documents:1 Rows:1}", counts)
+	}
+	deliveredOn(h)
+	exEqual(t, "meta", hdMember(t, live.board, "meta"), jsonObject("title", ""))
+	exEqual(t, "labels", hdMember(t, live.board, "labels"), []any{})
+	// One frame: the document and the query adopted in the delete's batch.
+	exEqual(t, "frames", valuesOfFrames(frames.Items()), []any{":0"})
+	if count := hdCount(t, live.ledger); count != 1 {
+		t.Fatalf("count = %v, want 1", count)
+	}
+	closeHosts(t, h)
+}
+
+// host-data.test.ts › a delete limited to one plugin › refuses a plugin that is not loaded here, and changes nothing.
+func TestHostDataADeleteLimitedToOnePluginRefusesAPluginThatIsNotLoadedHereAndChangesNothing(t *testing.T) {
+	chordStore := memoryStore(t)
+	live := hdTwoPlugins(t, chordStore, newHdWorld())
+	h := live.host
+	before := chordStore.LastSeq()
+	_, err := h.DeleteHostData(hdS1, background, hdOnly("@test/gone"))
+	wantChordError(t, err, data.CodeInvalid, data.ReasonArgs, `deleteHostData: plugin "@test/gone" is not loaded here`)
+	if got := chordStore.LastSeq(); got != before {
+		t.Fatalf("lastSeq = %d, want %d: nothing changed", got, before)
+	}
+	if count := hdCount(t, live.ledger); count != 1 {
+		t.Fatalf("count = %v, want 1", count)
+	}
+	closeHosts(t, h)
+}
+
+// host-data.test.ts › a delete limited to one plugin › (Pi host-data.ts `deleteFrom`: the owners it coordinates with are the
+// store's owners of the address filtered by `only`) waits for the lines of that plugin's slot-less owners and not for
+// another plugin's.
+func TestHostDataADeleteLimitedToOnePluginWaitsForThatPluginsSlotLessOwnersAndNotForAnotherPluginsAnOwnerOfAnotherPluginWithItsLineHeldDoesNotHoldItUp(t *testing.T) {
+	w := newHdWorld()
+	live := hdTwoPlugins(t, memoryStore(t), w)
+	h := live.host
+	gate := make(chan struct{})
+	w.setBetween(gate)
+	reads := hdGo(func() (delta.JsonValue, error) { return live.ledger.Call("twice", "S1", background) })
+	exReceive(t, "the ledger's transaction waiting", w.entered)
+	// The ledger (plugin B, no slot, no query) holds its line: a delete limited to the board's plugin does not wait for it.
+	limited := hdGo(func() (store.HostDataCounts, error) { return h.DeleteHostData(hdS1, background, hdOnly("@test/board")) })
+	hdEventually(t, "the delete limited to the board's plugin settling with the ledger's line held", func() bool { return hdSettled(limited) })
+	counts, err := hdAwait(t, "the delete limited to the board's plugin", limited)
+	must(t, err)
+	if counts != (store.HostDataCounts{Documents: 1, Rows: 1}) {
+		t.Fatalf("deleted = %+v, want {Documents:1 Rows:1}", counts)
+	}
+	// One limited to the ledger's plugin does.
+	deleting := hdGo(func() (store.HostDataCounts, error) {
+		return h.DeleteHostData(hdS1, background, hdOnly("@test/ledger"))
+	})
+	hdEventually(t, "the delete waiting for the ledger's line", func() bool { return hdWaitingOnLine(h, "test.ledger") > 0 })
+	hdPending(t, "the delete", deleting)
+	close(gate)
+	got, err := hdAwait(t, "the ledger's reads", reads)
+	must(t, err)
+	exEqual(t, "twice", got, []any{float64(1), float64(1)})
+	counts, err = hdAwait(t, "the delete", deleting)
+	must(t, err)
+	if counts != (store.HostDataCounts{Documents: 0, Rows: 1}) {
+		t.Fatalf("deleted = %+v, want {Documents:0 Rows:1}", counts)
 	}
 	w.setBetween(hdClosed())
 	closeHosts(t, h)
@@ -509,7 +651,7 @@ func TestHostDataLifecycleAnAbortBeforeTheCommitWasAdmittedWritesNothing(t *test
 	reads := hdGo(func() (delta.JsonValue, error) { return live.ledger.Call("twice", "S1", background) })
 	exReceive(t, "the ledger's transaction waiting", w.entered)
 	cancellable, cancel := chordctx.WithCancel(background)
-	deleting := hdGo(func() (store.HostDataCounts, error) { return h.DeleteHostData(hdS1, cancellable) })
+	deleting := hdGo(func() (store.HostDataCounts, error) { return h.DeleteHostData(hdS1, cancellable, HostDeleteOptions{}) })
 	hdEventually(t, "the delete waiting for the ledger's line", func() bool { return hdWaitingOnLine(h, "test.ledger") > 0 })
 	seq := st.LastSeq()
 	cancel(errors.New("given up"))
@@ -570,7 +712,7 @@ func TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissi
 	cancellable, cancel := chordctx.WithCancel(background)
 	// coordinated enters: the objects owning the key's data, then (their lines held) its slots and live queries.
 	aborting, entered := hdCancelAfterEnters(site, 2, cancel)
-	counts, err := deleteFrom(aborting, hdS1, cancellable)
+	counts, err := deleteFrom(aborting, hdS1, cancellable, nil)
 	wantChordError(t, err, data.CodeReleased, data.ReasonDiscarded, "store: the commit's attempt ended")
 	if counts != (store.HostDataCounts{}) {
 		t.Fatalf("aborted delete counts = %+v, want none", counts)
@@ -585,7 +727,7 @@ func TestHostDataLifecycleADeleteAbortedAfterItsLinesWereTakenIsRefusedAtAdmissi
 		t.Fatalf("count = %v, want 1: the refused delete left the row", count)
 	}
 	// The lines were released: the same delete, not aborted, commits.
-	counts, err = h.DeleteHostData(hdS1, background)
+	counts, err = h.DeleteHostData(hdS1, background, HostDeleteOptions{})
 	must(t, err)
 	if counts.Rows != 1 {
 		t.Fatalf("delete = %+v, want its one row", counts)
@@ -656,7 +798,7 @@ func TestHostDataLifecycleAnOwnerThatCannotReadAnImportedDocumentFailsAloneTheOt
 func TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall(t *testing.T) {
 	h := newHost(t, HostOptions{OnError: func(HostError) {}})
 	mustLoad(t)(h.Load(nil, background))
-	_, err := h.DeleteHostData(hdS1, background)
+	_, err := h.DeleteHostData(hdS1, background, HostDeleteOptions{})
 	wantChordError(t, err, data.CodeInvalid, data.ReasonArgs, "deleteHostData: the host has no store")
 	if _, err = h.ExportHostData(hdS1, background); err == nil || !hasText(err.Error(), "exportHostData: the host has no store") {
 		t.Fatalf("exportHostData = %v, want it to refuse: the host has no store", err)
@@ -892,7 +1034,7 @@ func TestHostDataReviewRound3AReloadDuringAnImportTheSuccessorLoadsAfterItAQueue
 	release := w.holdLedger(t, live.ledger)
 	// An earlier operation holds the gate; the import queues behind it, the reload's successors wait at the gate.
 	deleting := hdGo(func() (store.HostDataCounts, error) {
-		return h.DeleteHostData(Session.Address(jsonObject("id", "S9")), background)
+		return h.DeleteHostData(Session.Address(jsonObject("id", "S9")), background, HostDeleteOptions{})
 	})
 	hdEventually(t, "the delete exclusive", func() bool {
 		exclusive, _ := hdGateState(h)
@@ -941,7 +1083,7 @@ func TestHostDataReviewRound3ACancellationAfterTheCommitWasAdmittedChangesNothin
 	exCall(t, live.board, "write", jsonObject("id", "S1", "title", "one", "labels", []any{"a"}))
 	held := holdNextCommit()
 	cancellable, cancel := chordctx.WithCancel(background)
-	deleting := hdGo(func() (store.HostDataCounts, error) { return h.DeleteHostData(hdS1, cancellable) })
+	deleting := hdGo(func() (store.HostDataCounts, error) { return h.DeleteHostData(hdS1, cancellable, HostDeleteOptions{}) })
 	exReceive(t, "the commit entering", held.Entered())
 	cancel(errors.New("too late"))
 	held.Release()
@@ -1034,7 +1176,7 @@ func TestHostDataAnActivationWaitingAtTheGateWhoseObjectEndedMeanwhileFailsRelea
 	release := w.holdLedger(t, ledger)
 	// The delete is exclusive, waiting for the ledger's line (the scratch object has no data of S9: its line is not taken).
 	deleting := hdGo(func() (store.HostDataCounts, error) {
-		return h.DeleteHostData(Session.Address(jsonObject("id", "S9")), background)
+		return h.DeleteHostData(Session.Address(jsonObject("id", "S9")), background, HostDeleteOptions{})
 	})
 	hdEventually(t, "the delete exclusive", func() bool {
 		exclusive, _ := hdGateState(h)

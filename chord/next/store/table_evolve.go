@@ -30,8 +30,12 @@ type UpdateStep struct {
 // EvolveTable appends the next version (`previous.Version + 1`) with the edits edit makes; edit must return the
 // editor it was given. Every version is materialized and fingerprinted here; the object serves the newest, and its
 // activation migrates a store at an older version through each one.
-func EvolveTable(previous *TableDefinition, edit func(t *TableEditor) TableTailEditor) (*TableDefinition, error) {
-	editor := newEditor(previous)
+func EvolveTable(previous *TableDefinition, edit func(t *TableEditor) TableTailEditor, options ...EvolveOptions) (*TableDefinition, error) {
+	var chosen EvolveOptions
+	if len(options) > 0 {
+		chosen = options[0]
+	}
+	editor := newEditor(previous, chosen)
 	var editErr error
 	if edit(editor) != TableTailEditor(editor) {
 		editErr = fmt.Errorf("%s: evolveTable must return the editor it was given", previous.Name)
@@ -43,6 +47,14 @@ func EvolveTable(previous *TableDefinition, edit func(t *TableEditor) TableTailE
 		return nil, editErr
 	}
 	return editor.finish()
+}
+
+// EvolveOptions is what EvolveTable takes besides the edits.
+type EvolveOptions struct {
+	// Exposes is the column set the new version exposes: the previous version's when left out.
+	Exposes *ColumnSet
+	// ExposesNone drops the column set (`exposes: "none"`).
+	ExposesNone bool
 }
 
 // TableTailEditor is the edits after the data step: `Drop`, `Index` and `DropIndex`. Pi's types order the edits
@@ -80,11 +92,21 @@ type TableEditor struct {
 	step   *DataStep
 	after  []TableEdit
 	err    error
+	// exposes is the set the finished version exposes; the versions a data step reads expose none.
+	exposes *ColumnSet
 }
 
-func newEditor(previous *TableDefinition) *TableEditor {
+func newEditor(previous *TableDefinition, options EvolveOptions) *TableEditor {
+	exposes := previous.Exposes
+	switch {
+	case options.ExposesNone:
+		exposes = nil
+	case options.Exposes != nil:
+		exposes = options.Exposes
+	}
 	return &TableEditor{
 		previous: previous,
+		exposes:  exposes,
 		what:     fmt.Sprintf("%s version %d", previous.Name, previous.Version+1),
 		schemas:  append([]ColumnProp(nil), previous.Schemas...),
 		key:      append([]string(nil), previous.Key...),
@@ -365,7 +387,9 @@ func (e *TableEditor) DropIndex(name string) TableTailEditor {
 // finish is the new version, materialized and fingerprinted, linked to the previous one and the migration from it.
 func (e *TableEditor) finish() (*TableDefinition, error) {
 	migration := Migration{Before: e.before, Step: e.step, After: e.after}
-	return NewTableDefinition(e.previous.Name, e.options(), &Evolution{Previous: e.previous, Migration: migration})
+	options := e.options()
+	options.Exposes = e.exposes
+	return NewTableDefinition(e.previous.Name, options, &Evolution{Previous: e.previous, Migration: migration})
 }
 
 // current is the table as the edits so far leave it, at the new version: what a data step reads and writes.

@@ -64,6 +64,8 @@ type TerminalOptions struct {
 	Node string
 	// Client is the HTTP client of the launcher's downloads and pairing: the default one by default.
 	Client *http.Client
+	// spawn starts the sandbox: StartSandbox by default. The tests that order the launcher against its sandbox's messages put their own.
+	spawn func(node, source string, start BridgeStart, onMessage func(SandboxMessage), onEnd func(reason string)) (*Sandbox, error)
 }
 
 // RunningTerminal is a running terminal client.
@@ -121,6 +123,8 @@ const (
 	defaultColumns    = 80
 	defaultRows       = 24
 	eventQueue        = 256
+	// maxEarly is the most messages held for a sandbox that is not installed yet: as many as the loop's queue held before.
+	maxEarly = eventQueue
 )
 
 // StartTerminal starts a terminal client; it fails when it cannot sign in or download, or Node is too old for the sandbox. Cancelling
@@ -198,11 +202,16 @@ type Launcher struct {
 	// loopDone is closed when the event loop ended.
 	loopDone chan struct{}
 	exited   chan int
+	// ended is closed when the client's end completed: the sandbox's process ended, the loop stopped, the exit code delivered.
+	ended chan struct{}
 
 	// The state below belongs to the loop.
 	sandbox *Sandbox
 	// generation numbers the sandboxes: a message of one that is not the current is dropped.
 	generation int
+	// starting is whether the sandbox of the current generation is being started: it is not installed yet, so what it sends waits in early.
+	starting bool
+	early    []SandboxMessage
 	// base64 hash of the running base bundle: an `outdated` sandbox restarts only for another.
 	baseHash string
 	sockets  map[int]*linkSocket
@@ -226,7 +235,7 @@ func newLauncher(parent context.Context, base *url.URL, token string, options Te
 	ctx, cancel := context.WithCancel(parent)
 	return &Launcher{
 		base: base, token: token, options: options, term: terminal, output: terminal.Output(), client: options.Client,
-		ctx: ctx, cancel: cancel, events: make(chan func(), eventQueue), loopDone: make(chan struct{}), exited: make(chan int, 1),
+		ctx: ctx, cancel: cancel, events: make(chan func(), eventQueue), loopDone: make(chan struct{}), exited: make(chan int, 1), ended: make(chan struct{}),
 		sockets: map[int]*linkSocket{},
 	}
 }
@@ -251,7 +260,8 @@ func (l *Launcher) sync(fn func()) {
 	}
 }
 
-// loop runs the events one at a time.
+// loop runs the events one at a time until the client finished. A cancelled context ends the client as Stop does (StartTerminal's
+// documentation): the loop is the one place that can run the part of the end that must run on it.
 func (l *Launcher) loop() {
 	//portlint:allow doubleclose loop runs once per launcher (started once by start, which Launcher's constructor makes the only caller), and nothing else closes loopDone
 	defer close(l.loopDone)
@@ -263,6 +273,7 @@ func (l *Launcher) loop() {
 				return
 			}
 		case <-l.ctx.Done():
+			l.finishAsync(0)
 			return
 		}
 	}
@@ -287,7 +298,7 @@ func (l *Launcher) start(ctx context.Context) error {
 	//portlint:allow golifetime the loop ends with the launcher: finish ends it (loopDone) and every post and sync gives up once it is closed
 	go l.loop() //portlint:allow asyncorder the loop is Node's single event loop (launcher.ts:147-283: every listener and #handle run on it); each post queues to it in order, and finish joins it (loopDone)
 	if err := l.startSandbox(ctx); err != nil {
-		l.cancel()
+		l.abandon()
 		return err
 	}
 	//portlint:allow golifetime ends when the terminal's input closes (a stopped launcher closes it) and its posts are dropped once the loop ended
@@ -304,6 +315,14 @@ func (l *Launcher) start(ctx context.Context) error {
 		l.restoreSig = ignoreInspectorSignal()
 	})
 	return nil
+}
+
+// abandon ends a launcher whose start failed: its context ends and its loop stops. It took nothing of the terminal, so it gives
+// nothing back (Pi's start rejects before it touches the terminal), and no sandbox is left to end.
+func (l *Launcher) abandon() {
+	l.sync(func() { l.finished = true })
+	l.cancel()
+	<-l.loopDone
 }
 
 // readInput posts the terminal's input to the loop until it ends.
@@ -370,14 +389,24 @@ func (l *Launcher) onResize() {
 	}
 }
 
+// finishing is what Pi's finish awaits once its synchronous prefix ran: the sandbox to terminate and, when a prompt was open, the
+// channel closed once its action ended.
+type finishing struct {
+	sandbox   *Sandbox
+	confirmed <-chan struct{}
+}
+
 // finishAsync ends the client from the loop, as Pi's `void this.finish(code)` does: the synchronous prefix (beginFinish: finished, the
 // terminal given back, RESET_MODES written, the sockets closed) runs now, in the caller's turn, so no event queued behind it is
 // handled before it (launcher.ts:207-218); what Pi awaits (the sandbox's termination, the exit) runs on a goroutine, because
 // endFinish waits for the loop, so it cannot run on it.
 func (l *Launcher) finishAsync(code int) {
-	sandbox, confirmed := l.beginFinish()
+	ending := l.beginFinish()
+	if ending == nil {
+		return
+	}
 	//portlint:allow golifetime ends with the launcher: it closes l.ctx, ends the sandbox and waits for the loop, which stops once finished is set
-	go l.endFinish(code, sandbox, confirmed) //portlint:allow asyncorder launcher.ts:219-220 `await this.#sandbox?.terminate(); this.#exit(code)` is the part of finish Pi awaits, after the synchronous prefix beginFinish ran on the loop; the exit code is delivered once (exited)
+	go l.endFinish(code, ending) //portlint:allow asyncorder launcher.ts:219-220 `await this.#sandbox?.terminate(); this.#exit(code)` is the part of finish Pi awaits, after the synchronous prefix beginFinish ran on the loop; the exit code is delivered once (exited), and finish waits for it (ended)
 }
 
 // outdatedAsync restarts the sandbox for a newer base bundle off the loop (it downloads).
@@ -386,29 +415,33 @@ func (l *Launcher) outdatedAsync() {
 	go l.outdated() //portlint:allow asyncorder launcher.ts:275 `void this.#outdated()` starts it unawaited, as here; it reads the loop's state through sync and restarts through the loop
 }
 
-// finish ends the client with code from outside the loop: the terminal given back, the sockets closed, the sandbox ended.
+// finish ends the client with code from outside the loop: the terminal given back, the sockets closed, the sandbox ended. It returns
+// when the client's end completed, whoever began it (Pi's `stop` resolves with `finish`, whose first call does the work: launcher.ts:117, :208).
 func (l *Launcher) finish(code int) {
 	done := make(chan struct{})
-	var sandbox *Sandbox
-	var confirmed <-chan struct{}
+	var ending *finishing
 	l.post(func() {
 		defer close(done)
-		sandbox, confirmed = l.beginFinish()
+		ending = l.beginFinish()
 	})
 	select {
 	case <-done:
 	case <-l.loopDone:
 	}
-	l.endFinish(code, sandbox, confirmed)
+	if ending != nil {
+		l.endFinish(code, ending)
+	}
+	<-l.ended
 }
 
 // beginFinish is the synchronous prefix of Pi's finish (launcher.ts:207-218), on the loop: the launcher is finished, the terminal
-// given back, the open prompt answered no, RESET_MODES written, the sockets closed. It returns the sandbox to end, nil when the
-// launcher was finished already, and, when a prompt was open, the channel closed once its action ended and wrote the frames held meanwhile
-// (Pi's #confirm finally block runs after the answer, launcher.ts:376-383, before the sandbox's termination settles).
-func (l *Launcher) beginFinish() (*Sandbox, <-chan struct{}) {
+// given back, the open prompt answered no, RESET_MODES written, the sockets closed. It returns what is left to do, nil when the
+// launcher was finished already: whoever gets it ends the client (endFinish), the others wait for that (ended). When a prompt was open
+// the end includes the channel closed once its action ended and wrote the frames held meanwhile (Pi's #confirm finally block runs after
+// the answer, launcher.ts:376-383, before the sandbox's termination settles).
+func (l *Launcher) beginFinish() *finishing {
 	if l.finished {
-		return nil, nil
+		return nil
 	}
 	l.finished = true
 	if l.stopResize != nil {
@@ -431,24 +464,26 @@ func (l *Launcher) beginFinish() (*Sandbox, <-chan struct{}) {
 	sandbox := l.sandbox
 	l.sandbox = nil
 	l.generation++
-	return sandbox, confirmed
+	return &finishing{sandbox: sandbox, confirmed: confirmed}
 }
 
 // endFinish is what Pi's finish awaits: the launcher's context ended, the sandbox terminated, the loop stopped, the answered prompt's action
-// ended, then the exit code.
-func (l *Launcher) endFinish(code int, sandbox *Sandbox, confirmed <-chan struct{}) {
+// ended, then the exit code; ended is closed last. Only the finish that began calls it (beginFinish), once.
+func (l *Launcher) endFinish(code int, ending *finishing) {
 	l.cancel()
-	if sandbox != nil {
-		sandbox.Terminate()
+	if ending.sandbox != nil {
+		ending.sandbox.Terminate()
 	}
 	<-l.loopDone
-	if confirmed != nil {
-		<-confirmed
+	if ending.confirmed != nil {
+		<-ending.confirmed
 	}
 	select {
 	case l.exited <- code:
 	default:
 	}
+	//portlint:allow doubleclose only the finish that began calls endFinish (beginFinish returns non-nil once per launcher)
+	close(l.ended)
 }
 
 // startSandbox starts a new sandbox with what the server serves now. It runs off the loop (its downloads block) and takes the
@@ -497,8 +532,14 @@ func (l *Launcher) startSandbox(ctx context.Context) error {
 		l.requests = 0
 		l.generation++
 		generation = l.generation
+		l.starting = true
+		l.early = nil
 	})
-	sandbox, err := StartSandbox(l.options.Node, source, bridge,
+	spawn := l.options.spawn
+	if spawn == nil {
+		spawn = StartSandbox
+	}
+	sandbox, err := spawn(l.options.Node, source, bridge,
 		func(message SandboxMessage) { l.post(func() { l.message(generation, message) }) },
 		func(string) { l.sandboxEndPost(generation) },
 	)
@@ -508,6 +549,13 @@ func (l *Launcher) startSandbox(ctx context.Context) error {
 	l.sync(func() {
 		if l.generation == generation {
 			l.sandbox = sandbox
+			l.starting = false
+			// What it sent before it was installed is handled now, in the order it came.
+			early := l.early
+			l.early = nil
+			for _, message := range early {
+				l.message(generation, message)
+			}
 		}
 	})
 	if l.sandboxIs(sandbox) {
@@ -545,6 +593,15 @@ func (l *Launcher) sandboxEnded(generation int) {
 // set by beginFinish in the caller's turn, is that point here; a message queued before it ran first, as Pi handled it when it was read.
 func (l *Launcher) message(generation int, message SandboxMessage) {
 	if generation != l.generation || l.finished {
+		return
+	}
+	if l.starting {
+		// The child's first messages can reach the loop before the starter installed the sandbox. Pi's launcher assigns it in the
+		// continuation of `Sandbox.start`, which runs before any stdout 'data' event (launcher.ts:240, sandbox.ts:183), so its messages are
+		// always handled with it set: these wait for it, in order, as many as the loop's queue held before.
+		if len(l.early) < maxEarly {
+			l.early = append(l.early, message)
+		}
 		return
 	}
 	if err := l.handle(message); err != nil {

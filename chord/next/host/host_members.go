@@ -40,6 +40,8 @@ type members struct {
 	// events is the event members: the attempt's own sources, or nodes fed by the references they re-expose
 	// (reexposedEvents).
 	events *contracts.NamedMap[*memberEvent]
+	// queries is the `queries` members (slice 14 §3.1): the object's own named queries, by member and query name.
+	queries map[string]map[string]*OwnQuery
 }
 
 // memberEvent is an event member's node: the attempt's own source (own), or a node fed by the reference it re-exposes
@@ -51,6 +53,38 @@ type memberEvent struct {
 
 // noEvents is the event members of a variant without any: shared, never written.
 var noEvents = contracts.NewNamedMap[*memberEvent](0)
+
+// noQueries is the queries members of a variant without any: shared, never written.
+var noQueries = map[string]map[string]*OwnQuery{}
+
+// checkQueries checks the `queries` members: each is what `self.queries` returned (an object's own named queries: a
+// reference's are not re-exposed), with a builder for every query the contract lists, which takes the contract's argument
+// schema.
+func checkQueries(queries *contracts.NamedMap[*contracts.QueriesData], own func(member string) any) (map[string]map[string]*OwnQuery, error) {
+	checked := make(map[string]map[string]*OwnQuery, queries.Len())
+	for member, listed := range queries.All() {
+		declared, ok := ownQueries(own(member))
+		if !ok {
+			return nil, errors.New(member + ": a queries member is what self.queries returned")
+		}
+		for name, schema := range listed.Args.All() {
+			query, found := declared[name]
+			if !found {
+				return nil, errors.New(member + `: no builder for the listed query "` + name + `"`)
+			}
+			if err := query.Listed(schema); err != nil {
+				return nil, err
+			}
+		}
+		for _, name := range ownQueryNames(declared) {
+			if !declared[name].Checked() {
+				return nil, errors.New(member + `: query "` + name + `" is not listed and brings no argument schema`)
+			}
+		}
+		checked[member] = declared
+	}
+	return checked, nil
+}
 
 // keyedBindingKind tells what a keyed member is.
 type keyedBindingKind string
@@ -154,7 +188,7 @@ func checkMembers(
 	sources *eventSourceOwner,
 ) (*members, error) {
 	for _, each := range given {
-		if !variant.State.Has(each.name) && !variant.Methods.Has(each.name) && !variant.Keyed.Has(each.name) && !variant.Events.Has(each.name) {
+		if !variant.State.Has(each.name) && !variant.Methods.Has(each.name) && !variant.Keyed.Has(each.name) && !variant.Events.Has(each.name) && !variant.Queries.Has(each.name) {
 			return nil, errors.New(each.name + ": not a member")
 		}
 	}
@@ -163,6 +197,7 @@ func checkMembers(
 		state:   contracts.NewNamedMap[state.DeriveSource](variant.State.Len()),
 		keyed:   contracts.NewNamedMap[*keyedBinding](variant.Keyed.Len()),
 		events:  noEvents,
+		queries: noQueries,
 	}
 	for member := range variant.Methods.All() {
 		method, ok := asMethod(given.own(member))
@@ -219,6 +254,13 @@ func checkMembers(
 			return nil, err
 		}
 		checked.events = events
+	}
+	if variant.Queries.Len() > 0 {
+		queries, err := checkQueries(variant.Queries, given.own)
+		if err != nil {
+			return nil, err
+		}
+		checked.queries = queries
 	}
 	return checked, nil
 }

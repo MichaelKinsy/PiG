@@ -107,7 +107,7 @@ func (k *referenceKeys) hold(member, key string, ctx context.Context) (pinnedKey
 		})
 		parking.Park(ctx)
 		// The first pin's failure is the hold's; a later pin's is not (it shows on the key), but ctx still ends the wait.
-		if err := <-result; err != nil && (first || ctx.Err() != nil) {
+		if err, _ := chordctx.Receive(chordctx.Background(), result); err != nil && (first || ctx.Err() != nil) {
 			loop.Run(release)
 			return pinnedKey{}, err
 		}
@@ -219,7 +219,7 @@ func (k *referenceKeys) pin(entry *keyEntry) *keyedPromise[struct{}] {
 	// No frames from the old instance while the new one loads the key.
 	entry.source.hold()
 	loading := newKeyedPromise[struct{}](loop)
-	loop.Go(func() {
+	startTask(loop, func() {
 		pin, err := goal.pinKey(entry.member, entry.key, version, chordctx.Background())
 		loop.Run(func() {
 			if err != nil {

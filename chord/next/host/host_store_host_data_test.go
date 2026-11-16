@@ -127,11 +127,11 @@ func shdSessionsFacet(t testing.TB) func(FacetHost, FacetSelf) error {
 				}),
 				"read": func(id delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
 					session := Session.Address(jsonObject("id", id.(string)))
-					page, err := rows.Page(ctx, store.NewQuery(shdLabelsTable).Where(func(t store.ColumnRefs) store.Condition { return store.Eq(t["session"], session) }), 50, store.PageOptions{})
+					page, err := rows.Page(ctx, store.NewQuery(shdLabelsTable).Where(func(t, _ store.ColumnRefs) store.Condition { return store.Eq(t["session"], session) }), 50, store.PageOptions{})
 					if err != nil {
 						return nil, err
 					}
-					pin, err := pins.Page(ctx, store.NewQuery(shdPinsTable).Where(func(t store.ColumnRefs) store.Condition { return store.Eq(t["session"], session) }), 1, store.PageOptions{})
+					pin, err := pins.Page(ctx, store.NewQuery(shdPinsTable).Where(func(t, _ store.ColumnRefs) store.Condition { return store.Eq(t["session"], session) }), 1, store.PageOptions{})
 					if err != nil {
 						return nil, err
 					}
@@ -421,7 +421,7 @@ func TestStoreHostDataImportIsRecordedInTheOutboxAsOrdinaryWrites(t *testing.T) 
 
 func TestStoreHostDataDeleteRetiresTheAddressSRecordsAndDeletesItsRowsInOneCommitOtherAddressesUntouched(t *testing.T) {
 	chordStore := shdPopulated(t)
-	counts, err := hostdata.Delete(chordStore, "session|S1", hostdata.Commit{Fence: hostdata.Fence(openFence())}, background)
+	counts, err := hostdata.Delete(chordStore, "session|S1", hostdata.Commit{Fence: hostdata.Fence(openFence())}, nil, background)
 	must(t, err)
 	if counts != (store.HostDataCounts{Documents: 1, Rows: 3}) {
 		t.Fatalf("counts = %+v", counts)
@@ -521,7 +521,7 @@ func TestStoreHostDataReviewRound2SelectsByTheCanonicalKeyALoneSurrogateInAnAddr
 	if puts != 2 || creates != 1 {
 		t.Fatalf("puts, creates = %d, %d, want 2, 1", puts, creates)
 	}
-	counts, err := hostdata.Delete(chordStore, "session|x\uFFFD", hostdata.Commit{Fence: hostdata.Fence(openFence())}, background)
+	counts, err := hostdata.Delete(chordStore, "session|x\uFFFD", hostdata.Commit{Fence: hostdata.Fence(openFence())}, nil, background)
 	must(t, err)
 	if counts != (store.HostDataCounts{Documents: 1, Rows: 2}) {
 		t.Fatalf("counts = %+v", counts)

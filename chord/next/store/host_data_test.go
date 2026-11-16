@@ -449,7 +449,7 @@ func TestHostDataDelete(t *testing.T) {
 	t.Run("retires the address's records and deletes its rows in one commit, other addresses untouched", func(t *testing.T) {
 		f := newHostDataFixture(t)
 		store := f.populated()
-		counts, err := deleteHostData(store, "session|S1", hostCommit{Fence: openFence}, background)
+		counts, err := deleteHostData(store, "session|S1", hostCommit{Fence: openFence}, nil, background)
 		must(t, err)
 		qEqual(t, counts, HostDataCounts{Documents: 1, Rows: 3})
 		qEqual(t, f.read(store, "S1"), sessionData{Labels: []string{}, Notes: []string{}})
@@ -467,6 +467,26 @@ func TestHostDataDelete(t *testing.T) {
 		// The string-keyed document with the same key is no host's: still there.
 		plain := engineRows(t, store, `SELECT count(*) AS n FROM chord_documents WHERE kind = 'plain'`)
 		qEqual(t, plain[0]["n"], int64(2))
+	})
+
+	// Slice 14 §2.6 (host-data.ts `deleteHostData(..., owners)`): only the records and tables of those owners.
+	t.Run("deletes only the records and tables of the given owners", func(t *testing.T) {
+		f := newHostDataFixture(t)
+		store := f.populated()
+		counts, err := deleteHostData(store, "session|S1", hostCommit{Fence: openFence}, map[string]struct{}{"test.other": {}}, background)
+		must(t, err)
+		qEqual(t, counts, HostDataCounts{})
+		qEqual(t, f.read(store, "S1"), sessionData{Title: "one", Labels: []string{"a", "b"}, Notes: []string{"session|S1: a", "session|S1: b"}, Pin: "p1"})
+		counts, err = deleteHostData(store, "session|S1", hostCommit{Fence: openFence}, map[string]struct{}{hostDataOwner: {}}, background)
+		must(t, err)
+		qEqual(t, counts, HostDataCounts{Documents: 1, Rows: 3})
+		qEqual(t, f.read(store, "S1"), sessionData{Labels: []string{}, Notes: []string{}})
+		qEqual(t, f.read(store, "S2"), sessionData{Title: "two", Labels: []string{"c"}, Notes: []string{"session|S2: c"}, Pin: "p2"})
+	})
+
+	t.Run("names the owner of a table by its SQL name", func(t *testing.T) {
+		qEqual(t, OwnerOfTable(hostDataLabels), hostDataOwner)
+		qEqual(t, OwnerOfTable("app.notes:rows"), "app.notes")
 	})
 }
 
@@ -526,7 +546,7 @@ func TestStepRecordsOrder(t *testing.T) {
 		must(t, PrepareTables([]DeclaredTable{{Definition: f.labels, Table: hostDataLabels}}, store, openFence, hostDataOwner, background))
 		labels, pins := NewTableHandle(f.labels, hostDataLabels, store, tableOwner()), NewTableHandle(f.pins, hostDataPins, store, tableOwner())
 		f.write(store, labels, pins, "S1", "one", []string{"a"}, "p1")
-		_, err := deleteHostData(store, "session|S1", hostCommit{Fence: openFence}, background)
+		_, err := deleteHostData(store, "session|S1", hostCommit{Fence: openFence}, nil, background)
 		must(t, err)
 		commits, err := store.Outbox().Read(store.LastSeq()-1, 1, background)
 		must(t, err)
@@ -598,7 +618,7 @@ func TestHostDataReviewRound2(t *testing.T) {
 			}
 		}
 		qEqual(t, []int{puts, creates}, []int{2, 1})
-		counts, err := deleteHostData(store, "session|x\uFFFD", hostCommit{Fence: openFence}, background)
+		counts, err := deleteHostData(store, "session|x\uFFFD", hostCommit{Fence: openFence}, nil, background)
 		must(t, err)
 		qEqual(t, counts, HostDataCounts{Documents: 1, Rows: 2})
 	})

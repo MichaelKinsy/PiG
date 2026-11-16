@@ -6,6 +6,7 @@ import (
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/chord"
+	chordctx "github.com/MichaelKinsy/PiG/chord/context"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/internal/parking"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -303,10 +304,11 @@ func (slot *KeyedSlot) Watch(raw string, access Access, ctx context.Context) (*c
 			return
 		}
 		watch = opened
-		go func() {
-			<-opened.Closed()
+		// `void watch.closed.then(release)` (Pi): an owned task of the owner's loop that waits parked for the close.
+		slot.owner.Task(func() {
+			_, _ = chordctx.Receive(chordctx.Background(), opened.Closed())
 			slot.owner.Do(release)
-		}()
+		})
 	})
 	return watch, failure
 }
@@ -747,10 +749,8 @@ func (slot *KeyedSlot) loadShared(key string, token *SealToken, ctx context.Cont
 		return nil, failure
 	}
 	parking.Park(ctx)
-	select {
-	case <-load.done:
-	case <-ctx.Done():
-		return nil, context.Cause(ctx)
+	if _, err := parking.Recv(ctx, load.done); err != nil {
+		return nil, err
 	}
 	if load.err != nil {
 		return nil, load.err
@@ -767,7 +767,7 @@ func (slot *KeyedSlot) loadShared(key string, token *SealToken, ctx context.Cont
 func (slot *KeyedSlot) startLoad(key string) *sharedLoad {
 	load := &sharedLoad{done: make(chan struct{}), tokens: map[*SealToken]struct{}{}}
 	slot.loads[key] = load
-	go func() {
+	slot.owner.Task(func() {
 		err := slot.owner.OnLine(slot.owner.Context(), func() error {
 			var failure error
 			slot.owner.Do(func() {
@@ -800,7 +800,7 @@ func (slot *KeyedSlot) startLoad(key string) *sharedLoad {
 			delete(slot.loads, key)
 		})
 		close(load.done)
-	}()
+	})
 	return load
 }
 

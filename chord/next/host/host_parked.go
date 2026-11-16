@@ -55,7 +55,7 @@ func (r *parkedCallResult) settle(value any, err error) {
 // that waits parks (its call's section goes on) before it blocks.
 func (r *parkedCallResult) wait(ctx context.Context) (any, error) {
 	parking.Park(ctx)
-	<-r.done
+	parkedOn(r.done)
 	return r.value, r.err
 }
 
@@ -120,20 +120,24 @@ func (p *parkedCalls) park(method string, args any, ctx context.Context) (*parke
 	call := &parkedCall{method: method, args: args, ctx: ctx, result: newParkedCallResult(), queued: true}
 	call.deadline = p.loop.AfterFunc(p.timeout, func() { p.expire(call) })
 	if ctx.Done() != nil {
-		call.cancel = context.AfterFunc(ctx, func() {
-			p.loop.Run(func() {
-				if !call.queued {
-					return
-				}
-				p.take(call)
-				call.result.settle(nil, context.Cause(ctx))
-			})
-		})
+		// parked.ts:46-51 `signal.addEventListener("abort", cancel, { once: true })`: the caller's abort takes the call out of the queue and
+		// rejects it with the reason, as a microtask of the loop after the cancelling section (onAbort); a flush that comes first
+		// rejects it itself.
+		call.cancel = onAbort(p.loop, ctx, func() { p.cancelled(call) })
 	}
 	call.due = float64(p.loop.Now()) + millis(p.timeout)
 	p.calls = append(p.calls, call)
 	p.size++
 	return call.result, nil
+}
+
+// cancelled is the abort listener of a call's caller (parked.ts:47-50): out of the queue, rejected with the reason; once.
+func (p *parkedCalls) cancelled(call *parkedCall) {
+	if !call.queued {
+		return
+	}
+	p.take(call)
+	call.result.settle(nil, context.Cause(call.ctx))
 }
 
 // flush sends the queued calls in order through send, each only while live() still holds: sending one runs code (a
@@ -146,6 +150,12 @@ func (p *parkedCalls) flush(send func(method string, args any, ctx context.Conte
 	for at := 0; at < len(p.calls); at++ {
 		call := p.calls[at]
 		if !call.queued {
+			continue
+		}
+		if call.ctx.Err() != nil {
+			// Pi's listener rejects inside `abort()` (parked.ts:46-51); here it runs as a microtask of the loop (onAbort), which has
+			// not run yet: a call whose caller cancelled is not sent, it is rejected with the reason now.
+			p.cancelled(call)
 			continue
 		}
 		if !live() {

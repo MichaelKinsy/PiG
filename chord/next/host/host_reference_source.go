@@ -280,6 +280,22 @@ func (s *referenceSource) vanish(err *data.ChordError, ctx context.Context) {
 	if s.state.kind != sourceUnbound {
 		last, hasLast = s.lastGood()
 	}
+	s.failWith(err, last, hasLast, ctx)
+}
+
+// deny: an admission refused its reference's caller (slice 14 §2.2), inside a batch: it keeps no value (reads throw err, a
+// watch opened now has nothing to start at); watches and subscribers get one failure call per denial and stay open, and
+// derives over it fail until the next allow brings a value (`[["r", value]]`). What application code already took from it
+// stays with that code.
+func (s *referenceSource) deny(err *data.ChordError, ctx context.Context) {
+	if s.state.kind == sourceEnded || (s.state.kind == sourceFailed && s.state.err == error(err)) { //nolint:errorlint // Pi compares by identity (reference-source.ts:235 `state.error === error`): a wrapping error is another denial
+		return
+	}
+	s.failWith(err, nil, false, ctx)
+}
+
+// failWith fails with err, keeping last as its last good value: one failure call, and its dependents marked.
+func (s *referenceSource) failWith(err *data.ChordError, last delta.JsonValue, hasLast bool, ctx context.Context) {
 	s.leave()
 	s.state = sourceState{kind: sourceFailed, err: state.HandedOut(err), last: last, hasLast: hasLast}
 	s.call(chord.WatchCall[delta.JsonValue]{Kind: chord.WatchCallFailed, Error: err}, ctx)

@@ -185,6 +185,77 @@ func TestKeyedMembers(t *testing.T) {
 	})
 }
 
+func TestQueriesMembers(t *testing.T) {
+	note := func() contracts.Schema { return contracts.Obj(contracts.Prop("text", contracts.Str())) }
+	args := func() []contracts.Property {
+		return []contracts.Property{
+			contracts.Prop("ofBoard", contracts.Obj(contracts.Prop("board", contracts.Str()))),
+			contracts.Prop("one", contracts.Obj(contracts.Prop("id", contracts.Int()))),
+		}
+	}
+
+	t.Run("declare named queries in a local contract: their own kind, each query's argument schema in the fingerprint", func(t *testing.T) {
+		store := local(t, "app.store", 1, noParams(), contracts.Mem("notes", contracts.Queries(note(), args())), contracts.Mem("add", contracts.NewMethod()))
+		variant := currentVariants(t, store).Value(contracts.LocalVariant)
+		if got := keys(variant.Queries.Value("notes").Args); len(got) != 2 || got[0] != "ofBoard" || got[1] != "one" {
+			t.Fatalf("queries = %v", got)
+		}
+		if got := keys(variant.State); len(got) != 0 {
+			t.Fatalf("state = %v", got)
+		}
+		if kind := dataOf(t, store).Kinds["notes"]; kind != contracts.MemberKindQueries {
+			t.Fatalf("the kind of notes = %q", kind)
+		}
+		other := args()
+		other[1] = contracts.Prop("one", contracts.Obj(contracts.Prop("id", contracts.Str())))
+		changed := local(t, "app.store", 1, noParams(), contracts.Mem("notes", contracts.Queries(note(), other)), contracts.Mem("add", contracts.NewMethod()))
+		if changed.Fingerprint == store.Fingerprint {
+			t.Fatal("a changed argument schema left the fingerprint")
+		}
+		// A contract without one keeps its fingerprint: queries_fingerprint_test.go pins it against Pi.
+		// Evolving the contract carries its queries members over unchanged (their edits are a later slice's).
+		next := must(contracts.Evolve(store, func(e *contracts.LocalEditor) *contracts.LocalEditor {
+			return e.AddMethod("clear", contracts.Str(), contracts.Str())
+		}))
+		if !currentVariants(t, next).Value(contracts.LocalVariant).Queries.Has("notes") {
+			t.Fatal("evolve dropped the queries member")
+		}
+		_, err := contracts.Evolve(store, func(e *contracts.LocalEditor) *contracts.LocalEditor { return e.AddState("notes", contracts.Str()) })
+		wantError(t, err, "already declared")
+	})
+
+	t.Run("refuse argument schemas that are not schemas or not closed", func(t *testing.T) {
+		// Upstream's `5 as never` is no Go input (a query's arguments are Schemas); an opt(...) is the Go case of a value that is no schema.
+		_, err := contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("notes", contracts.Queries(note(), []contracts.Property{contracts.Prop("one", contracts.Opt(contracts.Str()))})),
+		}})
+		wantError(t, err, "app.store.members.notes.args.one: expected a schema")
+		_, err = contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("notes", contracts.Queries(note(), []contracts.Property{contracts.Prop("one", tbObject())})),
+		}})
+		wantError(t, err, "app.store.members.notes.args.one: argument objects must be closed")
+		_, err = contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("notes", contracts.Queries(raw(t, `{"not":{}}`), []contracts.Property{})),
+		}})
+		wantError(t, err, `app.store.members.notes.item: unsupported keyword "not"`)
+	})
+
+	t.Run("record their kind: a reserved name is refused, and so are a nil member and absent arguments", func(t *testing.T) {
+		_, err := contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("then", contracts.Queries(note(), []contracts.Property{})),
+		}})
+		wantError(t, err, `app.store.members.then: "then" is reserved: a reference has it`)
+		_, err = contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("notes", (*contracts.QueriesMember)(nil)),
+		}})
+		wantError(t, err, "app.store.members.notes: expected a schema, method(...) or keyed(...)")
+		_, err = contracts.Local("app.store", contracts.LocalDeclaration{Version: 1, Params: noParams(), Members: []contracts.LocalEntry{
+			contracts.Mem("notes", contracts.Queries(note(), nil)),
+		}})
+		wantError(t, err, "app.store.members.notes.args: expected an object")
+	})
+}
+
 func TestHostKeyedMembers(t *testing.T) {
 	meta := func() contracts.Schema { return contracts.Obj(contracts.Prop("n", contracts.Int())) }
 
@@ -217,5 +288,64 @@ func TestHostKeyedMembers(t *testing.T) {
 			contracts.Mem("meta", contracts.Keyed(contracts.Obj(), &contracts.HostKind{Kind: "x"})),
 		}})
 		wantError(t, err, "x: not a declared host kind")
+	})
+}
+
+// TestAdmission ports `admission (slice 14 §2.1)` of declare.test.ts. Designed out: the `expectTypeOf<AdmittedOf<...>>`
+// lines (TypeScript types only: a Go factory receives the value as delta.JsonValue), and `untyped.local(... admission)`
+// refused as an unknown key (a LocalDeclaration has no such field).
+func TestAdmission(t *testing.T) {
+	variants := []contracts.VariantEntry{variant("a", state(contracts.Prop("n", contracts.Int())))}
+	declare := func(admission *contracts.Schema) (*contracts.Contract, error) {
+		return contracts.Remote("doc", contracts.RemoteDeclaration{Version: 1, Params: noParams(), HostAddress: serverAddress, Admission: admission, Variants: variants})
+	}
+	schema := func(properties ...contracts.Property) *contracts.Schema {
+		schema := contracts.Obj(properties...)
+		return &schema
+	}
+
+	t.Run("is never part of the fingerprint, and has its own that a reload's staging compares", func(t *testing.T) {
+		plain := must(declare(nil))
+		admitted := must(declare(schema(contracts.Prop("mode", contracts.Str()))))
+		if admitted.Fingerprint != plain.Fingerprint {
+			t.Fatalf("fingerprints %s and %s differ", admitted.Fingerprint, plain.Fingerprint)
+		}
+		other := must(declare(schema(contracts.Prop("mode", contracts.Int()))))
+		if dataOf(t, admitted).Admission.Fingerprint == dataOf(t, other).Admission.Fingerprint {
+			t.Fatal("two admission schemas share a fingerprint")
+		}
+		if dataOf(t, plain).Admission != nil {
+			t.Fatal("a contract without an admission has one")
+		}
+	})
+
+	t.Run("is JSON only", func(t *testing.T) {
+		_, err := declare(schema(contracts.Prop("data", contracts.Bytes())))
+		wantError(t, err, "doc.admission: an admission's value is JSON only (no bytes())")
+	})
+
+	t.Run("is replaced by evolve's Admission(schema), the last edit of a version; the wire fingerprint stays an edit's", func(t *testing.T) {
+		v1 := must(declare(schema(contracts.Prop("mode", contracts.Str()))))
+		v2 := must(contracts.Evolve(v1, func(e *contracts.RemoteEditor) *contracts.RemoteEditor { return e.AddState("a", "m", contracts.Int()) }))
+		v3 := must(contracts.Evolve(v2, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+			return e.Admission(contracts.Obj(contracts.Prop("mode", contracts.Str()), contracts.Prop("since", contracts.Int())))
+		}))
+		// Carried over unchanged by an edit that is not its own.
+		if dataOf(t, v2).Admission != dataOf(t, v1).Admission {
+			t.Fatal("an edit of the members replaced the admission")
+		}
+		if dataOf(t, v3).Admission.Fingerprint == dataOf(t, v1).Admission.Fingerprint {
+			t.Fatal("Admission(schema) kept the fingerprint")
+		}
+		// A version whose only edit is its admission has the previous version's members.
+		if v3.Fingerprint != v2.Fingerprint {
+			t.Fatalf("fingerprints %s and %s differ", v3.Fingerprint, v2.Fingerprint)
+		}
+		gained := must(contracts.Evolve(must(declare(nil)), func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+			return e.Admission(contracts.Obj(contracts.Prop("mode", contracts.Str())))
+		}))
+		if dataOf(t, gained).Admission == nil {
+			t.Fatal("a contract without one did not gain one")
+		}
 	})
 }

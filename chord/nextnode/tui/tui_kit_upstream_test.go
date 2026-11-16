@@ -271,6 +271,46 @@ func TestATerminalClientSurvivesWhatTheSandboxSendsToBreakItAndGivesTheTerminalB
 	}
 }
 
+// floodLine is the line the sandbox prints after twelve requests at once: how many were answered and, when some were refused, how
+// many (Pi's fixture prints each distinct outcome with its count, so a flood that was refused nothing has no second clause).
+var floodLine = regexp.MustCompile(`^requests: (\d+) answered(?:, (\d+) terminal: too many requests at once)?\r\n$`)
+
+// floodOutcome reads floodLine's counts; ok is false for any other line.
+func floodOutcome(line string) (answered, refused int, ok bool) {
+	found := floodLine.FindStringSubmatch(line)
+	if found == nil {
+		return 0, 0, false
+	}
+	answered, _ = strconv.Atoi(found[1])
+	if found[2] != "" {
+		refused, _ = strconv.Atoi(found[2])
+	}
+	return answered, refused, true
+}
+
+// The twelve requests reach the launcher as the sandbox's writes do: when the child is descheduled between them (a loaded host), the
+// first are answered before the last arrive, and all twelve are answered with none refused. That is the outcome the flood test's own
+// comment allows ("one answered before the next arrives counts as answered"), and its line has no refusal clause. The launcher's
+// own limit (the ninth is refused while eight are being answered) is asserted without the timing in
+// TestAtMostEightRequestsAreAnsweredAtOnceAndTheNextIsRefusedUntilOneEnds.
+func TestTheFloodOutcomeIsReadWithAndWithoutARefusal(t *testing.T) {
+	for _, c := range []struct {
+		line              string
+		answered, refused int
+		ok                bool
+	}{
+		{"requests: 8 answered, 4 terminal: too many requests at once\r\n", 8, 4, true},
+		{"requests: 12 answered\r\n", 12, 0, true},
+		{"requests: 8 answered, 4 some other refusal\r\n", 0, 0, false},
+		{"requests: 12 refused\r\n", 0, 0, false},
+	} {
+		answered, refused, ok := floodOutcome(c.line)
+		if answered != c.answered || refused != c.refused || ok != c.ok {
+			t.Errorf("floodOutcome(%q) = %d, %d, %v; want %d, %d, %v", c.line, answered, refused, ok, c.answered, c.refused, c.ok)
+		}
+	}
+}
+
 func TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8(t *testing.T) {
 	s := tuiApp(t, "plugin v1")
 	l := launchWithToken(t, s)
@@ -280,14 +320,9 @@ func TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1Op
 		mark := len(l.output())
 		l.typeKeys("f")
 		line := l.waitFor(`requests: [^\r]*\r\n`, mark)[0]
-		found := regexp.MustCompile(`^requests: (\d+) answered, (\d+) terminal: too many requests at once`).FindStringSubmatch(line)
-		if found == nil {
-			t.Fatalf("line = %q", line)
-		}
-		answered, _ := strconv.Atoi(found[1])
-		refused, _ := strconv.Atoi(found[2])
-		if answered < 8 || answered+refused != 12 {
-			t.Fatalf("answered %d, refused %d", answered, refused)
+		answered, refused, ok := floodOutcome(line)
+		if !ok || answered < 8 || answered+refused != 12 {
+			t.Fatalf("line = %q (answered %d, refused %d)", line, answered, refused)
 		}
 	}
 	flood()

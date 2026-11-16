@@ -9,11 +9,14 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+	"weak"
 
 	"github.com/MichaelKinsy/PiG/chord"
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/deskfix"
+	"github.com/MichaelKinsy/PiG/chord/next/internal/nexttest"
 	"github.com/MichaelKinsy/PiG/chord/next/registries"
 	"github.com/MichaelKinsy/PiG/chord/next/surfaces"
 )
@@ -320,6 +323,133 @@ func TestADisposeFromOutsideWaitsForAChangedThatDisposesItsOwnScopeAndIsStillRun
 		case <-time.After(5 * time.Second):
 			t.Fatal("Dispose from outside never returned")
 		}
+	}
+}
+
+// Ports 'a scope's reference in one variant (decision "C15 stands; the UI bindings follow the variant")' (Pi f57cd9484).
+
+// followedStates is the number of references whose state the scope follows through Variant and Hold.
+func (s *TuiScope) followedStates() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return len(s.states)
+}
+
+func TestScopeReferenceInOneVariantReadsItNarrowedWhileLiveInTheVariantAChangeOfItsVariantCallsChangedOncePerState(t *testing.T) {
+	desk := deskfix.New(t)
+	var changes atomic.Int64
+	scope := scopeOn(desk.Client, func() { changes.Add(1) })
+	held, err := scope.Hold(deskfix.Desk, delta.JsonObjectOf())
+	if err != nil {
+		t.Fatal(err)
+	}
+	editor := scope.Variant(held, "editor")
+	reader := scope.Variant(held, "reader")
+	if reader() != nil {
+		t.Fatal("reader() before it binds is not nil")
+	}
+	until(t, func() bool { return reader() == held })
+	if editor() != nil {
+		t.Fatal("editor() while live as a reader is not nil")
+	}
+	settle(&changes)
+	before := changes.Load()
+	// Another allowed value while it is held: loading, then live in the other variant.
+	if err := desk.Admit("editor"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return editor() == held })
+	if _, err := editor().Call("write", "edited", bg); err != nil {
+		t.Fatal(err)
+	}
+	if reader() != nil {
+		t.Fatal("reader() while live as an editor is not nil")
+	}
+	settle(&changes)
+	// One watch of the reference's state, whoever asked for it: a redraw per state.
+	if got := changes.Load() - before; got != 2 {
+		t.Fatalf("changes = %d, want 2", got)
+	}
+	if err := desk.Admit("none"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return held.State().Value().Kind == host.RefStateFailed })
+	if editor() != nil {
+		t.Fatal("editor() once denied is not nil")
+	}
+	scope.Dispose()
+	if editor() != nil {
+		t.Fatal("editor() after dispose is not nil")
+	}
+}
+
+func TestScopeReferenceInOneVariantFollowsAReferenceTheScopeDoesNotHoldUntilDispose(t *testing.T) {
+	desk := deskfix.New(t)
+	var changes atomic.Int64
+	scope := scopeOn(desk.Client, func() { changes.Add(1) })
+	held, err := desk.Client.Hold(bg, deskfix.Desk, delta.JsonObjectOf(), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	editor := scope.Variant(held, "editor")
+	deskfix.UntilState(t, held, func() bool { return held.State().Value().Kind == host.RefStateLive })
+	before := changes.Load()
+	if err := desk.Admit("editor"); err != nil {
+		t.Fatal(err)
+	}
+	until(t, func() bool { return editor() == held && changes.Load() > before })
+	scope.Dispose()
+	after := changes.Load()
+	if err := desk.Admit("reader"); err != nil {
+		t.Fatal(err)
+	}
+	deskfix.UntilState(t, held, func() bool {
+		return deskfix.VariantName(held) == "reader" && held.State().Value().Kind == host.RefStateLive
+	})
+	if got := changes.Load(); got != after {
+		t.Fatalf("changed called after dispose: %d -> %d", after, got)
+	}
+	if editor() != nil {
+		t.Fatal("editor() after dispose is not nil")
+	}
+	held.Release()
+}
+
+func TestScopeReferenceInOneVariantKeepsNoReferenceItsHolderReleasedWhileTheScopeLivesGC(t *testing.T) {
+	desk := deskfix.New(t)
+	scope := scopeOn(desk.Client, func() {})
+	const n = 8
+	released := func() []weak.Pointer[host.Reference] {
+		var refs []weak.Pointer[host.Reference]
+		for range n {
+			held, err := desk.Client.Hold(bg, deskfix.Desk, delta.JsonObjectOf(), host.GetOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			reader := scope.Variant(held, "reader")
+			until(t, func() bool { return reader() == held })
+			if scope.followedStates() == 0 {
+				t.Fatal("the scope follows nothing after Variant")
+			}
+			held.Release()
+			refs = append(refs, weak.Make(held))
+		}
+		return refs
+	}()
+	nexttest.ExpectCollected(t, released...)
+	// The entries of the collected references go at the next follow: the set holds the one reference it follows now.
+	probe, err := desk.Client.Hold(bg, deskfix.Desk, delta.JsonObjectOf(), host.GetOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	scope.Variant(probe, "reader")
+	if got := scope.followedStates(); got != 1 {
+		t.Fatalf("followed after the others were collected = %d, want 1", got)
+	}
+	probe.Release()
+	scope.Dispose()
+	if got := scope.followedStates(); got != 0 {
+		t.Fatalf("followed after dispose = %d, want 0", got)
 	}
 }
 

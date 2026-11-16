@@ -149,3 +149,45 @@ func TestSqlStatements(t *testing.T) {
 		})
 	})
 }
+
+// Ports the sql.ts change of Pi 92e1db6ca (no Pi test of its own: read-plan.test.ts reaches it through a read):
+// `whereSql` renders a column through the given renderer and hands an `exists` to it; the default is a write's
+// condition, whose `exists` never reaches SQL.
+func TestWhereSqlRenders(t *testing.T) {
+	node := WhereNode{Op: WhereAnd, Nodes: []WhereNode{
+		{Op: WhereEq, Column: "a", Value: "x"},
+		{Op: WhereNot, Nodes: []WhereNode{{Op: WhereIsNull, Column: "b"}}},
+		{Op: WhereInArray, Column: "c", Values: []Scalar{"p", "q"}},
+		{Op: WherePrefix, Column: "d", Value: "ab"},
+		{Op: WhereOr, Nodes: []WhereNode{{Op: WhereExists, Exists: &ExistsNode{Set: "s"}}}},
+	}}
+	var params []sqlite.SqliteValue
+	text := WhereSql(node, &params, ConditionSql{
+		Column: func(name string) string { return "t." + name },
+		Exists: func(exists ExistsNode, params *[]sqlite.SqliteValue) string {
+			*params = append(*params, "E:"+exists.Set)
+			return "EXISTS(?)"
+		},
+	})
+	want := `(t.a = ? AND (NOT t.b IS NULL) AND t.c IN (SELECT value FROM json_each(?)) AND (t.d >= ? AND t.d < ?) AND (EXISTS(?)))`
+	if text != want {
+		t.Fatalf("text = %s", text)
+	}
+	if !reflect.DeepEqual(params, []sqlite.SqliteValue{"x", `["p","q"]`, "ab", "ac", "E:s"}) {
+		t.Fatalf("params = %v", params)
+	}
+	var open []sqlite.SqliteValue
+	if got := WhereSql(WhereNode{Op: WherePrefix, Column: "d", Value: ""}, &open, ConditionSql{Column: func(name string) string { return "t." + name }}); got != "t.d >= ?" {
+		t.Fatalf("unbounded prefix = %s", got)
+	}
+	var own []sqlite.SqliteValue
+	if got := WhereSql(WhereNode{Op: WhereEq, Column: "a", Value: "x"}, &own); got != `"a" = ?` {
+		t.Fatalf("own = %s", got)
+	}
+	defer func() {
+		if recovered := recover(); recovered != "exists is rendered by a read" {
+			t.Fatalf("panic = %v", recovered)
+		}
+	}()
+	WhereSql(WhereNode{Op: WhereExists, Exists: &ExistsNode{Set: "s"}}, &own)
+}

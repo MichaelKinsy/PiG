@@ -48,6 +48,9 @@ type DocumentsOwner interface {
 	// InSection reports whether the caller runs in a section of the host's serialization already: a read there takes no
 	// section (no closure to make).
 	InSection() bool
+	// Task runs fn as an owned background task of the host's loop (an unawaited promise of Pi: a sweep, a watch's close, a shared
+	// load): fn may block, and the host's join counts it until it ends or waits parked (the line's wait, chordctx.Receive).
+	Task(fn func())
 	Clock
 }
 
@@ -104,14 +107,17 @@ func NewDocuments(owner DocumentsOwner) *Documents {
 			return
 		}
 		place := d.line.reserve()
-		//portlint:allow asyncorder Pi fires the sweep unawaited (`void this.onLine(async () => sweep()).catch(() => {})`, documents.ts:48) and onLine's `this.line.acquire()` (documents.ts:137) takes its place at the call: the place is reserved above, so the order of the line is the order of the calls
-		go func() { //portlint:allow golifetime the sweep is a floating promise in Pi (documents.ts:48); it ends once its place on the line is handed over and the job ran or was refused `released`
+		// Pi fires the sweep unawaited (`void this.onLine(async () => sweep()).catch(() => {})`, documents.ts:48) and onLine's
+		// `this.line.acquire()` (documents.ts:137) takes its place at the call: the place is reserved above, so the order of the
+		// line is the order of the calls. The sweep is a floating promise: it ends once its place on the line is handed over and
+		// the job ran or was refused `released`.
+		d.owner.Task(func() {
 			//portlint:allow ctxbackground Pi's `onLine` takes no signal (documents.ts:135) and `line.acquire()` none (line.ts `acquire()`): a line job has no caller to cancel it
 			_ = d.runOnLine(place, context.Background(), func() error {
 				d.Do(sweep)
 				return nil
 			}, nil)
-		}()
+		})
 	})
 	return d
 }
@@ -139,6 +145,9 @@ func (d *Documents) Do(work func()) { d.owner.Do(work) }
 
 // InSection reports whether the caller runs in a section of the owner's serialization already.
 func (d *Documents) InSection() bool { return d.owner.InSection() }
+
+// Task runs fn as an owned background task of the owner's loop (DocumentsOwner.Task).
+func (d *Documents) Task(fn func()) { d.owner.Task(fn) }
 
 // Declare is a handle to definition's slot for an attempt sealed by token, whose `at(key)` pins declarer takes: the slot
 // made by the first declaration of its name, checked against the values for later ones (SlotDefinition.Check). The

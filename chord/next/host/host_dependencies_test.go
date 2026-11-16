@@ -540,6 +540,55 @@ func TestAGetterOfAParkedObjectRejectsWithTheLastParkedCauseAfterItsDependencyFe
 	wantScopeError(t, <-pending, data.CodeUnavailable, "", "waiting for app.notes(S1): specific provider absence")
 }
 
+// Mirrors "a denied dependency (slice 14 §2.2) › parks its dependent showing the denial, not broken as an authority refusal: it goes on with the next bound".
+func TestADeniedDependencyParksItsDependentShowingTheDenialNotBrokenAsAnAuthorityRefusalItGoesOnWithTheNextBound(t *testing.T) {
+	client, errs, peer, ends := depClient(t, HostOptions{})
+	defer closeHosts(t, client)
+	view := mustHold(t, client, depView, jsonObject("id", float64(1)))
+	hold := peer.Next("hold").(*link.HoldMessage).Hold
+	peer.Send(&link.FailedMessage{Hold: hold, Cause: link.WireCause{Kind: "denied", Error: wireChord("forbidden", "no access")}})
+	transported(ends[0], ends[1])
+	state := refStateOf(view)
+	if state.Kind != RefStateFailed || state.Cause.Kind != data.FailureDenied || state.Cause.Error == nil ||
+		state.Cause.Error.Code != data.CodeForbidden || state.Cause.Error.Message != "no access" || state.RetryAt != nil {
+		t.Fatalf("state = %+v, want failed denied forbidden/no access, no retryAt", state)
+	}
+	// The same refusal as `broken` (a route's `authorize`) never heals: the difference is the cause's kind.
+	if got := failures(errs.All()); len(got) != 0 {
+		t.Fatalf("failures = %v, want none", got)
+	}
+	bindHold(t, peer, hold)
+	transported(ends[0], ends[1])
+	live := untilKind(t, view, RefStateLive)
+	n, err := view.Member("n").Value()
+	must(t, err)
+	if live.Kind != RefStateLive || n != float64(0) {
+		t.Fatalf("state = %s, n = %v, want live, 0", live.Kind, n)
+	}
+	view.Release()
+}
+
+// Mirrors "a denied dependency (slice 14 §2.2) › with timers › is no parked_long report, however long it stays denied".
+func TestADeniedDependencyWithTimersIsNoParkedLongReportHoweverLongItStaysDenied(t *testing.T) {
+	loop := newScopeLoop()
+	ready := 50 * time.Millisecond
+	client, errs, peer, ends := depClient(t, HostOptions{ReadyTimeout: &ready, loop: loop})
+	defer closeHosts(t, client)
+	view := mustHold(t, client, depView, jsonObject("id", float64(1)))
+	loop.AdvanceAsync(1)
+	hold := peer.Next("hold").(*link.HoldMessage).Hold
+	peer.Send(&link.FailedMessage{Hold: hold, Cause: link.WireCause{Kind: "denied", Error: wireChord("forbidden", "no access")}})
+	transported(ends[0], ends[1])
+	loop.AdvanceAsync(500)
+	if state := refStateOf(view); state.Kind != RefStateFailed || state.Cause.Kind != data.FailureDenied {
+		t.Fatalf("state = %+v, want failed denied", state)
+	}
+	if errs.Len() != 0 {
+		t.Fatalf("errors = %v, want none", errs.All())
+	}
+	view.Release()
+}
+
 // Own test of the registry dependencies (`self.registry` values): one served and composed is live, also at its last good
 // value while a later composition fails; one nobody serves parks the attempt, waiting, naming the registry.
 func TestTheDependencyCheckOfRegistryValues(t *testing.T) {
@@ -561,7 +610,7 @@ func TestTheDependencyCheckOfRegistryValues(t *testing.T) {
 	absent := registries.NewRegistryRecord("app.absent", e.batch, func(registries.RegistryError) {}, nil)
 	got := checkDependencies([]dependency{live, {kind: dependencyRegistry, value: absent.Value(1)}})
 	if got.kind != checkParked || got.shown.Kind != RefStateFailed || got.shown.Cause.Kind != data.FailureWaiting || !got.firstPass ||
-		got.blocker != (blocker{label: "registry app.absent", state: blockerFailed}) || got.loadingOn != nil {
+		got.blocker == nil || *got.blocker != (blocker{label: "registry app.absent", state: blockerFailed}) || got.loadingOn != nil {
 		t.Fatalf("check with an unserved registry = %+v, want parked waiting", got)
 	}
 	if message := got.shown.Cause.Error.Message; !strings.HasPrefix(message, "waiting for registry app.absent: ") {

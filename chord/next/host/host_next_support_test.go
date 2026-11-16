@@ -404,9 +404,11 @@ func newTransactionGate() *transactionGate {
 	return &transactionGate{entered: make(chan struct{}), release: make(chan struct{})}
 }
 
+// hit holds the transaction until Release: the wait is a park of the task that runs the commit (a test's delivered() does not
+// wait for a commit the test holds: Pi's pending `await held`).
 func (gate *transactionGate) hit() {
 	gate.once.Do(func() { close(gate.entered) })
-	<-gate.release
+	_, _ = chordctx.Receive(context.Background(), gate.release)
 }
 
 // Entered is closed when the held transaction reached its hold.
@@ -576,16 +578,14 @@ func faultyStore(t testing.TB, outbox ...bool) (st *store.ChordStore, fail func(
 type testOwner struct {
 	failures []*data.ChordError
 	scope    *struct{}
-	queries  *store.LiveQueries
 }
 
-func (owner *testOwner) Label() string               { return "app.store" }
-func (owner *testOwner) Scope() any                  { return owner.scope }
-func (owner *testOwner) Queries() *store.LiveQueries { return owner.queries }
-func (owner *testOwner) AssertLive() error           { return nil }
-func (owner *testOwner) Fail(err *data.ChordError)   { owner.failures = append(owner.failures, err) }
+func (owner *testOwner) Label() string             { return "app.store" }
+func (owner *testOwner) Scope() any                { return owner.scope }
+func (owner *testOwner) AssertLive() error         { return nil }
+func (owner *testOwner) Fail(err *data.ChordError) { owner.failures = append(owner.failures, err) }
 func tableOwner() *testOwner {
-	return &testOwner{scope: new(struct{}), queries: store.NewLiveQueries()}
+	return &testOwner{scope: new(struct{})}
 }
 func openFence() store.CommitFence {
 	return store.CommitFence{Admit: func() bool { return true }, Adopt: func(int64, []int64, int) error { return nil }}
@@ -1230,7 +1230,7 @@ func serveNotes(host FacetHost, typ *contracts.Contract) (*notesProbe, error) {
 				probe.changed = nil
 			}
 			probe.mu.Unlock()
-			UntilAborted(ctx)
+			_, _ = chordctx.Receive(ctx, ctx.Done())
 			return nil, nil
 		}
 		members := map[string]chord.Watchable[delta.JsonValue]{"notes": notes, "count": count}
@@ -1408,11 +1408,13 @@ type resolved struct {
 	Trusted   bool
 	Codec     link.Codec
 	Limits    link.PartLimits
+	// Opened is `resolve`'s `opened`: told the peer's incarnation at the handshake.
+	Opened func(incarnation string)
 }
 
 // link is the ResolvedLink of r: Limits nil when none are set.
 func (r resolved) link() ResolvedLink {
-	resolvedLink := ResolvedLink{Link: r.Link, Principal: r.Principal, Trusted: r.Trusted, Codec: r.Codec}
+	resolvedLink := ResolvedLink{Link: r.Link, Principal: r.Principal, Trusted: r.Trusted, Codec: r.Codec, Opened: r.Opened}
 	if r.Limits.Part != nil || r.Limits.Decoded != nil {
 		limits := r.Limits
 		resolvedLink.Limits = &limits
@@ -1512,6 +1514,8 @@ type relayedOptions struct {
 	RoutePair func() (*link.MemoryLink, *link.MemoryLink)
 	// Resolve wraps the default one (`worker()` makes the worker).
 	Resolve func(address contracts.Address, worker func() resolved, ctx context.Context) (resolved, error)
+	// Admit is the route's admission (slice 14 §2.3); nil: none.
+	Admit   RouteAdmit
 	Context context.Context
 	// RevokedBy is the server's and the workers' `revokedBy`; ServerRevokedBy is the server's when it differs.
 	RevokedBy       RevokedBy[delta.JsonValue]
@@ -1585,13 +1589,14 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 			}
 			return nil
 		})
-		// `void host.load(...)`: an unawaited promise. Pi's `transported()` lets it settle (it drains every microtask); a Go
-		// goroutine is not drained by a link's queue, so WorkerLoaded is the wait on it.
+		// `void host.load(...)`: an unawaited promise, an owned task of the worker's loop that `deliveredOn` joins (Pi's
+		// `transported()` lets it settle: it drains every microtask); WorkerLoaded is the wait on its end.
 		loaded := make(chan struct{})
-		go func() {
+		load := func() {
 			defer close(loaded)
 			_, _ = host.Load([]HostFacet{{Name: "@test/worker", Facet: facet}}, ctx)
-		}()
+		}
+		goTask(host.(*chordHost).loop(), load, load)
 		result.loads.Store(address.Key, loaded)
 		result.Workers.Store(address.Key, host)
 		result.mu.Lock()
@@ -1618,6 +1623,7 @@ func relay(t testing.TB, options relayedOptions) *relayed {
 	}
 	result.Route = mustRoute(t)(server.Route(Session, RouteOptions{
 		Authorize: authorize,
+		Admit:     options.Admit,
 		Resolve: func(address contracts.Address, routing context.Context) (ResolvedLink, error) {
 			// A resolve once the test ended (a re-resolve of a link the closing hosts dropped) makes no worker, as Pi's test ends
 			// before its hosts' close can start one. The test's context is canceled before its first cleanup runs, whichever
@@ -1676,6 +1682,8 @@ type rawWorkers struct {
 	mu      sync.Mutex
 	// peers are the raw peers in the order of the calls that made them.
 	peers []*RawPeer
+	// ends are both ends of every link Resolve made: Transported flushes them.
+	ends []*link.MemoryLink
 	// made is closed (and replaced) whenever Resolve makes a peer.
 	made chan struct{}
 }
@@ -1722,6 +1730,7 @@ func (w *rawWorkers) Resolve(address contracts.Address, _ func() resolved, _ con
 	peer := newRawPeer(w.t, b, rawPeerOptions{Calls: w.options.Calls, NoCalls: w.options.NoCalls, NoAck: w.options.NoAck})
 	w.mu.Lock()
 	w.peers = append(w.peers, peer)
+	w.ends = append(w.ends, a, b)
 	if w.made != nil {
 		close(w.made)
 		w.made = nil
@@ -1731,6 +1740,14 @@ func (w *rawWorkers) Resolve(address contracts.Address, _ func() resolved, _ con
 	return resolved{
 		Link: a, Principal: workerPrincipal(session), Codec: testCodec(), Trusted: w.options.Trusted, Limits: w.options.Limits,
 	}, nil
+}
+
+// Transported is Pi's `transported()` for the links of the raw workers made so far.
+func (w *rawWorkers) Transported() {
+	w.mu.Lock()
+	ends := append([]*link.MemoryLink(nil), w.ends...)
+	w.mu.Unlock()
+	transported(ends...)
 }
 
 // incarnationOf is a host's incarnation, which its handshakes send.

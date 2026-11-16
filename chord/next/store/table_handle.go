@@ -37,15 +37,13 @@ type PageOptions struct {
 	After *string
 }
 
-// TableOwner is who owns a table handle: its object (whose transactions alone write it), its live queries, liveness check
-// and live failure.
+// TableOwner is who owns a table handle: its object (whose transactions alone write it), its liveness check and live
+// failure.
 type TableOwner interface {
 	// Label names the owner in messages.
 	Label() string
 	// Scope is the object's documents: a transaction of another object refuses the handle.
 	Scope() any
-	// Queries are the object's live queries, across its attempts: what a commit writing the table re-runs.
-	Queries() *LiveQueries
 	// AssertLive returns `released` once the object ended.
 	AssertLive() error
 	// Fail fails the owner `broken` with a row the code cannot read (a `json(...)` cell, slice 6a §9; §1.4).
@@ -94,57 +92,21 @@ func NewTableHandle(definition *TableDefinition, sqlName string, store *ChordSto
 
 // Page is up to limit rows of q (after options.After), and the cursor of the next page when there is one.
 func (handle *TableHandle) Page(ctx context.Context, q *Query, limit int64, options PageOptions) (Page, error) {
-	if err := q.Err(); err != nil {
-		return Page{}, err
-	}
-	if err := handle.Owner.AssertLive(); err != nil {
-		return Page{}, err
-	}
-	if err := handle.AssertVersion(); err != nil {
-		return Page{}, err
-	}
-	if err := handle.assertQuery(q); err != nil {
-		return Page{}, err
-	}
-	if limit < 1 {
-		return Page{}, data.Invalid(data.ReasonArgs, handle.Definition.Name+": limit is a positive integer")
-	}
-	order := q.Order()
-	var after []sqlite.SqliteValue
-	if options.After != nil {
-		decoded, err := DecodeCursor(handle.Definition, handle.Sql.Table, order, *options.After)
-		if err != nil {
-			return Page{}, err
-		}
-		after = decoded
-	}
-	statement := handle.Sql.Select(q.Condition, order, after, limit+1, nil)
-	stored, err := Read(handle.Store, func(executor sqlite.SqliteExecutor) ([]sqlite.SqliteRow, error) {
-		return executor.All(statement.SQL, statement.Params...)
-	}, ctx)
+	plan, err := handle.plan(q, ReadRows)
 	if err != nil {
 		return Page{}, err
 	}
-	more := int64(len(stored)) > limit
-	if more {
-		stored = stored[:limit]
+	page, err := ReadPage(handle.Store, plan, limit, options.After, ctx)
+	if err != nil {
+		return Page{}, err
 	}
-	items := make([]Row, len(stored))
-	for index, row := range stored {
+	items := make([]Row, len(page.Stored))
+	for index, row := range page.Stored {
 		if items[index], err = handle.Decode(ctx, row); err != nil {
 			return Page{}, err
 		}
 	}
-	if !more {
-		return Page{Items: items}, nil
-	}
-	last := stored[limit-1]
-	values := make([]sqlite.SqliteValue, len(order.Columns))
-	for index, column := range order.Columns {
-		values[index] = last[column]
-	}
-	next := EncodeCursor(handle.Sql.Table, order, values)
-	return Page{Items: items, Next: &next}, nil
+	return Page{Items: items, Next: page.Next}, nil
 }
 
 // RowsIterator is every row of a query, read a page of RowsPage at a time.
@@ -214,19 +176,11 @@ func (handle *TableHandle) Get(ctx context.Context, key any) (Row, error) {
 
 // Count is the number of rows of q.
 func (handle *TableHandle) Count(ctx context.Context, q *Query) (int64, error) {
-	if err := q.Err(); err != nil {
+	plan, err := handle.plan(q, ReadRows)
+	if err != nil {
 		return 0, err
 	}
-	if err := handle.Owner.AssertLive(); err != nil {
-		return 0, err
-	}
-	if err := handle.AssertVersion(); err != nil {
-		return 0, err
-	}
-	if err := handle.assertQuery(q); err != nil {
-		return 0, err
-	}
-	statement := handle.Sql.Count(q.Condition)
+	statement := plan.Count()
 	row, err := Read(handle.Store, func(executor sqlite.SqliteExecutor) (sqlite.SqliteRow, error) {
 		return executor.Get(statement.SQL, statement.Params...)
 	}, ctx)
@@ -264,10 +218,24 @@ func (handle *TableHandle) Decode(ctx context.Context, stored sqlite.SqliteRow) 
 	return nil, failure
 }
 
-// assertQuery refuses a query of another table (`invalid/args`).
-func (handle *TableHandle) assertQuery(q *Query) error {
-	if q.Table != handle.Definition {
-		return data.Invalid(data.ReasonArgs, fmt.Sprintf("%s: a query of table %q run on %q", handle.Owner.Label(), q.Table.Name, handle.Definition.Name))
+// plan is the plan of a read of q through this handle, checked: the object is live, the handle's version is the store's,
+// the query is of this table and joins nothing (a handle reads its own table's rows; a joined query is a named query's,
+// which maps the pair). Its `exists` are compiled against the store's bindings.
+func (handle *TableHandle) plan(q *Query, shape ReadShape) (*ReadPlan, error) {
+	if err := q.Err(); err != nil {
+		return nil, err
 	}
-	return nil
+	if err := handle.Owner.AssertLive(); err != nil {
+		return nil, err
+	}
+	if err := handle.AssertVersion(); err != nil {
+		return nil, err
+	}
+	if q.Table != handle.Definition {
+		return nil, data.Invalid(data.ReasonArgs, fmt.Sprintf("%s: a query of table %q run on %q", handle.Owner.Label(), q.Table.Name, handle.Definition.Name))
+	}
+	if q.Joined != nil {
+		return nil, data.Invalid(data.ReasonArgs, handle.Owner.Label()+": a joined query is read as a named query, not through a table")
+	}
+	return NewReadPlan(q, handle.Sql.Table, Projection{}, shape, handle.Store.Reads)
 }

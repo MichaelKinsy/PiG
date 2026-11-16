@@ -935,7 +935,10 @@ func TestHostCloseEndsEveryObjectAtOnceCallsFailReleasedBeforeAnyCloseRan(t *tes
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(hostCounter, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			self.Open(func(context.Context) (any, error) { return nil, nil },
-				func(any, NativeCloseReason, context.Context) error { <-closing; return nil })
+				func(_ any, _ NativeCloseReason, ctx context.Context) error {
+					_, _ = chordctx.Receive(context.WithoutCancel(ctx), closing)
+					return nil
+				})
 			implementation := impl("count", constant(float64(1)))
 			implementation.Members.Methods = map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }}
 			return implementation, nil
@@ -982,7 +985,10 @@ func TestHostCloseJoinsAnEndingRunningInTheBackground(t *testing.T) {
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(hostSvc, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			self.Open(func(context.Context) (any, error) { return nil, nil },
-				func(any, NativeCloseReason, context.Context) error { <-closing; return nil })
+				func(_ any, _ NativeCloseReason, ctx context.Context) error {
+					_, _ = chordctx.Receive(context.WithoutCancel(ctx), closing)
+					return nil
+				})
 			return impl("n", constant(params.Value("id"))), nil
 		}, ServeOptions{})
 	}, loadedOptions{})
@@ -1048,21 +1054,37 @@ func TestHostCloseClosesObjectByObjectADependentBeforeItsDependencies(t *testing
 // Pi: packages/chord/test/host/host.test.ts:646 (returns one closing to every caller: a second close waits for the first)
 func TestHostCloseReturnsOneClosingToEveryCaller(t *testing.T) {
 	closing := make(chan struct{})
-	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
+	closeBegan := make(chan struct{})
+	host, errs := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		return h.Serve(hostCounter, func(_ *delta.JsonObject, self Self) (contracts.Implementation, error) {
 			self.Open(func(context.Context) (any, error) { return nil, nil },
-				func(any, NativeCloseReason, context.Context) error { <-closing; return nil })
-			return impl("count", constant(float64(1))), nil
+				func(_ any, _ NativeCloseReason, ctx context.Context) error {
+					close(closeBegan)
+					_, err := chordctx.Receive(ctx, closing)
+					return err
+				})
+			implementation := impl("count", constant(float64(1)))
+			implementation.Members.Methods = map[string]contracts.MethodFunction{"bump": func(delta.JsonValue, context.Context) (delta.JsonValue, error) { return nil, nil }}
+			return implementation, nil
 		}, ServeOptions{})
 	}, loadedOptions{})
+	// The counter is live (`load` returns at its first outcome) and its native open: a counter that failed to activate has no native
+	// to close, and there is nothing for either caller to wait for.
+	if got := failures(errs.All()); len(got) != 0 {
+		t.Fatalf("the counter failed to activate: %v", got)
+	}
 	first := make(chan error, 1)
 	second := make(chan error, 1)
 	go func() { first <- host.Close(background) }()
 	go func() { second <- host.Close(background) }()
+	// Pi's `await flushed()` runs the closes to where they wait: the native's close, held on `closing`, has started.
+	<-closeBegan
 	turn(host)
 	select {
 	case <-second:
 		t.Fatal("a second close returned before the first")
+	case <-first:
+		t.Fatal("a close returned before the native's close was released")
 	default:
 	}
 	close(closing)
@@ -1080,9 +1102,9 @@ func TestHostCloseTearsDownWhatAFailedDependentHoldsWithCloseAndWaitsForIt(t *te
 	var closes seenList[string]
 	host, _ := loaded(t, func(h FacetHost, _ FacetSelf) error {
 		if err := h.Serve(hostSvc, func(params *delta.JsonObject, self Self) (contracts.Implementation, error) {
-			self.Open(func(context.Context) (any, error) { return nil, nil }, func(_ any, reason NativeCloseReason, _ context.Context) error {
+			self.Open(func(context.Context) (any, error) { return nil, nil }, func(_ any, reason NativeCloseReason, ctx context.Context) error {
 				closes.add("svc " + string(reason.Kind))
-				<-closing
+				_, _ = chordctx.Receive(context.WithoutCancel(ctx), closing)
 				return nil
 			})
 			return impl("n", constant(params.Value("id"))), nil
