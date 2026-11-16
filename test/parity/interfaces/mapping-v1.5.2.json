@@ -275823,6 +275823,7 @@
         "call:mcp/input_schema.go#NormalizeMcpInputSchema"
       ],
       "evidence": [
+        "test:coding/tool_schema_arrival_wire_test.go#TestToolSchemaKeepsAuthoredOrderOnTheBedrockWireFromEveryArrival",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaAddsTypeObjectAndEmptyPropertiesWhenMissing",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaKeepsTheSchemasOwnKeywords"
       ]
@@ -275844,6 +275845,7 @@
         "call:mcp/input_schema.go#NormalizeMcpInputSchema"
       ],
       "evidence": [
+        "test:coding/tool_schema_arrival_wire_test.go#TestToolSchemaKeepsAuthoredOrderOnTheBedrockWireFromEveryArrival",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaAddsTypeObjectAndEmptyPropertiesWhenMissing",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaKeepsTheSchemasOwnKeywords"
       ]
