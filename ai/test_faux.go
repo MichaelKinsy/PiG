@@ -554,9 +554,11 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		case strings.Contains(lastText, "Run: find scoped ignores"):
 			pattern = "**/*.txt"
 		}
+		// The pattern is written as JSON text whatever it holds (the fixture's order is pattern, path).
+		quoted, _ := json.Marshal(pattern)
 		return "tool", "", []testFauxToolCall{{
 			Name:     "find",
-			ArgsJSON: `{"pattern":"` + pattern + `","path":"."}`,
+			ArgsJSON: `{"pattern":` + string(quoted) + `,"path":"."}`,
 		}}
 	}
 
