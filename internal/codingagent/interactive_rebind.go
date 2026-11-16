@@ -55,6 +55,34 @@ func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() erro
 
 // rebindCurrentSession captures the Session before awaiting extension binding. A replaced startup bind cannot subscribe or update the replacement's title on completion.
 func (m *InteractiveMode) rebindCurrentSession(ctx context.Context, renderBeforeBind bool) error {
+	return m.rebindSession(ctx, renderBeforeBind, func(ctx context.Context, _ *inproc.Runner, emit func(context.Context) error) error { return emit(ctx) })
+}
+
+// bindStartupSession is Init's `await this.rebindCurrentSession()` (interactive-mode.ts init(), after setupEditorSubmitHandler at :1127-1128 and before
+// run() shows the startup notices at :1257). Node reads stdin only between tasks, so an await whose promise settles in microtasks lets no key a user typed
+// ahead reach the editor: a bind with no handler to wait for (agent-session.ts bindExtensions emits session_start, then resources_discover when one is
+// registered) runs to the end of init() and the notices before any key is read. Pig does the same: with no handler to run the bind is plain code on Init's
+// goroutine, and only a bind that runs handlers serves terminal input while they run, as Pi's event loop does while they pend. The owner steps before and
+// after the emit run on Init's own goroutine in both cases, so a queued key cannot be read between the handlers' end and the notices either.
+func (m *InteractiveMode) bindStartupSession(ctx context.Context) error {
+	defer m.enterOwnerLoop()()
+	return m.rebindSession(ctx, false, func(ctx context.Context, runner *inproc.Runner, emit func(context.Context) error) error {
+		if !bindMayPend(runner) {
+			return emit(ctx)
+		}
+		return m.awaitExtensionUI(ctx, emit)
+	})
+}
+
+// bindMayPend reports whether binding the runner's extensions runs a handler: session_start handlers and, when one is registered, resources_discover
+// handlers (agent-session.ts:3433-3436, 3439-3442). Nothing else of the bind waits.
+func bindMayPend(runner *inproc.Runner) bool {
+	return runner != nil && (runner.HasHandlers(EventSessionStart) || runner.HasHandlers(EventResourcesDiscover) && !runner.IsStale())
+}
+
+// rebindSession runs the steps of a rebind: the owner steps before and after the emit through runOnMainAndWait, and the emit of session_start and
+// resources_discover through awaitEmit, which decides whether the owner loop serves input while the handlers run.
+func (m *InteractiveMode) rebindSession(ctx context.Context, renderBeforeBind bool, awaitEmit func(ctx context.Context, runner *inproc.Runner, emit func(context.Context) error) error) error {
 	var session InteractiveSessionHandle
 	var runner *inproc.Runner
 	var cwd string
@@ -86,7 +114,10 @@ func (m *InteractiveMode) rebindCurrentSession(ctx context.Context, renderBefore
 		return err
 	}
 	var resources *extension.ResourcesDiscoverAggregateResult
-	if runner != nil {
+	if err := awaitEmit(ctx, runner, func(ctx context.Context) error {
+		if runner == nil {
+			return nil
+		}
 		if _, err := runner.Emit(ctx, event); err != nil {
 			return err
 		}
@@ -95,10 +126,11 @@ func (m *InteractiveMode) rebindCurrentSession(ctx context.Context, renderBefore
 		if runner.HasHandlers(EventResourcesDiscover) && !runner.IsStale() {
 			var err error
 			resources, err = runner.EmitResourcesDiscover(ctx, cwd, ResourcesDiscoverReason(event.Reason))
-			if err != nil {
-				return err
-			}
+			return err
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 	return m.runOnMainAndWait(ctx, func() error {
 		if m.opts.SessionHandle != session {

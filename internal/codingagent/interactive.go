@@ -1986,11 +1986,9 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.initScopedModels()
 
 	// Dispatch session_start through the extension runner. The bridge performs
-	// the typed event conversion.
+	// the typed event conversion. Terminal input is served during the bind only while a handler runs (bindStartupSession).
 	mark("pre-emit-session-start")
-	if err := m.awaitExtensionUI(ctx, func(ctx context.Context) error {
-		return m.rebindCurrentSession(ctx, false)
-	}); err != nil {
+	if err := m.bindStartupSession(ctx); err != nil {
 		if errors.Is(err, errInteractiveShutdown) {
 			return nil
 		}
