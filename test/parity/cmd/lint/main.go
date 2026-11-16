@@ -119,6 +119,7 @@ var providerFixtureAPIs = []string{"openai-completions", "openai-responses", "mi
 
 type assertBlock struct {
 	JSONOutputEqual         bool                    `toml:"json_output_equal"`
+	JSONOutputOrderedEqual  bool                    `toml:"json_output_ordered_equal"`
 	StderrEqual             bool                    `toml:"stderr_equal"`
 	JSONAliases             []jsonAliasRule         `toml:"json_aliases"`
 	JSONPigOnlyRecords      []jsonPigOnlyRecordRule `toml:"json_pig_only_records"`
@@ -653,11 +654,14 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 			out = append(out, violation{path, "normalize-rule-reason-missing", fmt.Sprintf("normalize_replace %q requires its own reason", rule.Pattern)})
 		}
 	}
-	if sc.Assert.JSONOutputEqual && (sc.Assert.OutputNormalizedEqual || len(sc.Assert.NormalizeReplace) > 0) {
+	if sc.Assert.JSONOutputEqual && sc.Assert.JSONOutputOrderedEqual {
+		out = append(out, violation{path, "json-ordered-and-equal", "json_output_ordered_equal already compares everything json_output_equal does and member order too; declare one of them"})
+	}
+	if (sc.Assert.JSONOutputEqual || sc.Assert.JSONOutputOrderedEqual) && (sc.Assert.OutputNormalizedEqual || len(sc.Assert.NormalizeReplace) > 0) {
 		out = append(out, violation{path, "json-text-normalization", "full JSON comparison cannot use text normalization"})
 	}
-	if len(sc.Assert.JSONPigOnlyRecords) > 0 && !sc.Assert.JSONOutputEqual {
-		out = append(out, violation{path, "json-pig-only-without-json", "json_pig_only_records applies only to json_output_equal"})
+	if len(sc.Assert.JSONPigOnlyRecords) > 0 && !sc.Assert.JSONOutputEqual && !sc.Assert.JSONOutputOrderedEqual {
+		out = append(out, violation{path, "json-pig-only-without-json", "json_pig_only_records applies only to json_output_equal or json_output_ordered_equal"})
 	}
 	for _, rule := range sc.Assert.JSONPigOnlyRecords {
 		if rule.Divergence == "" || rule.Record == "" || rule.Count < 1 || rule.BeforeType == "" || strings.TrimSpace(rule.Reason) == "" {
@@ -683,7 +687,7 @@ func hasBehaviorAssertion(sc *scenario) bool {
 	return a.ExitCode != nil || a.PigExitCode != nil || a.PiExitCode != nil ||
 		len(a.BothContain) > 0 || len(a.PigContains) > 0 || len(a.PiContains) > 0 ||
 		a.ChangelogHeadersComplete || len(a.BothMatchRegex) > 0 || a.OutputEqual || a.OutputNormalizedEqual ||
-		a.OutputLayoutEqual || a.EscapedOutputEqual || a.JSONOutputEqual || a.StderrEqual || a.ArtifactEqual || a.BothReachReady || a.PigNoStaleFrames || a.NoFramesAfterReply || a.FinalFrameCursorOnlyPig != nil || a.FinalFrameCursorOnlyPi != nil ||
+		a.OutputLayoutEqual || a.EscapedOutputEqual || a.JSONOutputEqual || a.JSONOutputOrderedEqual || a.StderrEqual || a.ArtifactEqual || a.BothReachReady || a.PigNoStaleFrames || a.NoFramesAfterReply || a.FinalFrameCursorOnlyPig != nil || a.FinalFrameCursorOnlyPi != nil ||
 		len(a.Extensions.RegisteredTools) > 0 || len(a.Extensions.RegisteredCommands) > 0 ||
 		len(a.Extensions.RegisteredProviders) > 0 || len(a.Extensions.RegisteredShortcuts) > 0 ||
 		a.Extensions.NoDiagnostics || len(a.Extensions.PlacementStrategy) > 0 ||

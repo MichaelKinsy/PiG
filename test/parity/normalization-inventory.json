@@ -2,12 +2,12 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "5535679b376ab81ce0575cbfd4f380db98e57d0831dbbd32a2a06d935112c88e",
+      "sha256": "a46b808230be7f838da9dd5004b3ddcd037270d7b4785b3b7327355aa2ce8acf",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
       "source": "test/parity/runner/capture_stable.go",
-      "sha256": "b1cc3c4c0d146cb6330865b6afd6c5d60eb4a26c58721cd38f04ecadfc67ffad",
+      "sha256": "00782127dc61c7cdea4a28a7e9eea6b7834f16dfe782472bab40e8719b9d4e68",
       "reason": "The final terminal capture is the plain screen, the escaped screen and the plain screen again; it is accepted only when both plain captures are equal and hold the scenario's capture_start, and it is retaken every poll within the last step budget until then. Only the capture kinds a comparator reads are cropped to capture_start/capture_end: a capture_start absent from one of those fails the run (the whole captures are kept in the artifacts, with the failure joined to any step failure), and a capture no comparator reads is kept whole under a not-asserted-uncropped artifact name. No comparison is loosened: this is synchronization with the screen and a stricter crop, not a normalization."
     },
     {
@@ -42,12 +42,17 @@
     },
     {
       "source": "test/parity/runner/json_compare.go",
-      "sha256": "cb3d2d566718fd9f5c4da255c04a2d45d4627897b5af617fa35e745f5c4be35a",
-      "reason": "Parsed full records ignore object-member order and equivalent JSON number spelling only. Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists."
+      "sha256": "d6ebcaab4002f0a3d5566994de93850cf77dd5e0e1d026d4c28b7ec5e2752464",
+      "reason": "Parsed full records ignore object-member order and equivalent JSON number spelling only; json_output_ordered_equal compares the same records with object-member order significant at every depth (json_order.go reads the members in wire order, applies the same aliases, and reports the path and whether the difference is order or value). Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists."
+    },
+    {
+      "source": "test/parity/runner/json_order.go",
+      "sha256": "b678c254381d72b13af273f38469c7de8b8461abd4c84d571640528189409509",
+      "reason": "json_output_ordered_equal reads each object's members in the order the program wrote them and requires the members both sides write to follow one order at every depth, after the value comparison has accepted the records. It adds a constraint to json_output_equal and removes none: no member, value or alias is excused."
     },
     {
       "source": "test/parity/runner/json_pig_only.go",
-      "sha256": "af8fb4702a202ed046990b61156373e0ed786d4367b4c6f1a6b0b9fc11b35c66",
+      "sha256": "b348ff92cd2b464319e3c21e37a7b3f2c69fffad300b21300b448f903b35803e",
       "reason": "A json_pig_only_records rule drops whole records from Pig's JSONL output before the comparison, for one numbered divergence's extra event that Pi never emits. It names the divergence, the complete record and the type of the record that must follow it, and every run must carry exactly its declared count of them, each at that position, so a second occurrence, a moved emission or a vanished divergence fails. Pi's output is never edited and no other record, field or order is excused."
     },
     {

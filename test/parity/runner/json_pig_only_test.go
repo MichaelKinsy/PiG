@@ -121,7 +121,7 @@ func TestPigOnlyRecordRulesAreValidated(t *testing.T) {
 		"several":    {Divergence: "D250", Record: pigOnlyRecord + "\n" + pigOnlyRecord, Count: 1, BeforeType: "message_start", Reason: "r"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := dropPigOnlyRecords(Result{Output: pigOnlyRecord + "\n{\"type\":\"message_start\"}\n"}, []JSONPigOnlyRecordRule{rule}); err == nil {
+			if _, err := dropPigOnlyRecords(Result{Output: pigOnlyRecord + "\n{\"type\":\"message_start\"}\n"}, []JSONPigOnlyRecordRule{rule}, compareJSONResults); err == nil {
 				t.Fatal("dropPigOnlyRecords accepted an invalid rule")
 			}
 			sc := &Scenario{Name: "pig-only", Driver: "rpc-mode", Covers: []string{"x"}, Assert: AssertSpec{JSONOutputEqual: true, JSONPigOnlyRecords: []JSONPigOnlyRecordRule{rule}}}

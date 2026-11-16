@@ -557,6 +557,42 @@ func TestLintRules(t *testing.T) {
 			},
 			wantRules: []string{"json-pig-only-incomplete"},
 		},
+		{
+			name:   "ordered JSON equality alone passes and takes pig-only records",
+			source: "# Upstream evidence (pi v0.69.0)\n# D1 makes pig emit one extra record.\n",
+			sc: scenario{
+				Name:   "ordered-ok",
+				Driver: "rpc-mode",
+				Covers: []string{"packages/tui/src/autocomplete.ts"},
+				Tags:   []string{"fast", "hermetic"},
+				Assert: assertBlock{JSONOutputOrderedEqual: true, JSONPigOnlyRecords: []jsonPigOnlyRecordRule{{Divergence: "D1", Record: `{"type":"x"}`, Count: 1, BeforeType: "y", Reason: "r"}}},
+			},
+			wantRules: nil,
+		},
+		{
+			name:   "ordered and plain JSON equality together fail",
+			source: "# Upstream evidence (pi v0.69.0)\n",
+			sc: scenario{
+				Name:   "ordered-and-equal",
+				Driver: "rpc-mode",
+				Covers: []string{"packages/tui/src/autocomplete.ts"},
+				Tags:   []string{"fast", "hermetic"},
+				Assert: assertBlock{JSONOutputEqual: true, JSONOutputOrderedEqual: true},
+			},
+			wantRules: []string{"json-ordered-and-equal"},
+		},
+		{
+			name:   "ordered JSON equality with text normalization fails",
+			source: "# Upstream evidence (pi v0.69.0)\n",
+			sc: scenario{
+				Name:   "ordered-normalized",
+				Driver: "rpc-mode",
+				Covers: []string{"packages/tui/src/autocomplete.ts"},
+				Tags:   []string{"fast", "hermetic"},
+				Assert: assertBlock{JSONOutputOrderedEqual: true, OutputNormalizedEqual: true},
+			},
+			wantRules: []string{"json-text-normalization"},
+		},
 	}
 
 	for _, tt := range tests {

@@ -266,25 +266,27 @@ type EnvOverrides struct {
 
 // AssertSpec lists the assertions to evaluate against driver results.
 type AssertSpec struct {
-	ExitCode              *int            `toml:"exit_code"`
-	PigExitCode           *int            `toml:"pig_exit_code"`
-	PiExitCode            *int            `toml:"pi_exit_code"`
-	BothContain           []string        `toml:"both_contain"`
-	BothNotContain        []string        `toml:"both_not_contain"`
-	PigContains           []string        `toml:"pig_contains"`
-	PigNotContain         []string        `toml:"pig_not_contain"`
-	PiContains            []string        `toml:"pi_contains"`
-	PiNotContain          []string        `toml:"pi_not_contain"`
-	BothMatchRegex        []string        `toml:"both_match_regex"`
-	JSONOutputEqual       bool            `toml:"json_output_equal"`
-	StderrEqual           bool            `toml:"stderr_equal"`
-	JSONAliases           []JSONAliasRule `toml:"json_aliases"`
-	OutputEqual           bool            `toml:"output_equal"`
-	OutputNormalizedEqual bool            `toml:"output_normalized_equal"`
-	OutputLayoutEqual     bool            `toml:"output_layout_equal"`
-	EscapedOutputEqual    bool            `toml:"escaped_output_equal"`
-	RuntimeRatioMax       float64         `toml:"runtime_ratio_max"`
-	BothReachReady        bool            `toml:"both_reach_ready"`
+	ExitCode        *int     `toml:"exit_code"`
+	PigExitCode     *int     `toml:"pig_exit_code"`
+	PiExitCode      *int     `toml:"pi_exit_code"`
+	BothContain     []string `toml:"both_contain"`
+	BothNotContain  []string `toml:"both_not_contain"`
+	PigContains     []string `toml:"pig_contains"`
+	PigNotContain   []string `toml:"pig_not_contain"`
+	PiContains      []string `toml:"pi_contains"`
+	PiNotContain    []string `toml:"pi_not_contain"`
+	BothMatchRegex  []string `toml:"both_match_regex"`
+	JSONOutputEqual bool     `toml:"json_output_equal"`
+	// JSONOutputOrderedEqual is json_output_equal with object member order significant at every depth.
+	JSONOutputOrderedEqual bool            `toml:"json_output_ordered_equal"`
+	StderrEqual            bool            `toml:"stderr_equal"`
+	JSONAliases            []JSONAliasRule `toml:"json_aliases"`
+	OutputEqual            bool            `toml:"output_equal"`
+	OutputNormalizedEqual  bool            `toml:"output_normalized_equal"`
+	OutputLayoutEqual      bool            `toml:"output_layout_equal"`
+	EscapedOutputEqual     bool            `toml:"escaped_output_equal"`
+	RuntimeRatioMax        float64         `toml:"runtime_ratio_max"`
+	BothReachReady         bool            `toml:"both_reach_ready"`
 	// PigNoStaleFrames requires every pig run's frame_watch steps to have sampled enough panes and found no forbidden one. It is pig-only for a
 	// scenario whose operation Pi awaits without holding the frame (an extension handler that awaits), so Pi's samples are not asserted.
 	PigNoStaleFrames bool `toml:"pig_no_stale_frames"`
@@ -321,6 +323,9 @@ type AssertSpec struct {
 	// Extensions asserts structured output from the extension-host driver.
 	Extensions ExtensionAssertSpec `toml:"extensions"`
 }
+
+// jsonCompared reports whether a JSON comparison reads the run outputs: json_output_equal, or json_output_ordered_equal.
+func (a AssertSpec) jsonCompared() bool { return a.JSONOutputEqual || a.JSONOutputOrderedEqual }
 
 // ExtensionAssertSpec defines structured assertions over the JSON emitted by
 // `pig install --validate-only --json`. It is intentionally pig-only: extension
@@ -404,11 +409,14 @@ func validate(sc *Scenario) error {
 	if sc.Assert.ChangelogHeadersComplete && (sc.Driver != "interactive-tmux" || !sc.Tmux.CaptureHistory) {
 		return fmt.Errorf("changelog_headers_complete requires complete tmux history")
 	}
-	if sc.Assert.JSONOutputEqual && (sc.Assert.OutputNormalizedEqual || len(sc.Assert.NormalizeReplace) > 0) {
-		return fmt.Errorf("json_output_equal cannot use text normalization")
+	if sc.Assert.JSONOutputEqual && sc.Assert.JSONOutputOrderedEqual {
+		return fmt.Errorf("json_output_equal and json_output_ordered_equal are one comparison: json_output_ordered_equal already compares everything json_output_equal does")
 	}
-	if len(sc.Assert.JSONPigOnlyRecords) > 0 && !sc.Assert.JSONOutputEqual {
-		return fmt.Errorf("json_pig_only_records requires json_output_equal")
+	if sc.Assert.jsonCompared() && (sc.Assert.OutputNormalizedEqual || len(sc.Assert.NormalizeReplace) > 0) {
+		return fmt.Errorf("json_output_equal and json_output_ordered_equal cannot use text normalization")
+	}
+	if len(sc.Assert.JSONPigOnlyRecords) > 0 && !sc.Assert.jsonCompared() {
+		return fmt.Errorf("json_pig_only_records requires json_output_equal or json_output_ordered_equal")
 	}
 	for _, rule := range sc.Assert.JSONPigOnlyRecords {
 		if err := rule.validate(); err != nil {
