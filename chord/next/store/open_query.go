@@ -307,20 +307,19 @@ func (read *OpenRead) load(ctx context.Context) *ReadRun {
 	}
 	// Pi's `if (this.#generation !== generation) return undefined; site.batch.within(...)` (open-query.ts:206-207) is one turn.
 	// Here the adoption waits for a section of the host, in which a commit's adoption of this read may have run first: the
-	// check is made in the section, atomic with the adoption, or the older run of this load would land after the commit's.
-	adopted := false
-	site.Batch.Section(func() {
+	// check is made in the section, as one with the adoption (CheckAct), or the older run of this load would land after the
+	// commit's.
+	adopted := site.Batch.CheckAct(func() func() {
 		if site.Store.Reads.isClosed() {
-			return
+			return nil
 		}
 		read.mu.Lock()
 		overtaken := read.generation != generation
 		read.mu.Unlock()
 		if overtaken {
-			return
+			return nil
 		}
-		adopted = true
-		_ = site.Batch.Within(func() error { registered.Adopt(run); return nil }, ctx)
+		return func() { _ = site.Batch.Within(func() error { registered.Adopt(run); return nil }, ctx) }
 	})
 	if !adopted {
 		return nil
@@ -328,26 +327,44 @@ func (read *OpenRead) load(ctx context.Context) *ReadRun {
 	return &run
 }
 
-// failCompile is what Pi's `load` does before its first await: a closed read has nothing to load (settled, no run); a query
-// that does not compile hands its sink a failed run (settled, that run). Otherwise the read has to run: not settled.
+// failCompile is what Pi's `load` does before its first await (open-query.ts:194-198): a closed read has nothing to load
+// (settled, no run); a query that does not compile hands its sink a failed run (settled, that run). Otherwise the read has to
+// run: not settled. Pi decides and adopts in one turn, so the decision to adopt is made in the section that adopts (CheckAct): a
+// read closed, or a query that compiles, by the time the section is entered adopts nothing. Closed never reverts, and a plan that
+// compiles needs no section (the load's own check, made in its adopting section, covers what changes after), so those two
+// are answered without one. The adoption has no error to return; it runs in a section of the host (a first run is read
+// outside them).
 func (read *OpenRead) failCompile() (run *ReadRun, settled bool) {
 	query := read.query
-	compiled := query.Compiled()
-	read.mu.Lock()
-	closed := read.closed
-	read.mu.Unlock()
-	if closed {
+	if read.isClosed() {
 		return nil, true
 	}
-	if compiled.Err == nil {
+	if query.Compiled().Err == nil {
 		return nil, false
 	}
-	failed := ReadRun{Kind: "failed", Err: compiled.Err}
-	// The adoption has no error to return; it runs in a section of the host (a first run is read outside them).
-	query.Site.Batch.Section(func() {
-		_ = query.Site.Batch.Within(func() error { read.sink.Adopt(failed); return nil }, query.Ctx)
+	settled = true
+	query.Site.Batch.CheckAct(func() func() {
+		if read.isClosed() {
+			return nil
+		}
+		compiled := query.Compiled()
+		if compiled.Err == nil {
+			settled = false
+			return nil
+		}
+		failed := ReadRun{Kind: "failed", Err: compiled.Err}
+		return func() {
+			run = &failed
+			_ = query.Site.Batch.Within(func() error { read.sink.Adopt(failed); return nil }, query.Ctx)
+		}
 	})
-	return &failed, true
+	return run, settled
+}
+
+func (read *OpenRead) isClosed() bool {
+	read.mu.Lock()
+	defer read.mu.Unlock()
+	return read.closed
 }
 
 // Reload is Pi's `void open.load()` of a binding that changed: a read of a query that no longer compiles fails at once, as

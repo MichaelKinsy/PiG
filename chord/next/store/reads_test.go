@@ -346,6 +346,40 @@ func TestReadsLoadIsOvertakenByACommitThatAdoptsWhileItWaitsForItsSection(t *tes
 	o.query.Close()
 }
 
+// Pi open-query.ts:194-198 (`load`): `if (this.#closed) return undefined; if ("error" in compiled) { ...; site.batch.within(() =>
+// this.#sink.adopt(failed), context) }`: the closed check, the compile-error check and the adoption of the failed run are one
+// turn, so a read closed before the adoption adopts nothing. Go's adoption waits for a section of the host; checks made before that
+// wait are stale when the section is entered: a read closed meanwhile (a list's retired page) handed its sink a failed run, which
+// fails the list. The test's section holds the adoption between its checks and its entry and closes the read meanwhile.
+func TestReadsFailedCompileIsNotAdoptedByAReadClosedWhileItWaitsForItsSection(t *testing.T) {
+	w := newReadsWorld(t)
+	o := w.opened(t, w.notes, w.tagged)
+	if runs := o.runs.len(); runs != 1 {
+		t.Fatalf("runs = %d, want the one failed run of the open", runs)
+	}
+	entered, release := make(chan struct{}), make(chan struct{})
+	var held atomic.Bool
+	o.batch.UseSection(func(work func()) {
+		if held.CompareAndSwap(false, true) {
+			close(entered)
+			<-release
+		}
+		work()
+	}, nil)
+	loaded := make(chan *ReadRun)
+	go func() { loaded <- o.open.Load() }()
+	<-entered
+	o.open.Close()
+	close(release)
+	if run := <-loaded; run != nil {
+		t.Fatalf("a read closed while its failed run waited for the section loaded %#v", run)
+	}
+	if runs := o.runs.len(); runs != 1 {
+		t.Fatalf("runs = %d after the close, want only the failed run of the open: the sink of a closed read was handed another", runs)
+	}
+	o.query.Close()
+}
+
 func TestReadsIndexAndRefresh(t *testing.T) {
 	t.Run("enter a read under every table it uses: the other owner's commit runs it; closed, nothing does", func(t *testing.T) {
 		w := newReadsWorld(t)
