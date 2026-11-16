@@ -237,10 +237,12 @@ func keysOf(object map[string]any) []string {
 	return keys
 }
 
-// recordedRequest is the one request a provider server received: its body as the bytes the provider wrote and its headers.
+// recordedRequest is the one request a provider server received: its body as the bytes the provider wrote and its headers, and the JSON of the entries the
+// session that sent it held when its run had ended.
 type recordedRequest struct {
-	body   []byte
-	header http.Header
+	body    []byte
+	header  http.Header
+	entries string
 }
 
 // newPiMessagesProbeProvider is the pi-messages provider over a recording server: its payload is a map, so its member order is the one Pi's object has.
@@ -294,6 +296,8 @@ func sendRecordedRequest(t *testing.T, h *harness, cwd string, newProvider func(
 		}
 	}()
 	_, sendErr := session.Send(context.Background(), "probe")
+	// The entries the session holds when the run has ended, for a row that asks what an edit left in the saved transcript.
+	entries := string(mustMarshal(t, session.Entries()))
 	_ = session.Close()
 	<-done
 	if sendErr != nil {
@@ -304,7 +308,9 @@ func sendRecordedRequest(t *testing.T, h *harness, cwd string, newProvider func(
 	if len(requests) != 1 {
 		t.Fatalf("the server recorded %d requests, want 1", len(requests))
 	}
-	return requests[0]
+	recorded := requests[0]
+	recorded.entries = entries
+	return recorded
 }
 
 func mustMarshal(t *testing.T, value any) []byte {

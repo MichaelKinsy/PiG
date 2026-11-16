@@ -5926,6 +5926,50 @@ fn main() {
             CommandResult::Ok
         },
     );
+    let event_edit_subscriber = ext.event_subscriber();
+    let event_edit_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    // event_edit_probe: `<event> <edit> [fail]`, a handler that makes one edit of the event's content, details, isError, message or messages (tool_result, message_end, context), returns nothing and, with fail, errors after the edit. Every edit writes the value `other-event-edit`, which no other test uses.
+    ext.command(
+        "event_edit_probe",
+        "Subscribe to the event named by the argument with a handler that edits the event in place and returns nothing",
+        move |_ctx, args| {
+            let words: Vec<&str> = args.split_whitespace().collect();
+            let (name, edit, fail) = (
+                words[0].to_string(),
+                words[1].to_string(),
+                words.get(2) == Some(&"fail"),
+            );
+            let which = format!("{name}/{edit}");
+            let subscription = subscribe(&event_edit_subscriber, &name, move |_ctx, data| {
+                let edited = Value::from("other-event-edit");
+                let text = || serde_json::json!([{"type": "text", "text": "other-event-edit"}]);
+                match which.as_str() {
+                    "tool_result/content-assign" => data["content"] = text(),
+                    "tool_result/details-assign" => {
+                        data["details"] = serde_json::json!({"k": "other-event-edit"})
+                    }
+                    "tool_result/iserror-assign" => data["isError"] = Value::from(true),
+                    "tool_result/content-deep" => data["content"][0]["text"] = edited,
+                    "tool_result/details-deep" => data["details"]["k"] = edited,
+                    "message_end/deep" => data["message"]["content"][0]["text"] = edited,
+                    "message_end/content-assign" => data["message"]["content"] = text(),
+                    "message_end/message-assign" => {
+                        data["message"] = serde_json::json!({"role": "user", "content": text(), "timestamp": 1})
+                    }
+                    "context/deep" => data["messages"][0]["content"][0]["text"] = edited,
+                    other => return Err(format!("event_edit_probe has no edit {other}")),
+                }
+                if fail {
+                    Err("failed after the edit".to_string())
+                } else {
+                    Ok(None)
+                }
+            });
+            event_edit_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     ext.command("label_probe", "Label the entry named first", |ctx, args| {
         let trimmed = args.trim();
         let (id, label) = trimmed.split_once(' ').unwrap_or((trimmed, ""));

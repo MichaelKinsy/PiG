@@ -3564,6 +3564,34 @@ impl Extension {
                         .and_then(|payload| serde_json::to_string(payload).ok())
                 })
                 .flatten();
+                // The message a message_end handler is handed, as the host sent it: the reply carries the message the handler left when it differs.
+                let message_end_before = (req.event.as_deref() == Some("message_end"))
+                    .then(|| {
+                        data.get("message")
+                            .filter(|message| message.is_object())
+                            .and_then(|message| serde_json::to_string(message).ok())
+                    })
+                    .flatten();
+                // The members of a tool_result event as the host sent them, with whether each is an object or a list: the reply names the ones the handler left different.
+                let tool_result_before = (req.event.as_deref() == Some("tool_result")).then(|| {
+                    [
+                        "content",
+                        "details",
+                        "isError",
+                        "structuredContent",
+                        "usage",
+                    ]
+                    .map(|name| {
+                        (
+                            name,
+                            data.get(name).and_then(|member| {
+                                serde_json::to_string(member)
+                                    .ok()
+                                    .map(|text| (text, member.is_object() || member.is_array()))
+                            }),
+                        )
+                    })
+                });
                 // The emission's shared options: a before_agent_start handler edits them through its event, and the reply carries them.
                 let mut prompt_state: Option<Arc<crate::context::SystemPromptState>> = None;
                 let result = if let Some(handler) = self.events.handler(handler_id) {
@@ -3643,6 +3671,17 @@ impl Extension {
                         });
                     }
                 }
+                // Pi hands a context handler a filtered copy of the list over the one set of message objects (runner.ts emitContext): an edit to a message stays after a throw, so the reply of a failed handler carries the messages it was handed, as it left them. The host keeps them as the messages it holds and takes none of a change to the list.
+                if req.event.as_deref() == Some("context")
+                    && error.is_some()
+                    && let Some(messages) =
+                        data.get("messages").filter(|messages| messages.is_array())
+                    && context_messages_before.as_ref().and_then(Option::as_ref) != Some(messages)
+                {
+                    value = Some(
+                        serde_json::json!({ "messages": messages, "_pigContextUnchanged": true }),
+                    );
+                }
                 if let Some(before) = provider_payload_before
                     && matches!(value, None | Some(Value::Null))
                     && let Some(after) = data.get("payload")
@@ -3672,6 +3711,47 @@ impl Extension {
                     // serde_json compares maps without their member order, and moving a member is an edit in Pi (the tool runs with the object in its new order), so compare the JSON text.
                     if serde_json::to_string(&after).ok() != serde_json::to_string(&before).ok() {
                         reply["_pigToolCallInput"] = after.unwrap_or(Value::Null);
+                    }
+                    value = Some(reply);
+                }
+                // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it failed. The reply carries the message the handler left when the JSON text differs from the one it received (member order is an edit), and the handler's result.
+                if let Some(before) = message_end_before {
+                    let mut reply = serde_json::json!({ "_pigMessageEndResult": value });
+                    if let Some(after) = data.get("message")
+                        && serde_json::to_string(after).ok().as_deref() != Some(before.as_str())
+                    {
+                        reply["_pigMessageEndMessage"] = after.clone();
+                    }
+                    value = Some(reply);
+                }
+                // Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it is what the next handler sees, and an edit made to an object the caller handed over is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The reply names the members the handler left different from the ones it received (JSON text, member order included), with their new values, also when it failed. A Rust handler owns the event as a value, so an object member it changed is an edit to the object it received: assigning a new object to it is the same value edit.
+                if let Some(before) = tool_result_before {
+                    let mut members = serde_json::Map::new();
+                    let (mut changed, mut shared) = (Vec::new(), Vec::new());
+                    for (name, was) in &before {
+                        let now = data.get(*name);
+                        let differs = match (was, now) {
+                            (None, None) => false,
+                            (Some((text, _)), Some(now)) => {
+                                serde_json::to_string(now).ok().as_deref() != Some(text.as_str())
+                            }
+                            _ => true,
+                        };
+                        if differs {
+                            changed.push(*name);
+                            if let Some(now) = now {
+                                members.insert((*name).to_string(), now.clone());
+                                if matches!(was, Some((_, true)))
+                                    && (now.is_object() || now.is_array())
+                                {
+                                    shared.push(*name);
+                                }
+                            }
+                        }
+                    }
+                    let mut reply = serde_json::json!({ "_pigToolResultResult": value });
+                    if !changed.is_empty() {
+                        reply["_pigToolResultEdits"] = serde_json::json!({ "members": members, "changed": changed, "shared": shared });
                     }
                     value = Some(reply);
                 }

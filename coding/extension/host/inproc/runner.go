@@ -1693,6 +1693,11 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 	// predecessors' values. The chained values are rebuilt into the event's
 	// own variant before each handler.
 	curContent, curDetails, curIsError, curUsage, curStructured := extractToolResultFields(event)
+	// caller is what the object the caller handed over holds: an edit a handler makes to that object (a block of the content, a member of the details) is in it, and a member a handler assigns another value is not (see [extension.ToolResultEdits]).
+	caller := toolResultMembers{curContent, curDetails, curIsError, curUsage, curStructured}
+	owns := toolResultOwns{content: true, details: true, structured: true, usage: true}
+	deep := false
+	var edits *extension.ToolResultEdits
 	modified := false
 
 	for _, snapshot := range snapshotEventHandlers(r.extensions, "tool_result") {
@@ -1701,11 +1706,21 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 			continue
 		}
 		for _, handler := range handlers {
-			event = withToolResultFields(event, curContent, curDetails, curIsError, curUsage, curStructured)
+			if edits == nil {
+				edits = new(extension.ToolResultEdits)
+			}
+			event = withToolResultFields(event, curContent, curDetails, curIsError, curUsage, curStructured, edits)
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if started != nil {
 				// The handler ran to its first await, which is when Pi starts the next call's hooks; a handler in an extension process reported it when its request was written.
 				started()
+			}
+			// upstream: runner.ts emitToolResult hands every handler the one currentEvent, so an edit a handler makes in place is what the next handler sees, even when the handler then throws. An extension process reports the members it left different from the ones it received.
+			if len(edits.Changed) > 0 {
+				cur := toolResultMembers{curContent, curDetails, curIsError, curUsage, curStructured}
+				deep = applyToolResultEdits(edits, &cur, &caller, &owns) || deep
+				curContent, curDetails, curIsError, curUsage, curStructured = cur.content, cur.details, cur.isError, cur.usage, cur.structured
+				*edits = extension.ToolResultEdits{}
 			}
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "tool_result", err)
@@ -1751,7 +1766,17 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 	}
 
 	if !modified {
-		return nil, nil
+		if !deep {
+			return nil, nil
+		}
+		// An edit made in place to the object the caller handed over is in the caller's result, which Pi's emit leaves it to read.
+		return &extension.ToolResultEventResult{
+			Content:           caller.content,
+			Details:           caller.details,
+			StructuredContent: caller.structured,
+			IsError:           &caller.isError,
+			Usage:             toolResultUsage(caller.usage),
+		}, nil
 	}
 	return &extension.ToolResultEventResult{
 		Content:           curContent,
@@ -1760,6 +1785,61 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 		IsError:           &curIsError,
 		Usage:             toolResultUsage(curUsage),
 	}, nil
+}
+
+// toolResultMembers are the members of a tool_result event a handler can change.
+type toolResultMembers struct {
+	content    []any
+	details    any
+	isError    bool
+	usage      any
+	structured json.RawMessage
+}
+
+// toolResultOwns says which members of the chain's current event are still the objects the caller handed over.
+type toolResultOwns struct{ content, details, structured, usage bool }
+
+// applyToolResultEdits writes the members a handler of an extension process left changed into cur, the chain's current event, and reports whether one of them is an edit to an object the caller handed over (which is then in caller too). A member the handler replaced with another object is no longer the caller's.
+func applyToolResultEdits(edits *extension.ToolResultEdits, cur, caller *toolResultMembers, owns *toolResultOwns) (deep bool) {
+	for _, name := range edits.Changed {
+		shared := slices.Contains(edits.Shared, name)
+		switch name {
+		case "content":
+			cur.content = edits.Members.Content
+			if shared && owns.content {
+				caller.content, deep = cur.content, true
+			} else {
+				owns.content = false
+			}
+		case "details":
+			cur.details = edits.Members.Details
+			if shared && owns.details {
+				caller.details, deep = cur.details, true
+			} else {
+				owns.details = false
+			}
+		case "isError":
+			cur.isError = edits.Members.IsError != nil && *edits.Members.IsError
+		case "structuredContent":
+			cur.structured = edits.Members.StructuredContent
+			if shared && owns.structured {
+				caller.structured, deep = cur.structured, true
+			} else {
+				owns.structured = false
+			}
+		case "usage":
+			cur.usage = nil
+			if edits.Members.Usage != nil {
+				cur.usage = edits.Members.Usage
+			}
+			if shared && owns.usage {
+				caller.usage, deep = cur.usage, true
+			} else {
+				owns.usage = false
+			}
+		}
+	}
+	return deep
 }
 
 // toolResultUsage is the chained usage as the typed override: the event carries the tool's own usage as a *ai.Usage or an
@@ -2006,6 +2086,13 @@ func (r *Runner) emitContext(ctx context.Context, messages []extension.AgentMess
 			}
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "context", err)
+				// upstream: the handler's list is a filtered copy over the one set of message objects, so its edit to a message stays after a throw and its change to the list does not. An extension process reports the messages it was handed as it left them beside its error.
+				if raw, ok := handlerResult.(json.RawMessage); ok {
+					if typed, ok := coerceResult[*extension.ContextEventResult](raw); ok && len(typed.Messages) == len(snapshot) {
+						current, owned = typed.Messages, true
+						wire.Changed()
+					}
+				}
 				continue
 			}
 			var returned []extension.AgentMessage
@@ -2780,9 +2867,9 @@ func extractToolResultFields(event extension.ToolResultEvent) (content []any, de
 // handler's replacement converts to them without loss; otherwise the event
 // continues as a CustomToolResultEvent with the same toolName carrying the
 // replacement exactly, as upstream assigns handlerResult.details as returned.
-func withToolResultFields(event extension.ToolResultEvent, content []any, details any, isError bool, usage any, structured json.RawMessage) extension.ToolResultEvent {
+func withToolResultFields(event extension.ToolResultEvent, content []any, details any, isError bool, usage any, structured json.RawMessage, edits *extension.ToolResultEdits) extension.ToolResultEvent {
 	base := func(b extension.ToolResultEventBase) extension.ToolResultEventBase {
-		b.Content, b.IsError, b.Usage, b.StructuredContent = content, isError, usage, structured
+		b.Content, b.IsError, b.Usage, b.StructuredContent, b.Edits = content, isError, usage, structured, edits
 		return b
 	}
 	generic := func(b extension.ToolResultEventBase, toolName string) extension.ToolResultEvent {
