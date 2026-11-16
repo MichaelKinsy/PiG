@@ -32153,28 +32153,6 @@
       ]
     },
     {
-      "id": "BF-8303e4c",
-      "title": "fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header…",
-      "symptom": "fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header state",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "8303e4c989",
-          "date": "2026-11-09"
-        }
-      ],
-      "tests": [
-        "durable/harness/quiescence_test.go::TestAwaitQuiescentReturnsWithGoroutinesParkedInTheProgramsWaits",
-        "internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock"
-      ]
-    },
-    {
       "id": "BF-8392c29",
       "title": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's…",
       "symptom": "MCP stdio servers now start in a session of their own, as Pi's stdio transport does (`detached` in Node's spawn is `setsid`): a server, or a child of it, no longer keeps PiG's controlling terminal and cannot take the terminal's foreground process group from PiG.",
@@ -43916,23 +43894,27 @@
     },
     {
       "id": "BF-ad24cdf",
-      "title": "fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered",
-      "symptom": "fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered",
-      "rootCause": "entered.Parked read the state of the goroutine it is asked about from a goroutine dump and took every state but \"running\", \"runnable\", \"syscall\", \"copystack\" and \"preempted\" for a wait, except the sync.Mutex, sync.RWMutex and semaphore waits, which are locks (parked only for AwaitBlocked, whose caller may hold the lock). A goroutine that allocates while a collection starts waits on the world lock, which the dump shows as \"semacquire\", and one that allocates while a collection marks waits for assist credit, \"GC assist wait\". The runtime ends both on its own, so the goroutine is still on its way to the wait the program gave it; Parked took \"GC assist wait\" for parked, and \"semacquire\" for…",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
+      "title": "The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has…",
+      "symptom": "The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has stopped for its own work.",
+      "rootCause": "entered.Parked took every state of a goroutine dump except running, runnable, syscall, copystack and preempted for a wait of the program's, so a goroutine the runtime itself had stopped (assist credit, a stack scan, a trace or heap dump stop; for AwaitBlocked also the world lock of a collection) read as parked",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has stopped for its own work. `entered.Await`, `entered.Go` and `entered.AwaitUnless` took a goroutine that allocates while a collection marks (it waits for assist credit) or scans its stack, or that a trace or a heap dump stops, for one parked in a wait of the program's, and `entered.AwaitBlocked` also took the world lock of a collection that is starting for one. What a caller could see: `chord/output.AwaitCaller` (`SettleInOrder`, `SettleAndAwait`) went on to settle the next `details()` waiter of a commit before the caller of the one before had run to its next await, so the continuations ran out of Pi's order; `durable/codemode` `spawnEntered` returned before the tool call it started was running, so the call that followed it, or the end of the script that aborts it, could come first; and the chord host's `goEntered` closed its channel before the handler had run to its first wait. It needed a collection or a trace at that instant, so it was rare. The first release with it is 0.5.0: `git log --diff-filter=A v0.5.0 -- internal/entered/entered.go` names 9080668e4ab, `git tag --contains` that commit lists v0.5.0 first, and v0.4.1 has no such package. `entered.Classify` is now the one place that reads a goroutine dump entry, and the durable harness's test barrier uses it too, which also ends the intermittent failure of `TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork`.",
+      "origin": "release note",
       "commits": [
+        {
+          "hash": "8303e4c989",
+          "date": "2026-11-09"
+        },
         {
           "hash": "ad24cdf7f0",
           "date": "2026-11-09"
         }
       ],
       "tests": [
-        "durable/harness/harness_idle_scopes_test.go::TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork",
         "internal/entered/entered_test.go::TestClassifySeparatesTheRuntimesWaitsFromTheProgramsOwn",
         "internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock",
         "internal/entered/entered_test.go::TestParkedNeverReportsAGoroutineThatAllocatesWithoutPause"
