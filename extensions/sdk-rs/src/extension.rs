@@ -3643,15 +3643,12 @@ impl Extension {
                         });
                     }
                 }
-                if let Some(before) = provider_payload_before {
-                    if matches!(value, None | Some(Value::Null)) {
-                        if let Some(after) = data.get("payload") {
-                            if serde_json::to_string(after).ok().as_deref() != Some(before.as_str())
-                            {
-                                value = Some(after.clone());
-                            }
-                        }
-                    }
+                if let Some(before) = provider_payload_before
+                    && matches!(value, None | Some(Value::Null))
+                    && let Some(after) = data.get("payload")
+                    && serde_json::to_string(after).ok().as_deref() != Some(before.as_str())
+                {
+                    value = Some(after.clone());
                 }
                 // Pi's before_provider_headers handlers mutate event.headers in place and the return value is ignored (runner.ts emitBeforeProviderHeaders): the reply is the headers the handler left, even when it failed.
                 if req.event.as_deref() == Some("before_provider_headers") {
