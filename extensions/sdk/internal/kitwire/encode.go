@@ -243,7 +243,7 @@ func (e *encoder) node(node kit.Node, depth int) (viewNode, error) {
 		}
 		ref := n.Ref()
 		e.addImage(ref, n.MimeType, n.Data())
-		return viewNode{Kind: kindImage, ID: n.ID, Ref: ref, MimeType: n.MimeType, MaxWidthCells: n.MaxWidthCells, MaxHeightCells: n.MaxHeightCells, Filename: n.Filename, FallbackColor: n.FallbackColor}, nil
+		return viewNode{Kind: kindImage, ID: n.ID, Ref: ref, MimeType: n.MimeType, MaxWidthCells: n.MaxWidthCells, MaxHeightCells: n.MaxHeightCells, ImageID: n.ImageID, Filename: n.Filename, FallbackColor: n.FallbackColor}, nil
 	case *kit.Loader:
 		if n == nil {
 			break
