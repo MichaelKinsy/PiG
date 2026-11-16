@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"reflect"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -77,7 +78,7 @@ func TestConformance_InPlaceProviderHookEditsReachTheRequest(t *testing.T) {
 			})
 
 			t.Run("request", func(t *testing.T) {
-				recorded := sendRecordedRequest(t, probeHarness(t, tc, true), func(baseURL string) ai.Provider {
+				recorded := sendRecordedRequest(t, probeHarness(t, tc, true), t.TempDir(), func(baseURL string) ai.Provider {
 					return ai.NewOpenAIProvider(ai.OpenAIConfig{ProviderID: "test", Model: "probe", APIKey: "fixture-key", BaseURL: baseURL})
 				})
 				var body map[string]any
@@ -95,14 +96,16 @@ func TestConformance_InPlaceProviderHookEditsReachTheRequest(t *testing.T) {
 			})
 
 			// A provider whose payload is a map (Google, Vertex, pi-messages) has no order of its own in Go, and an SDK that re-encodes the payload it echoes
-			// may reorder it: the bytes of the request after the edit must be what Pi's JSON.stringify writes for the same edit of the same object. The
-			// baseline is the body pi-messages sends with no handler subscribed: Pi's own bytes (the payload oracle of ai/ proves them).
+			// may reorder it: the bytes of the request after the edit must be what Pi's JSON.stringify writes for the same edit of the same object. The object
+			// is the payload pi-messages builds, {model, context, options} (pi-messages.ts), whose values the baseline run supplies (an extension that only
+			// observes the request), and Pi's two edits append their members to it.
 			t.Run("request/bytes/pi-messages", func(t *testing.T) {
-				baseline := sendRecordedRequest(t, probeHarness(t, tc, false), newPiMessagesProbeProvider).body
-				recorded := sendRecordedRequest(t, probeHarness(t, tc, true), newPiMessagesProbeProvider)
+				cwd := t.TempDir() // the system prompt names it
+				baseline := sendRecordedRequest(t, probeHarness(t, tc, false), cwd, newPiMessagesProbeProvider).body
+				recorded := sendRecordedRequest(t, probeHarness(t, tc, true), cwd, newPiMessagesProbeProvider)
 				want := testenv.NodeJSON(t, `
-const body = JSON.parse(input.baseline);
-if (JSON.stringify(body) !== input.baseline) throw new Error("the baseline body is not the bytes JSON.stringify writes for it");
+const sent = JSON.parse(input.baseline);
+const body = { model: sent.model, context: sent.context, options: sent.options };
 body.inPlace = "in-place-edit";
 body.inPlaceBeforeError = "in-place-edit";
 return JSON.stringify(body);
@@ -111,7 +114,9 @@ return JSON.stringify(body);
 				if err := json.Unmarshal(want, &wantText); err != nil {
 					t.Fatal(err)
 				}
-				got := string(recorded.body)
+				// The messages stamp the time they were made at and the options name the session: no two runs share them.
+				got := stamped.ReplaceAllString(string(recorded.body), `"$1":0`)
+				wantText = stamped.ReplaceAllString(wantText, `"$1":0`)
 				if got != wantText {
 					at := 0
 					for at < len(got) && at < len(wantText) && got[at] == wantText[at] {
@@ -124,8 +129,9 @@ return JSON.stringify(body);
 	}
 }
 
-// probeHarness is a harness of the SDK case whose extension, when probes is set, edits the payload and the headers of a provider request in place with each
-// handler event_mutate_probe subscribes: one that returns and one that fails after its edit.
+// probeHarness is a harness of the SDK case whose extension edits the payload and the headers of a provider request in place with each handler
+// event_mutate_probe subscribes (one that returns and one that fails after its edit), or, when probes is not set, only observes the request with a handler that
+// returns nothing and edits nothing, so the request is built through the same hook path.
 func probeHarness(t *testing.T, tc harnessCase, probes bool) *harness {
 	t.Helper()
 	h := tc.make(t)
@@ -137,11 +143,13 @@ func probeHarness(t *testing.T, tc harnessCase, probes bool) *harness {
 			h.host.Shutdown("test done")
 		}
 	})
-	if probes {
-		for _, event := range []string{"before_provider_request", "before_provider_headers"} {
-			runConformanceCommandArgs(t, h, "event_mutate_probe", event)
-			runConformanceCommandArgs(t, h, "event_mutate_probe", event+" fail")
-		}
+	if !probes {
+		runConformanceCommandArgs(t, h, "event_probe_on", "before_provider_request")
+		return h
+	}
+	for _, event := range []string{"before_provider_request", "before_provider_headers"} {
+		runConformanceCommandArgs(t, h, "event_mutate_probe", event)
+		runConformanceCommandArgs(t, h, "event_mutate_probe", event+" fail")
 	}
 	return h
 }
@@ -240,9 +248,12 @@ func newPiMessagesProbeProvider(baseURL string) ai.Provider {
 	return ai.NewPiMessagesProvider(ai.PiMessagesConfig{ProviderID: "radius", Model: "probe", APIKey: "fixture-key", BaseURL: baseURL})
 }
 
-// sendRecordedRequest sends one prompt through a real Session over the harness's Runner and the provider newProvider builds on a recording server, and returns
-// the request the server received.
-func sendRecordedRequest(t *testing.T, h *harness, newProvider func(baseURL string) ai.Provider) recordedRequest {
+// stamped matches the values of a request that no two runs of it share: the time of a message and the id of the session.
+var stamped = regexp.MustCompile(`"(timestamp|sessionId)":(?:[0-9]+|"[^"]*")`)
+
+// sendRecordedRequest sends one prompt through a real Session over the harness's Runner (working in cwd) and the provider newProvider builds on a recording
+// server, and returns the request the server received.
+func sendRecordedRequest(t *testing.T, h *harness, cwd string, newProvider func(baseURL string) ai.Provider) recordedRequest {
 	t.Helper()
 	var mu sync.Mutex
 	var requests []recordedRequest
@@ -264,7 +275,7 @@ func sendRecordedRequest(t *testing.T, h *harness, newProvider func(baseURL stri
 	defer server.Close()
 	provider := newProvider(server.URL)
 	defer func() { _ = provider.Close() }()
-	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
+	services, err := coding.CreateAgentSessionServices(coding.CreateAgentSessionServicesOptions{CWD: cwd, AgentDir: t.TempDir()})
 	if err != nil {
 		t.Fatal(err)
 	}
