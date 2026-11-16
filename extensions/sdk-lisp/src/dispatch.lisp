@@ -242,6 +242,23 @@
 
 (declaim (ftype function user-bash-operations-reply tool-start-begin tool-start-respond tool-start-end tool-start-release tool-batches-reserve))
 
+(defun event-edit-messages (event data)
+  "The message objects of an event a handler may edit in place, by the position the reply names them at (_pigEventEdits): message_end has one."
+  (cond ((equal event "message_end") (list (jget data "message")))
+        (t nil)))
+
+(defun snapshot-event-messages (messages)
+  "The JSON text of each message as the handler receives it, or NIL for a value that is no table."
+  (mapcar (lambda (message) (and (hash-table-p message) (to-json message))) messages))
+
+(defun event-message-edits (messages before)
+  "The messages whose JSON text the handler changed, each at its position, as the handler left it."
+  (loop for message in messages
+        for text in before
+        for at from 0
+        when (and text (not (equal (to-json message) text)))
+          collect (obj "at" at "message" message)))
+
 (defun messages-encoding (messages)
   (handler-case (to-json messages) (error () nil)))
 
@@ -315,19 +332,20 @@
                       (funcall handler ctx data))
              (serious-condition (c) (setf error-message (condition-message c))))
            (values (if (hash-table-p headers) headers (obj)) error-message)))
-        ;; Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it fails afterwards. The host cannot share the table, so the reply carries the message the handler left when its JSON text differs from the one it received, and the handler's result.
+        ;; Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it fails afterwards. The host cannot share the table, so the reply carries the messages the handler left when their JSON text differs from the one it received, and the handler's result.
         ((equal event "message_end")
-         (let* ((message (jget data "message"))
-                (before (and (hash-table-p message) (to-json message)))
+         (let* ((messages (event-edit-messages event data))
+                (before (snapshot-event-messages messages))
                 result error-message)
            (handler-case
                (progn (ticket-begin (request-ticket (ctx-request ctx)))
                       (setf result (funcall handler ctx data)))
              (serious-condition (c) (setf error-message (condition-message c))))
-           (let ((reply (obj "_pigMessageEndResult" result)))
-             (when before
-               (handler-case (unless (equal (to-json message) before) (setf (gethash "_pigMessageEndMessage" reply) message))
-                 (serious-condition (c) (unless error-message (setf error-message (condition-message c))))))
+           (let ((reply (obj "_pigEventResult" result)))
+             (handler-case
+                 (let ((edits (event-message-edits messages before)))
+                   (when edits (setf (gethash "_pigEventEdits" reply) (coerce edits 'vector))))
+               (serious-condition (c) (unless error-message (setf error-message (condition-message c)))))
              (values reply error-message))))
         ;; Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the table, so the reply names the members the handler left different from the ones it received (JSON text), with their new values, and, of those, the ones it edited in the very object it received (EQ) instead of replacing; it carries them also when the handler failed.
         ((equal event "tool_result")

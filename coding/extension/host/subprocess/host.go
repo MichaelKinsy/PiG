@@ -4987,7 +4987,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			}
 			// upstream: runner.ts emitMessageEnd hands every handler the one event.message and agent-session.ts stores that object, so a handler's in-place edit of it is the message the later handlers, turn_end, agent_end and the saved entry hold. An extension process cannot share the object: every SDK's reply carries the message it left, when that differs from the one it received, even if the handler failed.
 			if event == "message_end" && len(args) > 0 && len(resp.Response.Result) > 0 {
-				result, err := unwrapMessageEndReply(args[0], resp.Response.Result)
+				result, err := unwrapEventReply(event, args[0], resp.Response.Result)
 				if err != nil {
 					return nil, err
 				}

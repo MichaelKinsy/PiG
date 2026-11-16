@@ -37,6 +37,7 @@ var bundledFiles = []string{
 	"editor_hooks.go",
 	"event_args_memo.go",
 	"event_bus.go",
+	"event_edits_reply.go",
 	"event_message.go",
 	"event_stream.go",
 	"events.go",
@@ -97,7 +98,6 @@ var bundledFiles = []string{
 	"lossless_json.go",
 	"mcp_extension_options.go",
 	"mcp_servers.go",
-	"message_end_reply.go",
 	"model_registry.go",
 	"model_registry_runtime.go",
 	"model_runtime.go",
@@ -228,4 +228,4 @@ var bundledFiles = []string{
 }
 
 // stagedHash is the staging hash of the files, as pigsdk names a staged SDK by it: the first 16 hex digits.
-const stagedHash = "28ec740280e16bdf"
+const stagedHash = "2d5e90dd7a87ea97"

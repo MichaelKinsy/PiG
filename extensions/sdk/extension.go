@@ -1727,9 +1727,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 		}
 		if req.Event == "message_end" {
-			object := data["message"]
+			objects := eventMessages(req.Event, data)
 			editReply = func(result any) any {
-				return messageEndReply(object, result, func() any { return sentMember("message") })
+				return eventEditsReply(objects, result, func() []any { return sentEventMessages(req.Event, sentMember) })
 			}
 		}
 		if req.Event == "tool_result" {

@@ -792,21 +792,47 @@ func (p *ToolCallResponsePayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MessageEndResponsePayload is the result of an extension's message_end handler, from every SDK. Message is the event's message when the handler left it different from the one it received (an in-place edit, which Pi's later handlers, turn_end, agent_end and the stored entry all hold); an omitted Message means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
-type MessageEndResponsePayload struct {
-	Message json.RawMessage `json:"_pigMessageEndMessage"`
-	Result  json.RawMessage `json:"_pigMessageEndResult"`
+// EventResponsePayload is the result of an extension's message_start, message_end, turn_end or agent_end handler, from every SDK (turn_end's reply carries it beside its boundary members). Edits are the messages of the event the handler left different from the ones it received (an in-place edit, which Pi's later handlers, the saved entry and the next provider request all hold), each at its position in the event's list of messages; an omitted Edits means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
+type EventResponsePayload struct {
+	Edits  []EventEdit     `json:"_pigEventEdits"`
+	Result json.RawMessage `json:"_pigEventResult"`
 }
 
-func (p *MessageEndResponsePayload) UnmarshalJSON(data []byte) error {
-	type messageEndResponsePayload MessageEndResponsePayload
+func (p *EventResponsePayload) UnmarshalJSON(data []byte) error {
+	type eventResponsePayload EventResponsePayload
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
-	var decoded messageEndResponsePayload
+	var decoded eventResponsePayload
 	if err := decoder.Decode(&decoded); err != nil {
 		return err
 	}
-	*p = MessageEndResponsePayload(decoded)
+	*p = EventResponsePayload(decoded)
+	return nil
+}
+
+// EventEdit is one message of an event as a handler left it: At is its position in the messages the event holds (message_start and message_end: 0; turn_end: 0 for the assistant message, then the tool results; agent_end: the index in messages) and Message the message.
+type EventEdit struct {
+	At      int
+	Message json.RawMessage
+}
+
+func (e *EventEdit) UnmarshalJSON(data []byte) error {
+	var decoded struct {
+		At      *int            `json:"at"`
+		Message json.RawMessage `json:"message"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&decoded); err != nil {
+		return err
+	}
+	if decoded.At == nil {
+		return errors.New("an edit names no position (at)")
+	}
+	if text := bytes.TrimSpace(decoded.Message); len(text) == 0 || text[0] != '{' {
+		return errors.New("an edit carries no message object")
+	}
+	*e = EventEdit{At: *decoded.At, Message: decoded.Message}
 	return nil
 }
 

@@ -3564,14 +3564,8 @@ impl Extension {
                         .and_then(|payload| serde_json::to_string(payload).ok())
                 })
                 .flatten();
-                // The message a message_end handler is handed, as the host sent it: the reply carries the message the handler left when it differs.
-                let message_end_before = (req.event.as_deref() == Some("message_end"))
-                    .then(|| {
-                        data.get("message")
-                            .filter(|message| message.is_object())
-                            .and_then(|message| serde_json::to_string(message).ok())
-                    })
-                    .flatten();
+                // The messages an event's handler is handed that it may edit in place, as the host sent them: the reply carries the ones the handler left different.
+                let event_messages_before = event_message_texts(req.event.as_deref(), &data);
                 // The members of a tool_result event as the host sent them, with whether each is an object or a list: the reply names the ones the handler left different.
                 let tool_result_before = (req.event.as_deref() == Some("tool_result")).then(|| {
                     [
@@ -3714,13 +3708,12 @@ impl Extension {
                     }
                     value = Some(reply);
                 }
-                // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it failed. The reply carries the message the handler left when the JSON text differs from the one it received (member order is an edit), and the handler's result.
-                if let Some(before) = message_end_before {
-                    let mut reply = serde_json::json!({ "_pigMessageEndResult": value });
-                    if let Some(after) = data.get("message")
-                        && serde_json::to_string(after).ok().as_deref() != Some(before.as_str())
-                    {
-                        reply["_pigMessageEndMessage"] = after.clone();
+                // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it failed. The reply carries the messages the handler left when the JSON text differs from the one it received (member order is an edit), and the handler's result.
+                if let Some(before) = event_messages_before {
+                    let mut reply = serde_json::json!({ "_pigEventResult": value });
+                    let edits = event_message_edits(req.event.as_deref(), &data, &before);
+                    if !edits.is_empty() {
+                        reply["_pigEventEdits"] = Value::Array(edits);
                     }
                     value = Some(reply);
                 }
@@ -4054,6 +4047,46 @@ pub fn report_load_failure(sock_path: &str) -> io::Result<()> {
         return Ok(());
     }
     UnixStream::connect(sock_path).map(drop)
+}
+
+/// The message objects of an event a handler may edit in place, by the position the reply names them at (`_pigEventEdits`): message_end has one.
+fn event_messages<'a>(event: Option<&str>, data: &'a Value) -> Vec<Option<&'a Value>> {
+    match event {
+        Some("message_end") => vec![data.get("message")],
+        _ => Vec::new(),
+    }
+}
+
+/// The JSON text of each message of the event as the handler receives it, or `None` for an event with no messages. A value that is no object has no text: it is no edit.
+fn event_message_texts(event: Option<&str>, data: &Value) -> Option<Vec<Option<String>>> {
+    let messages = event_messages(event, data);
+    if messages.is_empty() {
+        return None;
+    }
+    Some(
+        messages
+            .iter()
+            .map(|message| {
+                message
+                    .filter(|message| message.is_object())
+                    .and_then(|message| serde_json::to_string(message).ok())
+            })
+            .collect(),
+    )
+}
+
+/// The messages whose JSON text the handler changed (member order is an edit), each at its position, as the handler left it.
+fn event_message_edits(event: Option<&str>, data: &Value, before: &[Option<String>]) -> Vec<Value> {
+    event_messages(event, data)
+        .iter()
+        .enumerate()
+        .filter_map(|(at, message)| {
+            let message = (*message)?;
+            let was = before.get(at)?.as_deref()?;
+            (serde_json::to_string(message).ok().as_deref() != Some(was))
+                .then(|| serde_json::json!({ "at": at, "message": message }))
+        })
+        .collect()
 }
 
 /// Keeps a notify the host sent before the ready. A state is older than the ready's snapshot, so `run` applies it before that snapshot; any other notify is served by the main loop once the extension is ready, in arrival order. Neither is dropped, and neither fails the load.

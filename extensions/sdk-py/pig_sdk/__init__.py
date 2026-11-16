@@ -1383,6 +1383,23 @@ def _json_text(value: Any) -> str:
         return _dumps_deep(value)
 
 
+def _event_edit_messages(name: str, data: dict[str, Any]) -> list[Any]:
+    """The message objects of an event a handler may edit in place, by the position the reply names them at (``_pigEventEdits``): message_end has one. The reply is about these objects, so assigning another value to the member changes nothing, as assigning event.message changes nothing in Pi."""
+    if name == "message_end":
+        return [data.get("message")]
+    return []
+
+
+def _snapshot_event_messages(messages: list[Any]) -> list[str | None]:
+    """The JSON text of each message as the handler received it (member order included), or None for a value that is no dict."""
+    return [_json_text(message) if isinstance(message, dict) else None for message in messages]
+
+
+def _event_message_edits(messages: list[Any], before: list[str | None]) -> list[dict[str, Any]]:
+    """The messages whose JSON text the handler changed, each at its position, as the handler left it."""
+    return [{"at": at, "message": message} for at, (message, text) in enumerate(zip(messages, before, strict=True)) if text is not None and _json_text(message) != text]
+
+
 def _json_loads(text: str) -> Any:
     """json.loads of ``text``, read with a stack of its own when it nests past the interpreter's limit (the host's values nest up to 10000 levels). A value nested past MAX_FRAME_DEPTH raises RecursionError; malformed JSON raises ValueError."""
     try:
@@ -6612,8 +6629,8 @@ class Extension:
                     return
                 # Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, turn_end, agent_end, the entry and the next request hold, even when it fails afterwards. The host cannot share the dict, so the reply carries the message the handler left when its JSON text differs from the one it received (member order included). Assigning a new dict to data["message"] changes nothing, as assigning event.message changes nothing in Pi.
                 if req.get("event") == "message_end":
-                    end_message = data.get("message")
-                    before = _json_text(end_message) if isinstance(end_message, dict) else None
+                    event_messages = _event_edit_messages(req["event"], data)
+                    before = _snapshot_event_messages(event_messages)
                     result = None
                     error = None
                     try:
@@ -6622,13 +6639,13 @@ class Extension:
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve message edits before reporting the handler error.
                         error = {"message": str(exc)}
-                    reply = {"_pigMessageEndResult": result}
-                    if before is not None:
-                        try:
-                            if _json_text(end_message) != before:
-                                reply["_pigMessageEndMessage"] = end_message
-                        except Exception as exc:  # noqa: BLE001 - A message that cannot be written is the handler's error.
-                            error = error or {"message": str(exc)}
+                    reply = {"_pigEventResult": result}
+                    try:
+                        edits = _event_message_edits(event_messages, before)
+                        if edits:
+                            reply["_pigEventEdits"] = edits
+                    except Exception as exc:  # noqa: BLE001 - A message that cannot be written is the handler's error.
+                        error = error or {"message": str(exc)}
                     self._respond(req_id, reply, error)
                     return
                 # Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the dict, so the reply names the members the handler left different from the ones it received (JSON text, member order included), with their new values, and, of those, the ones it edited in the very object it received instead of replacing; the reply carries them also when the handler failed.

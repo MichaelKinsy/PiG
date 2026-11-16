@@ -135466,6 +135466,50 @@
       "shapeHash": "sha256:851f0ac2bc384ed2965e09fa07aa9d13e4d037a18b817147883f748da627bbe6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#EventEdit",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "EventEdit",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "EventEdit"
+      },
+      "shapeHash": "sha256:ce721754cc7bda2545e01b0885182b1115f0d4c20995e75696c94f48ef97b312"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#EventEdit.UnmarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "EventEdit.UnmarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data []byte) error"
+      },
+      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#EventResponsePayload",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "EventResponsePayload",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "EventResponsePayload"
+      },
+      "shapeHash": "sha256:17faa0ace2a64f326e30e4a6ea9b4cb06923ab9e30028f84b02dcc2fb023d2c7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#EventResponsePayload.UnmarshalJSON",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "EventResponsePayload.UnmarshalJSON",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(data []byte) error"
+      },
+      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#EventStream",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "EventStream",
@@ -140480,28 +140524,6 @@
         "type": "McpServersResult"
       },
       "shapeHash": "sha256:f45166b1fd38bcfca3501a1d1e93e64be3e15e7d7b30cf28f52cdda5f5be959b"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MessageEndResponsePayload",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "MessageEndResponsePayload",
-      "kind": "type",
-      "exported": true,
-      "shape": {
-        "type": "MessageEndResponsePayload"
-      },
-      "shapeHash": "sha256:0a54cdd52e835c95d81720ab4c63448347f0d78151fd6349a5bf1351bc6df088"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MessageEndResponsePayload.UnmarshalJSON",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "MessageEndResponsePayload.UnmarshalJSON",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(data []byte) error"
-      },
-      "shapeHash": "sha256:2e7a46ef7c2011cd2aa41a3ad171f9b6f5461f06a15b57547cff43508937a222"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#MessageRendererDecl",
@@ -147588,15 +147610,15 @@
       "shapeHash": "sha256:1f871c38ba57aa870eeecfa15d5f546b05b33e6b27df89d5cc3134015ef697d3"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#applyMessageEndEdit",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#applyEventEdits",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "applyMessageEndEdit",
+      "name": "applyEventEdits",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(event any, edited encoding/json.RawMessage) error"
+        "type": "func(event any, edits []EventEdit) error"
       },
-      "shapeHash": "sha256:a0a6c3a4ae404fd1770f2b72ee8ae277f4f20539853eef80134bd2d010782287"
+      "shapeHash": "sha256:368b5517000dac87822403aed37cfe8e9ce99fa08de0a8419c4d0b88dcb5fd13"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#applyPromptOptionEdits",
@@ -151757,6 +151779,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#eventMessage",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "eventMessage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event any, at int) (github.com/MichaelKinsy/PiG/agent.AgentMessage, bool)"
+      },
+      "shapeHash": "sha256:424adb786088da493552e22160aaf0d9313290f087aa004e9107689b7be8ceb6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#eventPartial",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "eventPartial",
@@ -151766,6 +151799,17 @@
         "type": "func(event any, swap func(*github.com/MichaelKinsy/PiG/ai.AssistantMessage) *github.com/MichaelKinsy/PiG/ai.AssistantMessage) (any, bool)"
       },
       "shapeHash": "sha256:6e0dd6935f1c114bc602a4be2fdb5f1214abe33a0b85bd2da676eaafdcf450e7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#eventResultMember",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "eventResultMember",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#execCallKey",
@@ -155495,17 +155539,6 @@
         "type": "memberAdmissionKey"
       },
       "shapeHash": "sha256:9cd2b541accaaf79830677322de3860836b0d903c208679c0223a1c3595e12fe"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#messageEndResultMember",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "messageEndResultMember",
-      "kind": "constant",
-      "exported": false,
-      "shape": {
-        "type": "untyped string"
-      },
-      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#messageUpdateFrame",
@@ -164704,15 +164737,15 @@
       "shapeHash": "sha256:3ca09fda6e86b41fb47d8aaae75e71e2919f87ed20fa07d753e037e19cc661c5"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#unwrapMessageEndReply",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#unwrapEventReply",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "unwrapMessageEndReply",
+      "name": "unwrapEventReply",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(event any, raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, error)"
+        "type": "func(name string, event any, raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) (github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, error)"
       },
-      "shapeHash": "sha256:663963b66ed0df130d51fdb92484f21f4c778a723006a7f568fa2cbf8281021f"
+      "shapeHash": "sha256:0779f0bedd894826f0e6a50e860b5e7da0066bd8b81bc2bbd17464195b426a83"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#unwrapToolResultReply",
@@ -228108,6 +228141,28 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#eventEditsReply",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "eventEditsReply",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(objects []any, result any, sent func() []any) any"
+      },
+      "shapeHash": "sha256:81cfd87e9813c7b463c1b92ab6b38ff6948b6e0ba55e0d769c60cfd355cad9b8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#eventMessages",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "eventMessages",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event string, data map[string]any) []any"
+      },
+      "shapeHash": "sha256:68f35eb3824f5a254b4a0433030ba217b680db3423b310b5975ef3dd05897f4b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#eventReplica",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "eventReplica",
@@ -230427,17 +230482,6 @@
         "type": "func(value any, name string) (any, bool)"
       },
       "shapeHash": "sha256:2c72c3f955ac0335836305d2e77f88b8ebe44d401febf81873aadd47758b0048"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#messageEndReply",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "messageEndReply",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(object any, result any, sent func() any) any"
-      },
-      "shapeHash": "sha256:4da7cc2e23060be894f0eabfc4f0c7b32a850eea01c5d068e2816a80877d48a5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#messageFromEntry",
@@ -233287,6 +233331,17 @@
         "type": "func(conn *conn, encoded github.com/MichaelKinsy/PiG/extensions/sdk/internal/kitwire.Encoded, write func(view github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) error) error"
       },
       "shapeHash": "sha256:a4368bd46d5adf91f124c4dcc13722d5a498abefc5f200bea3588d72f5d1c822"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#sentEventMessages",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "sentEventMessages",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event string, sentMember func(member string) any) []any"
+      },
+      "shapeHash": "sha256:05bfde05d406913dd9134317d61b5e9c68b864995ee0d6d32715749f39739f81"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#sentImages",
