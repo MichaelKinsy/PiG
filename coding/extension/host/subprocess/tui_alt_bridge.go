@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"maps"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -273,7 +274,10 @@ func (t *tuiAltTerminal) update(block *tuiAltTerminalBlock) bool {
 type tuiAltComponent struct {
 	state *tuiAltScreenState
 	key   string
-	caps  tuiAltCaps
+	// caps are the members the extension named with the component's key, the newest of the calls that named it. Each call that names the component stores a fresh
+	// copy, and the screen reads them from the goroutine of a frame, of an input delivery, of a mouse event and of a focus change, so a reader sees one whole
+	// value and takes no lock (a lock would put a reader that the frame lock waits for behind s.mu).
+	caps atomic.Pointer[tuiAltCaps]
 }
 
 func (c *tuiAltComponent) Render(width int) []string {
@@ -291,17 +295,17 @@ func (c *tuiAltComponent) Invalidate() {
 }
 
 func (c *tuiAltComponent) HandleInput(data string) {
-	if c.caps.Input {
+	if c.caps.Load().Input {
 		_ = c.state.callback("input", map[string]any{"key": c.key, "data": data}, nil)
 	}
 }
 
-func (c *tuiAltComponent) WantsKeyRelease() bool { return c.caps.WantsKeyRelease }
+func (c *tuiAltComponent) WantsKeyRelease() bool { return c.caps.Load().WantsKeyRelease }
 
 // CapturesViewportInput is the component's current capturesViewportInput (Component.capturesViewportInput in packages/tui/src/tui.ts), which the
 // screen reads whenever a viewport key arrives: the extension answers a callback with the value it holds now.
 func (c *tuiAltComponent) CapturesViewportInput() bool {
-	if !c.caps.CapturesViewportInput {
+	if !c.caps.Load().CapturesViewportInput {
 		return false
 	}
 	var result struct {
@@ -314,7 +318,7 @@ func (c *tuiAltComponent) CapturesViewportInput() bool {
 }
 
 func (c *tuiAltComponent) SetFocused(focused bool) {
-	if c.caps.Focusable {
+	if c.caps.Load().Focusable {
 		_ = c.state.callback("focus", map[string]any{"key": c.key, "focused": focused}, nil)
 	}
 }
@@ -354,7 +358,7 @@ func (r *tuiAltMouseResult) tuiResult() *tui.TuiMouseEventResult {
 }
 
 func (c *tuiAltComponent) HandleMouse(event tui.TuiMouseEvent) *tui.TuiMouseEventResult {
-	if !c.caps.Mouse {
+	if !c.caps.Load().Mouse {
 		return nil
 	}
 	var result struct {
@@ -379,14 +383,17 @@ func (s *tuiAltScreenState) component(key *string, caps *tuiAltCaps) (*tuiAltCom
 	defer s.mu.Unlock()
 	if c, ok := s.components[*key]; ok {
 		if caps != nil {
-			c.caps = *caps
+			named := *caps
+			c.caps.Store(&named)
 		}
 		return c, nil
 	}
 	if caps == nil {
 		return nil, fmt.Errorf("tui.alt: unknown component %q", *key)
 	}
-	c := &tuiAltComponent{state: s, key: *key, caps: *caps}
+	c := &tuiAltComponent{state: s, key: *key}
+	named := *caps
+	c.caps.Store(&named)
 	s.components[*key] = c
 	s.byComp[c] = *key
 	return c, nil
