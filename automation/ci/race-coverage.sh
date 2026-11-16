@@ -6,12 +6,14 @@
 # `coding/extension` and the extension SDK module outside all of them). A nested Go module is one entry (its directory),
 # run as its own module by test-race-nightly.sh (with GOWORK=off, or in the workspace when its entry says `workspace`). Packages that only share state behind a mutex may be listed too. The
 # gate also fails on an entry whose directory is gone, on a group the nightly workflow's matrix does not run, on a
-# duplicate entry, and on an exempt entry without a reason.
+# duplicate entry, and on an exempt entry without a reason. It also fails on a unit with tests anywhere (the test, automation and
+# bench trees the goroutine scan skips included) that is in no group and not excluded with a reason in race-exclusions.txt.
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$root"
 list=automation/ci/race-packages.txt
+exclusions=automation/ci/race-exclusions.txt
 workflow=.github/workflows/nightly.yml
 
 # Goroutine and timer starts: `go f(...)`, `go func(`, errgroup/WaitGroup `.Go(`, time.AfterFunc.
@@ -68,7 +70,7 @@ while IFS= read -r line; do
   if [[ "$group" != exempt && "${reason:-}" == workspace && ! -f "$path/go.mod" ]]; then
     echo "race-coverage: $path is marked workspace but is not a nested Go module" >&2; fail=1
   fi
-  if [[ "$group" != exempt ]] && ! grep -Eq "group:.*[[:space:],[]${group}[],[:space:]]" "$workflow"; then
+  if [[ "$group" != exempt ]] && ! grep -Eq "group:.*[[:space:],[]${group}[],}[:space:]]" "$workflow"; then
     echo "race-coverage: group $group of $path is not in the matrix of $workflow" >&2; fail=1
   fi
   if [[ ! -d "$path" ]]; then echo "race-coverage: $list names $path, which does not exist" >&2; fail=1; continue; fi
@@ -83,5 +85,63 @@ while IFS= read -r path; do
   echo "race-coverage: $path starts goroutines or timers and has tests but is in no -race group; add it to $list (a nightly group, or exempt with a reason)" >&2
   fail=1
 done < <(comm -23 "$work/needed" "$work/listed.sorted")
+
+# Completeness: every unit with tests (a package directory, or a nested module as one unit, anywhere but the paths of tested_skip, including the trees `skip` leaves out of the goroutine scan) is in a race group or exempt in $list, or is named with a reason in $exclusions. A unit that starts goroutines or timers cannot be excluded: the check above needs it in $list. The file carries `ceiling N`, the number of its entries: an entry added or removed without moving the ceiling fails, so the list shrinks on purpose and grows only in a visible edit.
+tested_skip='^\./(\.upstream|\.git|node_modules|third_party|tmp)(/|$)|/testdata(/|$)'
+all_modules=()
+while IFS= read -r mod; do
+  dir=${mod%/go.mod}
+  [[ "$dir" == . ]] && continue
+  grep -Eq "$tested_skip" <<<"$dir/" && continue
+  all_modules+=("$dir")
+done < <(find . -name go.mod -not -path './.upstream/*' -not -path '*/node_modules/*' | sort)
+tested_unit_of() { # directory -> the innermost nested module that contains it, or itself
+  local d=$1 m best=$1
+  for m in ${all_modules[@]+"${all_modules[@]}"}; do
+    case "$d/" in "$m"/*) if [[ "$best" == "$d" || ${#m} -gt ${#best} ]]; then best=$m; fi ;; esac
+  done
+  printf '%s\n' "$best"
+}
+: >"$work/tested"
+while IFS= read -r file; do
+  dir=${file%/*}
+  grep -Eq "$tested_skip" <<<"$dir/" && continue
+  tested_unit_of "$dir" >>"$work/tested"
+done < <(find . -name '*_test.go' -not -path './.upstream/*' -not -path '*/node_modules/*' -not -path './.git/*' -not -path './tmp/*' | sort)
+sort -u -o "$work/tested" "$work/tested"
+
+: >"$work/excluded"
+ceiling=
+entries=0
+while IFS= read -r line; do
+  line=${line%%#*}
+  [[ -z "${line//[[:space:]]/}" ]] && continue
+  read -r path reason <<<"$line"
+  if [[ "$path" == ceiling ]]; then ceiling=${reason:-}; continue; fi
+  entries=$((entries + 1))
+  if [[ -z "${reason:-}" ]]; then echo "race-coverage: exclusion $path in $exclusions has no reason" >&2; fail=1; fi
+  if [[ ! -d "$path" ]]; then echo "race-coverage: $exclusions names $path, which does not exist" >&2; fail=1; continue; fi
+  printf '%s\n' "$path" >>"$work/excluded"
+done <"$exclusions"
+if [[ ! "$ceiling" =~ ^[0-9]+$ ]]; then echo "race-coverage: $exclusions has no \`ceiling <count>\` line" >&2; fail=1
+elif [[ "$ceiling" -ne "$entries" ]]; then
+  echo "race-coverage: $exclusions has $entries exclusions but its ceiling is $ceiling; the list only shrinks: lower the ceiling to the number of entries after removing one, and never raise it for a new package (put the package in a group of $list)" >&2; fail=1
+fi
+sort "$work/excluded" >"$work/excluded.sorted"
+duplicate=$(uniq -d "$work/excluded.sorted")
+if [[ -n "$duplicate" ]]; then echo "race-coverage: excluded twice in $exclusions: $duplicate" >&2; fail=1; fi
+sort -u -o "$work/excluded.sorted" "$work/excluded.sorted"
+while IFS= read -r path; do
+  echo "race-coverage: $path is in a race group or exempt in $list and also excluded in $exclusions; drop the exclusion and lower the ceiling" >&2; fail=1
+done < <(comm -12 "$work/excluded.sorted" "$work/listed.sorted")
+while IFS= read -r path; do
+  echo "race-coverage: $path starts goroutines or timers and cannot be excluded in $exclusions; put it in a group of $list" >&2; fail=1
+done < <(comm -12 "$work/excluded.sorted" "$work/needed")
+while IFS= read -r path; do
+  echo "race-coverage: $path has no tests, so $exclusions need not exclude it; drop the entry and lower the ceiling" >&2; fail=1
+done < <(comm -23 "$work/excluded.sorted" "$work/tested")
+while IFS= read -r path; do
+  echo "race-coverage: $path has tests but is in no -race group of $list and not excluded in $exclusions; add it to a nightly group, or exempt it there with a reason" >&2; fail=1
+done < <(comm -23 "$work/tested" "$work/listed.sorted" | comm -23 - "$work/excluded.sorted")
 if [[ $fail -ne 0 ]]; then exit 1; fi
-echo "race-coverage: $(wc -l <"$work/needed" | tr -d ' ') concurrency packages, each in a nightly -race group or exempt with a reason."
+echo "race-coverage: $(wc -l <"$work/needed" | tr -d ' ') concurrency packages, each in a nightly -race group or exempt with a reason; $(wc -l <"$work/tested" | tr -d ' ') units with tests, $entries of them excluded with a reason."
