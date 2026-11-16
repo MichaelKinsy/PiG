@@ -288,7 +288,9 @@ type Host struct {
 	toolRegistrationMu sync.Mutex
 	mu                 sync.Mutex
 	exts               map[string]*managedExt
-	xref               xrefHub
+	// lingering holds the removed generations that keep their process because they still own a provider, a bridged OAuth login or a virtual model (lingerRemoved). Guarded by mu.
+	lingering map[*managedExt]struct{}
+	xref      xrefHub
 	// providerConfigRefs maps a provider to the xref of its effective registered configuration root in the owning Node realm.
 	providerConfigRefs map[string]providerConfigRef
 	// configRefreshes holds the publish callback of each running config-form refreshModels request (providerRefreshModels), keyed by connection and request.
@@ -736,8 +738,10 @@ type managedExt struct {
 	// share counts the extensions hosted by this isolated Node process, which Pi's loader re-invokes factories in across reloads. procOwner is the extension that spawned it, and retainedFrom the process a pending start will re-invoke its factory in.
 	share         *processShare
 	shareReleased atomic.Bool
-	procOwner     *managedExt
-	retainedFrom  *processShare
+	// lingerHold is set while me holds a reference on its packed cell's process as a lingering generation (packedProcessState.holdForLinger).
+	lingerHold   atomic.Bool
+	procOwner    *managedExt
+	retainedFrom *processShare
 
 	// toolRendererResolvers is the extension's pi.registerToolRenderer state.
 	toolRendererResolvers toolRendererResolvers
@@ -2802,6 +2806,7 @@ func (h *Host) Shutdown(reason string) {
 	for _, me := range exts {
 		h.shutdownExt(me.config.Name)
 	}
+	h.stopLingering()
 	// Drain the stopped processes so none outlives Shutdown with its handles
 	// and cache usage lease still open.
 	for _, me := range exts {
@@ -2970,7 +2975,7 @@ func (me *managedExt) processSurvivesStop() bool {
 		if !me.packedProcess.stopping.Load() {
 			own = 1
 		}
-		return me.packedProcess.share.refs.Load()-own > 0
+		return me.packedProcess.share.refs.Load()-own > 0 || me.packedProcess.heldByOthers(me)
 	case me.share != nil:
 		own := int32(0)
 		if !me.shareReleased.Load() {
@@ -3003,6 +3008,7 @@ func (h *Host) stopManagedSkippingProviders(me *managedExt, reason string, keepP
 	}
 	switch {
 	case me.packedProcess != nil:
+		me.releaseLingerHold()
 		me.packedProcess.stop()
 	case me.share != nil:
 		// The process ends with its last extension; a spawner's own context is the process's and is cancelled with it.
@@ -3306,6 +3312,12 @@ func (h *Host) commitStaged(staged []stagedManagedExt, removed []*managedExt, re
 	}
 	h.syncGeometry(committed)
 
+	// A removed generation that keeps its provider takes its hold on its cell's process before any member of the cell stops: the stop of a replaced member
+	// would otherwise end the process the removed one still answers from.
+	lingered := make(map[*managedExt]bool, len(removed))
+	for _, old := range removed {
+		lingered[old] = h.lingerRemoved(old)
+	}
 	var stoppedNow []*managedExt
 	for _, old := range replaced {
 		if !h.retireGeneration(old, func() {
@@ -3315,6 +3327,9 @@ func (h *Host) commitStaged(staged []stagedManagedExt, removed []*managedExt, re
 		}
 	}
 	for _, old := range removed {
+		if lingered[old] {
+			continue
+		}
 		if !h.retireGeneration(old, func() { h.stopManaged(old, "reload removed") }) {
 			stoppedNow = append(stoppedNow, old)
 		}
