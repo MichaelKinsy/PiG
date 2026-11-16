@@ -2387,6 +2387,45 @@ func Extension() *sdk.Extension {
 		})
 		return nil
 	})
+	// event_edit_probe subscribes to the event named by the argument (`<event> <edit> [fail]`) with a handler that makes one edit of the event's content, details,
+	// isError, message or messages (tool_result, message_end, context), returns nothing and, with fail, fails after the edit
+	// (TestConformance_InPlaceEventEditsFollowPi). Every edit writes the value `other-event-edit`, which no other test uses.
+	ext.Command("event_edit_probe", "Subscribe to the event named by the argument with a handler that edits the event in place and returns nothing", func(ctx sdk.Context, args string) error {
+		words := strings.Fields(args)
+		name, edit, failing := words[0], words[1], len(words) > 2 && words[2] == "fail"
+		const edited = "other-event-edit"
+		text := func() []any { return []any{map[string]any{"type": "text", "text": edited}} }
+		first := func(blocks any) map[string]any { return blocks.([]any)[0].(map[string]any) }
+		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
+			switch name + "/" + edit {
+			case "tool_result/content-assign":
+				data["content"] = text()
+			case "tool_result/details-assign":
+				data["details"] = map[string]any{"k": edited}
+			case "tool_result/iserror-assign":
+				data["isError"] = true
+			case "tool_result/content-deep":
+				first(data["content"])["text"] = edited
+			case "tool_result/details-deep":
+				data["details"].(map[string]any)["k"] = edited
+			case "message_end/deep":
+				first(data["message"].(map[string]any)["content"])["text"] = edited
+			case "message_end/content-assign":
+				data["message"].(map[string]any)["content"] = text()
+			case "message_end/message-assign":
+				data["message"] = map[string]any{"role": "user", "content": text(), "timestamp": 1}
+			case "context/deep":
+				first(data["messages"].([]any)[0].(map[string]any)["content"])["text"] = edited
+			default:
+				return nil, fmt.Errorf("event_edit_probe has no edit %s", name+"/"+edit)
+			}
+			if failing {
+				return nil, fmt.Errorf("failed after the edit")
+			}
+			return nil, nil
+		})
+		return nil
+	})
 	// event_payload_probe reports the JSON of the event the named handler received, so a conformance test compares what every SDK was sent
 	// (TestConformance_EventPayloadsReachEverySDKUnchanged).
 	ext.Command("event_payload_probe", "Subscribe and report the payload of the event named by the argument", func(ctx sdk.Context, args string) error {

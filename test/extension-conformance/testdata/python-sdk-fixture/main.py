@@ -3268,6 +3268,44 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, mutate)
 
     ext.command("event_mutate_probe", "Subscribe to the event named by the argument with a handler that edits its payload or headers in place and returns nothing", event_mutate_probe)
+
+    def event_edit_probe(ctx, args):
+        # Subscribe to the event named by the argument `<event> <edit> [fail]` with a handler that makes one edit of the event's content, details, isError, message or messages (tool_result, message_end, context), returns nothing and, with fail, raises after the edit. Every edit writes the value `other-event-edit`, which no other test uses.
+        words = args.split()
+        name, edit, failing = words[0], words[1], len(words) > 2 and words[2] == "fail"
+        edited = "other-event-edit"
+
+        def text():
+            return [{"type": "text", "text": edited}]
+
+        def make(hctx, data):
+            which = name + "/" + edit
+            if which == "tool_result/content-assign":
+                data["content"] = text()
+            elif which == "tool_result/details-assign":
+                data["details"] = {"k": edited}
+            elif which == "tool_result/iserror-assign":
+                data["isError"] = True
+            elif which == "tool_result/content-deep":
+                data["content"][0]["text"] = edited
+            elif which == "tool_result/details-deep":
+                data["details"]["k"] = edited
+            elif which == "message_end/deep":
+                data["message"]["content"][0]["text"] = edited
+            elif which == "message_end/content-assign":
+                data["message"]["content"] = text()
+            elif which == "message_end/message-assign":
+                data["message"] = {"role": "user", "content": text(), "timestamp": 1}
+            elif which == "context/deep":
+                data["messages"][0]["content"][0]["text"] = edited
+            else:
+                raise RuntimeError("event_edit_probe has no edit " + which)
+            if failing:
+                raise RuntimeError("failed after the edit")
+
+        ext.on_event(name, make)
+
+    ext.command("event_edit_probe", "Subscribe to the event named by the argument with a handler that edits the event in place and returns nothing", event_edit_probe)
     ext.command("event_probe_off", "Unsubscribe the event_probe_on handlers of the event named by the argument", event_probe_on_off)
     def event_payload_probe(ctx, args):
         name = args.strip()

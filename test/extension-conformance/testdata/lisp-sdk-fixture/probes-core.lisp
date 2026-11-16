@@ -884,6 +884,31 @@
                                          (when (hash-table-p zeta) (setf (gethash key zeta) "in-place-edit")))))
                                  (when fail (error "failed after the edit"))
                                  nil)))))
+      ;; event_edit_probe: `<event> <edit> [fail]`, a handler that makes one edit of the event's content, details, isError, message or messages (tool_result, message_end, context), returns nothing and, with fail, signals an error after the edit. Every edit writes the value `other-event-edit`, which no other test uses.
+      (pig:command ext "event_edit_probe" "Subscribe to the event named by the argument with a handler that edits the event in place and returns nothing"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (multiple-value-bind (name rest) (split-first args)
+                      (multiple-value-bind (edit rest) (split-first rest)
+                     (let* ((fail (equal rest "fail"))
+                            (edited "other-event-edit")
+                            (which (concatenate 'string name "/" edit)))
+                       (flet ((text () (vector (pig:obj "type" "text" "text" edited)))
+                              (first-block (blocks) (aref blocks 0)))
+                         (pig:on ext name
+                                 (lambda (hctx data) (declare (ignore hctx))
+                                   (cond
+                                     ((equal which "tool_result/content-assign") (setf (gethash "content" data) (text)))
+                                     ((equal which "tool_result/details-assign") (setf (gethash "details" data) (pig:obj "k" edited)))
+                                     ((equal which "tool_result/iserror-assign") (setf (gethash "isError" data) t))
+                                     ((equal which "tool_result/content-deep") (setf (gethash "text" (first-block (pig:jget data "content"))) edited))
+                                     ((equal which "tool_result/details-deep") (setf (gethash "k" (pig:jget data "details")) edited))
+                                     ((equal which "message_end/deep") (setf (gethash "text" (first-block (pig:jget (pig:jget data "message") "content"))) edited))
+                                     ((equal which "message_end/content-assign") (setf (gethash "content" (pig:jget data "message")) (text)))
+                                     ((equal which "message_end/message-assign") (setf (gethash "message" data) (pig:obj "role" "user" "content" (text) "timestamp" 1)))
+                                     ((equal which "context/deep") (setf (gethash "text" (first-block (pig:jget (aref (pig:jget data "messages") 0) "content"))) edited))
+                                     (t (error "event_edit_probe has no edit ~A" which)))
+                                   (when fail (error "failed after the edit"))
+                                   nil))))))))
       (pig:command ext "event_payload_probe" "Subscribe and report the payload of the event named by the argument"
                    (lambda (ctx args) (declare (ignore ctx))
                      (let ((name (string-trim '(#\Space #\Newline #\Tab) args)))
