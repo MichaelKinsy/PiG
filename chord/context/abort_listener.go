@@ -145,6 +145,10 @@ var noOwner = &abortContext{}
 // (WithAbortSignal, or WithCancel under a parent that is cancelled) runs fn for the first of them to abort, with that one's
 // cause.
 //
+// The guarantee is the canceller's: when its cancel function returns, the listeners have run. A goroutine that sees Err or
+// Done set while that cancel is still running is concurrent with it, as a second thread would be: the listener may not have
+// run yet, so order a step against the return of the cancel, not against what Err shows.
+//
 // stop removes the registration and reports whether it kept fn from running; it is safe to call after fn ran, and from fn
 // itself. A caller whose wait ends without fn having run (its result came first, its owner went away) MUST call it: a
 // registration is held by every source it listens to, and a source may live much longer than the wait, until then. Once fn
