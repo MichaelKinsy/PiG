@@ -47,6 +47,15 @@ func extWithResourcesDiscoverHandler(path string, fn func(extension.ResourcesDis
 
 // ─── EmitBeforeAgentStart ─────────────────────────────────────────────────
 
+func TestEmitBeforeAgentStart_StaleRunnerReturnsErrStaleContext(t *testing.T) {
+	r := inproc.NewRunner(nil, ".")
+	r.Invalidate("")
+	_, err := r.EmitBeforeAgentStart(context.Background(), extension.UserPromptTrigger("p", nil), extension.BuildSystemPromptOptions{})
+	if !errors.Is(err, extension.ErrStaleContext) {
+		t.Errorf("err = %v, want ErrStaleContext", err)
+	}
+}
+
 func TestEmitBeforeAgentStart_NoHandlersReturnsNil(t *testing.T) {
 	r := inproc.NewRunner(nil, ".")
 	got, err := r.EmitBeforeAgentStart(context.Background(), extension.UserPromptTrigger("p", nil), extension.BuildSystemPromptOptions{})
@@ -231,6 +240,15 @@ func TestEmitBeforeAgentStart_HandlerErrorRoutesViaEmitErrorAndContinues(t *test
 }
 
 // ─── EmitResourcesDiscover ────────────────────────────────────────────────
+
+func TestEmitResourcesDiscover_StaleRunnerReturnsErrStaleContext(t *testing.T) {
+	r := inproc.NewRunner(nil, ".")
+	r.Invalidate("")
+	_, err := r.EmitResourcesDiscover(context.Background(), ".", "startup")
+	if !errors.Is(err, extension.ErrStaleContext) {
+		t.Errorf("err = %v, want ErrStaleContext", err)
+	}
+}
 
 // TestEmitResourcesDiscover_NoHandlersReturnsEmptyAggregate: no
 // handlers ⇒ non-nil aggregate with empty slices (NOT nil slices, so

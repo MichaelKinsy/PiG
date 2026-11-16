@@ -39,6 +39,15 @@ func TestEmitInput_NoHandlersReturnsContinue(t *testing.T) {
 	}
 }
 
+func TestEmitInput_StaleRunnerReturnsErrStaleContext(t *testing.T) {
+	r := inproc.NewRunner(nil, ".")
+	r.Invalidate("")
+	_, err := r.EmitInput(context.Background(), "x", nil, "interactive", "")
+	if !errors.Is(err, extension.ErrStaleContext) {
+		t.Errorf("err = %v, want ErrStaleContext", err)
+	}
+}
+
 // TestEmitInput_PureContinueChainReturnsContinue: every handler returns
 // Continue ⇒ runner returns Continue with original text/images.
 func TestEmitInput_PureContinueChainReturnsContinue(t *testing.T) {

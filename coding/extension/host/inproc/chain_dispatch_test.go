@@ -61,6 +61,15 @@ func extWithUserBashHandler(path string, fn func(extension.UserBashEvent, contex
 
 // ─── EmitContext ──────────────────────────────────────────────────────────
 
+func TestEmitContext_StaleRunnerReturnsErrStaleContext(t *testing.T) {
+	r := inproc.NewRunner(nil, ".")
+	r.Invalidate("")
+	_, err := r.EmitContext(context.Background(), nil)
+	if !errors.Is(err, extension.ErrStaleContext) {
+		t.Errorf("err = %v, want ErrStaleContext", err)
+	}
+}
+
 // TestEmitContext_NoHandlersReturnsCloneOfInput: empty runner returns a
 // (shallow) clone of the input messages, not the input slice itself.
 func TestEmitContext_NoHandlersReturnsCloneOfInput(t *testing.T) {
@@ -263,6 +272,15 @@ func TestEmitContext_SubprocessMessageWithoutRoleIsKeptLikePi(t *testing.T) {
 
 // ─── EmitBeforeProviderRequest ────────────────────────────────────────────
 
+func TestEmitBPR_StaleRunnerReturnsErrStaleContext(t *testing.T) {
+	r := inproc.NewRunner(nil, ".")
+	r.Invalidate("")
+	_, err := r.EmitBeforeProviderRequest(context.Background(), nil)
+	if !errors.Is(err, extension.ErrStaleContext) {
+		t.Errorf("err = %v, want ErrStaleContext", err)
+	}
+}
+
 func TestEmitBPR_NoHandlersReturnsInputUnchanged(t *testing.T) {
 	r := inproc.NewRunner(nil, ".")
 	in := map[string]any{"k": "v"}
@@ -320,6 +338,15 @@ func TestEmitBPR_NilHandlerResultDoesNotChangeChain(t *testing.T) {
 }
 
 // ─── EmitUserBash ─────────────────────────────────────────────────────────
+
+func TestEmitUserBash_StaleRunnerReturnsErrStaleContext(t *testing.T) {
+	r := inproc.NewRunner(nil, ".")
+	r.Invalidate("")
+	_, err := r.EmitUserBash(context.Background(), extension.UserBashEvent{})
+	if !errors.Is(err, extension.ErrStaleContext) {
+		t.Errorf("err = %v, want ErrStaleContext", err)
+	}
+}
 
 func TestEmitUserBash_NoHandlersReturnsNil(t *testing.T) {
 	r := inproc.NewRunner(nil, ".")

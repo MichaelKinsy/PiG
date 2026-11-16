@@ -629,7 +629,7 @@ func (s *Session) Reload(ctx context.Context, options ...ReloadOption) error {
 		if previous.Runtime() != nil {
 			previous.Runtime().Reactivate()
 		}
-		previous.InvalidateKeepingRuntime("")
+		previous.InvalidateForReload("")
 		defer func() {
 			if !keepsRuntime && previous.Runtime() != nil {
 				previous.Runtime().Invalidate(previous.StaleMessage())

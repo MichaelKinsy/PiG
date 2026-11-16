@@ -785,7 +785,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if runner != nil && (m.opts.SubprocessHost != nil || m.opts.ReloadBuiltinExtensions != nil) {
 				previous := runner
 				previous.Runtime().Reactivate()
-				previous.InvalidateKeepingRuntime("")
+				previous.InvalidateForReload("")
 				defer func() {
 					if m.newRunner != previous {
 						return
