@@ -568,6 +568,10 @@ type Workers struct {
 	routing   bool
 	idleTimer host.Timer
 	tasks     taskGroup
+	// beforeForkSection is a test seam: `start` calls it, outside any section, just before the section that checks that the component
+	// is open and forks the address's worker, the window in which a `Close` can land between a start's last look at the component and
+	// its fork.
+	beforeForkSection func()
 	// lingering are the processes of workers that exited whose output or channel is still read: a process outside such a
 	// worker's tree holds it (WorkerProcess.Exited). One whose streams ended goes at the next exit; Close releases the rest.
 	// Guarded by the loop.
@@ -893,19 +897,28 @@ func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedL
 		}
 		return host.ResolvedLink{}, c.failLocked(record, cause{err: err, public: &startFailed}, "")
 	}
-	if c.isClosing() {
+	if c.beforeForkSection != nil {
+		c.beforeForkSection()
+	}
+	// Pi checks that the component is not closing and forks in one synchronous step, the fork writing the base's files
+	// (workers.ts:504-509): the check, the base's file and the fork are one section here (`loop.Run` is the owner section: workers has no Batch), so a Close cannot land between them.
+	var forked *child
+	var shutting bool
+	var forkErr error
+	c.loop.Run(func() {
+		if shutting = c.isClosing(); shutting {
+			return
+		}
+		entry, err := c.baseFile()
+		if err != nil {
+			forkErr = err
+			return
+		}
+		forked, forkErr = c.fork(record, entry)
+	})
+	if shutting {
 		return host.ResolvedLink{}, closed()
 	}
-	entry, err := c.baseFile()
-	if err != nil {
-		if c.isClosing() {
-			return host.ResolvedLink{}, closed()
-		}
-		return host.ResolvedLink{}, c.failLocked(record, cause{err: err, public: &startFailed}, "")
-	}
-	var forked *child
-	var forkErr error
-	c.loop.Run(func() { forked, forkErr = c.fork(record, entry) })
 	if forkErr != nil {
 		return host.ResolvedLink{}, c.failLocked(record, cause{err: forkErr, public: &startFailed}, "")
 	}
