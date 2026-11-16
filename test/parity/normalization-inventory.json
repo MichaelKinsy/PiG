@@ -9530,9 +9530,10 @@
         {
           "kind": "duration",
           "paths": [
+            "/**/wall_time_seconds",
             "/**/durationMs"
           ],
-          "reason": "Pi measures each response and tool execution (#10549) with a monotonic clock; the value varies per run. Retain presence, type and position."
+          "reason": "Pi measures each response and tool execution (#10549) with a monotonic clock, and bash.ts:392 rounds the command's wall clock to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; the values vary per run. Retain presence, type, position and Pi's one-decimal number spelling."
         }
       ]
     },
