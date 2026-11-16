@@ -121,8 +121,8 @@ func TestJSONMemberOrdersListParentsBeforeChildrenInWrittenOrder(t *testing.T) {
 	}
 }
 
-// outcomeOf runs the assertions of one scenario over one run per side, as the runner does.
-func outcomeOf(assert AssertSpec, pig, pi string) *ScenarioOutcome {
+// orderedOutcomeOf runs the assertions of one scenario over one run per side, as the runner does.
+func orderedOutcomeOf(assert AssertSpec, pig, pi string) *ScenarioOutcome {
 	o := &ScenarioOutcome{
 		Scenario: &Scenario{Name: "ordered", Driver: "rpc-mode", Covers: []string{"x"}, Assert: assert},
 		Pig:      SystemResults{System: "pig", Runs: []Result{{System: "pig", Output: pig}}},
@@ -134,14 +134,14 @@ func outcomeOf(assert AssertSpec, pig, pi string) *ScenarioOutcome {
 
 func TestOrderedJSONAssertionFailsWhereTheValueAssertionPasses(t *testing.T) {
 	pig, pi := `{"type":"tool","input":{"path":"a","content":"b"}}`, `{"type":"tool","input":{"content":"b","path":"a"}}`
-	if o := outcomeOf(AssertSpec{JSONOutputEqual: true}, pig, pi); !o.Passed() {
+	if o := orderedOutcomeOf(AssertSpec{JSONOutputEqual: true}, pig, pi); !o.Passed() {
 		t.Fatalf("json_output_equal: %s", failures(o))
 	}
-	o := outcomeOf(AssertSpec{JSONOutputOrderedEqual: true}, pig, pi)
+	o := orderedOutcomeOf(AssertSpec{JSONOutputOrderedEqual: true}, pig, pi)
 	if o.Passed() || !strings.Contains(failures(o), "run 1 JSON output: order difference: /0/input: member order pig=") {
 		t.Fatalf("json_output_ordered_equal: passed=%t %s", o.Passed(), failures(o))
 	}
-	if o := outcomeOf(AssertSpec{JSONOutputOrderedEqual: true}, pig, pig); !o.Passed() {
+	if o := orderedOutcomeOf(AssertSpec{JSONOutputOrderedEqual: true}, pig, pig); !o.Passed() {
 		t.Fatalf("equal order failed: %s", failures(o))
 	}
 }
@@ -151,10 +151,10 @@ func TestOrderedJSONAssertionMatchesPigOnlyRecordsInOrder(t *testing.T) {
 	ordered := "{\"type\":\"agent_start\"}\n" + pigOnlyRecord + "\n{\"type\":\"message_start\",\"n\":1}\n"
 	reordered := "{\"type\":\"agent_start\"}\n{\"followUp\":[],\"steering\":[],\"type\":\"queue_update\"}\n{\"type\":\"message_start\",\"n\":1}\n"
 	assert := AssertSpec{JSONOutputOrderedEqual: true, JSONPigOnlyRecords: []JSONPigOnlyRecordRule{pigOnlyRule}}
-	if o := outcomeOf(assert, ordered, pi); !o.Passed() {
+	if o := orderedOutcomeOf(assert, ordered, pi); !o.Passed() {
 		t.Fatalf("the declared divergence failed: %s", failures(o))
 	}
-	if o := outcomeOf(assert, reordered, pi); o.Passed() {
+	if o := orderedOutcomeOf(assert, reordered, pi); o.Passed() {
 		t.Fatal("a pig-only record written in another member order was dropped under json_output_ordered_equal")
 	}
 }
