@@ -60805,6 +60805,26 @@
       ]
     },
     {
+      "id": "BF-f633b88",
+      "title": "A TypeScript extension that sends the bytes of an image in the `images` list of a plugin view (`{ ref…",
+      "symptom": "A TypeScript extension that sends the bytes of an image in the `images` list of a plugin view (`{ ref, mimeType, data }`, with an `image` node that names the `ref`) now compiles: `PiGWireView` has the optional `images` member, `PiGViewImage` types its records and `PiGViewImageNode` types the node.",
+      "rootCause": "PiGWireView declared only root, focus and theme, so the optional images list that the host reads from a view was not a known member, and no type test compiled a view with images",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A TypeScript extension that sends the bytes of an image in the `images` list of a plugin view (`{ ref, mimeType, data }`, with an `image` node that names the `ref`) now compiles: `PiGWireView` has the optional `images` member, `PiGViewImage` types its records and `PiGViewImageNode` types the node. The host accepted this view, as the `ui-views` page says, but the types rejected the object literal as one with an unknown member, so a Node author had to cast it. The plugin view API is unreleased and no release has the type. The type test is `extensions/sdk-ts/typecheck.ts`, which compiles a view with `images` and four wrong shapes that must fail (`make test-sdk-ts`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f633b88012",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f6575ff",
       "title": "`pig install`, `pig remove` and `pig update --extensions` run npm with `--no-audit --no-fund`, wherever they…",
       "symptom": "`pig install`, `pig remove` and `pig update --extensions` run npm with `--no-audit --no-fund`, wherever they already pass `--legacy-peer-deps`, so npm no longer prints audit advice that, followed in the managed package root, would install the host-provided pi packages a second time. bun and pnpm arguments are unchanged.",

@@ -2168,6 +2168,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f5ecdc2](#bf-f5ecdc2) | Settings and `models.json` compat objects keep the members PiG does not model, as Pi 1.2.0 does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f5efecf](#bf-f5efecf) | Chord's objects no longer answer a call `not_ready` during a reload while the caller sees them `live`: a call… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-f6305d9](#bf-f6305d9) | A `new_session`, `fork`, `clone` or `switch_session` in the same RPC batch as a `compact` aborts the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-f633b88](#bf-f633b88) | A TypeScript extension that sends the bytes of an image in the `images` list of a plugin view (`{ ref… | PiG's own defect | All platforms | Unreleased |
 | [BF-f6575ff](#bf-f6575ff) | `pig install`, `pig remove` and `pig update --extensions` run npm with `--no-audit --no-fund`, wherever they… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f68aa40](#bf-f68aa40) | A `delta.Tracker` no longer keeps memory alive that Pi's tracker releases | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f68aa40-2](#bf-f68aa40-2) | `delta.CloneJSON`, `chord.CopyJSON` and draft placements report a Go struct or pointer with Pi's message for… | PiG's own defect | All platforms | 0.5.0 |
@@ -32071,6 +32072,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f6305d9e5a` (2026-10-10)
 - **Tests:** `coding/cli/rpc_replacement_order_test.go::TestRPCReplacementAbortsTheCompactionOfItsBatch`
 - **Release note:** A `new_session`, `fork`, `clone` or `switch_session` in the same RPC batch as a `compact` aborts the compaction instead of waiting for it (D148).
+
+### BF-f633b88
+
+**A TypeScript extension that sends the bytes of an image in the `images` list of a plugin view (`{ ref…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A TypeScript extension that sends the bytes of an image in the `images` list of a plugin view (`{ ref, mimeType, data }`, with an `image` node that names the `ref`) now compiles: `PiGWireView` has the optional `images` member, `PiGViewImage` types its records and `PiGViewImageNode` types the node.
+- **Root cause:** PiGWireView declared only root, focus and theme, so the optional images list that the host reads from a view was not a known member, and no type test compiled a view with images
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f633b88012` (2026-11-15)
+- **Tests:** None recorded.
+- **Release note:** A TypeScript extension that sends the bytes of an image in the `images` list of a plugin view (`{ ref, mimeType, data }`, with an `image` node that names the `ref`) now compiles: `PiGWireView` has the optional `images` member, `PiGViewImage` types its records and `PiGViewImageNode` types the node. The host accepted this view, as the `ui-views` page says, but the types rejected the object literal as one with an unknown member, so a Node author had to cast it. The plugin view API is unreleased and no release has the type. The type test is `extensions/sdk-ts/typecheck.ts`, which compiles a view with `images` and four wrong shapes that must fail (`make test-sdk-ts`).
 
 ### BF-f6575ff
 
