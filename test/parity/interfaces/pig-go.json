@@ -151405,6 +151405,28 @@
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#errTuiAltInFrame",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "errTuiAltInFrame",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(op string) error"
+      },
+      "shapeHash": "sha256:271b272a120dc8f5917a9547e6793013bcbd3c44e51da04a8705e9368d07a37e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#errTuiAltScreenEnded",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "errTuiAltScreenEnded",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "error"
+      },
+      "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#errTypeEngineAbsent",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "errTypeEngineAbsent",
@@ -156815,6 +156837,17 @@
         "type": "func(extName string, customType string, message github.com/MichaelKinsy/PiG/coding/extension.CustomMessage, options github.com/MichaelKinsy/PiG/coding/extension.MessageRenderOptions, conn *Conn, inactivity time.Duration, invalidate func()) *renderProxyComponent"
       },
       "shapeHash": "sha256:f5b7e50bd37e64fa35f93c68461e0acab7127217813da45704dd481d32cf06ce"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#newTuiAltOwner",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "newTuiAltOwner",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, end context.CancelFunc, connDone \u003c-chan struct{}, screen *github.com/MichaelKinsy/PiG/tui.TuiAltScreen) *tuiAltOwner"
+      },
+      "shapeHash": "sha256:5e82288863b0807ef942eb8f5d20c73b0dbed9b3ff03da7818715de512076f20"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#newViewImageStore",
@@ -163681,6 +163714,116 @@
       "shapeHash": "sha256:04ce1d4e97895296e94eb9d02461a55eb9181117c656fbc0507d856a8556f97a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOwner",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltOwner",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "tuiAltOwner"
+      },
+      "shapeHash": "sha256:ce83f17b89ece7a02e7e31df41dc6846dee7f326bca4cb175128b8b599796498"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOwner.armFrame",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltOwner.armFrame",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(due time.Time)"
+      },
+      "shapeHash": "sha256:3730cbd6d7a9f6c7d3698ec6b5abf186d13792430e64b7793efab8ae0e552163"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOwner.close",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltOwner.close",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOwner.do",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltOwner.do",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fn func()) error"
+      },
+      "shapeHash": "sha256:b49d36b6fb8180298317bfd4598c9706e30548e66e273a0cf1d0df173ddf9696"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOwner.onOwner",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltOwner.onOwner",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOwner.post",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltOwner.post",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(fn func()) bool"
+      },
+      "shapeHash": "sha256:aad2321bec8142b1cbf463d4882d72b913fca0163c376b6350def762308cb818"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOwner.run",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltOwner.run",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOwner.signal",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltOwner.signal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOwner.start",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltOwner.start",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOwner.wait",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltOwner.wait",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltRegistry",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "tuiAltRegistry",
@@ -163791,6 +163934,17 @@
       "shapeHash": "sha256:785114291a340bf0820aa6fcb765db4dc037e57a2866a2faa6c7014ba6f7b1d6"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.queryTerminalColors",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "tuiAltScreenState.queryTerminalColors",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(parent string, call *tuiAltCall) (*CallResultPayload, error)"
+      },
+      "shapeHash": "sha256:5a5d48d6f57b53fd17bdb49ff99fb3c557b51633235674c0a414e14d80c5f019"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.run",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "tuiAltScreenState.run",
@@ -163802,15 +163956,15 @@
       "shapeHash": "sha256:013249d6a3cee38835ff6cf104259220c2e1f535c76ba5ae848b72df14974288"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.serveInFrame",
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.serveOnOwner",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "tuiAltScreenState.serveInFrame",
+      "name": "tuiAltScreenState.serveOnOwner",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(parent string, fn func(frame github.com/MichaelKinsy/PiG/tui.AltScreenFrame)) bool"
+        "type": "func(parent string, fn func(m tuiAltMembers, inFrame bool)) bool"
       },
-      "shapeHash": "sha256:04eef7a5ef532853d1bd1ed5f6d9f92919773cd690dcaddc7d8391052510f5ca"
+      "shapeHash": "sha256:1920417822dffad9aca40585044714b79ea105f985896a4e51481fb40b60a71c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltServer",

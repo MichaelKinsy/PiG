@@ -1230,6 +1230,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8ac653e](#bf-8ac653e) | The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native… | PiG's own defect | Windows | Unreleased |
 | [BF-8aff02e](#bf-8aff02e) | `grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8b15be3](#bf-8b15be3) | Tests: the read barrier, which lets a fixture server write its next record only when the client is reading… | PiG's own defect | Linux | Unreleased |
+| [BF-8b6eb22](#bf-8b6eb22) | A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a… | PiG's own defect | All platforms | Unreleased |
 | [BF-8b75dc0](#bf-8b75dc0) | Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8b792f9](#bf-8b792f9) | Ctrl+V pastes files, images and text on Windows and WSL as well as Alt+V (terminals that pass Ctrl+V to the… | PiG's own defect | Windows, WSL | Unreleased |
 | [BF-8b8b8d3](#bf-8b8b8d3) | A session entry member that an extension sets to `null` is written as `null` and read back as `null`, as in… | PiG's own defect | All platforms | Unreleased |
@@ -2102,6 +2103,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ec1e0b6](#bf-ec1e0b6) | A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ec2080a](#bf-ec2080a) | A subprocess extension's `ctx.ui.custom` component now learns when another component shown over it takes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ec409c7](#bf-ec409c7) | A chord client's watch callback returned at once and let a newer script set be delivered while an update ran… | PiG's own defect | All platforms | Unreleased |
+| [BF-ec9984a](#bf-ec9984a) | A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) is now sent the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ecc7b76](#bf-ecc7b76) | fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop | PiG's own defect | All platforms | Unreleased |
 | [BF-ecc923b](#bf-ecc923b) | A packed Rust cell whose two members both failed to build could report the second member's panic as the first… | PiG's own defect | All platforms | Unreleased |
 | [BF-ecf6db9](#bf-ecf6db9) | A chord session's `lastUsed` touch was written even when its request had been cancelled; it is now cancelled… | PiG's own defect | All platforms | Unreleased |
@@ -19058,6 +19060,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/abort_text_pi_test.go::TestProviderAbortTextsMatchPi`, `coding/rpc33_azure_ticks_test.go::TestRPC33AzureTickOrder`
 - **Release note:** Tests: the read barrier, which lets a fixture server write its next record only when the client is reading the socket again, counted bytes per client address. Linux gives one local port to live connections to different servers, so two parallel fixture servers could see the same client address; one of them then waited until its test's deadline, or wrote two records into one read. `TestRPC33AzureTickOrder` failed that way in about one run in a hundred, more often on a loaded machine. The barrier now counts per connection (client and server address).
 
+### BF-8b6eb22
+
+**A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a component it already showed with different members (it gains or loses `handleInput`, `handleMouse`, focus or `wantsKeyRelease`) no longer races the host's reads of those members: a call that named the component again stored them while a key, a mouse event, a focus change or a frame read them, with no lock between the two, so an input could be delivered or withheld by a half-stored value.
+- **Root cause:** tuiAltScreenState.component stored a component's caps under s.mu (tui_alt_bridge.go:382) while HandleInput, WantsKeyRelease, HandleMouse, SetFocused and CapturesViewportInput (:294-357) read the same struct with no lock, on the goroutine of an input delivery, a mouse event, a focus change or a frame. Every SDK names a component's members with each call that names it, so a setFocus on one request goroutine and a key on another stored and read one struct unordered; go test -race reported it in all five readers and across the call boundary, 5 of 5 on the base. No user symptom was observed: the stores carry equal values unless an extension changes the members of a component it already showed.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8b6eb224b8` (2026-11-15)
+- **Tests:** `coding/extension/host/subprocess/tui_alt_caps_race_test.go::TestARenamedComponentsMembersAreNotRacedByTheScreensReads`, `coding/extension/host/subprocess/tui_alt_caps_race_test.go::TestSetFocusAndInputOfAnExtensionScreenDoNotRaceTheComponentsMembers`
+- **Release note:** A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a component it already showed with different members (it gains or loses `handleInput`, `handleMouse`, focus or `wantsKeyRelease`) no longer races the host's reads of those members: a call that named the component again stored them while a key, a mouse event, a focus change or a frame read them, with no lock between the two, so an input could be delivered or withheld by a half-stored value. The host now keeps the members of a component as one value that a call replaces whole. Present since 0.7.0, the first release with the subprocess `TuiAltScreen`.
+
 ### BF-8b75dc0
 
 **Config selector (`pig config`): every key that reaches the search input re-filters and resets the selection…**
@@ -31182,6 +31198,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ec409c76ea` (2026-11-08)
 - **Tests:** `chord/next/surfaces/surfaces_client_test.go::TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet`
 - **Release note:** A chord client's watch callback returned at once and let a newer script set be delivered while an update ran, which left a stale retry armed and doubled the next retry pause; the callback now waits for its update, as Pi awaits it, so the newer set is delivered after the update ended.
+
+### BF-ec9984a
+
+**A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) is now sent the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The host sent a frame from the renderer's timer goroutine or from the call that asked for it, and an input or mouse event from the call that delivered it, with nothing between them, so an extension that keeps state across the two could draw a half-applied input.
+- **Root cause:** Pi runs a TuiAltScreen on one event loop: the terminal's input (tui.ts:995-997), the throttled frame (requestRender arms one setTimeout, :1067-1120) and the extension's own calls are tasks of it, so a component's render and its handleInput never run together and a render never reads what a handler half applied. The subprocess bridge had no such loop: the frame ran on the renderer's timer goroutine or the caller's, input and mouse events on the call goroutine that delivered them, and the extension (which answers each request on a goroutine or thread of its own) was sent a render while it was still answering an input.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ec9984ae6c` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/tui_alt_owner_order_test.go::TestAnExtensionScreensInputAndRenderNeverRunAtOnce`, `coding/extension/host/subprocess/tui_alt_owner_test.go::TestAScheduledFrameRunsOnTheOwner`, `coding/extension/host/subprocess/tui_alt_owner_test.go::TestAnInputHandlersRenderRequestRunsAfterTheHandlerAnswers`
+- **Release note:** A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) is now sent the callbacks of its components one at a time, as Pi runs them on one event loop: a component's `render` no longer reaches the extension while its `handleInput`, `handleMouse` or focus callback is still being answered, and a frame that a handler asks for with `requestRender` runs after the handler returns. Before, the host sent a frame from the renderer's timer goroutine or from the call that asked for it, and an input or mouse event from the call that delivered it, with nothing between them, so an extension that keeps state across the two could draw a half-applied input. Each screen now has one goroutine that sends every callback, runs the throttled frame and runs every call the extension does not make from a callback. Present since 0.7.0, the first release with the subprocess `TuiAltScreen`.
 
 ### BF-ecc7b76
 
