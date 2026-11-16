@@ -49241,6 +49241,36 @@
       "tests": []
     },
     {
+      "id": "BF-cb409e6",
+      "title": "Chord: a context derived by `chordctx.WithAbortSignal` from a signal that is a context made by…",
+      "symptom": "`WithAbortSignal` cancelled it with `context.AfterFunc`, on a goroutine of its own, so code that ran right after the cancel could still see a context derived from the cancelled signal live.",
+      "rootCause": "Pi's withAbortSignal is AbortSignal.any. When a source aborts, every composite derived from it is marked aborted before any listener runs; then the source's own listeners run in the order they were added, then each composite's in the order the composites were created (packages/chord/src/context/index.ts:111-130, 138-153). Measured on Node v24.22.2 by chord/context/testdata/abort_order_oracle.mjs, which TestAbortListenerOrderMatchesPi runs against the pinned Pi: a1 c.aborted=true d.aborted=true / a2 / c1 / c2 / d1.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a context derived by `chordctx.WithAbortSignal` from a signal that is a context made by `chord/context` is now cancelled inside the cancel function of its source, before that function returns and before any abort listener (`OnAbort`) of the source runs, as `AbortSignal.any` marks its composite aborted in Pi. Before, `WithAbortSignal` cancelled it with `context.AfterFunc`, on a goroutine of its own, so code that ran right after the cancel could still see a context derived from the cancelled signal live. `OnAbort` now also runs listeners in Pi's order: the aborted context's own, in the order they were added, then those of the contexts derived from it, in the order those were created. Before, a listener added to a child first ran before one added to its parent. A source from another package (a deadline, the standard library's cancel) still reaches the derived context on a goroutine of its own, and `OnAbort` reports `exact` false for such a context. An embedder of `chord/context` can see all of it; no change was found through the Chord host. `git tag --contains` names v0.7.0 as the first tag with the code.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cb409e6c32",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "chord/context/abort_link_test.go::TestAContextDerivedFromADerivedSignalFollowsEveryCancelOfItsAncestors",
+        "chord/context/abort_link_test.go::TestAContextDerivedFromAForeignSignalFollowsItAndIsNotExact",
+        "chord/context/abort_link_test.go::TestAContextLinkedWhileItsSignalIsCancelledIsNeverLeftLive",
+        "chord/context/abort_link_test.go::TestADerivedContextIsAbortedWhenItsSignalsCancelReturns",
+        "chord/context/abort_link_test.go::TestAnEndedDerivedContextIsHeldByNoSource",
+        "chord/context/abort_link_test.go::TestEveryDerivedContextIsAbortedBeforeTheFirstListenerOfTheSourceRuns",
+        "chord/context/abort_link_test.go::TestOnAbortFromAListenerOfTheSameAbortRunsAtOnceOnce",
+        "chord/context/abort_link_test.go::TestOnAbortRunsAParentsListenersBeforeItsChildrenWhateverTheOrderTheyWereAdded",
+        "chord/context/abort_order_pi_oracle_test.go::TestAbortListenerOrderMatchesPi"
+      ]
+    },
+    {
       "id": "BF-cbc986b",
       "title": "BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file…",
       "symptom": "BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus, where PiG used to use Go's decoders.",
