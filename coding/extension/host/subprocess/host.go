@@ -5222,6 +5222,14 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 				h.endSyncRunHoldOf(conn, env.Notify.Args)
 				continue
 			}
+			if env.Notify.Method == NotifyReportError {
+				var report ReportErrorPayload
+				// A malformed report (arguments that are not the payload, or no event name) is dropped like a malformed argument of any other notification; its size is bounded by MaxFrameSize, the cap of the frame that carries it.
+				if json.Unmarshal(env.Notify.Args, &report) == nil && report.Event != "" {
+					h.reportExtensionError(me, report.Event, report.Error, report.Stack)
+				}
+				continue
+			}
 			if env.Notify.Method == NotifyEventLoopTurned {
 				// pig additive (D19): a turn counts once the calls the runtime sent before it applied their synchronous parts, as for a request_state report. The wait runs off the read loop because those calls can need later frames.
 				args := env.Notify.Args

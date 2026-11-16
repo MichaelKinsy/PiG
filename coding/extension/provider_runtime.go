@@ -58,6 +58,8 @@ type ExtensionRuntime struct {
 	// reportError delivers a diagnostic to the bound runner's error
 	// listeners, the channel each mode shows extension errors on.
 	reportError func(*ExtensionError)
+	// reportRuntimeError is Pi's runtime.reportError, set by the runner's constructor.
+	reportRuntimeError func(*ExtensionError)
 }
 
 // SetErrorReporter installs the bound runner's error reporting. pig additive
@@ -80,6 +82,27 @@ func (r *ExtensionRuntime) ReportError(err *ExtensionError) bool {
 	}
 	report(err)
 	return true
+}
+
+// SetRuntimeErrorReporter installs Pi's runtime.reportError: the runner's constructor sets it, and it reports to the runner's error listeners until the
+// runner is invalidated. It is not the D107 diagnostic reporter ([ExtensionRuntime.SetErrorReporter]), which reaches the listeners in every runner state.
+// upstream: types.ts:2219-2223 (ExtensionRuntimeState.reportError), runner.ts:411-414
+func (r *ExtensionRuntime) SetRuntimeErrorReporter(report func(*ExtensionError)) {
+	r.mu.Lock()
+	r.reportRuntimeError = report
+	r.mu.Unlock()
+}
+
+// ReportRuntimeError is the loader's `runtime.reportError(...)` call of a throwing pi.events handler. Before a runner exists the error is dropped, as in
+// Pi (loader.ts installs a no-op until the runner constructor replaces it).
+// upstream: loader.ts:537-549 (on)
+func (r *ExtensionRuntime) ReportRuntimeError(err *ExtensionError) {
+	r.mu.Lock()
+	report := r.reportRuntimeError
+	r.mu.Unlock()
+	if report != nil {
+		report(err)
+	}
 }
 
 // CreateExtensionRuntime creates the pre-bind provider registration state.

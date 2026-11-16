@@ -40,7 +40,7 @@
 
 (defun events-on (bus channel handler)
   "Subscribe HANDLER, (lambda (ctx data)), to CHANNEL and return the idempotent unsubscribe function. A handler runs in a request of its own, so it may call
-EVENTS-EMIT while the host waits for its answer; its error fails only that delivery, which the host reports as `Event handler error`."
+EVENTS-EMIT while the host waits for its answer; its error fails only that delivery, which the host reports as an error of this extension (event `events:<channel>`)."
   (unless (stringp channel) (error "event channel must be a string"))
   (unless (functionp handler) (error "event handler must be a function"))
   (let* ((hub (event-hub (event-bus-extension bus)))

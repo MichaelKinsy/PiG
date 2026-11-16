@@ -11,6 +11,8 @@ import (
 	"os"
 	"slices"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
 // pig additive (D19): the Host's ordered pi.events registry for several Node realms. EventEmitter keeps one ordered listener array per channel, clones it for each emit, and calls each listener in turn; each listener's synchronous prefix runs before the next. The Host keeps that array and runs each listener's prefix in its own realm through a restricted synchronous request, while the emitter waits in its synchronous emit call. A realm that is the Host's only Node realm keeps the listeners in its own EventEmitter until a second realm appears.
@@ -79,6 +81,8 @@ type busListener struct {
 	realm     string
 	handlerID string
 	channel   string
+	// owner is the generation that registered the listener: a failure of its handler is reported as that extension's error.
+	owner *managedExt
 	// value marks a native listener: it receives the payload as JSON, not as cross-process references.
 	value     bool
 	snapshots int
@@ -321,7 +325,7 @@ func (h *Host) migrateEventBus(ctx context.Context, me *managedExt) error {
 		if err := h.xref.bind(memberConn, member, result.Realm); err != nil {
 			return err
 		}
-		migrated := &busListener{conn: memberConn, realm: result.Realm, handlerID: listener.HandlerID, channel: listener.Channel}
+		migrated := &busListener{conn: memberConn, realm: result.Realm, handlerID: listener.HandlerID, channel: listener.Channel, owner: member}
 		// A migrated listener is retained and released like one events.on registered (loader.ts:201 trackEventBusSubscription), so a later events.off or invalidate finds its unsubscribe.
 		migrated.untrack = h.providerRuntime.TrackEventBusSubscription(func() { h.removeBusListener(context.WithoutCancel(ctx), migrated) })
 		h.eventBus.add(migrated)
@@ -526,7 +530,7 @@ func (h *Host) handleEventBusCall(ctx context.Context, me *managedExt, conn *Con
 		}
 		// EventEmitter emits newListener before adding the listener.
 		h.dispatchEvent(dispatchCtx, "newListener", newChannelPayload(*args.Channel), nil, realm, "", nil)
-		listener := &busListener{conn: conn, realm: realm, handlerID: args.HandlerID, channel: *args.Channel, value: args.Value}
+		listener := &busListener{conn: conn, realm: realm, handlerID: args.HandlerID, channel: *args.Channel, value: args.Value, owner: me}
 		listener.untrack = h.providerRuntime.TrackEventBusSubscription(func() { h.removeBusListener(dispatchCtx, listener) })
 		h.eventBus.add(listener)
 	case callEventsOff:
@@ -612,7 +616,7 @@ func (h *Host) dispatchEvent(ctx context.Context, channel string, payload *busPa
 		}
 		h.xref.deliver(listener.realm, refs)
 		var args json.RawMessage
-		var err error
+		var err, handlerErr error
 		if j-i == 1 {
 			args, err = json.Marshal(struct {
 				HandlerID string          `json:"handlerId"`
@@ -636,32 +640,36 @@ func (h *Host) dispatchEvent(ctx context.Context, channel string, payload *busPa
 			var response *Envelope
 			response, err = listener.conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: methodEventsDispatch, Args: args}})
 			if err == nil && response.Response != nil && response.Response.Error != nil {
-				err = response.Response.Error.ToError()
+				handlerErr = response.Response.Error.ToError()
 			}
 		}
-		if err != nil {
+		if err != nil || handlerErr != nil {
 			if foreign {
 				h.eventBus.addPending(emission, listener.conn, -1)
 			}
-			reportEventBusError(channel, err)
+			if err != nil {
+				reportEventBusError(channel, err)
+			} else {
+				h.reportEventHandlerError(listener, channel, handlerErr)
+			}
 		}
 		i = j
 	}
 	return len(listeners) != 0
 }
 
-// dispatchNativeListener serves one in-process value listener.
+// dispatchNativeListener serves one in-process value listener. A payload the listener cannot receive (no JSON form) fails only this delivery, as a throwing handler does, so it is that extension's error too.
 func (h *Host) dispatchNativeListener(ctx context.Context, listener *busListener, channel string, payload *busPayload) {
 	args, err := h.nativeDispatchArgs(ctx, listener, channel, payload)
-	if err == nil {
-		var response *Envelope
-		response, err = listener.conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: methodEventsDispatch, Args: args}})
-		if err == nil && response.Response != nil && response.Response.Error != nil {
-			err = response.Response.Error.ToError()
-		}
+	if err != nil {
+		h.reportEventHandlerError(listener, channel, err)
+		return
 	}
+	response, err := listener.conn.Request(ctx, &Envelope{Type: MsgRequest, Request: &RequestPayload{Method: methodEventsDispatch, Args: args}})
 	if err != nil {
 		reportEventBusError(channel, err)
+	} else if response.Response != nil && response.Response.Error != nil {
+		h.reportEventHandlerError(listener, channel, response.Response.Error.ToError())
 	}
 }
 
@@ -670,6 +678,23 @@ func mustJSONObject(value any) json.RawMessage {
 	return data
 }
 
+// reportEventBusError writes a failure of the bus itself to stderr: a dispatch request that could not be delivered or answered, which Pi's bus has no counterpart for. A listener's own failure goes to reportEventHandlerError.
 func reportEventBusError(channel string, err error) {
 	fmt.Fprintf(os.Stderr, "Event handler error (%s): %v\n", channel, err)
+}
+
+// reportEventHandlerError reports the failure of a listener's handler like any other extension error: the extension's path, event `events:<channel>`, the handler's message and its stack. The handler's own error reply is what the host sees; a failure of the dispatch request itself is the bus's (reportEventBusError).
+// upstream: loader.ts:537-549 (on)
+func (h *Host) reportEventHandlerError(listener *busListener, channel string, err error) {
+	h.reportExtensionError(listener.owner, "events:"+channel, err.Error(), extension.ErrorStack(err))
+}
+
+// reportExtensionError is Pi's runtime.reportError for owner's extension: the runtime's error reporter gets the error with the extension's path. It is dropped, as Pi drops it, when no runner exists yet or the runner is stale, and for a generation a reload replaced, whose runtime the replacement's runner now reports through.
+// upstream: runner.ts:411-414 (reportError), types.ts:2219-2223
+func (h *Host) reportExtensionError(owner *managedExt, event, message, stack string) {
+	if owner == nil || owner.replaced.Load() || h.supersedes(owner) {
+		return
+	}
+	path, _ := extensionSourcePaths(owner.config)
+	h.providerRuntime.ReportRuntimeError(&extension.ExtensionError{ExtensionPath: path, Event: event, Error: message, Stack: stack})
 }

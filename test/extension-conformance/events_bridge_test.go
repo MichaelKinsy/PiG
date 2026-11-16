@@ -82,10 +82,6 @@ func captureStderr(t *testing.T) func() string {
 	return stop
 }
 
-func countHandlerErrors(stderr, channel string) int {
-	return strings.Count(stderr, "Event handler error ("+channel+"): ")
-}
-
 func busSpec(language, isolation, name string, listeners ...busListenerAt) busFixture {
 	return busFixture{Name: name, language: language, isolation: isolation, Listeners: listeners}
 }
@@ -158,8 +154,11 @@ func TestNativeEventBusUnserializableNodePayloadReachesNoNativeListener(t *testi
 				rig.expect(`observer|c|"<unserializable>"`)
 				rig.must("emitter", "emit", "c json 5")
 				rig.expect(`observer|c|"<unserializable>"`, `native|c|5`, `observer|c|5`)
-				if got := countHandlerErrors(stop(), "c"); got != 1 {
-					t.Fatalf("Event handler error (c) reported %d times, want 1", got)
+				if got := stop(); got != "" {
+					t.Fatalf("the Host wrote %q to stderr, want nothing", got)
+				}
+				if got := busErrorsOn(rig.reported(), "c"); len(got) != 1 {
+					t.Fatalf("pi.events errors on c = %+v, want 1", rig.reported())
 				}
 			})
 		}
@@ -292,8 +291,12 @@ func TestNativeEventBusListenerFailureDoesNotReachEmitterOrLaterListeners(t *tes
 				rig.expect(`later|ch|{"ok":true}`)
 				rig.must("e", "emit", `ch json {"ok":2}`)
 				rig.expect(`later|ch|{"ok":true}`, `later|ch|{"ok":2}`)
-				if got := stop(); language != "node" && countHandlerErrors(got, "ch") != 4 {
-					t.Fatalf("Event handler error (ch) reported %d times, want 4 (two failures, two emits)\n%s", countHandlerErrors(got, "ch"), got)
+				// Each failure is an extension error of the listening extension (Pi 18e99051be24: loader.ts pi.events.on reports through runtime.reportError), and nothing is written to the terminal behind the TUI.
+				if got := stop(); got != "" {
+					t.Fatalf("the Host wrote %q to stderr, want nothing", got)
+				}
+				if got := busErrorsOn(rig.reported(), "ch"); len(got) != 4 {
+					t.Fatalf("pi.events handler errors on ch = %+v, want 4 (two failures, two emits)", rig.reported())
 				}
 			})
 		}

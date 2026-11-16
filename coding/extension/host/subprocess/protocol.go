@@ -944,6 +944,26 @@ type HandlerYieldedPayload struct {
 	Token string `json:"token"`
 }
 
+// NotifyReportError (ext→host) is Pi's `runtime.reportError` (types.ts ExtensionRuntimeState.reportError, Pi 18e99051be24): an error the extension raised where no
+// host request is waiting to carry it, reported as one of that extension's errors like the error of a pi.on handler. The extension path comes from the
+// connection and the host fills in the rest of the ExtensionError. The notification is fire-and-forget (like NotifyEventsQuiesce), and the host reads one
+// connection's frames in order, so it is applied before any later frame of that connection and after the frames the extension wrote before it.
+//
+// The rule for an error is one: an error of a host-initiated call travels in that call's response, and one raised with no request to answer is reported
+// with this notification. Every handler of the Go, Python, Rust and Lisp SDKs runs inside the host's events.dispatch request, so its failure is that
+// request's error response (ResponsePayload.Error with Message and Stack) and no SDK of them sends this notification. Node's pi.events handler can run with no
+// request to answer: the single Node realm keeps Pi's in-heap emitter and the host never dispatches to it, and a handler's rejection after its await comes
+// after the dispatch response was written; the Node runtime sends this notification for those. The host drops it as it drops a failed dispatch response:
+// when no runner reports yet, when the runner is stale, and for a generation a reload replaced.
+const NotifyReportError = "report_error"
+
+// ReportErrorPayload is the NotifyReportError argument: ExtensionError.event, ExtensionError.error and ExtensionError.stack (omitted when the runtime has none).
+type ReportErrorPayload struct {
+	Event string `json:"event"`
+	Error string `json:"error"`
+	Stack string `json:"stack,omitempty"`
+}
+
 // Focused custom UI uses three current-wire message classes. Input is an
 // ordered, non-idempotent event; render is a replaceable snapshot; open and
 // close/error are exactly-once barriers that delimit one key generation.

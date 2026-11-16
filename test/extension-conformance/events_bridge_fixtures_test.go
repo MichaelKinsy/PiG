@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
 
@@ -28,7 +29,7 @@ import (
 //	kept                           node only: log "<name>|kept|[payloads kept by the keep action]"
 //	unkeep                         node only: drop the payloads the keep action kept
 //
-// An action list joins operations with "+": later (node only: record from a microtask, the listener's first continuation), record, echo=<channel> (emit {by, got} from the handler), inc (data.n++), fail (return or throw an error), panic (a Go panic, a thrown non-Error), unsub=<index>, exit (end the process), sleep=<ms>, count (count the delivery), hang (block until <log>.release exists), keep (node only: keep the payload past its delivery).
+// An action list joins operations with "+": later (node only: record from a microtask, the listener's first continuation), record, echo=<channel> (emit {by, got} from the handler), inc (data.n++), fail[=<message>] (return or throw an error; the message defaults to listener-failed), afail[=<message>] (node only: return a promise that rejects after a short delay), panic (a Go panic, a thrown non-Error), unsub=<index>, exit (end the process), sleep=<ms>, count (count the delivery), hang (block until <log>.release exists), keep (node only: keep the payload past its delivery).
 type busFixture struct {
 	Name      string          `json:"name"`
 	Log       string          `json:"log"`
@@ -72,7 +73,8 @@ export default function (pi) {
       else if (name === "later") Promise.resolve().then(() => log(channel + ":later", data));
       else if (name === "echo") pi.events.emit(arg, { by: cfg.name, got: data });
       else if (name === "inc") data.n++;
-      else if (name === "fail") throw new Error("listener-failed");
+      else if (name === "fail") throw new Error(arg || "listener-failed");
+      else if (name === "afail") return new Promise((_, reject) => setTimeout(() => reject(new Error(arg || "listener-failed")), 30));
       else if (name === "panic") throw "listener-panicked";
       else if (name === "unsub") subs[Number(arg)]();
       else if (name === "exit") process.exit(3);
@@ -182,7 +184,10 @@ func Extension() *sdk.Extension {
 					m["n"] = m["n"].(float64) + 1
 				}
 			case "fail":
-				return errors.New("listener-failed")
+				if arg == "" {
+					arg = "listener-failed"
+				}
+				return errors.New(arg)
 			case "panic":
 				panic("listener-panicked")
 			case "unsub":
@@ -360,7 +365,7 @@ def new_extension():
             elif op_name == "inc":
                 data["n"] = data["n"] + 1
             elif op_name == "fail":
-                raise RuntimeError("listener-failed")
+                raise RuntimeError(arg or "listener-failed")
             elif op_name == "panic":
                 raise ValueError("listener-panicked")
             elif op_name == "unsub":
@@ -504,7 +509,7 @@ const lispBusFixture = `(defpackage %[2]q (:use "COMMON-LISP"))
                    (cond ((equal op-name "record") (logf channel data))
                          ((equal op-name "echo") (pig:events-emit (pig:ctx-events ctx) arg (pig:obj "by" name "got" data)))
                          ((equal op-name "inc") (setf (gethash "n" data) (1+ (gethash "n" data))))
-                         ((equal op-name "fail") (error "listener-failed"))
+                         ((equal op-name "fail") (error (if (equal arg "") "listener-failed" arg)))
                          ((equal op-name "panic") (error "listener-panicked"))
                          ((equal op-name "unsub") (funcall (sb-thread:with-mutex (lock) (nth (parse-integer arg) subs))))
                          ((equal op-name "exit") (sb-ext:exit :code 3 :abort t))
@@ -565,7 +570,7 @@ fn run(shared: &Arc<Shared>, ctx: &Context, channel: &str, actions: &str, data: 
             "record" => log(shared, channel, &data),
             "echo" => ctx.events().emit(arg, json!({"by": shared.cfg["name"], "got": data.clone()})).map_err(|e| e.to_string())?,
             "inc" => { let n = data["n"].as_i64().unwrap_or(0); data["n"] = json!(n + 1); }
-            "fail" => return Err("listener-failed".to_string()),
+            "fail" => return Err(if arg.is_empty() { "listener-failed".to_string() } else { arg.to_string() }),
             "panic" => panic!("listener-panicked"),
             "unsub" => { let sub = shared.subs.lock().unwrap()[arg.parse::<usize>().unwrap()].clone(); sub.unsubscribe(); }
             "exit" => std::process::exit(3),
@@ -718,11 +723,21 @@ func busNativeSource(t *testing.T, root, language, name, configFile string) subp
 
 // busRig loads the fixtures in order and returns them by name with the shared log.
 type busRig struct {
-	t    *testing.T
-	log  string
-	cwd  string
-	exts map[string]extension.Extension
-	host *subprocess.Host
+	t      *testing.T
+	log    string
+	cwd    string
+	exts   map[string]extension.Extension
+	host   *subprocess.Host
+	runner *inproc.Runner
+	errMu  sync.Mutex
+	errs   []extension.ExtensionError
+}
+
+// reported returns the extension errors the runner's listeners have received so far.
+func (r *busRig) reported() []extension.ExtensionError {
+	r.errMu.Lock()
+	defer r.errMu.Unlock()
+	return append([]extension.ExtensionError(nil), r.errs...)
 }
 
 func newBusRig(t *testing.T, specs ...busFixture) *busRig {
@@ -753,6 +768,13 @@ func newBusRigWithFailures(t *testing.T, specs ...busFixture) (*busRig, []error)
 		t.Fatalf("loaded %d of %d extensions without a failure", len(loaded), len(configs))
 	}
 	rig := &busRig{t: t, log: log, cwd: cwd, host: h, exts: map[string]extension.Extension{}}
+	// The runner reports the Host's runtime errors to its listeners, as the session's runner does (runner.ts:411-414): the rows read what a mode would show.
+	rig.runner = inproc.NewRunner(nil, cwd, h.Runtime())
+	rig.runner.AddErrorListener(func(e *extension.ExtensionError) {
+		rig.errMu.Lock()
+		rig.errs = append(rig.errs, *e)
+		rig.errMu.Unlock()
+	})
 	for _, ext := range loaded {
 		rig.exts[ext.Name] = ext
 	}

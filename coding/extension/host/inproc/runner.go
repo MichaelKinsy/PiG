@@ -270,6 +270,8 @@ func NewRunner(extensions []extension.Extension, cwd string, sharedRuntime ...*e
 		uiContext:  extension.NoopUIContext,
 	}
 	r.background, r.cancelBackground = context.WithCancel(context.Background())
+	// upstream: runner.ts:411-414 (the constructor sets runtime.reportError so a pi.events handler error reaches emitError until the runner is invalidated: "A handler still running when its session is replaced must not report into the replacement's UI"). A stale runner (InvalidateForReload, Invalidate and InvalidateKeepingRuntime all set staleMessage) drops the report, as Pi's `if (!this.staleMessage)`. This is the events action only: the D107 diagnostic reporter stays bound in BindCore and reaches the error listeners in every state.
+	runtime.SetRuntimeErrorReporter(r.reportRuntimeError)
 	r.activeCommandsIdle.L = &r.activeCommandsMu
 	r.contextActions.GetFlagValue = r.flagValue
 	r.contextActions.GetUIContext = r.GetUIContext
@@ -3086,4 +3088,12 @@ func sessionBeforeIsCancel(result any) bool {
 		}
 	}
 	return false
+}
+
+// reportRuntimeError is the runtime's reportError: it reports to the error listeners until the runner is stale.
+// upstream: runner.ts:411-414
+func (r *Runner) reportRuntimeError(err *extension.ExtensionError) {
+	if !r.IsStale() {
+		r.emitError(err)
+	}
 }

@@ -29,8 +29,9 @@ class EventBus:
     ``on`` returns an idempotent unsubscribe function. A handler runs in a
     request of its own, so it may call ``emit`` while the host waits for its
     answer (EventEmitter is synchronous and reentrant). A handler's error fails
-    only that delivery: the host reports it as ``Event handler error`` and the
-    emitter and the other listeners are unaffected (event-bus.ts:24-30).
+    only that delivery: the host reports it as an error of this extension (event
+    ``events:<channel>``, as Pi reports it) and the emitter and the other
+    listeners are unaffected (event-bus.ts:24-30, loader.ts ``on``).
     """
 
     def __init__(self, extension: Extension, ctx: Context | None = None):

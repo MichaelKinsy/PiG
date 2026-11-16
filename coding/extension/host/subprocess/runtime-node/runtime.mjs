@@ -2481,6 +2481,7 @@ export class Runtime {
     this.loadState = "loading";
     this.loadingUnsubscribers = [];
     this.extensionRuntime = createExtensionRuntime();
+    this.extensionRuntime.reportError = (error) => this.reportError(error);
     this.hostReady = false;
     // readyStateApplied is set once the ready frame's state is applied: a state the host pushed after it is newer, and one applied before it would be overwritten by it.
     this.readyStateApplied = false;
@@ -2810,7 +2811,20 @@ export class Runtime {
           busFor(this.group).emit(this, channel, data);
         }),
         on: active((channel, handler) => {
-          const unsubscribe = this.extensionRuntime.trackEventBusSubscription(busFor(this.group).on(this, channel, handler));
+          // loader.ts:537-551: a throwing handler is reported like other extension errors. The event bus would print it with console.error, which draws over the interactive TUI (Pi #11264).
+          const reportingHandler = async (data) => {
+            try {
+              await handler(data);
+            } catch (error) {
+              this.extensionRuntime.reportError({
+                extensionPath: this.entry,
+                event: `events:${channel}`,
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+              });
+            }
+          };
+          const unsubscribe = this.extensionRuntime.trackEventBusSubscription(busFor(this.group).on(this, channel, reportingHandler));
           if (this.loadState === "loading") this.loadingUnsubscribers.push(unsubscribe);
           return unsubscribe;
         }),
@@ -6340,6 +6354,17 @@ export class Runtime {
     // ui.custom.close where each frame is independent.
     if (!this.conn) return;
     this.conn.notify(method, args);
+  }
+
+  // Pi's runtime.reportError (types.ts ExtensionRuntimeState.reportError, loader.ts): the runner binds it, and the host's runner is the one that shows the error, so this process sends the error as a report_error notification. It is dropped before the host answers the ready frame (an error while extensions load is lost, as Pi's) and once the runtime is invalidated (a handler that fails after its session was replaced, runner.ts:411-414). The extension path is the connection's.
+  reportError({ event, error, stack }) {
+    if (!this.hostReady) return;
+    try {
+      this.extensionRuntime.assertActive();
+    } catch {
+      return;
+    }
+    this.notify("report_error", stack === undefined ? { event, error } : { event, error, stack });
   }
 }
 
