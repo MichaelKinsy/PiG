@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -137,6 +138,15 @@ func anyModelRecord(model AnyModel) (record any, shape **catalogShape, err error
 
 // marshalCatalogModel is the persisted JSON of one model. A model decoded from a catalog re-encodes with its unknown fields and its field order.
 func marshalCatalogModel(model AnyModel) (json.RawMessage, error) {
+	if record, ok := unchangedBundledRecord(model); ok {
+		return json.RawMessage(ResolveCatalogRecord(record)), nil
+	}
+	return marshalCatalogModelByEncoding(model)
+}
+
+// marshalCatalogModelByEncoding is marshalCatalogModel for any model: it decides what a built-in model changed by encoding it, and so also encodes
+// a model that unchangedBundledRecord does not recognize.
+func marshalCatalogModelByEncoding(model AnyModel) (json.RawMessage, error) {
 	record, shape, err := anyModelRecord(model)
 	if err != nil {
 		return nil, err
@@ -362,10 +372,53 @@ var (
 	catalogBaselineMu      sync.Mutex
 )
 
+// catalogEntryView is the typed model of the built-in entry that record, a model's catalog record, stands for, as GeneratedModel.ToModel makes it
+// without its copies: the row a reference names, or that row's routing variant (deriveCatalogRecord). It is nil for a record that is JSON (an
+// extension's or a models store record) and for a reference no row holds.
+func catalogEntryView(record string) *Model {
+	if len(record) < 3 || record[0] != 0 {
+		return nil
+	}
+	row := int(record[1])<<8 | int(record[2])
+	if row >= len(generatedRows) {
+		return nil
+	}
+	view := generatedRows[row].catalogView()
+	if len(record) > 3 {
+		id, name, ok := strings.Cut(record[4:], "\x00")
+		if record[3] != 0 || !ok {
+			return nil
+		}
+		view.ID, view.DisplayName = id, name
+	}
+	view.catalogRecord = record
+	return view
+}
+
+// unchangedBundledRecord is the catalog record of a model that is exactly the model its catalog entry makes (GeneratedModel.ToModel): the record
+// encodes it. Whether a built-in model is unchanged is decided by comparing it with its entry's typed model, not by encoding both and comparing the
+// digests: that costs a JSON encoding of the model and, for a routing variant, which has no baseline of its own, a decoding and an encoding of its
+// record, and the whole catalog is encoded at each start of an extension host. A model that differs in any member, or has no entry, reports false
+// and takes the encoding path, which decides the same.
+func unchangedBundledRecord(model AnyModel) (string, bool) {
+	typed, ok := model.(*Model)
+	if !ok || typed == nil || typed.catalogRecord == "" || typed.catalog != nil {
+		return "", false
+	}
+	view := catalogEntryView(typed.catalogRecord)
+	if view == nil || !reflect.DeepEqual(typed, view) {
+		return "", false
+	}
+	return typed.catalogRecord, true
+}
+
 // CatalogModelJSON is the JSON object of a model that came from a catalog record, the built-in catalog or a models
 // store, as Pi serializes that model object: the record's members in the record's order, with the record's own bytes for
 // every member the model still holds at its catalog value. ok is false for a model without a record.
 func CatalogModelJSON(model AnyModel) (data json.RawMessage, ok bool, err error) {
+	if record, unchanged := unchangedBundledRecord(model); unchanged {
+		return json.RawMessage(ResolveCatalogRecord(record)), true, nil
+	}
 	_, shape, err := anyModelRecord(model)
 	if err != nil {
 		return nil, false, err
