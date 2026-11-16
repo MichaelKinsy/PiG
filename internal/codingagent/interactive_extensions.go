@@ -27,6 +27,11 @@ import (
 )
 
 func (m *InteractiveMode) deliverUserMessage(content any, deliverAs extension.DeliverAs) error {
+	return m.deliverUserMessageAfter(content, deliverAs, nil)
+}
+
+// deliverUserMessageAfter is deliverUserMessage for a send whose caller asked to make the refusal's report when the sending code's run ends (subprocess.SendUserMessageOptions.AfterRun).
+func (m *InteractiveMode) deliverUserMessageAfter(content any, deliverAs extension.DeliverAs, after func(report func())) error {
 	parsed, err := subprocessUserContent(content)
 	if err != nil {
 		return fmt.Errorf("sendUserMessage: %w", err)
@@ -68,7 +73,7 @@ func (m *InteractiveMode) deliverUserMessage(content any, deliverAs extension.De
 	// Upstream prompt() throws when a run is active and no streaming behavior was given (agent-session.ts:2240-2244); the bound action reports
 	// the refusal as the extension error `send_user_message` and the call returns (:3565-3572), as the Session's binding does in print, JSON and RPC.
 	if deliverAs == "" && m.runStreaming() {
-		m.reportRuntimeError("send_user_message", errors.New("Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message."))
+		m.reportRuntimeErrorAfter(after, "send_user_message", errors.New("Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message."))
 		return nil
 	}
 	return m.postToMain(m.runCtx, func() {
@@ -714,15 +719,15 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	})
 	b.SetHostAction("setSessionName", m.setExtensionSessionName)
 	b.SetHostAction("sendMessage", func(msg extension.CustomMessageRef, opts subprocess.SendMessageOptions) error {
-		m.reportRuntimeError("send_message", m.sendExtensionMessage(msg, extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs)}))
+		m.reportRuntimeErrorAfter(opts.AfterRun, "send_message", m.sendExtensionMessage(msg, extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs)}))
 		return nil
 	})
 	b.SetHostAction("sendUserMessage", func(content any, opts subprocess.SendUserMessageOptions) error {
-		deliver := func() { _ = m.deliverUserMessage(content, extension.DeliverAs(opts.DeliverAs)) }
+		deliver := func() { _ = m.deliverUserMessageAfter(content, extension.DeliverAs(opts.DeliverAs), opts.AfterRun) }
 		if m.deferSettledAction(deliver) {
 			return nil
 		}
-		return m.deliverUserMessage(content, extension.DeliverAs(opts.DeliverAs))
+		return m.deliverUserMessageAfter(content, extension.DeliverAs(opts.DeliverAs), opts.AfterRun)
 	})
 	BindAppendEntryAction(b, func() (*Session, error) {
 		if m.currentSession() == nil {

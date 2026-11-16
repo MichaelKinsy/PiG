@@ -1363,6 +1363,19 @@ export default function (pi) {
   pi.registerCommand("send_message_no_turn", { description: "Send a custom message that never starts a turn", handler: async () => pi.sendMessage({ customType: "notice", content: "no-turn", display: true }, { triggerTurn: false }) });
   pi.registerCommand("send_user_message", { description: "Send a user message", handler: async (args) => pi.sendUserMessage(args ? JSON.parse(args) : "hello-user", { deliverAs: "followUp" }) });
   pi.registerCommand("send_user_message_delivery", { description: "Send a user message with the delivery named by the argument", handler: async (args) => args === "absent" ? pi.sendUserMessage("delivery-absent") : pi.sendUserMessage("delivery-" + args, { deliverAs: args }) });
+  pi.registerCommand("send_refusal_order", { description: "Send a refused user message and others in one run, as the argument names", handler: async (args) => {
+    const first = () => { pi.sendUserMessage("order-absent"); pi.sendUserMessage("order-steer", { deliverAs: "steer" }); pi.sendUserMessage("order-followUp", { deliverAs: "followUp" }); };
+    switch (args) {
+      case "first": first(); break;
+      case "between": pi.sendUserMessage("order-absent"); pi.sendUserMessage("order-steer", { deliverAs: "steer" }); pi.sendUserMessage("order-absent-2"); break;
+      case "yielded": await Promise.resolve(); first(); break;
+      case "throws": first(); throw new Error("order-throws");
+      case "blocked": first(); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 30000); break;
+      case "detached": setTimeout(first, 100); break;
+      case "detached_alone": setTimeout(() => pi.sendUserMessage("order-absent"), 100); break;
+      default: throw new Error(`send_refusal_order: unknown case ${args}`);
+    }
+  } });
   pi.registerCommand("send_user_message_expand", { description: "Send a user message with expandPromptTemplates set to the argument", handler: async (args) => pi.sendUserMessage("expand-user", { deliverAs: "followUp", expandPromptTemplates: args === "true" }) });
   pi.registerCommand("set_session_name", { description: "Set the session name", handler: async () => pi.setSessionName("conformance-session") });
   pi.registerCommand("event_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });

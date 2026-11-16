@@ -14,3 +14,15 @@ func (m *InteractiveMode) reportRuntimeError(event string, err error) {
 	}
 	m.newRunner.EmitError(&extension.ExtensionError{ExtensionPath: runtimeErrorPath, Event: event, Error: err.Error()})
 }
+
+// reportRuntimeErrorAfter is reportRuntimeError for a send whose caller asked to make the report when the sending code's run ends (subprocess.SendUserMessageOptions.AfterRun).
+func (m *InteractiveMode) reportRuntimeErrorAfter(after func(report func()), event string, err error) {
+	if err == nil {
+		return
+	}
+	if after == nil {
+		m.reportRuntimeError(event, err)
+		return
+	}
+	after(func() { m.reportRuntimeError(event, err) })
+}

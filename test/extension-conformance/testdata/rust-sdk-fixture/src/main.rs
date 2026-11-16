@@ -5068,6 +5068,68 @@ fn main() {
         },
     );
     ext.command(
+        "send_refusal_order",
+        "Send a refused user message and others in one run, as the argument names",
+        |ctx, args| {
+            const FIRST: [(&str, &str); 3] = [
+                ("order-absent", ""),
+                ("order-steer", "steer"),
+                ("order-followUp", "followUp"),
+            ];
+            fn send(ctx: &pig_sdk::Context, items: &[(&str, &str)]) -> CommandResult {
+                for (text, deliver_as) in items {
+                    if let Err(err) = ctx.send_user_message(*text, deliver_as) {
+                        return CommandResult::Error(err.to_string());
+                    }
+                }
+                CommandResult::Ok
+            }
+            fn after_return(
+                ctx: &pig_sdk::Context,
+                items: &'static [(&'static str, &'static str)],
+            ) {
+                let ctx = ctx.clone();
+                thread::spawn(move || {
+                    thread::sleep(Duration::from_millis(100));
+                    send(&ctx, items);
+                });
+            }
+            match args {
+                "first" => send(ctx, &FIRST),
+                "between" => send(
+                    ctx,
+                    &[
+                        ("order-absent", ""),
+                        ("order-steer", "steer"),
+                        ("order-absent-2", ""),
+                    ],
+                ),
+                "yielded" => match ctx.yield_now() {
+                    Ok(_) => send(ctx, &FIRST),
+                    Err(err) => CommandResult::Error(err.to_string()),
+                },
+                "throws" => match send(ctx, &FIRST) {
+                    CommandResult::Ok => CommandResult::Error("order-throws".to_string()),
+                    failed => failed,
+                },
+                "blocked" => {
+                    let sent = send(ctx, &FIRST);
+                    thread::sleep(Duration::from_secs(30));
+                    sent
+                }
+                "detached" => {
+                    after_return(ctx, &FIRST);
+                    CommandResult::Ok
+                }
+                "detached_alone" => {
+                    after_return(ctx, &[("order-absent", "")]);
+                    CommandResult::Ok
+                }
+                other => CommandResult::Error(format!("send_refusal_order: unknown case {other}")),
+            }
+        },
+    );
+    ext.command(
         "send_user_message_expand",
         "Send a user message with expandPromptTemplates set to the argument",
         |ctx, args| match ctx.send_user_message_with(

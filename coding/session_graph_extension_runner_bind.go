@@ -400,7 +400,7 @@ func (g *GraphExtensionRunner) bindBridges(actionIDs, contextIDs callbackIDs) {
 				if err := live(); err != nil {
 					return err
 				}
-				return actions.SendMessage(message, &extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs)})
+				return actions.SendMessage(message, &extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs), AfterRun: opts.AfterRun})
 			})
 		}
 		if actions.SendUserMessage != nil {
@@ -408,7 +408,7 @@ func (g *GraphExtensionRunner) bindBridges(actionIDs, contextIDs callbackIDs) {
 				if err := live(); err != nil {
 					return err
 				}
-				return actions.SendUserMessage(content, &extension.SendUserMessageOptions{DeliverAs: extension.DeliverAs(opts.DeliverAs), ExpandPromptTemplates: opts.ExpandPromptTemplates})
+				return actions.SendUserMessage(content, &extension.SendUserMessageOptions{DeliverAs: extension.DeliverAs(opts.DeliverAs), ExpandPromptTemplates: opts.ExpandPromptTemplates, AfterRun: opts.AfterRun})
 			})
 		}
 		if actions.AppendEntry != nil {
