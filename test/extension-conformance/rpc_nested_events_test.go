@@ -144,9 +144,10 @@ func TestRPCNestedEventsCompleteInEverySDK(t *testing.T) {
 				t.Fatalf("%s: /nested-send-wait records %q: want the response before agent_start", label, send)
 			}
 
-			// A command that starts a new Session answers with the Session's own output after it: rpc-mode.ts rebindSession
-			// subscribes its stdout writer after `await session.bindExtensions()`, which runs the session_start handlers, so the
-			// message the handler sends is written nowhere, and the response is the command's only record.
+			// A command that starts a new Session answers with the Session's own output ahead of it: rpc-mode.ts rebindSession
+			// (Pi 1.5.2 + beffcde92dea) subscribes its stdout writer before `await session.bindExtensions()`, which runs the
+			// session_start handlers, so the old Session's shutdown notice, the entry the handler appends and the message it sends
+			// are written in that order, and the command's response follows them.
 			p.send(`{"id":"fresh","type":"prompt","message":"/nested-fresh"}`)
 			var fresh []string
 			p.await("/nested-fresh to answer", testbudget.Wait(t), func(record map[string]any) bool {
@@ -164,7 +165,7 @@ func TestRPCNestedEventsCompleteInEverySDK(t *testing.T) {
 				p.progress = fresh
 				return record["type"] == "response" && record["id"] == "barrier"
 			})
-			if want := []string{"response:handled", "response:<nil>"}; !slices.Equal(fresh, want) {
+			if want := []string{"ui:notify:shutdown:new", "entry_appended:nested-start", "message_start:custom", "message_end:custom", "response:handled", "response:<nil>"}; !slices.Equal(fresh, want) {
 				t.Fatalf("%s: /nested-fresh records\n got: %q\nwant: %q", label, fresh, want)
 			}
 			p.closeAndWait()

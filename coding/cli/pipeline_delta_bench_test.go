@@ -120,7 +120,7 @@ func runRPCPipeline(b *testing.B, deltas int, meter *pipelineMeter) {
 		conversionErr:   make(chan error, 1),
 		stdoutWait:      func(ctx context.Context) { out.Wait(ctx) },
 	}
-	h.forward(session).Store(true)
+	h.forward(session)
 	runtime.GC()
 	meter.begin(b)
 	b.StartTimer()

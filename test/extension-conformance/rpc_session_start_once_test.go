@@ -108,8 +108,9 @@ func TestRPCSessionReplacementRunsSessionStartOnceInEverySDK(t *testing.T) {
 			for _, replacement := range []struct{ name, line, reason, shutdown string }{
 				{"new_session", `"type":"new_session"`, "new", "new"},
 				{"switch_session", fmt.Sprintf(`"type":"switch_session","sessionPath":%q`, sessionFile), "resume", "resume"},
-				{"fork", fmt.Sprintf(`"type":"fork","entryId":%q`, entryID), "fork", "fork"},
+				// clone runs on the resumed Session, which has the prompt's entries (a forked-at-the-first-message Session has no current entry to clone).
 				{"clone", `"type":"clone"`, "fork", "fork"},
+				{"fork", fmt.Sprintf(`"type":"fork","entryId":%q`, entryID), "fork", "fork"},
 			} {
 				window := send(replacement.name, replacement.line)
 				if got, want := startEntries(window), []string{replacement.reason + ":1"}; !slices.Equal(got, want) {
