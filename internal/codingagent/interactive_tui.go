@@ -481,7 +481,9 @@ func (m *InteractiveMode) shutdownFromSignal(unwind bool) {
 	if !m.signalShutdownDone.CompareAndSwap(false, true) {
 		return
 	}
+	m.signalDisposing.Store(true)
 	m.emitQuitShutdown()
+	m.signalDisposing.Store(false)
 	// A caller that ends the process itself never returns from Run, so the view endpoint's socket is removed here.
 	m.closeViewEndpoint()
 	if unwind {

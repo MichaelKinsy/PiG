@@ -175,7 +175,21 @@ func (m *InteractiveMode) resetExtensionUIForReplacement() {
 		return
 	}
 	// A signal's dispose holds shutdownMu while it waits for the owner loop; a quit that entered finishInteractiveShutdown meanwhile waits for that lock and serves nothing, so the wait ends and the reset runs here: the loop is parked and touches the UI no more.
-	if err := m.runOnMainAndWaitUnless(m.runCtx, m.quitEnteredChan(), func() error { reset(); return nil }); err != nil {
+	// A signal's dispose waits for the loop at most as long as it waits for extension handlers (shutdownExtensionsBriefly, the second it has always waited):
+	// a loop stuck in a write to a terminal nobody reads would otherwise hold the signal for ever, and its title write would block as well, so it is skipped.
+	var giveUp <-chan time.Time
+	if m.signalDisposing.Load() {
+		wait := m.signalShutdownWait
+		if wait == 0 {
+			wait = time.Second
+		}
+		timer := time.NewTimer(wait)
+		defer timer.Stop()
+		giveUp = timer.C
+	}
+	switch err := m.runOnMainAndWaitUnless(m.runCtx, m.quitEnteredChan(), giveUp, func() error { reset(); return nil }); {
+	case err == nil, errors.Is(err, errOwnerLoopBlocked):
+	default:
 		reset()
 	}
 }

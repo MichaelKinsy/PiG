@@ -283,6 +283,8 @@ type InteractiveMode struct {
 	quitEntered          chan struct{}
 	quitEnteredOnce      sync.Once
 	quitEnteredCloseOnce sync.Once
+	// signalDisposing is set while a signal's shutdown emits and disposes; the hook's wait for the owner loop is then bounded.
+	signalDisposing atomic.Bool
 	// reloadIssues collects extension/tool reload failures from the most recent
 	// /reload so ReloadDiagnostics can surface them in-session as "Extension
 	// issues" instead of dropping them to a TUI-clobbered stderr. Reset at the
