@@ -10,61 +10,12 @@ import (
 	"testing"
 )
 
-// Pi's stdout writer subscribes after `await session.bindExtensions()` (rpc-mode.ts:316-361, print-mode.ts:76-108), so the events a session_start handler
-// emits are never written. The sinks that write a Session-origin event on their own, apart from the Session's event subscription, are the RPC
-// name listener and entry_appended writer (rpc_mode_runtime.go) and the JSON mode's entry_appended writer (print_mode.go). Each must test the
-// "writing" flag its bind sets after session_start, and the JSON mode must subscribe its event writer after the session_start emit. A new sink that
-// writes a Session-origin event without the flag, or a JSON subscription moved before session_start, fails here.
+// Pi's JSON-mode stdout writer subscribes after `await session.bindExtensions()` (print-mode.ts:76-108), so the events a session_start handler emits are never
+// written. The JSON mode's entry_appended writer (print_mode.go) must test the "writing" flag its bind sets after session_start, and the JSON mode must
+// subscribe its event writer after the session_start emit. A sink that writes a Session-origin event without the flag, or a JSON subscription moved before
+// session_start, fails here. RPC mode is the reverse since Pi beffcde92dea: TestRPCWritersSubscribeBeforeSessionStart.
 func TestSessionOriginWritersObeyTheWriterSubscribedGate(t *testing.T) {
 	fset := token.NewFileSet()
-	files, err := filepath.Glob("*.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, name := range files {
-		if strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		file, err := parser.ParseFile(fset, name, nil, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		// These files may build an event or call the constructor without the flag: rpc_types.go defines rpcSessionInfoChanged; rpc_events.go converts the Session's own events for the event subscription, which the writer subscribes late; session_extension_actions.go builds the entry_appended event and hands it to the mode's gated emit.
-		literalOK := slices.Contains([]string{"rpc_types.go", "rpc_events.go", "session_extension_actions.go"}, name)
-		var stack []ast.Node
-		ast.Inspect(file, func(node ast.Node) bool {
-			if node == nil {
-				stack = stack[:len(stack)-1]
-				return true
-			}
-			stack = append(stack, node)
-			literal := false
-			switch node := node.(type) {
-			case *ast.CompositeLit:
-				if ident, ok := node.Type.(*ast.Ident); ok && ident.Name == "RPCEntryAppendedEvent" {
-					literal = true
-				}
-			case *ast.CallExpr:
-				if ident, ok := node.Fun.(*ast.Ident); ok && ident.Name == "rpcSessionInfoChanged" {
-					literal = true
-				}
-			}
-			if !literal || literalOK {
-				return true
-			}
-			// The innermost function literal around the writer must test the flag.
-			for _, s := range slices.Backward(stack) {
-				if fn, ok := s.(*ast.FuncLit); ok {
-					if !callsLoadOnWriting(fn.Body) {
-						t.Errorf("%s: %s writes a Session-origin event without testing the writer-subscribed flag (writing.Load()) in its function", name, fset.Position(node.Pos()))
-					}
-					return true
-				}
-			}
-			t.Errorf("%s: %s writes a Session-origin event outside a gated closure", name, fset.Position(node.Pos()))
-			return true
-		})
-	}
 
 	// The JSON mode's entry_appended writer, and its event subscription's place after session_start.
 	file, err := parser.ParseFile(fset, "print_mode.go", nil, 0)
@@ -118,6 +69,77 @@ func TestSessionOriginWritersObeyTheWriterSubscribedGate(t *testing.T) {
 	}
 	if !slices.IsSorted([]token.Pos{emit[0], subscribe[0]}) {
 		t.Errorf("print_mode.go: subscribe(session) at %s comes before the session_start emit at %s; Pi subscribes the JSON writer after bindExtensions", fset.Position(subscribe[0]), fset.Position(emit[0]))
+	}
+}
+
+// Pi's RPC rebindSession subscribes its event writer before `await session.bindExtensions()` (rpc-mode.ts, Pi beffcde92dea), so the events a session_start
+// handler emits are written. In rpcHost.bind the Session's writer (forward) and name listener subscribe before the session_start emit (announce), and no RPC
+// sink waits on a "writing" flag: the flag is how RPC mode held the events back before.
+func TestRPCWritersSubscribeBeforeSessionStart(t *testing.T) {
+	fset := token.NewFileSet()
+	files, err := filepath.Glob("rpc_*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range files {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			if ident, ok := node.(*ast.Ident); ok && ident.Name == "writing" {
+				t.Errorf("%s: %s names a writing flag; RPC mode's writers are subscribed before session_start and write from the first event", name, fset.Position(ident.Pos()))
+			}
+			return true
+		})
+	}
+
+	file, err := parser.ParseFile(fset, "rpc_mode_runtime.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var bind *ast.FuncDecl
+	for _, decl := range file.Decls {
+		if fn, ok := decl.(*ast.FuncDecl); ok && fn.Name.Name == "bind" && fn.Recv != nil {
+			bind = fn
+		}
+	}
+	if bind == nil {
+		t.Fatal("rpc_mode_runtime.go: rpcHost.bind not found")
+	}
+	// The reload path announces before the Session's writer exists to reuse it; the last announce is the first bind's.
+	var forward, lastAnnounce token.Pos
+	var subscribes []token.Pos
+	ast.Inspect(bind.Body, func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		if selector, ok := call.Fun.(*ast.SelectorExpr); ok {
+			switch selector.Sel.Name {
+			case "forward":
+				forward = call.Pos()
+			case "announce":
+				lastAnnounce = call.Pos()
+			case "Subscribe":
+				subscribes = append(subscribes, call.Pos())
+			}
+		}
+		return true
+	})
+	if forward == token.NoPos || lastAnnounce == token.NoPos || len(subscribes) == 0 {
+		t.Fatalf("rpc_mode_runtime.go: bind has forward at %v, announce at %v and %d Subscribe calls; update this test with what replaced them", forward, lastAnnounce, len(subscribes))
+	}
+	if forward > lastAnnounce {
+		t.Errorf("rpc_mode_runtime.go: the event writer (forward) at %s comes after the session_start emit (announce) at %s; Pi subscribes before bindExtensions", fset.Position(forward), fset.Position(lastAnnounce))
+	}
+	for _, position := range subscribes {
+		if position > lastAnnounce {
+			t.Errorf("rpc_mode_runtime.go: the Session subscription at %s comes after the session_start emit at %s", fset.Position(position), fset.Position(lastAnnounce))
+		}
 	}
 }
 

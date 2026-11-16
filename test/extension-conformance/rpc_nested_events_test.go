@@ -290,9 +290,13 @@ const nestedEventsNode = `export default function (pi) {
     await ctx.waitForIdle();
     ctx.ui.notify("idle", "info");
   } });
+  let starts = 0;
   pi.on("session_start", async (event) => {
+    starts++;
+    pi.appendEntry("nested-start", { reason: event.reason, starts });
     if (event.reason === "new") pi.sendMessage({ customType: "nested", content: "started", display: true });
   });
+  pi.on("session_shutdown", (event, ctx) => { ctx.ui.notify("shutdown:" + event.reason, "info"); });
   pi.registerCommand("nested-send-wait", { description: "Send a user message, then wait for idle", handler: async (_args, ctx) => {
     pi.sendUserMessage("Say hello");
     await ctx.waitForIdle();
@@ -335,10 +339,21 @@ const nestedEventsGoBody = `	ext.OnEvent("before_agent_start", func(ctx sdk.Cont
 		ctx.Notify("idle", "info")
 		return nil
 	})
+	starts := 0
 	ext.OnEvent("session_start", func(ctx sdk.Context, data map[string]any) (any, error) {
-		if reason, _ := data["reason"].(string); reason == "new" {
+		starts++
+		reason, _ := data["reason"].(string)
+		if err := ctx.AppendEntry("nested-start", map[string]any{"reason": reason, "starts": starts}); err != nil {
+			return nil, err
+		}
+		if reason == "new" {
 			return nil, ctx.SendMessage("nested", "started", true, sdk.SendMessageOptions{})
 		}
+		return nil, nil
+	})
+	ext.OnEvent("session_shutdown", func(ctx sdk.Context, data map[string]any) (any, error) {
+		reason, _ := data["reason"].(string)
+		ctx.Notify("shutdown:"+reason, "info")
 		return nil, nil
 	})
 	ext.Command("nested-send-wait", "Send a user message, then wait for idle", func(ctx sdk.Context, _ string) error {
@@ -382,9 +397,16 @@ func nestedEventsPythonBody(name string) string {
         ctx.wait_for_idle()
         ctx.notify("idle", "info")
 
+    starts = [0]
+
     def session_start(ctx, data):
+        starts[0] += 1
+        ctx.append_entry("nested-start", {"reason": data.get("reason"), "starts": starts[0]})
         if data.get("reason") == "new":
             ctx.send_message("nested", "started", True)
+
+    def session_shutdown(ctx, data):
+        ctx.notify("shutdown:" + str(data.get("reason")), "info")
 
     def send_wait(ctx, _args):
         ctx.send_user_message("Say hello")
@@ -394,6 +416,7 @@ func nestedEventsPythonBody(name string) string {
         ctx.new_session()
 
     ext.on_event("session_start", session_start)
+    ext.on_event("session_shutdown", session_shutdown)
     ext.command("nested-send-wait", "Send a user message, then wait for idle", send_wait)
     ext.command("nested-fresh", "Start a new Session", fresh)
     ext.on_event("before_agent_start", before_agent_start)
@@ -437,10 +460,17 @@ func nestedEventsRustBody(name string) string {
         ctx.notify("idle", "info");
         CommandResult::Ok
     });
+    static STARTS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     ext.on_event("session_start", |ctx, data| {
+        let starts = STARTS.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+        let _ = ctx.append_entry("nested-start", serde_json::json!({"reason": data["reason"], "starts": starts}));
         if data["reason"].as_str() == Some("new") {
             let _ = ctx.send_message("nested", "started", true, None, None);
         }
+        None
+    });
+    ext.on_event("session_shutdown", |ctx, data| {
+        ctx.notify(&format!("shutdown:{}", data["reason"].as_str().unwrap_or("")), "info");
         None
     });
     ext.command("nested-send-wait", "Send a user message, then wait for idle", |ctx, _args| {

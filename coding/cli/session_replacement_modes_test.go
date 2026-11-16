@@ -98,7 +98,7 @@ func rpcResponseData(t *testing.T, p *rpcProcess, id string) map[string]any {
 	return data
 }
 
-// Pi rpc-mode.ts routes new_session, switch_session, fork and clone through runtimeHost, so each builds the replacement Session and its extensions through the Session factory. It then calls rebindSession() a second time after the command returns, which is why a replacement's extensions see session_start twice. Extension processes are fresh instances: A, B, C, D, E below.
+// Pi rpc-mode.ts routes new_session, switch_session, fork and clone through runtimeHost, so each builds the replacement Session and its extensions through the Session factory, and the runtime's rebind callback binds them once: a replacement's extensions see session_start once (Pi beffcde92dea; the handlers called rebindSession() a second time before). Extension processes are fresh instances: A, B, C, D, E below.
 func TestRPCSessionCommandsReplaceThroughTheRuntimeFactory(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts the pig binary and extension processes")
@@ -151,15 +151,11 @@ func TestRPCSessionCommandsReplaceThroughTheRuntimeFactory(t *testing.T) {
 		"session_start reason=startup instance=A previous=no",
 		"session_shutdown reason=new instance=A target=yes",
 		"session_start reason=new instance=B previous=yes",
-		"session_start reason=new instance=B previous=yes",
 		"session_shutdown reason=resume instance=B target=yes",
-		"session_start reason=resume instance=C previous=yes",
 		"session_start reason=resume instance=C previous=yes",
 		"session_shutdown reason=fork instance=C target=yes",
 		"session_start reason=fork instance=D previous=yes",
-		"session_start reason=fork instance=D previous=yes",
 		"session_shutdown reason=fork instance=D target=yes",
-		"session_start reason=fork instance=E previous=yes",
 		"session_start reason=fork instance=E previous=yes",
 		"session_shutdown reason=quit instance=E target=no",
 	}
@@ -234,7 +230,6 @@ func TestRPCSwitchSessionRebuildsServicesForTheDestinationCWD(t *testing.T) {
 	startupCWD := physicalPath(t, startup)
 	want := []string{
 		"session_start reason=startup cwd=" + startupCWD + " context=STARTUP-RULES",
-		"session_start reason=resume cwd=" + destination + " context=DESTINATION-RULES",
 		"session_start reason=resume cwd=" + destination + " context=DESTINATION-RULES",
 	}
 	if got := strings.Split(strings.TrimSpace(string(data)), "\n"); strings.Join(got, "\n") != strings.Join(want, "\n") {

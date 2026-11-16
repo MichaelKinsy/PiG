@@ -821,7 +821,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		return nil
 	})
 	replacementCtx := context.WithValue(ctx, rpcCommandReplacement{}, true)
-	// awaitReplacement is upstream `await runtime.newSession()` and its siblings (rpc-mode.ts:808-810 dispatches every line at once): the replacement starts after the input batch that requested it, so a later command of that batch answers first from the old Session, and the response is written when the replacement and its second rebind finish.
+	// awaitReplacement is upstream `await runtime.newSession()` and its siblings (rpc-mode.ts:808-810 dispatches every line at once): the replacement starts after the input batch that requested it, so a later command of that batch answers first from the old Session, and the response is written when the replacement and its one rebind (the runtime's callback) finish.
 	// pig divergence (D146): Pi exits at stdin end while a replacement still awaits createRuntime and never answers it. Stdin end here waits for each replacement and writes its response.
 	var replacementWG sync.WaitGroup
 	var replacementMu sync.Mutex
@@ -845,7 +845,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			}
 		}
 	}
-	awaitReplacement := func(admission *rpcAdmission, turn *rpcResponseTurn, id rpcRequestID, command string, precheck func() error, replace func(context.Context) (any, bool, error)) {
+	awaitReplacement := func(admission *rpcAdmission, turn *rpcResponseTurn, id rpcRequestID, command string, precheck func() error, replace func(context.Context) (any, error)) {
 		pending := &rpcPendingReplacement{release: make(chan struct{}), settled: make(chan struct{}), prechecked: make(chan struct{})}
 		replacementMu.Lock()
 		startedReplacements = slices.DeleteFunc(startedReplacements, func(earlier *rpcPendingReplacement) bool {
@@ -925,12 +925,9 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			case <-ctx.Done():
 				return nil, ctx.Err()
 			}
-			data, cancelled, err := replace(withRPCReplacementHold(replacementCtx, hold))
+			data, err := replace(withRPCReplacementHold(replacementCtx, hold))
 			if err != nil {
 				awaitHeadCompactionStarts()
-			}
-			if err == nil && !cancelled {
-				err = host.rebindAgain(ctx)
 			}
 			return data, err
 		})
@@ -1154,9 +1151,9 @@ commandLoop:
 			if cmd.ParentSession != "" {
 				options = &extension.NewSessionOptions{ParentSession: cmd.ParentSession}
 			}
-			awaitReplacement(admission, turn, env.ID, "new_session", nil, func(ctx context.Context) (any, bool, error) {
+			awaitReplacement(admission, turn, env.ID, "new_session", nil, func(ctx context.Context) (any, error) {
 				result, err := rt.NewSession(ctx, options)
-				return RPCCancelledResult{Cancelled: result.Cancelled}, result.Cancelled, err
+				return RPCCancelledResult{Cancelled: result.Cancelled}, err
 			})
 
 		// ── get_extensions ─────────────────────────────────────────────
@@ -1527,9 +1524,9 @@ commandLoop:
 				writeRPC(rpcError(env.ID, "switch_session", "EISDIR: illegal operation on a directory, read"))
 				continue
 			}
-			awaitReplacement(admission, turn, env.ID, "switch_session", func() error { return rt.ValidateSwitchSession(cmd.SessionPath) }, func(ctx context.Context) (any, bool, error) {
+			awaitReplacement(admission, turn, env.ID, "switch_session", func() error { return rt.ValidateSwitchSession(cmd.SessionPath) }, func(ctx context.Context) (any, error) {
 				result, err := rt.SwitchSession(ctx, cmd.SessionPath)
-				return RPCCancelledResult{Cancelled: result.Cancelled}, result.Cancelled, err
+				return RPCCancelledResult{Cancelled: result.Cancelled}, err
 			})
 
 		case RPCCommandFork:
@@ -1543,13 +1540,13 @@ commandLoop:
 				continue
 			}
 			currentSession := sess()
-			awaitReplacement(admission, turn, env.ID, "fork", func() error { return currentSession.ValidateFork(cmd.EntryID, "before") }, func(ctx context.Context) (any, bool, error) {
+			awaitReplacement(admission, turn, env.ID, "fork", func() error { return currentSession.ValidateFork(cmd.EntryID, "before") }, func(ctx context.Context) (any, error) {
 				result, err := rt.Fork(coding.WithForkSession(ctx, currentSession), cmd.EntryID, nil)
 				text := ""
 				if result.SelectedText != nil {
 					text = *result.SelectedText
 				}
-				return RPCForkResult{Text: text, Cancelled: result.Cancelled}, result.Cancelled, err
+				return RPCForkResult{Text: text, Cancelled: result.Cancelled}, err
 			})
 
 		case RPCCommandClone:
@@ -1559,9 +1556,9 @@ commandLoop:
 				continue
 			}
 			currentSession := sess()
-			awaitReplacement(admission, turn, env.ID, "clone", func() error { return currentSession.ValidateFork(*leaf, "at") }, func(ctx context.Context) (any, bool, error) {
+			awaitReplacement(admission, turn, env.ID, "clone", func() error { return currentSession.ValidateFork(*leaf, "at") }, func(ctx context.Context) (any, error) {
 				result, err := rt.Fork(coding.WithForkSession(ctx, currentSession), *leaf, &extension.ForkOptions{Position: "at"})
-				return RPCCancelledResult{Cancelled: result.Cancelled}, result.Cancelled, err
+				return RPCCancelledResult{Cancelled: result.Cancelled}, err
 			})
 
 		// ── get_messages ────────────────────────────────────────────────────────

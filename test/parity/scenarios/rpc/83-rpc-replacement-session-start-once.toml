@@ -1,0 +1,59 @@
+# Behavior family: rpc
+# Surface: the session_start a replacement Session runs after RPC switch_session, clone and fork, and the events its handler emits, against what RPC mode writes.
+#
+# Upstream evidence (Pi 1.5.2 + beffcde92dea, #12230, #10470): the runtime's rebind callback is the only rebind of a replacement Session (rpc-mode.ts rebindSession through setRebindSession); the
+# command handlers no longer call rebindSession() again. The replacement's session_start handler runs once, so its appended entry is written once with count 1 and no handler sees a second call
+# (starts 2). Before the commit (Pi 1.5.2) every command rebound twice: session_start and resources_discover ran twice, the entry was written twice, and the first call's events were not written.
+# PiG ran the second announce (rpcHost.rebindAgain) after every replacement command.
+# Entry IDs and clocks are masked as bijections/timestamps; the member order and every other byte compare.
+name = "83-rpc-replacement-session-start-once"
+description = "RPC switch_session, clone and fork run the replacement's session_start once and write the entry it appends once"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/agent-session-runtime.ts", "packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "testdata/session"
+timeout_seconds = 30
+
+[[rpc.steps]]
+line = '{"id":"switch","type":"switch_session","sessionPath":"sessions/source.jsonl"}'
+wait_contains = ['"id":"switch","type":"response","command":"switch_session"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"clone","type":"clone"}'
+wait_contains = ['"id":"clone","type":"response","command":"clone"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"fork","type":"fork","entryId":"user-1"}'
+wait_contains = ['"id":"fork","type":"response","command":"fork"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/session-start-count.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session", "sessions/source.jsonl", "--session-dir", "{{TEMP}}/sessions", "--no-extensions", "--no-context-files", "--no-skills"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/session-start-count.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--session", "sessions/source.jsonl", "--session-dir", "{{TEMP}}/sessions", "--no-extensions", "--no-context-files", "--no-skills"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 3
+both_contain = ['"data":{"phase":"resume","starts":1}', '"data":{"phase":"fork","starts":1}', '"message":"start-notify-resume-1"', '"message":"start-notify-fork-1"']
+both_not_contain = ['"success":false', 'extension_error', '"starts":2']
+
+[[assert.json_aliases]]
+paths = ["/**/id", "/**/parentId", "/**/sessionId"]
+kind = "id"
+group = "runtime"
+pattern = '^[0-9a-f-]{8,36}$'
+reason = "Entry, session and UI request IDs vary per run. A bijection preserves distinct identities and every parent reference; the literal command IDs (switch, clone, fork) do not match the pattern and stay unchanged."
+
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent entry wall clocks vary; retain presence, type and valid syntax."
