@@ -1,3 +1,8 @@
+//go:build !pig_strip_self_update && !pig_strip_codemode
+
+// These tests print the help of a stock build to compare it with the help of a build that strips one entry; a build that already compiles
+// out the self update command or the codemode tool has no stock help to print.
+
 package cli
 
 import (

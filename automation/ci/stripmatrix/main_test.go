@@ -72,3 +72,27 @@ func TestParseRedReadsNamesAndRequiresReasons(t *testing.T) {
 		}
 	}
 }
+
+func TestPickSetFollowsSetsAndSet(t *testing.T) {
+	sets := tagSets([]string{"pig_strip_a", "pig_strip_b"}, map[string]string{"pig_strip_b": "b-api"})
+	for _, tc := range []struct {
+		name   string
+		only   []string
+		single string
+		want   []string
+	}{
+		{"api takes the sets that strip an API, all tags among them", nil, "api", []string{"pig_strip_b", "pig_strip_a,pig_strip_b"}},
+		{"all takes every set", nil, "all", []string{"pig_strip_a", "pig_strip_b", "pig_strip_a,pig_strip_b"}},
+		{"-set names win over -sets", []string{"pig_strip_a"}, "api", []string{"pig_strip_a"}},
+	} {
+		var got []string
+		for _, set := range sets {
+			if pickSet(set, tc.only, tc.single) {
+				got = append(got, set.String())
+			}
+		}
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("%s: picked %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}

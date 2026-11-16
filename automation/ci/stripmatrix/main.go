@@ -18,10 +18,14 @@
 // compiles out, which is how a change most often breaks a stripped build; a file of another package that does so, a failing test and
 // a stripped binary that misbehaves are caught only by the matrix.
 //
+// -coding is make piglet-strip-tests: for each set, go test of codingPackages (the tests of the coding agent) and no other step. The
+// matrix's own test step runs ./ai/ only, so a test of ./coding or ./internal/codingagent that needs a feature a set strips was never
+// run under that set, and a new one could fail there unseen. -print-sets lists the sets as JSON, for a job matrix that runs one set per job.
+//
 // Where it runs: the default matrix took 2610 s at 8 CPUs, so it is a step of make release-check and a job of the nightly workflow
 // (.github/workflows/nightly.yml), and make ci-contracts, which every pull request runs, has the guard.
 //
-// Usage: go run ./automation/ci/stripmatrix [-guard] [-sets api|all] [-tests api|all] [-set tags]... [-step vet|test|smoke]...
+// Usage: go run ./automation/ci/stripmatrix [-guard|-coding|-print-sets] [-sets api|all] [-tests api|all] [-set tags]... [-step vet|test|smoke|coding]...
 package main
 
 import (
@@ -56,6 +60,15 @@ var wholePackages = []string{"./ai/providers/...", "./ai/all/...", "./durable/ha
 
 // guardPackages are what -guard vets in place of every package: package ai, the provider packages and the rest of its tree.
 const guardPackages = "./ai/..."
+
+// codingPackages are what -coding tests under each set: the coding agent's packages, whose tests build sessions, registries and the
+// interactive mode over the built-ins a strip tag compiles out. The test files that need a stripped feature carry a build constraint
+// naming its tag, or ask pigstrip.Has, so every test of these packages passes under every set.
+var codingPackages = []string{"./coding/...", "./internal/codingagent/..."}
+
+// codingTestTimeout bounds go test of codingPackages under one set: coding/cli and coding/extension/host/subprocess alone take
+// about twenty minutes at eight CPUs.
+const codingTestTimeout = "90m"
 
 // redDir holds one file per tag set, named after the tag (all.txt for all tags): the top-level tests of aiPackage that fail under
 // the set, one per line, the name followed by the reason. The list can only shrink: a listed test that passes fails the gate, and
@@ -158,6 +171,15 @@ type tagSet struct {
 }
 
 func (s tagSet) String() string { return strings.Join(s.tags, ",") }
+
+// pickSet reports whether the run checks the set: the sets named by -set when there are any, otherwise every set of -sets all, and of
+// -sets api the sets that strip a model API.
+func pickSet(set tagSet, only []string, single string) bool {
+	if len(only) > 0 {
+		return slices.Contains(only, set.String())
+	}
+	return single == "all" || len(set.apis) > 0
+}
 
 // tagSets lists each build tag alone, then all of them. apiTags maps the tag of each strippable API to the API.
 func tagSets(tags []string, apiTags map[string]string) []tagSet {
@@ -435,6 +457,8 @@ func main() {
 	single := flag.String("sets", "api", "the single tags checked before all tags: api (a tag that strips a model API) or all")
 	tests := flag.String("tests", "api", "the sets whose provider table tests run: api (a set that strips a model API) or all")
 	guard := flag.Bool("guard", false, "vet only "+guardPackages+" under each set, and run no other step (make piglet-strip-guard)")
+	coding := flag.Bool("coding", false, "run only go test of "+strings.Join(codingPackages, " ")+" under each set, and no other step (make piglet-strip-tests)")
+	printSets := flag.Bool("print-sets", false, "print the tag sets that -sets and -set pick as a JSON array of -set values, and exit (the job matrix of make piglet-strip-tests)")
 	var only, onlySteps setFlags
 	flag.Var(&only, "set", "check only this tag set (comma-separated tags, as printed); repeatable")
 	flag.Var(&onlySteps, "step", "run only this step (vet, test or smoke); repeatable")
@@ -457,6 +481,22 @@ func main() {
 			apiProviders[api] = alone[0]
 		}
 	}
+	picked := func(set tagSet) bool { return pickSet(set, only, *single) }
+	if *printSets {
+		names := []string{}
+		for _, set := range tagSets(piglet.StripBuildTags(), apiTags) {
+			if picked(set) {
+				names = append(names, set.String())
+			}
+		}
+		encoded, err := json.Marshal(names)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "stripmatrix:", err)
+			os.Exit(1)
+		}
+		fmt.Println(string(encoded))
+		return
+	}
 	scratch, err := os.MkdirTemp("", "pig-strip-matrix-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "stripmatrix:", err)
@@ -464,7 +504,7 @@ func main() {
 	}
 	failed := 0
 	for i, set := range tagSets(piglet.StripBuildTags(), apiTags) {
-		if len(only) > 0 && !slices.Contains(only, set.String()) || len(only) == 0 && *single == "api" && len(set.apis) == 0 {
+		if !picked(set) {
 			continue
 		}
 		stripped := strippedProviders(ai.GeneratedModels, providers, set.apis)
@@ -482,6 +522,11 @@ func main() {
 		}})
 		if *guard {
 			steps = []step{{"vet " + guardPackages, func() error { return run(nil, "go", "vet", "-tags", set.String()+",live", guardPackages) }}}
+		}
+		if *coding {
+			steps = []step{{"coding", func() error {
+				return run(nil, "go", append([]string{"test", "-tags", set.String(), "-count=1", "-timeout", codingTestTimeout}, codingPackages...)...)
+			}}}
 		}
 		for _, step := range steps {
 			if len(onlySteps) > 0 && !slices.Contains(onlySteps, step.name) {

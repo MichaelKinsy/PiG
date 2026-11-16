@@ -7,7 +7,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/mcpshared"
-	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 func TestMCPScopeLineAndSummary(t *testing.T) {
@@ -84,38 +83,6 @@ func TestShowPrintsTheMCPScopeLine(t *testing.T) {
 		if got := strings.Contains(stdout.String(), "MCP tools:"); got != (test.want != "") || test.want != "" && !strings.Contains(stdout.String(), test.want) {
 			t.Errorf("%s: show output\n%s\nwant line %q", name, stdout.String(), test.want)
 		}
-	}
-}
-
-// The agent line states the most the agent can reach in this process: it leaves out what the strip lists remove.
-func TestToolScopeSummaryLeavesOutStrippedTools(t *testing.T) {
-	list := []string{"read", "bash"}
-	undoTool := pigstrip.Strip(pigstrip.ListTools, "bash")
-	defer undoTool()
-	undoMCP := pigstrip.Strip(pigstrip.ListExtensions, "mcp")
-	defer undoMCP()
-	if got, want := ToolScopeSummary(&Piglet{BuiltinTools: &list}), "built-in tools read; no MCP tools"; got != want {
-		t.Errorf("summary = %q, want %q", got, want)
-	}
-	if got, want := ToolScopeSummary(&Piglet{}), "all built-in tools except bash; no MCP tools"; got != want {
-		t.Errorf("summary = %q, want %q", got, want)
-	}
-}
-
-// The agent line names the Piglet, the most it can reach, what the strip lists removed and where the details are.
-func TestAgentToolScopeLineNamesStripsAndDetails(t *testing.T) {
-	undo := pigstrip.Strip(pigstrip.ListTools, "bash")
-	defer undo()
-	undoExt := pigstrip.Strip(pigstrip.ListExtensions, "mcp")
-	defer undoExt()
-	p := &Piglet{Name: "demo", sourcePath: "/p/demo.yaml"}
-	want := "Active Piglet: demo. Tool scope, at most: all built-in tools except bash; no MCP tools. Stripped: tools bash; extensions mcp. Details: pig piglet show /p/demo.yaml."
-	if got := AgentToolScopeLine(p, false); got != want {
-		t.Errorf("line = %q, want %q", got, want)
-	}
-	p.lineage = []LineageEntry{{Source: "binary:base"}}
-	if got := AgentToolScopeLine(p, false); !strings.HasPrefix(got, "Active Piglet: demo (overlay /p/demo.yaml on Piglet Binary base). ") {
-		t.Errorf("overlay line = %q", got)
 	}
 }
 

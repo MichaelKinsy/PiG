@@ -185,7 +185,7 @@ GitHub Releases owns the public release identity. Installers and self-update met
 
 Do not publish a release, tag, installer, package, image, or binary until every release gate is complete.
 
-`make release-check` is the release gate of the candidate commit. Its `piglet-strip-matrix` step proves that a Piglet Binary built without a model API (each of the three API strip tags alone, and every strip tag together) still vets, passes the `ai` tests, lists its models and answers a request through the provider bridge and an extension's pi-ai `complete()`; the step took 2610 s (43.5 minutes) at 8 CPUs, and the nightly workflow runs it too.
+`make release-check` is the release gate of the candidate commit. Its `piglet-strip-matrix` step proves that a Piglet Binary built without a model API (each of the three API strip tags alone, and every strip tag together) still vets, passes the `ai` tests, lists its models and answers a request through the provider bridge and an extension's pi-ai `complete()`; the step took 2610 s (43.5 minutes) at 8 CPUs, and the nightly workflow runs it too. The tests of `./coding/...` and `./internal/codingagent/...` under every strip tag alone and under all tags are `make piglet-strip-tests`, which the nightly workflow runs as one job per tag set (`strip-tests`); a test that needs a built-in a tag compiles out carries a build constraint naming that tag, so a red nightly strip-tests job is a test added without one (or a stripped binary that misbehaves).
 
 ## Publishing the candidate
 

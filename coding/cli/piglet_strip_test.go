@@ -112,11 +112,12 @@ func mapHas(set map[string]struct{}, key string) bool {
 // switch it reuses and drops the explicit paths, and that no strip list
 // leaves the flags untouched.
 func TestApplyPigletStripFeatures(t *testing.T) {
+	active := pigstrip.Active()
 	flags := parseArgs([]string{"--skill", "a", "--prompt-template", "b", "--theme", "c", "--exclude-tools", "read"})
 	before := flags
 	applyPigletStrip(nil, &flags)
 	applyPigletStrip(&piglet.Piglet{Name: "plain"}, &flags)
-	if !slices.Equal(flags.Skills, before.Skills) || flags.NoSkills || flags.NoThemes || flags.NoPromptTemplates || !slices.Equal(flags.ExcludeTools, []string{"read"}) || pigstrip.Active() {
+	if !slices.Equal(flags.Skills, before.Skills) || flags.NoSkills || flags.NoThemes || flags.NoPromptTemplates || !slices.Equal(flags.ExcludeTools, []string{"read"}) || pigstrip.Active() != active {
 		t.Fatalf("no strip list changed the flags: %#v", flags)
 	}
 

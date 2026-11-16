@@ -31,6 +31,15 @@ import (
 
 const mcpTinyPNGBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
 
+func requireEqual[T any](t *testing.T, what string, got, want T) {
+	t.Helper()
+	gotJSON, _ := json.Marshal(got)
+	wantJSON, _ := json.Marshal(want)
+	if string(gotJSON) != string(wantJSON) {
+		t.Errorf("%s = %s, want %s", what, gotJSON, wantJSON)
+	}
+}
+
 var mcpServerTools = []map[string]any{
 	{
 		"name": "search", "description": "Search the docs.",
