@@ -2836,7 +2836,7 @@ allocs = 78
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkCloneCatalogInput"
-allocs = 27405
+allocs = 1017
 
 [[benchmark]]
 package = "./internal/codingagent"
