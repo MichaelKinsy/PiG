@@ -6356,9 +6356,8 @@ export class Runtime {
     this.conn.notify(method, args);
   }
 
-  // Pi's runtime.reportError (types.ts ExtensionRuntimeState.reportError, loader.ts): the runner binds it, and the host's runner is the one that shows the error, so this process sends the error as a report_error notification. It is dropped before the host answers the ready frame (an error while extensions load is lost, as Pi's) and once the runtime is invalidated (a handler that fails after its session was replaced, runner.ts:411-414). The extension path is the connection's.
+  // Pi's runtime.reportError (types.ts ExtensionRuntimeState.reportError, loader.ts): the runner binds it, and the host's runner is the one that shows the error, so this process sends the error as a report_error notification. The host ignores a notification that arrives before the register frame (an error while extensions load is lost, as Pi's) and the runtime drops the report once it is invalidated (a handler that fails after its session was replaced, runner.ts:411-414). The extension path is the connection's.
   reportError({ event, error, stack }) {
-    if (!this.hostReady) return;
     try {
       this.extensionRuntime.assertActive();
     } catch {
