@@ -1221,6 +1221,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-866c7f9](#bf-866c7f9) | fix(rpc): two prompts of one batch answer in request order | PiG's own defect | All platforms | Unreleased |
 | [BF-869cef8](#bf-869cef8) | A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
+| [BF-873f87d](#bf-873f87d) | Chord: a context linked from two abort sources now reports the reason of the source that aborted first when… | PiG's own defect | All platforms | Unreleased |
 | [BF-8780292](#bf-8780292) | The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start | PiG's own defect | All platforms | 0.7.0 |
 | [BF-87a6ac5](#bf-87a6ac5) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-87faba8](#bf-87faba8) | Loading several source-based extensions (Go, Rust, Lisp or Node directories) hashes their sources together… | PiG's own defect | All platforms | Unreleased |
@@ -18961,6 +18962,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `86c411a481` (2026-10-10)
 - **Tests:** `coding/extension/builtin/codemode/schema_order_test.go::TestInputSchemaKeepsTypeBoxKeyOrder`, `coding/extension/builtin/toolsearch/schema_order_test.go::TestInputSchemaKeepsTypeBoxKeyOrder`
 
+### BF-873f87d
+
+**Chord: a context linked from two abort sources now reports the reason of the source that aborted first when…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first.
+- **Root cause:** abortSources and AbortOrder each walked a context's parents on their own, and only abortSources stopped at a WithoutAbortSignal context, so the two functions disagreed about which aborts reach a context.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `873f87dc75` (2026-11-16)
+- **Tests:** `chord/context/abort_cause_oracle_test.go::TestAbortCauseMatchesPi`, `chord/context/abort_detached_order_test.go::TestAbortOrderStopsAtADetachedAncestor`, `chord/context/abort_detached_order_test.go::TestLateListenerHearsTheFirstSourceThatAbortedNotADetachedAncestorsParent`
+- **Release note:** Chord: a context linked from two abort sources now reports the reason of the source that aborted first when one of the sources is derived from a `chordctx.WithoutAbortSignal` context: the host's linked abort signals do, and so does `chordctx.OnAbort` on a context derived by `WithAbortSignal`. Before, the abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first. As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context. Released in: v0.7.0, and every release since (the walk came with 0b76ae5e5, which `git tag --contains` places in v0.7.0; a probe at the v0.7.0 tag ranks `WithCancel(WithoutAbortSignal(x))` before an independent source that aborted earlier).
+
 ### BF-8780292
 
 **The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start**
@@ -34454,5 +34469,5 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 - Fix reverted before release: 2
 - Follow-up to unreleased work: 20
 - Repair of a merge between development branches: 9
-- Review follow-up to unreleased work: 3
+- Review follow-up to unreleased work: 4
 - test-only: 1

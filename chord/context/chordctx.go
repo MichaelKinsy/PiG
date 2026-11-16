@@ -59,14 +59,16 @@ type abortContext struct {
 	parent context.Context
 	// detached is set on a WithoutAbortSignal context, whose embedded context is stdlib's WithoutCancel.
 	detached bool
-	// own is set on a context that has a cancel function of its own (Pi's controller): WithCancel and WithAbortSignalCancel.
-	own bool
+	// own is set on a context that has a cancel function of its own (Pi's controller): WithCancel and WithAbortSignalCancel;
+	// aborted is set, under mu, once the call that owns the cancel function has aborted the context and what is derived from it.
+	own, aborted bool
 	// cancelCause ends the embedded context; nil on a detached one.
 	cancelCause context.CancelCauseFunc
 	// created numbers the contexts of this package in the order they were derived: Pi's composites run their listeners in
 	// the order they were created.
 	created uint64
-	// order is the place of this context's own cancel in the order of aborts (see AbortOrder); 0 until it was cancelled.
+	// order is the place of this context's own cancel in the order of aborts (see AbortOrder); 0 until the first call of the
+	// cancel function claimed it (claim).
 	order atomic.Uint64
 	// listeners are the OnAbort listeners of the cancel functions that abort this context, guarded by mu; a cancel function
 	// runs and clears them. links are the contexts derived from a signal this context's cancel can abort, which the cancel
@@ -74,6 +76,8 @@ type abortContext struct {
 	mu        sync.Mutex
 	listeners map[*abortListener]struct{}
 	links     map[*abortContext]struct{}
+	// settled is closed, under mu, when aborted is set; the first call that has to wait for that makes it (awaitAbort).
+	settled chan struct{}
 	// signaled is set on a context derived from a signal (WithAbortSignal, WithAbortSignalCancel) before it is linked, and
 	// unchanged after; nil on every other, which is most of them, so they do not carry what only a signal needs.
 	signaled *signalLink
@@ -98,12 +102,22 @@ type linkedContext struct {
 // aborts numbers the aborts of the contexts WithCancel makes, in the order their cancel functions ran.
 var aborts atomic.Uint64
 
+// claim makes the caller the owner of this context's own cancel, and reports whether it is: true for the first call of the
+// cancel function, which then aborts the context and runs its listeners, false for every call after it, repeated or running at
+// once on another goroutine. The claim is made before the context is cancelled, so a second call can never find the links and
+// the listeners of an abort that is in progress and take them from the call that aborts: an `abort()` of an aborted signal runs
+// nothing.
+func (c *abortContext) claim() bool {
+	return c.order.Load() == 0 && c.order.CompareAndSwap(0, aborts.Add(1))
+}
+
 // derivations numbers the contexts of this package as they are created (abortContext.created).
 var derivations atomic.Uint64
 
 // AbortOrder is when ctx was aborted relative to other contexts of this package: the number of the earliest abort that
 // ended it (its own cancel, or the one of a parent or signal it derives from), 0 for a context not aborted by this
-// package's cancel functions. AbortSignal.any takes the reason of the source that aborted first; a context derived from two
+// package's cancel functions. The walk through the parents ends at a WithoutAbortSignal context: the aborts behind it do not
+// end what is derived from it. AbortSignal.any takes the reason of the source that aborted first; a context derived from two
 // sources of this package takes the cause of the one whose cancel function reached it first, and two cancel functions that
 // run at once on two goroutines reach it in any order, so the one that decides the reason compares AbortOrder of the
 // sources instead.
@@ -119,6 +133,11 @@ func AbortOrder(ctx context.Context) uint64 {
 		}
 		c, ok := ctx.(*abortContext)
 		if !ok {
+			return earliest
+		}
+		if c.detached {
+			// Nothing behind a WithoutAbortSignal context aborts it: Pi's withoutAbortSignal leaves the context no abort signal
+			// (context/index.ts:118-120), so what is derived from it is aborted by its own cancel and its other sources alone.
 			return earliest
 		}
 		if order := c.order.Load(); order != 0 && (earliest == 0 || order < earliest) {
@@ -299,10 +318,15 @@ func (c *abortContext) abortLinked() {
 	}
 }
 
-// cancel is the cancel function of a context with its own: it aborts the context, then everything derived from it, then runs
-// the listeners of the abort.
+// cancel is the cancel function of a context with its own: the first call aborts the context, then everything derived from it,
+// then runs the listeners of the abort. A call after it, repeated or running at once on another goroutine, does none of that
+// and keeps the first cause, as `abort()` of an aborted signal does nothing; it returns once the first has aborted the context
+// and what is derived from it (awaitAbort), without waiting for the listeners, which are the first call's to run.
 func (c *abortContext) cancel(cause error) {
-	c.order.CompareAndSwap(0, aborts.Add(1))
+	if !c.claim() {
+		c.awaitAbort()
+		return
+	}
 	c.cancelCause(cause)
 	c.unlink()
 	c.abortLinked()

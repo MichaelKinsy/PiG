@@ -33003,6 +33003,30 @@
       ]
     },
     {
+      "id": "BF-873f87d",
+      "title": "Chord: a context linked from two abort sources now reports the reason of the source that aborted first when…",
+      "symptom": "The abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first.",
+      "rootCause": "abortSources and AbortOrder each walked a context's parents on their own, and only abortSources stopped at a WithoutAbortSignal context, so the two functions disagreed about which aborts reach a context.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a context linked from two abort sources now reports the reason of the source that aborted first when one of the sources is derived from a `chordctx.WithoutAbortSignal` context: the host's linked abort signals do, and so does `chordctx.OnAbort` on a context derived by `WithAbortSignal`. Before, the abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first. As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context. Released in: v0.7.0, and every release since (the walk came with 0b76ae5e5, which `git tag --contains` places in v0.7.0; a probe at the v0.7.0 tag ranks `WithCancel(WithoutAbortSignal(x))` before an independent source that aborted earlier).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "873f87dc75",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "chord/context/abort_cause_oracle_test.go::TestAbortCauseMatchesPi",
+        "chord/context/abort_detached_order_test.go::TestAbortOrderStopsAtADetachedAncestor",
+        "chord/context/abort_detached_order_test.go::TestLateListenerHearsTheFirstSourceThatAbortedNotADetachedAncestorsParent"
+      ]
+    },
+    {
       "id": "BF-8780292",
       "title": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start",
       "symptom": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start.",
@@ -65920,7 +65944,7 @@
     "Fix reverted before release": 2,
     "Follow-up to unreleased work": 20,
     "Repair of a merge between development branches": 9,
-    "Review follow-up to unreleased work": 3,
+    "Review follow-up to unreleased work": 4,
     "test-only": 1
   }
 }

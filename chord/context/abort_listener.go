@@ -41,11 +41,16 @@ func (l *abortListener) fire(cause error) {
 // everything derived from it are aborted. Pi's order (measured on Node 24: `AbortSignal.any` marks every composite of the
 // source aborted, runs the source's own listeners in the order they were added, then each composite's in the order the
 // composites were created): by the creation of the context a listener was added to, and by when it was added within one
-// context. A context's own cancel comes first in it, as it was created before everything derived from it.
+// context. A context's own cancel comes first in it, as it was created before everything derived from it. It runs only in the
+// call that claimed the cancel; taking the listeners ends the abort the calls after it wait for (awaitAbort).
 func (c *abortContext) dispatch() {
 	c.mu.Lock()
 	registered := c.listeners
 	c.listeners = nil
+	c.aborted = true
+	if c.settled != nil {
+		close(c.settled)
+	}
 	c.mu.Unlock()
 	if len(registered) == 0 {
 		return
@@ -71,6 +76,25 @@ func (c *abortContext) dispatch() {
 	for _, l := range ordered {
 		l.fire(cause)
 	}
+}
+
+// awaitAbort is the cancel function of a call that does not own the cancel (a repeated one, or one that runs at once on
+// another goroutine): it returns once the call that owns it has aborted the context and everything derived from it, so that a
+// caller that cancels and goes on finds them aborted whichever call aborted them, as Pi's second `abort()` finds them. It
+// does not wait for the listeners, which are the owner's to run, and which a call made from inside one of them (on the
+// owner's goroutine) could never wait for: no code but the owner's own runs before the listeners are taken.
+func (c *abortContext) awaitAbort() {
+	c.mu.Lock()
+	if c.aborted {
+		c.mu.Unlock()
+		return
+	}
+	if c.settled == nil {
+		c.settled = make(chan struct{})
+	}
+	settled := c.settled
+	c.mu.Unlock()
+	<-settled
 }
 
 // abortSources appends to out the contexts of this package whose cancel function (or whose parent's, or signal's) can abort
@@ -145,9 +169,12 @@ var noOwner = &abortContext{}
 // (WithAbortSignal, or WithCancel under a parent that is cancelled) runs fn for the first of them to abort, with that one's
 // cause.
 //
-// The guarantee is the canceller's: when its cancel function returns, the listeners have run. A goroutine that sees Err or
-// Done set while that cancel is still running is concurrent with it, as a second thread would be: the listener may not have
-// run yet, so order a step against the return of the cancel, not against what Err shows.
+// The guarantee is the canceller's: when the call of its cancel function that aborts ctx returns, the listeners have run. A
+// call after it, repeated or at once on another goroutine, runs none and records no cause, as Pi's `abort()` of an aborted
+// signal does nothing; it returns once the first has aborted the context and what is derived from it, and the first call's
+// listeners may still be running then. A goroutine that sees Err or Done set while that cancel is still running is concurrent
+// with it, as a second thread would be: the listener may not have run yet, so order a step against the return of the cancel
+// that aborts, not against what Err shows.
 //
 // stop removes the registration and reports whether it kept fn from running; it is safe to call after fn ran, and from fn
 // itself. A caller whose wait ends without fn having run (its result came first, its owner went away) MUST call it: a

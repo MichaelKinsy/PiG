@@ -124890,7 +124890,7 @@
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextDerivedAbortContextsPrintAsPiPrintsThem",
         "test:chord/context/chordctx_upstream_test.go#TestContextInheritsParentCancellationAndIsolatesChildCancellation",
-        "test:chord/context/abort_link_test.go#TestAContextDerivedFromADerivedSignalFollowsEveryCancelOfItsAncestors"
+        "test:chord/context/abort_detached_order_test.go#TestAbortOrderStopsAtADetachedAncestor"
       ]
     },
     {
@@ -124912,7 +124912,7 @@
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextDerivedAbortContextsPrintAsPiPrintsThem",
         "test:chord/context/chordctx_upstream_test.go#TestContextInheritsParentCancellationAndIsolatesChildCancellation",
-        "test:chord/context/abort_link_test.go#TestAContextDerivedFromADerivedSignalFollowsEveryCancelOfItsAncestors"
+        "test:chord/context/abort_detached_order_test.go#TestAbortOrderStopsAtADetachedAncestor"
       ]
     },
     {
