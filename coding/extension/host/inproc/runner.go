@@ -2180,7 +2180,10 @@ func (r *Runner) EmitBeforeProviderRequest(ctx context.Context, payload any) (an
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "before_provider_request", err)
-				continue
+				// Upstream's catch keeps currentPayload as the handler left it: an in-place edit before a throw is in the request. An extension in another process reports the payload it left beside its error (raw JSON); a result a native handler returns beside its error is no result in Pi, where a throw returns nothing.
+				if _, edited := handlerResult.(json.RawMessage); !edited {
+					continue
+				}
 			}
 			// Upstream: `if (handlerResult !== undefined) currentPayload = handlerResult`.
 			// In Go, nil is the closest equivalent of undefined; a handler
@@ -2265,7 +2268,10 @@ func (r *Runner) EmitBeforeProviderHeaders(ctx context.Context, headers extensio
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "before_provider_headers", err)
-				continue
+				// Upstream's catch keeps the headers as the handler left them: an in-place edit before a throw is in the request. An extension in another process reports the headers it left beside its error (raw JSON); a result a native handler returns beside its error is no result in Pi.
+				if _, edited := handlerResult.(json.RawMessage); !edited {
+					continue
+				}
 			}
 			if handlerResult == nil {
 				continue

@@ -5690,6 +5690,33 @@ export class Runtime {
             await this.respond(id, { ...(edited ? { _pigMessageEndMessage: message } : {}), _pigMessageEndResult: result }, error);
             return;
           }
+          // Pi hands every before_provider_request handler the one payload and sends what the runner returns, so a handler's in-place edit of event.payload is in the request when it returns nothing (runner.ts emitBeforeProviderRequest returns currentPayload), even when it throws afterwards. The host cannot share the object, so a handler that returned undefined sends the payload it left when its JSON text differs from the one it received. A handler that returns a value replaces the payload with it and the edit of the old object is dropped; assigning event.payload changes nothing (the event is made for each handler). before_provider_headers is the same without a result: its handlers mutate event.headers in place and the return value is ignored (runner.ts emitBeforeProviderHeaders), so the reply is the headers object the handler left.
+          if (request.event === "before_provider_request" || request.event === "before_provider_headers") {
+            const headers = request.event === "before_provider_headers";
+            const shared = headers ? event.headers : event.payload;
+            const before = !headers && shared && typeof shared === "object" ? JSON.stringify(shared) : undefined;
+            let result;
+            let error;
+            try {
+              const pending = selected.handler(event, ctx);
+              // As below: a shutdown the handler asked for in its synchronous prefix closes its window in print, JSON and RPC mode.
+              const shutdownOwner = this.requestContext.getStore();
+              if (shutdownOwner?.id === id && shutdownOwner.quit && (this.contextValues.mode === "rpc" || PROMPT_END_MODES.has(this.contextValues.mode))) armRequestWindow(shutdownOwner);
+              result = await pending;
+            } catch (err) {
+              error = err instanceof Error ? err : new Error(String(err));
+            }
+            if (headers) result = shared ?? {};
+            else if (result === undefined && before !== undefined) {
+              try {
+                if (JSON.stringify(shared) !== before) result = shared;
+              } catch (err) {
+                error ??= err instanceof Error ? err : new Error(String(err));
+              }
+            }
+            await this.respond(id, result, error);
+            return;
+          }
           const messages = event.messages;
           const snapshot = Array.isArray(messages) ? messages.slice() : undefined;
           // A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
@@ -5712,13 +5739,6 @@ export class Runtime {
             const returned = result?.messages ?? messages;
             const unchanged = returned.length === snapshot.length && returned.every((message, i) => message === snapshot[i]);
             result = unchanged && encodedBefore !== undefined && contextMessagesEncoding(returned) === encodedBefore ? { _pigContextUnchanged: true } : { messages: returned, _pigContextUnchanged: unchanged };
-          }
-          // before_provider_headers handlers mutate event.headers in place and
-          // their return value is ignored (runner.ts emitBeforeProviderHeaders);
-          // the host cannot share the object, so send the mutated headers back.
-          if (request.event === "before_provider_headers") {
-            await this.respond(id, event.headers ?? {});
-            return;
           }
           if (request.event === "user_bash" && result !== undefined) {
             if (result === null) throw new Error('Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object');

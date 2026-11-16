@@ -5019,6 +5019,11 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				resp.Response.Result = boundary.Result
 			}
 			if resp.Response.Error != nil {
+				// upstream: runner.ts emitBeforeProviderRequest and emitBeforeProviderHeaders hand every handler the one payload or headers object and catch a handler's error with the object as the handler left it, so an in-place edit that precedes the throw stays in the request. The extension's reply carries the object it left beside its error.
+				if (event == "before_provider_request" || event == "before_provider_headers") && len(resp.Response.Result) > 0 && strings.TrimSpace(string(resp.Response.Result)) != "null" {
+					//portlint:allow hotpathalloc the reply frame returns to the connection when this handler returns (releaseResponse) and the result outlives it; one copy of the object a failed handler left, once per provider request
+					return slices.Clone(resp.Response.Result), resp.Response.Error.ToError()
+				}
 				return nil, resp.Response.Error.ToError()
 			}
 			// A user_bash reply that names a BashOperations object the extension holds becomes the object Pi's runner holds.

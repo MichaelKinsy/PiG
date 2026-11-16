@@ -294,6 +294,27 @@
                         "_pigPromptOptions" options
                         "_pigPromptResult" result)
                    error-message)))
+        ;; Pi hands every before_provider_request handler the one payload and sends what the runner returns: a handler that edits it in place and returns nothing changes the request (runner.ts emitBeforeProviderRequest returns currentPayload), even when it fails afterwards. The host cannot share the table, so a handler that returned no result sends the payload it left when its JSON text differs from the one it received.
+        ((equal event "before_provider_request")
+         (let* ((payload (jget data "payload"))
+                (before (and (or (hash-table-p payload) (and (vectorp payload) (not (stringp payload)))) (to-json payload)))
+                result error-message)
+           (handler-case
+               (progn (ticket-begin (request-ticket (ctx-request ctx)))
+                      (setf result (funcall handler ctx data)))
+             (serious-condition (c) (setf error-message (condition-message c))))
+           (when (and before (null result))
+             (handler-case (unless (equal (to-json payload) before) (setf result payload))
+               (serious-condition (c) (unless error-message (setf error-message (condition-message c))))))
+           (values result error-message)))
+        ;; Pi's before_provider_headers handlers mutate event.headers in place and the return value is ignored (runner.ts emitBeforeProviderHeaders): the reply is the headers table the handler left, even when it failed.
+        ((equal event "before_provider_headers")
+         (let ((headers (jget data "headers")) error-message)
+           (handler-case
+               (progn (ticket-begin (request-ticket (ctx-request ctx)))
+                      (funcall handler ctx data))
+             (serious-condition (c) (setf error-message (condition-message c))))
+           (values (if (hash-table-p headers) headers (obj)) error-message)))
         (t
          (let* ((messages (jget data "messages"))
                 (context-event (member event '("context" "context_with_system") :test #'equal))

@@ -3249,6 +3249,25 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, echo)
 
     ext.command("event_echo_probe", "Subscribe to the event named by the argument with a handler that hands back the objects it was sent", event_echo_probe)
+
+    def event_mutate_probe(ctx, args):
+        # Subscribe to the event named by the argument `<event> [fail]` with a handler that edits the event's payload (before_provider_request) or headers (before_provider_headers) in place, returns nothing and, with fail, raises.
+        name, _, fail = args.strip().partition(" ")
+
+        def mutate(hctx, data):
+            key = "inPlaceBeforeError" if fail.strip() == "fail" else "inPlace"
+            if name == "before_provider_headers":
+                data["headers"]["x-pig-" + key] = "in-place-edit"
+            else:
+                data["payload"][key] = "in-place-edit"
+                if "zeta" in data["payload"]:
+                    data["payload"]["zeta"][key] = "in-place-edit"
+            if fail.strip() == "fail":
+                raise RuntimeError("failed after the edit")
+
+        ext.on_event(name, mutate)
+
+    ext.command("event_mutate_probe", "Subscribe to the event named by the argument with a handler that edits its payload or headers in place and returns nothing", event_mutate_probe)
     ext.command("event_probe_off", "Unsubscribe the event_probe_on handlers of the event named by the argument", event_probe_on_off)
     def event_payload_probe(ctx, args):
         name = args.strip()
