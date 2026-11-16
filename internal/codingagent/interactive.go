@@ -1776,7 +1776,8 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	})
 	mark("pre-raw-mode")
 	m.holdProgramStatusForFrontend()
-	restore, drain, err := tui.EnterRawModeWithDrain()
+	// A frontend may draw instead of the fullscreen renderer, on its own terminal: the alternate screen is entered once it declined (below).
+	restore, drain, err := m.startTerminal(m.altScreen != nil && m.opts.Frontend == nil)
 	if err != nil {
 		// Entering raw mode on a terminal that went away (setRawMode EIO or ENOTTY) is not a crash.
 		m.exitIfDeadTerminal(err)
@@ -1792,6 +1793,12 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.rawRestore = restore
 	m.rawDrain = drain
 	m.openFrontend()
+	if m.opts.Frontend != nil && m.surface == nil && m.altScreen != nil {
+		// The frontend declined: the fullscreen renderer draws, and the terminal starts again on its screen.
+		if err := m.restartTerminal(); err != nil {
+			return fmt.Errorf("interactive: raw mode: %w", err)
+		}
+	}
 	m.tuiInst.HideCursor()
 	// Centralized, idempotent renderer teardown runs before the deferred cursor and cooked-mode restoration on normal quit or graceful signal shutdown. A dead-terminal emergency exits without unwinding these terminal writes.
 	m.onStop(func() error { m.stopInteractiveTui(); return nil })

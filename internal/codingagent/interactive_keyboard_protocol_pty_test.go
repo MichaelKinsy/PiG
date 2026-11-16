@@ -17,7 +17,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
-	"github.com/MichaelKinsy/PiG/tui"
 )
 
 const keyboardProtocolChildEnv = "PIG_TEST_KEYBOARD_PROTOCOL_CHILD"
@@ -32,12 +31,16 @@ type vtKeyboardModel struct {
 	main, top []int
 	underflow int
 	marks     []vtKeyboardMark
+	// seq lists, in order, the mode sequences the byte order of a start or stop depends on: the screen switches, bracketed paste, the Kitty
+	// keyboard push, pop and query, the Device Attributes sentinel and the modifyOtherKeys fallback.
+	seq []string
 }
 
 type vtKeyboardMark struct {
 	name     string
 	alt      bool
 	main, up []int
+	seqAt    int
 }
 
 func (m *vtKeyboardModel) stack() *[]int {
@@ -76,7 +79,7 @@ func (m *vtKeyboardModel) feed(data []byte) {
 			}
 			if data[i+1] == ']' {
 				if name, ok := strings.CutPrefix(string(data[i+2:j]), "777;mark;"); ok {
-					m.marks = append(m.marks, vtKeyboardMark{name, m.alt, slicesCloneInts(m.main), slicesCloneInts(m.top)})
+					m.marks = append(m.marks, vtKeyboardMark{name, m.alt, slicesCloneInts(m.main), slicesCloneInts(m.top), len(m.seq)})
 				}
 			}
 			i = j
@@ -94,14 +97,30 @@ func (m *vtKeyboardModel) csi(params string, final byte) {
 		for p := range strings.SplitSeq(strings.TrimPrefix(params, "?"), ";") {
 			if strings.HasPrefix(params, "?") && p == "1049" {
 				m.alt = final == 'h'
+				m.seq = append(m.seq, "?1049"+string(final))
 			}
+			if strings.HasPrefix(params, "?") && p == "2004" {
+				m.seq = append(m.seq, "?2004"+string(final))
+			}
+		}
+	case 'c':
+		if params == "" {
+			m.seq = append(m.seq, "DA1")
+		}
+	case 'm':
+		if params == ">4;2" || params == ">4;0" {
+			m.seq = append(m.seq, params+"m")
 		}
 	case 'u':
 		switch {
+		case params == "?":
+			m.seq = append(m.seq, "?u")
 		case strings.HasPrefix(params, ">"):
 			flags, _ := strconv.Atoi(params[1:])
 			*m.stack() = append(*m.stack(), flags)
+			m.seq = append(m.seq, ">"+params[1:]+"u")
 		case strings.HasPrefix(params, "<"):
+			m.seq = append(m.seq, "<u")
 			count := 1
 			if n, err := strconv.Atoi(params[1:]); err == nil {
 				count = n
@@ -141,7 +160,7 @@ func TestKeyboardProtocolDriverBalancesPerScreenStacks(t *testing.T) {
 				name string
 				stacks
 			}{
-				{"raw", stacks{false, seven, nil}},
+				{"raw", stacks{true, nil, seven}},
 				{"fullscreen", stacks{true, nil, seven}},
 				{"regular", stacks{false, seven, nil}},
 				{"fullscreen-again", stacks{true, nil, seven}},
@@ -168,6 +187,59 @@ func TestKeyboardProtocolDriverBalancesPerScreenStacks(t *testing.T) {
 				t.Errorf("%d pops hit an empty stack", model.underflow)
 			}
 		})
+	}
+}
+
+// TestKeyboardProtocolDriverStartsAndStopsInPisOrder pins the order of the mode writes of every start and stop path against Pi's:
+//
+//	start (tui.ts:956): beforeTerminalStart (tui-alt-screen.ts:347: the alternate screen is entered), then terminal.start (terminal.ts:207:
+//	  bracketed paste on, then queryAndEnableKittyProtocol: the keyboard push and query, the Device Attributes sentinel)
+//	stop (tui.ts:1012): beforeTerminalStop, showCursor, terminal.stop (terminal.ts:481: bracketed paste off, the keyboard pop), then
+//	  afterTerminalStop (tui-alt-screen.ts: the alternate screen is left)
+//
+// The flags are therefore pushed on the screen the renderer draws on and popped there; no pop, enter and push wrap moves them across a switch.
+// The child answers no query, so no modifyOtherKeys write is in the lists (it is written only on a reply: terminal.ts:417).
+func TestKeyboardProtocolDriverStartsAndStopsInPisOrder(t *testing.T) {
+	model, output := runKeyboardProtocolChild(t, "resume-hint")
+	start := []string{"?1049h", "?2004h", ">7u", "?u", "DA1"}
+	startMain := []string{"?2004h", ">7u", "?u", "DA1"}
+	stop := []string{"?2004l", "<u", "?1049l"}
+	stopMain := []string{"?2004l", "<u"}
+	exit := []string{"<u", "?2004l", "?1049l"}
+	join := func(parts ...[]string) []string {
+		var all []string
+		for _, part := range parts {
+			all = append(all, part...)
+		}
+		return all
+	}
+	want := []struct {
+		to  string
+		seq []string
+	}{
+		{"raw", start},                              // Run's start
+		{"fullscreen", nil},                         // the mount that follows: the frame writes none of them
+		{"regular", join(stop, startMain)},          // switchTuiMode: previousUi.stop(), nextUi.start() (interactive-mode.ts:955-977)
+		{"fullscreen-again", join(stopMain, start)}, // and back
+		{"suspended", stop},                         // SIGTSTP: ui.stop() (interactive-mode.ts:4783)
+		{"resumed", start},                          // SIGCONT: ui.start() (:4795)
+		{"editor", stop},                            // the external editor: ui.stop() (:4552)
+		{"edited", start},                           // ui.start() (:4642)
+		{"exited", exit},                            // the exit: drainInput pops first (terminal.ts:449), then ui.stop() (preserveScreen)
+	}
+	if len(model.marks) != len(want) {
+		t.Fatalf("marks = %d, want %d; output %q", len(model.marks), len(want), output)
+	}
+	from := 0
+	for i, w := range want {
+		mark := model.marks[i]
+		if mark.name != w.to {
+			t.Fatalf("mark %d = %q, want %q", i, mark.name, w.to)
+		}
+		if got := model.seq[from:mark.seqAt]; fmt.Sprint(got) != fmt.Sprint(w.seq) {
+			t.Errorf("up to %q the mode writes are\n got %v\nwant %v", w.to, got, w.seq)
+		}
+		from = mark.seqAt
 	}
 }
 
@@ -226,10 +298,11 @@ func TestKeyboardProtocolDriverChild(t *testing.T) {
 		Settings: Settings{TuiMode: "fullscreen", FullscreenExitOutput: FullscreenExitOutput(exitOutput)},
 	}
 	opts.TuiMode = "fullscreen"
-	m := newUnmountedSwitchTuiProbe(t, opts, os.Stdout)
+	// No renderer output: the renderers draw on the process terminal, which Run's raw mode also drives, as in production.
+	m := newUnmountedSwitchTuiProbe(t, opts, nil)
 
-	// Run enters raw mode (pushing on the main screen) before the first mount.
-	restore, drain, err := tui.EnterRawModeWithDrain()
+	// Run starts the terminal (the fullscreen renderer's alternate screen first, as Pi's start() does) before the first mount.
+	restore, drain, err := m.startTerminal(true)
 	if err != nil {
 		t.Fatal(err)
 	}
