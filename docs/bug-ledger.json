@@ -28164,6 +28164,30 @@
       ]
     },
     {
+      "id": "BF-7236618",
+      "title": "Follows Pi e03dca7a3843: `Session.Reload` (and the reload of every SDK's `AgentSession`) did not emit…",
+      "symptom": "Follows Pi e03dca7a3843: `Session.Reload` (and the reload of every SDK's `AgentSession`) did not emit `session_start` to the extensions when the host had bound them with `BindExtensions` and no bindings (the Go counterpart of `bindExtensions({})`), after it had already emitted `session_shutdown`.",
+      "rootCause": "Follows Pi e03dca7a3843: `Session.Reload` (and the reload of every SDK's `AgentSession`) did not emit `session_start` to the extensions when the host had bound them with `BindExtensions` and no bindings (the Go counterpart of `bindExtensions({})`), after it had already emitted `session_shutdown`.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Follows Pi e03dca7a3843: `Session.Reload` (and the reload of every SDK's `AgentSession`) did not emit `session_start` to the extensions when the host had bound them with `BindExtensions` and no bindings (the Go counterpart of `bindExtensions({})`), after it had already emitted `session_shutdown`. Extensions that start work in `session_start`, such as the MCP extension connecting its servers, stayed stopped after a reload. A reload now restarts the extensions of every session whose host called `BindExtensions`; a session that was never bound behaves as before, and the print, JSON, RPC and interactive modes were not affected. The fault is in v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7236618f97",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/session_reload_bound_empty_upstream_test.go::TestSessionReloadAfterBindExtensionsWithEmptyBindingsEmitsSessionStart",
+        "coding/session_reload_bound_empty_upstream_test.go::TestSessionReloadRestartsTheExtensionsOnlyOfABoundSession",
+        "coding/session_reload_upstream_test.go::TestSessionReloadRebuildsTheRunnerFromTheResourceLoader"
+      ]
+    },
+    {
       "id": "BF-725e104",
       "title": "The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks…",
       "symptom": "The upstream test inventory records Pi's `shell-path-exists.test.ts` as ported instead of partial: Pi mocks `accessSync` and `spawnSync`, PiG's Windows alias and Unix cases match them case for case, and the native Windows check ran and passed on the Windows runner.",
@@ -47500,6 +47524,30 @@
         "durable/codecs_test.go::TestDocumentRecordMarshalsInPiStorageOrder",
         "durable/storage/memory_pi_oracle_test.go::TestMemoryStorageMatchesPiOnSeededPrograms",
         "durable/storage/sqlite_pi_oracle_test.go::TestSqliteStorageMatchesPiOnSeededPrograms"
+      ]
+    },
+    {
+      "id": "BF-c28880a",
+      "title": "Follows Pi 6aab551a79ba: `--mode json` dropped the events emitted by extension `session_start` handlers, such…",
+      "symptom": "Follows Pi 6aab551a79ba: `--mode json` dropped the events emitted by extension `session_start` handlers, such as `entry_appended` for entries they append, `session_info_changed` for a name they set and the `message_start` and `message_end` of a custom message they send, at startup and after an extension replaces the session (`ctx.newSession()`).",
+      "rootCause": "The writer subscribed after the session_start emission and a flag held back entry_appended until then, so the entry_appended, session_info_changed and custom message events a session_start handler emits were dropped at startup and after ctx.newSession(). The writer now subscribes first, as print-mode.ts rebindSession does, and the flag is gone. The writer-start fixtures of every SDK gain /writer-renew; scenario json/13 expects the startup events and json/15 compares the stream across a replacement.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Follows Pi 6aab551a79ba: `--mode json` dropped the events emitted by extension `session_start` handlers, such as `entry_appended` for entries they append, `session_info_changed` for a name they set and the `message_start` and `message_end` of a custom message they send, at startup and after an extension replaces the session (`ctx.newSession()`). The JSON writer now subscribes before the extensions are bound, so these events follow the session header and come before the prompt's events. The fault is in v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c28880ae3e",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/json_mode_writer_after_session_start_test.go::TestJSONModeWritesSessionStartEventsOfAReplacementInEverySDK",
+        "coding/cli/json_mode_writer_after_session_start_test.go::TestJSONModeWritesWhatSessionStartEmitsInEverySDK",
+        "test/parity/scenarios/json/15-json-session-start-replacement.toml"
       ]
     },
     {

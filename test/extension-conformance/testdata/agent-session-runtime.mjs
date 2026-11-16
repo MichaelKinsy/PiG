@@ -125,6 +125,11 @@ export async function agentSessionRuntimeScript({ cwd, agentDir, root, runtimePr
     sourceKept: existsSync(importPath), missing: await error(() => runtime.importFromJsonl(join(importDir, "missing.jsonl"))),
   };
 
+  // reload after bindExtensions({}) (Pi e03dca7a3843): the host bound the session without a UI context, command actions, a shutdown handler or an error listener, and the reload still stops the old extensions and starts the new ones.
+  const loggedBeforeReload = readFileSync(logFile, "utf8").trimEnd().split("\n").length;
+  await runtime.session.reload();
+  r.reload = { events: readFileSync(logFile, "utf8").trimEnd().split("\n").slice(loggedBeforeReload) };
+
   // dispose settles a run in flight before it emits session_shutdown (Pi's dispose awaits session.abort()): the model never ends this run, so only the abort can end it and the log shows its agent_end before the shutdown.
   const observeFile = join(cwd, "observe-run");
   writeFileSync(observeFile, "");

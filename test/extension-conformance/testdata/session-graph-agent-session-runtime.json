@@ -38,6 +38,8 @@
 		"before_switch|resume|target",
 		"shutdown|resume|target",
 		"start|resume|previous",
+		"shutdown|reload|-",
+		"start|reload|-",
 		"agent_start",
 		"agent_end",
 		"shutdown|quit|-"
@@ -163,6 +165,12 @@
 			"message"
 		],
 		"persisted": true
+	},
+	"reload": {
+		"events": [
+			"shutdown|reload|-",
+			"start|reload|-"
+		]
 	},
 	"switch": {
 		"backOnFirst": true,

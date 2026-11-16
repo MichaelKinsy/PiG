@@ -1317,6 +1317,71 @@ function serverSummary(server) {
 ]);
 // END backport 3567987250
 
+// BEGIN backport 6aab551a79ba
+// 6aab551a79ba (#12232): print mode (text and --mode json) subscribes the event writer and the stdout backpressure before bindExtensions(), so the events session_start handlers emit
+// (entry_appended for pi.appendEntry, session_info_changed, a custom message's message_start/message_end) reach the JSON output at startup and after an extension replaces the session.
+// not carried: packages/coding-agent/test/suite/print-mode-session-start-events.test.ts and packages/coding-agent/CHANGELOG.md: the package ships neither.
+patch("6aab551a79ba", "pi-coding-agent/modes/print-mode.js", [
+    [`        session = runtimeHost.session;
+        await session.bindExtensions({`, `        session = runtimeHost.session;
+        ${note("6aab551a79ba").trim()}
+        // Subscribe before binding so events emitted by session_start handlers (e.g. appended entries) reach the JSON output.
+        unsubscribe?.();
+        unsubscribeBackpressure?.();
+        unsubscribe = session.subscribe((event) => {
+            if (mode === "json") {
+                writeRawStdout(\`\${JSON.stringify(toJsonEvent(event))}\\n\`);
+            }
+        });
+        unsubscribeBackpressure =
+            mode === "json"
+                ? session.agent.subscribe(async () => {
+                    await waitForRawStdoutBackpressure();
+                })
+                : undefined;
+        await session.bindExtensions({`],
+    [`        });
+        unsubscribe?.();
+        unsubscribeBackpressure?.();
+        unsubscribe = session.subscribe((event) => {
+            if (mode === "json") {
+                writeRawStdout(\`\${JSON.stringify(toJsonEvent(event))}\\n\`);
+            }
+        });
+        unsubscribeBackpressure =
+            mode === "json"
+                ? session.agent.subscribe(async () => {
+                    await waitForRawStdoutBackpressure();
+                })
+                : undefined;
+    };
+`, `        });
+    };
+`],
+]);
+// END backport 6aab551a79ba
+
+// BEGIN backport e03dca7a3843
+// e03dca7a3843 (#12231): AgentSession.reload() restarts the extensions (session_start with reason reload) when the host called bindExtensions(), even bindExtensions({}), not only when it set a UI context, command actions, a shutdown handler or an error listener.
+// not carried: pi-coding-agent/core/agent-session.d.ts (the private field _extensionsBound): declarations follow the pin. packages/coding-agent/test/agent-session-runtime-events.test.ts and packages/coding-agent/CHANGELOG.md: the package ships neither.
+patch("e03dca7a3843", "pi-coding-agent/core/agent-session.js", [
+    ["    _extensionErrorUnsubscriber;\n", `    _extensionErrorUnsubscriber;
+    ${note("e03dca7a3843").trim()}
+    // Set by bindExtensions(): reload() restarts extensions only if the host started them.
+    _extensionsBound = false;
+`],
+    [`        this._applyExtensionBindings(this._extensionRunner);
+        await this._extensionRunner.emit(this._sessionStartEvent);`, `        this._extensionsBound = true;
+        this._applyExtensionBindings(this._extensionRunner);
+        await this._extensionRunner.emit(this._sessionStartEvent);`],
+    [`        const hasBindings = this._extensionUIContext ||
+            this._extensionCommandContextActions ||
+            this._extensionShutdownHandler ||
+            this._extensionErrorListener;
+        if (hasBindings) {`, `        if (this._extensionsBound) {`],
+]);
+// END backport e03dca7a3843
+
 // BEGIN backport ac78a6068b38
 // ac78a6068b38 (#12117, #11264): two direct terminal writes that drew over the TUI go. parseChangelog (startup notes of pi's and of extension packages' changelogs, /changelog) returns no entries
 // for a changelog it cannot read without printing `Warning: Could not parse changelog`; core/model-resolver.js loses restoreModelFromSession (it printed with console.log and console.error, had no
@@ -1437,6 +1502,7 @@ const SESSION_WEBSOCKET_MAX_AGE_MS = 45 * 60 * 1000;
 `],
 ]);
 // END backport bb1a2b3542b5
+||||||| 297b8449d5
 ||||||| 297b8449d5
 
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime

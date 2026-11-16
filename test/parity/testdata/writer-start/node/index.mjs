@@ -1,4 +1,4 @@
-// writer-start: session_start appends an entry, names the session and sends a custom message; /writer-after does the same from a command. Written once per SDK (node, go, python, rust); the mode's writer must print the command's events and none of session_start's.
+// writer-start: session_start appends an entry, names the session and sends a custom message; /writer-after does the same from a command; /writer-renew replaces the session (ctx.newSession). Written once per SDK (node, go, python, rust, lisp). The JSON writer prints what session_start emitted at startup and after the replacement, and the command's events.
 export default function (pi) {
   pi.on("session_start", (_event, ctx) => {
     pi.appendEntry("writer-start", { text: "from-start" });
@@ -12,6 +12,12 @@ export default function (pi) {
       pi.appendEntry("writer-after", { text: "from-command" });
       pi.setSessionName("after-name");
       pi.sendMessage({ customType: "writer-after", content: [{ type: "text", text: "after-message" }], display: false }, { triggerTurn: false });
+    },
+  });
+  pi.registerCommand("writer-renew", {
+    description: "Replace the session",
+    handler: async (_args, ctx) => {
+      await ctx.newSession();
     },
   });
 }

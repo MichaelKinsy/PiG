@@ -206,6 +206,11 @@
                   (pig:obj "result" imported "fresh" (jb (is-new)) "inSessionDir" (jb (eql 0 (search session-dir imported-file)))
                            "name" (basename imported-file) "roles" (roles) "sourceKept" (jb (s1-exists-p import-path))
                            "missing" (s1-error-text (lambda () (pig:agent-session-runtime-import-from-jsonl runtime (join import-dir "missing.jsonl"))))))))
+        ;; reload after bind-extensions with no bindings (Pi e03dca7a3843): the old extensions get session_shutdown and the new ones session_start.
+        (let ((logged-before-reload (length (s1-split-lines (string-right-trim '(#\Newline) (s1-read-text log-file))))))
+          (pig:agent-session-reload (pig:agent-session-runtime-session runtime))
+          (setf (gethash "reload" r)
+                (pig:obj "events" (vec (nthcdr logged-before-reload (s1-split-lines (string-right-trim '(#\Newline) (s1-read-text log-file))))))))
         ;; dispose settles a run in flight before it emits session_shutdown; the model never ends this run, so only the abort can end it.
         (let ((observe-file (join cwd "observe-run")) (hung (pig:agent-session-runtime-session runtime)))
           (with-open-file (out observe-file :direction :output :if-exists :supersede))

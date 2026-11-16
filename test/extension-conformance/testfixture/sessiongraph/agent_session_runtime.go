@@ -208,6 +208,13 @@ func agentSessionRuntimeScript(ctx sdk.Context, args map[string]any) map[string]
 		}()),
 	}
 
+	// reload after BindExtensions() with no bindings (Pi e03dca7a3843): the old extensions get session_shutdown and the new ones session_start.
+	loggedBeforeReload := len(strings.Split(strings.TrimRight(string(ok(os.ReadFile(logFile))), "\n"), "\n"))
+	if err := runtime.Session().Reload(context.Background()); err != nil {
+		panic(err)
+	}
+	r["reload"] = map[string]any{"events": strings.Split(strings.TrimRight(string(ok(os.ReadFile(logFile))), "\n"), "\n")[loggedBeforeReload:]}
+
 	// A direct refresh of the live session (the runtime's own after a setup is the one the report shows); Pi's run reads nothing from it, so it adds nothing to the report.
 	if err := runtime.Session().RefreshContext(); err != nil {
 		panic(err)

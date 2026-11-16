@@ -1,11 +1,11 @@
 # Behavior family: json
 # Surface: which events a session_start handler puts on the --mode json stream.
 #
-# Upstream evidence (Pi 1.3.0+1402973a): print-mode.ts:76-122 rebindSession awaits `session.bindExtensions(...)` (every session_start handler) and only then calls `session.subscribe(...)`, the JSON writer. The stream is the session header, then the events from the prompt on. The entry_appended, session_info_changed and custom message_start/message_end events a session_start handler emits during startup have no listener and are not written. The command the prompt runs appends after the writer subscribed, so its events are written.
-# PiG subscribed the JSON writer before session_start and wrote the handler's whole startup output between the header and the command's events.
+# Upstream evidence (Pi 6aab551a79ba, #12232): print-mode.ts rebindSession subscribes the JSON writer (`session.subscribe(...)`) before `await session.bindExtensions(...)`, so what a session_start handler emits is written: the stream is the session header (written before the first bind), the entry_appended, session_info_changed and custom message_start/message_end events of the handler, then the events of the command the prompt runs. Before that commit (Pi 1.3.0+1402973a to 1.5.2) the writer subscribed after the bind and the startup events were dropped; the oracle carries the commit through the backport block of automation/gen/pi-post-release-backports.mjs.
+# PiG before this change wrote the same dropped stream (its writer subscribed after the session_start emission).
 # Entry IDs and clocks are masked; member order and every other byte compare.
 name = "13-json-session-start-writer-order"
-description = "--mode json starts its stream at the prompt: nothing a session_start handler emits is written, a command's appends are"
+description = "--mode json writes what a session_start handler emits (entry_appended, session_info_changed, a custom message) between the header and the command's events"
 covers = ["packages/coding-agent/src/modes/print-mode.ts", "packages/coding-agent/src/core/agent-session.ts"]
 tags = ["hermetic", "fast"]
 driver = "cli-mode"
@@ -26,8 +26,8 @@ exit_code = 0
 runs = 10
 output_normalized_equal = true
 stderr_equal = true
-both_contain = ['"customType":"probe-after"', '"name":"after-name"', '"text":"after-message"']
-both_not_contain = ['probe-start', 'start-name', 'start-message', 'extension_error']
+both_contain = ['"customType":"probe-start"', '"name":"start-name"', '"text":"start-message"', '"customType":"probe-after"', '"name":"after-name"', '"text":"after-message"']
+both_not_contain = ['extension_error']
 
 # normalize-rationale: Only entry IDs, independent clocks and the header's UUID and cwd vary; every member name, order and value stays byte-compared.
 [[assert.normalize_replace]]

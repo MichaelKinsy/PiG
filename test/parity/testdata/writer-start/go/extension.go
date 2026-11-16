@@ -32,5 +32,9 @@ func Extension() *sdk.Extension {
 		}
 		return ctx.SendMessage("writer-after", "after-message", false, sdk.SendMessageOptions{TriggerTurn: &never})
 	})
+	ext.Command("writer-renew", "Replace the session", func(ctx sdk.Context, _ string) error {
+		_, err := ctx.NewSession(nil)
+		return err
+	})
 	return ext
 }

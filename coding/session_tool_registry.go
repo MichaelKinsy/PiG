@@ -494,13 +494,15 @@ func (s *Session) GetToolDefinition(name string) (extension.ToolDefinition, bool
 	return s.toolDefinitionLocked(name)
 }
 
-// BindExtensions stores the mode bindings the argument defines, always applies the stored bindings to the runner, awaits the configured session_start event and admits tools registered by its handlers before returning (upstream bindExtensions, agent-session.ts:3258-3282). Attach an event consumer before binding when handlers can send messages.
+// BindExtensions stores the mode bindings the argument defines, always applies the stored bindings to the runner, awaits the configured session_start event and admits tools registered by its handlers before returning (upstream bindExtensions, agent-session.ts:3258-3282). A host that binds with empty bindings still marks the extensions bound: Reload then restarts them (Pi e03dca7a3843 _extensionsBound). Attach an event consumer before binding when handlers can send messages.
 func (s *Session) BindExtensions(ctx context.Context, bindings ExtensionBindings) error {
+	merged := s.mergeExtensionBindings(bindings)
+	s.extensionsBound.Store(true)
 	runner := s.currentRunner()
 	if runner == nil {
 		return nil
 	}
-	s.bindSessionExtensions(runner, s.mergeExtensionBindings(bindings))
+	s.bindSessionExtensions(runner, merged)
 	event := s.sessionStartEvent
 	if event.Type == "" {
 		event = extension.SessionStartEvent{Type: "session_start", Reason: "startup"}
@@ -598,7 +600,7 @@ func WithBeforeSessionStart(fn func(context.Context) error) ReloadOption {
 
 // Reload is AgentSession.reload (agent-session.ts:3640-3685): a session that is running or compacting rejects it first; otherwise the old extensions receive session_shutdown with reason reload and go stale;
 // the settings and the resource loader are read again; the loader's extensions build a new runner that keeps the previous flag values; the
-// tools a settings reload newly added to defaultTools activate; and, when the mode bound its UI or command actions, the new runner gets them
+// tools a settings reload newly added to defaultTools activate; and, when the host bound the extensions (BindExtensions, also with empty bindings), the new runner gets the stored bindings
 // and session_start with reason reload, then the resources its resources_discover handlers contribute. A failure before the new runner exists
 // leaves the old one stale, as Pi does.
 func (s *Session) Reload(ctx context.Context, options ...ReloadOption) error {
@@ -656,8 +658,8 @@ func (s *Session) Reload(ctx context.Context, options ...ReloadOption) error {
 		return nil
 	}
 	s.bindSessionExtensions(runner, *bindings)
-	// upstream: agent-session.ts:3688-3698: only a session whose mode bound a UI context, command actions, a shutdown handler or an error listener replays session_start on reload.
-	if !bindings.hasBindings() {
+	// upstream: agent-session.ts:3865-3870 (Pi e03dca7a3843): only a session whose host called bindExtensions, even with empty bindings, replays session_start on reload.
+	if !s.extensionsBound.Load() {
 		return nil
 	}
 	if reload.beforeSessionStart != nil {

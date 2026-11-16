@@ -339,6 +339,13 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
         }),
     );
 
+    // reload after bind_extensions() with no bindings (Pi e03dca7a3843): the old extensions get session_shutdown and the new ones session_start.
+    let logged_before_reload = std::fs::read_to_string(&log_file)?.trim_end_matches('\n').split('\n').count();
+    runtime.session().reload()?;
+    let logged = std::fs::read_to_string(&log_file)?;
+    let reload_events: Vec<&str> = logged.trim_end_matches('\n').split('\n').skip(logged_before_reload).collect();
+    r.insert("reload".into(), json!({"events": reload_events}));
+
     // A direct refresh of the live session (the runtime's own after a setup is the one the report shows); Pi's run reads nothing from it, so it adds nothing to the report.
     runtime.session().refresh_context()?;
     // dispose settles a run in flight before it emits session_shutdown; the model never ends this run, so only the abort can end it.

@@ -123,7 +123,13 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
+<<<<<<< HEAD
 } from "./chunk-ZRWHWY44.js";
+||||||| 297b8449d5
+} from "./chunk-SCW2O6CM.js";
+=======
+} from "./chunk-3LMEBMWZ.js";
+>>>>>>> c9e6805c158e236d926315f83ac3b82b27388a65
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -19154,6 +19160,17 @@ async function runPrintMode(runtimeHost, options) {
   });
   const rebindSession = /* @__PURE__ */ __name(async () => {
     session = runtimeHost.session;
+    unsubscribe?.();
+    unsubscribeBackpressure?.();
+    unsubscribe = session.subscribe((event) => {
+      if (mode === "json") {
+        writeRawStdout(`${JSON.stringify(toJsonEvent(event))}
+`);
+      }
+    });
+    unsubscribeBackpressure = mode === "json" ? session.agent.subscribe(async () => {
+      await waitForRawStdoutBackpressure();
+    }) : void 0;
     await session.bindExtensions({
       mode: mode === "json" ? "json" : "print",
       commandContextActions: {
@@ -19183,17 +19200,6 @@ async function runPrintMode(runtimeHost, options) {
         console.error(`Extension error (${err.extensionPath}): ${err.error}`);
       }, "onError")
     });
-    unsubscribe?.();
-    unsubscribeBackpressure?.();
-    unsubscribe = session.subscribe((event) => {
-      if (mode === "json") {
-        writeRawStdout(`${JSON.stringify(toJsonEvent(event))}
-`);
-      }
-    });
-    unsubscribeBackpressure = mode === "json" ? session.agent.subscribe(async () => {
-      await waitForRawStdoutBackpressure();
-    }) : void 0;
   }, "rebindSession");
   try {
     if (mode === "json") {

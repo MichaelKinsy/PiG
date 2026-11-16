@@ -46,11 +46,6 @@ func (b ExtensionBindings) mergedWith(next ExtensionBindings) ExtensionBindings 
 	return b
 }
 
-// hasBindings is Pi's reload condition (agent-session.ts:3688-3692): the mode supplied a UI context, command actions, a shutdown handler or an error listener.
-func (b ExtensionBindings) hasBindings() bool {
-	return b.UIContext != nil || !reflect.ValueOf(b.CommandContextActions).IsZero() || b.ShutdownHandler != nil || b.OnError != nil
-}
-
 // mergeExtensionBindings merges bindings into the session's stored bindings and returns the result.
 func (s *Session) mergeExtensionBindings(next ExtensionBindings) ExtensionBindings {
 	s.extensionBindingsMu.Lock()

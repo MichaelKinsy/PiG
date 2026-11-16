@@ -57,6 +57,21 @@ export async function runPrintMode(runtimeHost, options) {
     });
     const rebindSession = async () => {
         session = runtimeHost.session;
+        // Pi 6aab551a79ba (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        // Subscribe before binding so events emitted by session_start handlers (e.g. appended entries) reach the JSON output.
+        unsubscribe?.();
+        unsubscribeBackpressure?.();
+        unsubscribe = session.subscribe((event) => {
+            if (mode === "json") {
+                writeRawStdout(`${JSON.stringify(toJsonEvent(event))}\n`);
+            }
+        });
+        unsubscribeBackpressure =
+            mode === "json"
+                ? session.agent.subscribe(async () => {
+                    await waitForRawStdoutBackpressure();
+                })
+                : undefined;
         await session.bindExtensions({
             mode: mode === "json" ? "json" : "print",
             commandContextActions: {
@@ -86,19 +101,6 @@ export async function runPrintMode(runtimeHost, options) {
                 console.error(`Extension error (${err.extensionPath}): ${err.error}`);
             },
         });
-        unsubscribe?.();
-        unsubscribeBackpressure?.();
-        unsubscribe = session.subscribe((event) => {
-            if (mode === "json") {
-                writeRawStdout(`${JSON.stringify(toJsonEvent(event))}\n`);
-            }
-        });
-        unsubscribeBackpressure =
-            mode === "json"
-                ? session.agent.subscribe(async () => {
-                    await waitForRawStdoutBackpressure();
-                })
-                : undefined;
     };
     try {
         if (mode === "json") {
