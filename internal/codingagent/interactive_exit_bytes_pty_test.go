@@ -40,6 +40,9 @@ const (
 	// exitBytesStormEnv makes the child write to the terminal from goroutines of its own, from the moment the mode is ready until the process ends: an
 	// extension's title (the path of ExtUIContext.SetTitle), an OSC 52 clipboard copy and the progress indicator's writes.
 	exitBytesStormEnv = "PIG_TEST_EXIT_BYTES_STORM"
+	// exitBytesSlowDisposeEnv makes the runtime host's dispose last exitBytesSlowDispose after its hook, so the frame the hook requests comes due inside the dispose.
+	exitBytesSlowDisposeEnv = "PIG_TEST_EXIT_BYTES_SLOW_DISPOSE"
+	exitBytesSlowDispose    = 300 * time.Millisecond
 )
 
 // exitTitleOrProgress matches a terminal title (OSC 0) or a progress indicator (OSC 9;4) sequence.
@@ -308,7 +311,7 @@ func TestExitBytesChild(t *testing.T) {
 	var host *exitHookRuntime
 	var runtimeHost icodingagent.InteractiveRuntime
 	if os.Getenv(exitBytesRuntimeEnv) == "true" {
-		host = &exitHookRuntime{}
+		host = &exitHookRuntime{slow: os.Getenv(exitBytesSlowDisposeEnv) == "true"}
 		runtimeHost = host
 		defer host.close()
 	}
@@ -365,6 +368,8 @@ type exitHookRuntime struct {
 	mu   sync.Mutex
 	hook func()
 	ran  bool
+	// slow keeps the dispose going after the hook ran, as the awaits of Pi's dispose do (the extensions' session_shutdown handlers, the session's teardown).
+	slow bool
 }
 
 func (h *exitHookRuntime) SetBeforeSessionReplacement(func(context.Context) error) {}
@@ -382,6 +387,9 @@ func (h *exitHookRuntime) dispose() {
 	h.mu.Unlock()
 	if run {
 		h.hook()
+		if h.slow {
+			time.Sleep(exitBytesSlowDispose)
+		}
 	}
 }
 
