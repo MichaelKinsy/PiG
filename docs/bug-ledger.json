@@ -44630,6 +44630,30 @@
       ]
     },
     {
+      "id": "BF-b30b8aa",
+      "title": "After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in…",
+      "symptom": "After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in Pi: in v0.7.0 a compiled-in extension kept using it and its event-bus subscriptions stayed.",
+      "rootCause": "the interactive reload invalidated the old runner but kept its runtime active, where Pi's runner.invalidate() invalidates the runtime too (runner.ts:729-735), and a host that keeps one runtime across reloads never made it active again, where Pi's loader creates a new runtime for each load",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in Pi: in v0.7.0 a compiled-in extension kept using it and its event-bus subscriptions stayed. The next `/reload`, or an embedder's retry of `Session.Reload`, now loads on a live runtime again: it built its extensions over the stale one, so their registrations threw the stale message.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b30b8aa06d",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/runtime_state_test.go::TestRuntimeReactivateEndsStalenessButNotTheEndedSubscriptions",
+        "coding/session_reload_runtime_reactivate_test.go::TestAReloadAfterAFailedOneRunsOnTheSharedRuntimeAgain",
+        "internal/codingagent/reload_failed_runtime_test.go::TestFailedInteractiveReloadInvalidatesTheOldRunnersRuntimeAndTheNextReloadWorks"
+      ]
+    },
+    {
       "id": "BF-b341a82",
       "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again",
       "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.",
@@ -49305,6 +49329,31 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-cb54cf2",
+      "title": "After a reload that failed (an extension that no longer loads, or a settings file the resource loader…",
+      "symptom": "After a reload that failed (an extension that no longer loads, or a settings file the resource loader rejects), the session goes on with the extensions of the old load, as in Pi: the next prompt reaches their input, before_agent_start, tool_call and tool_result handlers, their tools run, and a handler that reads its stale ctx gets an extension error while the prompt goes on.",
+      "rootCause": "every emit method of the in-process runner asserted the runner active on entry (since v0.2.0), where Pi's emit methods never check staleness (runner.ts:1135-1560), so the first event of the next prompt after a failed reload returned the stale error to the session",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After a reload that failed (an extension that no longer loads, or a settings file the resource loader rejects), the session goes on with the extensions of the old load, as in Pi: the next prompt reaches their input, before_agent_start, tool_call and tool_result handlers, their tools run, and a handler that reads its stale ctx gets an extension error while the prompt goes on. PiG ended the first event after the failed reload with the stale error instead: `pig -p` exited 1 with \"This extension ctx is stale ...\", and an RPC prompt never ran. Present in every release since v0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cb54cf290b",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/headless_reload_prompt_test.go::TestPromptsAfterAFailedReloadRunOnTheOldInstance",
+        "coding/extension/host/inproc/stale_emit_delivery_test.go::TestEmitInputAndToolCallOnAnInvalidatedRunnerHonourTheHandlers",
+        "coding/extension/host/inproc/stale_emit_delivery_test.go::TestEveryEmitDeliversToAnInvalidatedRunner",
+        "coding/session_reload_old_runner_emit_test.go::TestAFailedReloadLeavesTheSessionDeliveringToTheOldInstance"
+      ]
     },
     {
       "id": "BF-cbc986b",
