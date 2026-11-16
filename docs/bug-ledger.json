@@ -43064,6 +43064,39 @@
       ]
     },
     {
+      "id": "BF-ab0fedf",
+      "title": "A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was…",
+      "symptom": "A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came.",
+      "rootCause": "A command that awaits ctx.reload() keeps its generation running until the command returns, which can be after the next reload staged a successor and began to listen. Every generation of an extension name listened on one path, and the old generation's stop removed the file at that path, which by then was the successor's listener: the successor's process failed to connect (ENOENT), the reload that staged it waited for a connection that never came, and the prompt that asked for the reload never answered. A Python extension beside an edited one hit it when the stop of a retired generation ran after the next staged one had bound; the CI failure was…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came. Every generation now listens on a socket path of its own and its stop removes only that file.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ab0fedf5d2",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/host_test.go::TestResolveSocketDir_TermuxUsesTMPDIRAndKeepsItWithinTheSocketLimit",
+        "coding/extension/host/subprocess/platform_windows_test.go::TestWindowsUnixSocketPathsAreShortIsolatedAndCleaned",
+        "coding/extension/host/subprocess/platform_windows_test.go::TestWindowsUnixSocketPathsFallBackWhenTempIsTooLong",
+        "coding/extension/host/subprocess/socket_lifecycle_test.go::TestAKilledHostsSocketFileIsNeitherUsedNorRemovedByTheNextHost",
+        "coding/extension/host/subprocess/socket_lifecycle_test.go::TestSocketFilesOfRealGenerationsEndWithTheirListeners",
+        "coding/extension/host/subprocess/socket_path_budget_test.go::TestEverySocketPathIsNewAndFitsTheBudget",
+        "coding/extension/host/subprocess/socket_retirement_test.go::TestADeferredRetirementLeavesTheSocketOfTheGenerationStagedAfterIt",
+        "coding/extension/host/subprocess/socket_retirement_test.go::TestAHeldRetiredGenerationOwnsItsSocketFileUntilTheSessionEnds",
+        "coding/extension/host/subprocess/socket_retirement_test.go::TestAStopRemovesTheSocketFileOfItsOwnGenerationOnly",
+        "coding/extension/host/subprocess/socket_runtime_dir_test.go::TestEnsureSockRuntimeDirNameFitsTheWorstCaseSuffix",
+        "coding/extension/host/subprocess/socket_runtime_dir_test.go::TestSocketRuntimeBaseBranchAtTheEdgeOfTheShorterLeaf",
+        "coding/extension/host/subprocess/socket_runtime_dir_test.go::TestSocketRuntimeBaseKeptDirectoryHoldsEveryRuntimeSocketPath"
+      ]
+    },
+    {
       "id": "BF-ab1d070",
       "title": "A durable code mode script's journal now records the calls a script had issued after a batch of results in…",
       "symptom": "A durable code mode script's journal now records the calls a script had issued after a batch of results in one commit, as Pi does, and none after the script ended.",

@@ -138227,6 +138227,17 @@
       "shapeHash": "sha256:b5ed99b176f1f77d4afe4d0101f94eebfe466b9f06cd7f1188e026d576453610"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.newSocketPath",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.newSocketPath",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (string, error)"
+      },
+      "shapeHash": "sha256:60c06af2ab8dbe05a093fcda297ca37ab0155078bcee1a108937479e218ba9ff"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.nextPackedCellGeneration",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.nextPackedCellGeneration",
@@ -139281,17 +139292,6 @@
         "type": "func(name string)"
       },
       "shapeHash": "sha256:80e73a0482023402eb943957dc57b21735261a107e4f575d0d927266684a7e93"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.sockPathFor",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "Host.sockPathFor",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(name string) (string, error)"
-      },
-      "shapeHash": "sha256:0fb6e6c1c7b9b2d75b58963aa780baf82c8aa0ad8e693b5adabd5055fcbd850c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.sortExtensionsByLoadOrder",
@@ -154408,6 +154408,17 @@
       "shapeHash": "sha256:994847d8eca282cde0ca1142a330ddb34652628a737b7c510ae7ba4a331ad870"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#lastSocketCount",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "lastSocketCount",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "uint32"
+      },
+      "shapeHash": "sha256:e2f4ed83633600c75852f5e9011eb898ae169826a443cebea091a9781a100848"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#legacyFrameSize",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "legacyFrameSize",
@@ -162207,6 +162218,28 @@
       "shapeHash": "sha256:dcdddf192f20c668253cbefdeed7c4fc050215913b27373e6d4d48621a63fbaa"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#socketLeaf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "socketLeaf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(count uint32) string"
+      },
+      "shapeHash": "sha256:0de8f415b59e49132f7630adfe95066fd986ff4c9a817d6a2c0e0e1789467173"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#socketLeafExtension",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "socketLeafExtension",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#socketRuntimeBase",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "socketRuntimeBase",
@@ -169795,6 +169828,17 @@
         "type": "func(environment []string) []string"
       },
       "shapeHash": "sha256:7f4a8be6ea7fc0894844052449fa6f6ff8d42241b69564433e6fbbb877fb66bf"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#worstRuntimeSocketLeaf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "worstRuntimeSocketLeaf",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#worstRuntimeSocketSuffix",
