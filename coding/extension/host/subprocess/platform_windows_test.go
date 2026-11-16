@@ -14,7 +14,7 @@ import (
 
 func TestWindowsUnixSocketPathsAreShortIsolatedAndCleaned(t *testing.T) {
 	// A short directory whose name has spaces is the temporary directory, so <TEMP>\pig keeps every socket path the Host
-	// can produce (<TEMP>\pig\h<uint32>\e-9999.sock) within the AF_UNIX limit whatever length TEMP has on this machine.
+	// can produce (<TEMP>\pig\h<uint32>\<count>.s) within the AF_UNIX limit whatever length TEMP has on this machine.
 	base := testenv.ShortTempDir(t, "pig ext ")
 	t.Setenv("TEMP", base)
 	t.Setenv("TMP", base)
@@ -26,11 +26,11 @@ func TestWindowsUnixSocketPathsAreShortIsolatedAndCleaned(t *testing.T) {
 	firstCwd, secondCwd, configRoot := t.TempDir(), t.TempDir(), t.TempDir()
 	first := NewHostWithConfigRoot(firstCwd, filepath.Join(configRoot, "config with spaces"))
 	second := NewHostWithConfigRoot(secondCwd, filepath.Join(configRoot, "other config"))
-	firstPath, err := first.sockPathFor("first")
+	firstPath, err := first.newSocketPath()
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondPath, err := second.sockPathFor("second")
+	secondPath, err := second.newSocketPath()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,7 +80,7 @@ func TestWindowsUnixSocketPathsFallBackWhenTempIsTooLong(t *testing.T) {
 	t.Setenv("TMPDIR", deep)
 
 	host := NewHostWithConfigRoot(cwd, filepath.Join(configRoot, "config with spaces"))
-	path, err := host.sockPathFor("deep")
+	path, err := host.newSocketPath()
 	if err != nil {
 		t.Fatal(err)
 	}
