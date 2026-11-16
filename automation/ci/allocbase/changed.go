@@ -229,9 +229,9 @@ func changedFiles(root, base string, committedOnly bool) ([]string, error) {
 	return files, nil
 }
 
-// loadGraph runs one `go list -deps -test` over the hot packages.
+// loadGraph runs one `go list -deps -test` over the hot packages. The module path is the one of the first hot package: in a workspace (go.work) `go list -m` names every module of it.
 func loadGraph(root string, hot []string) (goGraph, error) {
-	module, err := output(root, "go", "list", "-m")
+	module, err := output(root, "go", "list", "-f", "{{.Module.Path}}", hot[0])
 	if err != nil {
 		return goGraph{}, err
 	}
