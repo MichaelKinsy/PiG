@@ -1020,6 +1020,7 @@ func (t *ProcessTerminal) setProgress(active bool) {
 		}
 		ticker := time.NewTicker(keepalive)
 		stopCh := make(chan struct{})
+		//portlint:allow ctxbackground this context is the progress interval's own lifetime: clearProgressInterval cancels it, and the terminal has no caller context (Pi's setInterval has none)
 		ctx, cancel := context.WithCancel(context.Background())
 		t.progressTicker = ticker
 		t.progressStop = stopCh

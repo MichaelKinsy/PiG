@@ -106,15 +106,13 @@ func TestForeignWriteStormHoldsNoByteInsideAStop(t *testing.T) {
 	var started, ended sync.WaitGroup
 	for range 4 {
 		started.Add(1)
-		ended.Add(1)
-		go func() {
-			defer ended.Done()
+		ended.Go(func() {
 			started.Done()
 			for running.Load() {
 				term.SetTitle("T")
 				term.SetProgress(true)
 			}
-		}()
+		})
 	}
 	started.Wait()
 	tx := term.BeginStop()
