@@ -105,8 +105,9 @@ func newJobGate() *jobGate { return &jobGate{done: make(chan struct{})} }
 // Open is `resolve()`.
 func (g *jobGate) Open() { g.once.Do(func() { close(g.done) }) }
 
-// Wait is `await gate.promise`.
-func (g *jobGate) Wait() { <-g.done }
+// Wait is `await gate.promise`: a run that waits for it waits parked, as a promise pending on something outside the host
+// (the join of the host's loop does not wait for it, as Pi's `delivered()` does not).
+func (g *jobGate) Wait() { parkedOn(g.done) }
 
 // Done is the channel of the promise.
 func (g *jobGate) Done() <-chan struct{} { return g.done }

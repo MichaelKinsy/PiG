@@ -331,6 +331,44 @@ func TestLoopJoinDoesNotWaitForATaskParkedOnTheLineAndWaitsForItsContinuationOnc
 	}
 }
 
+// A persisted run's reservation (the store write of its `running` phase) and the invocation after it are tasks of the host's
+// loop, counted by the join: Pi's `await delivered()` runs after the microtask chain of the reservation (`await commit()`
+// then `invoke`), the chain a persisted-run test reads the record after. The reservation here waits for a commit queue the
+// test holds, which is a wait on the store the loop cannot say it waits for: the join reports it as the stall it is (the
+// task is named), where a join that does not count the task returns at once with the reservation in flight. A job's tasks
+// start on the loop the records hold, a wrapper of the host's loop (jobSections): the count is the host's.
+func TestLoopJoinCountsAPersistedRunsReservation(t *testing.T) {
+	st, _, holdNextCommit := faultyStore(t)
+	jobs := opened(t, st, func(any, JobCtx) (any, error) { return countResult(1), nil }, nil)
+	h := jobs.Host.(*chordHost)
+	h.loop().(*Loop).stall = joinStallForTest
+	gate := holdNextCommit()
+	started := make(chan Run, 1)
+	go func() { started <- jobStart(t, jobs.Imports, pathArgs("p"), background) }()
+	<-gate.Entered()
+	release := heldCommitQueue(t, st, gate)
+	run := <-started
+	report := func() (text any) {
+		defer func() { text = recover() }()
+		loopseam.Quiesce(h.loop())
+		return nil
+	}()
+	text, _ := report.(string)
+	for _, want := range []string{"join waited", "1 running", "(*job).invoke"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("the join returned with the reservation in flight, or its report lacks %q:\n%.600s", want, text)
+		}
+	}
+	release()
+	deliveredOn(jobs.Host)
+	jobs.mu.Lock()
+	finished := len(jobs.finished)
+	jobs.mu.Unlock()
+	if finished != 1 {
+		t.Fatalf("the join returned before the run was reserved, invoked and finished: %d finished, record = %v", finished, record(t, st, run.ID()))
+	}
+}
+
 const stalledJoinChild = "CHORD_HOST_STALLED_JOIN_CHILD"
 
 // A test that holds a gate on purpose has deferred calls that wait for it (closeHosts behind a held commit), and a panic of the
