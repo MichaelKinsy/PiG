@@ -492,6 +492,10 @@ type StopOptions struct {
 	// PreserveScreen leaves the alternate screen contents visible on exit
 	// instead of re-emitting the final frame into the main screen scrollback.
 	PreserveScreen bool
+	// ExitTerminal marks the stop as the process exit's, so it also writes what Pi's terminal.stop() writes between the cursor show and
+	// the screen exit (tui.ts:1012 stop(): beforeTerminalStop, showCursor, terminal.stop(), afterTerminalStop). A renderer swap leaves it false: Pi
+	// starts the terminal again afterwards, which pig's swap does not.
+	ExitTerminal bool
 }
 
 // Stop tears down the alternate screen and reflows the transcript into the
@@ -525,6 +529,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	t.implicitScrollView.Dispose()
 	if !t.altScreenActive {
 		t.unlockAndApplyHover()
+		t.writeExitTerminalStop(options)
 		return
 	}
 	mouse := ""
@@ -532,6 +537,8 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 		mouse = altDisableMouse
 	}
 	t.writeOwned(t.out, altBeginSynchronizedOutput+t.deleteKittyImages()+mouse+altEnableAutowrap+altEndSynchronizedOutput)
+	// Pi's stop(): showCursor() and terminal.stop() come between beforeTerminalStop and afterTerminalStop, so before the screen is left.
+	t.writeExitTerminalStop(options)
 	clear(t.uploadedKittyImages)
 	t.uploadedKittyImagesOrder = nil
 	t.altScreenActive = false

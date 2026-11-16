@@ -2957,6 +2957,29 @@
       ]
     },
     {
+      "id": "BF-0e06194",
+      "title": "A SIGTERM or SIGHUP that arrives while PiG is still starting up (the session_start handlers of an extension…",
+      "symptom": "A SIGTERM or SIGHUP that arrives while PiG is still starting up (the session_start handlers of an extension, the terminal color query, the bind of the session) ends PiG with status 0, as it ends Pi, instead of printing `Error: context canceled` and exiting with status 1.",
+      "rootCause": "Pi's shutdown({ fromSignal }) disposes, stops and calls process.exit(0) whatever init() is awaiting (interactive-mode.ts:4483-4494). PiG's signal dispose runs before main cancels the root context, and the startup step it interrupted (an awaited session_start handler, an owner-loop step of the bind, the terminal colors) then returned the context error, which main prints as \"Error: context canceled\" with status 1. Run now reports the end of a session that shut down, not an error, when the startup error is a cancellation and the signal's dispose has run.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A SIGTERM or SIGHUP that arrives while PiG is still starting up (the session_start handlers of an extension, the terminal color query, the bind of the session) ends PiG with status 0, as it ends Pi, instead of printing `Error: context canceled` and exiting with status 1. The signal's shutdown ran, and the startup step it interrupted then reported the cancelled root context as a failure. Present in v0.3.0 through v0.7.0 (checked by tag: each runs the signal's shutdown before it cancels the root context and returns the startup error from the run).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0e061942a9",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_signal_stalled_terminal_linux_test.go::TestInteractiveSignalWithAStalledTerminalDeliversShutdownAndEndsOnTheResume",
+        "internal/codingagent/extension_ui_phase_shutdown_test.go::TestStartupEndedByASignalShutdownIsNotAnError"
+      ]
+    },
+    {
       "id": "BF-0e225b4",
       "title": "fix(runtimecell): keep the Python runner's _run callable without the built event",
       "symptom": "fix(runtimecell): keep the Python runner's _run callable without the built event",
@@ -4008,6 +4031,33 @@
         "schema/internal/ecmaregex/surrogate_test.go::TestLoneSurrogateSubjects",
         "schema/internal/ecmaregex/surrogate_test.go::TestModifierGroups",
         "schema/internal/ecmaregex/surrogate_test.go::TestNoPackageInitTables"
+      ]
+    },
+    {
+      "id": "BF-154d2c5",
+      "title": "The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes…",
+      "symptom": "The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes it when PiG ends: for a quit by keys (Ctrl+D, Ctrl+C twice, `/quit`) before the \"To resume this session\" line, and for SIGTERM and SIGHUP before the terminal is restored.",
+      "rootCause": "Pi's dispose() (agent-session-runtime.ts:415-424) runs session.abort(), session_shutdown, beforeSessionInvalidate (which writes the title through resetExtensionUI) and session.dispose(), and Pi's shutdown() calls it after stop() on a quit (title, then the resume hint) and first on a signal (title, then the terminal restore). pig ran the hook only at Runtime.Close, after Run returned and after the hint. Runtime.EmitQuitShutdown, where the mode calls the dispose, now runs the hook once after session_shutdown; Close runs it only when no dispose did (print and RPC emit through EmitQuitShutdownContext).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes it when PiG ends: for a quit by keys (Ctrl+D, Ctrl+C twice, `/quit`) before the \"To resume this session\" line, and for SIGTERM and SIGHUP before the terminal is restored. PiG wrote it only when the runtime closed, after the exit had restored the terminal and, for a quit, after the resume hint, so a terminal or a recording of the exit saw the title last. A signal that arrives while the quit's last steps are running, or a terminal that has stopped taking output, no longer holds the title write or the exit behind each other. Present in v0.3.0 through v0.7.0 (checked by tag: each runs the title hook only when the runtime closes).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "154d2c5776",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/runtime_quit_invalidate_test.go::TestQuitContextEmitLeavesTheInvalidateHookToClose",
+        "coding/runtime_quit_invalidate_test.go::TestQuitDisposeRunsBeforeSessionInvalidateAfterSessionShutdown",
+        "internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild",
+        "internal/codingagent/interactive_exit_dispose_test.go::TestQuitWritesTheTitleInTheDisposeBeforeTheResumeHint",
+        "internal/codingagent/interactive_exit_dispose_test.go::TestSignalDisposeDoesNotWaitForAnOwnerLoopThatWaitsForItsLock",
+        "internal/codingagent/interactive_exit_title_pty_test.go::TestExitTitleIsWrittenInTheDisposeAtPisPlace"
       ]
     },
     {
@@ -28188,6 +28238,33 @@
         "tui/summary_output_pad_test.go::TestToolAndBashBlocksFollowOutputPad",
         "tui/tool_execution_test.go::TestToolExecutionStreamingFallbackUsesLeadingPreview",
         "tui/tool_execution_test.go::TestUnregisteredToolCardIsUpstreamFormatToolExecution"
+      ]
+    },
+    {
+      "id": "BF-71e0f20",
+      "title": "A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's…",
+      "symptom": "A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off.",
+      "rootCause": "Pi stop() (tui.ts) writes showCursor and terminal.stop() between beforeTerminalStop and afterTerminalStop, so CSI ?25h CSI ?2004l come before CSI ?1049l, and a fullscreen exit that prints the transcript ends with the main screen stop (CSI ?25h CSI ?2004l) and nothing after it. pig wrote them only after the alternate screen was left, then a third CSI ?25h from the mode teardown. StopOptions.ExitTerminal (pig additive) marks the exit's stops; ProcessTerminal.WriteStopModes is terminal.stop()'s mode resets, and the restore that follows no longer repeats bracketed paste off. A renderer swap is not an exit and writes none of it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off. PiG wrote them only after the alternate screen was left and added a trailing cursor show. A terminal that handles the resets in order, or a recording of the exit bytes, now sees Pi's order; the screen a user sees is the same. Present in every release from v0.2.0 through v0.7.0 (checked by tag: v0.2.0, v0.5.3 and v0.7.0 each stop the renderer first and write the bracketed paste off in the terminal restore after it).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "71e0f20510",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild",
+        "internal/codingagent/interactive_exit_order_pty_test.go::TestExitModeResetsFollowPiStopOrder",
+        "internal/codingagent/interactive_teardown_test.go::TestStopInteractiveTuiFullscreenExitOutput",
+        "tui/stop_terminal_modes_test.go::TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen",
+        "tui/stop_terminal_modes_test.go::TestAltScreenSwapStopLeavesBracketedPasteOn",
+        "tui/stop_terminal_modes_test.go::TestMainScreenExitStopWritesCursorThenPasteReset"
       ]
     },
     {
@@ -56295,6 +56372,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-e07e1a7",
+      "title": "The terminal progress indicator (`OSC 9;4;0`, with `terminal.showTerminalProgress` on) is turned off when PiG…",
+      "symptom": "The terminal progress indicator (`OSC 9;4;0`, with `terminal.showTerminalProgress` on) is turned off when PiG ends after the terminal's color scheme reports are off and the keyboard protocols are popped, as it is in Pi: Pi's shutdown writes those and drains the input before `stop()`, whose first writes are the selector dispose and this clear.",
+      "rootCause": "Pi's shutdown writes the color scheme reports off (CSI ?2031l) and drains the input, popping the keyboard protocols (CSI \u003cu), before it calls stop(); the selector dispose and the progress clear (OSC 9;4;0) are stop()'s first writes (interactive-mode.ts:4491-4503, :7283-7287). stopInteractiveTui wrote them before the theme and the drain, so the clear came ahead of both. They now follow the drain. The pty test fails on the previous order and passes here.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The terminal progress indicator (`OSC 9;4;0`, with `terminal.showTerminalProgress` on) is turned off when PiG ends after the terminal's color scheme reports are off and the keyboard protocols are popped, as it is in Pi: Pi's shutdown writes those and drains the input before `stop()`, whose first writes are the selector dispose and this clear. PiG wrote the clear first, so a recording of the exit saw it ahead of `CSI ?2031l` and `CSI \u003cu`; the screen a user sees is the same. The order was introduced by the commit that made the exit clear the progress; no release has it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e07e1a737a",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_exit_drain_order_pty_test.go::TestStopInteractiveTuiWritesTheProgressClearAfterTheDrainAsPiDoes"
+      ]
     },
     {
       "id": "BF-e098463",
