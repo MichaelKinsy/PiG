@@ -2843,6 +2843,23 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/99-failed-reload-then-prompts.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Reload failed: "
+          },
+          "reason": "Owned visible surface: After a /reload that fails, prompts still run the old extension instance's handlers and tools, whose ctx is stale.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/99-failed-reload-then-reload.toml",
       "transforms": [
         {
