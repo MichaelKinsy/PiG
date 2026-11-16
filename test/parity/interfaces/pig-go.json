@@ -119483,6 +119483,17 @@
       "shapeHash": "sha256:aca91f81d67ecb734037f31dc2c9d28ff8ebf51080c1a5d9cdaa32d12ef7ef42"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#maxModelObjectWorkers",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "maxModelObjectWorkers",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#mcpExposureAliases",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "mcpExposureAliases",
@@ -119514,6 +119525,39 @@
         "type": "messageSequencesKey"
       },
       "shapeHash": "sha256:6f54d962146d90ec2800f9799fd121cc46707d6d96fe0e7d3475fe6cd871a5c1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#modelObjectBlock",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "modelObjectBlock",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#modelObjectOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "modelObjectOf",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func(model github.com/MichaelKinsy/PiG/ai.AnyModel) (encoding/json.RawMessage, error)"
+      },
+      "shapeHash": "sha256:b04d798ca69492acd9fe785fcdf06d7fad78528f22e9175cfc374ff39e7c2da4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#modelObjectWorkers",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "modelObjectWorkers",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(count int, procs int) int"
+      },
+      "shapeHash": "sha256:2d96d795e4e5fe38cfe351c8cfe60a72304f77d4ee355508bdee4ef55eb96191"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#modelStreamRequestKey",
@@ -120130,6 +120174,17 @@
         "type": "ownSignalKey"
       },
       "shapeHash": "sha256:0bdce40d7cf7541122199be3abfca185c3e3a72f73d28628e4d1bc3dff41bbb0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#parallelModelObjectsMin",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "parallelModelObjectsMin",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#parseLoginColor",
