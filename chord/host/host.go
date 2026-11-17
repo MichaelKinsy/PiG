@@ -1484,8 +1484,9 @@ func (host *HostImpl) Accept(link Link, options AcceptOptions) error {
 }
 
 // Connect sets (or replaces, after a reconnect) the link to this host's parent; remote references re-hold over it.
-// The parent's own requests act as options.Principal; requests it relays act as the principal it forwards. It panics
-// with a TypeError, as upstream throws one, unless options carry Principal.
+// The parent's own requests act as options.Principal; requests it relays act as the principal it forwards. A link that is
+// closed by now is no parent: the host keeps no upstream and its references wait for the next link. It panics with a
+// TypeError, as upstream throws one, unless options carry Principal.
 func (host *HostImpl) Connect(link Link, options ConnectOptions) {
 	if options.Principal == nil && !options.HasPrincipal {
 		panic(typeError("connect needs `principal`: what the parent's own requests act as"))
@@ -1495,6 +1496,15 @@ func (host *HostImpl) Connect(link Link, options ConnectOptions) {
 			host.upstream.link.Close("replaced")
 		}
 		connection := host.addConnection(link, connectionConfig{role: "upstream", principal: options.Principal, peer: Peer{kind: KindHost}, options: options.LinkOptions})
+		// A link closed before newConnection registered its close handler ran that handler there, before the connection was
+		// the upstream for it to clear: a Go link closes on its own goroutine, between any two statements of its creator,
+		// where Pi's connect() runs to completion before any socket event. Keeping the connection would bind every hold to
+		// a dead link and route to it forever (Pi's Chord v2 connect: `if (parent.open) this.#parent.connected(parent)`,
+		// packages/chord/src/next/host/host.ts:859). A link that closes after this check closes the connection on the loop
+		// once this section ends, which clears the upstream.
+		if !connection.open() {
+			return
+		}
 		host.upstream = connection
 		// Bindings that lost their link re-hold over the new one (again: they keep their values meanwhile).
 		for _, binding := range host.bindings.Values() {
