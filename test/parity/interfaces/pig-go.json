@@ -270392,6 +270392,17 @@
       "shapeHash": "sha256:8314efaec97c676f45750037164a72db7d7b3a2c9910a05c77342c5e7d14bdd3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.flushExitRender",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.flushExitRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.flushPendingBashBlocks",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.flushPendingBashBlocks",
@@ -271006,6 +271017,17 @@
         "type": "func(ctx context.Context) (context.Context, func())"
       },
       "shapeHash": "sha256:c50bf0fa2bc1347a459df0a25656225be7a44da58b3714663674d0440156ce59"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.holdExitRenders",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.holdExitRenders",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.holdFrames",
@@ -380414,6 +380436,17 @@
       "shapeHash": "sha256:b7683f2a7599efacc8294c40dc3da11a6ff0ea46017dae54d2b92e597354055d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.FlushRequestedRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.FlushRequestedRender",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.ForceFullRender",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.ForceFullRender",
@@ -380615,6 +380648,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.HideOverlay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.HideOverlay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.HoldRenders",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.HoldRenders",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -381666,6 +381710,17 @@
         "type": "func(force bool) bool"
       },
       "shapeHash": "sha256:ce84ad4296791bd6b729f7068b0f780dc019f005493b48d792f0ded4fe01b508"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.deferRenderWhileHeld",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.deferRenderWhileHeld",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.deleteKittyImages",
@@ -383406,6 +383461,17 @@
       "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.FlushRequestedRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.FlushRequestedRender",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.ForceFullRender",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.ForceFullRender",
@@ -383541,6 +383607,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.HideOverlay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.HideOverlay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.HoldRenders",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.HoldRenders",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -384339,6 +384416,17 @@
         "type": "func(force bool) bool"
       },
       "shapeHash": "sha256:ce84ad4296791bd6b729f7068b0f780dc019f005493b48d792f0ded4fe01b508"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.deferRenderWhileHeld",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.deferRenderWhileHeld",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.deleteChangedKittyImages",
@@ -385606,6 +385694,17 @@
       "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.FlushRequestedRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.FlushRequestedRender",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.ForceFullRender",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.ForceFullRender",
@@ -385752,6 +385851,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.HideOverlay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.HideOverlay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.HoldRenders",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.HoldRenders",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -386693,6 +386803,17 @@
         "type": "func(force bool) bool"
       },
       "shapeHash": "sha256:ce84ad4296791bd6b729f7068b0f780dc019f005493b48d792f0ded4fe01b508"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.deferRenderWhileHeld",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.deferRenderWhileHeld",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.dispatchMouseToOverlay",
@@ -411610,6 +411731,17 @@
       "shapeHash": "sha256:859eb12f14eea4f7eadbd01c84167f7e4cd87e13f2fe3399aa3cdbaf8d80e44d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.FlushRequestedRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.FlushRequestedRender",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.FramePacingActive",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.FramePacingActive",
@@ -411723,6 +411855,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.HideOverlay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.HideOverlay",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.HoldRenders",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.HoldRenders",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -412378,6 +412521,17 @@
         "type": "func(force bool) bool"
       },
       "shapeHash": "sha256:ce84ad4296791bd6b729f7068b0f780dc019f005493b48d792f0ded4fe01b508"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.deferRenderWhileHeld",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.deferRenderWhileHeld",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.dispatchMouseToOverlay",

@@ -192,6 +192,8 @@ type TmuxStep struct {
 	FrameWatch *TmuxFrameWatch `toml:"frame_watch"`
 	// FinalFrame reads the raw terminal transcript after the step's waits, for no_frames_after_reply.
 	FinalFrame *TmuxFinalFrame `toml:"final_frame"`
+	// Signal ends the step by sending SIGTERM ("TERM") or SIGHUP ("HUP") to the program the pane's launch shell started, after the step's keys: a pane's keys can only be typed, and a program that ends on a signal is ended the way a supervisor or a closing terminal ends it. The signal goes to the program, not to the pane's process group or its terminal.
+	Signal string `toml:"signal"`
 }
 
 // TmuxFinalFrame names the text of a reply the step ends on. The visible pane keeps what the program last drew, so a settled-screen comparison cannot
@@ -414,6 +416,11 @@ func validate(sc *Scenario) error {
 	for _, window := range sc.Assert.TranscriptSequencesEqual {
 		if err := window.validate(); err != nil {
 			return err
+		}
+	}
+	for i, step := range sc.Tmux.Steps {
+		if step.Signal != "" && step.Signal != "TERM" && step.Signal != "HUP" {
+			return fmt.Errorf("tmux step %d signal %q is unknown: the signals are %q and %q", i, step.Signal, "TERM", "HUP")
 		}
 	}
 	if sc.Assert.ChangelogHeadersComplete && (sc.Driver != "interactive-tmux" || !sc.Tmux.CaptureHistory) {

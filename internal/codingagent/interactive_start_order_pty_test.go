@@ -66,6 +66,10 @@ func TestStartModeWritesFollowPiStartOrder(t *testing.T) {
 				if count := strings.Count(written, "\x1b[<u"); count != 0 {
 					t.Errorf("a keyboard pop before the first frame: %q", got)
 				}
+				// The drain at the exit writes the pop (terminal.ts:449 through drainInput) and stop() finds the flags gone, so one `CSI < u` is the whole output's.
+				if count := strings.Count(all, "\x1b[<u"); count != 1 {
+					t.Errorf("%d keyboard pops in the whole output, want 1", count)
+				}
 				if count := strings.Count(written, "\x1b[>7u"); count != 1 {
 					t.Errorf("%d keyboard pushes before the first frame, want 1: %q", count, got)
 				}

@@ -420,8 +420,30 @@ func (m *InteractiveMode) autoScrollTickDispatcher(uiCtx context.Context) func(f
 // the top of every iteration and on every event. Safe on-loop too (the flag is
 // simply observed on the next pass).
 func (m *InteractiveMode) requestShutdown() {
+	m.holdExitRenders()
 	m.requestExit.Store(true)
 	m.postUITask(func() {})
+}
+
+// holdExitRenders holds the renderer's frames from the moment the exit is decided until stopInteractiveTui has drained the input (see tui HoldRenders).
+// pig additive (D91): a frontend's surface draws no terminal bytes, so the order of its last frame against the stop is no contract, and its editor node
+// must show the requested exit (not sendable) at once.
+func (m *InteractiveMode) holdExitRenders() {
+	m.rendererMu.RLock()
+	defer m.rendererMu.RUnlock()
+	if _, isSurface := m.tuiInst.(*tui.TuiSurface); isSurface {
+		return
+	}
+	if h, ok := m.tuiInst.(interface{ HoldRenders() }); ok {
+		h.HoldRenders()
+	}
+}
+
+// flushExitRender paints the frame that was requested while the exit held the renderer.
+func (m *InteractiveMode) flushExitRender() {
+	if f, ok := m.tuiInst.(interface{ FlushRequestedRender() }); ok {
+		f.FlushRequestedRender()
+	}
 }
 
 // stopInteractiveTui drains input, stops the renderer while output is raw, then restores cooked mode and disposes the transcript view exactly once. Signal cleanup precedes it; dead-terminal emergencies skip these writes.
@@ -459,6 +481,8 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	if drainErr != nil {
 		m.exitIfDeadTerminal(drainErr)
 	}
+	// upstream: interactive-mode.ts:4502-4503 and tui.ts:1046: the frame the exit requested is rendered during the drain, after the keyboard pop and before stop() clears the progress.
+	m.flushExitRender()
 	// upstream: interactive-mode.ts:7054 (stop() disposes the active selector)
 	m.disposeActiveSelector()
 	// upstream: tui.ts stop() (:1046-1056) is one synchronous call, and after a signal's stop() process.exit(0) ends the process (interactive-mode.ts:4491-4494). Pi's shutdown() turns the theme's color scheme reports off and drains the input (:4491-4493, :4502-4503) BEFORE it calls stop(), whose first write is the progress clear below: the callbacks of Pi's loop run until then, and the writes that other goroutines make until here are written where they are made. From here the progress clear, the renderer stops, the transcript print and the terminal restore are one transaction of the terminal: the writes of other goroutines wait behind it and, once it ended, run after it for a quit by keys (Pi's loop runs its callbacks during the dispose that follows stop(), :4506) or are dropped for a signal's. Nothing below calls a write that waits behind the stop (the terminal's own SetTitle and SetProgress).
@@ -533,6 +557,8 @@ func (m *InteractiveMode) shutdownFromSignal(unwind bool) {
 	if !m.signalShutdownDone.CompareAndSwap(false, true) {
 		return
 	}
+	// upstream: interactive-mode.ts:4491-4494: the dispose runs first, and the frames its UI reset requests land in the drain after the color scheme reports are off.
+	m.holdExitRenders()
 	m.signalDisposing.Store(true)
 	m.emitQuitShutdown()
 	m.signalDisposing.Store(false)

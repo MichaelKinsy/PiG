@@ -265,6 +265,7 @@ type tmuxStepBlock struct {
 
 	FrameWatch *frameWatchBlock `toml:"frame_watch"`
 	FinalFrame *finalFrameBlock `toml:"final_frame"`
+	Signal     string           `toml:"signal"`
 }
 
 type finalFrameBlock struct {
@@ -460,7 +461,7 @@ func decodeScenarioWithUnknownKeyLint(path, source string, sc *scenario, violati
 func lintScenario(path, source string, sc *scenario, known map[string]bool, knownDivergences map[string]bool) []violation {
 	var out []violation
 
-	hasEq := sc.Assert.OutputEqual || sc.Assert.OutputNormalizedEqual || sc.Assert.OutputLayoutEqual || sc.Assert.EscapedOutputEqual
+	hasEq := sc.Assert.OutputEqual || sc.Assert.OutputNormalizedEqual || sc.Assert.OutputLayoutEqual || sc.Assert.EscapedOutputEqual || len(sc.Assert.TranscriptSequencesEqual) > 0
 	isTmux := sc.Driver == "interactive-tmux" || sc.Driver == "headless-terminal"
 	isBootOnly := strings.HasPrefix(sc.Description, "boot-only:")
 	isDeferred := hasTag(sc.Tags, "deferred")

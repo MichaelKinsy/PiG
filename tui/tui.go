@@ -802,7 +802,9 @@ type tuiBase struct {
 	// kitty graphics support
 	kitty bool
 
-	renderRequested          bool
+	renderRequested bool
+	// renderHeld is set by HoldRenders: no frame is drawn until FlushRequestedRender.
+	renderHeld               atomic.Bool
 	immediateRenderRequested bool
 	renderTimer              stoppableTimer
 	// deferredRenderTimer is the timer of RequestRenderWithin until a frame is drawn: that frame draws the change the timer was set for, so the timer is stopped when a frame begins. deferredRenderGeneration lets a callback that lost that race see it did.
@@ -2227,7 +2229,7 @@ func (t *tuiBase) renderScheduled(generation uint64) {
 	t.mu.Lock()
 	current := generation == t.renderGeneration && !t.stopped.Load()
 	t.mu.Unlock()
-	if !current {
+	if !current || t.deferRenderWhileHeld() {
 		return
 	}
 	t.renderAndReschedule(generation)
@@ -2301,8 +2303,42 @@ func (t *tuiBase) Render() {
 	if t.stopped.Load() {
 		return
 	}
+	if t.deferRenderWhileHeld() {
+		return
+	}
 	t.CancelPendingRender()
 	t.render(frameGate{})
+}
+
+// HoldRenders keeps every frame back until FlushRequestedRender: a frame that is requested, scheduled or asked for by name meanwhile stays requested. Pi's
+// shutdown() ends the color scheme reports and drains the input before it stops, and the frame that the exit's own key requested is rendered on the next
+// tick, which falls inside that drain (interactive-mode.ts:4475-4505), so the exit holds the frames from the moment it is decided.
+func (t *tuiBase) HoldRenders() {
+	t.renderHeld.Store(true)
+}
+
+// FlushRequestedRender ends HoldRenders and paints the frame that was requested while it held, if any: the frame Pi's drain lets through.
+func (t *tuiBase) FlushRequestedRender() {
+	if !t.renderHeld.Swap(false) || t.stopped.Load() {
+		return
+	}
+	t.mu.Lock()
+	pending := t.renderRequested
+	t.mu.Unlock()
+	if pending {
+		t.Render()
+	}
+}
+
+// deferRenderWhileHeld records the frame a held renderer was asked for and reports whether it was held.
+func (t *tuiBase) deferRenderWhileHeld() bool {
+	if !t.renderHeld.Load() {
+		return false
+	}
+	t.mu.Lock()
+	t.renderRequested = true
+	t.mu.Unlock()
+	return true
 }
 
 func findCursorPosition(lines []string, height int) (widthx.CursorPosition, int, string, bool) {

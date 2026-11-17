@@ -1,0 +1,43 @@
+# Behavior family: startup
+# Upstream evidence: Pi 1.5.2 interactive-mode.ts shutdown() (4475-4507) ends the color scheme reports (`CSI ? 2031 l`), drains the input (terminal.ts drainInput:
+# the Kitty keyboard pop `CSI < u`, whose frame the exit's own key requested is rendered inside), and calls stop() (tui.ts:1012: the progress clear, the cursor
+# show, bracketed paste off, the screen exit); the session title is written by the dispose that follows (a quit by keys) or that precedes (a signal).
+# The window runs from `CSI ? 2031 l`, which tmux never writes, to the transcript Pi prints on the main screen after it leaves the alternate screen: that
+# text holds the run's random working directory name, so it is not compared. Probe: Pi 1.5.2 on a tmux pane, SIGTERM to the idle program (interactive-mode.ts:4483-4494: the dispose first), 3 runs, byte-identical windows.
+# Both binaries run with a faux model, quietStartup and the terminal progress on, so the stop writes its progress clear.
+name = "29-exit-sigterm-idle-stop-sequences"
+description = "SIGTERM on the idle prompt writes the same terminal sequences, in the same order, from the color scheme off to the printed transcript"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/tui/src/terminal.ts",
+  "packages/tui/src/tui.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_OFFLINE=1", "PIG_CODING_AGENT_DIR=testdata/exit-sequences/pig-agent"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/exit-sequences/pi-agent"]
+pig_args = ["--no-extensions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+
+[[tmux.steps]]
+signal = "TERM"
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+exit_code = 0
+runs = 3
+
+[[assert.transcript_sequences_equal]]
+from = "\u001b[?2031l"
+until = "\u001b[0m\u001b]8;;\u0007\r\r\n"
