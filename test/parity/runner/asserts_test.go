@@ -367,3 +367,71 @@ func TestEvaluateOutcome_CompactionSettledRetainsTokenCounts(t *testing.T) {
 		t.Fatal("compaction token accounting was hidden")
 	}
 }
+
+func TestEvaluateOutcome_PigNoStaleFrames(t *testing.T) {
+	cases := []struct {
+		name      string
+		watch     FrameWatchResult
+		wantMatch string
+	}{
+		{name: "clean", watch: FrameWatchResult{Watched: true, Samples: 40, MinSamples: 20}},
+		{name: "stale", watch: FrameWatchResult{Watched: true, Samples: 40, MinSamples: 20, StaleCount: 3, Stale: []string{"old   leaf\n"}}, wantMatch: "pig run 1: 3 of 40 sampled panes were a forbidden frame; first: \"old leaf\""},
+		{name: "too_few_samples", watch: FrameWatchResult{Watched: true, Samples: 4, MinSamples: 20}, wantMatch: "pig run 1: frame watch took 4 samples, fewer than the 20 it needs to have observed the step"},
+		{name: "no_watch", watch: FrameWatchResult{}, wantMatch: "pig run 1: pig_no_stale_frames needs a tmux step with frame_watch"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			o := &ScenarioOutcome{
+				Scenario: &Scenario{Name: tc.name, Assert: AssertSpec{PigNoStaleFrames: true}},
+				Pig:      SystemResults{System: "pig", Runs: []Result{{FrameWatch: tc.watch}}},
+				Pi:       SystemResults{System: "pi", Runs: []Result{{}}},
+			}
+			EvaluateOutcome(o)
+			if tc.wantMatch == "" {
+				if len(o.Failures) != 0 {
+					t.Fatalf("unexpected failures: %v", o.Failures)
+				}
+				return
+			}
+			if len(o.Failures) != 1 || o.Failures[0] != tc.wantMatch {
+				t.Fatalf("failures = %q, want [%q]", o.Failures, tc.wantMatch)
+			}
+		})
+	}
+}
+
+func TestTmuxFrameWatchStalePredicate(t *testing.T) {
+	watch := TmuxFrameWatch{StaleContains: []string{"old leaf"}, StaleUnlessContains: []string{"Summarize branch?"}}
+	for pane, want := range map[string]bool{
+		"old leaf\neditor":            true,
+		"old leaf\nSummarize branch?": false,
+		"fork point\neditor":          false,
+		"":                            false,
+		"old leaf and more\nNavigated to the fork": true,
+	} {
+		if got := watch.stale(pane); got != want {
+			t.Errorf("stale(%q) = %v, want %v", pane, got, want)
+		}
+	}
+	if (TmuxFrameWatch{}).stale("anything") {
+		t.Error("a watch that names no forbidden row forbids nothing")
+	}
+}
+
+func TestFrameWatchCountsOnlyAForbiddenPaneThatStays(t *testing.T) {
+	w := &frameWatch{spec: TmuxFrameWatch{StaleContains: []string{"old leaf"}, StaleUnlessContains: []string{"prompt"}}}
+	for _, pane := range []string{
+		"old leaf prompt", // legitimate
+		"old leaf",        // forbidden, but the next sample differs: a frame still being written
+		"fork point",
+		"old leaf", // forbidden and
+		"old leaf", // stays
+		"old leaf", // stays
+		"fork point",
+	} {
+		w.observe(pane)
+	}
+	if w.result.Samples != 7 || w.result.StaleCount != 2 {
+		t.Fatalf("samples=%d stale=%d, want 7 and 2", w.result.Samples, w.result.StaleCount)
+	}
+}
