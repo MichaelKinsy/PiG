@@ -34,7 +34,7 @@ func TestStoreEntryKeyOrderMatchesPi(t *testing.T) {
 		scripts = append(scripts, strings.Join(calls, "; "))
 	}
 	cache := t.TempDir()
-	wasm, err := filepath.Abs("../../../../codemode/assets/quickjs.wasm")
+	wasm, err := filepath.Abs("../../../../codemode/assets/raw/quickjs.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -6,7 +6,7 @@ import { join } from "node:path"
 import { root } from "./helpers.ts"
 
 const repo = join(root, "..", "..", "..", "..")
-export const quickjsWasmPath = join(repo, "codemode", "assets", "quickjs.wasm")
+export const quickjsWasmPath = join(repo, "codemode", "assets", "raw", "quickjs.wasm")
 const codemodeSources = [join(repo, "codemode"), join(repo, "codemode", "cloudflare", "cmd", "codemodewasm")]
 
 const newest = () => Math.max(...codemodeSources.flatMap(dir => readdirSync(dir).filter(f => f.endsWith(".go") && !f.endsWith("_test.go")).map(f => statSync(join(dir, f)).mtimeMs)))

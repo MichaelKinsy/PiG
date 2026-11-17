@@ -51,7 +51,7 @@ func TestScriptOutcomesMatchPi(t *testing.T) {
 		`return ["a", "B", "c"].sort((x, y) => x.localeCompare(y))`, `return (1234567.891).toLocaleString()`, `return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(1234.5)`,
 	}
 	// Returning an Error is left out: D145 records that PiG's prelude serializes an Error's name and message where Pi's gives {}.
-	wasmPath, err := filepath.Abs("assets/quickjs.wasm")
+	wasmPath, err := filepath.Abs("assets/raw/quickjs.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

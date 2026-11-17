@@ -29,10 +29,10 @@ import (
 
 const appName = "pig"
 
-// The binary carries each asset gzip-compressed (about 277 KB of text becomes 80 KB); the uncompressed files next to them are the vendored
-// source, and TestEmbeddedAssetsMatchSources fails when a .gz does not inflate to its source. Refresh them with go generate after a pin bump.
+// The binary carries each asset gzip-compressed (about 277 KB of text becomes 80 KB); the uncompressed files are the vendored source in assets/src, a data-only directory outside the root module zip,
+// and TestEmbeddedAssetsMatchSources fails when a .gz does not inflate to its source. Refresh them with go generate after a pin bump.
 //
-//go:generate gzip -9nkf assets/template.html assets/template.css assets/template.js assets/vendor/marked.min.js assets/vendor/marked-cjk-friendly.min.js assets/vendor/highlight.min.js
+//go:generate sh -c "cd assets/src && gzip -9nc template.html > ../template.html.gz && gzip -9nc template.css > ../template.css.gz && gzip -9nc template.js > ../template.js.gz && gzip -9nc marked.min.js > ../vendor/marked.min.js.gz && gzip -9nc marked-cjk-friendly.min.js > ../vendor/marked-cjk-friendly.min.js.gz && gzip -9nc highlight.min.js > ../vendor/highlight.min.js.gz"
 //go:embed assets/template.html.gz assets/template.css.gz assets/template.js.gz assets/vendor/marked.min.js.gz assets/vendor/marked-cjk-friendly.min.js.gz assets/vendor/highlight.min.js.gz
 var templateFS embed.FS
 
