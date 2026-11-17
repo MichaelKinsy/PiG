@@ -172,6 +172,7 @@ func (config *ProviderConfig) UnmarshalJSON(data []byte) error {
 }
 
 func (config ProviderConfig) MarshalJSON() ([]byte, error) {
+	//perf:ok once per provider registration, not per delta: the wrapper embeds providerConfigFields, which has no MarshalJSON, so it cannot recurse
 	data, err := json.Marshal(providerConfigJSON{providerConfigFields: providerConfigFields(config), Insecure: config.InsecureSetting()})
 	if err != nil || config.headerEntries == nil {
 		return data, err
