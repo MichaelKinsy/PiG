@@ -41,13 +41,17 @@ func TestInteractiveQuitWithATimerSettleHandlerAndAHangingShutdownComparedWithPi
 		env   func(root, agent string) []string
 		extra []string
 	}{
-		{"pi", true, func() []string { return append([]string{node, piCLI}, append(slices.Clone(common), "-e", faux, "-e", fixture)...) },
+		{"pi", true, func() []string {
+			return append([]string{node, piCLI}, append(slices.Clone(common), "-e", faux, "-e", fixture)...)
+		},
 			func(root, agent string) []string { return []string{"PI_CODING_AGENT_DIR=" + agent, "PI_OFFLINE=1"} }, []string{"RPC_SHUTDOWN_SETTLED_WAIT=4000"}},
 		{"pig-node", true, func() []string { return append([]string{pigBinary}, append(slices.Clone(common), "-e", fixture)...) },
 			func(root, agent string) []string {
 				return []string{"PIG_CODING_AGENT_DIR=" + agent, "PIG_HOME=" + root, "PIG_OFFLINE=1", "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic"}
 			}, []string{"RPC_SHUTDOWN_SETTLED_WAIT=4000"}},
-		{"pig-go", false, func() []string { return append([]string{pigBinary}, append(slices.Clone(common), "-e", fixture, "-e", goExt)...) },
+		{"pig-go", false, func() []string {
+			return append([]string{pigBinary}, append(slices.Clone(common), "-e", fixture, "-e", goExt)...)
+		},
 			func(root, agent string) []string {
 				return []string{"PIG_CODING_AGENT_DIR=" + agent, "PIG_HOME=" + root, "PIG_OFFLINE=1", "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic"}
 			}, []string{"RPC_SHUTDOWN_GO_SETTLED_TIMER_MS=4000"}},
