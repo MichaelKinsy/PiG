@@ -174811,7 +174811,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+        "call:coding/extension/declaration_registry.go#Extension.MarkdownTransformerRegistration"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
@@ -194626,7 +194626,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+        "call:coding/extension/declaration_registry.go#Extension.MarkdownTransformerRegistration"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",

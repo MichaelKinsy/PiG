@@ -255992,22 +255992,24 @@
     {
       "id": "pkg:coding-agent/.#MarkdownTransformerRegistration",
       "upstreamShapeHash": "sha256:928454393ffd65a0f4e1e8bb9b7e4ce757ae8710078dc08012435932adb29033",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/extension#Extension.MarkdownTransformerRegistration",
         "go:github.com/MichaelKinsy/PiG/coding/extension#MarkdownTransformerRegistration"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",

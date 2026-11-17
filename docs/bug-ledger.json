@@ -2892,6 +2892,28 @@
       ]
     },
     {
+      "id": "BF-0d86014",
+      "title": "An extension that is restarted automatically after a crash could lose a registration its new process made…",
+      "symptom": "An extension that is restarted automatically after a crash could lose a registration its new process made right after it was ready.",
+      "rootCause": "adoptConn started the loop that serves the connection's calls before it adopted the restarted registration into the held extension, so a call made after the ready was written into the registries the adoption then replaced, and no test made a registration between the ready and the adoption",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that is restarted automatically after a crash could lose a registration its new process made right after it was ready. The host started the loop that serves the new process's calls before it adopted the new registration into the extension its runner holds, so a command, shortcut, flag or renderer registered late (`registerDeclaration`), a tool registered late (`registerTool`), an event handler subscribed late (`event.subscribe`) or the claim to own thinking runs (`ownThinkingRuns`) was written into the held extension and then replaced by the registration the new process had sent before its ready. The call was answered with success and the registration was not served: the command did not run, the tool or the handler was never called, for as long as that process ran. The restart now adopts the registration before the loop starts, so every call the new process makes after its ready is applied on top of it. The first load of an extension is not changed. No report of this was received; a test holds the adoption and shows each of the four calls lost.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0d8601423d",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/restart_late_registration_test.go::TestRestartKeepsWhatTheNewProcessRegistersAfterItsReady"
+      ]
+    },
+    {
       "id": "BF-0dff068",
       "title": "An OpenAI Responses function call streamed with an empty `call_id` no longer makes every later request fail…",
       "symptom": "An OpenAI Responses function call streamed with an empty `call_id` no longer makes every later request fail with an empty `call_id`: it gets a generated id, and a Responses request omits a stored call without one (D129, pi-mono #10299, Responses path).",
@@ -2997,6 +3019,31 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-0e2d7f4",
+      "title": "An extension that is restarted automatically after a crash could be read half replaced: the host adopts the…",
+      "symptom": "An extension that is restarted automatically after a crash could be read half replaced: the host adopts the restarted process's registration while a state push, a flag lookup, a command, tool or event call or a status reader runs on another goroutine.",
+      "rootCause": "the restart adopted the new registration field by field with no lock on the supervisor's goroutine, although the readers of those fields run on other goroutines, and no test restarted an extension beside each kind of reader",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that is restarted automatically after a crash could be read half replaced: the host adopts the restarted process's registration while a state push, a flag lookup, a command, tool or event call or a status reader runs on another goroutine. The adoption wrote the flag names and defaults, the session-log and model-registry requests, the runtime kind, the process it runs in and the held extension in place with no lock, so a reader could take the new flag names beside the old defaults, or the process of one generation with the link of another, and a registration that failed validation left its flag names behind. The race detector reported each of them in a gate run; no crash was reproduced. The flag names and defaults and the two requests are now one value that the adoption replaces whole once the registration validates, so a reader sees the registration that was running until the new one is adopted and a refused registration replaces nothing; the process fields join the lock that already guards the process handle. The unlocked writes date from v0.2.0 (flag names, the session-log request, the held extension), v0.3.0 (flag defaults, the runtime kind, the process share) and v0.7.0 (the model-registry request).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0e2d7f4bb4",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/restart_registration_race_test.go::TestRestartReplacesRegistrationBesideEveryReader",
+        "coding/extension/host/subprocess/restart_registration_snapshot_test.go::TestFailedRegistrationKeepsTheOldRegistration",
+        "coding/extension/host/subprocess/restart_registration_snapshot_test.go::TestProcessLinkChangesWithItsHandle",
+        "coding/extension/host/subprocess/restart_registration_snapshot_test.go::TestStatePushReadsOneRegistration"
+      ]
     },
     {
       "id": "BF-0e3411c",
@@ -7297,6 +7344,28 @@
         "ai/catalog_options_upstream_test.go::TestTogetherModels",
         "ai/zen_upstream_test.go::TestOpenCodeModelsSmokeUpstream",
         "cmd/gen-models/catalog_recording_test.go::TestGeneratorMatchesPisGeneratorOnTheCommittedRecording"
+      ]
+    },
+    {
+      "id": "BF-23dfe7d",
+      "title": "An extension that is restarted automatically after a crash could keep a stale list of the host's commands…",
+      "symptom": "An extension that is restarted automatically after a crash could keep a stale list of the host's commands until its next call.",
+      "rootCause": "the restart adopted the new registration after its ready frame was built and bumped neither state counter, so no push followed the adoption, and no test read the state an extension holds after its restart",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that is restarted automatically after a crash could keep a stale list of the host's commands until its next call. The restart's ready frame is built before the host adopts the new process's registration, so it carried the command catalog of the process that crashed beside the new process's flags, and nothing pushed the state again after the adoption. The host now pushes the state on the new connection once the adoption is done. A packed cell's member is started again as a new extension and was never affected. The ready frame and the automatic restart date from v0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "23dfe7d7ad",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/restart_state_push_test.go::TestRestartPushesTheStateOnceItIsAdopted"
       ]
     },
     {
@@ -38409,6 +38478,29 @@
       ],
       "tests": [
         "durable/core/driver/harness_read_only_core_test.go::TestReadOnlyHarnessCore"
+      ]
+    },
+    {
+      "id": "BF-986c5a7",
+      "title": "A restarted extension kept the Markdown transformer its first process registered",
+      "symptom": "A restarted extension kept the Markdown transformer its first process registered.",
+      "rootCause": "adoptRestartedExtension did not adopt Extension.MarkdownTransformer, so the first registration stayed",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A restarted extension kept the Markdown transformer its first process registered. After an automatic restart a transformer that only the new process registered did nothing, one the new process no longer registered went on being asked, and the surfaces the new process listed were ignored in favour of the old list. The restart now replaces the transformer with the new registration, as it does for commands and renderers. Tool renderers were already correct: a restarted extension resolves them from its new process.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "986c5a7e86",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/restart_renderers_test.go::TestRestartedExtensionResolvesToolRenderersFromItsNewProcess",
+        "coding/extension/host/subprocess/restart_renderers_test.go::TestRestartedExtensionTakesItsNewMarkdownTransformer"
       ]
     },
     {

@@ -127,10 +127,12 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0d1c973](#bf-0d1c973) | `tui.Box` no longer invalidates its children when a child is added or removed or the box is cleared | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d55b30](#bf-0d55b30) | A panicking notify while MCP reports startup problems is shown as "MCP failed to load" instead of ending the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d55b30-2](#bf-0d55b30-2) | The Python SDK reports a component whose `set_invalidate(None)` raises during cleanup in the extension log… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0d86014](#bf-0d86014) | An extension that is restarted automatically after a crash could lose a registration its new process made… | PiG's own defect | All platforms | Unreleased |
 | [BF-0dff068](#bf-0dff068) | An OpenAI Responses function call streamed with an empty `call_id` no longer makes every later request fail… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-0e05901](#bf-0e05901) | A provider an extension registers with `refreshModels` and no `streamSimple` streams through its API, as in Pi | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0e06194](#bf-0e06194) | A SIGTERM or SIGHUP that arrives while PiG is still starting up (the session_start handlers of an extension… | PiG's own defect | All platforms | Unreleased |
 | [BF-0e225b4](#bf-0e225b4) | fix(runtimecell): keep the Python runner's _run callable without the built event | PiG's own defect | All platforms | Unreleased |
+| [BF-0e2d7f4](#bf-0e2d7f4) | An extension that is restarted automatically after a crash could be read half replaced: the host adopts the… | PiG's own defect | All platforms | Unreleased |
 | [BF-0e3411c](#bf-0e3411c) | Fixed CI on `main` after the 0.5.1 ledger trim: the reviewed-pin ledgers (`upstream-v0.84.0.json`… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-0e360a0](#bf-0e360a0) | The `tui` package's default keybindings no longer depend on the platform: undo is `ctrl+-` and the alt-screen… | PiG's own defect | Windows, WSL | 0.5.0 |
 | [BF-0e8761b](#bf-0e8761b) | A system message with an empty sections object is stored as `"sections": {}`, as Pi stores it after a reset | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
@@ -282,6 +284,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2359a0a](#bf-2359a0a) | In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty… | A Pi defect that PiG fixed first | macOS | 0.7.0 |
 | [BF-23841dc](#bf-23841dc) | The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-23b801c](#bf-23b801c) | The model catalog is now the live one | PiG's own defect | All platforms | Unreleased |
+| [BF-23dfe7d](#bf-23dfe7d) | An extension that is restarted automatically after a crash could keep a stale list of the host's commands… | PiG's own defect | All platforms | Unreleased |
 | [BF-23ee6e1](#bf-23ee6e1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-243927e](#bf-243927e) | Fix the lint reds the batch 6 group 1 merges carried: rustfmt for the Rust SDK and its fixture, box the large… | PiG's own defect | All platforms | Unreleased |
 | [BF-24872ab](#bf-24872ab) | Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models… | PiG's own defect | All platforms | 0.5.0 |
@@ -1429,6 +1432,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9841da6](#bf-9841da6) | A shutdown that reaches an extension after it registered and before the host marked it ready now ends its run… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-985b5f9](#bf-985b5f9) | fix(coding): a resumed session takes its active tools from the transcript (pi-mono #10785) [SIGNOFF-PENDING] | PiG's own defect | All platforms | Unreleased |
 | [BF-98666df](#bf-98666df) | Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-986c5a7](#bf-986c5a7) | A restarted extension kept the Markdown transformer its first process registered | PiG's own defect | All platforms | Unreleased |
 | [BF-9883d4b](#bf-9883d4b) | Large nested-call fan-outs in the Durable core no longer re-send the whole document per call: the core sends… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-98a21df](#bf-98a21df) | Tool output bounded by `chord/output`, the durable core and the Cloudflare host now loses whole ANSI escape… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-98a2e8d](#bf-98a2e8d) | The Go extension SDK no longer forwards a provider stream event that the provider pushed after the cancel of… | PiG's own defect | All platforms | Unreleased |
@@ -3830,6 +3834,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `automation/ci/divguard/divguard_test.go::TestBareRecoverScansEveryProductionPackage`, `coding/mcpext/notify_panic_internal_test.go::TestNotifyPanicPropagatesExceptOnTheLoadFailurePath`, `coding/mcpext/regression_test.go::TestStartupProblemsReportPanicShowsAsLoadFailure`, `coding/session_event_panic_test.go::TestReportExtensionErrorNamesAPanickingListener`, `extensions/sdk-py/tests/test_component_cleanup.py`, `extensions/sdk/recovered_panic_reporting_test.go::TestInvalidatorPanicOnStopIsReported`, `extensions/sdk/recovered_panic_reporting_test.go::TestSameOverlayComponentNeverPanicsOnUncomparableValues`, `extensions/sdk/recovered_panic_reporting_test.go::TestTerminalInputHandlerPanicIsReportedAndYieldsNoVerdict`
 - **Release note:** The Python SDK reports a component whose `set_invalidate(None)` raises during cleanup in the extension log, as the Go SDK does.
 
+### BF-0d86014
+
+**An extension that is restarted automatically after a crash could lose a registration its new process made…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that is restarted automatically after a crash could lose a registration its new process made right after it was ready.
+- **Root cause:** adoptConn started the loop that serves the connection's calls before it adopted the restarted registration into the held extension, so a call made after the ready was written into the registries the adoption then replaced, and no test made a registration between the ready and the adoption
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0d8601423d` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/restart_late_registration_test.go::TestRestartKeepsWhatTheNewProcessRegistersAfterItsReady`
+- **Release note:** An extension that is restarted automatically after a crash could lose a registration its new process made right after it was ready. The host started the loop that serves the new process's calls before it adopted the new registration into the extension its runner holds, so a command, shortcut, flag or renderer registered late (`registerDeclaration`), a tool registered late (`registerTool`), an event handler subscribed late (`event.subscribe`) or the claim to own thinking runs (`ownThinkingRuns`) was written into the held extension and then replaced by the registration the new process had sent before its ready. The call was answered with success and the registration was not served: the command did not run, the tool or the handler was never called, for as long as that process ran. The restart now adopts the registration before the loop starts, so every call the new process makes after its ready is applied on top of it. The first load of an extension is not changed. No report of this was received; a test holds the adoption and shows each of the four calls lost.
+
 ### BF-0dff068
 
 **An OpenAI Responses function call streamed with an empty `call_id` no longer makes every later request fail…**
@@ -3886,6 +3904,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `0e225b41ec` (2026-10-21)
 - **Tests:** None recorded.
+
+### BF-0e2d7f4
+
+**An extension that is restarted automatically after a crash could be read half replaced: the host adopts the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that is restarted automatically after a crash could be read half replaced: the host adopts the restarted process's registration while a state push, a flag lookup, a command, tool or event call or a status reader runs on another goroutine.
+- **Root cause:** the restart adopted the new registration field by field with no lock on the supervisor's goroutine, although the readers of those fields run on other goroutines, and no test restarted an extension beside each kind of reader
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0e2d7f4bb4` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/restart_registration_race_test.go::TestRestartReplacesRegistrationBesideEveryReader`, `coding/extension/host/subprocess/restart_registration_snapshot_test.go::TestFailedRegistrationKeepsTheOldRegistration`, `coding/extension/host/subprocess/restart_registration_snapshot_test.go::TestProcessLinkChangesWithItsHandle`, `coding/extension/host/subprocess/restart_registration_snapshot_test.go::TestStatePushReadsOneRegistration`
+- **Release note:** An extension that is restarted automatically after a crash could be read half replaced: the host adopts the restarted process's registration while a state push, a flag lookup, a command, tool or event call or a status reader runs on another goroutine. The adoption wrote the flag names and defaults, the session-log and model-registry requests, the runtime kind, the process it runs in and the held extension in place with no lock, so a reader could take the new flag names beside the old defaults, or the process of one generation with the link of another, and a registration that failed validation left its flag names behind. The race detector reported each of them in a gate run; no crash was reproduced. The flag names and defaults and the two requests are now one value that the adoption replaces whole once the registration validates, so a reader sees the registration that was running until the new one is adopted and a refused registration replaces nothing; the process fields join the lock that already guards the process handle. The unlocked writes date from v0.2.0 (flag names, the session-log request, the held extension), v0.3.0 (flag defaults, the runtime kind, the process share) and v0.7.0 (the model-registry request).
 
 ### BF-0e3411c
 
@@ -5965,6 +5997,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `23b801cc09` (2026-11-15)
 - **Tests:** `ai/catalog_options_upstream_test.go::TestTogetherModels`, `ai/zen_upstream_test.go::TestOpenCodeModelsSmokeUpstream`, `cmd/gen-models/catalog_recording_test.go::TestGeneratorMatchesPisGeneratorOnTheCommittedRecording`
 - **Release note:** The model catalog is now the live one. It was the snapshot the published Pi 1.5.2 package shipped on its build day (1643 chat, 66 image and 64 classifier models); it is Pi's own catalog generator over a committed recording of the live sources taken on 2026-11-15 (1663 chat, 72 image and 72 classifier models: 38 chat models added and 18 removed, 71 records with a changed limit, price or capability), so models released since 1.5.2 can be selected and priced. The recording is data in `automation/gen/catalog-source`; `make model-catalogs` replays it offline and `make model-catalogs-live` is the only target that fetches, so a refresh is a reviewed data change that needs no test edit.
+
+### BF-23dfe7d
+
+**An extension that is restarted automatically after a crash could keep a stale list of the host's commands…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that is restarted automatically after a crash could keep a stale list of the host's commands until its next call.
+- **Root cause:** the restart adopted the new registration after its ready frame was built and bumped neither state counter, so no push followed the adoption, and no test read the state an extension holds after its restart
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `23dfe7d7ad` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/restart_state_push_test.go::TestRestartPushesTheStateOnceItIsAdopted`
+- **Release note:** An extension that is restarted automatically after a crash could keep a stale list of the host's commands until its next call. The restart's ready frame is built before the host adopts the new process's registration, so it carried the command catalog of the process that crashed beside the new process's flags, and nothing pushed the state again after the adoption. The host now pushes the state on the new connection once the adoption is done. A packed cell's member is started again as a new extension and was never affected. The ready frame and the automatic restart date from v0.2.0.
 
 ### BF-23ee6e1
 
@@ -21870,6 +21916,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `98666dfd10` (2026-10-27)
 - **Tests:** `durable/core/driver/harness_read_only_core_test.go::TestReadOnlyHarnessCore`
 - **Release note:** Closing a Harness over the TypeScript host no longer rejects when the write-back of the tasks the close stopped fails, for example because another process advanced the store. Pi catches that write and the Session reports the failure, so the close resolves.
+
+### BF-986c5a7
+
+**A restarted extension kept the Markdown transformer its first process registered**
+
+- **Source:** PiG's own defect
+- **Symptom:** A restarted extension kept the Markdown transformer its first process registered.
+- **Root cause:** adoptRestartedExtension did not adopt Extension.MarkdownTransformer, so the first registration stayed
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `986c5a7e86` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/restart_renderers_test.go::TestRestartedExtensionResolvesToolRenderersFromItsNewProcess`, `coding/extension/host/subprocess/restart_renderers_test.go::TestRestartedExtensionTakesItsNewMarkdownTransformer`
+- **Release note:** A restarted extension kept the Markdown transformer its first process registered. After an automatic restart a transformer that only the new process registered did nothing, one the new process no longer registered went on being asked, and the surfaces the new process listed were ignored in favour of the old list. The restart now replaces the transformer with the new registration, as it does for commands and renderers. Tool renderers were already correct: a restarted extension resolves them from its new process.
 
 ### BF-9883d4b
 
