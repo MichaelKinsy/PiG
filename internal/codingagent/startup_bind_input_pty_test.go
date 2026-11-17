@@ -29,6 +29,10 @@ import (
 const (
 	startupBindChildEnv   = "PIG_TEST_STARTUP_BIND_CHILD"
 	startupBindHandlerEnv = "PIG_TEST_STARTUP_BIND_HANDLER"
+	// The values of startupBindHandlerEnv: no session_start handler, one that pends, the built-in MCP extension's that returns at once.
+	startupBindNone       = "none"
+	startupBindPending    = "pending"
+	startupBindBuiltinMCP = "builtin-mcp"
 )
 
 // Pi's init() awaits rebindCurrentSession() after setupEditorSubmitHandler (interactive-mode.ts:1127-1141) and run() shows the startup notices, among them
@@ -36,7 +40,7 @@ const (
 // microtasks, so a key typed ahead is not read, and no command it submits runs, before the notices. The key is held ready on the owner loop's input channel
 // before the bind starts; Init must leave it unread through the bind and the notices.
 func TestInitReadsNoTypedAheadKeyBeforeTheStartupNoticesWhenNoHandlerPends(t *testing.T) {
-	report := runStartupBindChild(t, false)
+	report := runStartupBindChild(t, startupBindNone)
 	if report.UnreadAfterBind == nil {
 		t.Fatalf("the child never reached the end of the bind: %+v", report)
 	}
@@ -45,10 +49,23 @@ func TestInitReadsNoTypedAheadKeyBeforeTheStartupNoticesWhenNoHandlerPends(t *te
 	}
 }
 
+// A plain start loads the built-in MCP extension, whose session_start handler Pi awaits and which returns at once (extensions/mcp/index.ts:1115-1152): the await
+// still settles in microtasks, so a key typed ahead is not read before the notices and the event loop takes no turn that would paint the header's frame before
+// init() ends.
+func TestInitReadsNoTypedAheadKeyBeforeTheStartupNoticesWhenOnlyTheBuiltinMCPHandlerRuns(t *testing.T) {
+	report := runStartupBindChild(t, startupBindBuiltinMCP)
+	if report.UnreadAfterBind == nil {
+		t.Fatalf("the child never reached the end of the bind: %+v", report)
+	}
+	if !*report.UnreadAfterBind {
+		t.Fatal("Init served the terminal while it bound a session whose only session_start handler is the built-in MCP extension's, which returns at once")
+	}
+}
+
 // When a session_start handler pends, Pi's event loop reads stdin while it awaits it (the submit handler of :1127-1128 is already set), so a key typed ahead
 // is read, and a /login it submits runs, before the notices: Pig serves the terminal while the handler runs.
 func TestInitReadsATypedAheadKeyWhileASessionStartHandlerPends(t *testing.T) {
-	report := runStartupBindChild(t, true)
+	report := runStartupBindChild(t, startupBindPending)
 	if report.UnreadAfterBind == nil {
 		t.Fatalf("the child never reached the end of the bind: %+v", report)
 	}
@@ -63,7 +80,7 @@ type startupBindReport struct {
 	UnreadAfterBind *bool
 }
 
-func runStartupBindChild(t *testing.T, handler bool) startupBindReport {
+func runStartupBindChild(t *testing.T, handler string) startupBindReport {
 	t.Helper()
 	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR|syscall.O_NOCTTY|syscall.O_CLOEXEC, 0)
 	if err != nil {
@@ -93,11 +110,7 @@ func runStartupBindChild(t *testing.T, handler bool) startupBindReport {
 	}
 	reportPath := filepath.Join(t.TempDir(), "report.json")
 	cmd := exec.CommandContext(ctx, executable, "-test.run=^TestInitStartupBindChild$", "-test.count=1", "-test.v")
-	handlerFlag := "0"
-	if handler {
-		handlerFlag = "1"
-	}
-	cmd.Env = append(os.Environ(), startupBindChildEnv+"="+reportPath, startupBindHandlerEnv+"="+handlerFlag, "TERM=xterm-256color", "PIG_HOME="+t.TempDir())
+	cmd.Env = append(os.Environ(), startupBindChildEnv+"="+reportPath, startupBindHandlerEnv+"="+handler, "TERM=xterm-256color", "PIG_HOME="+t.TempDir())
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
 	if err := cmd.Start(); err != nil {
@@ -131,8 +144,8 @@ func runStartupBindChild(t *testing.T, handler bool) startupBindReport {
 	return report
 }
 
-// TestInitStartupBindChild is the child half of the two tests above: the real Init on a pseudo-terminal with a real Session whose runner has no session_start
-// handler, or one that returns only once the held key has been read.
+// TestInitStartupBindChild is the child half of the three tests above: the real Init on a pseudo-terminal with a real Session whose runner has no session_start
+// handler, the built-in MCP extension's handler that returns at once, or a handler that returns only once the held key has been read.
 func TestInitStartupBindChild(t *testing.T) {
 	reportPath := os.Getenv(startupBindChildEnv)
 	if reportPath == "" {
@@ -162,7 +175,9 @@ func TestInitStartupBindChild(t *testing.T) {
 	}
 	var mode *icodingagent.InteractiveMode
 	handlers := map[string][]extension.HandlerFn{"agent_start": {func(...any) (any, error) { return nil, nil }}}
-	if os.Getenv(startupBindHandlerEnv) == "1" {
+	path := "/startup-bind"
+	switch os.Getenv(startupBindHandlerEnv) {
+	case startupBindPending:
 		handlers["session_start"] = []extension.HandlerFn{func(...any) (any, error) {
 			// The handler pends until the owner loop has read the held key, as a Node handler pends on I/O while stdin is read.
 			for mode.HeldStartupInputUnread() && t.Context().Err() == nil {
@@ -170,8 +185,12 @@ func TestInitStartupBindChild(t *testing.T) {
 			}
 			return nil, nil
 		}}
+	case startupBindBuiltinMCP:
+		// The built-in MCP extension of a plain start: its handler returns at once, as Pi's does (extensions/mcp/index.ts:1115-1152).
+		path = "builtin:mcp"
+		handlers["session_start"] = []extension.HandlerFn{func(...any) (any, error) { return nil, nil }}
 	}
-	runner := inproc.NewRunner([]extension.Extension{{Path: "/startup-bind", Handlers: handlers}}, cwd)
+	runner := inproc.NewRunner([]extension.Extension{{Path: path, Handlers: handlers}}, cwd)
 	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
 	session, err := coding.NewSession(services, coding.SessionOptions{Model: model, SessionManager: manager, Runner: runner})
 	if err != nil {

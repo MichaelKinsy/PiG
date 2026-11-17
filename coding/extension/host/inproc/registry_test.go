@@ -212,6 +212,36 @@ func TestHasHandlers_AcrossMultipleExtensions(t *testing.T) {
 	}
 }
 
+// HasHandlersOutsideBuiltinMCP leaves out the built-in MCP extension's handlers, whose session_start handler returns without awaiting (Pi extensions/mcp/index.ts:1115-1152),
+// and counts every other extension's, built in or not: a built-in extension of PiG's own is not Pi's.
+func TestHasHandlersOutsideBuiltinMCPLeavesOutOnlyTheBuiltinMCPExtension(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		paths []string
+		want  bool
+	}{
+		{"no extension", nil, false},
+		{"only the built-in MCP extension", []string{"builtin:mcp"}, false},
+		{"a loaded extension", []string{"/ext/a"}, true},
+		{"the built-in MCP extension and a loaded one", []string{"builtin:mcp", "/ext/a"}, true},
+		{"another built-in extension", []string{"builtin:llama.cpp"}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			exts := make([]extension.Extension, len(tc.paths))
+			for i, path := range tc.paths {
+				exts[i] = extWithHandler(path, "session_start")
+			}
+			r := inproc.NewRunner(exts, ".")
+			if got := r.HasHandlersOutsideBuiltinMCP("session_start"); got != tc.want {
+				t.Errorf("HasHandlersOutsideBuiltinMCP(session_start) = %v, want %v", got, tc.want)
+			}
+			if r.HasHandlersOutsideBuiltinMCP("tool_call") {
+				t.Error("HasHandlersOutsideBuiltinMCP(tool_call) = true with no tool_call handler")
+			}
+		})
+	}
+}
+
 // TestStubSurfaces_OnlyExpectedAreStubbed: \u03b5.2c lights up Commands,
 // Flags, Shortcuts (in addition to \u03b5.2b's Tools, GetToolDefinition,
 // HasHandlers). The remaining stub is MessageRenderer for \u03b5.2e.

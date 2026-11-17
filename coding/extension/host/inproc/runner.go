@@ -1098,6 +1098,17 @@ func (r *Runner) HasHandlers(eventType string) bool {
 	return false
 }
 
+// HasHandlersOutsideBuiltinMCP is HasHandlers without the handlers of the built-in MCP extension (`builtin:mcp`). Its session_start handler returns without awaiting the
+// connections it starts (Pi extensions/mcp/index.ts:1115-1152), so an await of it settles in microtasks and lets the event loop take no turn.
+func (r *Runner) HasHandlersOutsideBuiltinMCP(eventType string) bool {
+	for i := range r.extensions {
+		if r.extensions[i].HasEventHandlers(eventType) && extensionPath(r.extensions[i]) != "builtin:mcp" {
+			return true
+		}
+	}
+	return false
+}
+
 // Shortcuts returns all extension shortcuts after applying built-in conflicts.
 // Reserved editor-global bindings reject an extension shortcut. Other built-in
 // conflicts warn and allow the extension. Extension-to-extension conflicts use

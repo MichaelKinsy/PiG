@@ -20,6 +20,8 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
@@ -108,13 +110,21 @@ func TestStartupWriteKindsChild(t *testing.T) {
 		fail("%v", err)
 	}
 	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
-	session, err := coding.NewSession(services, coding.SessionOptions{Model: model, SessionManager: manager})
+	// A plain start loads the built-in MCP extension, which has a session_start handler that returns at once (Pi extensions/mcp/index.ts:1115-1152); the bind of the
+	// start is the one that runs it.
+	runner := inproc.NewRunner([]extension.Extension{{Path: "builtin:mcp", Handlers: map[string][]extension.HandlerFn{
+		"session_start": {func(...any) (any, error) { return nil, nil }},
+	}}}, cwd)
+	session, err := coding.NewSession(services, coding.SessionOptions{Model: model, SessionManager: manager, Runner: runner})
 	if err != nil {
 		fail("%v", err)
 	}
 	defer func() { _ = session.Close() }()
 	mode := icodingagent.NewInteractiveMode(nil, icodingagent.InteractiveModeOptions{
-		CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, NoThemes: true,
+		CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, NoThemes: true, ExtensionRunner: runner,
+		// The built-in header: main.go sets it for every start that is not print or rpc and not quiet (LoginVisible: showBanner). Without it nothing changes between the first
+		// frame and the end of init(), whose renderNow then writes only a cursor placement; Pi mounts its header after the colour wait, in the frame the end of init() paints.
+		LoginVisible: true,
 		// A plain first start has no model: Pi's run() shows this warning after init() returns (interactive-mode.ts:1257), and the frame that paints it is the third.
 		ModelFallbackMessage: "No models available. Use /login to log into a provider via OAuth or API key.",
 		SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(),

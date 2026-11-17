@@ -107,3 +107,44 @@ func TestStartupColorWaitPaintsTheRequestedFirstFrameBeforeItReturns(t *testing.
 		})
 	}
 }
+
+// The frame the colour apply itself requests is not painted by the end of the wait. In Pi the reply that completes the query applies its colours and calls
+// ui.requestRender() (theme-controller.ts:201-216, tui.ts:1033-1040): a nextTick that arms a timer. The continuation after `await waitForTerminalColors()`
+// (interactive-mode.ts:1046) is a microtask and runs before that timer, so the frame comes after the header and the rest of init(), in the renderNow that ends it
+// (:1162), never between the apply and the header: a frame painted there writes a frame or, with no row changed, a bare cursor placement outside one. Only a frame
+// that was due before the reply was run by Pi's loop already (TestStartupColorWaitPaintsTheRequestedFirstFrameBeforeItReturns pins that one).
+func TestFrameTheColorApplyRequestsIsNotPaintedBeforeTheWaitReturns(t *testing.T) {
+	for _, mode := range []string{"regular", "fullscreen"} {
+		t.Run(mode, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				m, term := newTickRenderProbe(t, mode)
+				time.Sleep(terminalColorQueryTimeout)
+				synctest.Wait()
+				m.drainMainLoopOnce()
+				term.take()
+				colors := make(chan struct{})
+				m.themeState.colorQuery = colors
+				go func() {
+					// The reply's apply: the colours changed the theme, which requests a frame, and the query completes in the same turn.
+					m.uiTaskCh <- func() {
+						m.editor.SetText("zq")
+						m.tuiInst.RequestRender()
+						close(colors)
+					}
+				}()
+				if err := m.waitForTerminalColors(t.Context()); err != nil {
+					t.Fatal(err)
+				}
+				if got := term.take(); got != "" {
+					t.Fatalf("the colour wait painted the frame its own apply requested, before startup built the header: %q", got)
+				}
+				time.Sleep(terminalColorQueryTimeout)
+				synctest.Wait()
+				m.drainMainLoopOnce()
+				if !strings.Contains(widthx.StripAnsi(term.take()), "zq") {
+					t.Fatal("the frame the apply requested never painted: the test would pass with the request lost")
+				}
+			})
+		})
+	}
+}
