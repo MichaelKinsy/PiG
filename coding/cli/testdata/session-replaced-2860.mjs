@@ -126,10 +126,58 @@ export default function replacedSession2860(pi) {
     },
   });
 
+  // D30: what each call from a captured context does after the replacement. One line per call.
+  pi.registerCommand("calls", {
+    description: "calls",
+    handler: async (_args, ctx) => {
+      const oldCtx = ctx;
+      await ctx.newSession({
+        withSession: async (replacedCtx) => {
+          const report = async (name, call) => {
+            try { await call(); log(`call:${name}=nil`); } catch (error) { log(`call:${name}=throws:${error.message}`); }
+          };
+          await report("notify", () => oldCtx.ui.notify("stale note", "info"));
+          await report("setStatus", () => oldCtx.ui.setStatus("stale", "text"));
+          await report("setActiveTools", () => pi.setActiveTools(["read"]));
+          await report("abort", () => oldCtx.abort());
+          await report("sendUserMessage", () => pi.sendUserMessage("stale message"));
+          await report("appendEntry", () => pi.appendEntry("stale-entry", { a: 1 }));
+          await report("setSessionName", () => pi.setSessionName("stale-name"));
+          await report("setWidgetLines", () => oldCtx.ui.setWidget("stale", ["line"]));
+          await report("setWidgetOptions", () => oldCtx.ui.setWidget("stale", ["line"], { placement: "belowEditor" }));
+          const entries = replacedCtx.sessionManager.getEntries();
+          log(`replacement:named=${replacedCtx.sessionManager.getSessionName() === "stale-name"} customEntries=${entries.filter((e) => e.type === "custom").length} conversation=${conversation(replacedCtx.sessionManager)}`);
+        },
+      });
+    },
+  });
+
   pi.registerCommand("mark", {
     description: "mark",
     handler: async (name, ctx) => {
       writeFileSync(process.env.PIG_TEST_2860_MARKS, JSON.stringify({ ...marks(), [name]: ctx.sessionManager.getSessionFile() }));
+    },
+  });
+
+  // D30: what a captured context's state getters answer after the replacement. Each outcome is one line.
+  pi.registerCommand("getters", {
+    description: "getters",
+    handler: async (_args, ctx) => {
+      const oldCtx = ctx;
+      await ctx.newSession({
+        withSession: async (replacedCtx) => {
+          const probe = (name, read) => {
+            try { log(`getter:${name}=${read()}`); } catch (error) { log(`getter:${name}=throws:${error.message}`); }
+          };
+          probe("cwd", () => (oldCtx.cwd ? "nonempty" : "empty"));
+          probe("hasUI", () => String(oldCtx.hasUI));
+          probe("model", () => oldCtx.model?.id);
+          probe("theme", () => typeof oldCtx.ui.theme);
+          probe("branch", () => conversation(oldCtx.sessionManager));
+          probe("entries", () => String(oldCtx.sessionManager.getEntries().filter((entry) => entry.type === "message").length));
+          log(`replacement:${conversation(replacedCtx.sessionManager)}`);
+        },
+      });
     },
   });
 

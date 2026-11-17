@@ -146,6 +146,60 @@ def new_extension() -> pig_sdk.Extension:
 
         ctx.new_session({"setup": setup, "withSession": with_session})
 
+    def getters(ctx, args):
+        # D30: what a captured context's state getters answer after the replacement. Each outcome is one line.
+        old_ctx = ctx
+
+        def with_session(replaced):
+            def probe(name, read):
+                try:
+                    _log(f"getter:{name}={read()}")
+                except Exception as error:
+                    _log(f"getter:{name}=raises:{error}")
+
+            probe("cwd", lambda: "nonempty" if old_ctx.cwd else "empty")
+            probe("mode", lambda: old_ctx.mode)
+            probe("hasUI", lambda: str(old_ctx.has_ui()).lower())
+            probe("model", lambda: old_ctx.model)
+            probe("theme", lambda: type(old_ctx.theme).__name__)
+            probe("branch", lambda: _conversation(old_ctx.session_manager))
+            probe("entries", lambda: str(len([e for e in old_ctx.session_manager.get_entries() if e.get("type") == "message"])))
+            _log("replacement:" + _conversation(replaced.session_manager))
+
+        ctx.new_session({"withSession": with_session})
+
+    def calls(ctx, args):
+        # D30: what each host call from a captured context does after the replacement, and whether it reaches the replacement. One line per call.
+        old_ctx = ctx
+
+        def with_session(replaced):
+            before = replaced.get_active_tools()
+
+            def report(name, call):
+                try:
+                    call()
+                    _log(f"call:{name}=nil")
+                except Exception as error:
+                    _log(f"call:{name}=raises:{type(error).__name__}:{error}")
+
+            report("notify", lambda: old_ctx.notify("stale note", "info"))
+            report("setStatus", lambda: old_ctx.set_status("stale", "text"))
+            report("setActiveTools", lambda: old_ctx.set_active_tools(["read"]))
+            report("abort", lambda: old_ctx.abort())
+            report("sendUserMessage", lambda: old_ctx.send_user_message("stale message"))
+            report("appendEntry", lambda: old_ctx.append_entry("stale-entry", {"a": 1}))
+            report("setSessionName", lambda: old_ctx.set_session_name("stale-name"))
+            report("setWidgetLines", lambda: old_ctx.set_widget("stale", ["line"]))
+            report("setWidgetOptions", lambda: old_ctx.set_widget("stale", ["line"], {"placement": "belowEditor"}))
+            after = replaced.get_active_tools()
+            custom = len([e for e in replaced.session_manager.get_entries() if e.get("type") == "custom"])
+            named = str(replaced.session_manager.get_session_name() == "stale-name").lower()
+            _log(f"replacement:toolsChanged={str(before != after).lower()} named={named} customEntries={custom} conversation={_conversation(replaced.session_manager)}")
+
+        ctx.new_session({"withSession": with_session})
+
+    ext.command("calls", "calls", calls)
+    ext.command("getters", "getters", getters)
     ext.command("repro", "repro", repro)
     ext.command("seed-it", "seed-it", seed_it)
     ext.command("throw-it", "throw-it", throw_it)
