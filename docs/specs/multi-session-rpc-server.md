@@ -60,7 +60,7 @@ The last two rows are the problem this design solves: a session's extension proc
 
 - `--listen` requires `--mode rpc`. Any other mode fails with an argument diagnostic, as `--tui-mode` with a wrong value does.
 - `--listen` rejects `--continue`, `--resume`, `--session`, `--session-id` and `--fork` with an argument diagnostic: every connection creates a new Session, persisted under the session directory unless `--no-session` is given, as each `pig --mode rpc` process does.
-- The socket path must not exist. PiG creates the socket with mode 0600 and removes it at exit. A path that exists is an error; PiG does not remove it.
+- The socket path must not exist. PiG creates the socket private to the user (on Unix mode 0600 from the moment it can be reached by name; on Windows it refuses a socket whose access list admits another user) and removes it at exit, only while the path still names the socket it created. A path that exists is an error; PiG does not remove it.
 - The process ignores its own stdin. The server runs until a termination signal.
 - A closed connection is that session's stdin end: PiG runs the session's shutdown (`session_shutdown` to its extensions, dispose of the runtime), closes the connection and keeps serving. The exit code a `pig --mode rpc` process would have returned is logged at debug level and otherwise dropped.
 - A termination signal runs every live session's shutdown concurrently, then exits with `128 + signal`, as `pig --mode rpc` does for one session. Extension processes are terminated after the shutdowns, as today's forced exit does.
