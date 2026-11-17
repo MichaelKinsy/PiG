@@ -16884,6 +16884,28 @@
       ]
     },
     {
+      "id": "BF-4cc22fb",
+      "title": "An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from…",
+      "symptom": "An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from a half-replaced record.",
+      "rootCause": "the restart wrote cancel and parentCtx of a published extension with no lock, although procMu already guarded the process handle beside them, and no test ran a call that reads the owner context while a restart replaces it",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from a half-replaced record. The restart rewrote the context its new process runs under and the owner context whose end means the host stopped the extension, while a failed command, shortcut or event call read the owner context from its own goroutine; the race detector reported the pair once in a gate run. The two now change together under the lock that already guards the process handle, and every reader copies them under it. No failure a user could see was reproduced: the worst outcome of a read at the wrong moment was a failed call at the instant of a restart judged by the old owner.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4cc22fbce1",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/restart_context_race_test.go::TestRestartReplacesTheStartContextBesideItsReaders"
+      ]
+    },
+    {
       "id": "BF-4cf6069",
       "title": "The read, write, edit and ls cards draw their call fallback, as Pi does, for a path argument whose `file:`…",
       "symptom": "The read, write, edit and ls cards draw their call fallback, as Pi does, for a path argument whose `file:` URL cannot be resolved (a URL that names a host or holds an encoded `/`) when the terminal supports hyperlinks; they used to show the path unlinked.",

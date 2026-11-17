@@ -14,14 +14,14 @@ import (
 // handler's own.
 func TestDispatchErrorMarksCallsTheHostStopped(t *testing.T) {
 	failure := errors.New("event session_start: context canceled")
-	live := &managedExt{host: &Host{}, parentCtx: context.Background()}
+	live := ownedBy(&managedExt{host: &Host{}}, context.Background())
 	if err := live.dispatchError(failure); errors.Is(err, extension.ErrHandlerStopped) || !errors.Is(err, failure) {
 		t.Fatalf("running extension: dispatchError = %v, want the failure unchanged", err)
 	}
 	owner, cancel := context.WithCancel(context.Background())
 	cancel()
 	for name, me := range map[string]*managedExt{
-		"owner cancelled":    {host: &Host{}, parentCtx: owner},
+		"owner cancelled":    ownedBy(&managedExt{host: &Host{}}, owner),
 		"extension stopping": func() *managedExt { me := &managedExt{host: &Host{}}; me.shuttingDown.Store(true); return me }(),
 		"host stopping":      func() *managedExt { h := &Host{}; h.shuttingDown.Store(true); return &managedExt{host: h} }(),
 	} {
@@ -29,4 +29,10 @@ func TestDispatchErrorMarksCallsTheHostStopped(t *testing.T) {
 			t.Errorf("%s: dispatchError = %v, want the failure marked as stopped by the host", name, err)
 		}
 	}
+}
+
+// ownedBy starts me under owner, as a start does.
+func ownedBy(me *managedExt, owner context.Context) *managedExt {
+	me.setStartContext(nil, owner)
+	return me
 }
