@@ -120,12 +120,12 @@ func TestUnresolvedRelativeImportsFindsWhatAStubLacks(t *testing.T) {
 		"pi-dist/pi-ai/ok.js": {Data: []byte("import { stream, streamSimple as s, convertMessages } from \"./api/openai-completions.js\";\nimport { lazyApi } from \"./api/lazy.js\";\n" +
 			"import {\n  generateImages,\n} from \"./api/openrouter-images.js\";\nexport * from \"./api/pi-messages.js\";\nimport { PiMessagesResponseError } from \"./api/pi-messages.js\";\n")},
 		"pi-dist/pi-ai/bad.js": {Data: []byte("import { stream, convertMessage } from \"./api/openai-completions.js\";\n" +
-			"import { closeOpenAICodexWebSocketSessions,\n  streamSimple } from \"./api/openai-codex-responses.js\";\nimport { retryGoogleRequest } from \"./api/absent.js\";\n" +
+			"import { codexNoSuchHelper,\n  streamSimple } from \"./api/openai-codex-responses.js\";\nimport { retryGoogleRequest } from \"./api/absent.js\";\n" +
 			"import completions from \"./api/openai-completions.js\";\n")},
 		"pi-dist/pi-ai/sdk-bundle/chunk.js": {Data: []byte("import { nothing } from \"./absent.js\";\n")},
 	}
 	want := []string{
-		"pi-dist/pi-ai/bad.js imports closeOpenAICodexWebSocketSessions from the bridge stub pi-ai/api/openai-codex-responses.js, which exports only stream, streamSimple",
+		"pi-dist/pi-ai/bad.js imports codexNoSuchHelper from the bridge stub pi-ai/api/openai-codex-responses.js, which exports only stream, streamSimple, closeOpenAICodexWebSocketSessions, getOpenAICodexWebSocketDebugStats, resetOpenAICodexWebSocketDebugStats",
 		"pi-dist/pi-ai/bad.js imports convertMessage from the bridge stub pi-ai/api/openai-completions.js, which exports only stream, streamSimple, convertMessages",
 		"pi-dist/pi-ai/bad.js imports default from the bridge stub pi-ai/api/openai-completions.js, which exports only stream, streamSimple, convertMessages",
 		"pi-dist/pi-ai/bad.js imports ./api/absent.js, which is not vendored",
