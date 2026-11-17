@@ -1,0 +1,3 @@
+{"type":"session","version":3,"id":"cur-resume-longer-tall","timestamp":"2099-01-01T00:00:00.000Z","cwd":"/tmp"}
+{"type":"message","id":"curu01","parentId":null,"timestamp":"2099-01-01T00:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"CUR-Q1 question 1"}],"timestamp":4070908801000}}
+{"type":"message","id":"cura01","parentId":"curu01","timestamp":"2099-01-01T00:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"CUR-R1 answer 1"}],"api":"openai-completions","provider":"test-faux","model":"faux-1","usage":{"input":300,"output":150,"cacheRead":0,"cacheWrite":0,"totalTokens":450,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":4070908802000}}
