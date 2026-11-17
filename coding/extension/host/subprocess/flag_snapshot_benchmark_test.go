@@ -43,7 +43,9 @@ func BenchmarkRegisteredFlagSnapshot(b *testing.B) {
 			flags[name] = extension.ExtensionFlag{Name: name, Type: "string", Default: "default"}
 			defaults[name] = "default"
 		}
-		h.exts[name] = &managedExt{ext: &extension.Extension{Flags: flags}, flagDefaults: defaults}
+		me := &managedExt{ext: &extension.Extension{Flags: flags}}
+		setRegistrationFor(me, registrationSeen{flagDefaults: defaults})
+		h.exts[name] = me
 		h.loadOrder[name] = i
 	}
 	b.ReportAllocs()
