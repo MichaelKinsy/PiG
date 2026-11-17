@@ -97,7 +97,7 @@ func TestStaleContextLocalMembersRaiseTheStaleMessageInEverySDK(t *testing.T) {
 			active := strings.Join(h.ui.Recorded(), "\n")
 			for _, member := range members {
 				line := ""
-				for _, candidate := range strings.Split(active, "\n") {
+				for candidate := range strings.SplitSeq(active, "\n") {
 					if strings.HasPrefix(candidate, member+"=") {
 						line = candidate
 					}
@@ -114,7 +114,7 @@ func TestStaleContextLocalMembersRaiseTheStaleMessageInEverySDK(t *testing.T) {
 			}
 			for _, member := range members {
 				found := false
-				for _, line := range strings.Split(err.Error(), "\n") {
+				for line := range strings.SplitSeq(err.Error(), "\n") {
 					if strings.HasPrefix(line, member+"=") {
 						found = true
 						if !strings.Contains(line, stale) {
@@ -174,7 +174,7 @@ func TestShutdownHandlerContextIsNotStaleInEverySDK(t *testing.T) {
 			recorded := strings.Join(h.ui.Recorded(), "\n")
 			for _, member := range membersOf(tc.name) {
 				line := ""
-				for _, candidate := range strings.Split(recorded, "\n") {
+				for candidate := range strings.SplitSeq(recorded, "\n") {
 					if strings.HasPrefix(candidate, member+"=") {
 						line = candidate
 					}

@@ -6686,7 +6686,8 @@ mod login_call_tests {
     // Pi guards every context member (runner.ts:883-1037). After the session was replaced the members that have no error result panic with the stale
     // message, the calls that have one return it, and a call that fails changes nothing: the installed widget renderer is still there.
     #[test]
-    fn a_stale_context_fails_the_theme_size_widget_update_settings_and_renderer_members_with_the_stale_message() {
+    fn a_stale_context_fails_the_theme_size_widget_update_settings_and_renderer_members_with_the_stale_message()
+     {
         const STALE: &str = "This extension ctx is stale after session replacement or reload.";
         let (extension_stream, _host_stream) = UnixStream::pair().unwrap();
         let mut ctx = Arc::try_unwrap(context(extension_stream)).ok().unwrap();
@@ -6726,10 +6727,7 @@ mod login_call_tests {
         let view = || crate::kit::View::new(crate::kit::Text::new("x", 0, 0));
         let calls: Vec<(&str, io::Result<()>)> = vec![
             ("set_widget", ctx.set_widget("kept", vec!["x".into()])),
-            (
-                "set_widget_view",
-                ctx.set_widget_view("kept", view(), None),
-            ),
+            ("set_widget_view", ctx.set_widget_view("kept", view(), None)),
             (
                 "set_widget_renderer",
                 ctx.set_widget_renderer("kept", Some(|_: u32| vec!["y".to_string()]), None),
