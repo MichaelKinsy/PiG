@@ -1687,6 +1687,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 			data = req.streamData
 		} else if len(req.Args) > 0 {
+			// pig divergence (D657): a handler gets its own copy of the event payload: the fused decode below clones a master for each handler, the other decode reads the request's own frame. Pi hands every handler of an emit the one event object.
 			if e.conn.fused {
 				// Fused extensions share one decode of a payload; each handler gets its own copy.
 				var release func()

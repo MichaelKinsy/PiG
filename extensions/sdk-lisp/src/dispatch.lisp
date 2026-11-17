@@ -203,6 +203,7 @@
                       (error "~A delta applies to payload ~D, the replica holds a different one" name base))
                     (setf root (apply-stream-ops (cdr replica) (jget stream "ops")))))
               (setf (gethash ident replicas) (cons (let ((s (jget stream "seq"))) (if (integerp s) s 0)) root))
+              ;; pig divergence (D657): the handler gets a clone of the replica, not the replica itself, so a write by one handler reaches no other handler. Pi hands every handler the one event object.
               (setf (gethash "args" req) (clone-stream-value root)))
           (error (e)
             (remhash ident replicas)
