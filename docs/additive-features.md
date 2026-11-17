@@ -528,7 +528,8 @@ Tests:
 - `coding/cli/readonly_config_root_binary_test.go`
 
 PORT_MAP path: n/a (standalone distribution support).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: approved as it stands (group 2 remainder)
+SCRUTINIZED:approved 2026-11-17 text-sha256:eb35f30741361c8e
 ## D23 Per-tool source metadata and piglet-scoped active-tool Context API
 
 Summary: Extensions can list all tools with their source, read and change the active tools, and read flag values.
@@ -656,7 +657,8 @@ Tests:
 - `test/upstream-parity/context_parity_test.go`: `pigOnlyContextMembers`
 
 PORT_MAP path: n/a (downstream piglet-scoping and per-tool source plumbing).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: approved as it stands (group 2 remainder)
+SCRUTINIZED:approved 2026-11-17 text-sha256:9a55e16cd01f9bb9
 ## D28 Extension validation report surface (`pig install --validate-only --json`)
 
 Summary: The pig install --validate-only command loads and starts an extension without installing it and prints a machine-readable report.

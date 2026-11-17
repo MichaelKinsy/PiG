@@ -2771,7 +2771,8 @@ Parity allowance: no paired Pi corpus holds `TuiAltScreen.children` across a cha
 
 Remove when: Pi's `children` stops being a public live array, or an owner decision asks for a live view across the process boundary; then the four markers, the evidence note and this record go.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: approved as it stands (group 2 remainder)
+SCRUTINIZED:approved 2026-11-17 text-sha256:678fcaddd136c552
 
 ## D208 From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that re-enter its frame
 
