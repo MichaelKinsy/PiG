@@ -37,4 +37,7 @@ func TestShutdownReapsExtensionProcesses(t *testing.T) {
 	default:
 		t.Fatal("Shutdown returned before the extension process was reaped")
 	}
+	if loops := h.loopCount(); loops != 0 {
+		t.Fatalf("after Shutdown %d connection loops of the host still run, want 0", loops)
+	}
 }

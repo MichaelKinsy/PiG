@@ -192,11 +192,20 @@ func (w *waiterHost) oneProcess(t *testing.T) (pid int, logPath string) {
 }
 
 // waiters counts what the host owns that waits for its processes: the read loops of its connections and the watchers of its packed processes
-// (Host.incomingLoops, Host.runningWatchers). A host has one loop for each connection it holds and one watcher for each packed process. The
+// (Host.loops, Host.runningWatchers). A host has one loop for each connection it holds and one watcher for each packed process. The
 // goroutines of the process's profile are not counted: they take in the tails of the goroutines of every host a test ended before, which leave
 // the profile after the signals of their end.
 func (w *waiterHost) waiters() (loops, watchers int) {
-	return int(w.host.incomingLoops.Load()), int(w.host.runningWatchers.Load())
+	return w.host.loopCount(), int(w.host.runningWatchers.Load())
+}
+
+// requireDrained ends the host and requires that nothing of it runs: Shutdown joins the loops and the watchers, so both counts read 0 when it returns.
+func (w *waiterHost) requireDrained(t *testing.T) {
+	t.Helper()
+	w.host.Shutdown("test done")
+	if loops, watchers := w.waiters(); loops != 0 || watchers != 0 {
+		t.Errorf("after Shutdown %d connection loops and %d process watchers of the host still run, want 0 and 0", loops, watchers)
+	}
 }
 
 func waiterEventually(t *testing.T, what string, ok func() bool) {
@@ -283,7 +292,7 @@ func processDeathReports(t *testing.T, fixture waiterFixture, reloads int, order
 	if !named {
 		waiterEventually(t, "the log no report names is removed", func() bool { return !waiterFileExists(logPath) })
 	}
-	w.host.Shutdown("test done")
+	w.requireDrained(t)
 	return reports, fixture.deathNotices(w.configs)
 }
 
@@ -353,6 +362,7 @@ func TestParkedProcessExitRemovesItsLogOnce(t *testing.T) {
 			if now, _ := next.oneProcess(t); now == pid {
 				t.Fatalf("the successor runs in the dead process %d", pid)
 			}
+			next.requireDrained(t)
 		})
 	}
 }
@@ -384,6 +394,7 @@ func TestSourceEditEndsTheReplacedProcessWaiter(t *testing.T) {
 			if reports := w.crashReports(); len(reports) != 0 {
 				t.Errorf("a process a reload replaced was reported as a crash: %q", reports)
 			}
+			w.requireDrained(t)
 		})
 	}
 }
