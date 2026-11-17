@@ -155288,6 +155288,17 @@
       "shapeHash": "sha256:246159b20b771ed9a088dc79348122ba0ff7525556a0425dc80ac8e9797d7978"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#managedExt.answerError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "managedExt.answerError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(info *ErrorInfo) error"
+      },
+      "shapeHash": "sha256:c7b94239a4813cec87dd11c4208a722d1799283a8cf125c1fbb73622fb51710e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#managedExt.cancelStart",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "managedExt.cancelStart",

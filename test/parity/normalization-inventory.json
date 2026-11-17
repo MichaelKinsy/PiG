@@ -1472,6 +1472,15 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/113-fork-while-session-start-held.toml",
+      "transforms": [
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/12-subprocess-tool-ui-cancel.toml",
       "transforms": [
         {
