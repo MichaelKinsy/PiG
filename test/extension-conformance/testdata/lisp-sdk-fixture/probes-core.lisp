@@ -921,6 +921,19 @@
                                  (when (equal mode "fail") (error "failed after the edit"))
                                  (when (member mode '("replace" "both") :test #'equal)
                                    (if headers-event (pig:obj "x-pig-replaced" "returned") (pig:obj "replaced" "returned"))))))))
+      ;; event_assign_probe: `<event>`, a handler that ASSIGNS a new value to the event's input (tool_call), messages (context) or entries (turn_end) instead of editing the old value in place, and returns nothing.
+      (pig:command ext "event_assign_probe" "Subscribe to the event named by the argument with a handler that assigns a new value to the event's input, messages or entries"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args))
+                           (edited "other-event-edit"))
+                       (pig:on ext name
+                               (lambda (hctx data) (declare (ignore hctx))
+                                 (cond
+                                   ((equal name "tool_call") (setf (gethash "input" data) (pig:obj "command" edited)))
+                                   ((equal name "context") (setf (gethash "messages" data) (vector (pig:obj "role" "user" "content" (vector (pig:obj "type" "text" "text" edited)) "timestamp" 1))))
+                                   ((equal name "turn_end") (setf (gethash "entries" data) (vector (pig:obj "type" "custom" "customType" edited))))
+                                   (t (error "event_assign_probe has no event ~A" name)))
+                                 nil)))))
       ;; event_edit_probe: `<event> <edit> [fail]`, a handler that makes one edit of the event's content, details, isError, message or messages (tool_result, message_end, context), returns nothing and, with fail, signals an error after the edit. Every edit writes the value `other-event-edit`, which no other test uses.
       (pig:command ext "event_edit_probe" "Subscribe to the event named by the argument with a handler that edits the event in place and returns nothing"
                    (lambda (ctx args) (declare (ignore ctx))

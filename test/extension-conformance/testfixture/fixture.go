@@ -2504,6 +2504,26 @@ func Extension() *sdk.Extension {
 		})
 		return nil
 	})
+	// event_assign_probe subscribes to the event named by the argument with a handler that ASSIGNS a new value to the event's input (tool_call), messages (context) or
+	// entries (turn_end) instead of editing the old value in place, and returns nothing (TestAssignedEventMembersFollowPi).
+	ext.Command("event_assign_probe", "Subscribe to the event named by the argument with a handler that assigns a new value to the event's input, messages or entries", func(ctx sdk.Context, args string) error {
+		name := strings.TrimSpace(args)
+		const edited = "other-event-edit"
+		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
+			switch name {
+			case "tool_call":
+				data["input"] = map[string]any{"command": edited}
+			case "context":
+				data["messages"] = []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "text", "text": edited}}, "timestamp": 1}}
+			case "turn_end":
+				data["entries"] = []any{map[string]any{"type": "custom", "customType": edited}}
+			default:
+				return nil, fmt.Errorf("event_assign_probe has no event %s", name)
+			}
+			return nil, nil
+		})
+		return nil
+	})
 	// event_edit_probe subscribes to the event named by the argument (`<event> <edit> [fail]`) with a handler that makes one edit of the event's content, details,
 	// isError, message or messages (tool_result, message_end, context), returns nothing and, with fail, fails after the edit
 	// (TestConformance_InPlaceEventEditsFollowPi). Every edit writes the value `other-event-edit`, which no other test uses.

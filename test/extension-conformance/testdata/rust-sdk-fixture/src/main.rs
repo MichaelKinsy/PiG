@@ -5952,6 +5952,33 @@ fn main() {
     let event_edit_subscriber = ext.event_subscriber();
     let event_edit_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));
+    // event_assign_probe: `<event>`, a handler that ASSIGNS a new value to the event's input (tool_call), messages (context) or entries (turn_end) instead of editing the old value in place, and returns nothing.
+    let event_assign_subscriber = ext.event_subscriber();
+    let event_assign_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_assign_probe",
+        "Subscribe to the event named by the argument with a handler that assigns a new value to the event's input, messages or entries",
+        move |_ctx, args| {
+            let name = args.trim().to_string();
+            let which = name.clone();
+            let subscription = subscribe(&event_assign_subscriber, &name, move |_ctx, data| {
+                match which.as_str() {
+                    "tool_call" => data["input"] = serde_json::json!({"command": "other-event-edit"}),
+                    "context" => {
+                        data["messages"] = serde_json::json!([{"role": "user", "content": [{"type": "text", "text": "other-event-edit"}], "timestamp": 1}])
+                    }
+                    "turn_end" => {
+                        data["entries"] = serde_json::json!([{"type": "custom", "customType": "other-event-edit"}])
+                    }
+                    other => return Err(format!("event_assign_probe has no event {other}")),
+                }
+                Ok(None)
+            });
+            event_assign_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     // event_edit_probe: `<event> <edit> [fail]`, a handler that makes one edit of the event's content, details, isError, message or messages (tool_result, message_end, context), returns nothing and, with fail, errors after the edit. Every edit writes the value `other-event-edit`, which no other test uses.
     ext.command(
         "event_edit_probe",

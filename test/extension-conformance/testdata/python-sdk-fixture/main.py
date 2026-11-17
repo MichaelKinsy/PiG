@@ -3372,6 +3372,25 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, make)
 
     ext.command("event_edit_probe", "Subscribe to the event named by the argument with a handler that edits the event in place and returns nothing", event_edit_probe)
+
+    def event_assign_probe(ctx, args):
+        # Subscribe to the event named by the argument with a handler that ASSIGNS a new value to the event's input (tool_call), messages (context) or entries (turn_end) instead of editing the old value in place, and returns nothing.
+        name = args.strip()
+        edited = "other-event-edit"
+
+        def assign(hctx, data):
+            if name == "tool_call":
+                data["input"] = {"command": edited}
+            elif name == "context":
+                data["messages"] = [{"role": "user", "content": [{"type": "text", "text": edited}], "timestamp": 1}]
+            elif name == "turn_end":
+                data["entries"] = [{"type": "custom", "customType": edited}]
+            else:
+                raise RuntimeError("event_assign_probe has no event " + name)
+
+        ext.on_event(name, assign)
+
+    ext.command("event_assign_probe", "Subscribe to the event named by the argument with a handler that assigns a new value to the event's input, messages or entries", event_assign_probe)
     ext.command("event_probe_off", "Unsubscribe the event_probe_on handlers of the event named by the argument", event_probe_on_off)
     def event_payload_probe(ctx, args):
         name = args.strip()
