@@ -264,7 +264,7 @@ func TestProvBOpenAICodex(t *testing.T) {
 		{"gpt-6.2-astra", "name", `"GPT-6.2 Astra"`},
 		{"gpt-6.2-astra", "contextWindow", "272000"},
 		{"gpt-6.2-sol", "name", `"GPT-6.2 Sol"`},
-		{"gpt-6.2-sol", "contextWindow", "272000"},
+		{"gpt-6.2-sol", "contextWindow", "500000"},
 		{"gpt-5.6-terra", "contextWindow", "272000"},
 		{"gpt-6-sol", "maxTokens", "128000"},
 		{"gpt-6-sol", "api", `"openai-codex-responses"`},

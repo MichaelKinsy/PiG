@@ -201,7 +201,7 @@ func TestSupportsXHighUpstream(t *testing.T) {
 		{"gpt-6.1-sol", ModelCost{Input: 2, Output: 10, CacheRead: 0.1, CacheWrite: 2.5}, 500000},
 		{"gpt-6.1-terra", ModelCost{Input: 1, Output: 5, CacheRead: 0.05, CacheWrite: 1.25}, 500000},
 		{"gpt-6.2-astra", ModelCost{Input: 8, Output: 40, CacheRead: 0.4, CacheWrite: 10}, 272000},
-		{"gpt-6.2-sol", ModelCost{Input: 2, Output: 10, CacheRead: 0.1, CacheWrite: 2.5}, 272000},
+		{"gpt-6.2-sol", ModelCost{Input: 2, Output: 10, CacheRead: 0.1, CacheWrite: 2.5}, 500000},
 	} {
 		t.Run("includes official metadata for OpenAI and Codex "+tc.id, func(t *testing.T) {
 			for _, provider := range []string{"openai", "openai-codex"} {
