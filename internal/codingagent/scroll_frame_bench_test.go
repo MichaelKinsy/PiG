@@ -64,14 +64,15 @@ var scrollFrameSizes = []struct {
 var scrollFrameTerminals = []struct{ columns, rows int }{{120, 40}, {200, 60}}
 
 type scrollFrameRig struct {
-	ui         *tui.TuiAltScreen
-	transcript *tui.ScrollView
-	mode       *InteractiveMode
-	tail       *tui.AssistantMessageComponent
-	text       strings.Builder
-	document   tui.Component
-	columns    int
-	rows       int
+	ui          *tui.TuiAltScreen
+	transcript  *tui.ScrollView
+	mode        *InteractiveMode
+	tail        *tui.AssistantMessageComponent
+	streamTexts []string // the streamed message at one fixed length, one text per frame (see stream)
+	streamed    int
+	document    tui.Component
+	columns     int
+	rows        int
 }
 
 func newScrollFrameRig(tb testing.TB, turns, columns, rows int) *scrollFrameRig {
@@ -144,13 +145,23 @@ func newScrollFrameRigOutput(tb testing.TB, turns, columns, rows int, out io.Wri
 // lines is the rendered height of the transcript document at the rig's width.
 func (r *scrollFrameRig) lines() int { return len(r.document.Render(r.columns)) }
 
-// stream appends one word to the streaming message and draws a frame: a content frame.
+// streamFrames is the number of distinct texts stream cycles through (more than any render cache of the message keeps).
+const streamFrames = 256
+
+// stream replaces the streaming message with its next text and draws a frame: a content frame. Every text has the same length (about
+// 2 KB, the middle of the lengths a streamed answer passes through) and differs from the previous one in its last word, so every frame
+// does the same work and allocates the same however many frames a benchmark runs (a message that grew by one word per frame and began
+// again at 4,000 bytes made allocs/op depend on b.N: 316 and 404 on the same commit).
 func (r *scrollFrameRig) stream() {
-	if r.text.Len() > 4000 {
-		r.text.Reset()
+	if r.streamTexts == nil {
+		body := strings.Repeat("token ", 333)
+		r.streamTexts = make([]string, streamFrames)
+		for i := range r.streamTexts {
+			r.streamTexts[i] = fmt.Sprintf("%stail%03d", body, i)
+		}
 	}
-	r.text.WriteString("token ")
-	r.tail.SetContent([]tui.AssistantSegment{{Text: r.text.String()}})
+	r.tail.SetContent([]tui.AssistantSegment{{Text: r.streamTexts[r.streamed%streamFrames]}})
+	r.streamed++
 	r.ui.RenderNow()
 }
 
@@ -225,8 +236,26 @@ func BenchmarkScrollFrame(b *testing.B) {
 	}
 }
 
-// BenchmarkContentFrame is one streamed token drawn at the end of the transcript (the viewport follows it) and while the viewport
-// is scrolled up in the middle of the history.
+// settleScrollbar waits until the scrollbar that a scroll shows has hidden itself (ScrollbarAuto hides it on a timer after the last
+// scroll) and draws that state. A frame drawn before and a frame drawn after the timer differ by the cost of painting the thumb, so a
+// benchmark that scrolls once and then measures frames would read the sooner frames dearer than the later ones, the more so the fewer
+// frames it runs (the scrolled-up content frame read 395 allocs at one second of frames and 452 at 2,000 frames).
+func (r *scrollFrameRig) settleScrollbar(tb testing.TB) {
+	tb.Helper()
+	deadline := time.Now().Add(30 * time.Second)
+	for r.transcript.IsScrollbarVisible() {
+		if time.Now().After(deadline) {
+			tb.Fatal("the scrollbar did not hide")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	r.ui.RenderNow()
+}
+
+// BenchmarkContentFrame is one streamed text drawn at the end of the transcript (the viewport follows it) and while the viewport
+// is scrolled up in the middle of the history, with the scrollbar hidden as it is while a reader waits. Two frames before the loop
+// build the texts and move the message from empty to its length, so that every measured frame is the same replacement of one
+// same-length text by another.
 func BenchmarkContentFrame(b *testing.B) {
 	for _, term := range scrollFrameTerminals {
 		for _, size := range scrollFrameSizes {
@@ -236,7 +265,10 @@ func BenchmarkContentFrame(b *testing.B) {
 					if where == "scrolled-up" {
 						r.transcript.ScrollTo(r.lines() / 2)
 						r.ui.RenderNow()
+						r.settleScrollbar(b)
 					}
+					r.stream()
+					r.stream()
 					b.ReportAllocs()
 					for b.Loop() {
 						r.stream()
