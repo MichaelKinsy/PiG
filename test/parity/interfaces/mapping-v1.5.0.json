@@ -166886,7 +166886,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+        "call:coding/extension/declaration_registry.go#Extension.RegisteredMarkdownTransformer"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
@@ -186614,7 +186614,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+        "call:coding/extension/declaration_registry.go#Extension.RegisteredMarkdownTransformer"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
@@ -186636,7 +186636,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+        "call:coding/extension/declaration_registry.go#Extension.RegisteredMarkdownTransformer"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
