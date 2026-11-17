@@ -2869,7 +2869,7 @@ func Extension() *sdk.Extension {
 	})
 	// stale-members calls the members that answer a context kept past its Session in every SDK: each outcome is one line, and the command fails with
 	// every line when one of them carries the stale message (Pi guards every context member: runner.ts:883-1037), else it reports them.
-	ext.Command("stale-members", "Call the members that fail with the stale message", func(ctx sdk.Context, _ string) error {
+	staleMembers := func(ctx sdk.Context) error {
 		var lines []string
 		stale := false
 		member := func(name string, call func() (string, error)) {
@@ -2905,6 +2905,9 @@ func Extension() *sdk.Extension {
 		}
 		ctx.Notify("members\n"+strings.Join(lines, "\n"), "info")
 		return nil
+	}
+	ext.Command("stale-members", "Call the members that fail with the stale message", func(ctx sdk.Context, _ string) error {
+		return staleMembers(ctx)
 	})
 	ext.Command("signal-wait", "Wait for ctx.signal to abort", func(ctx sdk.Context, _ string) error {
 		signal := ctx.Signal()
@@ -4522,6 +4525,12 @@ func Extension() *sdk.Extension {
 	})
 	ext.OnSessionShutdown(func(ctx sdk.Context, data map[string]any) (any, error) {
 		ctx.Notify("session_shutdown:"+fmt.Sprint(data["reason"]), "info")
+		// The handler's own context is still active (Pi invalidates after the handlers ran): the stale-members test reads every member from here.
+		if data["reason"] == "stale-members-test" {
+			if err := staleMembers(ctx); err != nil {
+				return nil, err
+			}
+		}
 		if path, ok := data["targetSessionFile"].(string); ok && path != "" {
 			ctx.Notify("target:"+path, "info")
 		}

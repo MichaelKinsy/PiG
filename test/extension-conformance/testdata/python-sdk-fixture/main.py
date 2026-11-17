@@ -3571,7 +3571,7 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("stale-probe", "Report cwd, mode, hasUI and model", stale_probe)
 
-    def stale_members(ctx: pig_sdk.Context, args: str) -> None:
+    def stale_members(ctx: pig_sdk.Context, args: str = "") -> None:
         """Call the members that fail with the stale message: each outcome is one line, and the command fails with every line when one carries the message."""
         lines: list[str] = []
         stale = False
@@ -4201,6 +4201,9 @@ def new_extension() -> pig_sdk.Extension:
 
     def session_shutdown(ctx, data):
         ctx.notify("session_shutdown:" + str(data.get("reason", "")), "info")
+        # The handler's own context is still active (Pi invalidates after the handlers ran): the stale-members test reads every member from here.
+        if data.get("reason") == "stale-members-test":
+            stale_members(ctx)
         if data.get("targetSessionFile"):
             ctx.notify("target:" + data["targetSessionFile"], "info")
 

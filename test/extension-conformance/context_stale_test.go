@@ -24,18 +24,6 @@ func TestStaleContextLocalMembersRaiseTheStaleMessageInEverySDK(t *testing.T) {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	const stale = "This extension ctx is stale after session replacement or reload."
-	// The members each SDK has on its context: Pi's Node context has no terminal size, tool update or settings member.
-	membersOf := func(name string) []string {
-		switch {
-		case strings.Contains(name, "node"):
-			return []string{"theme", "sessionName", "setWidgetLines", "setWidgetView"}
-		case strings.Contains(name, "rust"):
-			return []string{"theme", "width", "height", "sessionName", "setWidgetLines", "setWidgetView", "setWidgetRenderer", "onUpdate", "getSettings", "registerToolRenderer"}
-		case strings.Contains(name, "python"), strings.Contains(name, "lisp"):
-			return []string{"theme", "width", "height", "sessionName", "setWidgetLines", "setWidgetView", "setWidgetRenderer", "onUpdate", "getSettings"}
-		}
-		return []string{"theme", "width", "height", "sessionName", "setWidgetLines", "setWidgetView", "setWidgetRenderer", "onUpdate"}
-	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
@@ -136,6 +124,63 @@ func TestStaleContextLocalMembersRaiseTheStaleMessageInEverySDK(t *testing.T) {
 				}
 				if !found {
 					t.Errorf("invalidated stale-members error has no %s line: %v", member, err)
+				}
+			}
+		})
+	}
+}
+
+// The members each SDK has on its context: Pi's Node context has no terminal size, tool update or settings member.
+func membersOf(name string) []string {
+	switch {
+	case strings.Contains(name, "node"):
+		return []string{"theme", "sessionName", "setWidgetLines", "setWidgetView"}
+	case strings.Contains(name, "rust"):
+		return []string{"theme", "width", "height", "sessionName", "setWidgetLines", "setWidgetView", "setWidgetRenderer", "onUpdate", "getSettings", "registerToolRenderer"}
+	case strings.Contains(name, "python"), strings.Contains(name, "lisp"):
+		return []string{"theme", "width", "height", "sessionName", "setWidgetLines", "setWidgetView", "setWidgetRenderer", "onUpdate", "getSettings"}
+	}
+	return []string{"theme", "width", "height", "sessionName", "setWidgetLines", "setWidgetView", "setWidgetRenderer", "onUpdate"}
+}
+
+// Pi runs session_shutdown handlers with a context that is still active and invalidates the runtime afterwards, so a handler reads every member of its own context. The fixtures read the
+// members from their session_shutdown handler when the reason is stale-members-test.
+func TestShutdownHandlerContextIsNotStaleInEverySDK(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	cases := sdkHarnessCases()
+	for _, language := range []string{"go", "python", "rust", "lisp"} {
+		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
+	}
+	for _, tc := range cases {
+		if strings.Contains(tc.name, "node") {
+			continue
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			h.ui.ClearRecorded()
+			if _, err := h.runner.Emit(context.Background(), extension.SessionShutdownEvent{Type: "session_shutdown", Reason: "stale-members-test"}); err != nil {
+				t.Fatalf("session_shutdown emit: %v", err)
+			}
+			recorded := strings.Join(h.ui.Recorded(), "\n")
+			for _, member := range membersOf(tc.name) {
+				line := ""
+				for _, candidate := range strings.Split(recorded, "\n") {
+					if strings.HasPrefix(candidate, member+"=") {
+						line = candidate
+					}
+				}
+				if line == "" || strings.Contains(line, "This extension ctx is stale") {
+					t.Errorf("shutdown handler %s = %q in %q, want an outcome that is not the stale message", member, line, recorded)
 				}
 			}
 		})
