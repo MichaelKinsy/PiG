@@ -35592,6 +35592,33 @@
       ]
     },
     {
+      "id": "BF-91d0073",
+      "title": "fix(telemetry): PIG_TELEMETRY wins over PI_TELEMETRY when both are set",
+      "symptom": "fix(telemetry): PIG_TELEMETRY wins over PI_TELEMETRY when both are set",
+      "rootCause": "Owner decision 2026-11-17 (divergence record D2): a user who sets PIG_TELEMETRY=0 must never have telemetry sent because PI_TELEMETRY=1 is also in the environment. One function, InstallTelemetryEnvOverride, resolves the override for the settings reader (install ping, provider attribution headers) and for the export of PI_TELEMETRY to the Node extension runtime and every child process; the export now runs first in Main, before any command or mode can start a child.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "91d00732f5",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/cli/d2_product_name_test.go::TestExportTelemetryOverride",
+        "coding/cli/telemetry_child_env_test.go::TestMainChildSeesThePigTelemetryChoice",
+        "coding/cli/telemetry_child_env_test.go::TestMainExportsTheResolvedTelemetryBeforeAnyCommand",
+        "coding/pig_telemetry_wire_test.go::TestAttributionHeadersFollowPigTelemetryOverPi",
+        "internal/codingagent/d2_product_name_test.go::TestInstallTelemetryReadsPigTelemetryBesidePis",
+        "internal/codingagent/telemetry_precedence_test.go::TestInstallTelemetryPigBeatsPiWhenBothAreSet",
+        "internal/codingagent/telemetry_precedence_test.go::TestReportInstallTelemetryFollowsPigTelemetryOverPi"
+      ]
+    },
+    {
       "id": "BF-91e6a24",
       "title": "A set whose file locates itself by a value of `import.meta` (`const meta = import.meta; readFileSync(new…",
       "symptom": "A set whose file locates itself by a value of `import.meta` (`const meta = import.meta; readFileSync(new URL(\"./x\", meta.url))`) was not refused and compiled to a silently wrong result.",
