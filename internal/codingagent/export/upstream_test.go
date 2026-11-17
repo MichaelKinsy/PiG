@@ -161,7 +161,7 @@ func TestExportHTMLRendering(t *testing.T) {
 
 // Ports packages/coding-agent/test/export-html-system-messages.test.ts (Pi #11261): the template's system-message helpers.
 func TestExportHTMLSystemMessages(t *testing.T) {
-	template, err := filepath.Abs("assets/template.js")
+	template, err := filepath.Abs("assets/src/template.js")
 	if err != nil {
 		t.Fatal(err)
 	}

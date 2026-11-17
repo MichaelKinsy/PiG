@@ -1,7 +1,7 @@
 #!/bin/sh
 # Builds the codemode module of the Worker host: package codemode with TinyGo as a WASI reactor with no scheduler (every import is
 # synchronous; the Worker host owns the asynchrony) and capped linear memory. Usage: build-codemode-wasm.sh <out.wasm>
-# The Worker also bundles quickjs-wasi's quickjs.wasm, the file codemode/assets/quickjs.wasm.
+# The Worker also bundles quickjs-wasi's quickjs.wasm, the file codemode/assets/raw/quickjs.wasm.
 set -e
 here=$(cd "$(dirname "$0")" && pwd)
 root=$(cd "$here/../../../../.." && pwd)

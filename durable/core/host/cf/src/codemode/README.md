@@ -16,7 +16,7 @@ The output a script prints is held by the host, not by the module. Each item goe
 ## Use
 
 1. Build the module: `tools/build-codemode-wasm.sh codemode.wasm` (TinyGo 0.42 on `PATH`, or `TINYGO=`).
-2. Bundle the Worker with Wrangler's default `CompiledWasm` rule and put `codemode.wasm` and `codemode/assets/quickjs.wasm` (as `quickjs.wasm`) next to `sandbox-object.ts`.
+2. Bundle the Worker with Wrangler's default `CompiledWasm` rule and put `codemode.wasm` and `codemode/assets/raw/quickjs.wasm` (as `quickjs.wasm`) next to `sandbox-object.ts`.
 3. Export a class and bind it from the agent's Worker with `script_name`. A separate Worker keeps scripts off the agent's thread:
 
 ```ts

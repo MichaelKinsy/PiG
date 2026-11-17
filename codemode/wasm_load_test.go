@@ -19,13 +19,13 @@ func TestLoadQuickJSWasmReturnsOnlyTheEmbeddedModule(t *testing.T) {
 	}
 }
 
-// The binary embeds assets/quickjs.wasm.zst; its decoded bytes are the module in assets/quickjs.wasm, which the oracle tests and the provenance hash read.
+// The binary embeds assets/quickjs.wasm.zst; its decoded bytes are the module in assets/raw/quickjs.wasm, which the oracle tests and the provenance hash read.
 func TestEmbeddedQuickJSWasmFrameDecodesToTheAsset(t *testing.T) {
-	want, err := os.ReadFile(EmbeddedQuickJSWasmPath)
+	want, err := os.ReadFile("assets/raw/quickjs.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(QuickJSWasm(), want) {
-		t.Fatalf("decoded embedded module is %d bytes, assets/quickjs.wasm is %d: run go generate ./codemode", len(QuickJSWasm()), len(want))
+		t.Fatalf("decoded embedded module is %d bytes, assets/raw/quickjs.wasm is %d: run go generate ./codemode", len(QuickJSWasm()), len(want))
 	}
 }
