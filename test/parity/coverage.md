@@ -1180,8 +1180,3 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/telemetry/src/testing/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/telemetry/src/testing/types.ts` | ✅ | 0 | 2 (unit:./telemetry:TestConformanceFixtureDisposesAfterAFailingCaseAndJoinsTheDisposeError, unit:./telemetry:TestConformanceFixtureIsOwnedAndDisposedByEachCase) | not run | ./telemetry:TestConformanceFixtureDisposesAfterAFailingCaseAndJoinsTheDisposeError, ./telemetry:TestConformanceFixtureIsOwnedAndDisposedByEachCase |
 | `packages/telemetry/src/render.ts` | ✅ | 0 | 1 (unit:./telemetry:TestRenderTrace) | not run | ./telemetry:TestRenderTrace |
-
-## Orphan covers (scenario references no PORT_MAP entry)
-
-- `packages/coding-agent/src/modes/diagnostics-stderr.ts` (scenario: 15-json-replacement-diagnostics-stderr)
-- `packages/coding-agent/src/modes/diagnostics-stderr.ts` (scenario: 83-rpc-replacement-diagnostics-stderr)
