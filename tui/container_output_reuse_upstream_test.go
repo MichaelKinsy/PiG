@@ -1,12 +1,7 @@
-//go:build pigfm50red
-
-// Parked red proof (FollowMain50ScrollFrames): fails on the current code by design, so it is built only with -tags pigfm50red. The change that makes it pass (P2 for the alt screen test, P3 for the container test) removes the constraint line in the same commit.
-
 package tui
 
 import (
 	"slices"
-	"strings"
 	"testing"
 )
 

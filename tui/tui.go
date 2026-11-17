@@ -119,7 +119,7 @@ type Container struct {
 	// childCache memoizes each child's rendered lines keyed by component
 	// identity. renderedLines is the immutable concatenation consumed by the
 	// package renderers; settled frames reuse it without copying Session history.
-	// Render clones it to preserve upstream's fresh-array ownership for callers.
+	// Render hands out public, a clone that it keeps while the lines are unchanged (upstream renderChildLines).
 	cacheWidth int
 	cacheTheme *Theme
 	// invalidatedTheme is the theme under which the whole-tree walk (invalidateComponentTree, Pi's TUI.invalidate) last invalidated
@@ -131,6 +131,13 @@ type Container struct {
 	renderedLines    []string
 	renderedValid    bool
 	renderVersion    uint64
+	// public is the capacity-clipped copy the last Render returned (upstream Container.childLines.lines): borrowed by every caller, replaced and never
+	// rewritten. publicVersion, publicGen and publicWidth are the revision, the children (structureGen) and the width it was made from.
+	public        []string
+	publicValid   bool
+	publicWidth   int
+	publicVersion uint64
+	publicGen     uint64
 	// structureGen counts the changes of the children. A render that finds it changed when its loop ends knows a child's Render changed the children
 	// (a subprocess extension's component calls the screen's addChild or removeChild, as Pi's render may), so what it built is not the children now.
 	structureGen uint64
@@ -446,18 +453,29 @@ func (c *Container) SetMaxLines(n int) {
 	c.mu.Unlock()
 }
 
-// Render returns a fresh slice, matching upstream Container.render's observable
-// array ownership. It builds into a new array and copies it under the lock, so
-// a call on another goroutine neither writes into nor reads an array that a
-// parent container or the renderer borrowed. Package renderers use
-// renderBorrowed to read the immutable cached concatenation without copying
-// settled transcript history every frame.
+// Render returns the container's lines. As Pi's Container.render (b7bb7ca905b8, renderChildLines), it returns the SAME slice again, with the same
+// length, while the children and their lines are unchanged: it is replaced when a child was added, removed or replaced, when a child's lines
+// changed or the width changed. The slice is borrowed (Pi's `readonly string[]`): do not write into it; copy it first (slices.Clone), also in a type that
+// embeds a Container and edits its own Render result. Its capacity equals its length, so an append by the caller copies into a new array and
+// cannot write into the cache. Go cannot refuse an index write: the build tag pigborrowcheck (borrow_check.go) panics on the next render when
+// the lines changed under the container; the default build has no check and no cost. A render replaces the slice, it never rewrites an array it
+// handed out, so a caller on another goroutine may keep reading the slice it got. Package renderers use renderBorrowed to read the
+// immutable concatenation without any copy.
 //
 //perf:hot
 func (c *Container) Render(width int) []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return slices.Clone(c.renderBorrowedLocked(width, false))
+	c.verifyPublicLocked()
+	lines := c.renderBorrowedLocked(width, false)
+	if c.publicValid && c.publicWidth == width && c.publicGen == c.structureGen && (c.publicVersion == c.renderVersion || slices.Equal(c.public, lines)) {
+		c.publicVersion = c.renderVersion
+		return c.public
+	}
+	c.public = slices.Clip(slices.Clone(lines))
+	c.publicValid, c.publicWidth, c.publicVersion, c.publicGen = true, width, c.renderVersion, c.structureGen
+	c.sealPublicLocked()
+	return c.public
 }
 
 // renderCopy returns a copy of the lines of a container that only its

@@ -23,20 +23,27 @@ func (c *widthAwareCacheProbe) Render(width int) []string {
 	return []string{fmt.Sprintf("%d:%s", width, c.text)}
 }
 
-func TestContainerRenderReturnsIndependentSlice(t *testing.T) {
+// Pi b7bb7ca905b8 (container.test.ts, renderChildLines): Container.render returns the same array while its children are unchanged, and the array is read-only
+// (`readonly string[]`). The Go slice is borrowed the same way; its capacity equals its length, so an append by the caller copies and cannot write into the
+// cache. A caller that wants to change a line copies first.
+func TestContainerRenderReturnsABorrowedSliceThatAnAppendCannotCorrupt(t *testing.T) {
 	child := &cacheProbeComponent{lines: []string{"one", "two"}}
 	container := NewContainer(child)
 
 	first := container.Render(80)
-	first[0] = "caller mutation"
-	first = append(first, "caller append")
-	if len(first) != 3 {
-		t.Fatalf("mutated caller slice length=%d, want 3", len(first))
+	if len(first) != cap(first) {
+		t.Fatalf("len = %d, cap = %d: an append would write into the cache", len(first), cap(first))
 	}
+	grown := append(first, "caller append") //nolint:gocritic // appending to the borrowed slice is what this test checks
+	if len(grown) != 3 {
+		t.Fatalf("grown length = %d, want 3", len(grown))
+	}
+	edited := slices.Clone(first)
+	edited[0] = "caller mutation"
 
 	second := container.Render(80)
-	if !slices.Equal(second, []string{"one", "two"}) {
-		t.Fatalf("later render was corrupted through returned slice: %q", second)
+	if !sameLines(second, first) || !slices.Equal(second, []string{"one", "two"}) {
+		t.Fatalf("an unchanged container did not return the same lines: %q", second)
 	}
 }
 

@@ -140,7 +140,7 @@ func TestOAuthSelectorHandleInputMatchesPi(t *testing.T) {
 		got := make([]oauthProbeState, 0, len(probe.Keys))
 		for _, key := range probe.Keys {
 			component.HandleInput(key)
-			lines := component.Render(80)
+			lines := slices.Clone(component.Render(80))
 			for j := range lines {
 				lines[j] = strings.TrimRight(stripANSI(lines[j]), " ")
 			}

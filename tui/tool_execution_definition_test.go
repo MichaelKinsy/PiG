@@ -35,7 +35,7 @@ func TestDefinitionCardDefaultShell(t *testing.T) {
 		},
 	}, json.RawMessage(`{"a":1}`))
 
-	lines := card.Render(30)
+	lines := slices.Clone(card.Render(30))
 	if got, want := plainLines(lines), []string{"", "", ` CALL {"a":1}`, ""}; !slices.Equal(got, want) {
 		t.Fatalf("pending card = %q, want %q", got, want)
 	}
