@@ -38312,6 +38312,33 @@
       ]
     },
     {
+      "id": "BF-960bf04",
+      "title": "A worker's or server's data archive is now one format, Pi's: PiG's export writes one `store.archive` (the…",
+      "symptom": "A worker's or server's data archive is now one format, Pi's: PiG's export writes one `store.archive` (the plugins' records and the kit's tables together) and one `server.archive` (both hosts' records), and Pi imports it, where Pi refused the `kit.archive` and `kit-server.archive` entries PiG wrote before.",
+      "rootCause": "PiG split Pi's one store into two and wrote the kit's half as entries of its own that Pi's import refuses, and no test ran an archive PiG made through Pi's own unpack",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A worker's or server's data archive is now one format, Pi's: PiG's export writes one `store.archive` (the plugins' records and the kit's tables together) and one `server.archive` (both hosts' records), and Pi imports it, where Pi refused the `kit.archive` and `kit-server.archive` entries PiG wrote before. PiG imports an archive of either of them by routing the kit's parts into its own store and each host's records to the host that serves them; the two former entries are no longer read.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "960bf047f9",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/archive_merge_test.go::TestAHostDataArchiveIsSplitByTheOwnersTheGoHostServes",
+        "chord/nextnode/app/archive_merge_test.go::TestAMergeRefusesWhatWouldNotBeOneArchive",
+        "chord/nextnode/app/archive_merge_test.go::TestMergedArchiveHasOnePisShape",
+        "chord/nextnode/app/archive_merge_test.go::TestSplittingAMergedArchiveGivesBothStoresBack",
+        "chord/nextnode/app/archive_split_test.go::TestUnpackStagingRefusesTheFormerKitEntries",
+        "chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten"
+      ]
+    },
+    {
       "id": "BF-9624fc4",
       "title": "Azure OpenAI models now keep OpenAI's long-context price tier, so requests above 272K input tokens are costed…",
       "symptom": "Azure OpenAI models now keep OpenAI's long-context price tier, so requests above 272K input tokens are costed at Azure's long-context rates (Pi #11948).",
@@ -59081,7 +59108,6 @@
       ],
       "tests": [
         "chord/nextnode/app/archive_pi_files_tables_test.go::TestGoFilesTablesAreIdenticalToPis",
-        "chord/nextnode/app/archive_split_test.go::TestUnpackStagingRefusesAKitStoreInTwoPlaces",
         "chord/nextnode/app/archive_split_test.go::TestUnpackStagingRefusesASplitArchiveWhoseHalvesWouldShareADocumentIdOrMiscount",
         "chord/nextnode/app/archive_split_test.go::TestUnpackStagingRoutesAStoreArchiveByOwnerKitPartsToKitSqlite",
         "chord/nextnode/app/archive_upstream_test.go::TestRoundTripsAHostDirectorysStoreAndFilesWithoutUploadsUnderWay",
