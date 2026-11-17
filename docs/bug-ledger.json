@@ -33650,7 +33650,9 @@
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
-      "class": "own",
+      "class": "ahead-of-pi",
+      "divergence": "D146",
+      "removeWhen": "Pi answers a replacement command that is in flight when stdin ends. The part about replacements in flight together goes when Pi runs them one after the other (it starts every line at once at `rpc-mode.ts:833` and does not guard `AgentSessionRuntime` in Pi 1.5.2, and nothing upstream says it will): until then PiG keeps its order, which cannot be dropped without copying the double `session_shutdown`.",
       "fixedIn": "0.5.0",
       "releaseNote": "RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now answers first from the old Session, as in Pi; PiG still answers the replacement when stdin ends, which Pi does not (D146).",
       "origin": "release note",
@@ -65795,7 +65797,8 @@
     },
     {
       "id": "D146",
-      "title": "RPC stdin end answers a Session-replacing command that Pi leaves unanswered"
+      "title": "RPC stdin end answers a Session-replacing command that Pi leaves unanswered",
+      "entry": "BF-8ab86c8"
     },
     {
       "id": "D147",
