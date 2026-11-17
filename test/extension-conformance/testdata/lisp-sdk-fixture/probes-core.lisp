@@ -793,8 +793,15 @@
                                        (core-info hctx (format nil "event_probe_data:~A:~A" name (pig:to-json data)))
                                        (when (and (hash-table-p data) (vectorp (pig:jget data "servers")) (not (stringp (pig:jget data "servers"))))
                                          (core-info hctx (format nil "event_probe_servers:~A" (core-join (map 'list (lambda (s) (core-py-str (pig:jget s "name"))) (pig:jget data "servers"))))))
-                                       (let ((queued (gethash name results)))
-                                         (when queued (setf (gethash name results) (cdr queued)) (car queued)))))
+                                       ;; Pi ignores what a before_provider_headers handler returns and sends the headers object the handlers edited (runner.ts emitBeforeProviderHeaders), so the queued result becomes the headers by editing event.headers in place, as the Node and Python fixtures do.
+                                       (let* ((queued (gethash name results))
+                                              (value (when queued (setf (gethash name results) (cdr queued)) (car queued)))
+                                              (headers (and (equal name "before_provider_headers") (hash-table-p value) (pig:jget data "headers"))))
+                                         (if (hash-table-p headers)
+                                             (progn (clrhash headers)
+                                                    (maphash (lambda (key header) (setf (gethash key headers) header)) value)
+                                                    nil)
+                                             value))))
                              (gethash name offs)))))
       (pig:command ext "event_probe_off" "Unsubscribe the event_probe_on handlers of the event named by the argument"
                    (lambda (ctx args) (declare (ignore ctx))
