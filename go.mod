@@ -15,12 +15,13 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/MichaelKinsy/PiG/extensions/sdk v0.7.0
 	github.com/Microsoft/go-winio v0.6.4
-	github.com/alecthomas/chroma/v2 v2.24.1
+	github.com/alecthomas/chroma/v2 v2.27.0
 	github.com/aws/aws-sdk-go-v2 v1.47.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
 	github.com/aws/smithy-go v1.28.1
 	github.com/clipperhouse/uax29/v2 v2.7.0
 	github.com/dlclark/regexp2 v1.12.0
+	github.com/dlclark/regexp2/v2 v2.2.1
 	github.com/evanw/esbuild v0.28.2
 	github.com/fsnotify/fsnotify v1.5.4
 	github.com/gofrs/flock v0.13.0
