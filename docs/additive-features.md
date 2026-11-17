@@ -1477,7 +1477,7 @@ SCRUTINIZED:approved 2026-11-17 text-sha256:f9c9d96c6d165eee
 
 ## D102 Exit log, crash-output markers and uncaught-goroutine handling for interactive sessions
 
-Summary: PiG writes an exit log and crash markers when a signal, a dead terminal, or a Go panic ends an interactive session.
+Summary: PiG writes an exit log and crash markers when a signal, a dead terminal, or a Go panic ends an interactive session, and an exit log line naming what ended an RPC run.
 
 Audience: runtime
 
