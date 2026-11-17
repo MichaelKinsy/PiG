@@ -2022,8 +2022,11 @@ func (c Context) SetTheme(name string) (bool, string) {
 // A [kit.View] is the kit form of a widget component factory (D107): the host
 // renders it at the widget's width every frame. Without options it goes out
 // as a widget_push, and with options as a ui.setWidget call; neither carries
-// lines.
+// lines. After the session was replaced or reloaded, every form returns the stale message as an error and sends nothing.
 func (c Context) SetWidget(key string, content any, options ...WidgetOptions) error {
+	if err := c.staleError(); err != nil {
+		return err
+	}
 	if view, ok := content.(kit.View); ok {
 		return c.setWidgetView(key, view, options)
 	}
@@ -2182,7 +2185,7 @@ func (c Context) runRemoteComponent(component overlayComponent, options any) (_ 
 	if err != nil {
 		return nil, err
 	}
-	if err := overlay.render(c.hostConnection(), key, c.Width()); err != nil {
+	if err := overlay.render(c.hostConnection(), key, c.terminalWidth()); err != nil {
 		_ = c.hostConnection().notify("ui.custom.close", map[string]any{"key": key})
 		_, _ = c.hostConnection().waitCall(pending)
 		return nil, err
@@ -2389,8 +2392,14 @@ func (c Context) HasUI() bool {
 	return c.ext.hasUI
 }
 
-// Width returns the terminal width (from the ready message).
+// Width returns the terminal width (from the ready message). It panics with the stale message after the session was replaced or reloaded.
 func (c Context) Width() int {
+	c.assertActive()
+	return c.terminalWidth()
+}
+
+// terminalWidth is the width the host last reported, without the stale check: the SDK's own renders and pushes read it, and a push from a stale context fails with the host's error, never with a panic on a goroutine of the SDK.
+func (c Context) terminalWidth() int {
 	c.ext.mu.RLock()
 	defer c.ext.mu.RUnlock()
 	return c.ext.width
@@ -2398,7 +2407,9 @@ func (c Context) Width() int {
 
 // Height returns the current terminal height in rows. Updated by height_change
 // notifications from the host. Returns 0 if the host has not reported a height.
+// It panics with the stale message after the session was replaced or reloaded.
 func (c Context) Height() int {
+	c.assertActive()
 	c.ext.mu.RLock()
 	defer c.ext.mu.RUnlock()
 	return c.ext.height
@@ -2479,6 +2490,9 @@ func (c Context) ToolCallID() string {
 // string or a ToolResult (or any value with its wire shape). The host shows
 // updates in order, before the tool's final result.
 func (c Context) OnUpdate(partial any) error {
+	if err := c.staleError(); err != nil {
+		return err
+	}
 	if c.toolCallID == "" || c.requestID == "" {
 		return errors.New("OnUpdate is only available while a tool runs")
 	}
