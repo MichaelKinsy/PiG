@@ -43,7 +43,7 @@ func renderersServe(name string, regOf func(generation int) *RegisterPayload) (s
 				response := &ResponsePayload{}
 				switch env.Request.Method {
 				case RequestResolveToolRenderers:
-					response.Result, _ = json.Marshal(ResolvedToolRenderers{Use: "own", RenderShell: label, RendersCall: true, Renderers: label})
+					response.Result, _ = json.Marshal(ResolvedToolRenderers{Use: "own", ToolRenderersDecl: ToolRenderersDecl{RenderShell: label, RendersCall: true}, Renderers: label})
 				case RequestMarkdownTransform:
 					var payload MarkdownTransformPayload
 					_ = json.Unmarshal(env.Request.Args, &payload)

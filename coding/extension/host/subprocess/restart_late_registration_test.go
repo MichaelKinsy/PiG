@@ -34,7 +34,7 @@ func lateRegistrations() []lateRegistration {
 			return ok
 		}},
 		{"handler", "event.subscribe", map[string]any{"event": "turn_start", "handlerId": 2}, func(e *extension.Extension) bool {
-			return e.HasEventHandlers("turn_start")
+			return len(e.EventHandlers("turn_start")) > 0
 		}},
 		{"thinking runs", CallOwnThinkingRuns, &OwnThinkingRunsPayload{Enabled: &enabled}, func(e *extension.Extension) bool {
 			return e.OwnsThinkingRuns()
