@@ -93,7 +93,7 @@ func nodePackedLauncherCommand(ctx context.Context, binPath string, sel tsruntim
 	for _, member := range manifest {
 		args = append(args, member.Entry)
 	}
-	return typeScriptRuntimeCommand(ctx, sel, filepath.Join(dir, "runtime"), "cell.mjs", "node cell loader", args), true
+	return typeScriptRuntimeCommand(ctx, sel, filepath.Join(dir, "runtime"), "cell.mjs", args), true
 }
 
 // nodePackedCellHash derives the deterministic cache key for a Node cell from
