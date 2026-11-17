@@ -112,6 +112,12 @@ func makePackedUIHarness(t *testing.T, language string) *harness {
 	if err != nil {
 		t.Fatal(err)
 	}
+	return makePackedUIHarnessOf(t, language, configs)
+}
+
+// makePackedUIHarnessOf loads configs (the extension and its peer, from packedUIConfigs or changed from them) into one shared cell.
+func makePackedUIHarnessOf(t *testing.T, language string, configs []subprocess.ExtConfig) *harness {
+	t.Helper()
 	configs = slices.Clone(configs)
 	notify, status, actions := &[]string{}, &[]string{}, &[]string{}
 	ui := newRecordingUI(notify, status)
