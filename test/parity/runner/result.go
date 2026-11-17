@@ -38,6 +38,9 @@ type Result struct {
 
 	// Sequences is what each of the scenario's transcript_sequences_equal windows held in the finished terminal transcript, in declaration order.
 	Sequences []SequenceWindowResult
+
+	// HangDump is what the tmux driver recorded when a wait of this run timed out: the pane, the process tree and, for pig, the goroutine dump (hang_dump.go). It is whole; Err carries a capped copy. Empty for a run whose waits passed.
+	HangDump string
 }
 
 // SystemResults groups multiple runs of the same binary on one scenario.
