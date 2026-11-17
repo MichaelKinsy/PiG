@@ -85,6 +85,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-08ab103](#bf-08ab103) | fix(childwait): the zero-byte read's OVERLAPPED is heap allocated and pinned; the child's pipe end can be… | PiG's own defect | All platforms | Unreleased |
 | [BF-08bf076](#bf-08bf076) | An extension login callback (`onPrompt`, `onSelect`, `onManualCodeInput`) whose prompt fails for a reason… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-08edd46](#bf-08edd46) | A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52)… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-091224f](#bf-091224f) | An extension process that dies while pig is quitting no longer produces a crash notice after the quit has… | PiG's own defect | All platforms | Unreleased |
 | [BF-0920a00](#bf-0920a00) | `/llama` pointed at llama-swap no longer ends in a bare "llama.cpp returned HTTP 404" when you load or unload… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0950d13](#bf-0950d13) | Chord: `FormatNumber` and `FormatTime` format in ICU's root locale when neither the tag nor the platform… | PiG's own defect | All platforms | Unreleased |
@@ -3209,6 +3210,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `08edd46dfc` (2026-11-03, #397), `3cc0c71d33` (2026-11-03, #397)
 - **Tests:** None recorded.
 - **Release note:** A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52), the external-editor notice or the startup model-scope notice wrote to it now ends the session with exit 129 like Pi, instead of the write error being discarded and the session carrying on (#397).
+
+### BF-091224f
+
+**An extension process that dies while pig is quitting no longer produces a crash notice after the quit has…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A quit that coincided with a crash used to return while the loop was still reporting it, so the notice reached a session that was already gone, and a connection that no extension held as its current one (a second connection of an extension, one a reload replaced) was neither closed nor waited for at all.
+- **Root cause:** Shutdown waited for each loop's sight of its connection ending (a signal the loop gives before its crash report, restart and exit), and only for the loop of each extension's current connection, so a loop in its tail, or the loop of a connection no extension held as current, ran on after Shutdown returned
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `091224f508` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownBoundsTheWaitForALoopThatDoesNotEnd`, `coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownDoesNotReportACrashItFindsAfterItBegan`, `coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownEndsTheLoopOfAConnectionNoExtensionHolds`, `coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownWaitsForALoopThatIsReportingACrash`
+- **Release note:** An extension process that dies while pig is quitting no longer produces a crash notice after the quit has returned, and `Host.Shutdown` now waits for the whole of every extension connection's read loop. A quit that coincided with a crash used to return while the loop was still reporting it, so the notice reached a session that was already gone, and a connection that no extension held as its current one (a second connection of an extension, one a reload replaced) was neither closed nor waited for at all. Shutdown now stops crash and disable notices first, closes every connection the Host reads, and waits for every loop for at most the bound of a process's stop; a loop that does not end in that time is named on stderr, as a process that does not end is. Present since 0.5.0.
 
 ### BF-0920a00
 
