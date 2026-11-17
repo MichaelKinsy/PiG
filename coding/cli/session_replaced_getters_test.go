@@ -9,8 +9,8 @@ import (
 // Pi's stale message (runner.ts:571-600 assertActive, 679-690; the 2860 test's `stale` matcher).
 const piStaleContextMessage = "This extension ctx is stale after session replacement or reload. Do not use a captured pi or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload()."
 
-// pig divergence D30 records what a captured ctx does in a Go, Rust or Python extension after a session replacement
-// (docs/parity/divergences/D30.md, group 4a audit). This test PINS today's behaviour per SDK so that it fails the day an SDK changes:
+// D30 (docs/parity/divergences/D30.md) covers a captured ctx in a Go, Rust or Python extension after a session replacement.
+// This test PINS today's behaviour per SDK so that it fails the day an SDK changes:
 //   - the state getters (Cwd, Mode, HasUI, Model, the theme, GetBranch, GetEntries) answer with Pi's stale message, as Pi's getters throw it:
 //     a Go or Rust getter that has no error result panics with it (the handler's error text), one with an error result returns it, Python raises it;
 //     the theme getters (Go UITheme, Rust theme, Python theme) fail the same way (a Go or Rust one panics, Python raises);
