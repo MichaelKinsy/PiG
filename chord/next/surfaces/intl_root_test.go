@@ -8,6 +8,7 @@ import (
 // platform sets the three variables ICU reads for the default locale (set to a value, or unset).
 func platform(t *testing.T, all, messages, lang *string) {
 	t.Helper()
+	useEnvironmentLocale(t)
 	for name, value := range map[string]*string{"LC_ALL": all, "LC_MESSAGES": messages, "LANG": lang} {
 		t.Setenv(name, "")
 		if value == nil {
