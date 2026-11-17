@@ -1317,6 +1317,89 @@ function serverSummary(server) {
 ]);
 // END backport 3567987250
 
+// BEGIN backport ac78a6068b38
+// ac78a6068b38 (#12117, #11264): two direct terminal writes that drew over the TUI go. parseChangelog (startup notes of pi's and of extension packages' changelogs, /changelog) returns no entries
+// for a changelog it cannot read without printing `Warning: Could not parse changelog`; core/model-resolver.js loses restoreModelFromSession (it printed with console.log and console.error, had no
+// caller in the repository and is not exported from the package) and the chalk import only it used.
+// PiG's vendored runtime carries both files, so the Node extension runtime and the oracle's `pi` run Pi's later behavior.
+// not carried: pi-coding-agent/utils/changelog.d.ts, pi-coding-agent/core/model-resolver.d.ts (the removed declaration of restoreModelFromSession): declaration files; no backport table patches one, and extensions/sdk-ts/pi-pin.d.ts stays the pinned build's.
+// not carried: packages/coding-agent/test/changelog.test.ts (a test of the TypeScript source), packages/coding-agent/CHANGELOG.md (Pi's changelog entry) and the TypeScript sources utils/changelog.ts, core/model-resolver.ts: the package ships none of them.
+patch("ac78a6068b38", "pi-coding-agent/utils/changelog.js", [
+    [`    catch (error) {
+        console.error(\`Warning: Could not parse changelog: \${error}\`);
+        return [];
+    }
+`, `    catch {
+        ${note("ac78a6068b38").trim()}
+        // Shown in the TUI (startup notes, /changelog), where printing would draw over the screen. An unreadable
+        // changelog shows no notes instead.
+        return [];
+    }
+`],
+]);
+patch("ac78a6068b38", "pi-coding-agent/core/model-resolver.js", [
+    [`import chalk from "chalk";
+`, ""],
+    [`/**
+ * Restore model from session, with fallback to available models
+ */
+export async function restoreModelFromSession(savedProvider, savedModelId, currentModel, shouldPrintMessages, modelRuntime) {
+    const restoredModel = modelRuntime.getModel(savedProvider, savedModelId);
+    // Check if restored model exists and still has auth configured
+    const hasConfiguredAuth = restoredModel ? modelRuntime.hasConfiguredAuth(restoredModel.provider) : false;
+    if (restoredModel && hasConfiguredAuth) {
+        if (shouldPrintMessages) {
+            console.log(chalk.dim(\`Restored model: \${savedProvider}/\${savedModelId}\`));
+        }
+        return { model: restoredModel, fallbackMessage: undefined };
+    }
+    // Model not found or no API key - fall back
+    const reason = !restoredModel ? "model no longer exists" : "no auth configured";
+    if (shouldPrintMessages) {
+        console.error(chalk.yellow(\`Warning: Could not restore model \${savedProvider}/\${savedModelId} (\${reason}).\`));
+    }
+    // If we already have a model, use it as fallback
+    if (currentModel) {
+        if (shouldPrintMessages) {
+            console.log(chalk.dim(\`Falling back to: \${currentModel.provider}/\${currentModel.id}\`));
+        }
+        return {
+            model: currentModel,
+            fallbackMessage: \`Could not restore model \${savedProvider}/\${savedModelId} (\${reason}). Using \${currentModel.provider}/\${currentModel.id}.\`,
+        };
+    }
+    // Try to find any available model
+    const availableModels = [...modelRuntime.getAvailableSnapshot()];
+    if (availableModels.length > 0) {
+        // Try to find a default model from known providers
+        let fallbackModel;
+        for (const provider of Object.keys(defaultModelPerProvider)) {
+            const defaultId = defaultModelPerProvider[provider];
+            const match = availableModels.find((m) => m.provider === provider && m.id === defaultId);
+            if (match) {
+                fallbackModel = match;
+                break;
+            }
+        }
+        // If no default found, use first available
+        if (!fallbackModel) {
+            fallbackModel = availableModels[0];
+        }
+        if (shouldPrintMessages) {
+            console.log(chalk.dim(\`Falling back to: \${fallbackModel.provider}/\${fallbackModel.id}\`));
+        }
+        return {
+            model: fallbackModel,
+            fallbackMessage: \`Could not restore model \${savedProvider}/\${savedModelId} (\${reason}). Using \${fallbackModel.provider}/\${fallbackModel.id}.\`,
+        };
+    }
+    // No models available
+    return { model: undefined, fallbackMessage: undefined };
+}
+`, ""],
+]);
+// END backport ac78a6068b38
+
 // BEGIN backport c8c456c85c6e
 // c8c456c85c6e (#12234): a fallback to another model ("Could not restore model x/y. Using a/b") is a warning among the runtime's diagnostics, so every mode reports it at startup and
 // after each replacement. Without any model the message is login guidance, which interactive mode still receives as its option; with a model it does not, so a fallback is shown once.
@@ -1346,6 +1429,8 @@ patch("c8c456c85c6e", "pi-coding-agent/main.js", [
 ]);
 // END backport c8c456c85c6e
 // not carried: pi-coding-agent/utils/deprecation.js (deleted file): warnDeprecation had no caller and the package does not export it; a backport table patches files and cannot delete one, and nothing observable reads it.
+||||||| 297b8449d5
+
 
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.

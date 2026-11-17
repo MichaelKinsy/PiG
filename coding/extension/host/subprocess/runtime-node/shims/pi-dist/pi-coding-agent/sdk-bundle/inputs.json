@@ -223,7 +223,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-resolver.js",
-      "sha256": "a2afc2b4071a60aa71183ffb11a2fe73a46f975cc0bbc771efcd1eed55fa2191"
+      "sha256": "cb3f6ee4d1c21c990d498a660bc26f90441ed229025c290c4e485f7345e5b494"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-runtime.js",
@@ -851,7 +851,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/changelog.js",
-      "sha256": "1b4143a8bfe7415a74fee888209caf6cd3f2542291e9b70b78c538f628d6511f"
+      "sha256": "f657979ab50f5c665d412fb87afd94265bf036e17e23916f3a6f6b32622fea51"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/child-process.js",
