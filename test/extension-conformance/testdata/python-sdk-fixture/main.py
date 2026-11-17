@@ -3570,6 +3570,35 @@ def new_extension() -> pig_sdk.Extension:
             pass
 
     ext.command("stale-probe", "Report cwd, mode, hasUI and model", stale_probe)
+
+    def stale_members(ctx: pig_sdk.Context, args: str) -> None:
+        """Call the members that fail with the stale message: each outcome is one line, and the command fails with every line when one carries the message."""
+        lines: list[str] = []
+        stale = False
+
+        def member(name, call) -> None:
+            nonlocal stale
+            try:
+                outcome = "ok:%s" % (call(),)
+            except Exception as error:  # noqa: BLE001 - the outcome is the report
+                outcome = "raises:%s:%s" % (type(error).__name__, error)
+            stale = stale or "This extension ctx is stale" in outcome
+            lines.append("%s=%s" % (name, outcome))
+
+        member("theme", lambda: type(ctx.theme).__name__)
+        member("width", lambda: ctx.width)
+        member("height", lambda: ctx.height)
+        member("sessionName", lambda: ctx.session_name)
+        member("setWidgetLines", lambda: ctx.set_widget("stale-members", ["x"]))
+        member("setWidgetView", lambda: ctx.set_widget("stale-members-view", kit.View(kit.Text("x", 0, 0))))
+        member("setWidgetRenderer", lambda: ctx.set_widget_renderer("stale-members-renderer", lambda width: ["x"]))
+        member("onUpdate", lambda: ctx.on_update("x"))
+        member("getSettings", lambda: type(ctx.get_settings()).__name__)
+        if stale:
+            raise RuntimeError("stale-members\n" + "\n".join(lines))
+        ctx.notify("members\n" + "\n".join(lines), "info")
+
+    ext.command("stale-members", "Call the members that fail with the stale message", stale_members)
     ext.command("signal-wait", "Wait for ctx.signal to abort", signal_wait)
     ext.command("usage-probe", "Report context usage", lambda ctx, args: ctx.notify(json.dumps(ctx.get_context_usage()), "info"))
 

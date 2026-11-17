@@ -2867,6 +2867,45 @@ func Extension() *sdk.Extension {
 		ctx.Notify(fmt.Sprintf("stale:%s|%s|%t|%s", ctx.Cwd(), ctx.Mode(), ctx.HasUI(), ctx.Model()), "info")
 		return nil
 	})
+	// stale-members calls the members that answer a context kept past its Session in every SDK: each outcome is one line, and the command fails with
+	// every line when one of them carries the stale message (Pi guards every context member: runner.ts:883-1037), else it reports them.
+	ext.Command("stale-members", "Call the members that fail with the stale message", func(ctx sdk.Context, _ string) error {
+		var lines []string
+		stale := false
+		member := func(name string, call func() (string, error)) {
+			outcome := func() (out string) {
+				defer func() {
+					if recovered := recover(); recovered != nil {
+						out = fmt.Sprintf("panics:%v", recovered)
+					}
+				}()
+				value, err := call()
+				if err != nil {
+					return "error:" + err.Error()
+				}
+				return "ok:" + value
+			}()
+			stale = stale || strings.Contains(outcome, "This extension ctx is stale")
+			lines = append(lines, name+"="+outcome)
+		}
+		member("theme", func() (string, error) { return fmt.Sprintf("%T", ctx.UITheme()), nil })
+		member("width", func() (string, error) { return fmt.Sprint(ctx.Width()), nil })
+		member("height", func() (string, error) { return fmt.Sprint(ctx.Height()), nil })
+		member("sessionName", func() (string, error) { return ctx.SessionName(), nil })
+		member("setWidgetLines", func() (string, error) { return "", ctx.SetWidget("stale-members", []string{"x"}) })
+		member("setWidgetView", func() (string, error) {
+			return "", ctx.SetWidget("stale-members-view", kit.View{Root: kit.NewText("x", 0, 0)})
+		})
+		member("setWidgetRenderer", func() (string, error) {
+			return "", ctx.SetWidgetRenderer("stale-members-renderer", func(int) []string { return []string{"x"} })
+		})
+		member("onUpdate", func() (string, error) { return "", ctx.OnUpdate("x") })
+		if stale {
+			return errors.New("stale-members\n" + strings.Join(lines, "\n"))
+		}
+		ctx.Notify("members\n"+strings.Join(lines, "\n"), "info")
+		return nil
+	})
 	ext.Command("signal-wait", "Wait for ctx.signal to abort", func(ctx sdk.Context, _ string) error {
 		signal := ctx.Signal()
 		if signal == nil {

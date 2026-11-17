@@ -12,6 +12,9 @@ import (
 
 // Pi guards ExtensionContext.cwd, mode, hasUI and model with runner.assertActive(), so each throws the runner's stale message once the runtime is invalidated (runner.ts:571-600, 721-735).
 // The Host sends NotifyInvalidate to every connected extension so a runtime that answers these members locally raises the same message. The fixtures' stale-probe command reads all four: the active runtime reports their values, and the invalidated one fails the command with the message and reports nothing.
+//
+// The stale-members command reads the rest of the context's members (the theme, the terminal size, the session name, the three widget forms, the tool update, and where the SDK has them the
+// settings and the late tool renderer): it reports each outcome on the active runtime, and on the invalidated one fails with one line per member, each carrying the message (runner.ts:883-1037).
 func TestStaleContextLocalMembersRaiseTheStaleMessageInEverySDK(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
@@ -21,6 +24,18 @@ func TestStaleContextLocalMembersRaiseTheStaleMessageInEverySDK(t *testing.T) {
 		cases = append(cases, harnessCase{name: "packed-" + language, make: func(t *testing.T) *harness { return makePackedUIHarness(t, language) }})
 	}
 	const stale = "This extension ctx is stale after session replacement or reload."
+	// The members each SDK has on its context: Pi's Node context has no terminal size, tool update or settings member.
+	membersOf := func(name string) []string {
+		switch {
+		case strings.Contains(name, "node"):
+			return []string{"theme", "sessionName", "setWidgetLines", "setWidgetView"}
+		case strings.Contains(name, "rust"):
+			return []string{"theme", "width", "height", "sessionName", "setWidgetLines", "setWidgetView", "setWidgetRenderer", "onUpdate", "getSettings", "registerToolRenderer"}
+		case strings.Contains(name, "python"), strings.Contains(name, "lisp"):
+			return []string{"theme", "width", "height", "sessionName", "setWidgetLines", "setWidgetView", "setWidgetRenderer", "onUpdate", "getSettings"}
+		}
+		return []string{"theme", "width", "height", "sessionName", "setWidgetLines", "setWidgetView", "setWidgetRenderer", "onUpdate"}
+	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			h := tc.make(t)
@@ -63,6 +78,65 @@ func TestStaleContextLocalMembersRaiseTheStaleMessageInEverySDK(t *testing.T) {
 			}
 			if got := h.ui.Recorded(); !slices.Equal(got, []string(nil)) && len(got) != 0 {
 				t.Fatalf("invalidated runtime still reported %v", got)
+			}
+		})
+	}
+	for _, tc := range cases {
+		t.Run(tc.name+"/members", func(t *testing.T) {
+			h := tc.make(t)
+			t.Cleanup(func() {
+				if h.cleanup != nil {
+					h.cleanup()
+				}
+				if h.host != nil {
+					h.host.Shutdown("test done")
+				}
+			})
+			run := func() error {
+				t.Helper()
+				command, ok := findCommand(h.runner, "stale-members")
+				if !ok {
+					t.Fatal("stale-members not registered")
+				}
+				cc := h.runner.CreateCommandContext()
+				return command.Handler(extension.WithCommandContext(extension.WithContext(context.Background(), cc.Context), cc), "")
+			}
+			members := membersOf(tc.name)
+			h.ui.ClearRecorded()
+			if err := run(); err != nil {
+				t.Fatalf("active runtime: %v", err)
+			}
+			active := strings.Join(h.ui.Recorded(), "\n")
+			for _, member := range members {
+				line := ""
+				for _, candidate := range strings.Split(active, "\n") {
+					if strings.HasPrefix(candidate, member+"=") {
+						line = candidate
+					}
+				}
+				if line == "" || strings.Contains(line, "This extension ctx is stale") {
+					t.Fatalf("active %s = %q in %q, want an outcome that is not the stale message", member, line, active)
+				}
+			}
+			h.host.Invalidate(stale)
+			h.ui.ClearRecorded()
+			err := run()
+			if err == nil {
+				t.Fatalf("invalidated stale-members reported %v, want the failure", h.ui.Recorded())
+			}
+			for _, member := range members {
+				found := false
+				for _, line := range strings.Split(err.Error(), "\n") {
+					if strings.HasPrefix(line, member+"=") {
+						found = true
+						if !strings.Contains(line, stale) {
+							t.Errorf("invalidated %s = %q, want the stale message", member, line)
+						}
+					}
+				}
+				if !found {
+					t.Errorf("invalidated stale-members error has no %s line: %v", member, err)
+				}
 			}
 		})
 	}

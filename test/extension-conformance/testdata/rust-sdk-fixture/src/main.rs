@@ -6510,6 +6510,82 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // stale-members calls the members that answer a context kept past its Session: each outcome is one line, and the command fails with every
+    // line when one carries the stale message, else it reports them.
+    ext.command(
+        "stale-members",
+        "Call the members that fail with the stale message",
+        |ctx, _args| {
+            let mut lines: Vec<String> = Vec::new();
+            let mut stale = false;
+            let mut member = |name: &str, call: &dyn Fn() -> Result<String, String>| {
+                let outcome = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(call)) {
+                    Ok(Ok(value)) => format!("ok:{value}"),
+                    Ok(Err(error)) => format!("error:{error}"),
+                    Err(payload) => {
+                        let message = payload
+                            .downcast_ref::<String>()
+                            .cloned()
+                            .or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()))
+                            .unwrap_or_default();
+                        format!("panics:{message}")
+                    }
+                };
+                stale = stale || outcome.contains("This extension ctx is stale");
+                lines.push(format!("{name}={outcome}"));
+            };
+            member("theme", &|| {
+                let _ = ctx.theme();
+                Ok("Theme".to_string())
+            });
+            member("width", &|| Ok(ctx.width().to_string()));
+            member("height", &|| Ok(ctx.height().to_string()));
+            member("sessionName", &|| Ok(ctx.session_name()));
+            member("setWidgetLines", &|| {
+                ctx.set_widget("stale-members", vec!["x".to_string()])
+                    .map(|()| String::new())
+                    .map_err(|e| e.to_string())
+            });
+            member("setWidgetView", &|| {
+                ctx.set_widget_view(
+                    "stale-members-view",
+                    pig_sdk::kit::View::new(pig_sdk::kit::Text::new("x", 0, 0)),
+                    None,
+                )
+                .map(|()| String::new())
+                .map_err(|e| e.to_string())
+            });
+            member("setWidgetRenderer", &|| {
+                ctx.set_widget_renderer(
+                    "stale-members-renderer",
+                    Some(|_width: u32| vec!["x".to_string()]),
+                    None,
+                )
+                .map(|()| String::new())
+                .map_err(|e| e.to_string())
+            });
+            member("onUpdate", &|| {
+                ctx.on_update(pig_sdk::ToolResult::text("x"))
+                    .map(|()| String::new())
+                    .map_err(|e| e.to_string())
+            });
+            member("getSettings", &|| {
+                ctx.get_settings()
+                    .map(|_| String::new())
+                    .map_err(|e| e.to_string())
+            });
+            member("registerToolRenderer", &|| {
+                ctx.register_tool_renderer(|_tool, _builtin| None)
+                    .map(|()| String::new())
+                    .map_err(|e| e.to_string())
+            });
+            if stale {
+                return CommandResult::Error(format!("stale-members\n{}", lines.join("\n")));
+            }
+            ctx.notify(&format!("members\n{}", lines.join("\n")), "info");
+            CommandResult::Ok
+        },
+    );
     ext.command("signal-probe", "Report ctx.signal", |ctx, _args| {
         let state = match ctx.signal() {
             None => "none",
