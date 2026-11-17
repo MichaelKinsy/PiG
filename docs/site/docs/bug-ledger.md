@@ -204,6 +204,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1827831](#bf-1827831) | The MCP extension's `tool_call` handler passes a tool's `reachesTools` the call's input in the member order… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1848633](#bf-1848633) | Extension widgets share one key namespace across extensions, as in Pi: an extension that sets a widget key… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-184ed40](#bf-184ed40) | fix(hljs): a language's reach does not depend on the first text it highlights; red cases for resumeLimit | PiG's own defect | All platforms | Unreleased |
+| [BF-1886bcb](#bf-1886bcb) | `--mode json` no longer writes what an extension's `session_shutdown` handler emits after `agent_settled`… | PiG's own defect | All platforms | Unreleased |
 | [BF-1896331](#bf-1896331) | Changing the thinking level in interactive mode (cycle key, `/thinking`, the settings selector) goes through… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-18daf7f](#bf-18daf7f) | The Go SDK's typed branch entry keeps the text, thinking and tool calls of an assistant message whose tool… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-18e1649](#bf-18e1649) | A `message_start`, `turn_end` or `agent_end` handler that edits the event's message in place and returns… | PiG's own defect | All platforms | Unreleased |
@@ -4907,6 +4908,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `184ed40f74` (2026-10-11)
 - **Tests:** `tui/highlight_resume_test.go::TestStreamedHighlightEqualsAWholeRun`, `tui/internal/hljs/resume_test.go::TestLanguageReachDoesNotDependOnTheFirstText`, `tui/internal/hljs/resume_test.go::TestResumeLimitHoldsBackPointsLaterTextDecides`
+
+### BF-1886bcb
+
+**`--mode json` no longer writes what an extension's `session_shutdown` handler emits after `agent_settled`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `--mode json` no longer writes what an extension's `session_shutdown` handler emits after `agent_settled`: the `entry_appended` line for `pi.appendEntry`, the `session_info_changed` line for `pi.setSessionName` and the `message_start` / `message_end` lines for `pi.sendMessage` are saved in the session file and not written, as in Pi, which detaches the JSON stream before it runs `session_shutdown` handlers.
+- **Root cause:** the normal teardown detached the JSON writer after closing the runtime (session_shutdown), and the entry_appended line was written outside the subscription without checking that the writer was detached
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1886bcbfd3` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** `--mode json` no longer writes what an extension's `session_shutdown` handler emits after `agent_settled`: the `entry_appended` line for `pi.appendEntry`, the `session_info_changed` line for `pi.setSessionName` and the `message_start` / `message_end` lines for `pi.sendMessage` are saved in the session file and not written, as in Pi, which detaches the JSON stream before it runs `session_shutdown` handlers. The stream ends with `agent_settled`, in a normal run and after a termination signal; lines already queued still reach a slow reader, and an extension error from the handler still goes to stderr. The bug has been in every release since v0.3.0.
 
 ### BF-1896331
 

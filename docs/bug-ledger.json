@@ -5135,6 +5135,26 @@
       ]
     },
     {
+      "id": "BF-1886bcb",
+      "title": "`--mode json` no longer writes what an extension's `session_shutdown` handler emits after `agent_settled`…",
+      "symptom": "`--mode json` no longer writes what an extension's `session_shutdown` handler emits after `agent_settled`: the `entry_appended` line for `pi.appendEntry`, the `session_info_changed` line for `pi.setSessionName` and the `message_start` / `message_end` lines for `pi.sendMessage` are saved in the session file and not written, as in Pi, which detaches the JSON stream before it runs `session_shutdown` handlers.",
+      "rootCause": "the normal teardown detached the JSON writer after closing the runtime (session_shutdown), and the entry_appended line was written outside the subscription without checking that the writer was detached",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`--mode json` no longer writes what an extension's `session_shutdown` handler emits after `agent_settled`: the `entry_appended` line for `pi.appendEntry`, the `session_info_changed` line for `pi.setSessionName` and the `message_start` / `message_end` lines for `pi.sendMessage` are saved in the session file and not written, as in Pi, which detaches the JSON stream before it runs `session_shutdown` handlers. The stream ends with `agent_settled`, in a normal run and after a termination signal; lines already queued still reach a slow reader, and an extension error from the handler still goes to stderr. The bug has been in every release since v0.3.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1886bcbfd3",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-1896331",
       "title": "Changing the thinking level in interactive mode (cycle key, `/thinking`, the settings selector) goes through…",
       "symptom": "Changing the thinking level in interactive mode (cycle key, `/thinking`, the settings selector) goes through the Session like Pi's `session.setThinkingLevel`: the level is clamped to the model, the `thinking_level_select` event carries the clamped level, and a handler that is slow to start no longer holds the input loop.",
