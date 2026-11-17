@@ -7,7 +7,7 @@
 # gone/missing-model), then b.jsonl (saved model other/also-gone), then a.jsonl again: stderr carries the first warning once, the second warning once, and nothing for the
 # third switch (the diagnostic equals one already reported: reportedDiagnosticKeys keys type and message). The fallback is the settings default, fixture/model-two. stderr_equal
 # compares the whole stream; no response or event carries the message.
-name = "84-rpc-model-fallback-diagnostic"
+name = "86-rpc-model-fallback-diagnostic"
 description = "RPC: switch_session into sessions whose model is gone reports each distinct fallback on stderr once and stdout carries frames only"
 covers = [
   "packages/coding-agent/src/main.ts",
