@@ -110,7 +110,7 @@ func resolvedShell(t *testing.T, held *extension.Extension, resolved chan string
 
 // drawn is what the held extension's transformer makes of "x" on an assistant message; false when it holds none.
 func drawn(held *extension.Extension) (string, bool) {
-	transformer := held.MarkdownTransformer
+	transformer := held.RegisteredMarkdownTransformer()
 	if transformer == nil {
 		return "", false
 	}

@@ -1178,9 +1178,9 @@ func (r *Runner) MessageRenderer(customType string) extension.MessageRenderer {
 // upstream: runner.ts getMarkdownTransformers
 func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
 	var transformers []extension.MarkdownTransformer
-	for _, ext := range r.extensions {
-		if ext.MarkdownTransformer != nil {
-			transformers = append(transformers, ext.MarkdownTransformer)
+	for i := range r.extensions {
+		if transformer := r.extensions[i].RegisteredMarkdownTransformer(); transformer != nil {
+			transformers = append(transformers, transformer)
 		}
 	}
 	return transformers

@@ -107,7 +107,8 @@ type Extension struct {
 	ToolRenderers []ToolRendererResolver
 
 	// MarkdownTransformer is the extension's display-only Markdown transform,
-	// if it registered one; a later registration replaces an earlier one.
+	// if it registered one; a later registration replaces an earlier one. A shared Extension is read through
+	// RegisteredMarkdownTransformer: a restart of its process replaces it (ReplaceDeclarations).
 	// upstream: types.ts Extension.markdownTransformer
 	MarkdownTransformer MarkdownTransformer
 
