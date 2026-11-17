@@ -120,6 +120,8 @@ func TestFamilyOpenAITablesMatchPi(t *testing.T) {
 		"gpt-6-sol":     `{"input":2,"output":10,"cacheRead":0.2,"cacheWrite":2.5}`,
 		"gpt-6.1-sol":   `{"input":2,"output":10,"cacheRead":0.1,"cacheWrite":2.5}`,
 		"gpt-6.1-terra": `{"input":1,"output":5,"cacheRead":0.05,"cacheWrite":1.25}`,
+		"gpt-6.2-astra": `{"input":8,"output":40,"cacheRead":0.4,"cacheWrite":10}`,
+		"gpt-6.2-sol":   `{"input":2,"output":10,"cacheRead":0.1,"cacheWrite":2.5}`,
 	}
 	costs := OpenAIStandardCosts()
 	if len(costs) != len(want) {
@@ -128,7 +130,7 @@ func TestFamilyOpenAITablesMatchPi(t *testing.T) {
 	for id, cost := range want {
 		requireJSON(t, costs[id], cost)
 	}
-	toolSearch := []string{"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra"}
+	toolSearch := []string{"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6.2-astra", "gpt-6.2-sol"}
 	if len(OpenAIToolSearchModelIDs) != len(toolSearch) {
 		t.Fatalf("tool search ids = %v", OpenAIToolSearchModelIDs)
 	}
