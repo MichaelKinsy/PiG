@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"runtime"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // An automatic restart replaces the contexts the generation's process starts under (startExtOnce) while the callers of its handlers keep
@@ -40,6 +42,8 @@ func TestRestartReplacesTheStartContextBesideItsReaders(t *testing.T) {
 
 	failure := errors.New("command crash: connection closed")
 	stop := make(chan struct{})
+	stopReaders := sync.OnceFunc(func() { close(stop) })
+	t.Cleanup(stopReaders)
 	var readers sync.WaitGroup
 	var stopped, reads atomic.Int64
 	for range 2 {
@@ -58,11 +62,49 @@ func TestRestartReplacesTheStartContextBesideItsReaders(t *testing.T) {
 			}
 		})
 	}
-	_ = crash.Handler(t.Context(), "")
+	callCtx, endCall := context.WithTimeout(t.Context(), testbudget.Wait(t))
+	defer endCall()
+	_ = crash.Handler(callCtx, "")
 	waitDeclarationGeneration(t, h, "fixture", held, "gen 2")
-	close(stop)
+	stopReaders()
 	readers.Wait()
 	if n := stopped.Load(); n != 0 {
 		t.Fatalf("%d of %d failed calls were marked as stopped by the host while nothing stopped the extension", n, reads.Load())
+	}
+}
+
+// A call that fails once its owner's context has ended is the host's own stop, and the runner does not report it (recordHandlerError); a restart
+// then starts the generation under the host's own context, under which nobody has stopped it, and a failure of its is its own and is reported.
+// Each answer is right for the generation it asks about, and the replacement is whole: the restart's first step gives the old context's cancel
+// function up exactly once, and the stop that follows ends the new one, never the old.
+func TestRestartGivesTheGenerationItsNewOwnerWhole(t *testing.T) {
+	failure := errors.New("event session_start: connection closed")
+	var oldEnded, newEnded atomic.Int32
+	oldOwner, endOldOwner := context.WithCancel(t.Context())
+	me := &managedExt{host: &Host{}}
+	me.setStartContext(func() { oldEnded.Add(1) }, oldOwner)
+
+	if errors.Is(me.dispatchError(failure), extension.ErrHandlerStopped) {
+		t.Fatal("a failure under a live owner is the handler's own")
+	}
+	endOldOwner()
+	if err := me.dispatchError(failure); !errors.Is(err, extension.ErrHandlerStopped) || !errors.Is(err, failure) {
+		t.Fatalf("a failure after the owner ended = %v, want it marked as stopped by the host", err)
+	}
+
+	me.releaseStart()
+	me.cancelStart()
+	if got := oldEnded.Load(); got != 1 {
+		t.Fatalf("the replaced generation's cancel ran %d times, want once", got)
+	}
+	newOwner, endNewOwner := context.WithCancel(t.Context())
+	defer endNewOwner()
+	me.setStartContext(func() { newEnded.Add(1) }, newOwner)
+	if err := me.dispatchError(failure); errors.Is(err, extension.ErrHandlerStopped) || !errors.Is(err, failure) {
+		t.Fatalf("a failure of the restarted generation = %v, want the failure unchanged", err)
+	}
+	me.cancelStart()
+	if oldEnded.Load() != 1 || newEnded.Load() != 1 {
+		t.Fatalf("after the stop the old cancel ran %d times and the new one %d, want 1 and 1", oldEnded.Load(), newEnded.Load())
 	}
 }
