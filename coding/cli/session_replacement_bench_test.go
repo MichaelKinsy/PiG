@@ -162,9 +162,10 @@ func TestSessionFactoryCarriesDiagnosticsAndModelFallbackToTheRuntime(t *testing
 	if err := builder.buildSession(ctx, build, cliBuildInput{CWD: cwd, Manager: manager}); err != nil {
 		t.Fatal(err)
 	}
+	// The build holds a startup warning and the message of a fallback to another model; its host's inputs carry both as the diagnostics.
+	build.StartupDiagnostics = []codingagent.AgentSessionRuntimeDiagnostic{{Type: "warning", Message: "startup warning"}}
+	build.ModelFallbackMessage = "Could not restore model a/b. Using c/d"
 	inputs := builder.printHost(ctx, build, &printStartup{Manager: manager}).inputs()
-	inputs.Diagnostics = []codingagent.AgentSessionRuntimeDiagnostic{{Type: "warning", Message: "startup warning"}}
-	inputs.ModelFallbackMessage = "Could not restore model a/b. Using c/d"
 	factory := newCLISessionFactory(ctx, inputs, struct{}{}, nil)
 	defer factory.Close()
 	rt, err := coding.CreateAgentSessionRuntime(ctx, factory.Factory(), coding.CreateAgentSessionRuntimeOptions{CWD: cwd, AgentDir: agentDir, SessionManager: manager})

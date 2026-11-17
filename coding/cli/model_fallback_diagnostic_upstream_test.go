@@ -282,3 +282,45 @@ func TestNoModelsAvailableIsReportedOnceAsAWarning(t *testing.T) {
 		requireOnce(t, p.stderr.String(), stdout.String())
 	})
 }
+
+// A CLI error diagnostic does not stop the runtime's other diagnostics from being listed: Pi's createRuntime returns the session option error and then the model fallback message as a
+// warning (main.ts:508-513 and 917-918), and the startup error exit writes them all (main.ts:948, 995). With no model at all, `--provider x` without `--model` therefore prints the
+// error and then the no-models warning with its documentation paths, exits 1 and writes nothing on stdout (probed on Pi with this backport; cli-utils scenario 22). When a model is
+// available there is no fallback message, so the error stands alone.
+func TestProviderWithoutModelErrorIsFollowedByTheNoModelsWarning(t *testing.T) {
+	binary := buildPigBinaryForSignalTest(t)
+	const wantError = "Error: --provider requires --model (for example: --provider anthropic --model <pattern>)"
+	shapes := append([]fallbackShape{{name: "no-models", settings: `{}`}}, fallbackShapes(t)...)
+	for _, shape := range shapes {
+		t.Run(shape.name, func(t *testing.T) {
+			t.Parallel()
+			cmd := exec.Command(binary, "--offline", "--no-extensions", "--provider", "anthropic", "--no-session", "-p")
+			cmd.Dir = t.TempDir()
+			cmd.Env = append(os.Environ(), shape.env(t)...)
+			var stdout, stderr bytes.Buffer
+			cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			cmd.WaitDelay = 10 * time.Second
+			err := cmd.Run()
+			if exit, ok := err.(*exec.ExitError); !ok || exit.ExitCode() != 1 {
+				t.Fatalf("exit = %v, want status 1\nstderr:\n%s", err, stderr.String())
+			}
+			if stdout.Len() != 0 {
+				t.Fatalf("stdout = %q, want empty", stdout.String())
+			}
+			lines := strings.Split(strings.TrimRight(stderr.String(), "\n"), "\n")
+			if lines[0] != wantError {
+				t.Fatalf("first stderr line = %q, want %q\n%s", lines[0], wantError, stderr.String())
+			}
+			if shape.name != "no-models" {
+				if len(lines) != 1 {
+					t.Fatalf("a model is available, so the error stands alone:\n%s", stderr.String())
+				}
+				return
+			}
+			if len(lines) != 4 || lines[1] != "Warning: No models available. Use /login to log into a provider via OAuth or API key. See:" ||
+				!strings.HasPrefix(lines[2], "  ") || !strings.HasSuffix(lines[2], "providers.md") || !strings.HasPrefix(lines[3], "  ") || !strings.HasSuffix(lines[3], "models.md") {
+				t.Fatalf("stderr must be the error, then the no-models warning with its two documentation paths:\n%s", stderr.String())
+			}
+		})
+	}
+}
