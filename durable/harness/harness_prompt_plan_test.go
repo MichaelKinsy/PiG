@@ -286,7 +286,15 @@ func TestToolLoadoutPreparation(t *testing.T) {
 		expectToolPlans(t, applyTools(t, conversation, tools(a2, c2)), toolPlan{removed: []string{"a", "c"}, added: []string{"a", "c"}})
 		// Order-only change.
 		expectToolPlans(t, applyTools(t, conversation, tools(c2, a2)), toolPlan{removed: []string{"a", "c"}, added: []string{"c", "a"}})
-		expectToolPlans(t, applyTools(t, conversation, tools()), toolPlan{removed: []string{"c", "a"}})
+		// Fork rule: a transition to an empty tool set is never recorded (2026-11-06 incident) — the transcript keeps
+		// the loadout and a later round that re-offers the tools plans no change.
+		if drafts := PlanSystemEntries(contextOf(t, conversation), orderedOf(), nil, 7); len(drafts) != 0 {
+			t.Fatalf("planned %+v, want nothing", drafts)
+		}
+		if offered := ai.GetCurrentTools(contextOf(t, conversation).Messages); len(offered) != 2 {
+			t.Fatalf("offered %d tools, want 2 kept", len(offered))
+		}
+		expectToolPlans(t, applyTools(t, conversation, tools(c2, a2)))
 	})
 
 	t.Run("puts tool changes on the last section entry and re-declares every tool after a head cut", func(t *testing.T) {

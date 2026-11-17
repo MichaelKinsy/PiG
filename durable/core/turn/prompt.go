@@ -222,7 +222,18 @@ func declarations(tools []*jv.Object) []any {
 // planTools returns the tool changes from offered to desired. A changed declaration is removed and re-added. Replay keeps
 // retained tools in place and appends additions; when that would not yield the desired order, every offered tool is
 // removed and every desired tool re-added in order.
+//
+// A transition to an empty tool set is never recorded, as a fork rule that diverges from the pinned upstream behavior
+// (2026-11-06 incident): a planning round that saw a momentarily empty declaration recorded a removal of the whole
+// loadout, and the session was tool-less for every later turn and resume — every model read "tools: (none)" in its
+// prompt and no turn could ever act again. A tool-less transcript is established only by a session baseline, never by a
+// diff; refusing the record degrades at most the round that saw the empty declaration, the transcript keeps the prior
+// loadout, and a later round with tools restored plans no change. A legitimate full clear keeps working live; its
+// transcript keeps the loadout, which is the recoverable reading of the only transition that can destroy a session.
 func planTools(offered, desired []*jv.Object) *toolChanges {
+	if len(desired) == 0 {
+		return &toolChanges{}
+	}
 	wanted := map[string]*jv.Object{}
 	for _, t := range desired {
 		wanted[nameOf(t)] = t // a repeated name keeps the last, as Map construction does

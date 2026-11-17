@@ -129,7 +129,17 @@ func sectionsOf(values *OrderedMap[string]) ai.OrderedSections {
 }
 
 // planTools returns the tool changes from offered to desired. A changed declaration is removed and re-added. Replay keeps retained tools in place and appends additions; when that would not yield the desired order, every offered tool is removed and every desired tool re-added in order.
+//
+// A transition to an empty tool set is never recorded, mirroring turn.planTools as a fork rule that diverges from the
+// pinned upstream behavior (2026-11-06 incident): a planning round that saw a momentarily empty declaration recorded a
+// removal of the whole loadout, and the session was tool-less for every later turn and resume — every model read
+// "tools: (none)" in its prompt and no turn could ever act again. A tool-less transcript is established only by a session
+// baseline, never by a diff; refusing the record degrades at most the round that saw the empty declaration, and a later
+// round with tools restored plans no change.
 func planTools(offered []ai.ToolSchema, desired []ai.ToolSchema) toolChanges {
+	if len(desired) == 0 {
+		return toolChanges{}
+	}
 	wanted := map[string]ai.ToolSchema{}
 	for _, tool := range desired {
 		wanted[tool.Name] = tool
