@@ -159,10 +159,11 @@ func TestRestartKeepsWhatTheNewProcessRegistersAfterItsReady(t *testing.T) {
 				}
 				time.Sleep(time.Millisecond)
 			}
-			// The adoption holds Host.mu from its first rewrite to its last.
+			// The adoption holds Host.mu from its first rewrite to its last: read under it.
 			h.mu.Lock()
+			landed := late.landed(ext)
 			h.mu.Unlock()
-			if !late.landed(ext) {
+			if !landed {
 				t.Fatalf("the late %s the restarted extension registered after its ready is lost: the adoption replaced it", late.name)
 			}
 			if command, ok := ext.Command("probe"); !ok || command.Description != "gen 2" {
