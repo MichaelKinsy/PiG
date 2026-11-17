@@ -295472,6 +295472,17 @@
       "shapeHash": "sha256:926fef29a24744a4774344b502dfb3b27e8d21d3d434d76f2e0c0c9e81838811"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#createSnapshotFile",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "createSnapshotFile",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string, create func(name string) (*os.File, error)) (*os.File, error)"
+      },
+      "shapeHash": "sha256:b8bb16f3ae0c56528b4b097073092b0cf0b371b9474a50693cf116ab6a342137"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#csiFieldBase",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "csiFieldBase",
@@ -323168,6 +323179,94 @@
         "type": "func(path string) string"
       },
       "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#snapshotSeq",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "snapshotSeq",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Uint64"
+      },
+      "shapeHash": "sha256:0ffe83cc0351ce2b9a01cb8192026d6778d1b982be05921458a83342863e1340"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#snapshotSeq.Add",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "snapshotSeq.Add",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(delta uint64) (new uint64)"
+      },
+      "shapeHash": "sha256:2f4d9955d114f9fba79ce3a08315c25fefdc914bf8ac452d6429896e16fa861a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#snapshotSeq.And",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "snapshotSeq.And",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(mask uint64) (old uint64)"
+      },
+      "shapeHash": "sha256:c9025b98e19e5ad2ccf455663f3a317a2fc0625aa7be599ad134b0753fc41c81"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#snapshotSeq.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "snapshotSeq.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old uint64, new uint64) (swapped bool)"
+      },
+      "shapeHash": "sha256:64e817e6febce1b7013282254dda62bb2c021235bc48fab2bd02e9a0b7e87e31"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#snapshotSeq.Load",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "snapshotSeq.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() uint64"
+      },
+      "shapeHash": "sha256:8c2c25c05be990d156af5316d0723444537851bde41d6afa6bcb371a541de271"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#snapshotSeq.Or",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "snapshotSeq.Or",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(mask uint64) (old uint64)"
+      },
+      "shapeHash": "sha256:c9025b98e19e5ad2ccf455663f3a317a2fc0625aa7be599ad134b0753fc41c81"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#snapshotSeq.Store",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "snapshotSeq.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val uint64)"
+      },
+      "shapeHash": "sha256:8920d3f7210f34db10b7a901e69d1605a6c9aebc0458f948a2157ff1e982c0cd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#snapshotSeq.Swap",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "snapshotSeq.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new uint64) (old uint64)"
+      },
+      "shapeHash": "sha256:ecfcb83a724b0dc6ed0cfda5430a91eee954ae99ca091c903acb7cdd648445fc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#sortAuthProviders",
