@@ -51,7 +51,7 @@ type spinnerStepReplay struct {
 func playSpinnerStream(t *testing.T, coalesce bool) *spinnerStepReplay {
 	t.Helper()
 	r, text, _ := startPacedReplay(t, termScenario{cols: 80, rows: 24}, false)
-	var ui TUI = r.ui
+	var ui TUI
 	var asked, within *atomic.Int64
 	if coalesce {
 		c := &stepCoalescing{TUI: r.ui}
@@ -85,8 +85,12 @@ func playSpinnerStream(t *testing.T, coalesce bool) *spinnerStepReplay {
 			r.step(nil)
 		}
 	}
-	reply := func(i int) { text.lines = append(text.lines, "reply line "+strconv.Itoa(len(text.lines))+" "+strings.Repeat("w", i%7)) }
-	toolOutput := func(i int) { tool.lines = append(tool.lines, "  tool output "+strconv.Itoa(len(tool.lines))+strings.Repeat("o", i%5)) }
+	reply := func(i int) {
+		text.lines = append(text.lines, "reply line "+strconv.Itoa(len(text.lines))+" "+strings.Repeat("w", i%7))
+	}
+	toolOutput := func(i int) {
+		tool.lines = append(tool.lines, "  tool output "+strconv.Itoa(len(tool.lines))+strings.Repeat("o", i%5))
+	}
 
 	// A reply streams under a spinner: a step comes right after a burst's frame (it may wait for the next frame), another long after the last one (it asks at once).
 	for round := range 6 {
