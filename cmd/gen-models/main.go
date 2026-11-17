@@ -202,7 +202,16 @@ func main() {
 	replay := flag.String("replay", "", "generation: serve the responses recorded under this directory instead of fetching")
 	recordSourceDir := flag.String("record-source", "", "generation: fetch live and, when the run succeeds, replace the catalog source (responses.tar.gz and meta.json) in this directory")
 	replaySourceDir := flag.String("replay-source", "", "generation: serve the catalog source in this directory instead of fetching; the manifest generatedAt is its fetch time")
+	mergeSourceDir := flag.String("merge-source", "", "take the models named by -merge-ids from one live models.dev fetch into the catalog source in this directory; every other byte of the recording stays")
+	mergeIDs := flag.String("merge-ids", "", "with -merge-source: comma-separated <provider>/<model> ids of the models.dev response")
 	flag.Parse()
+	if *mergeSourceDir != "" {
+		if *src != "" || *strict || *dataOnly || *jsonOnly || *jsonOutput != "" || *dataOutput != "" || *record != "" || *replay != "" || *recordSourceDir != "" || *replaySourceDir != "" {
+			fmt.Fprintln(os.Stderr, "gen-models: -merge-source cannot be combined with another mode")
+			os.Exit(2)
+		}
+		os.Exit(runMergeSource(*mergeSourceDir, *mergeIDs))
+	}
 	if *src == "" {
 		if *strict || *dataOnly || *jsonOnly || *jsonOutput != "" || *dataOutput != "" || *record != "" || *replay != "" || *recordSourceDir != "" || *replaySourceDir != "" {
 			os.Exit(runGeneration(generatorOptions{strict: *strict, dataOnly: *dataOnly, jsonOnly: *jsonOnly, jsonOutputDir: *jsonOutput, dataOutputDir: *dataOutput, pretty: *pretty}, *record, *replay, *recordSourceDir, *replaySourceDir))

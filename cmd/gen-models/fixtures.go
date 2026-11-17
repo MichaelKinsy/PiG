@@ -156,6 +156,8 @@ type sourceMeta struct {
 	// ArchiveSHA256 is the sha256 of responses.tar.gz.
 	ArchiveSHA256 string           `json:"archiveSha256"`
 	Responses     []sourceResponse `json:"responses"`
+	// Merges are the -merge-source runs applied to the recording, oldest first: rows of a later live fetch taken into it (merge_source.go).
+	Merges []sourceMerge `json:"merges,omitempty"`
 }
 
 type sourceResponse struct {
@@ -176,7 +178,7 @@ func generationTime() string {
 }
 
 // piOverlayCommit is the Pi commit the files of pi-overlay come from (git show <commit>:packages/ai/catalog/<path>).
-const piOverlayCommit = "e56d35ce5eceedfa16eaf13a5f01a1f7b7271253"
+const piOverlayCommit = "cead615b48b80d1c61eecab2f0b576d16eeaf4c5"
 
 const isoMillis = "2006-01-02T15:04:05.000Z"
 
@@ -193,10 +195,10 @@ func recordSource(dir string) (finish func() error, cleanup func(), err error) {
 		return nil, nil, err
 	}
 	fetchedAt := time.Now().UTC().Format(isoMillis)
-	return func() error { return packSource(scratch, dir, fetchedAt) }, cleanup, nil
+	return func() error { return packSource(scratch, dir, fetchedAt, nil) }, cleanup, nil
 }
 
-func packSource(recorded, dir, fetchedAt string) error {
+func packSource(recorded, dir, fetchedAt string, merges []sourceMerge) error {
 	data, err := os.ReadFile(filepath.Join(recorded, fixtureIndexFile))
 	if err != nil {
 		return err
@@ -208,7 +210,7 @@ func packSource(recorded, dir, fetchedAt string) error {
 	if len(index) == 0 {
 		return errors.New("no response was recorded")
 	}
-	meta := sourceMeta{FetchedAt: fetchedAt, PiCommit: pigversion.UpstreamCommit, PiOverlayCommit: piOverlayCommit}
+	meta := sourceMeta{FetchedAt: fetchedAt, PiCommit: pigversion.UpstreamCommit, PiOverlayCommit: piOverlayCommit, Merges: merges}
 	var raw bytes.Buffer
 	zipped := gzip.NewWriter(&raw)
 	archive := tar.NewWriter(zipped)
