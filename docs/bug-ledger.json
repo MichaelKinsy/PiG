@@ -28992,6 +28992,31 @@
       "tests": []
     },
     {
+      "id": "BF-9f9f622",
+      "title": "fix(codingagent): two session snapshots made in one clock tick no longer take one file name",
+      "symptom": "fix(codingagent): two session snapshots made in one clock tick no longer take one file name",
+      "rootCause": "A snapshot file was named from the wall clock (nanoseconds) and the process id, created with CREATE_NEW on Windows and clonefile on macOS. A Windows clock ticks every half to fifteen milliseconds, so two loads that started in one tick took the same name; the one that came second found the first snapshot still open, was refused as \"file exists\", and its fallback took the same name again, so it had no snapshot (TestParallelIndexStopsAsTheSerialLoadDoes failed on Windows only, on the \"header alone\" row, the one row whose serial load keeps its snapshot while the parallel load starts).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9f9f62282c",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_index_parallel_test.go::TestParallelIndexStopsAsTheSerialLoadDoes",
+        "internal/codingagent/session_snapshot_name_test.go::TestSnapshotFileSkipsANameAnotherFileHolds",
+        "internal/codingagent/session_snapshot_name_test.go::TestSnapshotFileStopsOnAnyOtherError",
+        "internal/codingagent/session_snapshot_name_test.go::TestSnapshotFilesTakenAtOnceAllSucceedWithNamesOfTheirOwn",
+        "internal/codingagent/session_snapshot_name_test.go::TestSnapshotsOfSmallFilesTakenAtOnceAllSucceed"
+      ]
+    },
+    {
       "id": "BF-9faf2de",
       "title": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)…",
       "symptom": "Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL) left its lock's socket file, and every later start of its address failed with `... is a stale lock file`, `retry` too, until the file was removed by hand.",
@@ -43372,6 +43397,34 @@
         "test/extension-conformance/prompt_chain_test.go::TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs",
         "test/extension-conformance/render_system_prompt_test.go::TestRenderCurrentSystemPromptAcrossSDKs",
         "test/extension-conformance/wire_capability_coverage_test.go::TestEverySDKCanReachEveryWireCapability"
+      ]
+    },
+    {
+      "id": "BF-ec5350e",
+      "title": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room…",
+      "symptom": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or no right to write the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error, or a prompt that had lost turns.",
+      "rootCause": "A session file is read back by file offset only when the session holds a private snapshot of it. When the snapshot could not be made (no clone, a failed copy, a first write that left none), the load located entries by their lines in the live file, so a change another program made to the file reached later reads: GetBranch, GetEntries, GetTree, the context builders, get_entries, get_tree, the JSONL export and a fork returned other bytes, an error or a prompt with missing turns. Pi reads the whole file into memory and never reads it again.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or no right to write the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error, or a prompt that had lost turns. Such a session now reads the whole file once and keeps its entries in memory, as Pi does, and never reads the file again. \u003c!-- cause: without a snapshot the entries were located by the file offsets of their lines in the live file, and a load that made no snapshot, a snapshot write that failed and the first write of a new session were all left to read from that file --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ec5350ee94",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_lazy_test.go::TestLazyEntryOfAChangedRecordIsAnError",
+        "internal/codingagent/session_nosnapshot_test.go::TestCreatedSessionWithoutASnapshotReadsAsWrittenAfterItsFileChanges",
+        "internal/codingagent/session_nosnapshot_test.go::TestForkAfterTheFileChangesWithoutASnapshotWritesTheLoadedBranch",
+        "internal/codingagent/session_nosnapshot_test.go::TestLeafMovedAfterTheFileChangesWithoutASnapshotBuildsTheLoadedContext",
+        "internal/codingagent/session_nosnapshot_test.go::TestResumedSessionWithoutASnapshotReadsAsLoadedAfterItsFileChanges",
+        "internal/codingagent/session_nosnapshot_test.go::TestSessionWhoseSnapshotWriteFailsLaterReadsAsLoadedAfterItsFileChanges",
+        "internal/codingagent/session_nosnapshot_test.go::TestSessionWithoutASnapshotKeepsOnlyItsContextTailDecoded"
       ]
     },
     {

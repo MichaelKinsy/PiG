@@ -84,7 +84,7 @@ var cloneSessionSnapshot = func(src *os.File, path string) (*sessionSnapshot, bo
 }
 
 // snapshotCopier writes what a load reads from a session file into a snapshot, on its own goroutine so the write overlaps the load's
-// decoding. A failed write ends the copy: the load then keeps reading the session file and gets no snapshot.
+// decoding. A failed write ends the copy: the load then reads the whole file into memory instead (loadPersistedSession) and gets no snapshot.
 type snapshotCopier struct {
 	snapshot *sessionSnapshot
 	chunks   chan []byte

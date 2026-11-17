@@ -155,8 +155,8 @@ type Session struct {
 	// coldChunks hold the slots' cold parts (entrySlot.cold), coldCount of them.
 	coldChunks [][]slotCold
 	coldCount  uint32
-	// backing is the session file; "" keeps every entry resident. The slot offsets locate lines in snapshot, its private copy, or in the
-	// backing file when it has none.
+	// backing is the session file, set only together with a snapshot; "" keeps every entry resident. The slot offsets locate lines in snapshot,
+	// the session's private copy of it, so a change another program makes to the file reaches no read.
 	backing  string
 	snapshot *sessionSnapshot
 	// branch is the slot path of the current leaf (branchLeaf, -1 when there is none) and ctxPath its contextPathIn, maintained as the leaf moves.
@@ -507,16 +507,15 @@ func writeRecord(write recordWrite) (writtenRecord, error) {
 		}
 		return writtenRecord{snapshot: snapshot, off: -1}, nil
 	}
-	end, err := appendSessionLine(write.path, write.raw)
-	if err != nil {
+	if _, err := appendSessionLine(write.path, write.raw); err != nil {
 		return writtenRecord{}, err
 	}
-	// The line's place in the snapshot locates its record; without a snapshot, its place in the file does. An entry whose line is in neither
-	// stays resident.
-	off := end - int64(len(write.raw)) - 1
+	// The line's place in the snapshot locates its record. An entry whose line is not in a snapshot (the session has none, or the write to it
+	// failed) stays resident: the file is not a place to read an entry back from, as another program can change it.
+	off := int64(-1)
 	if write.snapshot != nil {
-		if off, err = write.snapshot.add(write.raw); err != nil {
-			off = -1
+		if at, err := write.snapshot.add(write.raw); err == nil {
+			off = at
 		}
 	}
 	return writtenRecord{off: off}, nil
