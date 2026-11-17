@@ -38,12 +38,11 @@ import (
 // return). The worker's plugins run in a Node subprocess (docs/plan/chord-plugins-node-evaluator.md), so the worker's own host is a
 // relay without an address: the kit's Go facets load on it and the local types plugins use (WorkerInfo) reach them through
 // plugins.BridgedFacet (`Files` and `FilesFolder` too, `summary` as a copy); the NodeHost serves the worker's address (D460). The relay and the NodeHost have a store each
-// (D462).
+// (D462). Pi's `translationsFacet` (worker.ts:85) is a JavaScript core facet of the NodeHost beside HostData (core_facets.go, D460): the
+// plugins' `Translations` registry is the NodeHost's, and the relay loads no translations facet (nothing on it reads one).
 //
 // Not ported yet (pending, no divergence): `principalAttributes` (T6 host spans: the Go host has no hook, so WorkerOptions has none);
-// `reloadDrainTimeout` (not a Go host option); `chord.translations` is not loaded on a worker: the Node host the plugins run in
-// carries no translations registry (Pi's `translationsFacet` is not in the vendored Pi next) and the Go registry is the worker host's
-// own, which no plugin contributes to.
+// `reloadDrainTimeout` (not a Go host option).
 
 // WorkerOptions is what StartWorker takes: the app's API and kinds as the server's StartServer has them, this process's modules.
 type WorkerOptions struct {
