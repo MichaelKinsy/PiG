@@ -514,7 +514,7 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	}
 	httpOptions := chordhttp.HttpOptions{
 		Listen: listen,
-		Links: &chordhttp.LinksOptions{Path: "/chord", Opened: func(request chordhttp.HttpRequest, _ data.Principal) (func(), error) {
+		Links: &chordhttp.LinksOptions{Path: "/chord", Opened: func(request chordhttp.HttpRequest, _ data.Principal, _ func()) (func(), error) {
 			return signIns.Opened(request), nil
 		}},
 		OnError: func(err chordhttp.HttpError) { a.report(AppErrorHTTP, err) },

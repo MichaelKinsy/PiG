@@ -134,3 +134,63 @@ func TestVariantsAt(t *testing.T) {
 		t.Fatal("an unknown version was found")
 	}
 }
+
+// Ports the "member names" describe of packages/chord/test/contracts/contract.test.ts (Pi 5f89cc0a7df6). Go names the function
+// MemberNamesOf (the type is MemberNameLists: MemberNames is history.ts's function) and takes the variant explicitly:
+// `memberNames(Notes)` is MemberNamesOf(notes, contracts.LocalVariant).
+func TestMemberNames(t *testing.T) {
+	notes := notesContract(t)
+
+	t.Run("lists a remote variant's state members, methods and event members of the current version", func(t *testing.T) {
+		if got := must(contracts.MemberNamesOf(notes, "editor")); !reflect.DeepEqual(got, contracts.MemberNameLists{State: []string{"notes"}, Methods: []string{"add", "clear"}, Events: []string{}}) {
+			t.Fatalf("editor = %+v", got)
+		}
+		if got := must(contracts.MemberNamesOf(notes, "reader")); !reflect.DeepEqual(got, contracts.MemberNameLists{State: []string{"notes"}, Methods: []string{}, Events: []string{}}) {
+			t.Fatalf("reader = %+v", got)
+		}
+		// Declared order, not sorted: "notes" then "count".
+		next := must(evolveRemote(notes, func(e *contracts.RemoteEditor) *contracts.RemoteEditor {
+			return e.AddState("editor", "count", contracts.Int()).RemoveMethod("clear")
+		}))
+		if got := must(contracts.MemberNamesOf(next, "editor")); !reflect.DeepEqual(got, contracts.MemberNameLists{State: []string{"notes", "count"}, Methods: []string{"add"}, Events: []string{}}) {
+			t.Fatalf("evolved editor = %+v", got)
+		}
+	})
+
+	t.Run("lists a local contract's, without its keyed and queries members", func(t *testing.T) {
+		item := func() contracts.Schema { return contracts.Obj(contracts.Prop("id", contracts.Str())) }
+		store := local(t, "names.store", 1, noParams(),
+			contracts.Mem("count", contracts.Int()),
+			contracts.Mem("notes", contracts.Keyed(contracts.Str())),
+			contracts.Mem("rows", contracts.Queries(item(), []contracts.Property{contracts.Prop("one", item())})),
+			contracts.Mem("ticked", contracts.Event(contracts.Int())),
+			contracts.Mem("add", contracts.NewMethod(contracts.Int())))
+		want := contracts.MemberNameLists{State: []string{"count"}, Methods: []string{"add"}, Events: []string{"ticked"}}
+		if got := must(contracts.MemberNamesOf(store, contracts.LocalVariant)); !reflect.DeepEqual(got, want) {
+			t.Fatalf("local = %+v", got)
+		}
+	})
+
+	t.Run("refuses a variant the contract does not have, and a copy of a contract", func(t *testing.T) {
+		_, err := contracts.MemberNamesOf(notes, "owner")
+		wantError(t, err, `notes: no variant "owner"`)
+		_, err = contracts.MemberNamesOf(notes, contracts.LocalVariant)
+		wantError(t, err, `notes: no variant "members"`)
+		copied := *notes
+		_, err = contracts.MemberNamesOf(&copied, "editor")
+		wantError(t, err, "not a declared contract")
+	})
+
+	t.Run("returns lists of its own: a write to one never reaches the contract", func(t *testing.T) {
+		got := must(contracts.MemberNamesOf(notes, "editor"))
+		got.Methods[0] = "changed"
+		got.State = append(got.State[:0], "changed")
+		again := must(contracts.MemberNamesOf(notes, "editor"))
+		if !reflect.DeepEqual(again, contracts.MemberNameLists{State: []string{"notes"}, Methods: []string{"add", "clear"}, Events: []string{}}) {
+			t.Fatalf("after a caller's writes = %+v", again)
+		}
+		if names := contracts.VariantNamesOf(currentVariants(t, notes).Value("editor")); !reflect.DeepEqual(names.Methods, []string{"add", "clear"}) {
+			t.Fatalf("the contract's methods = %v", names.Methods)
+		}
+	})
+}

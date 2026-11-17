@@ -736,13 +736,13 @@ func TestAPublicSocketIsAcceptedWithoutAPrincipalAndRunsAnonymousAnotherIsRefuse
 	server.close()
 }
 
-// Ports packages/chord/src/node/http/http.ts `links.opened` (Pi main c23b9ec1): the hook runs once the link is accepted, with the
-// request and the principal; what it returns runs when the socket closes; a hook that fails is reported `hook_failed` and the link
-// stays.
+// Ports packages/chord/src/node/http/http.ts `links.opened` (Pi main c23b9ec1, `close` added by Pi 5f89cc0a7df6): the hook runs once
+// the link is accepted, with the request, the principal and what terminates that link; what it returns runs when the socket
+// closes; a hook that fails is reported `hook_failed` and the link stays.
 func TestTheLinksEndpointCallsOpenedOnceTheLinkIsAcceptedAndItsResultWhenTheSocketCloses(t *testing.T) {
 	opened := make(chan [2]string, 1)
 	closed := make(chan struct{}, 1)
-	server := serving(t, nil, servedOptions{links: &LinksOptions{Path: "/chord", Opened: func(request HttpRequest, principal data.Principal) (func(), error) {
+	server := serving(t, nil, servedOptions{links: &LinksOptions{Path: "/chord", Opened: func(request HttpRequest, principal data.Principal, _ func()) (func(), error) {
 		opened <- [2]string{request.Path(), kindOf(principal)}
 		return func() { closed <- struct{}{} }, nil
 	}}})
@@ -760,7 +760,7 @@ func TestTheLinksEndpointCallsOpenedOnceTheLinkIsAcceptedAndItsResultWhenTheSock
 }
 
 func TestTheLinksEndpointReportsAFailingOpenedAsHookFailedAndKeepsTheLink(t *testing.T) {
-	server := serving(t, nil, servedOptions{links: &LinksOptions{Path: "/chord", Opened: func(HttpRequest, data.Principal) (func(), error) {
+	server := serving(t, nil, servedOptions{links: &LinksOptions{Path: "/chord", Opened: func(HttpRequest, data.Principal, func()) (func(), error) {
 		return nil, errors.New("opened")
 	}}})
 	socket := mustSocketTo(t, server.port, "/chord", owner)
@@ -770,5 +770,130 @@ func TestTheLinksEndpointReportsAFailingOpenedAsHookFailedAndKeepsTheLink(t *tes
 	errs := server.errors.all()
 	if len(errs) != 1 || errs[0].Kind != ErrHookFailed || errs[0].Hook != HookLinksOpened || errs[0].Error == nil || errs[0].Error.Error() != "opened" {
 		t.Fatalf("errors = %+v", errs)
+	}
+}
+
+// Ports packages/chord/test/node/http/upgrades.test.ts "gives links.opened what terminates that link at once: the others stay
+// open" (Pi 5f89cc0a7df6): the close given to the hook terminates that link only, no close handshake (the peer sees 1006), the
+// hook's own result runs once for it, and a second call after the link is gone does nothing.
+func TestTheLinksEndpointGivesOpenedWhatTerminatesThatLinkAtOnceTheOthersStayOpen(t *testing.T) {
+	var mu sync.Mutex
+	var closes []func()
+	opened := make(chan struct{}, 2)
+	closed := make(chan int, 4)
+	server := serving(t, nil, servedOptions{links: &LinksOptions{Path: "/chord", Opened: func(_ HttpRequest, _ data.Principal, closeLink func()) (func(), error) {
+		mu.Lock()
+		index := len(closes)
+		closes = append(closes, closeLink)
+		mu.Unlock()
+		opened <- struct{}{}
+		return func() { closed <- index }, nil
+	}}})
+	// Each link is dialled once the hook of the one before it ran: closes[0] is the first link's.
+	first := mustSocketTo(t, server.port, "/chord", owner)
+	receive(t, opened, "the first link's hook")
+	second := mustSocketTo(t, server.port, "/chord", owner)
+	receive(t, opened, "the second link's hook")
+	closes[0]()
+	// Terminated, not closed with a handshake: the peer sees an abnormal close.
+	if event := receive(t, first.closed, "the first link's close"); event.Code != 1006 {
+		t.Fatalf("close code = %d, want 1006", event.Code)
+	}
+	if got := receive(t, closed, "the first link's closed"); got != 0 {
+		t.Fatalf("closed ran for link %d, want 0", got)
+	}
+	if second.ReadyState() != WebSocketOpenState {
+		t.Fatalf("the other link is %d, want open", second.ReadyState())
+	}
+	// A second call, after the link is gone, does nothing.
+	closes[0]()
+	second.Close(1000, "")
+	if got := receive(t, closed, "the second link's closed"); got != 1 {
+		t.Fatalf("closed ran for link %d, want 1", got)
+	}
+	select {
+	case got := <-closed:
+		t.Fatalf("closed ran again for link %d", got)
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+// A hook may end its link before it returns (an app that finds the credential already revoked): Node emits a terminated socket's
+// `close` on a later turn, after the hook returned its function, so that function still runs, once. A goroutine's terminate can
+// finish before the hook returned: the function must run then too.
+func TestTheLinksEndpointRunsWhatOpenedReturnedWhenItEndedTheLinkBeforeReturning(t *testing.T) {
+	closed := make(chan struct{}, 2)
+	server := serving(t, nil, servedOptions{links: &LinksOptions{Path: "/chord", Opened: func(_ HttpRequest, _ data.Principal, closeLink func()) (func(), error) {
+		closeLink()
+		// The terminated socket's close event is emitted on another goroutine: let it come first.
+		time.Sleep(20 * time.Millisecond)
+		return func() { closed <- struct{}{} }, nil
+	}}})
+	socket := mustSocketTo(t, server.port, "/chord", owner)
+	if event := receive(t, socket.closed, "the link's close"); event.Code != 1006 {
+		t.Fatalf("close code = %d, want 1006", event.Code)
+	}
+	receive(t, closed, "what the hook returned")
+	select {
+	case <-closed:
+		t.Fatal("what the hook returned ran twice")
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+// close after the peer closed the link does nothing: what the hook returned ran once, for the peer's close.
+func TestTheLinksEndpointsCloseAfterThePeerClosedTheLinkDoesNothingAndClosedRanOnce(t *testing.T) {
+	got := make(chan func(), 1)
+	closed := make(chan struct{}, 4)
+	server := serving(t, nil, servedOptions{links: &LinksOptions{Path: "/chord", Opened: func(_ HttpRequest, _ data.Principal, closeLink func()) (func(), error) {
+		got <- closeLink
+		return func() { closed <- struct{}{} }, nil
+	}}})
+	socket := mustSocketTo(t, server.port, "/chord", owner)
+	closeLink := receive(t, got, "the hook")
+	socket.Close(1000, "")
+	receive(t, socket.closed, "the peer's close")
+	receive(t, closed, "what the hook returned")
+	closeLink()
+	closeLink()
+	select {
+	case <-closed:
+		t.Fatal("what the hook returned ran again")
+	case <-time.After(50 * time.Millisecond):
+	}
+}
+
+// close from other goroutines racing the peer's close: what the hook returned runs once, whoever ends the link first.
+func TestTheLinksEndpointsCloseRacingThePeersCloseRunsClosedOnce(t *testing.T) {
+	const links = 20
+	got := make(chan func(), links)
+	count := make(chan struct{}, 4*links)
+	server := serving(t, nil, servedOptions{links: &LinksOptions{Path: "/chord", Opened: func(_ HttpRequest, _ data.Principal, closeLink func()) (func(), error) {
+		got <- closeLink
+		return func() { count <- struct{}{} }, nil
+	}}})
+	sockets := make([]*clientSocket, links)
+	closes := make([]func(), links)
+	for i := range sockets {
+		sockets[i] = mustSocketTo(t, server.port, "/chord", owner)
+		closes[i] = receive(t, got, "the hook")
+	}
+	var start sync.WaitGroup
+	start.Add(1)
+	var done sync.WaitGroup
+	for i := range sockets {
+		done.Add(2)
+		go func() { defer done.Done(); start.Wait(); closes[i]() }()
+		go func() { defer done.Done(); start.Wait(); sockets[i].Close(1000, "") }()
+	}
+	start.Done()
+	done.Wait()
+	for range links {
+		receive(t, count, "what a hook returned")
+	}
+	select {
+	case <-count:
+		t.Fatal("what a hook returned ran twice")
+	case <-time.After(100 * time.Millisecond):
 	}
 }
