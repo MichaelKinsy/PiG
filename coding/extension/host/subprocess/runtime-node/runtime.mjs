@@ -453,6 +453,10 @@ function contextMessagesEncoding(messages) {
 // process startup time. require() of an ES module is synchronous, as the
 // ctx.sessionManager and ctx.modelRegistry reads that need them are.
 let piSessionModule;
+// The registerTool calls of this process still waiting for the host, and its setActiveTools calls the host has not finished, in every
+// runtime it serves: the host asks each extension's prepareLoadout hooks before it finishes either (Connection.nestedRequest).
+let registerToolWaits = 0;
+let setActiveToolsInFlight = 0;
 function piSession() {
   piSessionModule ??= requireModule("./shims/pi-dist/pi-coding-agent/core/session-manager.js");
   return piSessionModule;
@@ -1555,6 +1559,12 @@ export class Connection {
     }
     // Pi runs an event's handlers inside the extension API call that emitted it (agent-session.ts setSessionName, setThinkingLevel: void runner.emit). The host admits such an event only once a handler starts, while its call lane still applies this process's earlier write, so an event that arrives during a synchronous call, after a write that has not settled, starts here, nested in the wait.
     if (env.type === "request" && env.request?.method === "event" && this.syncWaits > 0 && this.nestedEvent?.(env)) return;
+    // The host asks every prepareLoadout hook while it refreshes the registry on a registerTool, before it answers it. While a
+    // registerTool of any extension this process serves waits, or while it waits on any synchronous call after a setActiveTools the
+    // host has not finished (a call it then makes runs on the same lane, behind it), the hook (synchronous in Pi, agent-session.ts
+    // _applyToolLoadout from setActiveToolsByName and _refreshToolRegistry) starts nested in that wait, or the call and the refresh
+    // wait on each other.
+    if (env.type === "request" && env.request?.method === "tool_prepare_loadout" && (registerToolWaits > 0 || (setActiveToolsInFlight > 0 && isWaiting())) && this.nestedRequest?.(env)) return;
     if (env.type === "request" && ["provider_sync", "provider_object_callback_sync", "autocomplete.sync", "facet_sync", "tool_reaches_tools"].includes(env.request?.method)) {
       this.requestState(env.id, "started");
       try { this.respond(env.id, this.syncHandler(env.request)); }
@@ -2792,7 +2802,11 @@ export class Runtime {
         this.fireAndForget("setThinkingLevel", { level });
       }),
       setActiveTools: action((tools) => {
-        this.fireAndForget("setActiveTools", { tools });
+        const operation = this.fireAndForget("setActiveTools", { tools });
+        if (operation) {
+          setActiveToolsInFlight++;
+          operation.finally(() => { setActiveToolsInFlight--; });
+        }
         this.promptWritten = true;
       }),
       setModel: async (model) => {
@@ -2929,7 +2943,9 @@ export class Runtime {
     }
     this.tools.set(definition.name, definition);
     if (this.conn) {
-      this.callSync("registerTool", this.toolDeclaration(definition));
+      registerToolWaits++;
+      try { this.callSync("registerTool", this.toolDeclaration(definition)); }
+      finally { registerToolWaits--; }
       this.promptWritten = true;
     }
   }
@@ -3337,6 +3353,23 @@ export class Runtime {
     releaseGroup(this.group);
   }
 
+  // Applies the notifications and call results the serve loop has not read yet and that arrived before the first request among them:
+  // the frame its waiter holds, then the queue, in order. That request and what follows it stay for the loop, which starts them once
+  // the wait ends, as Pi's later handlers run after the call that made the process wait.
+  applyUnreadPrefix(conn) {
+    const applied = [];
+    const handedOff = conn.takeHandedOff((frame) => frame.type === "call_result" || frame.type === "notify");
+    if (handedOff !== undefined) applied.push(handedOff);
+    // A request the loop was handed and has not started waits ahead of everything queued.
+    if (conn.handedOff === undefined) {
+      while (conn.queue.length > 0 && (conn.queue[0].type === "call_result" || conn.queue[0].type === "notify")) applied.push(conn.queue.shift());
+    }
+    for (const frame of applied) {
+      if (frame.type === "call_result") conn.resolveCall(frame);
+      else if (frame.notify) this.handleNotify(frame.notify);
+    }
+  }
+
   attachConnection(socket) {
     const conn = new Connection(socket);
     conn.nestedEvent = (env) => {
@@ -3351,6 +3384,17 @@ export class Runtime {
       // The handler's synchronous prefix has run; the rest waits for the synchronous call that emitted the event to return, as Pi's handler suspends inside that call (agent-session.ts sendCustomMessage, setSessionName). The host hears the suspension it waits for before it answers the call (Session.dispatchUnawaitedEvent, the RPC run preparation), unless the handler reported it already.
       const request = this.requestRecords.get(env.id);
       if (request && !request.settled && !request.suspensionReported) conn.requestState(env.id, "blocked", "host_call");
+      return true;
+    };
+    // A request whose handler runs synchronously starts nested in a synchronous call: left to the serve loop it would wait behind
+    // the very call that waits for it. The notifications the host sent before it and the results of earlier calls apply first, as the
+    // serve loop would apply them, up to a request that waits unstarted: that request and the frames behind it stay for the loop, as
+    // Pi's handlers that have not started yet run after the call. The handler runs as its own request, so a host call it makes is
+    // filed under that request and not behind the call being waited on.
+    conn.nestedRequest = (env) => {
+      // They apply once the request is active, so a host call a notification's handler makes is filed under it, not behind the
+      // call being waited on.
+      this.startRequest(env, { nested: true, before: () => this.applyUnreadPrefix(conn) });
       return true;
     };
     conn.applyQueuedStateUpdates = () => {
@@ -3454,7 +3498,7 @@ export class Runtime {
   }
 
   // startRequest starts a host request's handler; it runs synchronously until the handler's first await.
-  startRequest(env) {
+  startRequest(env, { nested = false, before = undefined } = {}) {
     // The delta of an event stream applies where the frame is read, in arrival order (event-stream.mjs).
     if (env.request?.stream) (this.eventReplicas ??= new EventReplicas()).apply(env.request);
     this.conn.requestState(env.id, "started");
@@ -3480,7 +3524,7 @@ export class Runtime {
     // own when it resolves.
     const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
     const quitTail = drainFor(this.group).active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
-    const request = { id: env.id, toolCall: env.request?.method === "tool_call", toolCallId: env.request?.method === "tool_call" ? env.request.tool_call_id : undefined, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", authorHeld: AUTHOR_HELD_REQUESTS.has(env.request?.method), event: env.request?.method === "event" ? env.request.event : undefined };
+    const request = { id: env.id, nested, toolCall: env.request?.method === "tool_call", toolCallId: env.request?.method === "tool_call" ? env.request.tool_call_id : undefined, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", authorHeld: AUTHOR_HELD_REQUESTS.has(env.request?.method), event: env.request?.method === "event" ? env.request.event : undefined };
     this.requestRecords.set(env.id, request);
     this.conn?.callEpochs?.set(env.id, 0);
     if (quitting) enterQuitDrain(drainFor(this.group));
@@ -3488,7 +3532,9 @@ export class Runtime {
     if (PROMPT_END_MODES.has(this.ready?.mode) && this.runSignal === undefined) armTurnWindow(request);
     const task = this.requestContext.run(request, outsideTimer(async () => {
       try {
-        if (this.loadedPromise && env.request?.method !== "events.dispatch") await this.loadedPromise;
+        before?.();
+        // A request nested in a synchronous wait does not wait for the onLoaded handlers: it may be asked from inside one.
+        if (this.loadedPromise && env.request?.method !== "events.dispatch" && !nested) await this.loadedPromise;
         await this.handleRequest(env.id, env.request || {}, requestCtx);
       } finally {
         if (env.request?.method === "event") this.loadHighlightLanguagesAfterStartup(env.request.event);
@@ -5878,7 +5924,9 @@ export class Runtime {
     if (owner?.id === id) {
       owner.cancelled ||= !owner.settled && cancelsHostCalls(owner.controller);
       owner.settled = true;
-      if (owner.pendingHostCalls.size > 0) await Promise.all([...owner.pendingHostCalls]);
+      // A request nested in a synchronous wait answers at once: its fire-and-forget calls went out before the answer, and their
+      // results cannot settle until the wait it is nested in ends.
+      if (owner.pendingHostCalls.size > 0 && !owner.nested) await Promise.all([...owner.pendingHostCalls]);
       owner.responded = true;
     }
     this.conn.respond(id, result, error);
@@ -6167,7 +6215,7 @@ export class Runtime {
     };
   }
 
-  // runLoadedHandlers runs the pi.onLoaded handlers in order, each to completion. Requests wait for them (startRequest), the loop does not, so a handler's host calls are answered.
+  // runLoadedHandlers runs the pi.onLoaded handlers in order, each to completion. Requests wait for them (startRequest), except a tool_prepare_loadout started nested in a synchronous wait (Connection.nestedRequest), which may run before them; the loop does not, so a handler's host calls are answered.
   async runLoadedHandlers() {
     const handlers = this.loadedHandlers;
     this.loadedHandlers = [];
