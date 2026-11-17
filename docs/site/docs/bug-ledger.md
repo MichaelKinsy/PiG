@@ -146,7 +146,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-105a93f](#bf-105a93f) | An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-10818f5](#bf-10818f5) | Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now… | PiG's own defect | All platforms | Unreleased |
 | [BF-108cb7d](#bf-108cb7d) | An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its… | PiG's own defect | Windows | 0.7.0 |
-| [BF-10c7dc1](#bf-10c7dc1) | fix(extension): an agent_end handler's in-place edit of the run's messages is kept | PiG's own defect | All platforms | Unreleased |
 | [BF-1136763](#bf-1136763) | A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the… | PiG's own defect | All platforms | Unreleased |
 | [BF-1136763-2](#bf-1136763-2) | A lone UTF-16 surrogate in the text of an MCP tool result is kept in the session like the result of any other… | PiG's own defect | All platforms | Unreleased |
 | [BF-1136763-3](#bf-1136763-3) | The record of the calls a tool made through `executeTool` keeps a lone UTF-16 surrogate of a nested tool's… | PiG's own defect | All platforms | Unreleased |
@@ -201,6 +200,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-184ed40](#bf-184ed40) | fix(hljs): a language's reach does not depend on the first text it highlights; red cases for resumeLimit | PiG's own defect | All platforms | Unreleased |
 | [BF-1896331](#bf-1896331) | Changing the thinking level in interactive mode (cycle key, `/thinking`, the settings selector) goes through… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-18daf7f](#bf-18daf7f) | The Go SDK's typed branch entry keeps the text, thinking and tool calls of an assistant message whose tool… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-18e1649](#bf-18e1649) | A `message_start`, `turn_end` or `agent_end` handler that edits the event's message in place and returns… | PiG's own defect | All platforms | Unreleased |
 | [BF-18e3b43](#bf-18e3b43) | After an answer, interactive mode no longer draws three more frames that repaint nothing and only move and… | PiG's own defect | All platforms | Unreleased |
 | [BF-18e7372](#bf-18e7372) | Chord: a table read from a handler's goroutine (`handle.Get`, `Page`, `Count`) while its object ended was a… | PiG's own defect | All platforms | Unreleased |
 | [BF-18f7d39](#bf-18f7d39) | Codemode `@options` errors report V8's JSON error text, tool and schema declarations keep unpaired… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
@@ -1024,7 +1024,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6ee6eae](#bf-6ee6eae) | A Session delivers each event to its listeners the way Pi's `AgentSession` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f165a2](#bf-6f165a2) | After Ctrl+Z, `bg` and `fg`, the session returns to the terminal instead of ending with `Error: interrupted… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-6f26a84](#bf-6f26a84) | Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-6f3ca3d](#bf-6f3ca3d) | fix(extension): a turn_end handler's in-place edit of the turn's messages is kept | PiG's own defect | All platforms | Unreleased |
 | [BF-6f4a82f](#bf-6f4a82f) | Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f553ca](#bf-6f553ca) | `pig update --models` warns about a provider whose OAuth login can no longer be refreshed (`Warning: skipped… | PiG's own defect | All platforms | Unreleased |
 | [BF-6f74b70](#bf-6f74b70) | The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a… | PiG's own defect | All platforms | Unreleased |
@@ -4063,19 +4062,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitDoesNotDropWhatTheProcessWrote`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsARequestInFlight`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsAnIdleOrLoadingRead`, `coding/extension/host/subprocess/peer_exit_test.go::TestIsolatedExtensionExitIsReportedWhenTheSocketCloseIsNotSeen`
 - **Release note:** An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its socket: on Windows a socket close can miss a pending read, and the host now ends the read when the extension's process exits, reporting the same transport error as a closed socket.
 
-### BF-10c7dc1
-
-**fix(extension): an agent_end handler's in-place edit of the run's messages is kept**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(extension): an agent_end handler's in-place edit of the run's messages is kept
-- **Root cause:** An agent_end handler edits a member of event.messages in place; Pi hands every handler the one event, whose messages are the objects the session holds, so the edit is what the next handler and the saved run hold. Every SDK now sends the messages it left, when they differ from the ones it received, as _pigEventEdits beside _pigEventResult (the pair message_end and turn_end use), and the host validates them (position in range and once, same role) before it applies any. The Node runtime shares one object per message number with the other extensions of the process, as it does for turn_end.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `10c7dc1da2` (2026-11-16)
-- **Tests:** `coding/extension/host/subprocess/event_edits_test.go::TestAgentEndReplyEditsTheMessageAtItsIndex`, `coding/extension/host/subprocess/event_edits_test.go::TestAgentEndReplyRefusesAMisfitAndAppliesNone`
-
 ### BF-1136763
 
 **A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the…**
@@ -4813,6 +4799,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `18daf7fed2` (2026-10-11)
 - **Tests:** `extensions/sdk/branch_entry_tool_call_test.go::TestBranchEntryDecodeMatchesTheRustSDK`, `extensions/sdk/branch_entry_tool_call_test.go::TestBranchEntryKeepsAnAssistantMessageWithAPiToolCall`, `test/extension-conformance/conformance_test.go::TestConformance_TransportsMatch`, `test/extension-conformance/typed_branch_entries_test.go::TestConformance_TypedBranchEntriesAgreeBetweenGoAndRust`
 - **Release note:** The Go SDK's typed branch entry keeps the text, thinking and tool calls of an assistant message whose tool calls carry object arguments (Pi's `ToolCall`), and the Rust SDK's `BranchEntry` decodes Pi's nested session entries (role, text, thinking, tool calls, provider, model and usage were all empty before) and gains `id`, `first_kept_entry_id` and `UsageInfo::total_tokens`.
+
+### BF-18e1649
+
+**A `message_start`, `turn_end` or `agent_end` handler that edits the event's message in place and returns…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `message_start`, `turn_end` or `agent_end` handler that edits the event's message in place and returns nothing now changes the message the next handlers, the saved session entry and the next provider request hold, as it does in Pi, in every extension SDK: the `message` of a `turn_end` event and a member of its `toolResults`, a message of an `agent_end` event's `messages`, and a user or system message at `message_start`.
+- **Root cause:** message_end moves onto {_pigEventEdits:[{at,message}], _pigEventResult}, the pair message_start, turn_end and agent_end will carry. _pigMessageEndMessage, _pigMessageEndResult and MessageEndResponsePayload are removed; every SDK sends the new pair and the host reads it.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `10c7dc1da2` (2026-11-16), `18e1649ef2` (2026-11-16), `6f3ca3d155` (2026-11-16), `75f10dda50` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/event_edits_test.go::TestAgentEndReplyEditsTheMessageAtItsIndex`, `coding/extension/host/subprocess/event_edits_test.go::TestAgentEndReplyRefusesAMisfitAndAppliesNone`, `coding/extension/host/subprocess/event_edits_test.go::TestMessageStartReplyEditsAUserMessageAndTheEventsAssistantMessage`, `coding/extension/host/subprocess/reply_unwrap_test.go::TestEventReplyRefusesEditsThatDoNotFitTheEventAndAppliesNone`, `coding/extension/host/subprocess/reply_unwrap_test.go::TestMessageEndReplyWithAMessageEditsTheEventsMessage`, `coding/extension/host/subprocess/reply_unwrap_test.go::TestNoEditReplyIsUnwrappedWithoutAllocation`, `coding/extension/host/subprocess/reply_unwrap_test.go::TestReplyUnwrapAgreesWithTheStrictDecode`, `coding/extension/host/subprocess/reply_unwrap_test.go::TestResultMemberNamesAreTheWrappersJSONTags` and 5 more in docs/bug-ledger.json
+- **Release note:** A `message_start`, `turn_end` or `agent_end` handler that edits the event's message in place and returns nothing now changes the message the next handlers, the saved session entry and the next provider request hold, as it does in Pi, in every extension SDK: the `message` of a `turn_end` event and a member of its `toolResults`, a message of an `agent_end` event's `messages`, and a user or system message at `message_start`. An edit of the assistant message at `message_start` reaches the later handlers of that event only, as in Pi, where the event holds a copy of the partial. Until now the edit stayed in the handler's own copy of the event and was lost, for every out-of-process handler of these events, in every extension SDK. Each SDK sends back the messages as the handler left them when they differ from the ones it received, and the host refuses a malformed edit before it applies any. The loss was present in every release since v0.3.0.
 
 ### BF-18e3b43
 
@@ -16214,19 +16214,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6f26a84f7f` (2026-10-14, #10818)
 - **Tests:** `ai/openai_tool_choice_formats_upstream_test.go::TestOpenAICompletionsToolChoiceReplayAndFormatsUpstream`, `ai/xiaomi_models_upstream_test.go::TestXiaomiReasoningModelsAreAnOffOnToggleUpstream`
 - **Release note:** Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and `high` thinking levels, fixing the 400 at `minimal`. Carried forward from Pi 6374c2ba and 381a2d8e (earendil-works/pi#10818), past the 1.2.0+3daa2028 pin.
-
-### BF-6f3ca3d
-
-**fix(extension): a turn_end handler's in-place edit of the turn's messages is kept**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(extension): a turn_end handler's in-place edit of the turn's messages is kept
-- **Root cause:** A turn_end handler edits event.message or a member of event.toolResults in place; Pi hands every handler of the boundary the same message objects, so the edit is what the next handler, the saved entry and the next provider request hold. Every SDK now sends the messages it left, when they differ from the ones it received, as _pigEventEdits beside _pigBoundaryEntries and _pigBoundaryResult, and the host validates them (position in range and once, same role, a member of the pair and of each edit it knows) before it applies any. The boundary object's decode ignores unknown members as before; a malformed _pigEventEdits is a refused reply.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `6f3ca3d155` (2026-11-16)
-- **Tests:** `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyEditsReachTheTurnsMessages`, `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyIgnoresAMemberItDoesNotName`, `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyRefusesMalformedEditsAndAppliesNone`
 
 ### BF-6f4a82f
 
