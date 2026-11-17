@@ -2414,7 +2414,8 @@ Locked by: `TestSamplingFollowsTheRequest` (`internal/memprofrate`: child proces
 Remove when: the Go runtime stops allocating the profile table and touching its pages for a program that never reads the profile, or a measurement shows the sampling costs no resident memory.
 
 Approval: owner, 2026-11-12T20:58Z, through the maintainer ("D627 APPROVED"), after being told that the runtime samples heap allocations in every normal run, that nothing in PiG reads the samples unless a profile is asked for, that D627 turns the sampling off by default, and that a user who wants a heap profile must ask for it.
-SCRUTINIZED:approved
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:7f7a5c95060b66c0
 
 ## D653 A fused Piglet member's CLI hook owns the command line, a print run's output and exit status, and the default retry config
 

@@ -60,7 +60,6 @@ D619 new added on the release line by 1488c99 (generated: docs bundle and interf
 D621 new added on the release line by 92630fc (gcpolicy: an interactive run collects at GOGC 150 until 8 MiB are live), first merge f492051e0 Merge release/set-152-final (d591389546cd) into fix/next-go-1.27.4
 D624 new added on the release line by 0502bf8 (docs: draft additive record D624 (PIG_TUI_SCREEN_WRITER=1), scrutiny p), first merge 13ebc69db merge: the screen writer (perf/screen-parity-b 2b55d338f1d2) under adaptive fram
 D626 new added on the release line by e707cbe (generated: node runtime pack, SDK bundles, divergence ledger, interfac), first merge ddde76f2a Merge release/set-pimain abba7d7c3030 into fix/divergences-page-table
-D627 new added on the release line by 5c0a152 (perf: turn heap-profile sampling off unless the process asks for a hea), first merge b6a59afb9 Merge branch 'release/set-pimain' into perf/mem-profile-rate-approved
 D630 new added on the release line by e2eaee4 (precheck: the divergence ledger with D630, the interface mapping, go f), first merge 45ae067ca Merge fix/rpc-reload-prompt-xd670 (e2eaee47a06c) into batch/line-2
 D631 new added on the release line by e3a198a (generated: bug ledger, divergences page, docs pages and SDK bundles fo), first merge a7fe00e55 Merge fix/exec-order-only (22ece7f3650e) into fix/exec-close-then-signal
 D633 new added on the release line by 6cab7f0 (List D632 and D633 in the docs bundle and regenerate the generated fil), first merge 77aeb9437 Merge ledger/async-coding-agent-xd670 (c0ad33a3f29d) into batch/line-1
