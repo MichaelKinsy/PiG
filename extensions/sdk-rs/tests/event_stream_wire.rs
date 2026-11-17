@@ -149,7 +149,9 @@ fn a_message_update_handlers_edit_of_the_partial_stays_in_its_copy_and_is_not_se
     let mut ext = Extension::new("rs-message-update-edit");
     let _keep = ext.on_event("message_update", |_, data| {
         let block = &mut data["message"]["content"][0];
-        SEEN.lock().unwrap().push(block["text"].as_str().unwrap_or("").to_string());
+        SEEN.lock()
+            .unwrap()
+            .push(block["text"].as_str().unwrap_or("").to_string());
         block["text"] = json!("other-event-edit");
         None
     });
@@ -195,7 +197,13 @@ fn a_message_update_handlers_edit_of_the_partial_stays_in_its_copy_and_is_not_se
     assert_eq!(*SEEN.lock().unwrap(), ["ab", "abcd"]);
     for frame in [&first, &second] {
         assert!(frame["response"]["result"].is_null(), "frame: {frame}");
-        assert!(!frame.to_string().contains("other-event-edit"), "the reply carries the edit: {frame}");
-        assert!(!frame.to_string().contains("_pigEventEdits"), "frame: {frame}");
+        assert!(
+            !frame.to_string().contains("other-event-edit"),
+            "the reply carries the edit: {frame}"
+        );
+        assert!(
+            !frame.to_string().contains("_pigEventEdits"),
+            "frame: {frame}"
+        );
     }
 }

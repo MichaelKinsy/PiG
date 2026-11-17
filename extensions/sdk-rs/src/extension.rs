@@ -3782,7 +3782,9 @@ impl Extension {
                 {
                     let edits = member_edits(&data, members);
                     if !edits.is_empty() {
-                        value = Some(serde_json::json!({ "_pigEventEdits": edits, "_pigEventResult": value }));
+                        value = Some(
+                            serde_json::json!({ "_pigEventEdits": edits, "_pigEventResult": value }),
+                        );
                     }
                 }
                 let _ = conn.respond(id, value, error);
@@ -4103,7 +4105,7 @@ fn event_messages<'a>(event: Option<&str>, data: &'a Value) -> Vec<Option<&'a Va
 /// The members of an event as the handler receives them, when the event is one whose members the reply carries: each name, and the value of a scalar member. An object or a list member
 /// has no identity a Rust handler could keep or change (it owns the value), so an edit inside one is an edit of the message it holds, which the message entries carry, and only its
 /// presence is compared: a member the handler adds or deletes is found, one it replaces with another object or list is not.
-fn member_snapshot(event: Option<&str>, data: &Value) -> Option<Vec<(String, Option<Value>)>> {
+fn member_snapshot(event: Option<&str>, data: &Value) -> Option<Vec<(String, Option<u64>)>> {
     if !matches!(
         event,
         Some("message_start" | "message_update" | "turn_start" | "agent_start" | "agent_end")
@@ -4113,19 +4115,28 @@ fn member_snapshot(event: Option<&str>, data: &Value) -> Option<Vec<(String, Opt
     Some(
         data.as_object()?
             .iter()
-            .map(|(name, value)| {
-                (
-                    name.clone(),
-                    (!value.is_object() && !value.is_array()).then(|| value.clone()),
-                )
-            })
+            .map(|(name, value)| (name.clone(), scalar_fingerprint(value)))
             .collect(),
     )
 }
 
+/// A hash of a scalar member's value (none for an object or a list), so a snapshot copies no payload: a delta frame's text member is the size of the whole message so far.
+fn scalar_fingerprint(value: &Value) -> Option<u64> {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    match value {
+        Value::Object(_) | Value::Array(_) => return None,
+        Value::Null => 0u8.hash(&mut hasher),
+        Value::Bool(flag) => (1u8, *flag).hash(&mut hasher),
+        Value::Number(number) => (2u8, number.to_string()).hash(&mut hasher),
+        Value::String(text) => (3u8, text).hash(&mut hasher),
+    }
+    Some(hasher.finish())
+}
+
 /// The members the handler left different from the ones it received, as the second form of the reply's `_pigEventEdits` entries: `{member, value}` for one it added or whose scalar
 /// value changed, `{member, deleted: true}` for one it deleted.
-fn member_edits(data: &Value, before: &[(String, Option<Value>)]) -> Vec<Value> {
+fn member_edits(data: &Value, before: &[(String, Option<u64>)]) -> Vec<Value> {
     let Some(object) = data.as_object() else {
         return Vec::new();
     };
@@ -4133,7 +4144,7 @@ fn member_edits(data: &Value, before: &[(String, Option<Value>)]) -> Vec<Value> 
     for (name, was) in before {
         match object.get(name) {
             None => edits.push(serde_json::json!({ "member": name, "deleted": true })),
-            Some(now) if was.as_ref().is_some_and(|was| was != now) => {
+            Some(now) if was.is_some_and(|was| scalar_fingerprint(now) != Some(was)) => {
                 edits.push(serde_json::json!({ "member": name, "value": now }));
             }
             Some(_) => {}

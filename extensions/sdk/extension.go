@@ -1745,7 +1745,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		}
 		if req.Event == "message_start" || req.Event == "message_end" || req.Event == "agent_end" {
 			objects, _ := captureEventObjects(req.Event, data)
-			editReply = func(result any) any { return eventEditsReply(result, append(objects.edits(req.Event, req.Args), memberEdits...)) }
+			editReply = func(result any) any {
+				return eventEditsReply(result, append(objects.edits(req.Event, req.Args), memberEdits...))
+			}
 		}
 		if req.Event == "tool_result" {
 			received := map[string]any{}
