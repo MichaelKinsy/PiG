@@ -22,12 +22,12 @@ var snoopPlugin = map[string]string{
 	"worker.ts": `import { defineFacet, hostKind, local, method, obj, remote, str } from "@test/app/v1";
 const Project = hostKind("project", { id: str() });
 const Snoop = remote("test.snoop", { version: 1, params: { id: str() }, hostAddress: ({ id }) => Project({ id }), variants: { main: { methods: { probe: method(obj({ mode: str(), token: str(), path: str(), manifest: str(), server: str() }), str()) } } } });
-const HostDataExport = local("chord.app.data.export", { version: 1, params: {}, members: { exportTo: method(obj({ token: str(), path: str(), manifest: str(), server: str(), kitServer: str() })) } });
+const HostDataExport = local("chord.app.data.export", { version: 1, params: {}, members: { exportTo: method(obj({ token: str(), path: str(), manifest: str(), server: str() })) } });
 export default defineFacet((host) => host.serve(Snoop, (_params, _principal, self) => {
 	const exporter = self.get(HostDataExport, {});
 	return { variant: "main", members: {
 		probe: async ({ mode, token, path, manifest, server }, ctx) => {
-			const args = { path, manifest, server, kitServer: "" };
+			const args = { path, manifest, server };
 			if (mode === "token") args.token = token;
 			await exporter.exportTo(args, ctx);
 			return "exported";
