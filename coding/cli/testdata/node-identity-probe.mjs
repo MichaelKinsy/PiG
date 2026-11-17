@@ -3,6 +3,7 @@
 //   session: the vendored SDK's createAgentSession + session.prompt (Pi's
 //            core/sdk.ts wiring, including getClientIdentity);
 //   stream:  pi-ai's completeSimple on the compat entry point.
+// The optional fourth argument is the model's API (openai-completions by default).
 import { createAgentSession, ModelRuntime, SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
 import { completeSimple } from "@earendil-works/pi-ai/compat";
 import { mkdtempSync } from "node:fs";
@@ -13,8 +14,8 @@ export default function (pi) {
   pi.registerCommand("probe", {
     description: "make one model call",
     handler: async (args) => {
-      const [mode, provider, baseUrl] = args.split(" ");
-      const model = { provider, id: "identity-model", name: "Identity", api: "openai-completions", baseUrl, reasoning: false, input: ["text"], contextWindow: 32768, maxTokens: 1024, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } };
+      const [mode, provider, baseUrl, api = "openai-completions"] = args.split(" ");
+      const model = { provider, id: "identity-model", name: "Identity", api, baseUrl, reasoning: false, input: ["text"], contextWindow: 32768, maxTokens: 1024, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } };
       if (mode === "stream") {
         const result = await completeSimple(model, { messages: [{ role: "user", content: "hello", timestamp: Date.now() }] }, { apiKey: "probe-key", sessionId: "stream-session" });
         if (result.stopReason !== "stop") throw new Error(`stream result = ${JSON.stringify(result)}`);
