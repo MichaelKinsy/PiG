@@ -3566,6 +3566,8 @@ impl Extension {
                 .flatten();
                 // The messages an event's handler is handed that it may edit in place, as the host sent them: the reply carries the ones the handler left different.
                 let event_messages_before = event_message_texts(req.event.as_deref(), &data);
+                // The members of a message_start, message_update, turn_start, agent_start or agent_end event as the handler receives them: the reply names the ones it assigned, reassigned or deleted.
+                let event_members_before = member_snapshot(req.event.as_deref(), &data);
                 // The members of a tool_result event as the host sent them, with whether each is an object or a list: the reply names the ones the handler left different.
                 let tool_result_before = (req.event.as_deref() == Some("tool_result")).then(|| {
                     [
@@ -3715,7 +3717,10 @@ impl Extension {
                 ) && let Some(before) = &event_messages_before
                 {
                     let mut reply = serde_json::json!({ "_pigEventResult": value });
-                    let edits = event_message_edits(req.event.as_deref(), &data, before);
+                    let mut edits = event_message_edits(req.event.as_deref(), &data, before);
+                    if let Some(members) = &event_members_before {
+                        edits.extend(member_edits(&data, members));
+                    }
                     if !edits.is_empty() {
                         reply["_pigEventEdits"] = Value::Array(edits);
                     }
@@ -3768,6 +3773,17 @@ impl Extension {
                         }
                     }
                     value = Some(reply);
+                }
+                // message_update, turn_start and agent_start (message_start and agent_end replied above): a member a handler assigns, reassigns or deletes is what the later handlers of the dispatch see (runner.ts emit), also from a handler that failed.
+                if matches!(
+                    req.event.as_deref(),
+                    Some("message_update" | "turn_start" | "agent_start")
+                ) && let Some(members) = &event_members_before
+                {
+                    let edits = member_edits(&data, members);
+                    if !edits.is_empty() {
+                        value = Some(serde_json::json!({ "_pigEventEdits": edits, "_pigEventResult": value }));
+                    }
                 }
                 let _ = conn.respond(id, value, error);
             }
@@ -4082,6 +4098,53 @@ fn event_messages<'a>(event: Option<&str>, data: &'a Value) -> Vec<Option<&'a Va
             .collect(),
         _ => Vec::new(),
     }
+}
+
+/// The members of an event as the handler receives them, when the event is one whose members the reply carries: each name, and the value of a scalar member. An object or a list member
+/// has no identity a Rust handler could keep or change (it owns the value), so an edit inside one is an edit of the message it holds, which the message entries carry, and only its
+/// presence is compared: a member the handler adds or deletes is found, one it replaces with another object or list is not.
+fn member_snapshot(event: Option<&str>, data: &Value) -> Option<Vec<(String, Option<Value>)>> {
+    if !matches!(
+        event,
+        Some("message_start" | "message_update" | "turn_start" | "agent_start" | "agent_end")
+    ) {
+        return None;
+    }
+    Some(
+        data.as_object()?
+            .iter()
+            .map(|(name, value)| {
+                (
+                    name.clone(),
+                    (!value.is_object() && !value.is_array()).then(|| value.clone()),
+                )
+            })
+            .collect(),
+    )
+}
+
+/// The members the handler left different from the ones it received, as the second form of the reply's `_pigEventEdits` entries: `{member, value}` for one it added or whose scalar
+/// value changed, `{member, deleted: true}` for one it deleted.
+fn member_edits(data: &Value, before: &[(String, Option<Value>)]) -> Vec<Value> {
+    let Some(object) = data.as_object() else {
+        return Vec::new();
+    };
+    let mut edits = Vec::new();
+    for (name, was) in before {
+        match object.get(name) {
+            None => edits.push(serde_json::json!({ "member": name, "deleted": true })),
+            Some(now) if was.as_ref().is_some_and(|was| was != now) => {
+                edits.push(serde_json::json!({ "member": name, "value": now }));
+            }
+            Some(_) => {}
+        }
+    }
+    for (name, now) in object {
+        if !before.iter().any(|(was, _)| was == name) {
+            edits.push(serde_json::json!({ "member": name, "value": now }));
+        }
+    }
+    edits
 }
 
 /// The JSON text of each message of the event as the handler receives it, or `None` for an event with no messages. A value that is no object has no text: it is no edit.
