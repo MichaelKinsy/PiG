@@ -236,7 +236,7 @@ func TestScreenWriterShowsTheRenderersScreens(t *testing.T) {
 }
 
 // screenWriterNoRules are what a synchronized update of Pi's doRender can hold that the writer's frame grammar has no rule for.
-var screenWriterNoRules = []string{"a screen narrower than two columns", "an image", "a line feed inside a line", "a control sequence cut short", "a frame the writer leaves as it came for its cursor rule (screenWriterKeptFrames)"}
+var screenWriterNoRules = []string{"a screen narrower than two columns", "an image", "a line feed inside a line", "a control sequence cut short", "a row written under a pen the writer cannot make (screenWriterKeptFrames)"}
 
 type screenWriterKept struct {
 	name   string
@@ -246,10 +246,12 @@ type screenWriterKept struct {
 
 // screenWriterKeptFrames are the frames of Pi's fixture, by scenario, step and the hash of their bytes, that the writer reads and then sends as it
 // came although their bytes hold nothing screenWriterNoRule names: no more and no fewer. The recording made with Pi b7bb7ca905b8 added the first:
-// step 4 of scenario 485 on an 80 column screen rewrites rows 5, 12 and 13 and ends with the last of them and no cursor address, with a hyperlink
-// left open in it and the pen open in the rows before. [INFERENCE: the branch that sends it as it came is the tail of Writer.frame, where a row
-// that no cursor address follows leaves the terminal's cursor where the line ended while the writer's own cursor is known; the frame is written as
-// the renderer wrote it, so the screens match (0 differences) and the bytes the terminal gets are Pi's.]
+// step 4 of scenario 485 (a 100 by 30 screen) rewrites rows 5, 12 and 13. The line of row 5 ends under a foreground colour it never resets, so row
+// 12 is erased and written under that pen, and the line of row 12 ends bold: Writer.row would have to make the terminal's pen the frame's, and the
+// writer makes no SGR sequence but a reset (setPen), so it declines the row and the frame is written as the renderer wrote it: the screens match
+// (0 differences) and the bytes the terminal gets are Pi's. The cursor address that the last row lacks is not the reason: internal/screenwriter's
+// TestKeptFrameIsDeclinedForTheOpenPenOfItsRows replays the frame and shows that an address after the last row changes nothing and that the same
+// rows with a reset ending each line are read.
 var screenWriterKeptFrames = []screenWriterKept{
 	{"oracle-485 B", 4, "6b0ddf18a28c01b852865e3f7917fba5dba9a8f30a7948e0370dcd268710a03d"},
 }
