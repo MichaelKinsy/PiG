@@ -1,0 +1,61 @@
+# Behavior family: extensions-runtime
+# Surface: a pi.events handler that fails after a failed /reload left its runner stale reports nothing.
+#
+# Upstream (Pi 18e99051be24, #12233): runtime.reportError is bound in the Runner constructor and calls emitError() only `if (!this.staleMessage)`
+# (runner.ts). session.reload() invalidates the old runner right after session_shutdown (agent-session.ts:3825-3826) and a reload that throws keeps
+# the session on that stale runner (scenario 99-failed-reload-then-prompts), so the late failure of a handler that was running when the reload began is
+# dropped: the chat shows the reload's own failure and no `events:demo:late` error, and the session goes on. This is the measured oracle row for the
+# decision to drop the bus's errors in that state, not only after a session replacement.
+#
+# testdata/ext/events-late-failure-failed-reload.mjs emits demo:late (its handler throws 1.5 s later) and then reloads with a settings entry the
+# resource loader rejects; the step waits for the failure to pass, and a tool call shows the session is alive.
+
+name = "109-events-late-failure-after-failed-reload"
+description = "A pi.events handler that fails after a failed reload left the runner stale reports nothing"
+covers = [
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/events-late-failure-failed-reload.mjs"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/events-late-failure-failed-reload.mjs",
+]
+
+[tmux]
+width = 100
+# The pane is shorter than the transcript, so both screens scroll and show their last 30 rows: the startup banner differs in height between the binaries (the pane's blank padding followed it), and scrolled off it leaves no padding to compare.
+height = 30
+ready_pattern_pig = "[Extensions]"
+ready_pattern_pi = "[Extensions]"
+ready_timeout_seconds = 30
+capture_start = "Reload failed: "
+
+[[tmux.steps]]
+keys = ["/late-then-reload-fails", "Enter"]
+settle_seconds = 4
+wait_contains = ["Reload failed"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Run: ext tool late_probe {}", "Enter"]
+settle_seconds = 2
+wait_contains = ["ext-tool-done: late probe done"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["Reload failed", "ext-tool-done: late probe done"]
+both_not_contain = ["late handler failed", "events:demo:late", "Event handler error", "connection closed", "panic:", "goroutine "]
+output_equal = true
+runs = 3

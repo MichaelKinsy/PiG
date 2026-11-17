@@ -167,7 +167,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/extensions/loader.js",
-      "sha256": "f27b750c77d36712a791d3e732f59ffca216ce5efef6596c306e36e2f3471ce1"
+      "sha256": "c0d087512cb70af34e0e763511e72362b5b14dd52ab8737788d4ccd9c98fdca1"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/extensions/pi-ai-extension-view.js",
@@ -175,7 +175,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/extensions/runner.js",
-      "sha256": "94fc7ec406322ab898d8e86a1ac237fb516b4b7e53a4202388b00bff1ea20d98"
+      "sha256": "e81fd1b43a7f3d8521cf5fcec2eacb954e136bddeca09a296ec8886f667e0a35"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/extensions/types.js",

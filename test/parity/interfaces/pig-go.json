@@ -111618,6 +111618,17 @@
       "shapeHash": "sha256:7ca847f29a212f4a450b221f654f7d1aad097cb41f44591c852dd3c107e12667"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.Reactivate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ExtensionRuntime.Reactivate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.RegisterMcpServer",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "ExtensionRuntime.RegisterMcpServer",
@@ -111695,6 +111706,17 @@
       "shapeHash": "sha256:83e74a39bad930c6f93f5c196330229adaefb083b9c0c447986f2f2200df1ce8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.ReportRuntimeError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ExtensionRuntime.ReportRuntimeError",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(err *ExtensionError)"
+      },
+      "shapeHash": "sha256:8affd84e8c59104096ab029398c49057b20b88f1d0fee7d97ef827cc2593a2f4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.SetContextFactory",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "ExtensionRuntime.SetContextFactory",
@@ -111748,6 +111770,17 @@
         "type": "func(listener func())"
       },
       "shapeHash": "sha256:a4b6f4628cb3b4a46b2829a13390b2658c2ee6cfbe63d555fdcefe53647441b2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.SetRuntimeErrorReporter",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ExtensionRuntime.SetRuntimeErrorReporter",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(report func(*ExtensionError))"
+      },
+      "shapeHash": "sha256:fcb59dcfc1fc70ba67789fd0716ea444f1578cfe5bb7f77cd075c86fea6d4a69"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.TrackEventBusSubscription",
@@ -123927,6 +123960,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.reportEventsError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
+      "name": "api.reportEventsError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(channel string, recovered any)"
+      },
+      "shapeHash": "sha256:4832cce7670a47613d07bf88c99650766bfc4b77bccc57d2091c3824f9f91608"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.retire",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
       "name": "api.retire",
@@ -125357,6 +125401,17 @@
       "shapeHash": "sha256:e7dae146e9d1693f88eb2c07ce5ba10c048b7ca6c99a50f3ebaa6f8c39fafc83"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.InvalidateForReload",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.InvalidateForReload",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(message string)"
+      },
+      "shapeHash": "sha256:e7dae146e9d1693f88eb2c07ce5ba10c048b7ca6c99a50f3ebaa6f8c39fafc83"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.InvalidateKeepingRuntime",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
       "name": "Runner.InvalidateKeepingRuntime",
@@ -125577,6 +125632,17 @@
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.assertEmitOpen",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.assertEmitOpen",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.beginCommand",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
       "name": "Runner.beginCommand",
@@ -125731,6 +125797,17 @@
       "shapeHash": "sha256:c42f2733a08fa56978db3366df985a8179fb613a9e31728ad415c4f7e8288e11"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.reportRuntimeError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.reportRuntimeError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err *github.com/MichaelKinsy/PiG/coding/extension.ExtensionError)"
+      },
+      "shapeHash": "sha256:6277fca04fa201b26b6bbfb29bea21bae0a6c8c9490a0d29fbdd338578ca6c5a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.resolveCommands",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
       "name": "Runner.resolveCommands",
@@ -125740,6 +125817,17 @@
         "type": "func() []github.com/MichaelKinsy/PiG/coding/extension.ResolvedCommand"
       },
       "shapeHash": "sha256:d900bf0f2a913aa34ceac11bb2262376dee5f0a75f0f29a9e15758fa9dae9310"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.retiredError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.retiredError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.startMcpServersChange",
@@ -138777,6 +138865,28 @@
       "shapeHash": "sha256:973a478273a8814e8588f461068be8d0445998a7091b95c555462cb33ae8d6cd"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.reportEventHandlerError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.reportEventHandlerError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(listener *busListener, channel string, err error)"
+      },
+      "shapeHash": "sha256:2a5de3c20510eba26a6db0a66536da6912da0385131e944ff51443e0fc46a63c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.reportExtensionError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.reportExtensionError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(owner *managedExt, event string, message string, stack string)"
+      },
+      "shapeHash": "sha256:5264b9b89f84cb205633d4ae7da6c6985409d17bd745921ab14c9b5d81599ccb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.reportViewRejection",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.reportViewRejection",
@@ -141307,6 +141417,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyReportError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "NotifyReportError",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyTerminalWrite",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "NotifyTerminalWrite",
@@ -142306,6 +142427,17 @@
         "type": "RenderToolResult"
       },
       "shapeHash": "sha256:ca2a5c41cad9951fcf82f72e319e50823d87964c823da6c440aebac55fd3fdb2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ReportErrorPayload",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ReportErrorPayload",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ReportErrorPayload"
+      },
+      "shapeHash": "sha256:7bf6be911303e64bda9975af28d22d848752b896c7a5379220afa5bb99c2ed8e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#RequestBuiltinToolCallback",

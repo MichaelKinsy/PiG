@@ -4647,6 +4647,10 @@ function createExtensionRuntime() {
       eventBusUnsubscribers.add(trackedUnsubscribe);
       return trackedUnsubscribe;
     }, "trackEventBusSubscription"),
+    // Pi 18e99051be24 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    // Nothing can show an error yet. The runner replaces this when it is created.
+    reportError: /* @__PURE__ */ __name(() => {
+    }, "reportError"),
     // Pre-bind: queue registrations so bindCore() can flush them once the
     // model registry is available. bindCore() replaces both with direct calls.
     registerProvider: /* @__PURE__ */ __name((name, config, extensionPath = "<unknown>") => {
@@ -4902,7 +4906,19 @@ function createExtensionAPI(extension, runtime, cwd, eventBus) {
       },
       on(channel, handler) {
         assertActive();
-        const unsubscribe = runtime.trackEventBusSubscription(eventBus.on(channel, handler));
+        const reportingHandler = /* @__PURE__ */ __name(async (data) => {
+          try {
+            await handler(data);
+          } catch (error) {
+            runtime.reportError({
+              extensionPath: extension.path,
+              event: `events:${channel}`,
+              error: error instanceof Error ? error.message : String(error),
+              stack: error instanceof Error ? error.stack : void 0
+            });
+          }
+        }, "reportingHandler");
+        const unsubscribe = runtime.trackEventBusSubscription(eventBus.on(channel, reportingHandler));
         if (state === "loading")
           loadingUnsubscribers.push(unsubscribe);
         return unsubscribe;
@@ -5839,6 +5855,10 @@ var ExtensionRunner = class {
   constructor(extensions, runtime, cwd, sessionManager, modelRegistry) {
     this.extensions = extensions;
     this.runtime = runtime;
+    this.runtime.reportError = (error) => {
+      if (!this.staleMessage)
+        this.emitError(error);
+    };
     this.uiContext = noOpUIContext;
     this.cwd = cwd;
     this.sessionManager = sessionManager;

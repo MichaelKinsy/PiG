@@ -606,6 +606,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4a33ec6-2](#bf-4a33ec6-2) | The Chord terminal launcher holds the sandbox's frames from the moment a request that asks the user arrives… | PiG's own defect | All platforms | Unreleased |
 | [BF-4a70ed5](#bf-4a70ed5) | `coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4aaa810](#bf-4aaa810) | fix: go fix the five test and testenv files; the v3 differential corpus counts its 40th file document | PiG's own defect | All platforms | Unreleased |
+| [BF-4aba0cf](#bf-4aba0cf) | fix: report a Node pi.events handler error of a packed member before its ready frame | PiG's own defect | All platforms | Unreleased |
 | [BF-4ac21c8](#bf-4ac21c8) | fix(jsloop): run a tick whose tool call already ended at once, though no wait is open | PiG's own defect | All platforms | Unreleased |
 | [BF-4afdbac](#bf-4afdbac) | `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4b6e822](#bf-4b6e822) | MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates… | PiG's own defect | All platforms | Unreleased |
@@ -668,6 +669,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5291c92-2](#bf-5291c92-2) | `StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at… | PiG's own defect | All platforms | Unreleased |
 | [BF-5291c92-3](#bf-5291c92-3) | A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes | PiG's own defect | All platforms | Unreleased |
 | [BF-5291c92-4](#bf-5291c92-4) | The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends… | PiG's own defect | All platforms | Unreleased |
+| [BF-52a25ee](#bf-52a25ee) | Follows Pi 18e99051be24: an extension's `pi.events` handler that threw was printed on the terminal behind the… | PiG's own defect | All platforms | Unreleased |
 | [BF-530bf3e](#bf-530bf3e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-532a009](#bf-532a009) | Accepting an autocomplete suggestion after the cursor moved off the typed text (a word move, Home or End)… | PiG's own defect | All platforms | Unreleased |
 | [BF-53312d8](#bf-53312d8) | `pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -1635,6 +1637,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b22120f](#bf-b22120f) | A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into | PiG's own defect | All platforms | 0.7.0 |
 | [BF-b2b0c63](#bf-b2b0c63) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-b2c219f](#bf-b2c219f) | fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes | PiG's own defect | All platforms | Unreleased |
+| [BF-b30b8aa](#bf-b30b8aa) | After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in… | PiG's own defect | All platforms | Unreleased |
 | [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | 0.5.2 |
 | [BF-b3543f8](#bf-b3543f8) | Fixed MCP stdio servers staying alive after PiG exited because the terminal closed, it crashed, or it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b368be5](#bf-b368be5) | `pig install --validate-only [--json]` with no source now checks every local-path entry of `packages[]` (user… | PiG's own defect | All platforms | 0.7.0 |
@@ -1800,6 +1803,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cb20ec0](#bf-cb20ec0) | After `pig update --models`, OpenRouter's `:nitro` and `:floor` routing variants no longer disappear from… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cb21ee0](#bf-cb21ee0) | Markdown resolves link reference definitions as Pi does: `[text][label]`, `[label][]` and `[label]` link to a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cb3eb3b](#bf-cb3eb3b) | fix(durable/core): memory-held commits record no telemetry events | PiG's own defect | All platforms | Unreleased |
+| [BF-cb54cf2](#bf-cb54cf2) | After a reload that failed (an extension that no longer loads, or a settings file the resource loader… | PiG's own defect | All platforms | Unreleased |
 | [BF-cbc986b](#bf-cbc986b) | BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cbf4a52](#bf-cbf4a52) | The Go and Rust SDKs send an empty `prefill` of `Editor`/`editor` and an empty `placeholder` of… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-cc05ab3](#bf-cc05ab3) | Aborting a turn whose model is served by an extension provider (`registerProvider` with `streamSimple`) now… | PiG's own defect | All platforms | Unreleased |
@@ -10411,6 +10415,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4aaa8104e5` (2026-11-08)
 - **Tests:** `coding/extension/host/tsruntime/digestcache_test.go::TestConcurrentStartsLeaveOneWholeRecord`, `coding/extension/host/tsruntime/executable_linux_test.go::TestConcurrentExecLinksDoNotCollide`, `coding/piglet/schema_test.go::TestValidateAgainstSchemaNamesTheRootAndNestedPaths`
 
+### BF-4aba0cf
+
+**fix: report a Node pi.events handler error of a packed member before its ready frame**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: report a Node pi.events handler error of a packed member before its ready frame
+- **Root cause:** The Node runtime dropped the report_error of a handler that failed before the host applied its ready frame; in a packed cell that is the first emit after the load. The host already ignores a notification that arrives before the register frame, so the runtime only drops a report once it is invalidated.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4aba0cfb13` (2026-11-16)
+- **Tests:** None recorded.
+
 ### BF-4ac21c8
 
 **fix(jsloop): run a tick whose tool call already ended at once, though no wait is open**
@@ -11269,6 +11286,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5291c9268f` (2026-11-08)
 - **Tests:** `chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened`, `chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared`, `chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport`, `chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything`, `chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver`, `chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd`, `chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten`, `chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds` and 1 more in docs/bug-ledger.json
 - **Release note:** The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends when the workers component forgets the address.
+
+### BF-52a25ee
+
+**Follows Pi 18e99051be24: an extension's `pi.events` handler that threw was printed on the terminal behind the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Follows Pi 18e99051be24: an extension's `pi.events` handler that threw was printed on the terminal behind the TUI (`Event handler error (<channel>)`), which corrupted the interactive screen.
+- **Root cause:** A native SDK listener (Go, Python, Rust, Lisp) runs inside the host events dispatch request, so its failure is the response error and the host reports it. The Node runtime wraps the handler as Pi does and sends the new report_error notification, because one routed request holds several listeners and an awaited rejection comes after the response. The runner binds the action in NewRunner; the D107 view rejection reporter stays bound in BindCore with no stale guard.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `52a25ee066` (2026-11-16)
+- **Tests:** `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsBusKeepsItsOwnReportForADirectSubscriber`, `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed`, `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsDropsAnErrorFromTheInstanceAFailedReloadLeftStale`, `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsHandlerErrorDoesNotStopOtherSubscribers`, `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsReportsAThrowingHandlerToTheExtensionErrorListenerInsteadOfStderr`, `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsReportsOnceTheRunnerExistsAndDropsBefore`, `coding/extension/host/subprocess/report_error_wire_test.go::TestMalformedReportErrorNotifyIsDroppedAndTheConnectionGoesOn`, `coding/extension/host/subprocess/report_error_wire_test.go::TestReportErrorNotifyAfterTheConnectionEndedReportsNothing` and 12 more in docs/bug-ledger.json
+- **Release note:** Follows Pi 18e99051be24: an extension's `pi.events` handler that threw was printed on the terminal behind the TUI (`Event handler error (<channel>)`), which corrupted the interactive screen. It is now reported like the error of a `pi.on` handler, in every SDK: in the chat in interactive mode, as `extension_error` in RPC mode and as `Extension error (...)` in print mode, with the extension's path, the event `events:<channel>`, the message and the stack. The error of a handler that fails after its session was replaced, or after a failed reload left its runner stale, is dropped, as is one that fails before the mode attaches its error listener. Every release since 0.7.0 has the fault.
 
 ### BF-530bf3e
 
@@ -24727,6 +24758,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b2c219f432` (2026-10-20)
 - **Tests:** `coding/extension/host/subprocess/sdk_fingerprint_marker_test.go::TestBuilderRecordsTheSDKFingerprintByReplacingTheMarker`
 
+### BF-b30b8aa
+
+**After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in Pi: in v0.7.0 a compiled-in extension kept using it and its event-bus subscriptions stayed.
+- **Root cause:** the interactive reload invalidated the old runner but kept its runtime active, where Pi's runner.invalidate() invalidates the runtime too (runner.ts:729-735), and a host that keeps one runtime across reloads never made it active again, where Pi's loader creates a new runtime for each load
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b30b8aa06d` (2026-11-16)
+- **Tests:** `coding/extension/runtime_state_test.go::TestRuntimeReactivateEndsStalenessButNotTheEndedSubscriptions`, `coding/session_reload_runtime_reactivate_test.go::TestAReloadAfterAFailedOneRunsOnTheSharedRuntimeAgain`, `internal/codingagent/reload_failed_runtime_test.go::TestFailedInteractiveReloadInvalidatesTheOldRunnersRuntimeAndTheNextReloadWorks`
+- **Release note:** After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in Pi: in v0.7.0 a compiled-in extension kept using it and its event-bus subscriptions stayed. The next `/reload`, or an embedder's retry of `Session.Reload`, now loads on a live runtime again: it built its extensions over the stale one, so their registrations threw the stale message.
+
 ### BF-b341a82
 
 **`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again**
@@ -27012,6 +27057,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `cb3eb3bea2` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-cb54cf2
+
+**After a reload that failed (an extension that no longer loads, or a settings file the resource loader…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After a reload that failed (an extension that no longer loads, or a settings file the resource loader rejects), the session goes on with the extensions of the old load, as in Pi: the next prompt reaches their input, before_agent_start, tool_call and tool_result handlers, their tools run, and a handler that reads its stale ctx gets an extension error while the prompt goes on.
+- **Root cause:** every emit method of the in-process runner asserted the runner active on entry (since v0.2.0), where Pi's emit methods never check staleness (runner.ts:1135-1560), so the first event of the next prompt after a failed reload returned the stale error to the session
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `cb54cf290b` (2026-11-16)
+- **Tests:** `coding/cli/headless_reload_prompt_test.go::TestPromptsAfterAFailedReloadRunOnTheOldInstance`, `coding/extension/host/inproc/stale_emit_delivery_test.go::TestEmitInputAndToolCallOnAnInvalidatedRunnerHonourTheHandlers`, `coding/extension/host/inproc/stale_emit_delivery_test.go::TestEveryEmitDeliversToAnInvalidatedRunner`, `coding/session_reload_old_runner_emit_test.go::TestAFailedReloadLeavesTheSessionDeliveringToTheOldInstance`
+- **Release note:** After a reload that failed (an extension that no longer loads, or a settings file the resource loader rejects), the session goes on with the extensions of the old load, as in Pi: the next prompt reaches their input, before_agent_start, tool_call and tool_result handlers, their tools run, and a handler that reads its stale ctx gets an extension error while the prompt goes on. PiG ended the first event after the failed reload with the stale error instead: `pig -p` exited 1 with "This extension ctx is stale ...", and an RPC prompt never ran. Present in every release since v0.2.0.
 
 ### BF-cbc986b
 

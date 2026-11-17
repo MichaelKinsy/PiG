@@ -1,0 +1,38 @@
+# Pi 18e99051be24 (#12233): a pi.events handler that throws is reported to the extension error listener, which RPC mode forwards as an
+# `extension_error` event (rpc-mode.ts), with the extension's path, event `events:<channel>` and the message (the RPC event carries no stack; the
+# interactive chat does: scenario 108), and nothing is written to
+# stderr (the event bus's console.error line is gone). The handler runs inside the emit of /events-boom's command handler, so the event is written
+# before the command's prompt response.
+name = "83-rpc-events-handler-error"
+description = "A throwing pi.events handler is an extension_error event before the command response, and stderr stays empty"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts", "packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"cmd","type":"prompt","message":"/events-boom"}'
+wait_event = '{"id":"cmd","type":"response","command":"prompt","success":true}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/events-handler-error.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/events-handler-error.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 3
+both_contain = ['"type":"extension_error"', '"event":"events:demo:boom"', '"error":"demo handler failed"', '"id":"cmd","type":"response","command":"prompt","success":true']
+both_not_contain = ['"success":false', 'Event handler error', '"stack"']
+
+[[assert.json_aliases]]
+paths = ["/**/extensionPath"]
+kind = "path"
+reason = "The extension's snapshot path varies per host and run; the member's presence and the event and message stay exact."

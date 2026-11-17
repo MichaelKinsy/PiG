@@ -1755,6 +1755,50 @@ patch("c8c456c85c6e", "pi-coding-agent/main.js", [
 // END backport c8c456c85c6e
 // not carried: pi-coding-agent/utils/deprecation.js (deleted file): warnDeprecation had no caller and the package does not export it; a backport table patches files and cannot delete one, and nothing observable reads it.
 
+// BEGIN backport 18e99051be24
+// 18e99051be24 (#12233, #11264): a throwing pi.events handler is reported like other extension errors (runtime.reportError, which the runner binds in its constructor and which drops the error once the runner is stale), not printed with console.error over the interactive TUI.
+// not carried: pi-coding-agent/core/extensions/types.d.ts (ExtensionRuntimeState.reportError): declarations follow the pin. packages/coding-agent/test/suite/regressions/11264-pi-events-handler-errors.test.ts and packages/coding-agent/CHANGELOG.md: the package ships neither.
+patch("18e99051be24", "pi-coding-agent/core/extensions/loader.js", [
+    [`            eventBusUnsubscribers.add(trackedUnsubscribe);
+            return trackedUnsubscribe;
+        },
+`, `            eventBusUnsubscribers.add(trackedUnsubscribe);
+            return trackedUnsubscribe;
+        },
+        ${note("18e99051be24").trim()}
+        // Nothing can show an error yet. The runner replaces this when it is created.
+        reportError: () => { },
+`],
+    [`                const unsubscribe = runtime.trackEventBusSubscription(eventBus.on(channel, handler));`, `                // Report a throwing handler like other extension errors. The event bus would print it with console.error,
+                // which draws over the interactive TUI (#11264).
+                const reportingHandler = async (data) => {
+                    try {
+                        await handler(data);
+                    }
+                    catch (error) {
+                        runtime.reportError({
+                            extensionPath: extension.path,
+                            event: \`events:\${channel}\`,
+                            error: error instanceof Error ? error.message : String(error),
+                            stack: error instanceof Error ? error.stack : undefined,
+                        });
+                    }
+                };
+                const unsubscribe = runtime.trackEventBusSubscription(eventBus.on(channel, reportingHandler));`],
+]);
+patch("18e99051be24", "pi-coding-agent/core/extensions/runner.js", [
+    [`        this.runtime = runtime;
+        this.uiContext = noOpUIContext;`, `        this.runtime = runtime;
+        ${note("18e99051be24").trim()}
+        // A handler still running when its session is replaced must not report into the replacement's UI.
+        this.runtime.reportError = (error) => {
+            if (!this.staleMessage)
+                this.emitError(error);
+        };
+        this.uiContext = noOpUIContext;`],
+]);
+// END backport 18e99051be24
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.
