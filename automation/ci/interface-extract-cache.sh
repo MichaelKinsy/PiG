@@ -61,9 +61,21 @@ EXTRACT_INVOCATION="LC_ALL=C; extract.mjs --max-old-space-size=3072 source+publi
 hash_tree() {
   # Deterministic content hash of a directory: relative path + file content,
   # sorted by path, following symlinks (the upstream mirror and the published
-  # package are both reached through symlinks from a worktree).
-  local root=$1
-  ( cd "$root" && find -L . -type f -print0 | sort -z | xargs -0 shasum -a 256 ) | shasum -a 256 | awk '{print $1}'
+  # package are both reached through symlinks from a worktree). The walk is
+  # checked: a symlink loop (a link that points back at one of its own parents)
+  # or an unreadable entry stops the run with the walker's message, which names
+  # the link, instead of hashing a partial tree.
+  local root=$1 list err
+  list=$(mktemp "$PIG_TMP/pig-hash-list.XXXXXXXX")
+  err=$(mktemp "$PIG_TMP/pig-hash-err.XXXXXXXX")
+  if ! ( cd "$root" && find -L . -type f -print0 ) >"$list" 2>"$err"; then
+    echo "interface-extract-cache: cannot walk $root (a symlink loop, e.g. an \`ln -s\` run twice into a linked directory, or an unreadable entry):" >&2
+    cat "$err" >&2
+    rm -f "$list" "$err"
+    return 1
+  fi
+  ( cd "$root" && sort -z <"$list" | xargs -0 shasum -a 256 ) | shasum -a 256 | awk '{print $1}'
+  rm -f "$list" "$err"
 }
 
 hash_file() {

@@ -355,5 +355,25 @@ class InterfaceExtractCacheTest(unittest.TestCase):
         self.run_cache(env=env)
         self.assertNotIn("--cache-dir", self.call_log.read_text())
 
+    def test_a_symlink_loop_in_the_source_tree_fails_naming_the_looping_link(self):
+        # A link inside a linked directory that points back at its own parent (a build's src/node_modules/node_modules,
+        # made by an `ln -s` run twice) makes the tree walk loop; the wrapper must stop and name the link.
+        store = Path(self.tmp.name) / "store"
+        store.mkdir()
+        (store / "pkg").mkdir()
+        (store / "node_modules").symlink_to(store)
+        (self.source_root / "node_modules").symlink_to(store)
+        result = subprocess.run(
+            [str(SCRIPT), str(self.source_root), str(self.published_root), "9.9.9", str(self.extractor_dir),
+             str(self.out_dir / "s.json"), str(self.out_dir / "p.json"), str(self.out_dir / "c.json")],
+            env=self.env, capture_output=True, text=True,
+        )
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("interface-extract-cache: cannot walk", result.stderr)
+        self.assertIn("symlink loop", result.stderr)
+        self.assertIn("node_modules/node_modules", result.stderr)
+        self.assertEqual(self.call_count(), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
