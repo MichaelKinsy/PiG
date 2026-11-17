@@ -20,7 +20,7 @@ import (
 // handler still runs, and the first's closing rebindSession binds the second's Session again. PiG runs the second after the first applied (the <-previous wait in
 // awaitReplacement), so every Session gets one session_shutdown and each replacement binds its Session twice (the replacement's own rebind and the RPC rebind).
 // testdata/d146-overlap-probe.mjs logs each session_start and session_shutdown with the Session id its ctx reports and holds the first replacement's first
-// session_start for 500 ms (the longer handler); D146_TOUCH=1 makes that handler use the captured pi after the wait.
+// session_start for one second (the longer handler); D146_TOUCH=1 makes that handler use the captured pi after the wait.
 
 // d146Pair is two commands of one batch with the shutdown reason each gives the Session it replaces.
 type d146Pair struct {
@@ -90,7 +90,7 @@ func startD146(t *testing.T, side string, touch bool) (p *rpcProcess, target, lo
 		t.Fatal(err)
 	}
 	probe := filepath.Join(root, "coding", "cli", "testdata", "d146-overlap-probe.mjs")
-	probeEnv := []string{"D146_LOG=" + log, "D146_HOLD_MS=500", "D146_TOUCH=0"}
+	probeEnv := []string{"D146_LOG=" + log, "D146_HOLD_MS=1000", "D146_TOUCH=0"}
 	if touch {
 		probeEnv[2] = "D146_TOUCH=1"
 	}
@@ -114,20 +114,26 @@ func startD146(t *testing.T, side string, touch bool) (p *rpcProcess, target, lo
 	return startJSONLProcessAt(t, cwd, env, "node", argv...), target, log
 }
 
-// runD146 writes the pair (in one write, or the second line gap later), waits for both answers, then for a get_state answered after them, and reads the log.
-func runD146(t *testing.T, side string, pair d146Pair, gap time.Duration, touch bool) d146Outcome {
+// runD146 writes the pair (in one write, or the second line once the first replacement's session_start handler runs), waits for both answers, then for a get_state answered after them, and reads the log.
+func runD146(t *testing.T, side string, pair d146Pair, during bool, touch bool) d146Outcome {
 	t.Helper()
 	p, target, log := startD146(t, side, touch)
 	p.sendJSON(map[string]any{"id": "s0", "type": "get_state"})
 	p.await("the first get_state", func(record rpcRecord) bool { return record["id"] == "s0" })
 	first, other := pair.first(target), pair.other(target)
-	if gap == 0 {
+	if !during {
 		if _, err := io.WriteString(p.stdin, first+"\n"+other+"\n"); err != nil {
 			t.Fatal(err)
 		}
 	} else {
 		p.send(first)
-		time.Sleep(gap)
+		deadline := time.Now().Add(p.budget)
+		for !d146ReplacementHandlerEntered(t, log) {
+			if time.Now().After(deadline) {
+				t.Fatalf("the first replacement's session_start handler never ran\n%s", p.stderr.String())
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
 		p.send(other)
 	}
 	var out d146Outcome
@@ -170,6 +176,22 @@ func runD146(t *testing.T, side string, pair d146Pair, gap time.Duration, touch 
 		out.events = append(out.events, event)
 	}
 	return out
+}
+
+// d146ReplacementHandlerEntered reports whether a session_start handler of a replacement (not the startup one) has been entered.
+func d146ReplacementHandlerEntered(t *testing.T, log string) bool {
+	t.Helper()
+	data, err := os.ReadFile(log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for line := range strings.SplitSeq(string(data), "\n") {
+		var event d146Event
+		if json.Unmarshal([]byte(line), &event) == nil && event.Ev == "session_start" && event.Phase == "enter" && event.Reason != "startup" {
+			return true
+		}
+	}
+	return false
 }
 
 // d146Shape is what D146 compares of a run: the answer order, the reasons of every session_shutdown by the role of the Session that got it (the source, the first
@@ -230,11 +252,12 @@ func (o d146Outcome) shape() d146Shape {
 	return shape
 }
 
-// d146Gaps are the two ways the pair reaches the process: in one write, and the second line 50 ms after the first (the first replacement has not applied yet).
+// d146Gaps are the two ways the pair reaches the process: in one write, and the second line written once the first replacement's session_start handler has been entered (it then
+// holds for D146_HOLD_MS, so the first replacement has applied and its handler is still running). The write is caused by the handler entering, not by a delay, so a loaded machine cannot move it.
 var d146Gaps = []struct {
-	name string
-	gap  time.Duration
-}{{"one write", 0}, {"50ms apart", 50 * time.Millisecond}}
+	name   string
+	during bool
+}{{"one write", false}, {"second while the first handler runs", true}}
 
 const d146StaleError = "This extension ctx is stale after session replacement or reload."
 
@@ -250,9 +273,9 @@ func requireD146Final(t *testing.T, pair d146Pair, out d146Outcome) {
 }
 
 // D146, recorded from the pinned Pi, and a PIN: it goes red the day Pi changes what it does with two replacements in flight, which is when D146's remove-when is checked.
-// With the first replacement's session_start handler the longer one, Pi answers the second command first, in one write and 50 ms apart, for new_session + new_session,
+// With the first replacement's session_start handler the longer one, Pi answers the second command first, in one write and with the second written while that handler runs, for new_session + new_session,
 // new_session + switch_session and fork + new_session. Sent in one write, Pi sends session_shutdown to the outgoing Session twice (once per command) and never to the
-// first replacement's Session, and binds the final Session three times. Sent 50 ms apart, the second command's session_shutdown reaches the first replacement's Session
+// first replacement's Session, and binds the final Session three times. Sent while the first replacement's handler runs, the second command's session_shutdown reaches the first replacement's Session
 // while its session_start handler still runs, and a handler that uses its captured pi after that gets the stale-context extension_error.
 func TestPiOverlappingReplacementsD146(t *testing.T) {
 	if testing.Short() {
@@ -262,10 +285,10 @@ func TestPiOverlappingReplacementsD146(t *testing.T) {
 		for _, g := range d146Gaps {
 			for _, touch := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%s/%s/touch=%v", pair.name, g.name, touch), func(t *testing.T) {
-					out := runD146(t, "pi", pair, g.gap, touch)
+					out := runD146(t, "pi", pair, g.during, touch)
 					requireD146Final(t, pair, out)
 					want := d146Shape{Order: "b,a", Starts: map[string]int{"first": 1, "final": 3}}
-					if g.gap == 0 {
+					if !g.during {
 						want.Shutdowns = map[string]string{"source": pair.reasons[0] + "," + pair.reasons[1] + ","}
 					} else {
 						want.Shutdowns = map[string]string{"source": pair.reasons[0] + ",", "first": pair.reasons[1] + ","}
@@ -296,7 +319,7 @@ func TestRPCOverlappingReplacementsRunOneAfterTheOtherD146(t *testing.T) {
 		for _, g := range d146Gaps {
 			for _, touch := range []bool{false, true} {
 				t.Run(fmt.Sprintf("%s/%s/touch=%v", pair.name, g.name, touch), func(t *testing.T) {
-					out := runD146(t, "pig", pair, g.gap, touch)
+					out := runD146(t, "pig", pair, g.during, touch)
 					requireD146Final(t, pair, out)
 					want := d146Shape{
 						Order:     "a,b",
