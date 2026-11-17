@@ -266,15 +266,17 @@ func restoreSessionEntries(path string, records []FileEntry, persist bool) (*Ses
 	return session, nil
 }
 
-// errNoSessionRecords and errSessionNeedsMigration end a streaming load early: the file holds no session records, or its version needs the
-// whole-file migration.
+// errNoSessionRecords, errSessionNeedsMigration and errSessionUnsnapshotted end a streaming load early: the file holds no session records,
+// its version needs the whole-file migration, or the load could make no private snapshot of the file.
 var (
 	errNoSessionRecords      = errors.New("session: no records")
 	errSessionNeedsMigration = errors.New("session: needs migration")
+	errSessionUnsnapshotted  = errors.New("session: no snapshot")
 )
 
 // loadPersistedSession reads a persisted session file as LoadEntriesFromFile and restoreSessionFileEntries do, but keeps message bodies only
-// for the active context (see entrySlot): each other entry is indexed by where its line lies. empty reports a file with no session records, which
+// for the active context (see entrySlot): each other entry is indexed by where its line lies in the session's snapshot of the file. A load that
+// can make no snapshot reads the whole file and keeps its entries in memory instead. empty reports a file with no session records, which
 // the caller handles as LoadEntriesFromFile's empty result. A file whose version needs migration is migrated and rewritten first.
 func loadPersistedSession(path string) (session *Session, empty bool, err error) {
 	session, err = streamSessionFile(path)
@@ -293,10 +295,23 @@ func loadPersistedSession(path string) (session *Session, empty bool, err error)
 			return nil, false, err
 		}
 		session, err = streamSessionFile(path)
-		if errors.Is(err, errNoSessionRecords) || errors.Is(err, errSessionNeedsMigration) {
-			// The rewrite left a file the stream cannot index; keep the migrated entries resident.
+		if errors.Is(err, errNoSessionRecords) || errors.Is(err, errSessionNeedsMigration) || errors.Is(err, errSessionUnsnapshotted) {
+			// The rewrite left a file the stream cannot index or snapshot; keep the migrated entries resident.
 			session, err = restoreSessionEntries(path, records, false)
 		}
+		return session, false, err
+	case errors.Is(err, errSessionUnsnapshotted):
+		// The records of the file are indexed by where their lines lie, and only a snapshot that no other program can change keeps those places
+		// true. Without one the session holds what it loaded, as Pi does: its entries are read into memory, the bodies the context does not need
+		// packed into the session's compressed blocks.
+		records, err := LoadEntriesFromFile(path)
+		if err != nil {
+			return nil, false, err
+		}
+		if len(records) == 0 {
+			return nil, true, nil
+		}
+		session, err = restoreSessionEntries(path, records, false)
 		return session, false, err
 	}
 	return session, false, err
@@ -326,7 +341,7 @@ func streamSessionFileBatched(path string, batching lineBatching) (*Session, err
 	}
 	defer func() { _ = file.Close() }()
 	// The lines are read from the snapshot when it is a clone, and copied into it as they are read otherwise, so the snapshot holds the bytes
-	// the index locates. Without a snapshot, the records are read back from the session file.
+	// the index locates. A load that can make no snapshot indexes nothing: loadPersistedSession reads the whole file instead.
 	var source io.Reader = file
 	snapshot, cloned := cloneSessionSnapshot(file, path)
 	var copier *snapshotCopier
@@ -335,6 +350,8 @@ func streamSessionFileBatched(path string, batching lineBatching) (*Session, err
 	} else if snapshot, _ = newSessionSnapshot(path); snapshot != nil {
 		copier = startSnapshotCopy(snapshot)
 		source = io.TeeReader(file, copier)
+	} else {
+		return nil, errSessionUnsnapshotted
 	}
 	kept := false
 	defer func() {
@@ -411,6 +428,10 @@ func streamSessionFileBatched(path string, batching lineBatching) (*Session, err
 	}
 	if restoreErr != nil {
 		return nil, restoreErr
+	}
+	if snapshot == nil {
+		// The copy of the file into its snapshot, or the snapshot of the line the file lacked, failed.
+		return nil, errSessionUnsnapshotted
 	}
 	if s.leafID != nil {
 		// Detach the leaf from the field the lines wrote it to: the session keeps no pointer into itself.
