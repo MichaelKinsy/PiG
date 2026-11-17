@@ -51373,6 +51373,28 @@
       ]
     },
     {
+      "id": "BF-d1c99e5",
+      "title": "fix(codingagent): the Radius login menu copies the selector lines before it writes its animated row",
+      "symptom": "fix(codingagent): the Radius login menu copies the selector lines before it writes its animated row",
+      "rootCause": "Pi (radius-login-selector.ts) copies super.render() before it replaces the selected Radius row, because a Container now returns the same array while its children are unchanged. The menu wrote into the selector output; it clones it first.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "d1c99e5521",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/render_repeat_contract_test.go::TestRadiusLoginMenuRendersTheSameRowsTwiceAndLeavesTheSelectorOutputAlone",
+        "tui/render_repeat_contract_test.go::TestRenderingTwiceWithNoStateChangeShowsTheSameLines"
+      ]
+    },
+    {
       "id": "BF-d1cbde3",
       "title": "The pi-messages, Cloudflare Workers AI and TypeSafe System One, and OpenAI decisions request URLs are built…",
       "symptom": "The pi-messages, Cloudflare Workers AI and TypeSafe System One, and OpenAI decisions request URLs are built with the WHATWG URL parser, as Pi's `new URL` does: hosts are normalized, a base URL with a query or fragment resolves against its path, and `debug=1` is added to an existing query in order and in form encoding instead of with sorted keys.",

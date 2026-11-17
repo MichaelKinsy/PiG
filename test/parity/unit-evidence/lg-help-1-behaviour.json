@@ -770,7 +770,7 @@
       "TestBoxRemoveChildClearAndSetBgFnChangeWhatRenders",
       "TestBoxRenderCacheMissesWhenAChildReturnsFewerLines",
       "TestBoxRenderCacheMissesWhenPaddingChanges",
-      "TestBoxRenderCacheSeesInPlaceChildEdits",
+      "TestBoxRenderCacheSeesAChildsNewLines",
       "TestBoxRendersChildrenAtLeastOneCellWideAndPadsEveryRowToTheWidth",
       "TestBoxSetPaddingXMatchesPi",
       "TestBox_AppliesPaddingAndBackground",

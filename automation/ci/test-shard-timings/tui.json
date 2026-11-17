@@ -318,7 +318,7 @@
 "TestBoxRenderAfterClearMatchesAFreshBox": [5, 0.03, 0.00, 0],
 "TestBoxRenderCacheMissesWhenAChildReturnsFewerLines": [3, 0.00, 0.00, 0],
 "TestBoxRenderCacheMissesWhenPaddingChanges": [3, 0.00, 0.00, 0],
-"TestBoxRenderCacheSeesInPlaceChildEdits": [6, 0.00, 0.00, 0],
+"TestBoxRenderCacheSeesAChildsNewLines": [6, 0.00, 0.00, 0],
 "TestBoxRendersChildrenAtLeastOneCellWideAndPadsEveryRowToTheWidth": [6, 0.00, 0.00, 0],
 "TestBoxRendersPaddedChildrenWithBackground": [7, 0.00, 0.00, 0],
 "TestBoxSetBgFnAndSetPaddingXReportTheChange": [3, 0.00, 0.00, 0],
