@@ -73,7 +73,7 @@ func listenSocketRefusal(user string, dacl windowsDACL) string {
 		case user, sidSystem, sidAdministrators, sidCreatorOwner, sidCreatorGroup:
 			continue
 		}
-		return fmt.Sprintf("the access list of the socket lets %s connect", describeSID(entry.SID))
+		return fmt.Sprintf("the access list of the socket lets %s connect", describeSID(entry.SID)) //perf:ok cold: one refusal message when the server starts on a socket other users can reach
 	}
 	return ""
 }
