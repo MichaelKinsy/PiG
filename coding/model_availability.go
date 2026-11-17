@@ -194,14 +194,24 @@ func (runtime *ModelRuntime) GetAvailableSnapshot() []*ai.Model {
 // upstream: packages/coding-agent/src/core/model-resolver.ts:findInitialModel, model-runtime.ts:getAvailableSnapshot
 func (runtime *ModelRuntime) AvailableRuntimeModels(models []icodingagent.RuntimeModel) []icodingagent.RuntimeModel {
 	type key struct{ provider, id string }
-	index := make(map[key]int, len(models))
-	for i, model := range models {
-		index[key{model.Provider, model.ID}] = i
-	}
 	available := runtime.GetAvailableSnapshot()
 	out := make([]icodingagent.RuntimeModel, 0, len(available))
+	if len(available) == 0 {
+		return out
+	}
+	// The index holds the available entries only, so its size follows the availability and not the catalog: one pass over models records the last position of each key the availability names, as a map from every model to its position did.
+	index := make(map[key]int, len(available))
 	for _, model := range available {
-		if i, ok := index[key{model.ProviderMeta.ProviderID, model.ID}]; ok {
+		index[key{model.ProviderMeta.ProviderID, model.ID}] = -1
+	}
+	for i, model := range models {
+		k := key{model.Provider, model.ID}
+		if _, wanted := index[k]; wanted {
+			index[k] = i
+		}
+	}
+	for _, model := range available {
+		if i := index[key{model.ProviderMeta.ProviderID, model.ID}]; i >= 0 {
 			out = append(out, models[i])
 		}
 	}

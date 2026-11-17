@@ -1405,6 +1405,46 @@ allocs = 26
 
 [[benchmark]]
 package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=5000/available=5/available-only-index"
+allocs = 16
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=5000/available=5/catalog-wide-index"
+allocs = 33
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=5000/available=500/available-only-index"
+allocs = 19
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=5000/available=500/catalog-wide-index"
+allocs = 33
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=900/available=5/available-only-index"
+allocs = 16
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=900/available=5/catalog-wide-index"
+allocs = 21
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=900/available=500/available-only-index"
+allocs = 19
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=900/available=500/catalog-wide-index"
+allocs = 21
+
+[[benchmark]]
+package = "./coding"
 benchmark = "BenchmarkCatalogModelAuth"
 allocs = 460
 
