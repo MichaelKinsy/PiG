@@ -175,8 +175,8 @@ func generationTime() string {
 	return time.Now().UTC().Format(isoMillis)
 }
 
-// piOverlayCommit is the Pi commit the files of pi-overlay come from (git show <commit>:packages/ai/catalog/providers/<file>).
-const piOverlayCommit = "7f021f0eebfa30558b7a51dad456f1ee20e752c8"
+// piOverlayCommit is the Pi commit the files of pi-overlay come from (git show <commit>:packages/ai/catalog/<path>).
+const piOverlayCommit = "e56d35ce5eceedfa16eaf13a5f01a1f7b7271253"
 
 const isoMillis = "2006-01-02T15:04:05.000Z"
 
