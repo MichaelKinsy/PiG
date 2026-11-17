@@ -1684,8 +1684,8 @@ func (h *recordingCompactHandle) appendPersistedDefaultToScope(model *ai.Model, 
 		h.scopedModels = append(h.scopedModels, extension.ScopedModel{Model: model})
 	}
 }
-func (h *recordingCompactHandle) ExtensionSetModel(_ context.Context, model *ai.Model) (bool, error) {
-	return true, h.SetModel(model)
+func (h *recordingCompactHandle) ExtensionSetModelOnMain(_ context.Context, model *ai.Model, dispatch func(func() error) error) (bool, error) {
+	return true, dispatch(func() error { return h.SetModel(model) })
 }
 func (h *recordingCompactHandle) SetModelOnMain(_ context.Context, model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
 	return dispatch(func() error { return h.SetModel(model, options) })
