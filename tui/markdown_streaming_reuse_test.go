@@ -125,6 +125,7 @@ func TestStreamedMarkdownWrapsOnlyChangedLines(t *testing.T) {
 // A streamed render lexes and renders only the inline text that changed since the previous render; a change of the theme or
 // an Invalidate renders all of it again.
 func TestStreamedMarkdownRendersOnlyChangedInlineText(t *testing.T) {
+	pauseGC(t) // a collection between two renders frees the memos a Markdown holds weakly, so the count below would depend on the collector; a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	renders := 0
 	previous := renderInline
@@ -165,6 +166,7 @@ func TestStreamedMarkdownRendersOnlyChangedInlineText(t *testing.T) {
 // AssistantMessageComponent streams its text through Markdown.SetText, so a streamed frame of a message renders only the
 // inline text that changed and draws what a new component given the same content draws.
 func TestStreamedAssistantMessageRendersOnlyChangedInlineText(t *testing.T) {
+	pauseGC(t) // frame 1 leaves the thinking run's memos held weakly while the text renders, until the block pins them: a collection that ends then makes frame 2 render the run again. A WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	renders := 0
 	previous := renderInline
@@ -305,6 +307,7 @@ func TestStreamedMarkdownWithAForeignTextColorCallsItAgain(t *testing.T) {
 // A list item and a quote line render through a child Markdown of the document, whose inline text the document's memo
 // serves: a streamed frame renders the text that changed, not every item.
 func TestStreamedListAndQuoteRenderOnlyChangedInlineText(t *testing.T) {
+	pauseGC(t) // a collection between two renders frees the memos a Markdown holds weakly, so the count below would depend on the collector; a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	renders := 0
 	previous := renderInline

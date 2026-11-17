@@ -9,6 +9,7 @@ import (
 // and its end, and renders like a new component after a theme change". The test's spy on syntax-highlight.ts highlight
 // is a counting highlighter in the Markdown theme.
 func TestUpstreamAssistantMessageReusesItsMarkdownAcrossStreamingAndItsEnd(t *testing.T) {
+	pauseGC(t) // the highlighter count is the work a streamed frame skips; a collection between two renders frees the memos a Markdown holds weakly, and a WeakRef target is kept until its job ends
 	original := ActiveTheme().Name
 	t.Cleanup(func() { SetTheme(original) })
 	SetTheme("dark")
