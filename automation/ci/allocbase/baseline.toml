@@ -2575,6 +2575,11 @@ allocs = 30
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeInputHandlerRPC"
+allocs = 29
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeMessageEndEvent"
 allocs = 28
 
