@@ -91312,6 +91312,116 @@
       "shapeHash": "sha256:fdf2666500c9db0c0757e98a258a441287e79edd40263ea0631840f16863241a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aceInheritOnly",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aceInheritOnly",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclDataAccess",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclDataAccess",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclFileAppendData",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclFileAppendData",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclFileReadData",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclFileReadData",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclFileWriteData",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclFileWriteData",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclGenericAll",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclGenericAll",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclGenericRead",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclGenericRead",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclGenericWrite",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclGenericWrite",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclWriteDAC",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclWriteDAC",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclWriteOwner",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclWriteOwner",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#acpBuildTarget",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "acpBuildTarget",
@@ -95129,6 +95239,17 @@
       "shapeHash": "sha256:387f2027b7dee4d63c832aaf0e9a84b1b4b5ad46ffb4d5cdbd880d8812a6dde2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#describeSID",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "describeSID",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sid string) string"
+      },
+      "shapeHash": "sha256:33f2a80152237c065c9dfa24a26948fa83c6d75dc376d2c167e673c4c5352a52"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#detailedVersionString",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "detailedVersionString",
@@ -97538,6 +97659,50 @@
       "shapeHash": "sha256:5685aafe65914d5d6f494d853f509a90aa4f9a4ff368bf037147a5441891a2c3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenAdmission",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenAdmission",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "listenAdmission"
+      },
+      "shapeHash": "sha256:11bbb0131ce78aee34d89e220c70c8b9cbeaf70d667e6c750d286e7cff9c747b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenAdmission.liveCount",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenAdmission.liveCount",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() int"
+      },
+      "shapeHash": "sha256:abda90b0a9dee566c1c4d8a5e69e5e1e0dc21a5f6a3f00ada27ad225d1a5f10b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenAdmission.release",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenAdmission.release",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenAdmission.serve",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenAdmission.serve",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(wg *sync.WaitGroup, conn net.Conn, handle func())"
+      },
+      "shapeHash": "sha256:73d3b42aa550431985ea204531aa3cc235dde01f4e7ed7ca5902887d17ca286d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenControls",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "listenControls",
@@ -97758,6 +97923,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenMaxConnections",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenMaxConnections",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenPrivateUnixSocket",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "listenPrivateUnixSocket",
@@ -97767,6 +97943,149 @@
         "type": "func(path string) (net.Listener, error)"
       },
       "shapeHash": "sha256:3b816aeae8b67b4c2e5949f94a7ccb66aa83b8ceaefdea7154d81a90009e9b62"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "time.Duration"
+      },
+      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout.Abs",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout.Abs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout.Hours",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout.Hours",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout.Microseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout.Microseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout.Milliseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout.Milliseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout.Minutes",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout.Minutes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout.Nanoseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout.Nanoseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout.Round",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout.Seconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout.Seconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout.String",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenRefusalWriteTimeout.format",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenRefusalWriteTimeout.format",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *[32]byte) int"
+      },
+      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenSocketRefusal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenSocketRefusal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(user string, dacl windowsDACL) string"
+      },
+      "shapeHash": "sha256:4955f7952bd415817a59b2e9cb95e87a8015cace98253083ec6432bd9734c68b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenTerminationSignals",
@@ -98636,6 +98955,17 @@
         "type": "func(load func() []github.com/MichaelKinsy/PiG/internal/codingagent.RuntimeModel, hasAuth func(providerID string) bool, availableOf func([]github.com/MichaelKinsy/PiG/internal/codingagent.RuntimeModel) []github.com/MichaelKinsy/PiG/internal/codingagent.RuntimeModel) *startupModelRuntime"
       },
       "shapeHash": "sha256:29a0310f422ac958d07033e47fd51ec89621f08cc2cdfe286188abdbf4ec6572"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newListenAdmission",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "newListenAdmission",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(max int, notify func(max int)) *listenAdmission"
+      },
+      "shapeHash": "sha256:ea3d9c0c2e5b7837e39329cd52b6fe786f15b3a2f215b93a063f6c4f3774576f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newLoginPreviewUI",
@@ -100649,6 +100979,17 @@
         "type": "func(ctx context.Context, provider *github.com/MichaelKinsy/PiG/ai.ModelsProvider, modelRuntime AuthLoginRuntime, terminal LoginTerminal)"
       },
       "shapeHash": "sha256:3a25677aa8fb6d90903eec4c9b82d7fd63fbd1771ac2a86011baf52d441d931b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#refuseConnection",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "refuseConnection",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(conn net.Conn, max int)"
+      },
+      "shapeHash": "sha256:3e83203481cae7a77167c2607d12b31378a9ff1b3e21cf9c771a44fd1c1480ca"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#registeredAuthTargetItems",
@@ -105766,6 +106107,50 @@
       "shapeHash": "sha256:6c550f6c470c22b115615ed9a1e944029b82f1453d94cdcc1778d7bda85d38c7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#sidAdministrators",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "sidAdministrators",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#sidCreatorGroup",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "sidCreatorGroup",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#sidCreatorOwner",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "sidCreatorOwner",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#sidSystem",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "sidSystem",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#signPigBuild",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "signPigBuild",
@@ -108162,6 +108547,39 @@
         "type": "func() string"
       },
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#wellKnownSIDNames",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "wellKnownSIDNames",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "map[string]string"
+      },
+      "shapeHash": "sha256:745c198d1e8b89727fedc49d3ee1a081d44e828b69940e1f62928394d51a0f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#windowsACE",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "windowsACE",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "windowsACE"
+      },
+      "shapeHash": "sha256:8884cc764041b0d43fbea993cb6a14424f36da180ed52c78e971f1346a812dd2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#windowsDACL",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "windowsDACL",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "windowsDACL"
+      },
+      "shapeHash": "sha256:2509477c46cb0630e0edbc472564b18d17392a8b942651add880b035c0f15a67"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#withAuthMockClient",
