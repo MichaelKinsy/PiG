@@ -207,3 +207,57 @@ type errorRecorder struct {
 
 func (r *errorRecorder) Helper()               {}
 func (r *errorRecorder) Errorf(string, ...any) { r.failed = true }
+
+// A child process the test gives a scratch home runs go commands in it: a test binary's TestMain reaches `go env` through ScopeTempDir and KeepGoBuildCaches, and a child may start go itself. In a fresh configuration directory the first go command forks the telemetry sidecar, which keeps writing under the home after the parent's cleanup removed it (macOS CI: "unlinkat .../Library/Application Support/go/telemetry: directory not empty"). The go command creates telemetry/local before it exits, so the home must hold nothing but the mode file once the child is done, with no wait.
+func TestChildHomeEnvKeepsGoTelemetryOutOfAScratchHome(t *testing.T) {
+	if os.Getenv("TESTENV_CHILD_HOME_ROLE") == "child" {
+		if err := KeepGoBuildCaches(); err != nil { // what the child's TestMain does through ScopeTempDir
+			t.Fatal(err)
+		}
+		if out, err := exec.CommandContext(t.Context(), "go", "env", "GOROOT").CombinedOutput(); err != nil { // a go command the child starts itself
+			t.Fatalf("go env GOROOT in the child: %v\n%s", err, out)
+		}
+		_, _ = os.Stdout.WriteString("CHILD_GOCACHE=" + os.Getenv("GOCACHE") + "\n")
+		return
+	}
+	t.Setenv("GOCACHE", "")
+	t.Setenv("GOMODCACHE", "")
+	if err := KeepGoBuildCaches(); err != nil {
+		t.Fatal(err)
+	}
+	pinned := os.Getenv("GOCACHE")
+	home := t.TempDir()
+	cmd := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^"+t.Name()+"$", "-test.count=1")
+	cmd.Env = append(ChildHomeEnv(t, home), "PATH="+os.Getenv("PATH"), "SYSTEMROOT="+os.Getenv("SYSTEMROOT"), "TESTENV_CHILD_HOME_ROLE=child")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("child: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "CHILD_GOCACHE="+pinned+"\n") {
+		t.Fatalf("the child resolved a build cache other than the pinned %q (a scratch home would make it recompile everything):\n%s", pinned, out)
+	}
+	RequireNoGoTelemetryActivity(t, home)
+}
+
+// SetHome replaces t.Setenv("HOME", home) in a test that can run a go command: afterwards a go command in the new home finds telemetry off and creates no counters, so no sidecar outlives the test's cleanup of that home.
+func TestSetHomeKeepsAGoCommandInTheNewHomeFromForkingASidecar(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", "")
+	home := t.TempDir()
+	SetHome(t, home)
+	if got := os.Getenv("HOME"); got != home {
+		t.Fatalf("HOME = %q, want %q", got, home)
+	}
+	config, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel, err := filepath.Rel(home, config); err != nil || !filepath.IsLocal(rel) {
+		t.Skipf("the go configuration directory %q is outside HOME on %s", config, runtime.GOOS)
+	}
+	if out, err := exec.CommandContext(t.Context(), "go", "env", "GOROOT").CombinedOutput(); err != nil {
+		t.Fatalf("go env GOROOT: %v\n%s", err, out)
+	}
+	if _, err := os.Stat(filepath.Join(config, "go", "telemetry", "local")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("a go command in the home SetHome gave created counters (stat err = %v): it forked a sidecar", err)
+	}
+}
