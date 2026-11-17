@@ -32,17 +32,19 @@ func TestAutocompleteChangedReachesInstalledNativeEditor(t *testing.T) {
 			editor := waitInstalledEditor(t, h)
 			editor.Bind(&baseEditorHost{inputs: make(chan struct{}, 16)})
 			editor.Configure(extension.RemoteEditorConfig{Focused: true})
-			provider := autocompleteBase()
-			observed := weak.Make(provider)
-			for range 2 {
-				ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
-				err := h.bridge.SyncAutocomplete(ctx, provider)
-				cancel()
-				if err != nil {
-					t.Fatalf("a rebuild while the extension's editor is installed failed: %v", err)
+			// The provider lives only in this closure: its collection below is the SDK's release, and nothing here holds it.
+			observed := func() weak.Pointer[extension.AutocompleteProvider] {
+				provider := autocompleteBase()
+				for range 2 {
+					ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+					err := h.bridge.SyncAutocomplete(ctx, provider)
+					cancel()
+					if err != nil {
+						t.Fatalf("a rebuild while the extension's editor is installed failed: %v", err)
+					}
 				}
-			}
-			provider = nil
+				return weak.Make(provider)
+			}()
 			deadline := time.Now().Add(20 * time.Second)
 			for observed.Value() != nil {
 				if time.Now().After(deadline) {
