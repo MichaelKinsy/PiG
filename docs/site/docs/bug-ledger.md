@@ -404,6 +404,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3296eb9](#bf-3296eb9) | fix(durable/core): match the rejected step with errors.AsType | PiG's own defect | All platforms | Unreleased |
 | [BF-32ae04c](#bf-32ae04c) | Durable (Pi 89e5c2c0): a generation waiting on a blocking threshold compaction fails with `model_error`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-32b5367](#bf-32b5367) | A running `!command` that prints a lot, the `/resume` search over many long sessions, and streamed answers… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-32c03fd](#bf-32c03fd) | `FormatNumber`, `FormatTime` and `PlatformLocale` with no language use the Windows user's default locale (the… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-32ce7ad](#bf-32ce7ad) | The Termux page shows the `[Context]` line as PiG prints it, `~/.pig/agent/AGENTS.md` | PiG's own defect | Android and Termux | 0.5.0 |
 | [BF-32e86a8](#bf-32e86a8) | Go, Python and Rust SDK: `theme.bold`, `italic`, `underline`, `inverse` and `strikethrough` now draw as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-32fe8c4](#bf-32fe8c4) | The Durable core's Session opens a document watch, a conversation view and the task graph as a job on the… | PiG's own defect | All platforms | 0.7.0 |
@@ -1513,7 +1514,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D460](#bf-d460) | The app kit's facets are Go core facets beside the plugins' Node host | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D462](#bf-d462) | The server and each worker have two stores, not one | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D464](#bf-d464) | FormatNumber and FormatTime take closed option types and return errors (P1-3) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D465](#bf-d465) | FormatTime takes a time.Time, not `Date`, `number` or `string` | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D466](#bf-d466) | No per-language formatter cache | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D520](#bf-d520) | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -7670,6 +7670,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `32b5367dd9` (2026-10-10), `9f76da76d0` (2026-10-10), `ab5be97bbe` (2026-10-10), `c4fef6c21a` (2026-10-10), `e892003a81` (2026-10-10)
 - **Tests:** `internal/codingagent/complexity_scaling_mermaid_norace_test.go::TestScalingMermaidTransformOfAStreamedMessage`, `internal/codingagent/complexity_scaling_norace_test.go::TestScalingSessionSearchKeystroke`, `internal/codingagent/mermaid_word_test.go::TestMermaidTransformSkipsOnlyMessagesWithoutTheWord`, `internal/codingagent/session_search_cache_test.go::TestCachedSessionSearchEqualsAFreshSearch`, `internal/codingagent/session_search_cache_test.go::TestCachedSessionSearchReadsAChangedSession`, `tui/complexity_scaling_norace_test.go::TestScalingBashOutputFrame`, `tui/highlight_cache_bound_test.go::TestHighlightMemoKeepsOnlyTheNewestPrefixOfAStreamedBlock`, `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownEqualsAFreshRender` and 1 more in docs/bug-ledger.json
 - **Release note:** A running `!command` that prints a lot, the `/resume` search over many long sessions, and streamed answers without Mermaid diagrams cost less per frame or keystroke, with the same output.
+
+### BF-32c03fd
+
+**`FormatNumber`, `FormatTime` and `PlatformLocale` with no language use the Windows user's default locale (the…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D464)
+- **Symptom:** `FormatNumber`, `FormatTime` and `PlatformLocale` with no language use the Windows user's default locale (the name `GetLocaleInfoEx` gives, as ICU reads it, so as Node does) and no longer `LC_ALL`, `LC_MESSAGES` and `LANG` there; a Windows user with a non-English locale got English (en-US) numbers and times (D464).
+- **Root cause:** platformLocale was written for the POSIX branch of ICU's default-locale code only and had no Windows branch, so a Windows user, who has none of the variables, always got en-US.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Go has an `Intl` with the pinned Node's CLDR, or a Pi call site passes an option outside the closed types (the types then grow and the generator with them).
+- **Fix commits:** `17136820e9` (2026-11-07), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08), `32c03fdaa1` (2026-11-17)
+- **Tests:** `chord/next/surfaces/intl_drift_test.go::TestNumbersMatchNode`, `chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode`, `chord/next/surfaces/intl_fuzz_test.go::FuzzFormatNumber`, `chord/next/surfaces/intl_fuzz_test.go::FuzzFormatTime`, `chord/next/surfaces/intl_platform_tag_test.go::TestWindowsLocaleTagIsWhatICUMakesOfTheUsersLocaleName`, `chord/next/surfaces/intl_platform_test.go::TestPlatformLocaleIsThatOfTheFirstSetVariable`, `chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersInThePlatformsDefaultLocaleOutsideARender`, `chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersLikeTheOracle` and 1 more in docs/bug-ledger.json
+- **Release note:** `FormatNumber`, `FormatTime` and `PlatformLocale` with no language use the Windows user's default locale (the name `GetLocaleInfoEx` gives, as ICU reads it, so as Node does) and no longer `LC_ALL`, `LC_MESSAGES` and `LANG` there; a Windows user with a non-English locale got English (en-US) numbers and times (D464).
 
 ### BF-32ce7ad
 
@@ -23073,21 +23089,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bdaa14582e` (2026-11-07), `d803ffa239` (2026-11-07), `5291c9268f` (2026-11-08), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
 - **Tests:** None recorded.
 
-### BF-D464
-
-**FormatNumber and FormatTime take closed option types and return errors (P1-3)**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D464)
-- **Symptom:** Not a Pi bug.
-- **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** Go has an `Intl` with the pinned Node's CLDR, or a Pi call site passes an option outside the closed types (the types then grow and the generator with them).
-- **Fix commits:** `17136820e9` (2026-11-07), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
-- **Tests:** `chord/next/surfaces/intl_drift_test.go::TestNumbersMatchNode`, `chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode`, `chord/next/surfaces/intl_fuzz_test.go::FuzzFormatNumber`, `chord/next/surfaces/intl_fuzz_test.go::FuzzFormatTime`, `chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersLikeTheOracle`
-
 ### BF-D465
 
 **FormatTime takes a time.Time, not `Date`, `number` or `string`**
@@ -34802,7 +34803,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
 | D460 | The app kit's facets are Go core facets beside the plugins' Node host | [BF-D460](#bf-d460) |
 | D462 | The server and each worker have two stores, not one | [BF-D462](#bf-d462) |
-| D464 | FormatNumber and FormatTime take closed option types and return errors (P1-3) | [BF-D464](#bf-d464) |
+| D464 | FormatNumber and FormatTime take closed option types and return errors (P1-3) | [BF-32c03fd](#bf-32c03fd) |
 | D465 | FormatTime takes a time.Time, not `Date`, `number` or `string` | [BF-D465](#bf-d465) |
 | D466 | No per-language formatter cache | [BF-D466](#bf-d466) |
 | D502 | `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go… | deliberate difference |

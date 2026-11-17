@@ -10696,6 +10696,50 @@
       ]
     },
     {
+      "id": "BF-32c03fd",
+      "title": "`FormatNumber`, `FormatTime` and `PlatformLocale` with no language use the Windows user's default locale (the…",
+      "symptom": "`FormatNumber`, `FormatTime` and `PlatformLocale` with no language use the Windows user's default locale (the name `GetLocaleInfoEx` gives, as ICU reads it, so as Node does) and no longer `LC_ALL`, `LC_MESSAGES` and `LANG` there; a Windows user with a non-English locale got English (en-US) numbers and times (D464).",
+      "rootCause": "platformLocale was written for the POSIX branch of ICU's default-locale code only and had no Windows branch, so a Windows user, who has none of the variables, always got en-US.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "Windows",
+      "class": "ahead-of-pi",
+      "divergence": "D464",
+      "removeWhen": "Go has an `Intl` with the pinned Node's CLDR, or a Pi call site passes an option outside the closed types (the types then grow and the generator with them).",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`FormatNumber`, `FormatTime` and `PlatformLocale` with no language use the Windows user's default locale (the name `GetLocaleInfoEx` gives, as ICU reads it, so as Node does) and no longer `LC_ALL`, `LC_MESSAGES` and `LANG` there; a Windows user with a non-English locale got English (en-US) numbers and times (D464).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "17136820e9",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "95f0f0d040",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "bdcd2b1248",
+          "date": "2026-11-08"
+        },
+        {
+          "hash": "32c03fdaa1",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "chord/next/surfaces/intl_drift_test.go::TestNumbersMatchNode",
+        "chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode",
+        "chord/next/surfaces/intl_fuzz_test.go::FuzzFormatNumber",
+        "chord/next/surfaces/intl_fuzz_test.go::FuzzFormatTime",
+        "chord/next/surfaces/intl_platform_tag_test.go::TestWindowsLocaleTagIsWhatICUMakesOfTheUsersLocaleName",
+        "chord/next/surfaces/intl_platform_test.go::TestPlatformLocaleIsThatOfTheFirstSetVariable",
+        "chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersInThePlatformsDefaultLocaleOutsideARender",
+        "chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersLikeTheOracle",
+        "chord/next/surfaces/surfaces_format_test.go::TestUnavailableLocaleFallsBackToThePlatformDefault"
+      ]
+    },
+    {
       "id": "BF-32ce7ad",
       "title": "The Termux page shows the `[Context]` line as PiG prints it, `~/.pig/agent/AGENTS.md`",
       "symptom": "The Termux page shows the `[Context]` line as PiG prints it, `~/.pig/agent/AGENTS.md`.",
@@ -40929,41 +40973,6 @@
       "tests": []
     },
     {
-      "id": "BF-D464",
-      "title": "FormatNumber and FormatTime take closed option types and return errors (P1-3)",
-      "symptom": "Not a Pi bug.",
-      "rootCause": "",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D464",
-      "removeWhen": "Go has an `Intl` with the pinned Node's CLDR, or a Pi call site passes an option outside the closed types (the types then grow and the generator with them).",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "17136820e9",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "95f0f0d040",
-          "date": "2026-11-08"
-        },
-        {
-          "hash": "bdcd2b1248",
-          "date": "2026-11-08"
-        }
-      ],
-      "tests": [
-        "chord/next/surfaces/intl_drift_test.go::TestNumbersMatchNode",
-        "chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode",
-        "chord/next/surfaces/intl_fuzz_test.go::FuzzFormatNumber",
-        "chord/next/surfaces/intl_fuzz_test.go::FuzzFormatTime",
-        "chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersLikeTheOracle"
-      ]
-    },
-    {
       "id": "BF-D465",
       "title": "FormatTime takes a time.Time, not `Date`, `number` or `string`",
       "symptom": "Not a Pi bug.",
@@ -66395,7 +66404,7 @@
     {
       "id": "D464",
       "title": "FormatNumber and FormatTime take closed option types and return errors (P1-3)",
-      "entry": "BF-D464"
+      "entry": "BF-32c03fd"
     },
     {
       "id": "D465",
