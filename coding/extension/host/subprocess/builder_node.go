@@ -22,7 +22,7 @@ const minimumNodeRuntimeVersion = "v22.13.0"
 // entry file recorded beside the runtime. It is part of the cache key so a
 // format change never reuses a launcher built by a prior pig for the same
 // source.
-const nodeLauncherFormat = "direct-node-v3"
+const nodeLauncherFormat = "direct-node-v4"
 
 // nodeEntryFile, inside the launcher's runtime directory, records the absolute
 // extension entry the launcher runs.
@@ -151,15 +151,15 @@ func minimumNodeRuntimeDisplay() string {
 // nodeLauncherCommand runs the node command of a published launcher directly,
 // with the arguments the launcher script would exec. Spawning the launcher
 // costs a shell and a dirname process before node starts. It reports false for
-// any other artifact. The host preflights Node before calling it. The
-// --import value is a module specifier, so the loader is named by its file
-// URL; a path that has none fails the command's Start.
+// any other artifact. The host preflights Node before calling it. Node starts
+// the runtime's bootstrap entry, which registers the loader hooks itself, so
+// the command line carries no --import (typeScriptRuntimeCommand).
 func nodeLauncherCommand(ctx context.Context, binPath string, sel tsruntime.Selection) (*exec.Cmd, bool) {
 	entry, ok := nodeLauncherEntry(binPath)
 	if !ok {
 		return nodePackedLauncherCommand(ctx, binPath, sel)
 	}
-	return typeScriptRuntimeCommand(ctx, sel, binPath+".runtime", "cli.mjs", "node extension loader", []string{entry}), true
+	return typeScriptRuntimeCommand(ctx, sel, binPath+".runtime", "cli.mjs", []string{entry}), true
 }
 
 func buildNode(ctx context.Context, cacheRoot, srcPath, outPath string) error {

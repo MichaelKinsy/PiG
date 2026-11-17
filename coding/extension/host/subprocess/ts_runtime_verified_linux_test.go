@@ -122,7 +122,7 @@ func TestTypeScriptRuntimeLaunchRunsTheVerifiedFileAfterTheSwap(t *testing.T) {
 	if err := os.Rename(replacement, exe); err != nil {
 		t.Fatal(err)
 	}
-	cmd := typeScriptRuntimeCommand(t.Context(), sel, filepath.Join(root, "tree"), "cli.mjs", "node extension loader", []string{"/a.ts"})
+	cmd := typeScriptRuntimeCommand(t.Context(), sel, filepath.Join(root, "tree"), "cli.mjs", []string{"/a.ts"})
 	if target, err := os.Readlink(cmd.Path); err != nil || !strings.HasPrefix(target, "/proc/self/fd/") || filepath.Base(cmd.Path) != "pig-ts-host" || cmd.Args[0] != exe {
 		t.Fatalf("command runs %q (-> %q, %v) with argv[0] %q, want a link named pig-ts-host to the verified descriptor with argv[0] %s", cmd.Path, target, err, cmd.Args[0], exe)
 	}
@@ -140,7 +140,7 @@ func TestTypeScriptRuntimeLaunchRunsTheVerifiedFileAfterTheSwap(t *testing.T) {
 	}
 	// The launch released the descriptor once the process started; a second command from the same selection is refused rather than
 	// naming whatever file now holds that descriptor number.
-	if again := typeScriptRuntimeCommand(t.Context(), sel, filepath.Join(root, "tree"), "cli.mjs", "node extension loader", nil); again.Err == nil {
+	if again := typeScriptRuntimeCommand(t.Context(), sel, filepath.Join(root, "tree"), "cli.mjs", nil); again.Err == nil {
 		t.Fatalf("a command from a released selection runs %q", again.Path)
 	}
 }
@@ -162,7 +162,7 @@ func TestTypeScriptRuntimeLaunchNamesTheProcessAfterTheExecutable(t *testing.T) 
 		t.Fatalf("selection %+v (fallback %+v)", sel, sel.Fallback)
 	}
 	defer releaseVerified(sel)
-	cmd := typeScriptRuntimeCommand(t.Context(), sel, filepath.Join(root, "tree"), "cli.mjs", "node extension loader", nil)
+	cmd := typeScriptRuntimeCommand(t.Context(), sel, filepath.Join(root, "tree"), "cli.mjs", nil)
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		t.Fatal(err)
