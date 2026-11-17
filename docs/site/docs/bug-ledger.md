@@ -449,6 +449,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5654e71-2](#bf-5654e71-2) | A JSON-RPC request or notification with a malformed `error` member is no longer rejected, and a `method` that… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56731e9](#bf-56731e9) | `/login` runs a provider object's OAuth login with Pi's login interaction, so an `info` event shows in the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56731e9-2](#bf-56731e9-2) | An extension's API-key login no longer shows "Waiting for authentication..." after an authorization URL | PiG's own defect | All platforms | 0.5.0 |
+| [BF-567c58b](#bf-567c58b) | A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory… | PiG's own defect | All platforms | Unreleased |
 | [BF-5689853](#bf-5689853) | `pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-56a0400](#bf-56a0400) | Single-line inputs (login prompts, search boxes) ignore xterm modifyOtherKeys text sequences, as Pi's Input… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56b0e0f](#bf-56b0e0f) | On Linux, the native X11 clipboard reads a `DISPLAY` that starts with `/` or `unix:` as a socket path with an… | PiG's own defect | Linux | Unreleased |
@@ -727,6 +728,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6f26a84](#bf-6f26a84) | Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f4a82f](#bf-6f4a82f) | Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6fb1307](#bf-6fb1307) | openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-6fe6882](#bf-6fe6882) | A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was… | PiG's own defect | All platforms | Unreleased |
 | [BF-70d51e5](#bf-70d51e5) | Fixed bash and PowerShell results losing `Took` after reloading a session, and the live `Took` including… | A fix Pi shipped that PiG ported | Windows | 0.5.0 |
 | [BF-70d51e5-2](#bf-70d51e5-2) | Fixed the message-format page: it said PiG does not carry the `nestedCalls` record on tool result messages… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-70d8a41](#bf-70d8a41) | Keybinding conflict detection ignores user bindings for actions the table does not define, as Pi's… | PiG's own defect | All platforms | 0.5.0 |
@@ -7594,6 +7596,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/credential_key_order_test.go::TestAuthStorageKeepsEnvOrderAndFirstPositionOfARepeatedKey`, `internal/codingagent/device_code_native_test.go::TestProviderOwnedAuthDialogNotifications`, `internal/codingagent/login_info_event_test.go::TestOAuthInteractionSecretPromptHonorsMaskSecretInput`, `internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt`, `test/parity/scenarios/oauth/31-provider-object-login-info-links.toml`
 - **Release note:** An extension's API-key login no longer shows "Waiting for authentication..." after an authorization URL. Pi shows that line only after a device code.
 
+### BF-567c58b
+
+**A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed.
+- **Root cause:** RPC mode ends with os.Exit after TerminateProcesses, as Pi ends with process.exit, so Runtime.Close and Host.Shutdown, which removed the Host private socket directory, never ran on a normal RPC exit: every RPC session that started an extension left an h<uint32> directory in the temp directory. TerminateProcesses is the last call of a host process that is about to exit, so it removes the directory too and makes the Host refuse a socket path afterwards, so a generation that asks for one while the process exits cannot make a directory nobody removes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `567c58b9dd` (2026-11-16), `b4f63495c3` (2026-11-17)
+- **Tests:** `coding/cli/rpc_exit_socket_dir_test.go::TestAnRPCPigThatEndsNormallyLeavesNoSocketDirectory`, `coding/extension/host/subprocess/socket_path_budget_test.go::TestTheLongestSocketPathOfTheDeepestKeptDirectoryBindsAtTheLimit`, `coding/extension/host/subprocess/socket_state_test.go::TestSocketPathAllocationRacingRemoval`, `coding/extension/host/subprocess/socket_state_test.go::TestSocketRuntimeDirIsRefusedForeverOnceRemoved`, `coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesMakesNoRuntimeDirectoryAndNoneAfterIt`, `coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesRemovesTheRuntimeDirectory`
+- **Release note:** A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed. The host process now removes that directory when it terminates its processes, and a generation that asks for a socket path while the process exits no longer makes a new one, whether or not the Host had already made a socket path.
+
 ### BF-5689853
 
 **`pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary…**
@@ -11457,6 +11473,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6a6fffa638` (2026-10-10), `6fb1307525` (2026-10-11), `81e584bdba` (2026-10-11)
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `ai/anthropic_effort_strict_test.go::TestAnthropicManagedEffortMapping`, `ai/anthropic_messages_compat_options_oracle_test.go::TestAnthropicMessagesCompatAndOptionsPayloadMatchesPi`, `ai/mistral_messages_payload_oracle_test.go::TestMistralMessagesPayloadMatchesPi`, `ai/openai_completions_compat_options_oracle_test.go::TestOpenAICompletionsCompatAndCacheOptionsPayloadMatchesPi` and 4 more in docs/bug-ledger.json
 - **Release note:** openai-codex-responses reads `instructions` from the initial system message of the resolved transcript before `transformMessages` drops an errored or aborted assistant turn (`ai/openai_responses.go`, openai-codex-responses.ts:551): a transcript that starts with such a turn followed by a system message no longer sends that message as the prompt. Found by drawing the responses compat members the payload oracle never drew (`supportsDeveloperRole`, `supportsAdditionalTools`, `supportsToolSearch`, `supportsExplicitPromptCacheMode`, `sessionAffinityFormat`, `supportsOpenAIGrammarTools`) in `checkResponsesPayload`; 5 mutants of those flags and the codex initial-system source go red (grammar tools stay inert there: the drawn tools carry no `constrainedSampling`, covered by `constrained_sampling_oracle_test.go`).
+
+### BF-6fe6882
+
+**A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came.
+- **Root cause:** A command that awaits ctx.reload() keeps its generation running until the command returns, which can be after the next reload staged a successor and began to listen. Every generation of an extension name listened on one path, and the old generation's stop removed the file at that path, which by then was the successor's listener: the successor's process failed to connect (ENOENT), the reload that staged it waited for a connection that never came, and the prompt that asked for the reload never answered. A Python extension beside an edited one hit it when the stop of a retired generation ran after the next staged one had bound; the CI failure was…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6fe688207d` (2026-11-16)
+- **Tests:** `coding/cli/reload_python_module_state_test.go::TestReloadKeepsTheModuleStateOfAnUneditedPythonExtensionBesideAnEditedOne`, `coding/extension/host/subprocess/host_test.go::TestResolveSocketDir_TermuxUsesTMPDIRAndKeepsItWithinTheSocketLimit`, `coding/extension/host/subprocess/platform_windows_test.go::TestWindowsUnixSocketPathsAreShortIsolatedAndCleaned`, `coding/extension/host/subprocess/platform_windows_test.go::TestWindowsUnixSocketPathsFallBackWhenTempIsTooLong`, `coding/extension/host/subprocess/socket_lifecycle_test.go::TestAKilledHostsSocketFileIsNeitherUsedNorRemovedByTheNextHost`, `coding/extension/host/subprocess/socket_lifecycle_test.go::TestSocketFilesOfRealGenerationsEndWithTheirListeners`, `coding/extension/host/subprocess/socket_path_budget_test.go::TestEverySocketPathIsNewAndFitsTheBudget`, `coding/extension/host/subprocess/socket_retirement_test.go::TestADeferredRetirementLeavesTheSocketOfTheGenerationStagedAfterIt` and 4 more in docs/bug-ledger.json
+- **Release note:** A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came. Every generation now listens on a socket path of its own and its stop removes only that file.
 
 ### BF-70d51e5
 

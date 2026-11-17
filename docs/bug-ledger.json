@@ -12663,6 +12663,37 @@
       ]
     },
     {
+      "id": "BF-567c58b",
+      "title": "A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h\u003cnumber\u003e` directory…",
+      "symptom": "A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h\u003cnumber\u003e` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed.",
+      "rootCause": "RPC mode ends with os.Exit after TerminateProcesses, as Pi ends with process.exit, so Runtime.Close and Host.Shutdown, which removed the Host private socket directory, never ran on a normal RPC exit: every RPC session that started an extension left an h\u003cuint32\u003e directory in the temp directory. TerminateProcesses is the last call of a host process that is about to exit, so it removes the directory too and makes the Host refuse a socket path afterwards, so a generation that asks for one while the process exits cannot make a directory nobody removes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h\u003cnumber\u003e` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed. The host process now removes that directory when it terminates its processes, and a generation that asks for a socket path while the process exits no longer makes a new one, whether or not the Host had already made a socket path.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "567c58b9dd",
+          "date": "2026-11-16"
+        },
+        {
+          "hash": "b4f63495c3",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_exit_socket_dir_test.go::TestAnRPCPigThatEndsNormallyLeavesNoSocketDirectory",
+        "coding/extension/host/subprocess/socket_path_budget_test.go::TestTheLongestSocketPathOfTheDeepestKeptDirectoryBindsAtTheLimit",
+        "coding/extension/host/subprocess/socket_state_test.go::TestSocketPathAllocationRacingRemoval",
+        "coding/extension/host/subprocess/socket_state_test.go::TestSocketRuntimeDirIsRefusedForeverOnceRemoved",
+        "coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesMakesNoRuntimeDirectoryAndNoneAfterIt",
+        "coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesRemovesTheRuntimeDirectory"
+      ]
+    },
+    {
       "id": "BF-5689853",
       "title": "`pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary…",
       "symptom": "`pig piglet build` produced a dynamically linked Piglet Binary unless `CGO_ENABLED=0` was set, so a Binary needed libc although nothing in it uses cgo.",
@@ -20107,6 +20138,39 @@
         "internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain",
         "test/longsession/session_oracle_test.go::TestSessionManagerMatchesPi",
         "test/parity/scenarios/rpc/58-rpc-session-wrong-typed-members.toml"
+      ]
+    },
+    {
+      "id": "BF-6fe6882",
+      "title": "A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was…",
+      "symptom": "A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came.",
+      "rootCause": "A command that awaits ctx.reload() keeps its generation running until the command returns, which can be after the next reload staged a successor and began to listen. Every generation of an extension name listened on one path, and the old generation's stop removed the file at that path, which by then was the successor's listener: the successor's process failed to connect (ENOENT), the reload that staged it waited for a connection that never came, and the prompt that asked for the reload never answered. A Python extension beside an edited one hit it when the stop of a retired generation ran after the next staged one had bound; the CI failure was…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came. Every generation now listens on a socket path of its own and its stop removes only that file.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6fe688207d",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/reload_python_module_state_test.go::TestReloadKeepsTheModuleStateOfAnUneditedPythonExtensionBesideAnEditedOne",
+        "coding/extension/host/subprocess/host_test.go::TestResolveSocketDir_TermuxUsesTMPDIRAndKeepsItWithinTheSocketLimit",
+        "coding/extension/host/subprocess/platform_windows_test.go::TestWindowsUnixSocketPathsAreShortIsolatedAndCleaned",
+        "coding/extension/host/subprocess/platform_windows_test.go::TestWindowsUnixSocketPathsFallBackWhenTempIsTooLong",
+        "coding/extension/host/subprocess/socket_lifecycle_test.go::TestAKilledHostsSocketFileIsNeitherUsedNorRemovedByTheNextHost",
+        "coding/extension/host/subprocess/socket_lifecycle_test.go::TestSocketFilesOfRealGenerationsEndWithTheirListeners",
+        "coding/extension/host/subprocess/socket_path_budget_test.go::TestEverySocketPathIsNewAndFitsTheBudget",
+        "coding/extension/host/subprocess/socket_retirement_test.go::TestADeferredRetirementLeavesTheSocketOfTheGenerationStagedAfterIt",
+        "coding/extension/host/subprocess/socket_retirement_test.go::TestAStopRemovesTheSocketFileOfItsOwnGenerationOnly",
+        "coding/extension/host/subprocess/socket_runtime_dir_test.go::TestEnsureSockRuntimeDirNameFitsTheWorstCaseSuffix",
+        "coding/extension/host/subprocess/socket_runtime_dir_test.go::TestSocketRuntimeBaseBranchAtTheEdgeOfTheShorterLeaf",
+        "coding/extension/host/subprocess/socket_runtime_dir_test.go::TestSocketRuntimeBaseKeptDirectoryHoldsEveryRuntimeSocketPath"
       ]
     },
     {
