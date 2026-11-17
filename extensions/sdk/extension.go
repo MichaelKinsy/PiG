@@ -1736,9 +1736,16 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				return providerHookReply(req.Event, object, result, func() any { return sentMember(member) })
 			}
 		}
+		// The members of the event as the handler receives them, to find the ones it assigns, reassigns or deletes (event_members_reply.go).
+		var members memberSnapshot
+		var memberEdits []any
+		trackMembers := memberEvent(req.Event)
+		if trackMembers {
+			members = snapshotMembers(data)
+		}
 		if req.Event == "message_start" || req.Event == "message_end" || req.Event == "agent_end" {
 			objects, _ := captureEventObjects(req.Event, data)
-			editReply = func(result any) any { return eventEditsReply(result, objects.edits(req.Event, req.Args)) }
+			editReply = func(result any) any { return eventEditsReply(result, append(objects.edits(req.Event, req.Args), memberEdits...)) }
 		}
 		if req.Event == "tool_result" {
 			received := map[string]any{}
@@ -1769,6 +1776,11 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		// runner.ts:1096-1125: the handlers of concurrent emits start in arrival order.
 		ctx.place.Pass()
 		result, err := handler(ctx, data)
+		if trackMembers {
+			if memberEdits = members.edits(data); memberEdits != nil && editReply == nil {
+				editReply = func(result any) any { return eventEditsReply(result, memberEdits) }
+			}
+		}
 		if req.Event == "user_bash" && err == nil {
 			result, err = e.userBashEventResult(result)
 		}

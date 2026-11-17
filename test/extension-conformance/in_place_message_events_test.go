@@ -482,7 +482,7 @@ var curePending = map[string]string{
 
 // curedSDKs are the SDKs (a word of the harness name) whose build already carries the edits of a top-level member to the later handlers of the dispatch: the rows of those edits must
 // match Pi there, and must still differ in the others. message_update/deep is another cure and has no SDK yet.
-var curedSDKs = []string{"node"}
+var curedSDKs = []string{"node", "go"}
 
 // noIdentity are the rows a Rust handler cannot carry: it owns its event as a value, so replacing an object member (the message, the messages, the partial's event) is the same
 // value change as editing inside it, and the reply cannot tell the two apart as Pi's caller does.
