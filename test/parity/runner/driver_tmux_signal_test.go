@@ -39,7 +39,6 @@ func TestStepSignalReachesTheProgramAndTheLaunchShellWritesItsStatus(t *testing.
 			session := "parity-signal-" + uniqueID()
 			registerSession(session)
 			t.Cleanup(func() { killSession(session) })
-			//nolint:gosec // G204 (class a): program is literal tmux; command is built in this test from literals and temp paths.
 			if out, err := exec.Command("tmux", tmuxArgs(createTmuxSessionArgs(session, command, TmuxDriverConfig{Width: 80, Height: 24})...)...).CombinedOutput(); err != nil {
 				t.Fatalf("tmux new-session: %v: %s", err, out)
 			}
@@ -71,7 +70,6 @@ func TestStepSignalRefusesAPaneWhoseShellHasNoProgramChild(t *testing.T) {
 	session := "parity-signal-none-" + uniqueID()
 	registerSession(session)
 	t.Cleanup(func() { killSession(session) })
-	//nolint:gosec // G204 (class a): program is literal tmux; the command is a literal.
 	if out, err := exec.Command("tmux", tmuxArgs(createTmuxSessionArgs(session, "exec sleep 30", TmuxDriverConfig{Width: 80, Height: 24})...)...).CombinedOutput(); err != nil {
 		t.Fatalf("tmux new-session: %v: %s", err, out)
 	}
