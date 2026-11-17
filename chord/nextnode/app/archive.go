@@ -447,7 +447,11 @@ func UnpackStaging(ctx context.Context, archive, parent string, accept func(Arch
 	if err != nil {
 		return "", "", "", err
 	}
-	if kitArchive := filepath.Join(staging, "kit.archive"); Exists(kitArchive) {
+	// pig divergence (D462): the kit's store is `kit.sqlite`. An archive Pi made has one store.archive holding the kit's parts beside the
+	// plugins': they are routed by owner (importSplit). An archive PiG made has the kit's store as `kit.archive`.
+	kitArchive := filepath.Join(staging, "kit.archive")
+	haveKitArchive := Exists(kitArchive)
+	if haveKitArchive {
 		if err := PrivateStore(filepath.Join(staging, kitStore)); err != nil {
 			return "", "", "", err
 		}
@@ -458,10 +462,7 @@ func UnpackStaging(ctx context.Context, archive, parent string, accept func(Arch
 			return "", "", "", err
 		}
 	}
-	if err := PrivateStore(filepath.Join(staging, archiveStore)); err != nil {
-		return "", "", "", err
-	}
-	if err := importStoreArchive(ctx, storeArchive, filepath.Join(staging, archiveStore)); err != nil {
+	if err := importSplit(ctx, storeArchive, staging, !haveKitArchive); err != nil {
 		return "", "", "", err
 	}
 	if err := os.Remove(storeArchive); err != nil {
@@ -472,17 +473,22 @@ func UnpackStaging(ctx context.Context, archive, parent string, accept func(Arch
 
 // importStoreArchive makes the store at path from the JSONL archive at archive.
 func importStoreArchive(ctx context.Context, archive, path string) error {
-	database, err := node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{})
+	source, err := openParts(archive)
 	if err != nil {
 		return err
 	}
-	file, err := os.Open(archive)
+	return importParts(ctx, source, path)
+}
+
+// importParts makes the store at path from parts (closed when the import ends: ImportStore closes it when it stops early).
+func importParts(ctx context.Context, parts store.PartSource, path string) error {
+	database, err := node.OpenNodeSqliteDatabase(path, node.NodeSqliteDatabaseOptions{})
 	if err != nil {
-		return errors.Join(err, database.Close())
+		return errors.Join(err, parts.Close())
 	}
 	// The import closes the source when it ends early; closing it here too makes sure the file is closed on every path.
-	defer func() { _ = file.Close() }()
-	opened, err := store.ImportStore(store.SqliteBackend(database), store.DecodeJsonl(&fileBytes{file: file}), ctx, store.StoreOptions{})
+	defer func() { _ = parts.Close() }()
+	opened, err := store.ImportStore(store.SqliteBackend(database), parts, ctx, store.StoreOptions{})
 	if err != nil {
 		return errors.Join(err, database.Close())
 	}

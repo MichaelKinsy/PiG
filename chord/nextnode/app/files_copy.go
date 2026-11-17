@@ -27,7 +27,7 @@ type FilesSource struct {
 }
 
 // CopyFiles copies the files of the host whose open store is source.Store and whose files directory is source.Files into the
-// new host directory target (refused when it exists): `target/store.sqlite` holding only the `Files` index,
+// new host directory target (refused when it exists): `target/kit.sqlite` (the kit's store, where the Go `Files` facet reads: D462) holding only the `Files` index,
 // `target/files/blobs/` its blobs. Staged beside `target` and renamed into place, so a failed copy leaves nothing. Runs where
 // the source store is open (its worker, or whoever holds its lock); the source may go on meanwhile.
 func CopyFiles(source FilesSource, target string, ctx context.Context) (err error) {
@@ -51,10 +51,10 @@ func CopyFiles(source FilesSource, target string, ctx context.Context) (err erro
 	if err = os.MkdirAll(into, 0o700); err != nil {
 		return err
 	}
-	if err = PrivateStore(filepath.Join(staging, "store.sqlite")); err != nil {
+	if err = PrivateStore(filepath.Join(staging, kitStore)); err != nil {
 		return err
 	}
-	database, err := node.OpenNodeSqliteDatabase(filepath.Join(staging, "store.sqlite"), node.NodeSqliteDatabaseOptions{})
+	database, err := node.OpenNodeSqliteDatabase(filepath.Join(staging, kitStore), node.NodeSqliteDatabaseOptions{})
 	if err != nil {
 		return err
 	}
@@ -73,9 +73,6 @@ func CopyFiles(source FilesSource, target string, ctx context.Context) (err erro
 	}
 	return os.Rename(staging, target)
 }
-
-// owner is who owns `Files`' tables (`<owner>:<table>`) and documents in a store: its contract.
-const owner = filesName
 
 // filesParts are the parts of a store's export that are `Files`' own: the manifest, its tables' parts, its documents' parts,
 // and an `end` counting them. Each blob row's file is put into `into` before its part is passed on.
@@ -108,7 +105,7 @@ func (parts *filesParts) Next(ctx context.Context) (any, bool, error) {
 		if !kept {
 			continue
 		}
-		if put, isPut := part.(*store.PutWrite); isPut && put.Table == owner+":blobs" {
+		if put, isPut := part.(*store.PutWrite); isPut && put.Table == filesName+":blobs" {
 			// A blob row's key: the kit's own column, a string.
 			if err := parts.blobs.LinkInto(put.Row.Value("id").(string), parts.into); err != nil {
 				return nil, false, err
@@ -126,28 +123,12 @@ func (parts *filesParts) Close() error { return parts.iterator.Close() }
 
 // keeps reports whether part belongs to `Files` (the manifest does too); its documents' ids are remembered.
 func (parts *filesParts) keeps(part store.ArchivePart) bool {
-	switch part := part.(type) {
-	case *store.ManifestPart:
+	if _, isManifest := part.(*store.ManifestPart); isManifest {
 		return true
-	case *store.TableDefinitionWrite:
-		return hasPrefix(part.Table, owner+":")
-	case *store.PutWrite:
-		return hasPrefix(part.Table, owner+":")
-	case *store.IndexWrite:
-		return hasPrefix(part.Table, owner+":")
-	case *store.DocumentCreate:
-		if part.Record.Owner == owner {
-			parts.documents[part.Record.ID] = struct{}{}
-			return true
-		}
-		return false
-	case *store.DocumentRevisionWrite:
-		_, ok := parts.documents[part.ID]
-		return ok
 	}
-	return false
-}
-
-func hasPrefix(text, prefix string) bool {
-	return len(text) >= len(prefix) && text[:len(prefix)] == prefix
+	if created, isCreate := part.(*store.DocumentCreate); isCreate && ownedByKit(part, nil) {
+		parts.documents[created.Record.ID] = struct{}{}
+		return true
+	}
+	return ownedByKit(part, parts.documents)
 }

@@ -200,7 +200,7 @@ func TestRoundTripsAHostDirectorysStoreAndFilesWithoutUploadsUnderWay(t *testing
 			t.Fatalf("the server got %s, want %s", gotText, wantText)
 		}
 	}
-	if got := dirNames(t, staging); !slices.Equal(got, []string{"files", "kit-server.archive", "server.archive", "store.sqlite"}) {
+	if got := dirNames(t, staging); !slices.Equal(got, []string{"files", "kit-server.archive", "kit.sqlite", "server.archive", "store.sqlite"}) {
 		t.Fatalf("staging = %v", got)
 	}
 	if got := dirNames(t, filepath.Join(staging, "files")); !slices.Equal(got, []string{"a", "sub"}) {
