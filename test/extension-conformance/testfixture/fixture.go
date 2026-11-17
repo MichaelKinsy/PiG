@@ -546,6 +546,7 @@ func Extension() *sdk.Extension {
 				parts = append(parts, name+"=error:"+err.Error())
 			}
 		}
+		report("wait", hctx.WaitForIdle())
 		_, err := hctx.NewSession(nil)
 		report("new", err)
 		_, err = hctx.Fork("entry", nil)
@@ -576,6 +577,31 @@ func Extension() *sdk.Extension {
 		}
 		ctx.Notify("stored_actions:"+reportSessionActions(kept), "info")
 		return nil
+	})
+	// session_actions_tool makes the same calls, and the wait, through the context of a tool's execute: Pi's createContext() object, so every one is refused.
+	ext.Tool("session_actions_tool", "Call the session actions through the tool's context", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(tctx sdk.Context, _ map[string]any) (any, error) {
+		return map[string]string{"content": "tool_actions:" + reportSessionActions(tctx)}, nil
+	})
+	// wait_idle_command waits for the run from a command context, which Pi gives waitForIdle (runner.ts createCommandContext); the call returns when the host's wait does.
+	ext.Command("wait_idle_command", "Wait for the run from a command", func(ctx sdk.Context, _ string) error {
+		text := "done"
+		if err := ctx.WaitForIdle(); err != nil {
+			text = "error:" + err.Error()
+		}
+		ctx.Notify("wait_idle:"+text, "info")
+		return nil
+	})
+	// wait_idle_with_session waits for the run from a withSession callback, whose context is the command context of the replacement Session.
+	ext.Command("wait_idle_with_session", "Wait for the run from a withSession callback", func(ctx sdk.Context, _ string) error {
+		_, err := ctx.SwitchSession("/s.jsonl", map[string]any{"withSession": sdk.WithSessionFunc(func(replaced sdk.ReplacedSessionContext) error {
+			text := "done"
+			if err := replaced.WaitForIdle(); err != nil {
+				text = "error:" + err.Error()
+			}
+			ctx.Notify("with_session_wait:"+text, "info")
+			return nil
+		})})
+		return err
 	})
 	ext.Command("active_tools_get", "Report the active tools", func(ctx sdk.Context, _ string) error {
 		names, err := ctx.GetActiveTools()

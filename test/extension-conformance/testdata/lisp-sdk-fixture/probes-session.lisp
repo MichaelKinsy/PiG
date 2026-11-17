@@ -37,7 +37,8 @@
                             (format nil "~A=rejected" name)
                             (format nil "~A=error:~A" name e))))))
     (format nil "~{~A~^,~}"
-            (list (report "new" (lambda () (pig:ctx-new-session hctx)))
+            (list (report "wait" (lambda () (pig:ctx-wait-for-idle hctx)))
+                  (report "new" (lambda () (pig:ctx-new-session hctx)))
                   (report "fork" (lambda () (pig:ctx-fork hctx "entry")))
                   (report "navigate" (lambda () (pig:ctx-navigate-tree hctx "entry")))
                   (report "switch" (lambda () (pig:ctx-switch-session hctx "/s.jsonl")))
@@ -59,6 +60,33 @@
                (lambda (ctx args)
                  (declare (ignore args))
                  (pig:ctx-notify ctx (format nil "stored_actions:~A" (report-session-actions *kept-event-ctx*)) "info"))))
+
+;;; session_actions_tool makes the same calls, and the wait, through the context of a tool's execute: Pi's createContext() object, so every one is refused.
+(def-fixture "session_actions_tool" (ext)
+  (pig:tool ext "session_actions_tool" "Call the session actions through the tool's context" (pig:obj "type" "object" "properties" (pig:obj))
+            (lambda (tctx params)
+              (declare (ignore params))
+              (pig:obj "content" (format nil "tool_actions:~A" (report-session-actions tctx))))))
+
+;;; wait_idle_command waits for the run from a command context (runner.ts createCommandContext); wait_idle_with_session from a withSession callback's context.
+(def-fixture "wait_idle_command" (ext)
+  (pig:command ext "wait_idle_command" "Wait for the run from a command"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (pig:ctx-notify ctx (format nil "wait_idle:~A" (handler-case (progn (pig:ctx-wait-for-idle ctx) "done")
+                                                                  (error (e) (format nil "error:~A" e))))
+                                 "info"))))
+
+(def-fixture "wait_idle_with_session" (ext)
+  (pig:command ext "wait_idle_with_session" "Wait for the run from a withSession callback"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (pig:ctx-switch-session
+                  ctx "/s.jsonl"
+                  :with-session (lambda (replaced)
+                                  (pig:ctx-notify ctx (format nil "with_session_wait:~A" (handler-case (progn (pig:ctx-wait-for-idle replaced) "done")
+                                                                                             (error (e) (format nil "error:~A" e))))
+                                                  "info"))))))
 
 (def-fixture "session_actions_bound" (ext)
   (pig:command ext "session_actions_bound" "Report what the host's bound session actions answer"

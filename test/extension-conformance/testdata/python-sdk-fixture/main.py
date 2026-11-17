@@ -1740,7 +1740,7 @@ def new_extension() -> pig_sdk.Extension:
 
     def report_session_actions(hctx):
         parts = []
-        for name, call in (("new", lambda: hctx.new_session()), ("fork", lambda: hctx.fork("entry")), ("navigate", lambda: hctx.navigate_tree("entry")), ("switch", lambda: hctx.switch_session("/s.jsonl")), ("reload", lambda: hctx.reload())):
+        for name, call in (("wait", lambda: hctx.wait_for_idle()), ("new", lambda: hctx.new_session()), ("fork", lambda: hctx.fork("entry")), ("navigate", lambda: hctx.navigate_tree("entry")), ("switch", lambda: hctx.switch_session("/s.jsonl")), ("reload", lambda: hctx.reload())):
             try:
                 call()
                 parts.append("%s=allowed" % name)
@@ -1760,6 +1760,31 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_session_actions_on", "Subscribe to the event named by the argument with a handler that calls the session actions", event_session_actions_on)
     ext.command("event_session_actions_stored", "Call the session actions through the context an event handler kept", event_session_actions_stored)
+    # session_actions_tool makes the same calls, and the wait, through the context of a tool's execute: Pi's createContext() object, so every one is refused.
+    ext.tool("session_actions_tool", "Call the session actions through the tool's context", {"type": "object", "properties": {}}, lambda tctx, _args: {"content": "tool_actions:" + report_session_actions(tctx)})
+
+    # wait_idle_command waits for the run from a command context (runner.ts createCommandContext); wait_idle_with_session from a withSession callback's context.
+    def wait_idle_command(ctx, _args):
+        text = "done"
+        try:
+            ctx.wait_for_idle()
+        except Exception as error:
+            text = "error:%s" % error
+        ctx.notify("wait_idle:" + text, "info")
+
+    def wait_idle_with_session(ctx, _args):
+        def with_session(replaced):
+            text = "done"
+            try:
+                replaced.wait_for_idle()
+            except Exception as error:
+                text = "error:%s" % error
+            ctx.notify("with_session_wait:" + text, "info")
+
+        ctx.switch_session("/s.jsonl", {"withSession": with_session})
+
+    ext.command("wait_idle_command", "Wait for the run from a command", wait_idle_command)
+    ext.command("wait_idle_with_session", "Wait for the run from a withSession callback", wait_idle_with_session)
     ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
     ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
     # mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).

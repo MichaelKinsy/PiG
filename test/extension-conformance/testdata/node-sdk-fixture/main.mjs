@@ -207,19 +207,20 @@ export default function (pi) {
     ctx.ui.notify(`unbound:${parts.join(",")}`, "info");
   }});
   // event_session_actions_on keeps the handler's context; event_session_actions_stored calls the actions through it after the handler's request ended. Pi's createContext() object has no such member (runner.ts:877-987), so Node's reports `undefined` and the call throws Pi's TypeError.
-  const sessionActionNames = ["newSession", "fork", "navigateTree", "switchSession", "reload"];
+  const sessionActionNames = ["waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload"];
   const reportSessionActions = async (ctx) => {
     const parts = [];
-    for (const [name, call] of [["new", () => ctx.newSession()], ["fork", () => ctx.fork("entry")], ["navigate", () => ctx.navigateTree("entry")], ["switch", () => ctx.switchSession("/s.jsonl")], ["reload", () => ctx.reload()]]) {
+    for (const [name, call] of [["wait", () => ctx.waitForIdle()], ["new", () => ctx.newSession()], ["fork", () => ctx.fork("entry")], ["navigate", () => ctx.navigateTree("entry")], ["switch", () => ctx.switchSession("/s.jsonl")], ["reload", () => ctx.reload()]]) {
       try { await call(); parts.push(`${name}=allowed`); } catch (error) { parts.push(/is not a function/.test(error.message) ? `${name}=rejected` : `${name}=error:${error.message}`); }
     }
     return parts.join(",");
   };
   // sessionActionShape is what Pi's JavaScript shows of an event context: typeof of each member, and the synchronous error a call throws.
   const sessionActionShape = (ctx) => {
-    let thrown = "returned";
-    try { void Promise.resolve(ctx.switchSession("/s.jsonl")).catch(() => {}); } catch (error) { thrown = `${error.constructor.name}:${error.message}`; }
-    return `${sessionActionNames.map((name) => typeof ctx[name]).join(",")};${thrown}`;
+    let thrown = "returned", thrownSwitch = "returned";
+    try { void Promise.resolve(ctx.waitForIdle()).catch(() => {}); } catch (error) { thrown = `${error.constructor.name}:${error.message}`; }
+    try { void Promise.resolve(ctx.switchSession("/s.jsonl")).catch(() => {}); } catch (error) { thrownSwitch = `${error.constructor.name}:${error.message}`; }
+    return `${sessionActionNames.map((name) => typeof ctx[name]).join(",")};${thrown};${thrownSwitch}`;
   };
   let keptEventCtx;
   pi.registerCommand("event_session_actions_on", { description: "Subscribe to the event named by the argument with a handler that calls the session actions", handler: async (args) => {
@@ -232,6 +233,21 @@ export default function (pi) {
   pi.registerCommand("event_session_actions_stored", { description: "Call the session actions through the context an event handler kept", handler: async (_args, ctx) => {
     ctx.ui.notify(`stored_shape:${sessionActionShape(keptEventCtx)}`, "info");
     ctx.ui.notify(`stored_actions:${await reportSessionActions(keptEventCtx)}`, "info");
+  }});
+  // session_actions_tool makes the same calls through the context of a tool's execute: Pi's createContext() object (runner.ts:877-987), so none exists.
+  pi.registerTool({ name: "session_actions_tool", label: "session_actions_tool", description: "Call the session actions through the tool's context", parameters: { type: "object", properties: {} }, execute: async (_id, _params, _signal, _onUpdate, ctx) => ({ content: [{ type: "text", text: `tool_actions:${await reportSessionActions(ctx)}` }], details: {} }) });
+  // wait_idle_command waits for the run from a command context (runner.ts createCommandContext), and wait_idle_with_session from a withSession callback's context.
+  pi.registerCommand("wait_idle_command", { description: "Wait for the run from a command", handler: async (_args, ctx) => {
+    let text = "done";
+    try { await ctx.waitForIdle(); } catch (error) { text = `error:${error.message}`; }
+    ctx.ui.notify(`wait_idle:${text}`, "info");
+  }});
+  pi.registerCommand("wait_idle_with_session", { description: "Wait for the run from a withSession callback", handler: async (_args, ctx) => {
+    await ctx.switchSession("/s.jsonl", { withSession: async (replaced) => {
+      let text = "done";
+      try { await replaced.waitForIdle(); } catch (error) { text = `error:${error.message}`; }
+      ctx.ui.notify(`with_session_wait:${text}`, "info");
+    } });
   }});
   pi.registerCommand("active_tools_get", { description: "Report the active tools", handler: async (_args, ctx) => ctx.ui.notify(`active_tools:${pi.getActiveTools().join(",")}`, "info") });
   // mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
