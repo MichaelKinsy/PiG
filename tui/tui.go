@@ -819,8 +819,12 @@ type tuiBase struct {
 	baseOwner          atomic.Uint64
 	frameAccess        atomic.Bool // EnableFrameAccess: the renderer records frameOwner and baseOwner
 	frameRenderRequest atomic.Uint32
-	renderGeneration   uint64
-	lastRenderAt       time.Time
+	// contentChanged is whether a render request since the last frame may have changed component output (tui.ts TuiBase.contentChanged). Only a
+	// view request (requestViewRender) leaves it false, and then the frame may reuse the output of the previous one. It is an atomic so that a request
+	// from any goroutine, a focus change included, sets it without taking mu; the frame reads and clears it once, before it lays out.
+	contentChanged   atomic.Bool
+	renderGeneration uint64
+	lastRenderAt     time.Time
 	// pacing answers scheduleRenderLocked's interval from lastFrameCost, what the last throttled frame took from its start to the return of its write; nil is Pi's constant (frame_pacing.go).
 	pacing        *FramePacing
 	lastFrameCost time.Duration
@@ -1018,6 +1022,11 @@ func (t *tuiBase) currentOverlayVisibility(opts OverlayOptions) bool {
 }
 
 func (t *tuiBase) applyOverlayCommand(command overlayCommand) overlayCommandResult {
+	// A focus or overlay change draws cursors and overlays from components: no earlier output is reused (tui.ts focus change). A geometry
+	// update is not one: the frame sends it for the size it is drawing, and a view-only frame must keep its reused output.
+	if command.kind != overlayGeometryChanged {
+		t.contentChanged.Store(true)
+	}
 	t.overlayMu.Lock()
 	previous := t.overlayModel.focusedComponent()
 	result := t.overlayModel.apply(command)
@@ -1938,7 +1947,11 @@ func (t *tuiBase) RequestRender(force ...bool) {
 		return
 	}
 	forced := len(force) > 0 && force[0]
-	if t.deferFrameRenderRequest(forced) {
+	want := frameRenderRequestNormal
+	if forced {
+		want = frameRenderRequestForced
+	}
+	if t.deferFrameRenderRequest(want) {
 		return
 	}
 	t.requestRender(forced)
@@ -1946,6 +1959,7 @@ func (t *tuiBase) RequestRender(force ...bool) {
 
 const (
 	frameRenderRequestNone uint32 = iota
+	frameRenderRequestView
 	frameRenderRequestNormal
 	frameRenderRequestForced
 )
@@ -1981,14 +1995,11 @@ func (t *tuiBase) leaveFrame() {
 	t.frameOwner.Store(0)
 }
 
-// deferFrameRenderRequest records a render request made while a frame holds mu and reports whether it did. A forced request supersedes a normal one.
-func (t *tuiBase) deferFrameRenderRequest(force bool) bool {
+// deferFrameRenderRequest records a render request made while a frame holds mu and reports whether it did. A forced request supersedes a normal
+// one, and a normal one a view request.
+func (t *tuiBase) deferFrameRenderRequest(want uint32) bool {
 	if !t.frameActive.Load() {
 		return false
-	}
-	want := frameRenderRequestNormal
-	if force {
-		want = frameRenderRequestForced
 	}
 	for {
 		current := t.frameRenderRequest.Load()
@@ -2005,6 +2016,8 @@ func (t *tuiBase) deferFrameRenderRequest(force bool) bool {
 
 func (t *tuiBase) issueFrameRenderRequest() {
 	switch t.frameRenderRequest.Swap(frameRenderRequestNone) {
+	case frameRenderRequestView:
+		t.requestViewRender()
 	case frameRenderRequestNormal:
 		t.RequestRender()
 	case frameRenderRequestForced:
@@ -2043,6 +2056,7 @@ func (t *tuiBase) RequestImmediateRender() {
 	t.renderGeneration++
 	generation := t.renderGeneration
 	t.immediateRenderRequested = true
+	t.contentChanged.Store(true)
 	t.renderRequested = true
 	dispatch := t.renderOnMain
 	if dispatch == nil {
@@ -2079,8 +2093,32 @@ func (t *tuiBase) requestRender(force bool) {
 	t.requestRenderLocked(force)
 }
 
-// requestRenderLocked is requestRender with mu held.
+// requestRenderLocked is requestRender with mu held: a request for a change that may have changed the output of any component.
 func (t *tuiBase) requestRenderLocked(force bool) {
+	t.contentChanged.Store(true)
+	t.armRenderLocked(force)
+}
+
+// requestViewRender mirrors TuiBase.requestViewRender (tui.ts, protected there): it requests a frame for a change that leaves component output
+// unchanged, such as a scroll position, so the frame may reuse the output of the previous one. It is RequestRender without the
+// content flag, so a request for a changed component made before the frame still renders everything.
+func (t *tuiBase) requestViewRender() {
+	if t.stopped.Load() {
+		return
+	}
+	if t.deferFrameRenderRequest(frameRenderRequestView) {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.stopped.Load() {
+		return
+	}
+	t.armRenderLocked(false)
+}
+
+// armRenderLocked asks for a frame; mu must be held.
+func (t *tuiBase) armRenderLocked(force bool) {
 	if force {
 		t.forceRedraw = true
 		if t.resetRenderState != nil {
@@ -2301,6 +2339,7 @@ func (t *tuiBase) Render() {
 	if t.stopped.Load() {
 		return
 	}
+	t.contentChanged.Store(true) // tui.ts renderNow
 	t.CancelPendingRender()
 	t.render(frameGate{})
 }

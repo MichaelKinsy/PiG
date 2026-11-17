@@ -109,6 +109,7 @@ func TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows(t *testing.T) {
 	out.Reset()
 
 	root.lines = []string{imageLine, "changed", "", "after"}
+	tui.RequestRender() // a changed component asks for a frame; a frame without a request may reuse the earlier output
 	tui.doRender()
 	redraw := out.String()
 	placement := strings.Index(redraw, "\x1b_Ga=p,q=2")

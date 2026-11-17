@@ -73,6 +73,9 @@ type LayoutBox struct {
 	Layer              int
 }
 
+// LayoutRenderCache is component output by width, as rendered for one layout frame.
+type LayoutRenderCache map[Component]map[int][]string
+
 // LayoutFrame is a fully laid-out and painted viewport.
 type LayoutFrame struct {
 	Root              *LayoutBox
@@ -80,6 +83,8 @@ type LayoutFrame struct {
 	Height            int
 	Lines             []string
 	PrimaryScrollView *ScrollView
+	// RenderCache is the output of every component this frame rendered; pass it to a later frame whose content did not change.
+	RenderCache LayoutRenderCache
 }
 
 // ScrollbarGeometry describes where a scroll viewport's scrollbar paints.
@@ -94,7 +99,8 @@ type ScrollbarGeometry struct {
 
 type layoutContext struct {
 	viewport          LayoutViewport
-	renderCache       map[Component]map[int][]string
+	renderCache       LayoutRenderCache
+	reusableOutput    LayoutRenderCache // output of an earlier frame with the same content; an entry is copied into renderCache when it is used
 	requestRender     func()
 	primaryScrollView *ScrollView
 }
@@ -117,6 +123,10 @@ func renderCached(context *layoutContext, component Component, width int) []stri
 	}
 	lines, ok := widths[safeWidth]
 	if !ok {
+		if reused, hit := context.reusableOutput[component][safeWidth]; hit {
+			widths[safeWidth] = reused
+			return reused
+		}
 		switch concrete := component.(type) {
 		case *Container:
 			lines = concrete.renderBorrowed(safeWidth)
@@ -512,13 +522,21 @@ func paintBox(box *LayoutBox, screen []string, totalWidth int) {
 
 // RenderLayoutFrame lays out a component tree into a width×height viewport and
 // paints it. Mirrors upstream renderLayoutFrame.
-func RenderLayoutFrame(root Component, width, height int, requestRender func()) LayoutFrame {
+//
+// reusableOutput is an earlier frame's RenderCache; its output is used instead of calling Render. Pass it only when no
+// component changed since that frame, such as when only a scroll position moved: the frame then costs O(viewport) instead of
+// rendering the whole scrollable document. Each frame keeps only the output it used, so reuse never accumulates across frames.
+// The lines in the cache are borrowed from the components that returned them: do not write into them.
+func RenderLayoutFrame(root Component, width, height int, requestRender func(), reusableOutput ...LayoutRenderCache) LayoutFrame {
 	safeWidth := max(1, width)
 	safeHeight := max(1, height)
 	context := &layoutContext{
 		viewport:      LayoutViewport{Width: safeWidth, Height: safeHeight},
-		renderCache:   map[Component]map[int][]string{},
+		renderCache:   LayoutRenderCache{},
 		requestRender: requestRender,
+	}
+	if len(reusableOutput) > 0 {
+		context.reusableOutput = reusableOutput[0]
 	}
 	rootBox := layoutComponent(context, root, 0, 0, safeWidth, &safeHeight,
 		LayoutRect{X: 0, Y: 0, Width: safeWidth, Height: safeHeight})
@@ -530,6 +548,7 @@ func RenderLayoutFrame(root Component, width, height int, requestRender func()) 
 		Height:            safeHeight,
 		Lines:             lines,
 		PrimaryScrollView: context.primaryScrollView,
+		RenderCache:       context.renderCache,
 	}
 }
 

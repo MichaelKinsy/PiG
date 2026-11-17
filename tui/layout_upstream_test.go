@@ -290,3 +290,35 @@ func testUpstreamProportionalScrollbar(t *testing.T) {
 		}
 	}
 }
+
+// Ports 'reuses earlier frame output without accumulating widths' of packages/tui/test/layout.test.ts (Pi b7bb7ca905b8, #9549): scroll
+// frames reuse earlier output, but only the widths the previous frame used.
+func TestRenderLayoutFrameReusesEarlierOutputWithoutAccumulatingWidths(t *testing.T) {
+	var widths []int
+	component := &layoutWidthRecorder{widths: &widths}
+	first := RenderLayoutFrame(component, 10, 2, noRender)
+	reused := RenderLayoutFrame(component, 10, 2, noRender, first.RenderCache)
+	if !slices.Equal(widths, []int{10}) {
+		t.Fatalf("widths after the reused frame = %v, want [10]", widths)
+	}
+	narrower := RenderLayoutFrame(component, 8, 2, noRender, reused.RenderCache)
+	if !slices.Equal(widths, []int{10, 8}) {
+		t.Fatalf("widths after the narrower frame = %v, want [10 8]", widths)
+	}
+	cached := narrower.RenderCache[component]
+	if len(cached) != 1 || cached[8] == nil {
+		t.Fatalf("the narrower frame keeps widths %v, want only 8", cached)
+	}
+	RenderLayoutFrame(component, 10, 2, noRender, narrower.RenderCache)
+	if !slices.Equal(widths, []int{10, 8, 10}) {
+		t.Fatalf("widths after the wider frame = %v, want [10 8 10]", widths)
+	}
+}
+
+type layoutWidthRecorder struct{ widths *[]int }
+
+func (c *layoutWidthRecorder) Render(width int) []string {
+	*c.widths = append(*c.widths, width)
+	return []string{"line"}
+}
+func (*layoutWidthRecorder) Invalidate() {}

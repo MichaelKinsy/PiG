@@ -662,19 +662,19 @@ func (t *TuiAltScreen) rootComponent() Component {
 // ScrollBy scrolls the primary scroll view by the given number of lines.
 func (t *TuiAltScreen) ScrollBy(lines int) {
 	t.getPrimaryScrollViewLocked().ScrollBy(lines)
-	t.RequestRender()
+	t.requestViewRender()
 }
 
 // ScrollToTop scrolls the primary scroll view to its start.
 func (t *TuiAltScreen) ScrollToTop() {
 	t.getPrimaryScrollViewLocked().ScrollToStart()
-	t.RequestRender()
+	t.requestViewRender()
 }
 
 // ScrollToBottom scrolls the primary scroll view to its end.
 func (t *TuiAltScreen) ScrollToBottom() {
 	t.getPrimaryScrollViewLocked().ScrollToEnd()
-	t.RequestRender()
+	t.requestViewRender()
 }
 
 // Flash shows a transient message in the alternate-screen flash stack.
@@ -853,8 +853,10 @@ func (t *TuiAltScreen) removeUploadedKittyOrder(imageID int) {
 	}
 }
 
-// requestRenderFromLayout is the render callback handed to scroll views. A request made during the frame (a search reveal scrolling the transcript) is issued when the frame releases t.mu (RequestRender).
-func (t *TuiAltScreen) requestRenderFromLayout() { t.RequestRender() }
+// requestRenderFromLayout is the render callback handed to scroll views, as tui-alt-screen.ts passes requestViewRender to renderLayoutFrame: a scroll view
+// asks for a frame because its scroll position moved, which leaves component output unchanged. A request made during the frame (a search reveal scrolling
+// the transcript) is issued when the frame releases t.mu.
+func (t *TuiAltScreen) requestRenderFromLayout() { t.requestViewRender() }
 
 //perf:hot
 func (t *TuiAltScreen) doRender() { t.drawFrame(frameGate{}) }
@@ -876,9 +878,14 @@ func (t *TuiAltScreen) drawFrame(gate frameGate) (began bool) {
 	height := max(1, screenRows)
 
 	root := t.rootComponent()
-	nextLayout := RenderLayoutFrame(root, width, height, t.requestRenderFromLayout)
+	// Only requestViewRender leaves contentChanged false, so a frame that follows nothing else reuses the output of the previous frame (tui-alt-screen.ts).
+	var reusableOutput LayoutRenderCache
+	if !t.contentChanged.Swap(false) && t.currentLayout != nil {
+		reusableOutput = t.currentLayout.RenderCache
+	}
+	nextLayout := RenderLayoutFrame(root, width, height, t.requestRenderFromLayout, reusableOutput)
 	if t.refreshSearch(&nextLayout) {
-		nextLayout = RenderLayoutFrame(root, width, height, t.requestRenderFromLayout)
+		nextLayout = RenderLayoutFrame(root, width, height, t.requestRenderFromLayout, nextLayout.RenderCache)
 	}
 	screen := make([]string, len(nextLayout.Lines))
 	for i, line := range nextLayout.Lines {
