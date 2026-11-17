@@ -139,6 +139,21 @@ func (r *rawBridge) text(members map[string]json.RawMessage, name string) string
 	return value
 }
 
+// next is the bridge's next output line. A line the bridge never writes fails the test within the wait budget: a bare receive on raw would hang to the package's clock.
+func (r *rawBridge) next(t *testing.T) map[string]json.RawMessage {
+	t.Helper()
+	select {
+	case members, ok := <-r.raw:
+		if !ok {
+			t.Fatal("bridge output ended before the next line")
+		}
+		return members
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatal("no output line from the bridge within the wait budget")
+	}
+	return nil
+}
+
 // stream sends one Codex stream and returns every line up to and including its result, in the order they were written.
 func (r *rawBridge) stream(t *testing.T, id, baseURL, sessionID string) []map[string]json.RawMessage {
 	t.Helper()
@@ -287,7 +302,7 @@ func TestProviderBridgeResetLineClearsCountersAndTheSSEFallbackFlag(t *testing.T
 	}
 	upgrades := wire.upgrades.Load()
 	run.send(t, `{"id":"codex-ws-1","type":"codexWebSocket","op":"reset","sessionId":"reset-a"}`)
-	cleared := <-run.raw
+	cleared := run.next(t)
 	if run.text(cleared, "type") != "codexStats" || run.text(cleared, "sessionId") != "reset-a" || len(cleared["stats"]) != 0 {
 		t.Fatalf("reset of one session pushed %v", cleared)
 	}
@@ -303,7 +318,7 @@ func TestProviderBridgeResetLineClearsCountersAndTheSSEFallbackFlag(t *testing.T
 		t.Fatalf("websocketFallbackActive survived the reset: %s", stats)
 	}
 	run.send(t, `{"id":"codex-ws-2","type":"codexWebSocket","op":"reset"}`)
-	cleared = <-run.raw
+	cleared = run.next(t)
 	if run.text(cleared, "type") != "codexStats" || len(cleared["sessionId"]) != 0 || len(cleared["stats"]) != 0 {
 		t.Fatalf("reset of every session pushed %v", cleared)
 	}
@@ -317,12 +332,12 @@ func TestProviderBridgeCodexWebSocketLineShape(t *testing.T) {
 	run := startRawBridge(t)
 	run.send(t, `{"id":"codex-ws-1","type":"codexWebSocket","op":"close","sessionId":"none"}`)
 	run.send(t, `{"id":"codex-ws-2","type":"codexWebSocket","op":"wobble"}`)
-	bad := <-run.raw
+	bad := run.next(t)
 	if run.text(bad, "id") != "codex-ws-2" || run.text(bad, "type") != "error" || !strings.Contains(run.text(bad, "error"), "unknown codexWebSocket op") {
 		t.Fatalf("got %v: the close line must be silent and the unknown op an error on its id", bad)
 	}
 	run.send(t, `{"type":"codexWebSocket","op":"close"}`)
-	if noID := <-run.raw; !strings.Contains(run.text(noID, "error"), "no id") {
+	if noID := run.next(t); !strings.Contains(run.text(noID, "error"), "no id") {
 		t.Fatalf("got %v", noID)
 	}
 }
@@ -332,7 +347,7 @@ func TestProviderBridgeCloseLineOfAnUnknownSessionPushesNothing(t *testing.T) {
 	run := startRawBridge(t)
 	run.send(t, `{"id":"codex-ws-1","type":"codexWebSocket","op":"close","sessionId":"never-used"}`)
 	run.send(t, `{"id":"w","type":"wobble"}`)
-	if got := <-run.raw; run.text(got, "id") != "w" {
+	if got := run.next(t); run.text(got, "id") != "w" {
 		t.Fatalf("first line after the close is %v, want the answer to the next request", got)
 	}
 }
