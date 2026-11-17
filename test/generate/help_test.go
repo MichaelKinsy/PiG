@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -24,10 +25,14 @@ func TestHelpGeneratorIsolatesAgentAndPreservesOutputOnFailure(t *testing.T) {
 		name   string
 		repeat int
 		fail   bool
+		// readOnly makes the pinned package tree read-only, as in the lane containers; cp -R keeps those modes.
+		readOnly bool
 	}{
 		{name: "isolated success"},
 		{name: "complete output before immediate exit", repeat: 40000},
 		{name: "failed generation preserves committed output", fail: true},
+		{name: "read-only pinned tree leaves no temp tree", readOnly: true},
+		{name: "failed generation from a read-only pinned tree leaves no temp tree", fail: true, readOnly: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			fail := tc.fail
@@ -59,16 +64,50 @@ console.log("pig fixture help");
 			}
 			put(pkg+"dist/cli.js", cli)
 			put("coding/cli/help_upstream.txt", "previous help\n")
+			if tc.readOnly {
+				pinned := filepath.Join(root, pkg)
+				var dirs []string
+				if err := filepath.WalkDir(pinned, func(path string, entry os.DirEntry, err error) error {
+					if err != nil {
+						return err
+					}
+					if entry.IsDir() {
+						dirs = append(dirs, path)
+					}
+					return nil
+				}); err != nil {
+					t.Fatal(err)
+				}
+				// Registered after t.TempDir, so it runs before the directory is removed.
+				t.Cleanup(func() {
+					for _, dir := range dirs {
+						_ = os.Chmod(dir, 0o700)
+					}
+				})
+				for _, dir := range slices.Backward(dirs) {
+					if err := os.Chmod(dir, 0o500); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			scratch := t.TempDir()
 			// On Windows a bare "bash" can resolve to the WSL launcher in System32; testenv.Bash is Git for Windows bash.
 			cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/gen/gen-help.sh"))
 			cmd.Dir = root
-			cmd.Env = append(os.Environ(), "PATH="+filepath.Dir(strings.TrimSpace(string(node)))+string(os.PathListSeparator)+os.Getenv("PATH"), "PIG_CODING_AGENT_DIR="+root, "PI_CODING_AGENT_DIR="+root, "POISON_AGENT_DIR="+root, "FORCE_COLOR=1")
+			cmd.Env = append(os.Environ(), "PATH="+filepath.Dir(strings.TrimSpace(string(node)))+string(os.PathListSeparator)+os.Getenv("PATH"), "PIG_CODING_AGENT_DIR="+root, "PI_CODING_AGENT_DIR="+root, "POISON_AGENT_DIR="+root, "FORCE_COLOR=1", "TMPDIR="+scratch)
 			output, runErr := cmd.CombinedOutput()
 			if fail && runErr == nil {
 				t.Fatal("failed generator returned success")
 			}
 			if !fail && runErr != nil {
 				t.Fatalf("generate: %v\n%s", runErr, output)
+			}
+			leftovers, err := os.ReadDir(scratch)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, leftover := range leftovers {
+				t.Errorf("generator left %s in its temp directory", leftover.Name())
 			}
 			want := "pig fixture help\n" + strings.Repeat("help line\n", tc.repeat)
 			if fail {
