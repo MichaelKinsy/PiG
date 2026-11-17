@@ -106,9 +106,7 @@ func TestRefreshModelsPublishesNothingAfterAnAbortAtEachCheckpoint(t *testing.T)
 // published for it. provider.ts:241-257 publishes the stored models first and returns without any network request when that
 // publication is refused.
 func TestRefreshModelsFailsOnAFailedPropsQueryAndStopsWhenTheCachePublicationIsRefused(t *testing.T) {
-	var requests atomic.Int32
 	url := listen(t, func(w http.ResponseWriter, r *http.Request) {
-		requests.Add(1)
 		switch {
 		case r.URL.Path == "/models":
 			writeJSON(w, map[string]any{"data": []any{
@@ -136,14 +134,17 @@ func TestRefreshModelsFailsOnAFailedPropsQueryAndStopsWhenTheCachePublicationIsR
 		t.Errorf("a refresh with a failed props query published %d times and left %v", published.Load(), modelIDs(controller.Provider.GetModels()))
 	}
 
-	requests.Store(0)
+	// The first refresh cancels its other props query when one rejects, and that query's request can reach the server after the refresh has
+	// returned, so the refresh that must send nothing is counted by a server of its own: no request of the first can be taken for it.
+	var refusedRequests atomic.Int32
+	refusedURL := listen(t, func(http.ResponseWriter, *http.Request) { refusedRequests.Add(1) })
 	refused := CreateLlamaProvider()
 	err = refused.Provider.RefreshModels(RefreshModelsContext{
-		Ctx: context.Background(), Credential: apiKeyCredential("local", url), AllowNetwork: true,
+		Ctx: context.Background(), Credential: apiKeyCredential("local", refusedURL), AllowNetwork: true,
 		Stored:  &ai.ModelsStoreEntry{},
 		Publish: func(ModelsPublication) (bool, error) { return false, nil },
 	})
-	if err != nil || requests.Load() != 0 {
-		t.Fatalf("refused cache publication: error %v, %d network requests, want none", err, requests.Load())
+	if err != nil || refusedRequests.Load() != 0 {
+		t.Fatalf("refused cache publication: error %v, %d network requests, want none", err, refusedRequests.Load())
 	}
 }
