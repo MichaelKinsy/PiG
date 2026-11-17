@@ -1304,7 +1304,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-919575a](#bf-919575a) | A JSON syntax error reports what V8's `JSON.parse` reports in two cases it got wrong: a number or string… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-91a0cfd](#bf-91a0cfd) | A schema whose root `$id` is a relative path with a directory, such as `schemas/tool.json`, resolves its… | PiG's own defect | All platforms | Unreleased |
 | [BF-91a0cfd-2](#bf-91a0cfd-2) | A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error… | PiG's own defect | All platforms | Unreleased |
-| [BF-91d0073](#bf-91d0073) | fix(telemetry): PIG_TELEMETRY wins over PI_TELEMETRY when both are set | PiG's own defect | All platforms | Unreleased |
 | [BF-91e6a24](#bf-91e6a24) | A set whose file locates itself by a value of `import.meta` (`const meta = import.meta; readFileSync(new… | PiG's own defect | All platforms | Unreleased |
 | [BF-91e912a](#bf-91e912a) | Two PiG versions that share a config root (two installed versions, or PiG beside a Piglet Binary) no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-91f9946](#bf-91f9946) | OpenRouter image generation reads the chat completions body as Pi does, checked against the pinned Pi in a… | PiG's own defect | All platforms | 0.5.0 |
@@ -20128,19 +20127,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `schema/pi_main_follow_upstream_test.go::TestPiMainClosedObjectFindsPropertiesInAnyOrder`, `schema/pi_main_follow_upstream_test.go::TestPiMainCoerceFollowsARelativeRefOnTheFirstCallWithDynamicRef`, `schema/pi_main_follow_upstream_test.go::TestPiMainEqual`, `schema/pi_main_follow_upstream_test.go::TestPiMainExplainsNestedResourcesWithARelativeID`, `schema/pi_main_follow_upstream_test.go::TestPiMainLeafChecksAgreeWithTheStandaloneCheck`, `schema/pi_main_follow_upstream_test.go::TestPiMainRecursiveBuildsASchemaThatChecksEveryLevel`, `schema/pi_main_follow_upstream_test.go::TestPiMainRecursiveSchemasNestWithDistinctIDs`, `schema/pi_main_follow_upstream_test.go::TestPiMainRejectsNaNAndInfinityAsANumber` and 3 more in docs/bug-ledger.json
 - **Release note:** A `number` or `integer` schema no longer accepts NaN or an infinity, with or without bounds, and an error names it (`expected number, got NaN`), as TypeBox does. Follows Pi main 55a5c6914 ahead of the pin.
 
-### BF-91d0073
-
-**fix(telemetry): PIG_TELEMETRY wins over PI_TELEMETRY when both are set**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix(telemetry): PIG_TELEMETRY wins over PI_TELEMETRY when both are set
-- **Root cause:** Owner decision 2026-11-17 (divergence record D2): a user who sets PIG_TELEMETRY=0 must never have telemetry sent because PI_TELEMETRY=1 is also in the environment. One function, InstallTelemetryEnvOverride, resolves the override for the settings reader (install ping, provider attribution headers) and for the export of PI_TELEMETRY to the Node extension runtime and every child process; the export now runs first in Main, before any command or mode can start a child.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `91d00732f5` (2026-11-17)
-- **Tests:** `coding/cli/d2_product_name_test.go::TestExportTelemetryOverride`, `coding/cli/telemetry_child_env_test.go::TestMainChildSeesThePigTelemetryChoice`, `coding/cli/telemetry_child_env_test.go::TestMainExportsTheResolvedTelemetryBeforeAnyCommand`, `coding/pig_telemetry_wire_test.go::TestAttributionHeadersFollowPigTelemetryOverPi`, `internal/codingagent/d2_product_name_test.go::TestInstallTelemetryReadsPigTelemetryBesidePis`, `internal/codingagent/telemetry_precedence_test.go::TestInstallTelemetryPigBeatsPiWhenBothAreSet`, `internal/codingagent/telemetry_precedence_test.go::TestReportInstallTelemetryFollowsPigTelemetryOverPi`
-
 ### BF-91e6a24
 
 **A set whose file locates itself by a value of `import.meta` (`const meta = import.meta; readFileSync(new…**
@@ -34602,7 +34588,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 22
+- Follow-up to unreleased work: 23
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 4
 - test-only: 1
