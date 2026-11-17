@@ -188,7 +188,7 @@ func TestPendingWaitForIdleDoesNotBlockLaterAbort(t *testing.T) {
 		conn := NewConn("wait-order", hostEnd)
 		me := withConn(&managedExt{config: ExtConfig{Name: "wait-order"}, host: host}, conn)
 		lanes := newCallLanes()
-		host.queueCall(me, me.connection(), lanes, "c1", &CallPayload{Method: "waitForIdle"})
+		host.queueCall(me, me.connection(), lanes, "c1", &CallPayload{Method: "waitForIdle", CommandContext: true})
 		host.queueCall(me, me.connection(), lanes, "c2", &CallPayload{Method: "abort"})
 		<-entered
 		synctest.Wait()
@@ -244,7 +244,7 @@ func TestInitiationAwareCommandActionDoesNotBlockLaterAbort(t *testing.T) {
 		conn := NewConn("command-order", hostEnd)
 		me := withConn(&managedExt{config: ExtConfig{Name: "command-order"}, host: host}, conn)
 		lanes := newCallLanes()
-		host.queueCall(me, me.connection(), lanes, "c1", &CallPayload{Method: "waitForIdle"})
+		host.queueCall(me, me.connection(), lanes, "c1", &CallPayload{Method: "waitForIdle", CommandContext: true})
 		host.queueCall(me, me.connection(), lanes, "c2", &CallPayload{Method: "abort"})
 		<-entered
 		synctest.Wait()
@@ -377,7 +377,7 @@ func pendingWaitForIdleDoesNotGate(t *testing.T, form string) {
 		var once sync.Once
 		defer once.Do(func() { close(release) })
 		lanes := newCallLanes()
-		host.queueCall(me, conn, lanes, "c1", &CallPayload{Method: "waitForIdle", ParentRequestID: "command"})
+		host.queueCall(me, conn, lanes, "c1", &CallPayload{Method: "waitForIdle", ParentRequestID: "command", CommandContext: true})
 		host.queueCall(me, conn, lanes, "c2", &CallPayload{Method: "abort", ParentRequestID: "turn-end"})
 		<-entered
 		synctest.Wait()
