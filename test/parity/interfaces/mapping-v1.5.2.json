@@ -32306,9 +32306,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
-        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
+        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -32440,9 +32440,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
       ]
     },
     {
@@ -32483,9 +32483,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -32526,9 +32526,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -78400,9 +78400,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
-        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
+        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -78534,9 +78534,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
       ]
     },
     {
@@ -78577,9 +78577,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -78620,9 +78620,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -102436,9 +102436,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
-        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
+        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -102570,9 +102570,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
       ]
     },
     {
@@ -102613,9 +102613,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -102656,9 +102656,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -155101,9 +155101,9 @@
         "call:coding/session.go#Session.LastAssistantText"
       ],
       "evidence": [
+        "test:coding/session_websocket_limit_retry_upstream_test.go#TestIssue12124WebSocketConnectionLifetimeRetry",
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestMissingConfiguredThemeExportsWithActiveFallback",
-        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce",
-        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAServerSocketClosedBeforeTheAnswer"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce"
       ]
     },
     {
@@ -155123,9 +155123,9 @@
         "call:coding/session.go#Session.LastAssistantText"
       ],
       "evidence": [
+        "test:coding/session_websocket_limit_retry_upstream_test.go#TestIssue12124WebSocketConnectionLifetimeRetry",
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestMissingConfiguredThemeExportsWithActiveFallback",
-        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce",
-        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAServerSocketClosedBeforeTheAnswer"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce"
       ]
     },
     {
@@ -155786,9 +155786,9 @@
         "call:coding/session_tool_registry.go#Session.Reload"
       ],
       "evidence": [
-        "test:coding/session_bind_extensions_upstream_test.go#TestReloadReplaysSessionStartOnlyForRealBindings",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad"
+        "test:coding/session_bind_extensions_upstream_test.go#TestReloadReplaysSessionStartForEveryBoundSession",
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
+        "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -155809,9 +155809,9 @@
         "call:coding/session_tool_registry.go#Session.Reload"
       ],
       "evidence": [
-        "test:coding/session_bind_extensions_upstream_test.go#TestReloadReplaysSessionStartOnlyForRealBindings",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad"
+        "test:coding/session_bind_extensions_upstream_test.go#TestReloadReplaysSessionStartForEveryBoundSession",
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
+        "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -157127,7 +157127,7 @@
       "evidence": [
         "test:coding/sdk_skills_upstream_test.go#TestSessionReadsSuppliedResourceLoaderLive",
         "test:coding/sdk_skills_upstream_test.go#TestUpstreamSDKSkillsNativeSession",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader"
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers"
       ]
     },
     {
@@ -192730,9 +192730,9 @@
         "call:coding/cli/child_sessions.go#childResourceLoaderOptions"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderExtensionsOutliveTheContextOfTheReload"
+        "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad"
       ]
     },
     {
@@ -192774,9 +192774,9 @@
         "call:coding/cli/child_sessions.go#childResourceLoaderOptions"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
-        "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
-        "test:coding/load_time_completion_strip_test.go#TestLoadTimeCompletionsAnsweredWithAnAPIStrippedAtRunTime"
+        "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures"
       ]
     },
     {
@@ -192796,9 +192796,9 @@
         "call:coding/cli/cli_resource_loader.go#cliRuntimeBuilder.buildResourceLoader"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
-        "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare",
-        "test:coding/loaded_extensions_runtime_test.go#TestSessionRunnerBindsTheRuntimeTheLoadedExtensionsShare"
+        "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare"
       ]
     },
     {
@@ -194731,9 +194731,9 @@
         "call:coding/mcpext/command.go#Extension.openURL"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/session_graph_mcp_test.go#TestGraphMcpUpdateConfigAndOpenURLWire",
-        "test:coding/mcpext/closed_config_test.go#TestRefuseConfigFilesDropsServersFromMcpJSON",
-        "test:coding/mcpext/command_test.go#TestMcpFactoryRegistersTheCommand"
+        "test:coding/mcpext/closed_config_test.go#TestRefuseConfigFilesDropsServersFromMcpJSON"
       ]
     },
     {
@@ -194753,9 +194753,9 @@
         "call:coding/mcpext/extension.go#Extension.createConnection"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode",
-        "test:coding/mcpext/manager_test.go#TestMcpManagerDisablesAGlobalServerInThisProject"
+        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
       ]
     },
     {
@@ -194775,9 +194775,9 @@
         "call:coding/mcpext/extension.go#New"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode",
-        "test:coding/mcpext/manager_test.go#TestMcpManagerDisablesAGlobalServerInThisProject"
+        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
       ]
     },
     {
@@ -194797,9 +194797,9 @@
         "call:coding/mcpext/extension.go#Extension.loadConfig"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpLoadConfigReceivesTheHandlersExtensionContext",
-        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
+        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools"
       ]
     },
     {
@@ -194819,9 +194819,9 @@
         "call:coding/mcpext/extension.go#Extension.getServerLog"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpFactoryRegistersTheCommand",
-        "test:coding/mcpext/command_test.go#TestMcpLoadConfigReceivesTheHandlersExtensionContext",
-        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools"
+        "test:coding/mcpext/command_test.go#TestMcpLoadConfigReceivesTheHandlersExtensionContext"
       ]
     },
     {
@@ -270084,9 +270084,9 @@
         "call:mcp/streamable_http.go#StreamableHTTPTransport.headers"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthRefreshRefreshesOnceWhenSeveralProcessesFindTheSameTokenRejected",
-        "test:coding/mcpext/oauth_token_expiry_test.go#TestTokenRefreshesAheadOfExpiryOnlyInsideTheSkew",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate"
+        "test:coding/mcpext/oauth_token_expiry_test.go#TestTokenRefreshesAheadOfExpiryOnlyInsideTheSkew"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -274187,8 +274187,8 @@
       ],
       "evidence": [
         "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIMcpServersRegisterAndUnregister",
-        "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo"
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
+        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIMcpServersRegisterAndUnregister"
       ]
     },
     {
@@ -275390,9 +275390,9 @@
         "call:mcp/client.go#Client.Close"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsRetriesResourceReadsButNotToolCallsAfterATransientHTTPError",
-        "test:coding/session_graph_mcp_test.go#TestGraphMcpTransportProxy",
-        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools"
+        "test:coding/session_graph_mcp_test.go#TestGraphMcpTransportProxy"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -286227,8 +286227,8 @@
       ],
       "evidence": [
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPWithdrawsAndRestoresMCPToolsTheServerChanges",
-        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/connection_test.go#TestMCPConnectionsAppendsServerLogMessagesToTheLogFile"
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
+        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -286568,9 +286568,9 @@
         "public-api:mcp/mcptest/inmemory.go#InMemoryTransport.Start"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns",
-        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
+        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -286591,9 +286591,9 @@
         "public-api:mcp/mcptest/inmemory.go#InMemoryTransport.Start"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns",
-        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
+        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
