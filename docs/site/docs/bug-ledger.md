@@ -662,6 +662,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4feaeb9](#bf-4feaeb9) | Windows: a Chord worker process now waits for its parent to accept the connection on its IPC pipe instead of… | PiG's own defect | Windows | Unreleased |
 | [BF-4ff1a44](#bf-4ff1a44) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-4ffcd59](#bf-4ffcd59) | An extension autocomplete provider that watches its abort signal no longer sees it fire when the user types a… | PiG's own defect | All platforms | Unreleased |
+| [BF-5003f90](#bf-5003f90) | The Python SDK now carries an event.messages list a `context` or `context_with_system` handler assigns, and… | PiG's own defect | All platforms | Unreleased |
 | [BF-50233fd](#bf-50233fd) | An `env` SSH command that runs past its timeout now receives SIGTERM, as in Pi, instead of SIGKILL, and the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5043738](#bf-5043738) | Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar`… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-504869b](#bf-504869b) | The MCP client uses JavaScript's `trim()` and `\s` where Pi does: in stdio and Streamable HTTP blank-line and… | PiG's own defect | All platforms | 0.5.0 |
@@ -11231,6 +11232,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4ffcd59e5d` (2026-11-05)
 - **Tests:** `tui/editor_async_provider_test.go::TestForcedAutocompleteQueryDoesNotHoldInput`, `tui/editor_file_search_noloop_test.go::TestFileAnswerOfAnOlderSearchNeverReplacesALaterOne`, `tui/editor_file_search_noloop_test.go::TestFileSearchOfAnEditorWithNoLoopIsPublishedByTheCallersGoroutine`, `tui/editor_typed_race_oracle_test.go::TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi`
 - **Release note:** An extension autocomplete provider that watches its abort signal no longer sees it fire when the user types a character that triggers no request (a space, `é` or `/` after `@al`, `x` after Tab): as in Pi, the request in flight finishes and its answer is dropped, and only a new request or a cancel aborts it.
+
+### BF-5003f90
+
+**The Python SDK now carries an event.messages list a `context` or `context_with_system` handler assigns, and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Python SDK now carries an event.messages list a `context` or `context_with_system` handler assigns, and an event.entries list a `turn_end` handler assigns, and the Lisp SDK the context list, as the Go and Rust SDKs already do (they have carried an assigned context list since v0.2.0 / v0.3.0 and turn_end entries since v0.3.0, Lisp since v0.7.0, so the behaviour stays and the other SDKs follow it); the Node runtime still follows Pi, which carries neither.
+- **Root cause:** each native SDK was written alone: Go and Rust re-read the member after the handler, Python and Lisp kept the list captured before it, and no conformance row compared an assignment across SDKs
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5003f90812` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** The Python SDK now carries an event.messages list a `context` or `context_with_system` handler assigns, and an event.entries list a `turn_end` handler assigns, and the Lisp SDK the context list, as the Go and Rust SDKs already do (they have carried an assigned context list since v0.2.0 / v0.3.0 and turn_end entries since v0.3.0, Lisp since v0.7.0, so the behaviour stays and the other SDKs follow it); the Node runtime still follows Pi, which carries neither. A handler that assigns a bad list leaves what the same value returned leaves.
 
 ### BF-50233fd
 

@@ -17834,6 +17834,26 @@
       ]
     },
     {
+      "id": "BF-5003f90",
+      "title": "The Python SDK now carries an event.messages list a `context` or `context_with_system` handler assigns, and…",
+      "symptom": "The Python SDK now carries an event.messages list a `context` or `context_with_system` handler assigns, and an event.entries list a `turn_end` handler assigns, and the Lisp SDK the context list, as the Go and Rust SDKs already do (they have carried an assigned context list since v0.2.0 / v0.3.0 and turn_end entries since v0.3.0, Lisp since v0.7.0, so the behaviour stays and the other SDKs follow it); the Node runtime still follows Pi, which carries neither.",
+      "rootCause": "each native SDK was written alone: Go and Rust re-read the member after the handler, Python and Lisp kept the list captured before it, and no conformance row compared an assignment across SDKs",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Python SDK now carries an event.messages list a `context` or `context_with_system` handler assigns, and an event.entries list a `turn_end` handler assigns, and the Lisp SDK the context list, as the Go and Rust SDKs already do (they have carried an assigned context list since v0.2.0 / v0.3.0 and turn_end entries since v0.3.0, Lisp since v0.7.0, so the behaviour stays and the other SDKs follow it); the Node runtime still follows Pi, which carries neither. A handler that assigns a bad list leaves what the same value returned leaves.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5003f90812",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-50233fd",
       "title": "An `env` SSH command that runs past its timeout now receives SIGTERM, as in Pi, instead of SIGKILL, and the…",
       "symptom": "An `env` SSH command that runs past its timeout now receives SIGTERM, as in Pi, instead of SIGKILL, and the operation fails as soon as the timeout expires, even when a process started by `ssh` keeps its output open.",
