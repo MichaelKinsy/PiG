@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"bytes"
 	"encoding/json"
 	"net"
 	"testing"
@@ -112,7 +113,7 @@ func TestTheClosedByHostMarkIsNoWireField(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(marked) != string(plain) {
+	if !bytes.Equal(marked, plain) {
 		t.Fatalf("the mark reaches the wire: %s against %s", marked, plain)
 	}
 	var back ErrorInfo
