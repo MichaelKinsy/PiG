@@ -1205,6 +1205,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-849f5f9-2](#bf-849f5f9-2) | `registerMarkdownTransformer`'s `context` and `ui.onThemeChange`'s `theme` were `any`: `index.d.ts` named… | PiG's own defect | All platforms | Unreleased |
 | [BF-84adf0c](#bf-84adf0c) | Fullscreen: copying a selection with OSC 52 (when no clipboard tool is set, as an extension screen does… | PiG's own defect | All platforms | Unreleased |
 | [BF-84b2fca](#bf-84b2fca) | Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-851696e](#bf-851696e) | fix(tui): a boundary compaction and a provider logout no longer erase the scrollback | PiG's own defect | All platforms | Unreleased |
 | [BF-852652e](#bf-852652e) | PiG no longer names documentation that does not exist | PiG's own defect | All platforms | 0.5.0 |
 | [BF-852c46b](#bf-852c46b) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-852f029](#bf-852f029) | Durable document, conversation-view and task-graph states report failing state listeners to the Session's… | PiG's own defect | All platforms | 0.5.0 |
@@ -18752,6 +18753,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `test/extension-conformance/tui_theme_test.go::TestHighlightCodeThatFailsTakesTheCodeBlockColorAcrossSDKs`, `tui/highlight_failure_oracle_test.go::TestHighlightFailureMatchesPi`, `tui/highlight_test.go::TestHighlightCodeThatFailsTakesTheCodeBlockColor`
 - **Release note:** Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the `mdCodeBlock` color in the Go, Rust, Python and Lisp extension SDKs when the host's highlighter fails or cannot be reached, and in the host for a theme that lacks a syntax color, where PiG panicked. `getMarkdownTheme().highlightCode` is `highlightCode`, so the `highlight.code` host call no longer has a `markdown` member.
 
+### BF-851696e
+
+**fix(tui): a boundary compaction and a provider logout no longer erase the scrollback**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(tui): a boundary compaction and a provider logout no longer erase the scrollback
+- **Root cause:** Pi repaints both differentially (entry_appended compaction branch, logout handler): drop the two forced full redraws. Also corrects the reload box cite to interactive-mode.ts:6648.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `851696e0c0` (2026-11-17)
+- **Tests:** `internal/codingagent/session_swap_scrollback_test.go::TestBoundaryCompactionRepaintsDifferentially`, `internal/codingagent/session_swap_scrollback_test.go::TestLogoutKeepsTheTerminalScrollback`
+
 ### BF-852652e
 
 **PiG no longer names documentation that does not exist**
@@ -31738,7 +31752,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `ec8fbdc5a9` (2026-11-17)
 - **Tests:** `internal/codingagent/session_swap_scrollback_test.go::TestReloadBoxForcesTheRedrawAsPiDoes`, `internal/codingagent/session_swap_scrollback_test.go::TestSessionReplacementRepaintsDifferentially`
-- **Release note:** `/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback. The text above the TUI (the `Installing ...` lines of a package install at startup, or what a wrapper script printed) and the older transcript rows that had scrolled above the frame stayed in Pi and were gone in PiG. The transcript repaint now clears the chat and renders normally, as Pi's does, and only the reload box forces the clearing redraw, as in Pi.
+- **Release note:** `/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback. The text above the TUI (the `Installing ...` lines of a package install at startup, or what a wrapper script printed) and the older transcript rows that had scrolled above the frame stayed in Pi and were gone in PiG. The transcript repaint now clears the chat and renders normally, as Pi's does, and only the reload box forces the clearing redraw, as in Pi. A boundary compaction and a provider logout no longer erase it either, and after a `/fork` of a long session the footer sits where Pi leaves it.
 
 ### BF-ec9984a
 
