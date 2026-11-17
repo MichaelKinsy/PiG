@@ -1760,6 +1760,19 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_session_actions_on", "Subscribe to the event named by the argument with a handler that calls the session actions", event_session_actions_on)
     ext.command("event_session_actions_stored", "Call the session actions through the context an event handler kept", event_session_actions_stored)
+
+    # tool_call_cancel_on subscribes to tool_call with a handler that waits for the cancel signal and then answers (D650 claim 6).
+    def tool_call_cancel_on(ctx, _args):
+        def handler(hctx, _data):
+            hctx.notify("cancel_wait", "info")
+            while not hctx.is_cancelled():
+                time.sleep(0.005)
+            hctx.notify("cancel_seen", "info")
+            return {"block": True, "reason": "answered after the abort"}
+
+        ext.on_event("tool_call", handler)
+
+    ext.command("tool_call_cancel_on", "Subscribe to tool_call with a handler that waits for the cancel signal", tool_call_cancel_on)
     ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
     ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
     # mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).

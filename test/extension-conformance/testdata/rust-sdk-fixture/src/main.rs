@@ -2499,6 +2499,29 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // tool_call_cancel_on subscribes to tool_call with a handler that waits for the cancel signal and then answers (D650 claim 6).
+    let tool_call_cancel_subscriber = ext.event_subscriber();
+    let tool_call_cancel_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "tool_call_cancel_on",
+        "Subscribe to tool_call with a handler that waits for the cancel signal",
+        move |_ctx, _args| {
+            let subscription = subscribe(&tool_call_cancel_subscriber, "tool_call", move |ctx, _data| {
+                ctx.notify("cancel_wait", "info");
+                while !ctx.is_cancelled() {
+                    std::thread::sleep(std::time::Duration::from_millis(5));
+                }
+                ctx.notify("cancel_seen", "info");
+                Ok(Some(json!({"block": true, "reason": "answered after the abort"})))
+            });
+            tool_call_cancel_subscriptions
+                .lock()
+                .unwrap()
+                .push(subscription);
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "host_error_probe",
         "Report what a host error on navigateTree looks like to the extension",
