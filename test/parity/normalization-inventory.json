@@ -32,7 +32,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "ebe8dc376aa43cba68797e34abbe9e9601f844aaad780f6826dcd82df3de4d98",
+      "sha256": "23b2cbbe42115e7d2c96f5180c2ae7b34f3d54bdd292c163f4c9b74ebdc76cf7",
       "reason": "Terminal state capture is not a byte-stream assertion; the terminal transcript, held from the program's first byte, is read only by wait_contains, by final_frame and by a scenario's own transcript_sequences_equal window. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
@@ -11442,6 +11442,25 @@
             "capture_end": "unhandled request"
           },
           "reason": "Owned visible surface: Both binaries send an unknown slash command to the selected model as a user message.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/31-new-keeps-pre-tui-scrollback.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true,
+            "capture_start": "PRE-TUI-LINE-1",
+            "capture_end": "PRE-TUI-LINE-5"
+          },
+          "reason": "Owned visible surface: After /new the lines printed before the TUI started are still in the scrollback, as in Pi.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
