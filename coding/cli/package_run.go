@@ -13,6 +13,7 @@ import (
 // Interactive mode installs and refreshes packages again on /reload, /new, /resume and /fork while the TUI draws on the terminal, where git and npm
 // output would corrupt its screen (Pi #11264). Their output is captured, and until the TUI starts each install is announced on stderr instead.
 // A nil *packageRun is every other mode: the output is inherited and nothing is announced.
+// Ports packages/coding-agent/src/main.ts (packageCommandOutput, announcePackageInstalls, onPackageProgress).
 type packageRun struct {
 	output   packagemanager.CommandOutput
 	announce atomic.Bool

@@ -85,6 +85,7 @@ func nonInteractiveGitEnv(env []string) []string {
 
 // runPackageProcessCaptured runs a command without touching the terminal: its output is piped and git and ssh cannot prompt. Only the end of the output is kept, for the error message (package-manager.ts runCommandCaptured).
 // Like waitForChildProcess it waits for the child and then for its pipes to end or to fall idle, so a background process an npm script left holding them does not block the call.
+// Ports packages/coding-agent/src/core/package-manager.ts (runCommandCaptured, CAPTURED_OUTPUT_TAIL_CHARS, GIT_CREDENTIALS_HINT, GIT_PROMPT_FAILURE).
 func runPackageProcessCaptured(dir, name string, args ...string) error {
 	cmd := packageCommand(context.Background(), dir, name, args...)
 	env := cmd.Env
