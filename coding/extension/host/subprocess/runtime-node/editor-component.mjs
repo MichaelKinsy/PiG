@@ -76,8 +76,9 @@ export class EditorComponentHost {
 
   install(factory) {
     const runtime = this.runtime;
+    // null: the mode has no editor to install. false: it has one and no provider yet (Pi's editor has none until setupAutocompleteProvider runs after bindExtensions).
     const autocomplete = runtime.callSync("ui.autocomplete.current");
-    if (!autocomplete) return;
+    if (autocomplete === null || autocomplete === undefined) return;
     this.seq += 1;
     const session = {
       key: `editor-${this.seq}`,
@@ -131,7 +132,7 @@ export class EditorComponentHost {
     component.onSubmit = (text) => this.submit(session, text);
     component.onChange = (text) => this.changed(session, text);
     if (component.borderColor !== undefined) component.borderColor = this.borderColor(session);
-    if (typeof component.setAutocompleteProvider === "function") {
+    if (autocomplete && typeof component.setAutocompleteProvider === "function") {
       component.setAutocompleteProvider(runtime.autocomplete.current(autocomplete));
     }
     // Pi copies the app-level handlers onto a CustomEditor (duck-typed on

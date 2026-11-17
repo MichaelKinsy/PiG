@@ -337,7 +337,8 @@ func (b *UIBridge) handleAutocompleteCurrent(ctx context.Context, name string, o
 		return nil, err
 	}
 	if provider == nil {
-		return &CallResultPayload{Result: json.RawMessage("null")}, nil
+		// The mode has an editor and the extensions are not bound yet: Pi's editor has no provider before setupAutocompleteProvider (interactive-mode.ts:2167), and an editor installed now gets it when that runs.
+		return &CallResultPayload{Result: json.RawMessage("false")}, nil
 	}
 	data, err := json.Marshal(b.autocompleteReference(name, owner, provider))
 	return &CallResultPayload{Result: data}, err
