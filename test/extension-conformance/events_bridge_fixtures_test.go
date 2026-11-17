@@ -747,6 +747,7 @@ func newBusRigWithFailures(t *testing.T, specs ...busFixture) (*busRig, []error)
 		configs = append(configs, busConfig(t, root, spec))
 	}
 	h := subprocess.NewHostWithConfigRoot(cwd, busBuildRoot)
+	h.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return configs, nil })
 	t.Cleanup(func() { h.Shutdown("test complete") })
 	loaded, failures := h.LoadAll(t.Context(), configs)
 	if len(failures) == 0 && len(loaded) != len(configs) {
