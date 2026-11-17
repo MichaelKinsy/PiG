@@ -1868,6 +1868,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-cf7f368](#bf-cf7f368) | A local file listed as a Package with `autoload: false` still loads as one enabled extension, and when a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-cf8566b](#bf-cf8566b) | fix(chord): spans of the SQLite store carry the store's own capabilities | PiG's own defect | All platforms | Unreleased |
 | [BF-cfe05f8](#bf-cfe05f8) | A `message_end` handler that returns a system message with missing or null content now keeps that content, as… | PiG's own defect | All platforms | Unreleased |
+| [BF-d016fe9](#bf-d016fe9) | Text typed before the extensions are bound (for example while an extension's `session_start` handler is still… | PiG's own defect | All platforms | Unreleased |
 | [BF-d03cd05](#bf-d03cd05) | fix(chord/next/host,chord/nextnode/plugins): route resolve is lent the section that triggers it as Pi's… | PiG's own defect | All platforms | Unreleased |
 | [BF-d047508](#bf-d047508) | RPC mode: a prompt written right behind an extension command that calls `ctx.reload()` is read after the… | PiG's own defect | All platforms | Unreleased |
 | [BF-d047508-2](#bf-d047508-2) | RPC mode: a prompt read while a `session_start` handler of a reload waits runs on the reloaded extension; it… | PiG's own defect | All platforms | Unreleased |
@@ -12691,7 +12692,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `5d60aa5d36` (2026-11-16, #497)
-- **Tests:** `internal/codingagent/autocomplete_installed_editor_test.go::TestInstalledSubprocessEditorHearsTheRebuildInEitherOrder`, `test/extension-conformance/autocomplete_changed_test.go::TestAutocompleteChangedReachesInstalledNativeEditor`, `test/parity/scenarios/autocomplete/14-custom-editor-installed-at-session-start.toml`
+- **Tests:** `test/extension-conformance/autocomplete_changed_test.go::TestAutocompleteChangedReachesInstalledNativeEditor`, `test/parity/scenarios/autocomplete/14-custom-editor-installed-at-session-start.toml`
 - **Release note:** A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with `autocomplete provider is no longer available` when the install ran before the autocomplete rebuild that follows `session_start` (and on a later `/reload`). The host reports each rebuild to the editor's runtime, and those SDKs answered the notice with an error that the host raised as an uncaught exception; they now accept it, as the Node runtime always did.
 
 ### BF-5d6bb25
@@ -28004,6 +28005,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `cfe05f8aaf` (2026-11-02)
 - **Tests:** `coding/mcpext/oauth_callback_render_page_contract_test.go::TestMCPCallbackRenderPageMatchesPi`, `coding/session_emit_extension_event_oracle_test.go::TestEmitExtensionEventMatchesPi`, `internal/codingagent/ext_ui_dialog_contract_test.go::TestExtensionDialogClosesTheActiveSelector`, `internal/codingagent/ext_ui_dialog_contract_test.go::TestExtensionDialogWithAnAbortedSignalShowsNothing`, `internal/codingagent/ext_ui_dialog_contract_test.go::TestExtensionDialogsRequestARenderWhenTheSlotChanges`, `internal/codingagent/ext_ui_dialog_contract_test.go::TestExtensionEditorDialogIsBuiltFromTheModeAndSettings`, `internal/codingagent/ext_ui_dialog_contract_test.go::TestExtensionInputIgnoresItsPlaceholder`, `internal/codingagent/ext_ui_dialog_contract_test.go::TestRemovingAHiddenExtensionDialogLeavesTheSlotAlone` and 10 more in docs/bug-ledger.json
 - **Release note:** A `message_end` handler that returns a system message with missing or null content now keeps that content, as Pi does, instead of getting an empty string.
+
+### BF-d016fe9
+
+**Text typed before the extensions are bound (for example while an extension's `session_start` handler is still…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Text typed before the extensions are bound (for example while an extension's `session_start` handler is still running) no longer opens the slash-command or `@` file menu, and Tab no longer completes a path there; the editor gets its completion provider when the bind ends, as in Pi.
+- **Root cause:** the editor was given its autocomplete provider when it was built, without checking that Pi installs it only after bindExtensions returns, so input read before the bind finished reached completion code Pi has not armed yet; and a remote editor built before the provider existed was installed by the host after the provider was built, a case where nothing handed it the provider
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8aab9eb314` (2026-11-17), `a8d41a2014` (2026-11-17), `d016fe9ce4` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/runtime_node_editor_no_provider_test.go::TestNodeEditorInstallsBeforeTheHostHasAProvider`
+- **Release note:** Text typed before the extensions are bound (for example while an extension's `session_start` handler is still running) no longer opens the slash-command or `@` file menu, and Tab no longer completes a path there; the editor gets its completion provider when the bind ends, as in Pi. An editor an extension installs from `session_start` is installed with no provider and gets the provider when the bind ends or, if the host had already built it, when the host installs the editor, as Pi's `setCustomEditorComponent` does. This has been so since 0.2.0.
 
 ### BF-d03cd05
 
