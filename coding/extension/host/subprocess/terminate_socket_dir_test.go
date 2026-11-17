@@ -13,6 +13,7 @@ func TestTerminateProcessesRemovesTheRuntimeDirectory(t *testing.T) {
 	socketDir := testenv.ShortTempDir(t, "pig-term-")
 	h := NewHost(t.TempDir())
 	h.socketDir = socketDir
+	t.Cleanup(func() { h.Shutdown("test complete") })
 	path, err := h.newSocketPath()
 	if err != nil {
 		t.Fatal(err)
@@ -29,7 +30,6 @@ func TestTerminateProcessesRemovesTheRuntimeDirectory(t *testing.T) {
 		t.Fatalf("the socket directory holds %v (%v) after TerminateProcesses, want nothing", entries, err)
 	}
 	h.TerminateProcesses()
-	h.Shutdown("test complete")
 }
 
 // A Host that made no socket path has no directory to remove, and neither TerminateProcesses nor a generation that asks for a socket path after it makes one: the process is exiting, and a directory made then would be left.
@@ -37,6 +37,7 @@ func TestTerminateProcessesMakesNoRuntimeDirectoryAndNoneAfterIt(t *testing.T) {
 	socketDir := testenv.ShortTempDir(t, "pig-term-")
 	h := NewHost(t.TempDir())
 	h.socketDir = socketDir
+	t.Cleanup(func() { h.Shutdown("test complete") })
 	h.TerminateProcesses()
 	if entries, err := os.ReadDir(socketDir); err != nil || len(entries) != 0 {
 		t.Fatalf("the socket directory holds %v (%v), want nothing", entries, err)
@@ -47,5 +48,4 @@ func TestTerminateProcessesMakesNoRuntimeDirectoryAndNoneAfterIt(t *testing.T) {
 	if entries, err := os.ReadDir(socketDir); err != nil || len(entries) != 0 {
 		t.Fatalf("the socket directory holds %v (%v) after a socket path was asked of a terminated Host, want nothing", entries, err)
 	}
-	h.Shutdown("test complete")
 }
