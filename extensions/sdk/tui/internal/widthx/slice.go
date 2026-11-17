@@ -56,18 +56,48 @@ func SliceWithWidth(line string, startCol, length int, strict bool) SliceResult 
 			i += n
 			continue
 		}
-		// Non-ANSI run until next ANSI or end.
+		// Non-ANSI run until next ANSI or end: an escape byte that is no complete code stays in the run.
 		end := i
 		for end < len(line) {
+			e := strings.IndexByte(line[end:], 0x1b)
+			if e < 0 {
+				end = len(line)
+				break
+			}
+			end += e
 			if ExtractAnsi(line, end) > 0 {
 				break
 			}
 			end++
 		}
 		run := line[i:end]
-		gs := newGraphemeIter(run)
 		broken := false
-		for gs.Next() {
+		// Printable ASCII always forms one cell of one column per character, so a stretch of it is placed by arithmetic. The last
+		// ASCII character before a non-ASCII byte is left to the grapheme iterator, because a mark, a joiner or a variation selector
+		// after it joins its cluster. (Pi's sliceWithWidth takes the shortcut only for a text that is printable ASCII throughout.)
+		if n := printableASCIIPrefix(run); n > 0 {
+			if n < len(run) {
+				n--
+			}
+			if n > 0 {
+				take := n
+				if currentCol+n >= endCol {
+					take, broken = max(1, endCol-currentCol), true
+				}
+				if first, last := max(0, startCol-currentCol), min(take, endCol-currentCol); first < last {
+					if pendingAnsi != "" {
+						result.WriteString(pendingAnsi)
+						pendingAnsi = ""
+					}
+					result.WriteString(run[first:last])
+					resultWidth += last - first
+				}
+				currentCol += take
+				run = run[n:]
+			}
+		}
+		gs := newGraphemeIter(run)
+		for !broken && gs.Next() {
 			seg := gs.Str()
 			w := graphemeWidthFast(seg)
 			inRange := currentCol >= startCol && currentCol < endCol
@@ -204,3 +234,13 @@ func ExtractSegments(line string, beforeEnd, afterStart, afterLen int, strictAft
 
 // graphemeWidthFast returns upstream graphemeWidth(seg) for one cluster.
 func graphemeWidthFast(seg string) int { return GraphemeWidth(seg) }
+
+// printableASCIIPrefix is how many bytes at the start of s are printable ASCII (0x20 to 0x7e).
+func printableASCIIPrefix(s string) int {
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c < 0x20 || c > 0x7e {
+			return i
+		}
+	}
+	return len(s)
+}

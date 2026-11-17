@@ -3646,12 +3646,12 @@ allocs = 65
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenPageUpScroll/messages-1000"
-allocs = 550
+allocs = 456
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenPageUpScroll/messages-270"
-allocs = 551
+allocs = 457
 
 [[benchmark]]
 package = "./tui"
@@ -3676,17 +3676,17 @@ allocs = 28
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenWheelScroll/lines-104k"
-allocs = 572
+allocs = 479
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenWheelScroll/lines-1k"
-allocs = 565
+allocs = 470
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenWheelScroll/lines-26k"
-allocs = 571
+allocs = 478
 
 [[benchmark]]
 package = "./tui"
@@ -3976,7 +3976,7 @@ allocs = 2
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkInputWordEditing/ASCII"
-allocs = 30
+allocs = 22
 
 [[benchmark]]
 package = "./tui"
@@ -4221,7 +4221,7 @@ allocs = 88
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkOverlayCompositor/240x80/1-overlays/ascii"
-allocs = 76
+allocs = 46
 
 [[benchmark]]
 package = "./tui"
@@ -4231,7 +4231,7 @@ allocs = 973
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkOverlayCompositor/240x80/8-overlays/ascii"
-allocs = 787
+allocs = 547
 
 [[benchmark]]
 package = "./tui"
@@ -4241,7 +4241,7 @@ allocs = 70
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkOverlayCompositor/80x24/1-overlays/ascii"
-allocs = 52
+allocs = 34
 
 [[benchmark]]
 package = "./tui"
@@ -4251,7 +4251,7 @@ allocs = 817
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkOverlayCompositor/80x24/8-overlays/ascii"
-allocs = 583
+allocs = 439
 
 [[benchmark]]
 package = "./tui"
@@ -4261,7 +4261,7 @@ allocs = 89
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkOverlayReplaceAndCompose/240x80/1-overlays/ascii"
-allocs = 77
+allocs = 47
 
 [[benchmark]]
 package = "./tui"
@@ -4271,7 +4271,7 @@ allocs = 981
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkOverlayReplaceAndCompose/240x80/8-overlays/ascii"
-allocs = 795
+allocs = 555
 
 [[benchmark]]
 package = "./tui"
@@ -4281,7 +4281,7 @@ allocs = 71
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkOverlayReplaceAndCompose/80x24/1-overlays/ascii"
-allocs = 53
+allocs = 35
 
 [[benchmark]]
 package = "./tui"
@@ -4291,7 +4291,7 @@ allocs = 825
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkOverlayReplaceAndCompose/80x24/8-overlays/ascii"
-allocs = 591
+allocs = 447
 
 [[benchmark]]
 package = "./tui"
