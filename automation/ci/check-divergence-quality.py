@@ -141,7 +141,7 @@ EVIDENCE_SPAN = re.compile(
     r"|extensions|handoffs|internal|mcp|piglets|plans|research|schemas?|telemetry|test|third_party|tui)/[^\s`]*"
     r"|(?:Test|Benchmark|Fuzz)[A-Z_]\w*(?:/[^\s`]*)?)`"
 )
-# `Pi 1.4.0`, `upstream v0.99.2`: a pin refresh re-checks evidence against another release and must not need a new approval.
+# A Pi version literal or an upstream tag (the word Pi or upstream, then a dotted version): a pin refresh re-checks evidence against another release and must not need a new approval.
 # The Remove when line keeps its versions, because a different release there is a different condition.
 PIN_VERSION = re.compile(r"(?i)\b(pi|upstream)\s+v?\d+\.\d+\.\d+\b")
 PENDING_FILE = Path("automation") / "ci" / "divergence-reapproval-pending.txt"
