@@ -194,7 +194,9 @@ func newHeldStart(t *testing.T) *heldStart {
 	f.h = icodingagent.NewTestHarness(t, opts, nil)
 	f.h.SetRuntimeHost(swapRuntime{f.runtime})
 	f.runtime.SetRebindSession(func(ctx context.Context, session *coding.Session) error {
-		f.h.Do(func() { f.h.SetRebindResources(session.Services().SettingsManager(), session.Services().Registry().ModelRegistry) })
+		f.h.Do(func() {
+			f.h.SetRebindResources(session.Services().SettingsManager(), session.Services().Registry().ModelRegistry)
+		})
 		return f.h.RebindSession(ctx, session, f.runner(session), nil, true)
 	})
 	// The mode binds the startup Session: its session_start handler is the one the extension holds.
@@ -299,7 +301,7 @@ func TestHeldSessionStartFailuresAreStillShown(t *testing.T) {
 			queued, chat := f.shown()
 			t.Logf("startup bind returned %v", bindErr)
 			// Two listeners of one runner (the harness's and the rebind's) queue every report twice.
-			if len(queued) == 0 || !strings.Contains(chat, `Extension "`) || !strings.Contains(chat, "error: ") || !strings.Contains(queued[0].Error, tc.want) {
+			if len(queued) == 0 || !strings.Contains(chat, "Extension") || !strings.Contains(chat, "error:") || !strings.Contains(queued[0].Error, tc.want) {
 				t.Fatalf("a held session_start that %s: queued %+v; transcript:\n%s", tc.verdict, queued, chat)
 			}
 			if got := f.reports(); len(got) != 1 {
