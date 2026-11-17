@@ -1180,7 +1180,8 @@ Locked by: `TestDownloadTool_LateCallerReusesFinishedDownload` in `internal/codi
 Remove when: Pi implements equivalent same-tool download sharing, or PiG no longer coalesces helper downloads.
 
 Approval: the owner explicitly classifies this capability as additive robustness in the fix-download-dedup lane.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:e69eebbf2871a2c8
 
 
 ---
@@ -1395,7 +1396,8 @@ Locked by: `internal/installchange/installchange_test.go` replaces and removes a
 Remove when: Pi stops detecting an install change, or PiG no longer starts code from files that an update or another process can replace or remove.
 
 Approval: the owner approved building this PiG version in place of designing it out on 2026-10-05.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:6ae37b94f1453be3
 
 ## D97 Packaged remote execution daemons live next to the pig executable
 
@@ -1861,7 +1863,8 @@ Locked by: `TestForgedCertificateIsRefused` (a server certificate signed with th
 Remove when: the operating system trust stores and the Go standard library drop the three roots (Go's list carries only the eight intermediates today) and the Sectigo cross-signed certificates are revoked in every store PiG's users run on (Apple and Microsoft trust `AAA Certificate Services` today), or PiG's Go TLS gains a general blocked-key facility (Node 24.22.1 has one, nodejs/node#66871) that carries these keys.
 
 Approval: owner order, 2026-10-21 (security patch for the eMudhra CA compromise, relayed by Main).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:da395637f612a05b
 
 ## D194 Piglet resolution installs npm and Git Packages with lifecycle scripts disabled unless the command opts in
 
@@ -1984,7 +1987,8 @@ Locked by: `TestTrustedOnlyPigletWithholdsProjectContextFilesInEveryMode` (`codi
 Remove when: Pi puts context files in its trust list, or PiG drops Piglets.
 
 Approval: owner decision on S4, 2026-10-28: the Piglet setting, with stock pig unchanged. Organizations opt in.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:b708afafb94ceffc
 
 ---
 

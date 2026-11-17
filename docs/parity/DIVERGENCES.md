@@ -291,6 +291,7 @@ Observable effect: only the first cold-cache segmentation of a dictionary span t
 Scope: this records only the process-history residual. The ICU 78.3 Southeast Asian engines, `PossibleWord` lookahead and resynchronization, dictionary rule spans and per-iterator engine selection are ported and verified; they are not covered by this entry.
 
 Owner decision: 2026-09-29, owner Michael Kinsy approves recording the ICU process-history residual as a narrowed D27 instead of retiring D27 outright, following the rev-d27 review.
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
 Call-site marker: `internal/wordsegmenter/segments.go`: `dictionaryEngines.engineFor`, where a CJK span start selects `CjkBreakEngine` as if the process cache were warm.
 
@@ -300,7 +301,7 @@ Parity allowance: the differential corpus is generated in a warm process. No pai
 
 Remove when: upstream ICU makes engine selection independent of process history, or PiG adopts an owned model of Pi's process-wide engine cache.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:207791ac42fb5705
 
 ## D30 Replaced Session's extension processes are not fully invalidated
 
@@ -719,7 +720,8 @@ kill -INT exits pig and leaves the shell with a working Ctrl+C, suspend and
 resume are clean, and the cost of matching upstream was accepted after
 exercising it directly, namely that Ctrl+C while $EDITOR is open now terminates
 pig as it does upstream.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:59758c0466645c4f
 
 ## D53 Full-clear when a differential rewrite would under-clear wrapped rows
 
@@ -803,7 +805,8 @@ registration, and `addKeyPressListener` which applies the filter.
 Regression: `internal/codingagent/debug_hotkey_release_test.go`
 (`TestDebugHotkeyFiresOncePerPress`), which fails when the registration is moved
 back to `addTerminalInputListener`.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:6887310d122f3b0b
 
 Protects: the global debug hotkey runs its handler once per press rather than once per press and once per Kitty key release. No Pi test covers the hotkey after its key-release filter.
 
@@ -1194,7 +1197,8 @@ Locked by: `coding/cli/package_registry_scope_test.go` (`TestNpmMetadataLookupSc
 Remove when: upstream isolates user-package metadata from the invoking project's configuration with equivalent command/configuration preservation, or the owner explicitly approves a different security boundary.
 
 Approval: approved by owner Michael Kinsy 2026-09-27 (option A).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:aadecba052840c54
 
 ## D80 Configurable secret-input privacy
 
@@ -1219,7 +1223,8 @@ Parity allowance: the owner-approved enabled default differs from Pi's plain-tex
 Remove when: upstream provides equivalent configurable privacy, or PiG removes the option.
 
 Ratification: owner decision 2026-09-27 requires the configurable default-on feature, replacing unconditional masking. D80 retains that approval; its classification here does not change behavior or extend the approved scope.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:9e15affa7de08deb
 
 ## D82 Cross-process partial-message observation (RPC33)
 
@@ -1387,15 +1392,16 @@ SCRUTINIZED:approved
 
 ## D88 PiG runs its own first-time setup with a sprite step
 
-What: Pi 1.4.0 shows its first-time setup dialog (`first-time-setup.ts`: theme with live preview, then analytics opt-in) only for its official distribution with `PI_EXPERIMENTAL=1`, the default agent directory and no `settings.json` (`startup-ui.ts:122-140`, `main.ts:676`). PiG shows it on an interactive start in the default agent directory that holds no `settings.json` yet, which includes every fresh `PIG_HOME`. As in Pi, a custom agent directory (`PIG_CODING_AGENT_DIR`) skips it (`startup-ui.ts:144-146`). Print, JSON and RPC modes never show it. Esc skips setup and saves nothing.
+What: Pi 1.4.0 shows its first-time setup dialog (`first-time-setup.ts`: theme with live preview, then analytics opt-in) only for its official distribution with `PI_EXPERIMENTAL=1`, the default agent directory and no `settings.json` (`startup-ui.ts:131-148`, `main.ts:723-727`). PiG shows it on an interactive start in the default agent directory that holds no `settings.json` yet, which includes every fresh `PIG_HOME`. As in Pi, a custom agent directory (`PIG_CODING_AGENT_DIR`) skips it (`startup-ui.ts:144-146`). Print, JSON and RPC modes never show it. Esc skips setup and saves nothing.
 
 The dialog is a port of Pi's component with three steps: theme (System, Dark, Light, with live preview), then sprite, then analytics. The sprite step lists the fifteen built-in sprites in a scrolling window of eight rows with the position below it, then a last item, `Create your own...`. The dialog's logo is the pig head of the highlighted sprite on the sprite step and of the chosen sprite after it, never Pi's `SETUP_LOGO_LINES`. The welcome line says `Welcome to PiG` where Pi's says `Welcome to pi`, and the analytics text names PiG instead of Pi (D2). Finishing saves the theme and analytics choice in `settings.json` as Pi does, and saves the sprite exactly as `/sprite set` does (`$PIG_HOME/state/pig-standard/login.json`). `Create your own...` shows how to create a sprite (`/login`, `/model`, then `/sprite create`), and finishing with it keeps the active sprite. `/sprite create` sends a guided turn that writes a TypeScript extension registering the sprite with `ctx.ui.registerSprite` when a model with credentials exists, and explains `/login` otherwise.
 
-PiG shows the dialog as Pi does: on its own startup screen before runtime services start, after migrations and before session selection (`main.ts:672-676`). Extensions are not loaded yet, so the sprite step offers only the built-in sprites; extension sprites are chosen later with `/sprite`. The gate is observed before startup writes any file.
+PiG shows the dialog as Pi does: on its own startup screen before runtime services start, after migrations and before session selection (`main.ts:716-727`). Extensions are not loaded yet, so the sprite step offers only the built-in sprites; extension sprites are chosen later with `/sprite`. The gate is observed before startup writes any file.
 
 Why: PiG never presents itself as Pi (D2), so Pi's official-only setup never runs for PiG; the owner wants a first-run setup that also chooses the sprite.
 
 Owner decision: 2026-10-02, owner Michael Kinsy (first-run-sprite, release 0.4.0).
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
 Call-site markers: `coding/cli/main.go` (gate observation), `coding/cli/extensions.go` (`shouldRunFirstTimeSetup`), `internal/codingagent/first_time_setup.go` (`FirstTimeSetupComponent`, the welcome line, `ShowFirstTimeSetup`).
 
@@ -1411,7 +1417,7 @@ Why not: Pi's cases expect the dialog only for Pi's official distribution; PiG s
 
 Remove when: never; the first-run setup is PiG's.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:4be01b23b1aafffb
 
 ## D89 Tool renderer resolvers of subprocess extensions answer once per tool, off the UI loop, and cannot wrap next()
 
@@ -1452,7 +1458,8 @@ Why not: Pi's case asserts the two-level (`off`, `medium`) map this entry replac
 
 Remove when: Pi offers more than off and medium for a llama.cpp reasoning model, then follow Pi.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:86dd8a0a5d9ce840
 
 ## D93 /reload evaluates an edited ES module extension again
 
@@ -1582,6 +1589,7 @@ Pi bug: on Windows, Pi's npm self-update fails when another process, such as an 
 Why: Anti-virus scanners and search indexers open a newly written or newly started executable without delete sharing for a short time. In PiG the quarantined image is `pig.exe` itself, which the user just started, so an update could fail in that window. npm's graceful-fs retries its own Windows renames in the same way.
 
 Owner decision: lead task decision of 2026-10-05 for PR #161 (rev-test-flakes-041), approved by owner Michael Kinsy 2026-10-06.
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
 Call-site markers: `internal/codingagent/windows_self_update.go` (`quarantineNativeDependencies`). The retry is `internal/fsretry.Rename`.
 
@@ -1591,7 +1599,7 @@ Parity allowance: when no other process holds the image, PiG does exactly what P
 
 Remove when: Pi retries the quarantine rename, or Windows stops refusing to rename a file that another process holds open.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:b14dbcf6fcc4ba00
 
 ## D103 JS Error.stack is not modelled
 
@@ -1684,6 +1692,7 @@ Why: Go closes over the Session in the hooks the Session installs, so no PiG cod
 Scope: only a caller that supplies an Agent or a CacheWarmer. The Session's own Agent and warmer, the CLI and the SDK entry points behave as in Pi.
 
 Owner decision: 2026-10-10, owner Michael Kinsy, Q1 of the design-out audit (option B: `SessionOptions.Agent` and `SessionOptions.CacheWarmer` are ported; `extensionRunnerRef` stays designed out with a numbered divergence).
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
 Call-site markers: `coding/session.go` (`SessionOptions.Agent`).
 
@@ -1699,7 +1708,7 @@ Why not: a test of the cell needs the cell, and PiG has none by design (a second
 
 Remove when: PiG's SDK needs a caller-owned runner cell.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:7f11c40f6478a71b
 
 ## D114 `StdinBuffer` has no `getMaxListeners`, `setMaxListeners` or `MaxListenersExceededWarning`
 
@@ -1710,6 +1719,7 @@ Why: the lead ruled on 2026-10-08 against a `getMaxListeners` and `setMaxListene
 Scope: only a caller that adds more than ten listeners for one `StdinBuffer` event. Pi's `ProcessTerminal` adds one `data` and one `paste` listener (`terminal.ts`), so no Pi code reaches the limit.
 
 Owner decision: 2026-10-10, owner Michael Kinsy, Q3 of the design-out audit (option A: keep the members designed out and record a numbered divergence for the missing warning).
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
 Call-site markers: `tui/stdin_buffer.go` (`StdinBuffer`) and `tui/stdin_buffer_events.go` (`addRegistration`).
 
@@ -1725,7 +1735,7 @@ Why not: the owner ruled on 2026-10-10 (Q3, option A) against a magic limit of 1
 
 Remove when: PiG's `StdinBuffer` gets Node's listener limit and warning (design-out audit Q3 option B).
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:77e22446f4d6c770
 
 ## D115 Gemini 2.x tool-result images follow the whole run of function responses
 
@@ -2972,6 +2982,7 @@ Why: the line Pi prints is a line of a JavaScript library that exists only where
 Scope: `chord/nextnode/plugins` `BuildFacet`, the failure of an input that cannot be read (`ENOENT` and `EACCES` read errors). The build fails in both with one error whose text after the location is equal. Evidence of Pi's text: reproduced with esbuild 0.28.2 in Node (`parseStackLinesV8` takes the first readable frame, esbuild's own `lib/main.js:1552:22`).
 
 Owner decision: 2026-11-01, owner decided to keep PiG's location and record the difference (D222).
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
 Call-site marker: `chord/nextnode/plugins/build/build_facet.go` (the `OnLoad` read failure).
 
@@ -2981,7 +2992,7 @@ Parity allowance: none needed; Pi's text names a file of Pi's installation, so n
 
 Remove when: Pi reports the importing location.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:d9eb80ac166cbaca
 
 ## D224 A watch listener that blocks on a wait the host cannot see holds back the waits and publications that follow its delivery
 
