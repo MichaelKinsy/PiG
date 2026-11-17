@@ -8344,6 +8344,25 @@
       ]
     },
     {
+      "id": "BF-27fcd7f",
+      "title": "fix(extension): the Rust SDK snapshots a member by hash, not by copy, and the formatting of the member edits",
+      "symptom": "fix(extension): the Rust SDK snapshots a member by hash, not by copy, and the formatting of the member edits",
+      "rootCause": "A message_update delta frame carries the whole text so far as a member: the snapshot now holds a hash of a scalar member, so a delta frame copies the payload once again.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "27fcd7f4bf",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-2843d60",
       "title": "Starting `pig` from a working directory that has been deleted now prints \"Error: The current working…",
       "symptom": "Starting `pig` from a working directory that has been deleted now prints \"Error: The current working directory no longer exists.",
@@ -13205,6 +13224,51 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-3e50072",
+      "title": "A handler of `message_start`, `message_update`, `turn_start`, `agent_start` or `agent_end` that assigns…",
+      "symptom": "A handler of `message_start`, `message_update`, `turn_start`, `agent_start` or `agent_end` that assigns, reassigns or deletes a member of the event itself (for example `event.note = 1`, `event.type = \"x\"` or `delete event.turnIndex`) now changes the event that the later handlers of that dispatch receive, of the same extension and of other extensions, as it does in Pi, where every handler is handed the one event object.",
+      "rootCause": "A reply's _pigEventEdits takes a second entry form, {member, value} and {member, deleted: true}, for message_start, message_update, turn_start, agent_start and agent_end. Every entry of a reply is checked before any is applied and a malformed one refuses the reply. The members are kept on the dispatch beside the event and written over the encoded payload of every later request of that dispatch, of the same extension or another, and of no later dispatch; a message_update request that carries them is sent whole and the extension's next delta is a keyframe. A dispatch with no edit pays one nil check.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A handler of `message_start`, `message_update`, `turn_start`, `agent_start` or `agent_end` that assigns, reassigns or deletes a member of the event itself (for example `event.note = 1`, `event.type = \"x\"` or `delete event.turnIndex`) now changes the event that the later handlers of that dispatch receive, of the same extension and of other extensions, as it does in Pi, where every handler is handed the one event object. The change lives for that one dispatch only: the next event of the same type starts clean, and the session, its entries and the provider request keep what they had. Until now the member stayed in the handler's own copy of the event and was lost, for every out-of-process handler of these events. Each SDK sends back the members the handler changed, and the host refuses a malformed entry before it applies any. The Rust SDK finds the members a handler adds, deletes or changes as a scalar; it cannot tell replacing an object member such as `event.message` from editing inside it, so a Rust handler that replaces one is carried like an edit inside it for the events that already carried those. The loss was present in every release since v0.3.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "059aac35c1",
+          "date": "2026-11-16"
+        },
+        {
+          "hash": "17f9d1389d",
+          "date": "2026-11-16"
+        },
+        {
+          "hash": "3e50072e2e",
+          "date": "2026-11-16"
+        },
+        {
+          "hash": "8c8b498329",
+          "date": "2026-11-16"
+        },
+        {
+          "hash": "9871d212a3",
+          "date": "2026-11-16"
+        },
+        {
+          "hash": "c745f9200d",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/event_members_test.go::TestApplyEventMembersKeepsTheObjectOrder",
+        "coding/extension/host/subprocess/event_members_test.go::TestMemberEntriesAreRecordedOnTheDispatch",
+        "coding/extension/host/subprocess/event_members_test.go::TestMemberEntriesNeedAnEventAndADispatchThatTakeThem",
+        "coding/extension/host/subprocess/event_members_test.go::TestMemberEntriesRefuseAMisfitAndApplyNone"
+      ]
     },
     {
       "id": "BF-3e66246",

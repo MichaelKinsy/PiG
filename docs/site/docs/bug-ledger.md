@@ -318,6 +318,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-27e9bc8](#bf-27e9bc8) | `@earendil-works/pi-agent-core`, `pi-tui` and `pi-ai` (and `pi-ai/models`, `pi-ai/oauth`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-27f3324](#bf-27f3324) | The npm release packer reads `npm pack --json` output from npm 12, which keys the result by package name, as… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-27f6a7e](#bf-27f6a7e) | The `pi-env` daemon now kills every command it started when it receives `SIGTERM`, `SIGINT` or `SIGHUP`, then… | PiG's own defect | Windows | 0.7.0 |
+| [BF-27fcd7f](#bf-27fcd7f) | fix(extension): the Rust SDK snapshots a member by hash, not by copy, and the formatting of the member edits | PiG's own defect | All platforms | Unreleased |
 | [BF-2843d60](#bf-2843d60) | Starting `pig` from a working directory that has been deleted now prints "Error: The current working… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-285ae70](#bf-285ae70) | Windows: the extension host's IPC pipe no longer polls with 1 ms sleeps when a write has to interrupt a… | PiG's own defect | Windows | Unreleased |
 | [BF-286d303](#bf-286d303) | A native Provider object an extension registers (`registerNativeProvider`, `pi.registerProvider(provider)`)… | PiG's own defect | All platforms | 0.7.0 |
@@ -494,6 +495,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3def2a7](#bf-3def2a7) | MCP servers whose names are numbers (`"9"`, `"42"`) load and report their errors in the order Pi does: a JSON… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-3e00494](#bf-3e00494) | fix(session): a custom message entry whose content is null projects an empty list | PiG's own defect | All platforms | Unreleased |
 | [BF-3e06d84](#bf-3e06d84) | A write whose directory entry could not be flushed (an I/O error) now fails instead of reporting success; a… | PiG's own defect | All platforms | Unreleased |
+| [BF-3e50072](#bf-3e50072) | A handler of `message_start`, `message_update`, `turn_start`, `agent_start` or `agent_end` that assigns… | PiG's own defect | All platforms | Unreleased |
 | [BF-3e66246](#bf-3e66246) | Chord: a worker's exit is published after its link closed and after the commits its calls queued in the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3e66fd5](#bf-3e66fd5) | A failed interactive login now behaves as in Pi: the login dialog closes, the editor has focus again, and the… | PiG's own defect | All platforms | Unreleased |
 | [BF-3e755ef](#bf-3e755ef) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
@@ -6467,6 +6469,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `env/daemon/sys_windows_test.go::TestWindowsDaemonHandlesNoExitSignal`
 - **Release note:** The `pi-env` daemon now kills every command it started when it receives `SIGTERM`, `SIGINT` or `SIGHUP`, then exits with status 128 plus the signal. A client that closes its connection ends the daemon with `SIGTERM`; the daemon used to die on it before killing its commands, which were left running under init. On Windows a terminated daemon cannot clean up: its job object ends each command's own process, but not processes that one started.
 
+### BF-27fcd7f
+
+**fix(extension): the Rust SDK snapshots a member by hash, not by copy, and the formatting of the member edits**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extension): the Rust SDK snapshots a member by hash, not by copy, and the formatting of the member edits
+- **Root cause:** A message_update delta frame carries the whole text so far as a member: the snapshot now holds a hash of a scalar member, so a delta frame copies the payload once again.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `27fcd7f4bf` (2026-11-17)
+- **Tests:** None recorded.
+
 ### BF-2843d60
 
 **Starting `pig` from a working directory that has been deleted now prints "Error: The current working…**
@@ -8898,6 +8913,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `085dad13a2` (2026-11-14), `3e06d84430` (2026-11-14)
 - **Tests:** None recorded.
 - **Release note:** A write whose directory entry could not be flushed (an I/O error) now fails instead of reporting success; a file system that has no directory flush is still accepted. A symbolic link to a file that does not exist is followed and the file is created, as Pi does, where the link used to be replaced by a regular file; a link that goes round in a circle or names a missing directory fails as Pi's write does.
+
+### BF-3e50072
+
+**A handler of `message_start`, `message_update`, `turn_start`, `agent_start` or `agent_end` that assigns…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A handler of `message_start`, `message_update`, `turn_start`, `agent_start` or `agent_end` that assigns, reassigns or deletes a member of the event itself (for example `event.note = 1`, `event.type = "x"` or `delete event.turnIndex`) now changes the event that the later handlers of that dispatch receive, of the same extension and of other extensions, as it does in Pi, where every handler is handed the one event object.
+- **Root cause:** A reply's _pigEventEdits takes a second entry form, {member, value} and {member, deleted: true}, for message_start, message_update, turn_start, agent_start and agent_end. Every entry of a reply is checked before any is applied and a malformed one refuses the reply. The members are kept on the dispatch beside the event and written over the encoded payload of every later request of that dispatch, of the same extension or another, and of no later dispatch; a message_update request that carries them is sent whole and the extension's next delta is a keyframe. A dispatch with no edit pays one nil check.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `059aac35c1` (2026-11-16), `17f9d1389d` (2026-11-16), `3e50072e2e` (2026-11-16), `8c8b498329` (2026-11-16), `9871d212a3` (2026-11-16), `c745f9200d` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/event_members_test.go::TestApplyEventMembersKeepsTheObjectOrder`, `coding/extension/host/subprocess/event_members_test.go::TestMemberEntriesAreRecordedOnTheDispatch`, `coding/extension/host/subprocess/event_members_test.go::TestMemberEntriesNeedAnEventAndADispatchThatTakeThem`, `coding/extension/host/subprocess/event_members_test.go::TestMemberEntriesRefuseAMisfitAndApplyNone`
+- **Release note:** A handler of `message_start`, `message_update`, `turn_start`, `agent_start` or `agent_end` that assigns, reassigns or deletes a member of the event itself (for example `event.note = 1`, `event.type = "x"` or `delete event.turnIndex`) now changes the event that the later handlers of that dispatch receive, of the same extension and of other extensions, as it does in Pi, where every handler is handed the one event object. The change lives for that one dispatch only: the next event of the same type starts clean, and the session, its entries and the provider request keep what they had. Until now the member stayed in the handler's own copy of the event and was lost, for every out-of-process handler of these events. Each SDK sends back the members the handler changed, and the host refuses a malformed entry before it applies any. The Rust SDK finds the members a handler adds, deletes or changes as a scalar; it cannot tell replacing an object member such as `event.message` from editing inside it, so a Rust handler that replaces one is carried like an edit inside it for the events that already carried those. The loss was present in every release since v0.3.0.
 
 ### BF-3e66246
 
