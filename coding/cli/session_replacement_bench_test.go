@@ -143,8 +143,8 @@ func BenchmarkSessionReplacementPhases(b *testing.B) {
 	}
 }
 
-// The factory hands the build's diagnostics and model fallback message to the Runtime, which keeps them for the process as Pi's AgentSessionRuntime does (agent-session-runtime.ts apply).
-// Pi: packages/coding-agent/src/core/agent-session-runtime.ts:109 (Runtime.diagnostics); packages/coding-agent/src/core/agent-session-runtime.ts:113 (Runtime.modelFallbackMessage).
+// The factory hands the build's diagnostics to the Runtime, which keeps them for the process as Pi's AgentSessionRuntime does (agent-session-runtime.ts apply); a model fallback is one more warning in them (Pi c8c456c85c6e, main.ts createRuntime), and the option message stays only for the no-model guidance.
+// Pi: packages/coding-agent/src/main.ts:917-918 (the fallback warning pushed into the diagnostics); packages/coding-agent/src/core/agent-session-runtime.ts:109 (Runtime.diagnostics); packages/coding-agent/src/core/agent-session-runtime.ts:113 (Runtime.modelFallbackMessage).
 func TestSessionFactoryCarriesDiagnosticsAndModelFallbackToTheRuntime(t *testing.T) {
 	builder, cwd, agentDir := benchReplacementBuilder(t, 1)
 	ctx := context.Background()
@@ -169,7 +169,7 @@ func TestSessionFactoryCarriesDiagnosticsAndModelFallbackToTheRuntime(t *testing
 		t.Fatal(err)
 	}
 	defer func() { _ = rt.Close() }()
-	if got := rt.Diagnostics(); len(got) != 1 || got[0].Message != "startup warning" {
+	if got := rt.Diagnostics(); len(got) != 2 || got[0].Message != "startup warning" || got[1].Type != "warning" || got[1].Message != "Could not restore model a/b. Using c/d" {
 		t.Fatalf("diagnostics=%v", got)
 	}
 	if got := rt.ModelFallbackMessage(); got != "Could not restore model a/b. Using c/d" {
