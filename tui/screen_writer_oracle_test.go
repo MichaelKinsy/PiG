@@ -5,6 +5,7 @@ package tui
 
 import (
 	"compress/gzip"
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -97,7 +98,7 @@ func screenWriterStreams(t *testing.T) map[string][]string {
 // writer reads is the one Pi's doRender writes: of the frames of Pi's own 500 scenarios, the ones it has no rule for are exactly
 // the ones screenWriterNoRule names from their bytes, frame by frame: an image, a line feed inside a line, a control sequence cut
 // short (a line Pi sliced inside an SGR or a hyperlink, so the next escape comes before the sequence's end) and a screen narrower
-// than two columns. So a frame Pi starts to write another way shows here, and so does a frame of those kinds the writer starts to
+// than two columns, and the frames of screenWriterKeptFrames, named by step and hash. So a frame Pi starts to write another way shows here, and so does a frame of those kinds the writer starts to
 // read. The fixture decides how many there are of each: a re-recorded fixture changes no number here, and a failure prints them.
 func TestScreenWriterShowsTheRenderersScreens(t *testing.T) {
 	var streams, steps, differences int
@@ -105,6 +106,7 @@ func TestScreenWriterShowsTheRenderersScreens(t *testing.T) {
 	noRule := map[string]int{}
 	var misread []string
 	updates := 0
+	keptSeen := make([]int, len(screenWriterKeptFrames))
 	add := func(r *screenWriterReplay, into *screenwriter.Stats) {
 		streams++
 		steps += r.pair.Steps
@@ -163,16 +165,17 @@ func TestScreenWriterShowsTheRenderersScreens(t *testing.T) {
 					replay.frame = func(update string, cols int, unread bool) {
 						updates++
 						why := screenWriterNoRule(update, cols)
-						// Whether the writer reads a frame whose last row no cursor address follows depends on what it wrote of the row before (it
-						// translates the row in place, or sends the frame as it came): such a frame holds a reason only when the writer left it as it came.
-						if why == screenWriterNoRules[4] && !unread {
-							why = ""
+						if why == "" && unread {
+							if k := screenWriterKeptFrame(name, index, update); k >= 0 {
+								why = screenWriterNoRules[len(screenWriterNoRules)-1]
+								keptSeen[k]++
+							}
 						}
 						if why != "" {
 							noRule[why]++
 						}
 						if unread != (why != "") {
-							misread = append(misread, fmt.Sprintf("%s, %d columns: the writer had no rule: %v; the frame holds %q: %q", name, cols, unread, why, update))
+							misread = append(misread, fmt.Sprintf("%s step %d, %d columns: the writer had no rule: %v; the frame holds %q; sha256 %x: %q", name, index, cols, unread, why, sha256.Sum256([]byte(update)), update))
 						}
 					}
 				}
@@ -214,6 +217,11 @@ func TestScreenWriterShowsTheRenderersScreens(t *testing.T) {
 		}
 		t.Error(frame)
 	}
+	for k, kept := range screenWriterKeptFrames {
+		if keptSeen[k] != 1 {
+			t.Errorf("the frame of %s step %d (sha256 %s) was left as it came %d times, want once", kept.name, kept.step, kept.sha256, keptSeen[k])
+		}
+	}
 	held := 0
 	for _, why := range screenWriterNoRules {
 		if noRule[why] == 0 {
@@ -228,22 +236,34 @@ func TestScreenWriterShowsTheRenderersScreens(t *testing.T) {
 }
 
 // screenWriterNoRules are what a synchronized update of Pi's doRender can hold that the writer's frame grammar has no rule for.
-var screenWriterNoRules = []string{"a screen narrower than two columns", "an image", "a line feed inside a line", "a control sequence cut short", "a last row that no cursor address follows"}
+var screenWriterNoRules = []string{"a screen narrower than two columns", "an image", "a line feed inside a line", "a control sequence cut short", "a frame the writer leaves as it came for its cursor rule (screenWriterKeptFrames)"}
+
+type screenWriterKept struct {
+	name   string
+	step   int
+	sha256 string
+}
+
+// screenWriterKeptFrames are the frames of Pi's fixture, by scenario, step and the hash of their bytes, that the writer reads and then sends as it
+// came although their bytes hold nothing screenWriterNoRule names: no more and no fewer. The recording made with Pi b7bb7ca905b8 added the first:
+// step 4 of scenario 485 on an 80 column screen rewrites rows 5, 12 and 13 and ends with the last of them and no cursor address, with a hyperlink
+// left open in it and the pen open in the rows before. [INFERENCE: the branch that sends it as it came is the tail of Writer.frame, where a row
+// that no cursor address follows leaves the terminal's cursor where the line ended while the writer's own cursor is known; the frame is written as
+// the renderer wrote it, so the screens match (0 differences) and the bytes the terminal gets are Pi's.]
+var screenWriterKeptFrames = []screenWriterKept{
+	{"oracle-485 B", 4, "6b0ddf18a28c01b852865e3f7917fba5dba9a8f30a7948e0370dcd268710a03d"},
+}
+
+// screenWriterKeptFrame is the index of the entry of screenWriterKeptFrames that names this frame, or -1.
+func screenWriterKeptFrame(name string, step int, update string) int {
+	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(update)))
+	return slices.IndexFunc(screenWriterKeptFrames, func(k screenWriterKept) bool {
+		return k.name == name && k.step == step && k.sha256 == sum
+	})
+}
 
 // A CSI or an OSC that the next escape ends before its final byte or its terminator: a line cut inside a sequence.
 var screenWriterCutSequence = regexp.MustCompile("\x1b\\[[0-?]*[ -/]*\x1b|\x1b\\][^\x07\x1b]*\x1b[^\\\\]")
-
-// screenWriterCursorAddress is a cursor position.
-var screenWriterCursorAddress = regexp.MustCompile("\x1b\\[[0-9]*;?[0-9]*H")
-
-// screenWriterLastRowUnplaced reports whether the update's last row, erased and then written, is followed by no cursor address. After such a frame
-// the terminal's cursor is where the row's line ended, which the writer does not know; when it has written a row of the frame in place (it moved
-// the cursor itself) it sends the frame as it came (writer.go frame: aCurKnown), and when it has not it translates the frame. Pi's recording from before
-// b7bb7ca905b8 held no frame that the writer left for this reason; the recording with the commit holds one (scenario 485, 80 columns).
-func screenWriterLastRowUnplaced(update string) bool {
-	at := strings.LastIndex(update, "\x1b[2K")
-	return at >= 0 && !screenWriterCursorAddress.MatchString(update[at:])
-}
 
 // screenWriterNoRule names what a synchronized update holds that the frame grammar has no rule for, "" for nothing. It reads the
 // update's bytes and the screen's width, not the writer: a Kitty or iTerm2 image sequence, a line feed (Pi's doRender writes none
@@ -258,8 +278,6 @@ func screenWriterNoRule(update string, cols int) string {
 		return screenWriterNoRules[2]
 	case screenWriterCutSequence.MatchString(update):
 		return screenWriterNoRules[3]
-	case screenWriterLastRowUnplaced(update):
-		return screenWriterNoRules[4]
 	}
 	return ""
 }
