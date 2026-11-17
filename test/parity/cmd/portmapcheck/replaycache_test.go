@@ -172,8 +172,8 @@ func TestCacheServerAnswersOnlyWhatItCanVerify(t *testing.T) {
 
 	c := startServer(t, shared, store, stats)
 	res := c.get(good)
-	if res.Miss || res.DiskPath != fileName(shared, goodOut[:], "d") || res.Size != int64(len("compiled package")) || !bytes.Equal(res.OutputID, goodOut[:]) {
-		t.Fatalf("a good entry of the user's cache is a hit served from where it lies: %+v", res)
+	if res.Miss || res.DiskPath != fileName(store, goodOut[:], "d") || res.Size != int64(len("compiled package")) || !bytes.Equal(res.OutputID, goodOut[:]) {
+		t.Fatalf("a good entry of the user's cache is a hit served from a copy in the store: %+v", res)
 	}
 	for name, action := range map[string][sha256.Size]byte{
 		"an action nobody stored": sha256.Sum256([]byte("nothing")), "a truncated entry": short, "an output of another size": wrongSize,
@@ -197,13 +197,40 @@ func TestCacheServerAnswersOnlyWhatItCanVerify(t *testing.T) {
 	}
 	c.close()
 	b, _ := os.ReadFile(stats)
-	if st := parseStats(string(b)); st != (cacheStats{Hits: 2, Misses: 6, Rejected: 5, Puts: 1}) {
+	if st := parseStats(string(b)); st != (cacheStats{Hits: 2, Misses: 6, Rejected: 5, Puts: 1, Copied: int64(len("compiled package"))}) {
 		t.Fatalf("counters %+v from %q: want 2 hits (the user's entry and the put), 6 misses, 5 rejected entries, 1 put", st, b)
 	}
 }
 
+// TestSharedHitIsACopyTheRunOwns: a hit in the user's cache is answered with a file of the run's own cache, so a trim of the user's cache
+// (go deletes entries not used for five days) in the middle of a replay cannot take it away; and the copy is not the user's file: writing
+// it leaves the user's bytes as they were.
+func TestSharedHitIsACopyTheRunOwns(t *testing.T) {
+	root := t.TempDir()
+	shared, store := filepath.Join(root, "user"), filepath.Join(root, "store")
+	body := []byte("compiled package of the user's cache")
+	action, out := seedEntry(t, shared, "trimmed", body)
+	c := startServer(t, shared, store, "")
+	res := c.get(action)
+	if res.Miss || res.DiskPath == fileName(shared, out[:], "d") || !strings.HasPrefix(res.DiskPath, store) {
+		t.Fatalf("the hit must name a file of the store, not the user's: %+v", res)
+	}
+	for _, p := range []string{fileName(shared, out[:], "d"), fileName(shared, action[:], "a")} { // the trim
+		if err := os.Remove(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, err := os.ReadFile(res.DiskPath); err != nil || !bytes.Equal(got, body) {
+		t.Fatalf("the path handed out must still open after the user's file is gone, with the same bytes: %v %q", err, got)
+	}
+	if r := c.get(action); r.Miss || r.DiskPath != res.DiskPath { // later lookups are the store's own
+		t.Fatalf("the adopted entry must stay a hit: %+v", r)
+	}
+	c.close()
+}
+
 // TestServerReadsTheLayoutOfGo pins the cache layout the server reads to the repository's go: a build into an ordinary cache is read back
-// through the server, which must answer it from where the go command put it. When a Go release changes the layout this turns red, instead
+// through the server, which must answer it with a copy at the place in the store where the go command put it in its own cache. When a Go release changes the layout this turns red, instead
 // of every lookup silently missing.
 func TestServerReadsTheLayoutOfGo(t *testing.T) {
 	mod := t.TempDir()
@@ -235,8 +262,10 @@ func TestServerReadsTheLayoutOfGo(t *testing.T) {
 	}
 	stats := filepath.Join(root, "stats")
 	got := goList("GOCACHE="+filepath.Join(root, "store"), "GOCACHEPROG="+exe+" "+cacheServerArg, envSharedCache+"="+user, envStatsFile+"="+stats)
-	if got != want {
-		t.Fatalf("through the server the export data of lib is at %q, go's own cache keeps it at %q: the server does not read go's layout", got, want)
+	wantRel, err1 := filepath.Rel(user, want)
+	gotRel, err2 := filepath.Rel(filepath.Join(root, "store"), got)
+	if err1 != nil || err2 != nil || gotRel != wantRel {
+		t.Fatalf("through the server the export data of lib is at %q (in the store), go's own cache keeps it at %q: the server does not read go's layout", got, want)
 	}
 	b, _ := os.ReadFile(stats)
 	if st := parseStats(string(b)); st.Hits == 0 || st.Rejected != 0 || st.Puts != 0 {
@@ -449,7 +478,7 @@ func TestSweepRemovesOnlyWhatNoLiveRunOwns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sweepReplayDirs(tmp, now)
+	_, _ = sweepReplayDirs(tmp, now)
 	for name, tc := range map[string]struct {
 		dir  string
 		kept bool
@@ -469,7 +498,7 @@ func TestSweepRemovesOnlyWhatNoLiveRunOwns(t *testing.T) {
 		target := mkReplayDir(t, t.TempDir(), "target", nil, replayStaleAfter+time.Hour)
 		link := filepath.Join(tmp, replayDirPrefix+"link")
 		testenv.RequireDirectoryLink(t, target, link)
-		sweepReplayDirs(tmp, now)
+		_, _ = sweepReplayDirs(tmp, now)
 		if !exists(target) || !exists(link) {
 			t.Errorf("a symbolic link with the name of a replay directory was followed")
 		}
@@ -491,7 +520,7 @@ func TestSweepRemovesLegacyClonesByAge(t *testing.T) {
 		t.Fatal(err)
 	}
 	cache := mkReplayDir(t, parent, "go-build", nil, replayStaleAfter+time.Hour)
-	sweepLegacyClones(parent, now)
+	_, _ = sweepLegacyClones(parent, now)
 	if !exists(young) || exists(old) || exists(cut) || !exists(cache) {
 		t.Fatalf("young kept=%v old kept=%v cut kept=%v the cache itself kept=%v", exists(young), exists(old), exists(cut), exists(cache))
 	}
@@ -510,6 +539,70 @@ func TestCleanReplaysRemovesLeftovers(t *testing.T) {
 	}
 	if exists(orphan) || exists(legacy) || !strings.Contains(out.String(), "2 leftover replay directories removed") {
 		t.Fatalf("orphan kept=%v legacy kept=%v output %q", exists(orphan), exists(legacy), out.String())
+	}
+}
+
+// TestCleanReplaysFailsWhatItCannotSweep: a cleanup that cannot read a directory or remove a leftover says so, naming the path, and
+// fails; the other leftovers are still removed.
+func TestCleanReplaysFailsWhatItCannotSweep(t *testing.T) {
+	t.Run("a temporary directory that cannot be read", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "not-a-directory") // ReadDir of a file fails on every system and for every user
+		if err := os.WriteFile(file, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+			t.Setenv(name, file)
+		}
+		t.Setenv("GOCACHE", filepath.Join(t.TempDir(), "go-build"))
+		var out strings.Builder
+		err := cleanReplayLeftovers(&out)
+		if err == nil || !strings.Contains(err.Error(), file) {
+			t.Fatalf("an unreadable temporary directory must fail and name %s, got %v", file, err)
+		}
+	})
+	t.Run("a leftover that cannot be removed", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("a read-only directory does not stop its entries from being removed on Windows")
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("root removes entries of a read-only directory")
+		}
+		tmp := scratchTemp(t)
+		t.Setenv("GOCACHE", filepath.Join(t.TempDir(), "go-build"))
+		stuck := mkReplayDir(t, tmp, replayDirPrefix+"stuck", nil, replayStaleAfter+time.Hour)
+		if err := os.WriteFile(filepath.Join(stuck, "cache", "f"), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(filepath.Join(stuck, "cache"), 0o500); err != nil { // its entry cannot be unlinked
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(filepath.Join(stuck, "cache"), 0o700) })
+		gone := mkReplayDir(t, tmp, replayDirPrefix+"gone", nil, replayStaleAfter+time.Hour)
+		var out strings.Builder
+		err := cleanReplayLeftovers(&out)
+		if err == nil || !strings.Contains(err.Error(), stuck) {
+			t.Fatalf("a leftover that cannot be removed must fail and name %s, got %v", stuck, err)
+		}
+		if exists(gone) || !strings.Contains(out.String(), "1 leftover replay directories removed") {
+			t.Fatalf("the other leftover must still be removed: kept=%v output %q", exists(gone), out.String())
+		}
+	})
+}
+
+// TestCleanReplaysSweepsTheTempDirWhenTheBuildCacheIsNotFound: the two sweeps are independent. With no GOCACHE and no go to ask, the
+// temporary directory is still swept and the lookup's error is returned.
+func TestCleanReplaysSweepsTheTempDirWhenTheBuildCacheIsNotFound(t *testing.T) {
+	tmp := scratchTemp(t)
+	t.Setenv("GOCACHE", "")
+	t.Setenv("PATH", t.TempDir()) // no go binary to ask
+	orphan := mkReplayDir(t, tmp, replayDirPrefix+"orphan", nil, replayStaleAfter+time.Hour)
+	var out strings.Builder
+	err := cleanReplayLeftovers(&out)
+	if err == nil || !strings.Contains(err.Error(), "cannot find the build cache") {
+		t.Fatalf("the failed lookup must be returned, got %v", err)
+	}
+	if exists(orphan) || !strings.Contains(out.String(), "1 leftover replay directories removed") {
+		t.Fatalf("the temporary directory must be swept anyway: orphan kept=%v output %q", exists(orphan), out.String())
 	}
 }
 
