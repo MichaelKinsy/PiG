@@ -3796,9 +3796,9 @@ Pi bug: none; Pi's repaint after the load is intended. (Pi-Bolt omits the frame 
 
 Scope: `tui` (`LoadAllHighlightLanguages`), `tui/internal/hljs` (`Registry.LoadAllLanguages` and the lookups that record a miss), `internal/codingagent` (`loadRemainingHighlightLanguages`). A Piglet Binary built with `pig_strip_syntax_highlight` loads no grammar and, as before, has nothing to repaint.
 
-Owner decision: owner approved 2026-11-11.
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern: performance work that is unobservable; the one cursor-only frame repaints nothing
 
-SCRUTINIZED:approved 2026-11-11
+SCRUTINIZED:approved 2026-11-17 text-sha256:5a65896a4ab32ebb
 
 Remove when: Pi's renderer writes nothing for a render request that changes no row and moves no cursor, or the owner withdraws the approval.
 
@@ -3914,8 +3914,9 @@ Pi bug: none; Pi's stat per read is correct, only costlier.
 Scope: `internal/codingagent` (`AvailabilityReadContext`, `GetAvailableModelData`, `AvailableProviderCount` and the auth helpers they call) and `ai` (`WithFileReadSnapshot`, `ReadRawCredential`). The models store's view (models-store.json) follows the same operation.
 
 Owner decision: owner approved 2026-11-12T18:45Z: "one auth.json check per pass, with a test that a write mid-pass is used by the next request".
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved 2026-11-12
+SCRUTINIZED:approved 2026-11-17 text-sha256:48913fccff6ed8fc
 
 Remove when: Pi reads its auth storage once per availability refresh, or an extension API exists through which a provider's check announces that it changed stored credentials, so the view can end there. The credential API already ends the view for writes made through it in this process; no API covers a check that writes the file itself.
 
@@ -3944,8 +3945,9 @@ Pi bug: A prompt is answered `started` and never run; no error is emitted; an `a
 Scope: RPC mode (`pig --mode rpc`): two `prompt` commands whose handlers overlap before either run starts. `rpcAdmission.promptInput` passes both, as Pi's `_preparePrompt` does; `rpcAdmission.startPrompt` (`coding/cli/rpc_admission.go`) calls `Session.BeginRunStart` (`coding/session_run_state.go`), which rejects the second because the first marked the Session busy. Prompts that name a `streamingBehavior`, `steer`, `follow_up` and extension commands are not affected. The other caller of `BeginRunStart`, `Session.prepareContentRun` (`coding/session.go`), checks `IsStreaming` itself first and was not compared with Pi for this record.
 
 Owner decision: 2026-11-12T23:22:43Z owner: "proceed with recommendations": "RPC batch prompts (owner line 5): KEEP PiG's explicit rejection, recorded as a numbered divergence."
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved 2026-11-12
+SCRUTINIZED:approved 2026-11-17 text-sha256:768e4c48eddc3ce2
 
 Remove when: Pi rejects the second prompt of a batch with an error, or stops answering `started` for a prompt it does not run. `TestRPCPromptsWrittenInOneChunkDivergeFromPi` runs the pinned Pi and fails when Pi's side changes.
 
@@ -4020,8 +4022,9 @@ Scope: `coding` (`DefaultResourceLoader.ReloadWith`, `LoadProjectTrustExtensions
 Limit: the lock does not cover a goroutine that a callback starts with its context and does not wait for. While the operation that handed out the context runs, a loader call that goroutine makes with it counts as made from inside the operation and runs beside the rest of it, without the lock. A callback that hands its context to another goroutine must wait for that goroutine before it returns, as a Pi callback awaits the reload it starts. Once the operation has ended the context marks nothing, and the call waits like any call from outside.
 
 Owner decision: approved by the owner. `OWNER-DECISIONS.md`, section "2026-11-13T00:54:22Z owner: direction for the rest of 0.8.0", the owner verbatim: "I want the divergences that keep us on brand but still want to be faithful as we can plus our additions of go support and then my hero demo I was asking for plus ensuring the optimal quality release given how I've held it back and we can make this an exciting announcment from many angles." The line of that section that applies it, quoted: "Divergences APPROVED where PiG keeps a user safe or told the truth (on brand), each numbered, minimal, with remove-when and an upstream issue draft: D630 (hold a prompt during a reload), D632 (serialised reloads), D633 (show a failed settings save), ..."
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved 2026-11-13
+SCRUTINIZED:approved 2026-11-17 text-sha256:d5e61a5d1abb6c9f
 
 Remove when: Pi serialises `reload()` or orders its fields, so that overlapping reloads end in the state of one of them.
 
