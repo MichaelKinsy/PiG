@@ -1536,7 +1536,8 @@ Locked by: `durable/storage/sqlite/working_set_test.go` (range equals `ScanEntri
 Remove when: PiG's per-read cost, with Pi 1.5.2's kept context ranges (`readContextFrom`, retained per conversation by the scheduler), matches Pi's without the working set, or Pi's `normalizeContext` starts copying.
 
 Approval: the lead assigned D104 on 2026-10-06 under the owner's durable-perf instruction; approved (owner, 2026-11-13T14:52:18Z: "proceed with recommendations."; the line of that decision for this record: "D104 APPROVED (durable perf divergence of 2026-10-06, shipped since 0.5.0).").
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:4cde92dc358bb3dd
 
 ---
 
@@ -1957,7 +1958,8 @@ Locked by: `TestExportActivePigletSourceReachesToolProcesses`, `TestStatusApplie
 Remove when: PiG drops Piglets, or a session passes its Piglet to the commands that report on it by another route.
 
 Approval: owner request (self-inspection review, section 9.2, item 4), approved by owner Michael Kinsy on 2026-10-28, for PiG 0.6.0.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:cc9e26c39b5e7063
 
 ## D211 A Piglet can withhold a project's context files until the project is trusted (`contextFiles: trusted-only`)
 
@@ -2039,7 +2041,8 @@ Locked by: `TestStartupWarnsAboutAConfiguredLocalPackageThatDoesNotExist` and `T
 Remove when: Pi reports a configured local Package that does not exist, or PiG drops the check.
 
 Approval: owner comment on issue #389, 2026-10-30: "we'll take both of your other points too, so a package that can't load shows up in the session and `--validate-only` checks that each entry actually resolves."
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:3245fe05b482e495
 
 ## D221 The plugins' Node subprocess finds Node beyond PATH
 
@@ -2066,7 +2069,8 @@ Locked by: `TestDiscoverNodeFindsNodeInEachPlaceAfterPATH`, `TestDiscoverNodeFin
 Remove when: Pi evaluates plugins in a runtime PiG does not start, or PiG Standard ships a Node and Stock drops the search.
 
 Approval: owner decision relayed 2026-11-01: option (c), discovery beyond PATH, for difference #10.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:37962e601175fd28
 
 ## D223 The plugins' Node subprocess: a store, a spare process, exit details, and the link waits it needs
 
@@ -2092,7 +2096,8 @@ Locked by: `TestStoreAPluginsPersistedDocumentsAndTableSurviveClosingTheNodeHost
 Remove when: Pi evaluates plugins in a runtime PiG does not start, or the program embedding the evaluator drops them.
 
 Approval: owner decision relayed 2026-11-01 for the plugins' Node evaluator (plugfull lane), the same as D221.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:e28f85e181f840e8
 
 ## D232 Multi-session RPC server (--listen) and shared extension cells
 

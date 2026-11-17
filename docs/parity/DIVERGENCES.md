@@ -2321,7 +2321,8 @@ Parity allowance: no paired scenario compacts a history longer than the model's 
 
 Remove when: Pi summarizes over-window histories itself (chunking or trimming the summary input).
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:4e9e6e35b2870828
 
 ## D177 The calls of a parallel durable tool round start in unspecified order
 
@@ -2498,7 +2499,8 @@ Parity allowance: none.
 
 Remove when: Pi exits 129 for a hung-up terminal regardless of event-loop state.
 
-SCRUTINIZED:approved 2026-11-13
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:357c1691b35168aa
 
 ## D187 A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single thread lets a call that awaits work the SDK cannot see be overtaken
 
@@ -2524,7 +2526,8 @@ Parity allowance: none: no Pi scenario asserts the moment a later call's dialog 
 
 Remove when: a native SDK's handlers run where a blocked handler yields to the next one (an async handler model with the SDK's scheduler), or the SDK is told when a handler blocks, so a later call's dialog or response is released at the point Pi's thread would release it; then the gates in the three SDKs and this record go.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:57a4f64ba0cb9cee
 
 ## D190 The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a case alias Pi's realpath key keeps apart
 
@@ -2790,7 +2793,8 @@ Parity allowance: no paired Pi corpus constructs `TuiAltScreen` through an SDK a
 
 Remove when: the host's frame can be entered again from inside a render and these calls run as Pi's do; then the call-site marker, the error and this record go.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:b81840436a4513ea
 
 ## D212 `/llama` explains a 404 from llama-swap's missing load and unload endpoints, where Pi shows "llama.cpp returned HTTP 404"
 
@@ -2856,7 +2860,8 @@ Parity allowance: the ported case `package-command-paths.test.ts:431` ("allows l
 
 Remove when: Pi stores an absolute local path as typed, or the owner reverses the decision. Then the branch, the call-site marker and the tests' D215 cases go.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:601be91543438b23
 
 ## D218 Chord's HTTP listener runs on Go's net/http, which answers some malformed requests before the component does
 
@@ -2876,7 +2881,8 @@ Parity allowance: none needed; the Pi side has no oracle that sends these reques
 
 Remove when: Pi's listener stops being Node's `http` module, or Go's net/http lets a handler see a request it now refuses.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:74ee96d12c44fab8
 
 ## D219 pi-schema regular expressions differ from V8 in four contrived cases
 
@@ -3016,7 +3022,8 @@ Parity allowance: none needed; the scenarios that poll with a helper match Pi, a
 
 Remove when: the thread-based SDKs can report where a handler's thread yields without an explicit call (for example a runtime-level scheduler of their own), or Pi gives `ctx.isIdle()` a definition that no longer depends on the loop's order.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:ca5eca53cb128f4b
 
 ## D226 Go, Rust, Python and Lisp serve TypeBox `Value.Check` and `Value.Errors` only, through the host
 
@@ -3030,7 +3037,8 @@ Scope: what is not served, and so differs from `typebox/value` in these four SDK
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-05 (this text; replaces the 2026-11-02 approval of the earlier record). The 2026-11-02 approval kept tool-argument behavior at Pi parity and planned `Value.Check` after 0.7.0; this record delivers it as row M13 of the 0.7.1 scope.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 2 re-approval, the owner's dated word covers the current text; checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:78025b5e47cc1ced
 
 Remove when: every member of TypeBox's `Value` is served by the four SDKs, or Pi stops offering `typebox/value` to extensions.
 
