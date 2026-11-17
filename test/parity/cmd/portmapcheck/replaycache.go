@@ -143,10 +143,12 @@ func cleanReplayLeftovers(w io.Writer) error {
 		removed = append(removed, sweepLegacyClones(filepath.Dir(cache), now)...)
 	}
 	for _, d := range removed {
-		fmt.Fprintln(w, "removed", d)
+		if _, err := fmt.Fprintln(w, "removed", d); err != nil {
+			return err
+		}
 	}
-	fmt.Fprintf(w, "portmap-check: %d leftover replay directories removed\n", len(removed))
-	return nil
+	_, err = fmt.Fprintf(w, "portmap-check: %d leftover replay directories removed\n", len(removed))
+	return err
 }
 
 // buildCacheDir is the user's build cache: GOCACHE, else what `go env GOCACHE` says.
@@ -154,7 +156,6 @@ func buildCacheDir() (string, error) {
 	if v := os.Getenv("GOCACHE"); v != "" {
 		return v, nil
 	}
-	//nolint:gosec // G204 (class a): program and arguments are literals.
 	out, err := exec.Command("go", "env", "GOCACHE").Output()
 	return strings.TrimSpace(string(out)), err
 }
