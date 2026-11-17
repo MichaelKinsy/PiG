@@ -94150,6 +94150,28 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#codexStatsWire",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "codexStatsWire",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "codexStatsWire"
+      },
+      "shapeHash": "sha256:c30368e6a8cb4edb0b56882be3851eb102c625e79460978fc658d0a31be89256"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#codexStatsWireOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "codexStatsWireOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(stats *github.com/MichaelKinsy/PiG/ai.OpenAICodexWebSocketDebugStats) *codexStatsWire"
+      },
+      "shapeHash": "sha256:68edb6a424b120ec07ca8111f8f49678b02d4716868ce82181936b9e9d0544ab"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#collectAutoDiscoveredResourcePaths",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "collectAutoDiscoveredResourcePaths",

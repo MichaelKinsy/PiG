@@ -26879,7 +26879,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_codex_websocket.go#codexDebugStatsLocked"
+        "call:ai/openai_codex_websocket.go#GetOpenAICodexWebSocketDebugStats"
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketTimeoutsUpstream",
@@ -26926,6 +26926,7 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted",
         "test:ai/openai_codex_websocket_test.go#TestOpenAICodexResponses_AutoReusesWebSocketWithInputDelta"
       ]
     },
@@ -26989,7 +26990,8 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
-        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport"
+        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },
     {
@@ -27006,7 +27008,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
+        "call:ai/openai_codex_websocket.go#GetOpenAICodexWebSocketDebugStats"
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream"
@@ -27016,7 +27018,7 @@
       "id": "pkg:ai/.#OpenAICodexWebSocketDebugStats::property:lastInputItems",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3567b4a5933f425ae724ea9e7986053e0fad2c0cbe1ad32ad5d5a9f0cc4e1278",
-      "rationale": "Derived by the interface gap detector: OpenAICodexWebSocketDebugStats::property:lastInputItems is Go ai/openai_codex_websocket.go#OpenAICodexWebSocketDebugStats.LastInputItems (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OpenAICodexWebSocketDebugStats::property:lastInputItems is Go ai/openai_codex_websocket.go#OpenAICodexWebSocketDebugStats.LastInputItems (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/openai_codex_websocket.go#OpenAICodexWebSocketDebugStats.LastInputItems"
       ],
@@ -27029,7 +27031,7 @@
         "call:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
       ],
       "evidence": [
-        "reach:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },
     {
@@ -27090,7 +27092,8 @@
         "call:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
       ],
       "evidence": [
-        "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream"
+        "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },
     {
@@ -44885,7 +44888,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_codex_websocket.go#codexDebugStatsLocked"
+        "call:ai/openai_codex_websocket.go#GetOpenAICodexWebSocketDebugStats"
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketTimeoutsUpstream",
@@ -44932,6 +44935,7 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted",
         "test:ai/openai_codex_websocket_test.go#TestOpenAICodexResponses_AutoReusesWebSocketWithInputDelta"
       ]
     },
@@ -44995,7 +44999,8 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
-        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport"
+        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },
     {
@@ -45012,7 +45017,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
+        "call:ai/openai_codex_websocket.go#GetOpenAICodexWebSocketDebugStats"
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream"
@@ -45022,7 +45027,7 @@
       "id": "pkg:ai/api/openai-codex-responses#OpenAICodexWebSocketDebugStats::property:lastInputItems",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3567b4a5933f425ae724ea9e7986053e0fad2c0cbe1ad32ad5d5a9f0cc4e1278",
-      "rationale": "Derived by the interface gap detector: OpenAICodexWebSocketDebugStats::property:lastInputItems is Go ai/openai_codex_websocket.go#OpenAICodexWebSocketDebugStats.LastInputItems (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OpenAICodexWebSocketDebugStats::property:lastInputItems is Go ai/openai_codex_websocket.go#OpenAICodexWebSocketDebugStats.LastInputItems (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/openai_codex_websocket.go#OpenAICodexWebSocketDebugStats.LastInputItems"
       ],
@@ -45035,7 +45040,7 @@
         "call:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
       ],
       "evidence": [
-        "reach:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },
     {
@@ -45096,7 +45101,8 @@
         "call:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
       ],
       "evidence": [
-        "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream"
+        "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },
     {
@@ -72587,7 +72593,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_codex_websocket.go#codexDebugStatsLocked"
+        "call:ai/openai_codex_websocket.go#GetOpenAICodexWebSocketDebugStats"
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketTimeoutsUpstream",
@@ -72634,6 +72640,7 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted",
         "test:ai/openai_codex_websocket_test.go#TestOpenAICodexResponses_AutoReusesWebSocketWithInputDelta"
       ]
     },
@@ -72697,7 +72704,8 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
-        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport"
+        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },
     {
@@ -72714,7 +72722,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
+        "call:ai/openai_codex_websocket.go#GetOpenAICodexWebSocketDebugStats"
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream"
@@ -72724,7 +72732,7 @@
       "id": "pkg:ai/compat#OpenAICodexWebSocketDebugStats::property:lastInputItems",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3567b4a5933f425ae724ea9e7986053e0fad2c0cbe1ad32ad5d5a9f0cc4e1278",
-      "rationale": "Derived by the interface gap detector: OpenAICodexWebSocketDebugStats::property:lastInputItems is Go ai/openai_codex_websocket.go#OpenAICodexWebSocketDebugStats.LastInputItems (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: OpenAICodexWebSocketDebugStats::property:lastInputItems is Go ai/openai_codex_websocket.go#OpenAICodexWebSocketDebugStats.LastInputItems (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "ai/openai_codex_websocket.go#OpenAICodexWebSocketDebugStats.LastInputItems"
       ],
@@ -72737,7 +72745,7 @@
         "call:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
       ],
       "evidence": [
-        "reach:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },
     {
@@ -72798,7 +72806,8 @@
         "call:ai/openai_codex_websocket.go#openAIResponsesProvider.startCodexWebSocketAttempt"
       ],
       "evidence": [
-        "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream"
+        "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },
     {
