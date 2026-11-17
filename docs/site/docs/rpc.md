@@ -35,6 +35,7 @@ pig --mode rpc --listen /run/user/1000/pig.sock [--model <provider/model>] [opti
 
 - Every connection creates a new Session, persisted under the Session directory unless you pass `--no-session`. `--listen` rejects `--continue`, `--resume`, `--session`, `--session-id` and `--fork`.
 - Closing a connection is the end of that session's standard input: PiG shuts the session down, closes the connection and keeps serving.
+- At most 64 connections are open at once, and one that is still waiting to start its session counts. A connection past that gets one error line, `{"type":"response","command":"parse","success":false,"error":"too many connections (max 64)"}`, and is closed; the server logs one line to stderr when it reaches the limit, and a closed connection frees its place.
 - The server ignores its own standard input and runs until a termination signal. The signal shuts every live session down, then PiG exits with `128 +` the signal number.
 - Every session has the server's working directory, agent directory, flags, model and tool selection. Start another server for a different working directory.
 - The socket path must not exist: PiG refuses an existing path of any kind (a file, a directory, a socket or a symlink) and never removes it. PiG creates the socket private to you, removes it at exit, and removes only the socket it created.

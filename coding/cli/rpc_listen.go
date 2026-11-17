@@ -279,6 +279,9 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 
 	var conns sync.WaitGroup
 	var acceptFailed error
+	admission := newListenAdmission(listenMaxConnections, func(max int) {
+		fmt.Fprintf(os.Stderr, "pig --listen: %d connections are open; refusing further ones until a session ends\n", max) // pig additive (D232)
+	})
 	conns.Go(func() {
 		for {
 			conn, err := acceptWithBackoff(ctx, listener, func(err error, delay time.Duration) {
@@ -294,8 +297,7 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 				}
 				return
 			}
-			conns.Go(func() {
-				defer func() { _ = conn.Close() }()
+			admission.serve(&conns, conn, func() {
 				buildMu.Lock()
 				if ctx.Err() != nil {
 					buildMu.Unlock()
