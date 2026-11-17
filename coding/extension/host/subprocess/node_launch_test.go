@@ -17,10 +17,9 @@ import (
 
 // Spawning a Node extension runs node directly, with exactly the arguments the
 // published launcher script would exec, instead of a shell that forks a
-// dirname process before exec'ing node. Node resolves an --import value as a
-// module specifier, so the loader is named by the URL Node's pathToFileURL
-// returns; a bare Windows path fails with ERR_UNSUPPORTED_ESM_URL_SCHEME. The
-// cache root contains a space, as CI's TEMP does, so the URL is percent-encoded.
+// dirname process before exec'ing node. The command line holds the runtime's
+// bootstrap entry and no --import, so process.execArgv in the extension is empty
+// as in Pi (issue #517). The cache root contains a space, as CI's TEMP does.
 func TestNodeLauncherSpawnsNodeDirectlyWithLauncherArguments(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
@@ -41,18 +40,17 @@ func TestNodeLauncherSpawnsNodeDirectlyWithLauncherArguments(t *testing.T) {
 		t.Fatalf("spawned %s, want node (%s) without the launcher shell", cmd.Path, node)
 	}
 	runtimeDir := result.BinaryPath + ".runtime"
-	loaderURL := nodePathToFileURLs(t, node, filepath.Join(runtimeDir, "register-loader.mjs"))[0]
-	want := []string{"--import", loaderURL, filepath.Join(runtimeDir, "cli.mjs"), src}
+	want := []string{filepath.Join(runtimeDir, "node-cli.mjs"), src}
 	if !slices.Equal(cmd.Args[1:], want) {
 		t.Fatalf("direct node args = %q, want %q", cmd.Args[1:], want)
 	}
 
-	// The same --import value must preload the loader: the pi-ai alias
-	// resolves only through the registered hooks.
-	probe := exec.Command(node, cmd.Args[1], cmd.Args[2],
+	// The bootstrap registers the loader before it imports the entry: the pi-ai alias resolves only through the registered hooks.
+	loaderURL := nodePathToFileURLs(t, node, filepath.Join(runtimeDir, "register-loader.mjs"))[0]
+	probe := exec.Command(node, "--import", loaderURL,
 		"--input-type=module", "--eval", `import { Type } from "@earendil-works/pi-ai"; if (typeof Type.Object !== "function") process.exit(1);`)
 	if output, err := probe.CombinedOutput(); err != nil {
-		t.Fatalf("node %s %s: %v\n%s", cmd.Args[1], cmd.Args[2], err, output)
+		t.Fatalf("node --import %s: %v\n%s", loaderURL, err, output)
 	}
 }
 
@@ -227,5 +225,32 @@ func TestBuildExtCommandRunsOtherArtifactsAsIs(t *testing.T) {
 	}
 	if cmd := buildExtCommand(context.Background(), bin, "go"); cmd.Path != bin {
 		t.Fatalf("spawned %s, want %s", cmd.Path, bin)
+	}
+}
+
+// The bootstrap reaches cli.mjs and cell.mjs through relative specifiers, so a runtime tree under a directory whose name holds URL
+// specials (space, #, %, a non-ASCII letter) still starts: each script answers its own usage line, which only the script's own
+// code writes, and the loader hooks it registers serve the pi-ai alias to the entry the bootstrap runs.
+func TestNodeBootstrapStartsInADirectoryWithURLSpecials(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := filepath.Join(t.TempDir(), "space # percent% é")
+	src := filepath.Join(t.TempDir(), "specials.mjs")
+	if err := os.WriteFile(src, []byte("export default function () {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := NewBuilderWithConfigRoot(root, root).Build("specials", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtimeDir := result.BinaryPath + ".runtime"
+	for script, usage := range map[string]string{"node-cli.mjs": "usage: node cli.mjs <extension-entry>", "node-cell.mjs": "Node cell manifest is required"} {
+		cmd := exec.CommandContext(t.Context(), node, filepath.Join(runtimeDir, script))
+		output, err := cmd.CombinedOutput()
+		if err == nil || !strings.Contains(string(output), usage) {
+			t.Errorf("%s: err = %v, output %q, want a failure that says %q", script, err, output, usage)
+		}
 	}
 }

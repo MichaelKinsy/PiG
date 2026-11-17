@@ -153132,9 +153132,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, sel github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime.Selection, runtimeDir string, script string, loaderLabel string, args []string) *os/exec.Cmd"
+        "type": "func(ctx context.Context, sel github.com/MichaelKinsy/PiG/coding/extension/host/tsruntime.Selection, runtimeDir string, script string, args []string) *os/exec.Cmd"
       },
-      "shapeHash": "sha256:0ff398a99e5193a8ebec390a6a03504cef7cd9bcc7e677cb68aefc8e033b9105"
+      "shapeHash": "sha256:68e3f8abe99f7ed994d6bbe8a31df1c17a931e15037a043e0b411b2adbde1b16"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#typeScriptRuntimeEnv",
