@@ -136,7 +136,6 @@ func TestSessionReplacementRepaintsDifferentially(t *testing.T) {
 	}
 }
 
-
 // Pi's reload box asks for a clearing redraw (`this.ui.requestRender(true)`, interactive-mode.ts:6562), and pig keeps that one forced frame where Pi has it: the frame
 // that shows the box starts with the clearing sequence and replays the page. The repaint of the transcript that follows (rebuildChatFromMessages, :6580) is differential.
 func TestReloadBoxForcesTheRedrawAsPiDoes(t *testing.T) {
