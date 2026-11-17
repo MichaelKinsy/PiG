@@ -139,7 +139,7 @@ func (h *Host) routeEventBus(ctx context.Context) {
 
 // joinRoutedBus moves a registered Node realm onto the Host registry when routeEventBus switched the registry on while the realm was spawned in-heap but had no connection yet, so routeEventBus could not migrate it. Pi has one EventEmitter per loader (event-bus.ts:12-33), so that realm's listeners must hear native emits too.
 func (h *Host) joinRoutedBus(ctx context.Context, me *managedExt) {
-	if !me.nodeRealm {
+	if !me.inNodeRealm() {
 		return
 	}
 	b := &h.eventBus

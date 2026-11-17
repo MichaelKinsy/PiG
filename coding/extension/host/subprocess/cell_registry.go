@@ -136,7 +136,7 @@ func (h *Host) MemberProcessID(name string) int {
 	if me == nil {
 		return 0
 	}
-	share := me.share
+	share := me.processShare()
 	if me.packedProcess != nil {
 		share = me.packedProcess.share
 	}
