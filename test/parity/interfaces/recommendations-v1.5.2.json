@@ -151832,7 +151832,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "12 normalized-name Pig candidates are ambiguous."
+        "13 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -151845,6 +151845,7 @@
         "go:github.com/MichaelKinsy/PiG/coding#virtualModelStore.register",
         "go:github.com/MichaelKinsy/PiG/coding/extension#McpServerRegistry.Register",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#Register",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#nodeVerifier.register",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/fusepack#Register",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#CellRegistry.register",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#RuntimeRetention.register",
@@ -315515,7 +315516,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "10 normalized-name Pig candidates are ambiguous."
+        "11 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -315529,6 +315530,7 @@
         "go:github.com/MichaelKinsy/PiG/ai#validatorCache.entry",
         "go:github.com/MichaelKinsy/PiG/coding#sessionToolRegistry.entry",
         "go:github.com/MichaelKinsy/PiG/coding#virtualModelStore.entry",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/cellpack#nodeVerifier.entry",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelDataSource.Entry",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#lazyTree.entry",
