@@ -187,7 +187,7 @@ const maxDateSeconds = 8_640_000_000_000
 // inDateRange is whether at is a valid JavaScript time value once truncated to milliseconds toward zero, as TimeClip does:
 // the ends (±8.64e15 ms) are valid and one millisecond beyond is not.
 func inDateRange(at time.Time) bool {
-	sec, ms := at.Unix(), int64(at.Nanosecond()/1_000_000)
+	sec, ms := at.Unix(), int64(at.Nanosecond()/1_000_000) //portlint:allow numbers Nanosecond() is in [0, 999999999], so the quotient is the whole milliseconds of a non-negative sub-second part (a truncation, not a float division); JS has no counterpart, the sub-millisecond digits are Go's time.Time only
 	switch {
 	case sec > maxDateSeconds:
 		return false
