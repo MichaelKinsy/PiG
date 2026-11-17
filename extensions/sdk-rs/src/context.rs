@@ -2684,6 +2684,19 @@ impl Context {
         }
     }
 
+    /// The stale message as an error once the session was replaced or reloaded: what a call that has an error result returns where a getter panics (see [`Self::assert_active`]). A replacement context is not stale.
+    fn stale_error(&self) -> io::Result<()> {
+        if self.replacement {
+            return Ok(());
+        }
+        // Copy the message out so the lock is not held while the error is built.
+        let message = self.conn.stale_message.lock().unwrap().clone();
+        match message {
+            Some(message) => Err(io::Error::other(message)),
+            None => Ok(()),
+        }
+    }
+
     /// Returns the working directory. Panics with the stale message after the session was replaced or reloaded.
     pub fn cwd(&self) -> &str {
         self.assert_active();
@@ -2701,14 +2714,21 @@ impl Context {
         }
     }
 
-    /// Returns the terminal width.
+    /// Returns the terminal width. Panics with the stale message after the session was replaced or reloaded.
     pub fn width(&self) -> u32 {
+        self.assert_active();
+        self.terminal_width()
+    }
+
+    /// The width the host last reported, without the stale check: the SDK's own renders and pushes read it, and a push from a stale context fails with the host's error, never with a panic on a thread of the SDK.
+    pub(crate) fn terminal_width(&self) -> u32 {
         self.shared_width.load(Ordering::Relaxed)
     }
 
     /// Returns the terminal height in rows, or 0 when the host has not
-    /// reported one. Updated by `height_change` notifications.
+    /// reported one. Updated by `height_change` notifications. Panics with the stale message after the session was replaced or reloaded.
     pub fn height(&self) -> u32 {
+        self.assert_active();
         self.shared_height.load(Ordering::Relaxed)
     }
 
@@ -2764,6 +2784,7 @@ impl Context {
     /// Streams a partial result of the running tool, as upstream's `onUpdate`
     /// does. The host shows updates in order, before the tool's final result.
     pub fn on_update(&self, partial: crate::ToolResult) -> io::Result<()> {
+        self.stale_error()?;
         if self.tool_call_id.is_none() || self.request_id.is_empty() {
             return Err(io::Error::other(
                 "on_update is only available while a tool runs",
@@ -3718,6 +3739,7 @@ impl Context {
     /// list waits for the host like [`Self::set_widget_value`]: an unanswered
     /// frame has no place in that order.
     pub fn set_widget(&self, key: &str, lines: Vec<String>) -> io::Result<()> {
+        self.stale_error()?;
         if self.mode == "rpc" {
             return self.set_widget_value(key, serde_json::json!(lines), None);
         }
@@ -3738,6 +3760,7 @@ impl Context {
         view: crate::kit::View,
         options: Option<serde_json::Value>,
     ) -> io::Result<()> {
+        self.stale_error()?;
         let encoded = self.conn.views.encode(&view).map_err(io::Error::other)?;
         self.replace_surface_id(widget_renderer_id(key), None);
         // Held across the send, so an eviction's resend and this frame keep their order.
@@ -3786,6 +3809,7 @@ impl Context {
     where
         F: Fn(u32) -> Vec<String> + Send + Sync + 'static,
     {
+        self.stale_error()?;
         let Some(render) = render else {
             return self.set_widget_value(key, serde_json::Value::Null, options);
         };
@@ -4172,6 +4196,7 @@ impl Context {
     ///
     /// Fails until the host has sent settings, as upstream's getter throws before the runtime is bound (`loader.ts:157-177`).
     pub fn get_settings(&self) -> io::Result<serde_json::Value> {
+        self.stale_error()?;
         self.conn
             .api_state
             .lock()
@@ -4211,6 +4236,7 @@ impl Context {
         + Sync
         + 'static,
     ) -> io::Result<()> {
+        self.stale_error()?;
         let late = &self.conn.late_tool_renderers;
         let mut resolvers = late.resolvers.lock().unwrap();
         resolvers.push(Arc::new(resolver));
@@ -5198,6 +5224,7 @@ impl Context {
     /// Upstream `ctx.ui.theme`: a snapshot of the host's active theme, kept
     /// current by the host's state and `theme_change` notifies.
     pub fn theme(&self) -> Theme {
+        self.assert_active();
         self.shared_ui.lock().unwrap().theme.clone()
     }
 
@@ -6009,7 +6036,7 @@ impl SurfaceRenderer {
         if *stopped {
             return Ok(());
         }
-        let width = ctx.width();
+        let width = ctx.terminal_width();
         let lines = match crate::diagnostic::recover(|| (self.render)(width)) {
             Ok(lines) => lines,
             Err(payload) => {
@@ -6085,7 +6112,7 @@ impl Context {
     fn set_surface(&self, method: &'static str, lines: Option<Vec<String>>) -> io::Result<()> {
         self.replace_surface(method, None);
         let args = match lines {
-            Some(lines) => surface_args(lines, self.width()),
+            Some(lines) => surface_args(lines, self.terminal_width()),
             None => serde_json::json!({"clear": true}),
         };
         call_result_to_io(self.call_wire(method, Some(args))?)
@@ -6654,6 +6681,114 @@ mod login_call_tests {
             .apply_invalidate(&serde_json::json!({ "message": STALE }));
         replacement.cwd = "/new".into();
         assert_eq!(replacement.cwd(), "/new");
+    }
+
+    // Pi guards every context member (runner.ts:883-1037). After the session was replaced the members that have no error result panic with the stale
+    // message, the calls that have one return it, and a call that fails changes nothing: the installed widget renderer is still there.
+    #[test]
+    fn a_stale_context_fails_the_theme_size_widget_update_settings_and_renderer_members_with_the_stale_message() {
+        const STALE: &str = "This extension ctx is stale after session replacement or reload.";
+        let (extension_stream, _host_stream) = UnixStream::pair().unwrap();
+        let mut ctx = Arc::try_unwrap(context(extension_stream)).ok().unwrap();
+        ctx.tool_call_id = Some("tool".into());
+        ctx.request_id = "request".into();
+        ctx.shared_width.store(90, Ordering::Relaxed);
+        ctx.shared_height.store(30, Ordering::Relaxed);
+        assert_eq!((ctx.width(), ctx.height()), (90, 30));
+        let _ = ctx.theme();
+        ctx.replace_surface_id(
+            widget_renderer_id("kept"),
+            Some(Arc::new(SurfaceRenderer {
+                method: "ui.setWidget",
+                widget: Some(("kept".into(), None)),
+                render: Box::new(|_| vec!["row".into()]),
+                stopped: Mutex::new(false),
+                refresh: Mutex::new((false, false)),
+            })),
+        );
+        ctx.conn
+            .apply_invalidate(&serde_json::json!({ "message": STALE }));
+        type Read<'a> = Box<dyn Fn() + 'a>;
+        let reads: [(&str, Read<'_>); 3] = [
+            ("theme", Box::new(|| drop(ctx.theme()))),
+            ("width", Box::new(|| assert_ne!(ctx.width(), u32::MAX))),
+            ("height", Box::new(|| assert_ne!(ctx.height(), u32::MAX))),
+        ];
+        for (name, read) in reads {
+            let panic =
+                std::panic::catch_unwind(std::panic::AssertUnwindSafe(read)).expect_err(name);
+            let message = panic
+                .downcast_ref::<String>()
+                .cloned()
+                .or_else(|| panic.downcast_ref::<&str>().map(|s| s.to_string()));
+            assert_eq!(message.as_deref(), Some(STALE), "{name}");
+        }
+        let view = || crate::kit::View::new(crate::kit::Text::new("x", 0, 0));
+        let calls: Vec<(&str, io::Result<()>)> = vec![
+            ("set_widget", ctx.set_widget("kept", vec!["x".into()])),
+            (
+                "set_widget_view",
+                ctx.set_widget_view("kept", view(), None),
+            ),
+            (
+                "set_widget_renderer",
+                ctx.set_widget_renderer("kept", Some(|_: u32| vec!["y".to_string()]), None),
+            ),
+            (
+                "set_widget_renderer clear",
+                ctx.set_widget_renderer("kept", None::<fn(u32) -> Vec<String>>, None),
+            ),
+            ("on_update", ctx.on_update(crate::ToolResult::text("x"))),
+            ("get_settings", ctx.get_settings().map(|_| ())),
+            (
+                "register_tool_renderer",
+                ctx.register_tool_renderer(|_, _| None),
+            ),
+        ];
+        for (name, result) in calls {
+            let error = result.expect_err(name);
+            assert_eq!(error.to_string(), STALE, "{name}");
+        }
+        assert!(
+            ctx.surfaces
+                .lock()
+                .unwrap()
+                .contains_key(&widget_renderer_id("kept")),
+            "a failed widget call retired the installed renderer"
+        );
+    }
+
+    // The SDK renders a footer, header or widget again on a thread of its own after a width change. That read of the width is not the context's
+    // `width()`: a context the session replaced would panic there. The refresh still renders at the reported width and the push fails with the
+    // host's error.
+    #[test]
+    fn a_stale_surface_refresh_reads_the_width_without_panicking() {
+        const STALE: &str = "This extension ctx is stale after session replacement or reload.";
+        let (extension_stream, host_stream) = UnixStream::pair().unwrap();
+        drop(host_stream);
+        let ctx = context(extension_stream);
+        ctx.shared_width.store(77, Ordering::Relaxed);
+        let (widths, seen) = std::sync::mpsc::channel();
+        let renderer = Arc::new(SurfaceRenderer {
+            method: "ui.setFooter",
+            widget: None,
+            render: Box::new(move |width| {
+                let _ = widths.send(width);
+                vec!["row".into()]
+            }),
+            stopped: Mutex::new(false),
+            refresh: Mutex::new((false, false)),
+        });
+        ctx.replace_surface("ui.setFooter", Some(renderer.clone()));
+        ctx.conn
+            .apply_invalidate(&serde_json::json!({ "message": STALE }));
+        ctx.refresh_surfaces();
+        assert_eq!(
+            seen.recv_timeout(std::time::Duration::from_secs(10)),
+            Ok(77)
+        );
+        assert!(renderer.push(&ctx).is_err());
+        assert!(ctx.set_footer(vec!["x".into()]).is_err());
     }
 
     // Pi's loader appends a resolver registered after loading; the host learns the extension's new resolver count
