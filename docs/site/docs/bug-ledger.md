@@ -727,6 +727,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5a093cd](#bf-5a093cd) | In print and JSON mode, Node extensions that share one process now keep Pi's order at disposal | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5a0c595](#bf-5a0c595) | A character that a provider's server splits over two stream deltas, written as the escapes of its two UTF-16… | PiG's own defect | All platforms | Unreleased |
 | [BF-5a0c595-2](#bf-5a0c595-2) | A model of `models.json` whose id, name, provider name or `compat` holds a lone UTF-16 surrogate can be… | PiG's own defect | All platforms | Unreleased |
+| [BF-5a88cb4](#bf-5a88cb4) | A Go, Python or Lisp extension with a tool that has a `prepareLoadout` hook no longer hangs PiG when a tool… | PiG's own defect | All platforms | Unreleased |
 | [BF-5aab94c](#bf-5aab94c) | The color level check reads `TERM` with JavaScript's case-insensitive matching, as Pi's chalk does: a name… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5ab2304](#bf-5ab2304) | Starting an extension no longer fails with `fork/exec …: text file busy` when the host builds or starts… | PiG's own defect | Linux | 0.7.0 |
 | [BF-5af3a18](#bf-5af3a18) | On Windows, a session replacement whose working directory differs from the previous one only in letter case… | PiG's own defect | Windows | 0.7.0 |
@@ -1225,6 +1226,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8a4cf80](#bf-8a4cf80) | A routed `pi.events.emit` no longer lets its emitter run ahead of a listener extension process | PiG's own defect | All platforms | Unreleased |
 | [BF-8a88c34](#bf-8a88c34) | On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version | PiG's own defect | Windows | 0.7.0 |
 | [BF-8a9bb40](#bf-8a9bb40) | fix(ai): Anthropic retry-delay message and Codex error body without an error member | PiG's own defect | All platforms | Unreleased |
+| [BF-8aaa730](#bf-8aaa730) | A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same… | PiG's own defect | All platforms | Unreleased |
 | [BF-8ab5a89](#bf-8ab5a89) | A long session no longer holds each tool result twice | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8ab86c8](#bf-8ab86c8) | RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8ac653e](#bf-8ac653e) | The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native… | PiG's own defect | Windows | Unreleased |
@@ -12078,6 +12080,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/stream_surrogate_read_test.go::TestStreamDeltasKeepSurrogatesAsPi`, `ai/tool_surrogate_wire_test.go::TestCompatObjectLoneSurrogatesReachTheWireAsPi`, `ai/unmarshaler_census_test.go::TestEveryUnmarshalerIsClassedAndReadsALoneSurrogate`, `internal/codingagent/llama/vendored_default_test.go::TestVendoredPiDistDefaultServerURLMatchesGo`, `internal/codingagent/model_registry_surrogate_test.go::TestModelsJSONKeepsALoneSurrogate`, `test/parity/scenarios/tools/35-lone-surrogate-read.toml`
 - **Release note:** A model of `models.json` whose id, name, provider name or `compat` holds a lone UTF-16 surrogate can be selected by the id the file gives, and the request, the session file and RPC output name it as Pi does. PiG read the unit as U+FFFD, so `set_model` with that id found no model, and a `compat.openRouterRouting` value reached the request as U+FFFD. The `compat` of a provider that an extension registers keeps the unit too.
 
+### BF-5a88cb4
+
+**A Go, Python or Lisp extension with a tool that has a `prepareLoadout` hook no longer hangs PiG when a tool…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Go, Python or Lisp extension with a tool that has a `prepareLoadout` hook no longer hangs PiG when a tool of the same extension is registered after loading (`registerTool` in a `session_start` handler or a tool call, `setToolRenderers`, `toolPromptSnippet`).
+- **Root cause:** the SDK held its tool-table lock across the registerTool call to the host, and the host asks every tool prepareLoadout hook before it answers that call while the hook lookup, on another thread, takes the same lock; the fault is in tag v0.7.0
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5a88cb4140` (2026-11-17, #516)
+- **Tests:** None recorded.
+- **Release note:** A Go, Python or Lisp extension with a tool that has a `prepareLoadout` hook no longer hangs PiG when a tool of the same extension is registered after loading (`registerTool` in a `session_start` handler or a tool call, `setToolRenderers`, `toolPromptSnippet`). The hook now runs inside the call, as in Pi.
+
 ### BF-5aab94c
 
 **The color level check reads `TERM` with JavaScript's case-insensitive matching, as Pi's chalk does: a name…**
@@ -18987,6 +19003,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `8a9bb40f7b` (2026-10-10)
 - **Tests:** None recorded.
+
+### BF-8aaa730
+
+**A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`; a parallel batch of tool calls no longer gets a `prepare_loadout` extension error.
+- **Root cause:** the Node runtime sat in its synchronous host call while the host asked tool_prepare_loadout before answering registerTool or setActiveTools, and served requests only between its calls, so the extension and the host waited on each other; present since the host asked the hook inside those calls, in tag v0.7.0
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8aaa7309c1` (2026-11-17, #516)
+- **Tests:** `coding/extension/host/subprocess/prepare_loadout_sync_test.go::TestNodeRuntimeStartsPrepareLoadoutNestedInARefreshItWaitsOn`
+- **Release note:** A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`; a parallel batch of tool calls no longer gets a `prepare_loadout` extension error. The hook now runs inside that call, as in Pi.
 
 ### BF-8ab5a89
 
