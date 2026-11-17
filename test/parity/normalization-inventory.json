@@ -342,6 +342,24 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/autocomplete/14-custom-editor-installed-at-session-start.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Editor autocomplete",
+            "capture_end": "escape/ctrl+c cancel"
+          },
+          "reason": "Owned visible surface: An editor installed from session_start holds a working autocomplete provider after startup and after /reload.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/cli-utils/01-print-initial-message-file-args.toml",
       "transforms": [
         {
