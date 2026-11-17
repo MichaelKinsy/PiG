@@ -3951,7 +3951,7 @@ func (h *Host) waitForRegister(ctx context.Context, me *managedExt, conn *Conn) 
 				env.barrier.release()
 				continue
 			}
-			if conn.deliverDeferredResponse(env) {
+			if conn.applyHeld(env) {
 				continue
 			}
 			if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyReportError {
@@ -5143,8 +5143,8 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			env.barrier.release()
 			continue
 		}
-		// A response the read loop queued behind a report, or the report itself: the response is delivered after the report ahead of it was applied.
-		if conn.deliverDeferredResponse(env) {
+		// A frame the read loop held behind a report (a response, a quiesce): it is acted on after the report ahead of it was applied.
+		if conn.applyHeld(env) {
 			continue
 		}
 		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyReportError {

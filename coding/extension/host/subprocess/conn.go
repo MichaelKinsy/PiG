@@ -155,6 +155,10 @@ type Conn struct {
 	onRequestStart atomic.Pointer[func()]
 	// onTimerDeferAck runs on the read loop for each NotifyTimerDeferAck frame, with its arguments.
 	onTimerDeferAck func(args json.RawMessage)
+	// onHeldNotify runs, on the host's loop and after the report_error notifications read before it were applied, for each notification the read loop held behind them (Envelope.held).
+	onHeldNotify func(env *Envelope)
+	// emissionsCreated, when set, is the number of events emissions the host has created; the read loop records it with each report_error notification it reads (reportMark).
+	emissionsCreated func() uint64
 	// timerDefer numbers the NotifyTimerDefer frames sent on this connection and records the acks (timer_defer.go).
 	timerDefer seqAcks
 	// invalidations numbers the NotifyInvalidate frames sent on this connection that ask for the runtime's acknowledgement, and records the acks (invalidateAcknowledged).
@@ -1486,6 +1490,7 @@ func (c *Conn) readLoop(ctx context.Context) {
 			if env.ID != "" {
 				if c.reports.holds(env.ID) {
 					// A report was read before this response, and the request was in flight when it was: the host's loop applies the report, then delivers the response.
+					env.held = true
 					select {
 					case c.inCh <- &env:
 					case <-ctx.Done():

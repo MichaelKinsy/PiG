@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -35,6 +36,7 @@ func newReportOrderRig(t *testing.T, listener func(*extension.ExtensionError)) *
 	runner.AddErrorListener(listener)
 	hostSide, peer := net.Pipe()
 	conn := NewConn("report-order", hostSide)
+	h.observeXref(conn)
 	conn.Start(t.Context())
 	me := withConn(&managedExt{config: ExtConfig{Name: "report-order", Path: "/report-order.mjs"}, host: h}, conn)
 	me.shuttingDown.Store(true)
@@ -235,6 +237,147 @@ func TestReportDroppedWhileLoadingDoesNotHoldLaterResponses(t *testing.T) {
 		synctest.Wait()
 		if returned.Load() != 1 {
 			t.Fatal("the response after a report dropped while loading is still waiting behind it")
+		}
+	})
+}
+
+func emissionSettled(emission *busEmission) bool {
+	select {
+	case <-emission.done:
+		return true
+	default:
+		return false
+	}
+}
+
+// A realm that rejects after an await writes the report of the rejection before the quiesce that releases the emitter (the emitter's events.settle waits for it): Pi reports the error before the emitter's later microtasks run, so the quiesce is counted after the report was applied, and the emitter cannot answer its command first.
+// mutation-checked: counting the quiesce on the read loop (the inbound hook never holds it) settles the emission while the listener that applies the report still runs.
+func TestQuiesceWaitsForTheReportWrittenBeforeIt(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		entered := make(chan struct{})
+		release := make(chan struct{})
+		releaseListener := sync.OnceFunc(func() { close(release) })
+		defer releaseListener()
+		rig := newReportOrderRig(t, func(*extension.ExtensionError) {
+			close(entered)
+			<-release
+		})
+		id, emission := rig.h.eventBus.newEmission(nil)
+		rig.h.eventBus.addPending(emission, rig.conn, 1)
+		rig.h.eventBus.endDispatch(emission)
+		go rig.h.handleIncoming(rig.me, rig.conn)
+		rig.write(t, reportFrame(t, "rejected later"), *quiesceFrame(id))
+		<-entered
+		synctest.Wait()
+		if emissionSettled(emission) {
+			t.Fatal("the emission settled while the report written before the realm's quiesce was still being applied")
+		}
+		releaseListener()
+		synctest.Wait()
+		if !emissionSettled(emission) {
+			t.Fatal("the emission did not settle once the report was applied")
+		}
+	})
+}
+
+// The error listener may emit and wait for the emission to settle: the quiesce of an emission created after the report was read is counted at once, not behind the report the listener is applying (it would wait for itself).
+// mutation-checked: holding the quiesce of every emission while a report is unapplied (holdsEmission ignoring the emission's number) leaves the listener's emission unsettled, the deadlock.
+func TestQuiesceOfAnEmissionTheErrorListenerStartedIsNotHeld(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		started := make(chan string, 1)
+		listenerCtx, stopListener := context.WithCancel(t.Context())
+		defer stopListener()
+		var settledForListener atomic.Int32
+		var rig *reportOrderRig
+		rig = newReportOrderRig(t, func(*extension.ExtensionError) {
+			id, emission := rig.h.eventBus.newEmission(nil)
+			rig.h.eventBus.addPending(emission, rig.conn, 1)
+			rig.h.eventBus.endDispatch(emission)
+			started <- id
+			select {
+			case <-emission.done:
+				settledForListener.Add(1)
+			case <-listenerCtx.Done():
+			}
+		})
+		go rig.h.handleIncoming(rig.me, rig.conn)
+		rig.write(t, reportFrame(t, "first"))
+		id := <-started
+		rig.write(t, *quiesceFrame(id))
+		synctest.Wait()
+		if settledForListener.Load() != 1 {
+			t.Fatalf("the emission the error listener started settled %d times while it waited, want 1: its quiesce waits behind the report the listener is applying", settledForListener.Load())
+		}
+	})
+}
+
+// A quiesce held behind a report never leaves the emitter waiting for ever. The listener that applies the report never returns here, so only the end of the connection can release the emission: hostEventBus.closed forgets the connection whether or not the host's loop ever applies the report.
+// mutation-checked: a hostEventBus.closed that keeps the ended connection in the emission's pending set leaves the emission unsettled, which the assertion reports within the test (synctest.Wait returns once every goroutine is blocked), not as a hang.
+func TestQuiesceHeldBehindAReportIsReleasedWhenTheConnectionEnds(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		entered := make(chan struct{})
+		release := make(chan struct{})
+		releaseListener := sync.OnceFunc(func() { close(release) })
+		defer releaseListener()
+		rig := newReportOrderRig(t, func(*extension.ExtensionError) {
+			close(entered)
+			<-release
+		})
+		id, emission := rig.h.eventBus.newEmission(nil)
+		rig.h.eventBus.addPending(emission, rig.conn, 1)
+		rig.h.eventBus.endDispatch(emission)
+		go rig.h.handleIncoming(rig.me, rig.conn)
+		rig.write(t, reportFrame(t, "rejected later"), *quiesceFrame(id))
+		<-entered
+		synctest.Wait()
+		if emissionSettled(emission) {
+			t.Fatal("the emission settled while the report written before the realm's quiesce was still being applied")
+		}
+		_ = rig.peer.Close()
+		synctest.Wait()
+		if !emissionSettled(emission) {
+			t.Fatal("the emission is still waiting after its connection ended: a quiesce held behind a report keeps the emitter waiting for ever")
+		}
+	})
+}
+
+// A run that is cancelled releases the emitter that waits for a held quiesce: its events.settle call returns the context's error.
+// mutation-checked: a settle that does not select on its context's Done leaves the call waiting, which the assertion reports within the test.
+func TestSettleWaitingForAHeldQuiesceReturnsWhenTheRunIsCancelled(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		entered := make(chan struct{})
+		release := make(chan struct{})
+		releaseListener := sync.OnceFunc(func() { close(release) })
+		defer releaseListener()
+		rig := newReportOrderRig(t, func(*extension.ExtensionError) {
+			close(entered)
+			<-release
+		})
+		id, emission := rig.h.eventBus.newEmission(nil)
+		rig.h.eventBus.addPending(emission, rig.conn, 1)
+		rig.h.eventBus.endDispatch(emission)
+		go rig.h.handleIncoming(rig.me, rig.conn)
+		runCtx, cancelRun := context.WithCancel(t.Context())
+		defer cancelRun()
+		settled := make(chan error, 1)
+		go func() { settled <- rig.h.eventBus.settle(runCtx, id) }()
+		rig.write(t, reportFrame(t, "rejected later"), *quiesceFrame(id))
+		<-entered
+		synctest.Wait()
+		select {
+		case err := <-settled:
+			t.Fatalf("the emitter's settle returned (%v) while the report written before the realm's quiesce was still being applied", err)
+		default:
+		}
+		cancelRun()
+		synctest.Wait()
+		select {
+		case err := <-settled:
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("settle returned %v after the run was cancelled, want context.Canceled", err)
+			}
+		default:
+			t.Fatal("the emitter's settle is still waiting after the run was cancelled")
 		}
 	})
 }

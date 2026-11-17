@@ -1,0 +1,36 @@
+# Pi 18e99051be24 (#12233): a pi.events listener's failure is reported synchronously, inside emit() (loader.ts:537-549 -> runner.ts:411-414 -> emitError, runner.ts:749-753), and an RPC
+# extension command answers after its handler returned (agent-session.ts:2172-2178), so every `extension_error` line precedes the command's response. Pi's wrapper awaits the listener inside emit(), and the rejection's microtask runs before the command's own continuation writes its response. A script with a shebang line is a standalone: each extension runs in its own process in PiG, the Host's bus dispatches to the listener and the emitter's settle waits for the listener realm's microtask checkpoint, which must come after the report of the rejection.
+# The failing listener carries 2 MiB of padding (testdata/events-order-listeners-isolated.mjs). That is what makes the race's loser deterministic: the Host needs longer to read and apply that report than to route the response, and the realm's quiesce that releases the emitter, written after it, so a Host that lets either overtake the report shows `R E` on every run, not on a lucky schedule. Pi's order does not depend on the size.
+name = "94-rpc-events-async-handler-error-isolated-extensions"
+description = "A pi.events listener of an extension in its own Node process that rejects after an await is an extension_error line before the response of the command whose emit ran it"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts", "packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"cmd","type":"prompt","message":"/events-order-boom-async"}'
+wait_event = '{"id":"cmd","type":"response","command":"prompt","success":true}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/events-order-emitter-isolated.mjs", "testdata/events-order-listeners-isolated.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/events-order-emitter-isolated.mjs", "testdata/events-order-listeners-isolated.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 3
+both_contain = ['"error":"late listener failed xxxx', '"event":"events:demo:order-async"', '"id":"cmd","type":"response","command":"prompt","success":true']
+both_not_contain = ['"success":false', 'Event handler error', '"stack"']
+
+[[assert.json_aliases]]
+paths = ["/**/extensionPath"]
+kind = "path"
+reason = "The extension's snapshot path varies per host and run; the member's presence and the event and message stay exact."

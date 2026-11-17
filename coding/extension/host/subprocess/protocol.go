@@ -93,6 +93,9 @@ type Envelope struct {
 	// pooled is the reusable frame the read loop built this envelope in (response_frame.go); releaseResponse returns it.
 	pooled *responseFrame
 
+	// held, when set, marks a frame the read loop did not act on because a report_error notification it read earlier is not applied yet: the loop that reads Incoming acts on it after the report (Conn.applyHeld).
+	held bool
+
 	// Common fields
 	ID string `json:"id,omitempty"` // Correlation ID for request/response pairs
 
@@ -976,12 +979,17 @@ type HandlerYieldedPayload struct {
 //
 // Order (pig additive; Pi's reportError is synchronous): Pi reports a handler's error inside the handler and answers the request whose handler it was after
 // the handler returned, so an error reaches the runner's error listeners before that request's response does (loader.ts:537-549, runner.ts:749-753,
-// agent-session.ts:2172-2178). The host's loop applies a notification off the read loop, which routes a response straight to its waiter, so the response
-// could overtake the report written before it on the same socket. The read loop therefore counts the reports it has passed to the host's loop and the loop
-// has not applied (reportOrder), and queues the response of a request that was in flight when it read the report behind it; the host's loop delivers the
-// response once it applied the report. A request the host sent after the report was read is never queued behind it: the error listener the report is
-// applied to may call the extension and wait for the answer, which would wait for the listener. Responses are ordered against the reports of their own
-// connection only; the report of a listener that runs in another extension's request travels on the connection of that request's extension
+// agent-session.ts:2172-2178), and a rejection after an await before the emitter's later microtasks (event-bus.ts:15-27). The host's loop applies a
+// notification off the read loop, which routes a response straight to its waiter and counts a quiesce (NotifyEventsQuiesce, the realm's microtask
+// checkpoint that releases the emitter) itself, so either could overtake the report written before it on the same socket. The read loop therefore
+// counts the reports it has passed to the host's loop and the loop has not applied (reportOrder), and queues behind them the response of a request that
+// was in flight when it read the report and the quiesce of an emission that existed then; the host's loop acts on them once it applied the report. This
+// is host-internal state of the read loop (Envelope.held, the report's emission mark): nothing of it is on the wire. A request the host sent after the
+// report was read, and the quiesce of an emission created after it, are never queued behind it: the error listener the report is applied to may call the
+// extension or emit and wait for the answer, which would wait for the listener. A queued frame is acted on when its report was applied; when the
+// connection ends (the emission forgets the connection, hostEventBus.closed, so the emitter's settle goes on); when the process is restarted (the old
+// connection ends, and the new one has an order of its own); and when the run is cancelled (the emitter's events.settle call returns its context's error).
+// The order is kept per connection; the report of a listener that runs inside another extension's emit travels on the connection of that emit's extension
 // (ReportErrorPayload.Extension).
 //
 // The rule for an error is one: an error of a host-initiated call travels in that call's response, and one raised with no request to answer is reported
