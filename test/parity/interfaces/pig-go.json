@@ -299201,6 +299201,17 @@
       "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#errSessionUnsnapshotted",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "errSessionUnsnapshotted",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "error"
+      },
+      "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#errShareCancelled",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "errShareCancelled",
