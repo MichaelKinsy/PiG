@@ -1154,6 +1154,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-affc944](#bf-affc944) | Bedrock requests that fail with `The pending stream has been canceled` after a stalled HTTP/2 connection are… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-b02876b](#bf-b02876b) | `chord/host`: a link that is already closed when a host accepts or routes to it is no longer kept as a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b04bb32](#bf-b04bb32) | fix(coding): hold the session-graph run tracker's lock across the extension's getSignal answer, so answers… | PiG's own defect | All platforms | Unreleased |
+| [BF-b05b011](#bf-b05b011) | An extension process that dies while pig is quitting no longer produces a crash notice after the quit has… | PiG's own defect | All platforms | Unreleased |
 | [BF-b0608a9](#bf-b0608a9) | OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b06ad92](#bf-b06ad92) | An MCP server `url` can use environment variables (`"url": "${TOOLS_URL}"`): PiG checks and connects to the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b1642ac](#bf-b1642ac) | fix(ai,chord): AppendText is a function over a draft; the streaming JSON parser reads deep nesting in linear… | PiG's own defect | All platforms | Unreleased |
@@ -17387,6 +17388,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `b04bb32856` (2026-11-03)
 - **Tests:** `coding/session_graph_signal_test.go::TestGraphGetSignalAppliesAnswersInReadOrder`
+
+### BF-b05b011
+
+**An extension process that dies while pig is quitting no longer produces a crash notice after the quit has…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A quit that coincided with a crash used to return while the loop was still reporting it, so the notice reached a session that was already gone, and a connection that no extension held as its current one (a second connection of an extension, one a reload replaced) was neither closed nor waited for at all.
+- **Root cause:** Present since 0.2.0, where `Shutdown` did not wait for the loops at all; 0.7.0 made it wait for the loop's sight of its connection ending, which is earlier than the crash report.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b05b011bd9` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownBoundsTheWaitForALoopThatDoesNotEnd`, `coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownDoesNotReportACrashItFindsAfterItBegan`, `coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownEndsTheLoopOfAConnectionNoExtensionHolds`, `coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownWaitsForALoopThatIsReportingACrash`, `coding/extension/host/subprocess/shutdown_reap_test.go::TestShutdownReapsExtensionProcesses`
+- **Release note:** An extension process that dies while pig is quitting no longer produces a crash notice after the quit has returned, and `Host.Shutdown` now waits for the whole of every extension connection's read loop. A quit that coincided with a crash used to return while the loop was still reporting it, so the notice reached a session that was already gone, and a connection that no extension held as its current one (a second connection of an extension, one a reload replaced) was neither closed nor waited for at all. Shutdown now stops crash and disable notices first, closes every connection the Host reads, and waits for every loop for at most the bound of a process's stop; a loop that does not end in that time is named on stderr, as a process that does not end is. Present since 0.2.0, where `Shutdown` did not wait for the loops at all; 0.7.0 made it wait for the loop's sight of its connection ending, which is earlier than the crash report. <!-- cause: Shutdown waited for each loop's sight of its connection ending (a signal the loop gives before its crash report, restart and exit), and only for the loop of each extension's current connection, so a loop in its tail, or the loop of a connection no extension held as current, ran on after Shutdown returned --> <!-- tests: coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownWaitsForALoopThatIsReportingACrash, coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownDoesNotReportACrashItFindsAfterItBegan, coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownEndsTheLoopOfAConnectionNoExtensionHolds, coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownBoundsTheWaitForALoopThatDoesNotEnd -->
 
 ### BF-b0608a9
 

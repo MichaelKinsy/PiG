@@ -32042,6 +32042,32 @@
       ]
     },
     {
+      "id": "BF-b05b011",
+      "title": "An extension process that dies while pig is quitting no longer produces a crash notice after the quit has…",
+      "symptom": "A quit that coincided with a crash used to return while the loop was still reporting it, so the notice reached a session that was already gone, and a connection that no extension held as its current one (a second connection of an extension, one a reload replaced) was neither closed nor waited for at all.",
+      "rootCause": "Present since 0.2.0, where `Shutdown` did not wait for the loops at all; 0.7.0 made it wait for the loop's sight of its connection ending, which is earlier than the crash report.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension process that dies while pig is quitting no longer produces a crash notice after the quit has returned, and `Host.Shutdown` now waits for the whole of every extension connection's read loop. A quit that coincided with a crash used to return while the loop was still reporting it, so the notice reached a session that was already gone, and a connection that no extension held as its current one (a second connection of an extension, one a reload replaced) was neither closed nor waited for at all. Shutdown now stops crash and disable notices first, closes every connection the Host reads, and waits for every loop for at most the bound of a process's stop; a loop that does not end in that time is named on stderr, as a process that does not end is. Present since 0.2.0, where `Shutdown` did not wait for the loops at all; 0.7.0 made it wait for the loop's sight of its connection ending, which is earlier than the crash report. \u003c!-- cause: Shutdown waited for each loop's sight of its connection ending (a signal the loop gives before its crash report, restart and exit), and only for the loop of each extension's current connection, so a loop in its tail, or the loop of a connection no extension held as current, ran on after Shutdown returned --\u003e \u003c!-- tests: coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownWaitsForALoopThatIsReportingACrash, coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownDoesNotReportACrashItFindsAfterItBegan, coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownEndsTheLoopOfAConnectionNoExtensionHolds, coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownBoundsTheWaitForALoopThatDoesNotEnd --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b05b011bd9",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownBoundsTheWaitForALoopThatDoesNotEnd",
+        "coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownDoesNotReportACrashItFindsAfterItBegan",
+        "coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownEndsTheLoopOfAConnectionNoExtensionHolds",
+        "coding/extension/host/subprocess/host_loops_shutdown_test.go::TestShutdownWaitsForALoopThatIsReportingACrash",
+        "coding/extension/host/subprocess/shutdown_reap_test.go::TestShutdownReapsExtensionProcesses"
+      ]
+    },
+    {
       "id": "BF-b0608a9",
       "title": "OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL…",
       "symptom": "OpenRouter generated-image data URLs are matched exactly as Pi does (`^data:([^;]+);base64,(.+)$`): a URL with media type parameters, an empty media type or a line break in the payload is skipped, and a payload that is not valid base64 is kept instead of dropped.",
