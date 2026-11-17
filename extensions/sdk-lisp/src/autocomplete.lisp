@@ -99,8 +99,15 @@ Without a UI it does nothing."
 
 (defun acomp-dispatch (ext ctx args)
   (let ((registry (acomp-registry-of ext)) (operation (jget args "operation")))
-    (if (equal operation "wrap")
-        (acomp-wrap registry ctx args)
+    (cond
+      ((equal operation "changed")
+       ;; The host rebuilt the provider chain (Pi's setupAutocompleteProvider hands it to the installed editor, interactive-mode.ts:848-850). An editor component here is a proxy of the host's editor, which already holds the rebuilt provider; nothing in this SDK keeps the descriptor, so its host reference is released at once.
+       (let ((id (let ((current (jget args "current"))) (and (hash-table-p current) (jget current "id")))))
+         (when (stringp id) (acomp-release (sb-ext:make-weak-pointer ext) id))
+         nil))
+      ((equal operation "wrap")
+       (acomp-wrap registry ctx args))
+      (t
         (let ((provider (sb-thread:with-mutex ((acomp-registry-lock registry))
                           (or (gethash (jget args "id") (acomp-registry-providers registry))
                               (error "unknown autocomplete provider ~S" (jget args "id")))))
@@ -112,7 +119,7 @@ Without a UI it does nothing."
                  (autocomplete-apply-completion provider ctx lines line col (jget args "item") (jget args "prefix")))
                 ((equal operation "shouldTriggerFileCompletion")
                  (if (autocomplete-should-trigger-file-completion provider ctx lines line col) t :false))
-                (t (error "unknown autocomplete operation: ~A" operation)))))))
+                (t (error "unknown autocomplete operation: ~A" operation))))))))
 
 (defun acomp-request-args (req) (let ((args (jget req "args"))) (if (hash-table-p args) args (obj))))
 

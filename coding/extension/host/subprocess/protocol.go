@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
-// pig additive (D19): autocomplete callback handles stay on their owner connection. ui.addAutocompleteProvider names a factoryId; autocomplete.sync wraps it around current or invokes apply/trigger, while autocomplete.suggest awaits getSuggestions. Captured references use ui.autocomplete.invoke and one-way release notifications. Columns are UTF-16. Parent cancellation owns handler calls; queryId also cancels editor-owned calls without a parent.
+// pig additive (D19): autocomplete callback handles stay on their owner connection. ui.addAutocompleteProvider names a factoryId; autocomplete.sync wraps it around current, invokes apply/trigger, or tells an installed editor's runtime that the host rebuilt the provider chain (operation "changed", current the new descriptor, answered with no result; Pi's setupAutocompleteProvider calls setAutocompleteProvider on the installed editor after every rebuild), while autocomplete.suggest awaits getSuggestions. Captured references use ui.autocomplete.invoke and one-way release notifications. Columns are UTF-16. Parent cancellation owns handler calls; queryId also cancels editor-owned calls without a parent.
 type autocompleteDescriptor struct {
 	ID                string   `json:"id"`
 	LocalID           string   `json:"localId,omitempty"`

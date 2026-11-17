@@ -1,0 +1,57 @@
+# Upstream evidence: Pi 1.5.0 interactive-mode.ts:835-855 (setupAutocompleteProvider hands every rebuilt provider to
+# `this.editor.setAutocompleteProvider?.(provider)`, the installed custom editor included) and :2935-2975 (setCustomEditorComponent
+# hands it the current provider at install). An extension installs its editor from session_start, where the install and the rebuild
+# after startup (:2141) and after /reload (:6595) meet in either order. Both binaries must end with the editor holding a working
+# provider, and the session must stay alive through both rebuilds (issue 497: a native SDK editor ended the session on the rebuild).
+name = "14-custom-editor-installed-at-session-start"
+description = "An editor installed from session_start holds a working autocomplete provider after startup and after /reload."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/tui/src/autocomplete.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+# The footer is drawn when the TUI mounts, before session_start installs the editor (interactive-mode.ts:951-1036, 1911-1980); PiG
+# keeps that order. The no-model warning follows init in both binaries (interactive-mode.ts:1149-1150), so typing starts only once
+# binding has finished.
+ready_pattern_pig = "No models available"
+ready_pattern_pi = "No models available"
+ready_timeout_seconds = 30
+capture_start = "Editor autocomplete"
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+# Escape cancels command-name completion so Enter submits the command.
+keys = ["/probe-editor", "Escape", "Enter"]
+wait_contains = ["suggests=true"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Escape"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/reload", "Escape", "Enter"]
+wait_contains = ["Reloaded"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/probe-editor", "Escape", "Enter"]
+wait_contains = ["suggests=true"]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/dialogs-default"]
+pi = ["PI_CODING_AGENT_DIR=../selectors/testdata/dialogs-default"]
+pig_extensions = ["testdata/session-start-editor.ts"]
+pi_extensions = ["testdata/session-start-editor.ts"]
+pig_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["installed=true", "provider=true", "suggests=true"]
+both_not_contain = ["panic:", "goroutine ", "uncaughtException"]
+escaped_output_equal = true
+runs = 3

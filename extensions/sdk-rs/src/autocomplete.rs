@@ -173,6 +173,16 @@ impl AutocompleteRegistry {
 
     pub(crate) fn dispatch(&self, ctx: &Context, args: Value) -> io::Result<Value> {
         let operation = args["operation"].as_str().unwrap_or("");
+        if operation == "changed" {
+            // The host rebuilt the provider chain (Pi's setupAutocompleteProvider hands it to the installed editor, interactive-mode.ts:848-850). An editor component here is a proxy of the host's editor, which already holds the rebuilt provider; nothing in this SDK keeps the descriptor, so its host reference is released at once.
+            if let Some(id) = args["current"]["id"].as_str().filter(|id| !id.is_empty()) {
+                drop(CurrentLease {
+                    connection: ctx.conn.clone(),
+                    id: id.to_owned(),
+                });
+            }
+            return Ok(Value::Null);
+        }
         if operation == "wrap" {
             let factory = self
                 .factories
