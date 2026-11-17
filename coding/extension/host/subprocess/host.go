@@ -4785,9 +4785,9 @@ func runAwaitsEvent(event string) bool {
 	return event == "tool_call" || event == "tool_result" || event == "context"
 }
 
-// unawaitedFirstSuspension reports the events whose caller goes on at the first handler's first suspension: input (rpcAwaitHandler) and the two events Pi emits with `void this._extensionRunner.emit(...)` and does not await, session_info_changed (agent-session.ts:4122) and thinking_level_select (agent-session.ts:2801).
+// unawaitedFirstSuspension reports the events whose caller goes on at the first handler's first suspension: input and before_agent_start (rpcAwaitHandler holds the prompt's stdin line through them, and Pi's loop reads the next line while they await I/O: agent-session.ts prompt() awaits emitInput and emitBeforeAgentStart, rpc-mode.ts starts every line with `void handleInputLine`) and the two events Pi emits with `void this._extensionRunner.emit(...)` and does not await, session_info_changed (agent-session.ts:4122) and thinking_level_select (agent-session.ts:2801).
 func unawaitedFirstSuspension(event string) bool {
-	return event == "input" || event == "session_info_changed" || event == "thinking_level_select"
+	return event == "input" || event == "before_agent_start" || event == "session_info_changed" || event == "thinking_level_select"
 }
 
 // reloadChainEvent reports whether args carry an event Pi's reload awaits in its chain: session_shutdown, session_start or resources_discover with reason reload.
@@ -4906,7 +4906,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				parent = withRequestQuantum(parent, func() { me.host.setTailSuspended(tail) })
 			}
 		} else if unawaitedFirstSuspension(event) && !me.hostsNodeRuntime() && invocation.Bound(parent) {
-			// pig divergence (D86): a handler whose caller waits for its first suspension (rpcAwaitHandler for input; Session.dispatchUnawaitedEvent for the two events Pi emits with `void emit`) is suspended once it outlives the quantum. No other event carries the option: the others' callers wait for the handler's completion in Pi too.
+			// pig divergence (D86): a handler whose caller waits for its first suspension (rpcAwaitHandler for input and before_agent_start; Session.dispatchUnawaitedEvent for the two events Pi emits with `void emit`) is suspended once it outlives the quantum. No other event carries the option: the others' callers wait for the handler's completion in Pi too.
 			parent = withRequestQuantum(parent, nil)
 		}
 		// The state push and the request are one stretch of outstanding work, so the heartbeat sees one idle/busy transition per dispatch rather than one per frame.
