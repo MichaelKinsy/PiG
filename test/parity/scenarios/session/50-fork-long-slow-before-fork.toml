@@ -9,6 +9,11 @@
 # retained history and the screen, from its first line to its last, is compared as it stands: escaped_output_equal over the whole capture, no crop, no normalization. A command that erased the
 # scrollback, or left a row of the old transcript below the new one, differs from Pi's capture.
 # A session_before_fork handler that awaits 400 ms makes the swap a known length in both programs: Pi and PiG both paint the frame the closed picker requested (the old transcript, the picker gone) before the swap starts.
+# Both programs are in the same state before the first key. The footer is painted before the extension's session_start handler has returned, and the resumed transcript after it
+# (interactive-mode.ts init(): the UI starts, rebindCurrentSession awaits the handlers, renderInitialMessages follows), so the footer alone does not say the transcript is there. On a loaded
+# host PiG's bind outlasted the runner's stability gate: with 24 busy loops beside the runner, 12 of 12 PiG runs took /fork before any frame held the transcript and painted it a second time
+# after the fork (Pi: 0 of 12; its transcript was on screen first). The ready pattern is therefore the last row of the resumed transcript, in both. The command is typed and seen
+# before Enter is pressed, so the echo that opens the raw-stream window is in the stream of both.
 
 name = "50-fork-long-slow-before-fork"
 description = "After /fork of a long session whose session_before_fork handler awaits 400 ms the capture of the scrollback and the screen equals Pi's."
@@ -31,20 +36,25 @@ height = 35
 cwd = "testdata/scrollback-fork-long"
 pre_tui_lines = 5
 capture_history = true
-ready_pattern_pig = "(auto)"
-ready_pattern_pi = "(auto)"
+ready_pattern_pig = "CUR-R16 answer 16"
+ready_pattern_pi = "CUR-R16 answer 16"
 ready_timeout_seconds = 30
 
 [[tmux.steps]]
-keys = ["/fork", "Enter"]
+keys = ["/fork"]
+wait_visible_contains = ["/fork"]
+wait_timeout_seconds = 25
+
+[[tmux.steps]]
+keys = ["Enter"]
 wait_visible_contains = ["› CUR-Q"]
-wait_timeout_seconds = 8
+wait_timeout_seconds = 25
 settle_seconds = 1
 
 [[tmux.steps]]
 keys = ["Enter"]
 wait_contains = ["Forked to new session"]
-wait_timeout_seconds = 8
+wait_timeout_seconds = 25
 settle_seconds = 2
 
 [assert]
