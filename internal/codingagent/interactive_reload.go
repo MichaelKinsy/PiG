@@ -45,7 +45,7 @@ func (m *InteractiveMode) beginReloadBlocker() func() {
 	)
 	m.editorContainer.SetChildren(box)
 	m.tuiInst.SetFocus(box)
-	// Pi shows the box with `requestRender(true)` (interactive-mode.ts:6423): the one clearing redraw of a reload. The transcript repaint that follows is differential, as in Pi.
+	// Pi shows the box with `requestRender(true)` (interactive-mode.ts:6648): the one clearing redraw of a reload. The transcript repaint that follows is differential, as in Pi.
 	m.tuiInst.ForceFullRender()
 	m.tuiInst.Render()
 	// Pi's dismissReloadBox focuses the editor (interactive-mode.ts:6425-6430), not a selector the reload displaced.

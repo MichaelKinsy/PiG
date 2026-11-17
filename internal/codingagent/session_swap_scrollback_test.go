@@ -3,6 +3,7 @@ package codingagent
 import (
 	"bytes"
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -19,10 +20,20 @@ const scrollbackHeaderRow = "HEADER ROW ABOVE THE TRANSCRIPT, UNCHANGED BY ANY C
 func scrollbackMode(t *testing.T) (*InteractiveMode, *bytes.Buffer) {
 	t.Helper()
 	m := sessionChromeMode(t)
+	return m, recordTerminal(t, m, "answer")
+}
+
+// recordTerminal gives m a terminal that records its bytes and paints the header row, m's chat, footer and editor on it once; the first frame must hold wantFirst.
+// The returned buffer is empty when it is handed over.
+func recordTerminal(t *testing.T, m *InteractiveMode, wantFirst string) *bytes.Buffer {
+	t.Helper()
 	var terminal bytes.Buffer
 	ui := tui.NewWithOutput(&terminal, 80, 30)
 	ui.SetRenderDeadline(func(time.Time) {}) // the test owns the frames
 	m.tuiInst = ui
+	if m.editor == nil {
+		m.editor = tui.NewEditor()
+	}
 	m.editorContainer = tui.NewContainer(m.editor)
 	ui.Add(tui.NewText(scrollbackHeaderRow))
 	ui.Add(m.chatContainer)
@@ -30,11 +41,11 @@ func scrollbackMode(t *testing.T) (*InteractiveMode, *bytes.Buffer) {
 	ui.Add(m.editorContainer)
 	m.renderSessionEntries()
 	ui.Render()
-	if !strings.Contains(terminal.String(), "answer") {
+	if !strings.Contains(terminal.String(), wantFirst) {
 		t.Fatalf("the first frame lacks the saved transcript: %q", terminal.String())
 	}
 	terminal.Reset()
-	return m, &terminal
+	return &terminal
 }
 
 // requireDifferentialFrame fails when the bytes written since the mode was handed over clear the screen or the scrollback, or rewrite the row above the changed rows: Pi
@@ -125,7 +136,51 @@ func TestSessionReplacementRepaintsDifferentially(t *testing.T) {
 	}
 }
 
-// Pi's reload box asks for a clearing redraw (`this.ui.requestRender(true)`, interactive-mode.ts:6423), and pig keeps that one forced frame where Pi has it: the frame
+// An extension's boundary compaction entry rebuilds the transcript around its summary: Pi clears the chat container, renders the entries again and requests an ordinary
+// render (interactive-mode.ts, the compaction branch of entry_appended), as it does for every other replacement of the transcript.
+func TestBoundaryCompactionRepaintsDifferentially(t *testing.T) {
+	p, ids := boundaryCompactionMode(t, func(sess *Session, ids map[string]string) {
+		appendMessage(t, sess, ids, "old", userMsg("OLD QUESTION"))
+		appendMessage(t, sess, ids, "oldAnswer", assistantMsg("", ai.TextContent{Text: "OLD ANSWER"}))
+		appendMessage(t, sess, ids, "kept", userMsg("KEPT QUESTION"))
+		id, err := sess.AppendCompaction("BOUNDARY SUMMARY", ids["kept"], 1234, nil, true, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ids["compaction"] = id
+	})
+	terminal := recordTerminal(t, p.InteractiveMode, "KEPT QUESTION")
+	p.chatContainer.Add(tui.NewTruncatedText("STALE TRANSCRIPT", 0, 0))
+	p.tuiInst.Render()
+	terminal.Reset()
+	p.handleAgentEvent(appendedEvent(t, p, ids["compaction"]))
+	p.tuiInst.Render()
+	requireDifferentialFrame(t, terminal.String(), "[compaction]")
+}
+
+// /logout of a provider changes no transcript row, and Pi asks for no clearing redraw after it (interactive-mode.ts showOAuthSelector: the logout, then showStatus, which
+// requests an ordinary render), so the terminal's scrollback stays.
+func TestLogoutKeepsTheTerminalScrollback(t *testing.T) {
+	m, terminal := scrollbackMode(t)
+	m.opts.AgentDir = t.TempDir()
+	store, err := ai.NewAuthStorage(filepath.Join(m.opts.AgentDir, "auth.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.Set("anthropic", ai.Credential{Type: ai.CredentialAPIKey, Key: "sk-test"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.runOAuthLogout(context.Background(), "anthropic"); err != nil {
+		t.Fatal(err)
+	}
+	if _, stored, _ := store.Get("anthropic"); stored {
+		t.Fatal("the logout left the credential stored")
+	}
+	m.tuiInst.Render()
+	requireDifferentialFrame(t, terminal.String(), "")
+}
+
+// Pi's reload box asks for a clearing redraw (`this.ui.requestRender(true)`, interactive-mode.ts:6648), and pig keeps that one forced frame where Pi has it: the frame
 // that shows the box starts with the clearing sequence and replays the page. The repaint of the transcript that follows is differential.
 func TestReloadBoxForcesTheRedrawAsPiDoes(t *testing.T) {
 	m, terminal := scrollbackMode(t)
