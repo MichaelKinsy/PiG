@@ -3,7 +3,7 @@
 //
 // Usage: node automation/gen/generate-intl-tables.mjs > chord/next/surfaces/intl_gen.go   (make intl-tables)
 //
-// FormatNumber and FormatTime must equal the pinned Node's output (ICU 78.3, CLDR 48 in v24.22.1), which is neither CLDR as
+// FormatNumber and FormatTime must equal the pinned Node's output (ICU 78.3, CLDR 48 in v24.22.2), which is neither CLDR as
 // published (V8 rewrites some patterns) nor what golang.org/x/text knows (CLDR 32, half-even rounding). The script measures
 // the oracle instead of copying CLDR: for every locale ICU has data for it derives, from formatToParts, the number symbols
 // (decimal, group, sign and affixes, grouping sizes and minimum grouping digits, numbering system digits) and, per closed
