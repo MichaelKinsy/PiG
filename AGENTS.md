@@ -317,7 +317,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 20 | 20 | 0 | 0 | 0 | 13 | not run |
 | `interactive-rendering` | 89 | 88 | 1 | 0 | 0 | 40 | not run |
-| `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
+| `json` | 16 | 16 | 0 | 0 | 0 | 11 | not run |
 | `model-resolver-selector` | 30 | 30 | 0 | 0 | 0 | 16 | not run |
 | `model-runtime-store-catalog` | 26 | 26 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 37 | 37 | 0 | 0 | 0 | 19 | not run |
