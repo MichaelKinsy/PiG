@@ -3558,28 +3558,6 @@ Evidence: `TestValidationProbesMatchPi` and `TestValidateToolArgumentsMatchesPiO
 
 Parity allowance: the four bigint and undefined rows of `validation-probes.test.ts` are compared by Pi's outcome notation, which PiG's representation matches; a tool that needs the bigint type gets the suffixed string.
 
-## D540 The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for
-
-What: Pi renews the base watches under an entry on the way to base code only when the entry's identity, its inode and birth time (`identityOf`, `watcher.ts`), differs from the one it had when watched. PiG does the same with `statx` (ino, btime) on Linux and Android, `lstat` (ino, birthtimespec) on macOS, FreeBSD and NetBSD, `lstat` (ino, `X__st_birthtim`) on OpenBSD, and the file index and creation time on Windows. On any other Unix (DragonFly, Solaris and illumos, AIX) Go's `syscall.Stat_t` has no birth time, so the identity is the inode alone: a directory removed and made again that is given the same inode number is not seen as replaced there.
-
-Why: the birth time is not in Go's `syscall` on those systems, and nothing in PiG ships for them (the release matrix is Linux, Android, macOS and Windows). Linux file systems with no birth time (tmpfs) give 0 in Pi as well (libuv's `statx`), so they are not part of this record.
-
-Pi bug: Not a Pi bug.
-
-Scope: `chord/nextnode/plugins/plugins_watcher_identity_other.go`, the `base` mark of `pluginWatcher` on DragonFly, Solaris and illumos, and AIX.
-
-Owner decision: approved (owner, 2026-11-13T01:13:59Z: "Proceed with recommendations."; the line of that decision for this record: "D540: confirmed APPROVED; remove the 'sign-off pending' line."). Drafted by the FollowChordPlugins lane on 2026-11-08.
-
-SCRUTINIZED:approved
-
-Remove when: PiG ships for such a system and its `Stat_t` carries a birth time, or Go's `syscall` gives one.
-
-Call-site markers: `chord/nextnode/plugins/plugins_watcher_identity_other.go`.
-
-Evidence: `TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry` states the identity on the systems tested; the build of the file is checked by `GOOS=dragonfly go vet ./chord/nextnode/plugins` (and netbsd, openbsd for the files that read a birth time).
-
-Parity allowance: none needed; no Pi test depends on an inode reused with no birth time.
-
 ## D541 A message object is one per Node process and one per ExtensionRunner call; Pi's extensions and callers all share one realm
 
 What: In Pi every extension and every caller runs in one JavaScript realm, so the message of `message_start`, `message_end`, `turn_end` and `agent_end`, the session entry's `message` and anything passed on `pi.events` are one object. PiG shares that object between every handler and every extension packed in one Node process, between the events of the Session's own run and the session entry, between the handlers of one `ExtensionRunner` emit (Go, Rust, Python and Node callers alike), and across Node processes for a message passed on `pi.events` (the receiver that holds the message resolves it to its own object). What it cannot share:
