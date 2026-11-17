@@ -126,26 +126,3 @@ func TestRPCWritersSubscribeBeforeSessionStart(t *testing.T) {
 		}
 	}
 }
-
-// callsLoadOnWriting reports whether body calls Load on a value named writing (st.writing.Load() or writing.Load()).
-func callsLoadOnWriting(body *ast.BlockStmt) bool {
-	found := false
-	ast.Inspect(body, func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok || selector.Sel.Name != "Load" {
-			return true
-		}
-		switch recv := selector.X.(type) {
-		case *ast.Ident:
-			found = found || recv.Name == "writing"
-		case *ast.SelectorExpr:
-			found = found || recv.Sel.Name == "writing"
-		}
-		return true
-	})
-	return found
-}
