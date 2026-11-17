@@ -1882,6 +1882,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d1af7ae](#bf-d1af7ae) | The crash message of a deterministic code mode VM that is told a result number it cannot take now reads as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d1af7ae-2](#bf-d1af7ae-2) | The errors that name a code mode tool or global (`Tool "x" is already registered`, `Invalid global name "x"`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d1af7ae-3](#bf-d1af7ae-3) | A code mode `done` message that carries no store writes now fails the execution with Pi's `store writes is… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-d1c99e5](#bf-d1c99e5) | fix(codingagent): the Radius login menu copies the selector lines before it writes its animated row | PiG's own defect | All platforms | Unreleased |
 | [BF-d1cbde3](#bf-d1cbde3) | The pi-messages, Cloudflare Workers AI and TypeSafe System One, and OpenAI decisions request URLs are built… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d1ee883](#bf-d1ee883) | `/fork` of a session that is not file-backed builds the clone's entries from the source's decoded messages… | PiG's own defect | All platforms | Unreleased |
 | [BF-d1f258f](#bf-d1f258f) | The `/settings` search edits like Pi's search input: the cursor moves with the arrow keys, Ctrl+W, Ctrl+K… | PiG's own defect | All platforms | 0.5.0 |
@@ -28192,6 +28193,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d1af7aece3` (2026-10-24)
 - **Tests:** `codemode/deterministic_test.go::TestAVMThatIsToldTheSameResultNumberTwiceCrashes`, `codemode/wire_oracle_test.go::TestWireBehaviorMatchesPi`
 - **Release note:** A code mode `done` message that carries no store writes now fails the execution with Pi's `store writes is not valid JSON` instead of `unknown message from the worker`.
+
+### BF-d1c99e5
+
+**fix(codingagent): the Radius login menu copies the selector lines before it writes its animated row**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codingagent): the Radius login menu copies the selector lines before it writes its animated row
+- **Root cause:** Pi (radius-login-selector.ts) copies super.render() before it replaces the selected Radius row, because a Container now returns the same array while its children are unchanged. The menu wrote into the selector output; it clones it first.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d1c99e5521` (2026-11-16)
+- **Tests:** `internal/codingagent/render_repeat_contract_test.go::TestRadiusLoginMenuRendersTheSameRowsTwiceAndLeavesTheSelectorOutputAlone`, `tui/render_repeat_contract_test.go::TestRenderingTwiceWithNoStateChangeShowsTheSameLines`
 
 ### BF-d1cbde3
 
