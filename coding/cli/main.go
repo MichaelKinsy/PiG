@@ -1590,7 +1590,7 @@ func Main(args []string, options *MainOptions) {
 		AgentDir:               agentDir,
 		SessionDir:             sessionDir,
 		Model:                  model,
-		ModelFallbackMessage:   rt.ModelFallbackMessage(),
+		ModelFallbackMessage:   noModelFallbackMessage(codingSess, rt.ModelFallbackMessage()),
 		MigratedProviders:      migratedProviders,
 		AutoTrustOnReloadCwd:   autoTrustOnReloadCwd,
 		StartupDiagnostics:     rt.Diagnostics(),
@@ -1897,4 +1897,12 @@ func exportTelemetryOverride() {
 func truthyEnvFlag(value string) bool {
 	lower := strings.ToLower(value)
 	return value == "1" || lower == "true" || lower == "yes"
+}
+
+// noModelFallbackMessage is the message interactive mode shows through its option: the login guidance of a runtime without any model. A fallback to another model is a diagnostic of the runtime, so it is not shown twice (main.ts:1023-1024).
+func noModelFallbackMessage(session *coding.Session, message string) string {
+	if session.Model() != nil {
+		return ""
+	}
+	return message
 }

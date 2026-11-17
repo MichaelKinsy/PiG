@@ -1317,6 +1317,36 @@ function serverSummary(server) {
 ]);
 // END backport 3567987250
 
+// BEGIN backport c8c456c85c6e
+// c8c456c85c6e (#12234): a fallback to another model ("Could not restore model x/y. Using a/b") is a warning among the runtime's diagnostics, so every mode reports it at startup and
+// after each replacement. Without any model the message is login guidance, which interactive mode still receives as its option; with a model it does not, so a fallback is shown once.
+patch("c8c456c85c6e", "pi-coding-agent/main.js", [
+    [`            created.session.setThinkingLevel(created.session.thinkingLevel);
+        }
+        return {
+            ...created,
+`, `            created.session.setThinkingLevel(created.session.thinkingLevel);
+        }
+        ${note("c8c456c85c6e").trim()}
+        // "Could not restore model x/y. Using a/b." is set again on /resume and /fork. As a diagnostic, every
+        // mode reports it at startup and after each replacement. Without any model, the message is login
+        // guidance instead: interactive mode shows it at startup, the other modes exit with it below.
+        if (created.modelFallbackMessage && created.session.model) {
+            diagnostics.push({ type: "warning", message: created.modelFallbackMessage });
+        }
+        return {
+            ...created,
+`],
+    [`            startupDiagnostics,
+            modelFallbackMessage,
+`, `            startupDiagnostics,
+            // A fallback to another model is already in startupDiagnostics.
+            modelFallbackMessage: session.model ? undefined : modelFallbackMessage,
+`],
+]);
+// END backport c8c456c85c6e
+// not carried: pi-coding-agent/utils/deprecation.js (deleted file): warnDeprecation had no caller and the package does not export it; a backport table patches files and cannot delete one, and nothing observable reads it.
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.
