@@ -46,6 +46,13 @@ func (h *TestHarness) InstallRefusingEditor(path, message string) func() int {
 	return func() int { return int(bridge.syncs.Load()) }
 }
 
+// RemoteEditorInstalled reports whether an extension editor component is installed in place of the default editor.
+func (h *TestHarness) RemoteEditorInstalled() bool {
+	installed := false
+	h.Do(func() { installed = h.m.remoteEditor != nil })
+	return installed
+}
+
 func extensionErrorTexts(m *InteractiveMode) []string {
 	m.extensionErrorsMu.Lock()
 	defer m.extensionErrorsMu.Unlock()

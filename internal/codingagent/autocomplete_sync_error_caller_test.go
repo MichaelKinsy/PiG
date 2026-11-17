@@ -23,6 +23,10 @@ func TestReloadWhoseInstalledEditorRefusesTheProviderIsReloadFailed(t *testing.T
 	if syncs() != 1 {
 		t.Fatalf("the editor was asked for the provider %d times in one reload, want 1:\n%s", syncs(), h.Chat())
 	}
+	// Pi's catch focuses the editor the reload replaced (dismissReloadBox(previousEditor)), not the one session_start installed.
+	if h.RemoteEditorInstalled() {
+		t.Fatal("a failed reload must hand the input back to the previous (default) editor, as Pi does, not keep the editor the reload installed")
+	}
 	chat := h.Chat()
 	if !strings.Contains(chat, "Error: Reload failed: EDITOR_REFUSED") || strings.Contains(chat, "Reloaded") {
 		t.Fatalf("a reload whose editor refused the provider must show Pi's `Error: Reload failed: EDITOR_REFUSED` and no success:\n%s", chat)
