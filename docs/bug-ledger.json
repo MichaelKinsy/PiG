@@ -21066,6 +21066,26 @@
       ]
     },
     {
+      "id": "BF-5e00674",
+      "title": "`FormatTime` returns an options error for an instant outside JavaScript's Date range (more than 8.64e15 ms…",
+      "symptom": "`FormatTime` returns an options error for an instant outside JavaScript's Date range (more than 8.64e15 ms from the epoch), where Pi's `Intl.DateTimeFormat.format` throws a RangeError; it printed a clock time for it before.",
+      "rootCause": "D465 recorded the out-of-range instant as formatted because Go has no invalid Date, but no range check on the time value was ever added.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`FormatTime` returns an options error for an instant outside JavaScript's Date range (more than 8.64e15 ms from the epoch), where Pi's `Intl.DateTimeFormat.format` throws a RangeError; it printed a clock time for it before. The ends of the range are still formatted.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5e006747d9",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-5e106cc",
       "title": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the…",
       "symptom": "Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the replacement kept the entries it inherited from the directory, so a user named only by the directory could read a `0640` file that never granted it.",
@@ -29769,6 +29789,26 @@
         "durable/storage/sqlite/entry_surrogates_test.go::TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows",
         "internal/chord/chordjson/object_test.go::TestObjectWritesAdjacentSurrogateHalvesAsTheirCharacter"
       ]
+    },
+    {
+      "id": "BF-75a9cac",
+      "title": "`TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one…",
+      "symptom": "`TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one `testPlugin: setup failed: ...` message, the stub's first, as Pi's one `host.load` does; it returned the stub's alone and never loaded the plugin.",
+      "rootCause": "the stubs were loaded on a Go host of their own first and its failure returned at once, so the plugin's own failure was never collected.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one `testPlugin: setup failed: ...` message, the stub's first, as Pi's one `host.load` does; it returned the stub's alone and never loaded the plugin.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "75a9caccf1",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-75c6ccb",

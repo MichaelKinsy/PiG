@@ -771,6 +771,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5d6bb25](#bf-5d6bb25) | The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5d8eda1](#bf-5d8eda1) | `pig auth check` and `pig auth print-api-key` no longer reject `--api-key` that another option takes as its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5dbfed1](#bf-5dbfed1) | A scripted faux response can carry `DurationMs` | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5e00674](#bf-5e00674) | `FormatTime` returns an options error for an instant outside JavaScript's Date range (more than 8.64e15 ms… | PiG's own defect | All platforms | Unreleased |
 | [BF-5e106cc](#bf-5e106cc) | Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the… | PiG's own defect | All platforms | Unreleased |
 | [BF-5e36d87](#bf-5e36d87) | The assistant-message frame encoder no longer re-parses and re-serializes a whole tool call's arguments for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5e3e346](#bf-5e3e346) | An explicit `anthropic-beta` header, from a model's `headers` or the request, no longer makes a… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -1100,6 +1101,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-75426aa-2](#bf-75426aa-2) | A Node extension's `tool_call` handler can edit `event.input` in place and the tool runs with the edit, as in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-756cac8](#bf-756cac8) | A streaming run no longer hangs, rarely and mostly under load, when a response turn resumes just as the drain… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7570ee8](#bf-7570ee8) | A Durable entry record is written and read as Pi's JSON.stringify and JSON.parse do for every UTF-16 string | PiG's own defect | All platforms | Unreleased |
+| [BF-75a9cac](#bf-75a9cac) | `TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one… | PiG's own defect | All platforms | Unreleased |
 | [BF-75c6ccb](#bf-75c6ccb) | fix(codingagent): context edits leave system messages unchanged | PiG's own defect | All platforms | Unreleased |
 | [BF-75dd64c](#bf-75dd64c) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-760ab0d](#bf-760ab0d) | Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls… | PiG's own defect | All platforms | Unreleased |
@@ -12736,6 +12738,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/faux_duration_test.go::TestFauxScriptedDurationMsReachesEveryMessage`, `ai/faux_scripted_fields_oracle_test.go::TestFauxScriptedMessageMembersMatchPi`
 - **Release note:** A scripted faux response can carry `DurationMs`. It stays on every partial and the final message, as in Pi, and the stream measures a duration only when none is scripted.
 
+### BF-5e00674
+
+**`FormatTime` returns an options error for an instant outside JavaScript's Date range (more than 8.64e15 ms…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `FormatTime` returns an options error for an instant outside JavaScript's Date range (more than 8.64e15 ms from the epoch), where Pi's `Intl.DateTimeFormat.format` throws a RangeError; it printed a clock time for it before.
+- **Root cause:** D465 recorded the out-of-range instant as formatted because Go has no invalid Date, but no range check on the time value was ever added.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5e006747d9` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** `FormatTime` returns an options error for an instant outside JavaScript's Date range (more than 8.64e15 ms from the epoch), where Pi's `Intl.DateTimeFormat.format` throws a RangeError; it printed a clock time for it before. The ends of the range are still formatted.
+
 ### BF-5e106cc
 
 **Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the…**
@@ -17311,6 +17327,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7570ee804d` (2026-11-08)
 - **Tests:** `durable/entry_utf16_test.go::TestEntryRecordJSONMatchesNodeOnEveryUTF16String`, `durable/storage/sqlite/entry_surrogates_test.go::TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows`, `internal/chord/chordjson/object_test.go::TestObjectWritesAdjacentSurrogateHalvesAsTheirCharacter`
 - **Release note:** A Durable entry record is written and read as Pi's JSON.stringify and JSON.parse do for every UTF-16 string. A lone surrogate in an entry's kind or in a data value that is not an object was written as U+FFFD by `EntryRecord.MarshalJSON` (Pi keeps the escape `\ud83d`); a lone surrogate in a message, kind or data string read back as U+FFFD (Pi reads the unit); a surrogate pair held as two adjacent lone halves was written as two escapes by the Chord `Object` (Pi writes the character). `MarshalJSON` and `AppendStringify` now write the same text, which a Node differential test over random UTF-16 strings (lone, paired and reversed surrogates in the kind, the messages, the edits and every data string and key) compares with JSON.stringify and JSON.parse; the general encoder path (`json.Marshal` of an entry) writes a float -0 as 0, as JSON.stringify does; SQLite stores the escape, so rows of up to and above 8 Ki characters hold the same text.
+
+### BF-75a9cac
+
+**`TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one `testPlugin: setup failed: ...` message, the stub's first, as Pi's one `host.load` does; it returned the stub's alone and never loaded the plugin.
+- **Root cause:** the stubs were loaded on a Go host of their own first and its failure returned at once, so the plugin's own failure was never collected.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `75a9caccf1` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** `TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one `testPlugin: setup failed: ...` message, the stub's first, as Pi's one `host.load` does; it returned the stub's alone and never loaded the plugin.
 
 ### BF-75c6ccb
 
