@@ -5670,6 +5670,7 @@ export class Runtime {
               this.extensionRuntime.assertActive();
               return renderCurrentSystemPrompt();
             };
+            this.armHandlerWaitWindow(id);
             let result;
             let error;
             try {
