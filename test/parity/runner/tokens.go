@@ -57,6 +57,13 @@ import (
 // tokenContext holds the per-binary, per-run tempdir for substitution.
 type tokenContext struct {
 	tempRoot string
+	// kept is why the root is left in place when the run ends, or "".
+	kept string
+}
+
+// keep leaves the root in place when the run ends. A run calls it when a process it started may still write into the root: removing a directory under a live writer fails with "directory not empty" or deletes what the writer is about to write, and says nothing of the writer. reason names that process.
+func (tc *tokenContext) keep(reason string) {
+	tc.kept = reason
 }
 
 // newTokenContext allocates a fresh tempdir for one binary's run and
@@ -77,7 +84,12 @@ func newTokenContext(t *testing.T, label string) *tokenContext {
 	if err != nil {
 		t.Fatalf("parity: alloc tempdir for %s: %v", label, err)
 	}
+	tc := &tokenContext{}
 	t.Cleanup(func() {
+		if tc.kept != "" {
+			t.Logf("parity: kept %s: %s", dir, tc.kept)
+			return
+		}
 		if err := os.RemoveAll(dir); err != nil {
 			t.Error(err)
 		}
@@ -86,7 +98,8 @@ func newTokenContext(t *testing.T, label string) *tokenContext {
 	if err != nil {
 		t.Fatalf("parity: resolve tempdir %s for %s: %v", dir, label, err)
 	}
-	return &tokenContext{tempRoot: canonical}
+	tc.tempRoot = canonical
+	return tc
 }
 
 // expand performs token substitution on a single string. Returns the

@@ -27,8 +27,9 @@ import (
 //
 // After cleanup the handler uses the platform's default signal exit status, including STATUS_CONTROL_C_EXIT on Windows.
 func TestMain(m *testing.M) {
-	// tmux pipe-pane starts this binary as the transcript reader (transcriptReaderCommand): copy standard input to the file the runner named and exit.
+	// tmux pipe-pane starts this binary as the transcript reader (transcriptReaderCommand): copy standard input to the file the runner named and exit. A test can hold it before it reads (transcriptHoldEnv).
 	if path := os.Getenv(transcriptCopyEnv); path != "" {
+		holdTranscriptReader(os.Getenv(transcriptHoldEnv))
 		os.Exit(copyTranscript(path, os.Stdin, os.Stderr))
 	}
 	if strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe") == fakeHTName {
