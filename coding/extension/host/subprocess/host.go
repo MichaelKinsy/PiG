@@ -338,14 +338,18 @@ type Host struct {
 	// sockets, created lazily under socketDir. Isolating sockets per Host keeps
 	// parallel Pig instances (same user, same extensions) from computing the same
 	// socket path and deleting each other's live sockets. Removed on Shutdown.
-	sockRuntimeOnce sync.Once
-	sockRuntimeDir  string
-	sockRuntimeErr  error
+	//
+	// Creating, allocating from and removing the directory are one state machine
+	// (not created, created, removed) under sockMu. After removal every allocation
+	// refuses with errSockRuntimeRemoved: a path inside the deleted directory is
+	// never handed out.
+	sockMu         sync.Mutex
+	sockRuntimeDir string
+	sockRuntimeErr error
+	sockRemoved    bool
 
-	// sockNames maps an extension name to its short, stable socket leaf within
-	// sockRuntimeDir (guarded by sockMu).
-	sockMu    sync.Mutex
-	sockNames map[string]string
+	// sockSeq counts the socket paths this Host has handed out (newSocketPath).
+	sockSeq atomic.Uint32
 
 	// shuttingDown is set when Shutdown is called. Crash handlers check
 	// this to suppress "connection closed" noise during normal exit.
@@ -465,7 +469,6 @@ type Host struct {
 	retained       *RuntimeRetention
 	retainedShared bool
 	epoch          int
-	parkSeq        atomic.Int64
 
 	// loadErrors holds the formatted errors from the most recent LoadAll so the
 	// interactive session can surface startup load/build/register failures
@@ -686,7 +689,7 @@ type managedExt struct {
 	oauthProviderNames []string          // subset of providerNames that also registered a bridged OAuth provider
 	stderrLogPath      string
 	stderrLog          *processStderrLog
-	sockPath           string               // Socket file path (for cleanup)
+	sockPath           string               // This generation's own socket path, listened on at its start and removed by its stop; no other generation holds it
 	packedCellKey      string               // Non-empty when hosted by a packed runtime cell
 	packedProcess      *packedProcessState  // Shared process authority for packed-member sockets.
 	shuttingDown       atomic.Bool          // True when graceful shutdown was initiated
@@ -2471,7 +2474,7 @@ func (h *Host) EndInput() {
 	}
 }
 
-// TerminateProcesses kills hosted processes without running extension callbacks or waiting for their handlers. It is only for a host process that is about to exit; ordinary owners use Shutdown to release all resources.
+// TerminateProcesses kills hosted processes without running extension callbacks or waiting for their handlers, and removes the Host's private socket directory: the host process that calls it is about to exit without Shutdown (RPC mode ends with os.Exit, as Pi's process.exit does), so nothing else would remove the directory. It is only for a host process that is about to exit; ordinary owners use Shutdown to release all resources.
 func (h *Host) TerminateProcesses() {
 	// pig additive (D19): subprocess runtimes must not outlive a forced host exit.
 	h.shuttingDown.Store(true)
@@ -2498,6 +2501,20 @@ func (h *Host) TerminateProcesses() {
 	}
 	for process := range processes {
 		_ = process.Kill()
+	}
+	h.removeSockRuntimeDir()
+}
+
+// errSockRuntimeRemoved is what a Host asks for a socket path after TerminateProcesses removed its directory.
+var errSockRuntimeRemoved = errors.New("the Host's socket directory was removed by TerminateProcesses")
+
+// removeSockRuntimeDir removes the Host's private socket directory and keeps the Host from making one afterwards: it is the transition to the removed state, under the lock every allocation takes. Calling it again does nothing more.
+func (h *Host) removeSockRuntimeDir() {
+	h.sockMu.Lock()
+	defer h.sockMu.Unlock()
+	h.sockRemoved = true
+	if h.sockRuntimeDir != "" {
+		_ = os.RemoveAll(h.sockRuntimeDir)
 	}
 }
 
@@ -2572,9 +2589,7 @@ func (h *Host) Shutdown(reason string) {
 		}
 	}
 
-	if h.sockRuntimeDir != "" {
-		_ = os.RemoveAll(h.sockRuntimeDir)
-	}
+	h.removeSockRuntimeDir()
 }
 
 // ensureSockRuntimeDir lazily creates this Host's private socket directory under
@@ -2583,48 +2598,62 @@ func (h *Host) Shutdown(reason string) {
 // (secureSocketRuntimeBase). os.MkdirTemp guarantees a unique name even across concurrent Hosts, so no two instances
 // share a socket path.
 func (h *Host) ensureSockRuntimeDir() (string, error) {
-	h.sockRuntimeOnce.Do(func() {
-		base := socketRuntimeBase(runtime.GOOS, h.socketDir, currentUserID(), os.Getenv("LOCALAPPDATA"))
-		if err := os.MkdirAll(base, 0o700); err != nil {
-			h.sockRuntimeErr = err
-			return
-		}
-		if err := secureSocketRuntimeBase(base); err != nil {
-			h.sockRuntimeErr = err
-			return
-		}
-		h.sockRuntimeDir, h.sockRuntimeErr = os.MkdirTemp(base, socketRuntimeDirPrefix+"*")
-	})
+	h.sockMu.Lock()
+	defer h.sockMu.Unlock()
+	return h.ensureSockRuntimeDirLocked()
+}
+
+// ensureSockRuntimeDirLocked is ensureSockRuntimeDir for a caller that holds sockMu. A directory that could not be made stays refused with the error it failed with; a removed one is refused with errSockRuntimeRemoved.
+func (h *Host) ensureSockRuntimeDirLocked() (string, error) {
+	if h.sockRemoved {
+		return "", errSockRuntimeRemoved
+	}
+	if h.sockRuntimeDir != "" || h.sockRuntimeErr != nil {
+		return h.sockRuntimeDir, h.sockRuntimeErr
+	}
+	base := socketRuntimeBase(runtime.GOOS, h.socketDir, currentUserID(), os.Getenv("LOCALAPPDATA"))
+	if err := os.MkdirAll(base, 0o700); err != nil {
+		h.sockRuntimeErr = err
+		return "", err
+	}
+	if err := secureSocketRuntimeBase(base); err != nil {
+		h.sockRuntimeErr = err
+		return "", err
+	}
+	h.sockRuntimeDir, h.sockRuntimeErr = os.MkdirTemp(base, socketRuntimeDirPrefix+"*")
 	return h.sockRuntimeDir, h.sockRuntimeErr
 }
 
-// sockPathFor returns this Host's socket path for the named extension. Names are
-// short and stable per Host (e-0.sock, e-1.sock, ...) rather than derived from
-// the extension name: the runtime directory is private, so a counter is unique,
-// and a short leaf keeps the full path well under the platform sun_path limit
-// (104 bytes on macOS) that a long extension name plus a deep $TMPDIR could
-// otherwise exceed. The mapping is stable across reloads so a reload rebinds the
-// same path.
-func (h *Host) sockPathFor(name string) (string, error) {
-	dir, err := h.ensureSockRuntimeDir()
+// newSocketPath returns a socket path that no other generation of this Host holds, on every call: the next count in this
+// Host's private runtime directory (socketLeaf). Each generation of an extension listens on its own path from its start
+// to its stop, and its stop removes that file and no other. A generation that a running command keeps alive after the
+// reload that replaced it (retireGeneration) therefore cannot remove the socket of the generation the next reload
+// staged. The runtime directory is made fresh for this Host (os.MkdirTemp), so no path was ever bound before it, and a
+// count that starts again in the next process starts in a directory of its own. The leaf is short and not derived from
+// the extension name: a short leaf keeps the full path under the platform sun_path limit (104 bytes on macOS) that a
+// long extension name plus a deep $TMPDIR could otherwise exceed; worstRuntimeSocketSuffix budgets its longest form.
+//
+// The directory's state is held from the check to the return, so a path is returned only while its directory exists, or the call refuses (errSockRuntimeRemoved after the Host ended). Every caller treats the refusal as the end of its own work, never as a reason to ask again: a load or reload that began after shutdown fails with socket_dir_failed, a restart of a crashed extension fails the same way and stays down, and the park of a process for the replacement Host lets that process end with this Host.
+func (h *Host) newSocketPath() (string, error) {
+	h.sockMu.Lock()
+	defer h.sockMu.Unlock()
+	dir, err := h.ensureSockRuntimeDirLocked()
 	if err != nil {
 		return "", err
 	}
-	h.sockMu.Lock()
-	defer h.sockMu.Unlock()
-	if h.sockNames == nil {
-		h.sockNames = make(map[string]string)
+	for {
+		last := h.sockSeq.Load()
+		if last == lastSocketCount {
+			return "", fmt.Errorf("this Host has made all %d of its socket paths", uint64(lastSocketCount))
+		}
+		if h.sockSeq.CompareAndSwap(last, last+1) {
+			path := filepath.Join(dir, socketLeaf(last+1))
+			if err := validateUnixSocketPath(runtime.GOOS, path); err != nil {
+				return "", err
+			}
+			return path, nil
+		}
 	}
-	leaf, ok := h.sockNames[name]
-	if !ok {
-		leaf = fmt.Sprintf("e-%d.sock", len(h.sockNames))
-		h.sockNames[name] = leaf
-	}
-	path := filepath.Join(dir, leaf)
-	if err := validateUnixSocketPath(runtime.GOOS, path); err != nil {
-		return "", err
-	}
-	return path, nil
 }
 
 // IsShuttingDown returns true after Shutdown has been called.
@@ -3162,14 +3191,10 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 
 	// Create the socket path inside this Host's private runtime directory, so a
 	// parallel Pig instance running the same extension cannot collide on it.
-	sockPath, err := h.sockPathFor(me.config.Name)
+	sockPath, err := h.newSocketPath()
 	if err != nil {
 		return nil, newLoadError(me.config.Name, "spawn", "socket_dir_failed", fmt.Errorf("create socket dir: %w", err))
 	}
-
-	// Clean up a stale socket from a prior load of this same Host (private dir,
-	// so this only ever removes our own file, never a peer's live socket).
-	_ = os.Remove(sockPath)
 
 	me.sockPath = sockPath
 

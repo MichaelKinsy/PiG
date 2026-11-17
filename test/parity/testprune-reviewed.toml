@@ -982,3 +982,10 @@ commit = "3090be6e3aef3fe0ea59cf69ae7afc53cd7ccc82"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The one value the pre-flight counts as changed is a string the test itself prints and waits for, not an expectation of behavior: the probe call that Close has to wait for printed `slow call running` and now prints `held call running`, and the test's OnOutput watches for that line to know the call has started. The call itself changed from a 2 s setTimeout to a wait on a file the test creates, which is why it is named `held`. The 200 ms stop grace is the same in the old and the new test, and no duration is an expected value. The production change of the commit is a test seam only: NodeHost.startAfter, which Close calls where it called time.NewTimer, defaults to afterTimer, the same wall-time timer (a Reset of the single timer became stopping it and starting a timer for closeTimeout plus the grace, with the same lengths and the same kill), so Close behaves as before outside a test that replaces the seam. Pi has no such host or test (its workers stop a child with one GRACE kill, workers.ts #shutdown), and no Pi line is behind the sentinel, so no Pi-derived expectation moved."
+
+[[entry]]
+path = "coding/extension/host/subprocess/socket_runtime_dir_test.go"
+commit = "6fe688207d8dee14cd2a64fbc01a4fb8278a2a7a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The one value the lint counts as changed is a length the test computes, not an expectation of behavior: the worst-case socket path of the kept socket directory was written with the literal leaf `e-9999.sock` and is now written with the constant worstRuntimeSocketLeaf, the longest leaf of the new per-generation socket path (`<count>.s`, at most 9 bytes), because newSocketPath replaced the per-name path `e-<counter>.sock` in host.go, packed_go.go, platform.go and retention.go. The path of a socket is a PiG host detail: Pi has no subprocess extension host and makes no sockets, so no Pi line is behind the value and no Pi-derived expectation moved."

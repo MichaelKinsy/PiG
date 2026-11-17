@@ -3,7 +3,6 @@ package subprocess
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -216,12 +215,10 @@ func (h *Host) Retain() {
 
 // awaitParkAck tells the process to hold itself open and waits until it does. The process connects to a socket this Host listens on once the hold is set. A process that exits, or whose generations stop answering their heartbeat, ends the wait.
 func (h *Host) awaitParkAck(share *processShare, conns []*Conn) error {
-	name := fmt.Sprintf("park-%d", h.parkSeq.Add(1))
-	sockPath, err := h.sockPathFor(name)
+	sockPath, err := h.newSocketPath()
 	if err != nil {
 		return err
 	}
-	_ = os.Remove(sockPath)
 	listener, address, err := ListenExtension(sockPath, share.node)
 	if err != nil {
 		return err
