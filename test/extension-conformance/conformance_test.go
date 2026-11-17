@@ -1509,6 +1509,18 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			// session_actions_tool runs in the SDK fixtures (TestConformance_CommandOnlySessionActionsRefusedFromEventContext); the in-process baseline lists it so every transport registers the same tools.
+			"session_actions_tool": {
+				Definition: extension.ToolDefinition{
+					Name:        "session_actions_tool",
+					Description: "Call the session actions through the tool's context",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"signal_nested_probe": {
 				Definition: extension.ToolDefinition{
 					Name:        "signal_nested_probe",
