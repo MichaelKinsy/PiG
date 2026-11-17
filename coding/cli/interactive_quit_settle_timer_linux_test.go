@@ -3,8 +3,8 @@
 package cli
 
 import (
-	"os/exec"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
