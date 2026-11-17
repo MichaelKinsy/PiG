@@ -206,6 +206,28 @@
       ]
     },
     {
+      "id": "BF-01c9e0b",
+      "title": "The frame that the exit key itself asks for is painted inside the exit's drain now, as Pi paints it, not…",
+      "symptom": "The frame that the exit key itself asks for is painted inside the exit's drain now, as Pi paints it, not before the exit starts.",
+      "rootCause": "the input dispatch painted the frame of every key right after the key, and the exit's own key was no exception, although Pi renders it on the next tick, after shutdown() has ended the color scheme reports and while it drains",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The frame that the exit key itself asks for is painted inside the exit's drain now, as Pi paints it, not before the exit starts. Pi's `shutdown()` turns the color scheme reports off, drains the input and only then stops, and the frame requested by Ctrl+D, `/quit`, a second Ctrl+C or a signal's dispose is rendered on the next tick, which falls inside that drain: `?2031l`, the keyboard protocol pop when it is on, the frame, the progress clear, the renderer's stop. PiG painted that frame first, so a recording of the exit showed `frame ?2031l ... progress clear`. The exit holds the renderer's frames from the moment it is decided, and the one requested frame is flushed after the drain, before the active selector is disposed and the progress is cleared. No screen differs for a user; a terminal that records or replays the bytes, and the per-exit-path parity scenarios, saw the order. Present in v0.7.0 (checked by tag: v0.7.0 paints in the key's dispatch, before the exit starts).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "01c9e0b8fa",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_exit_frame_flush_pty_test.go::TestExitFrameRequestedByTheExitIsPaintedInsideTheDrain"
+      ]
+    },
+    {
       "id": "BF-01d0835",
       "title": "fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is…",
       "symptom": "fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is refused as Pi does",
@@ -66354,7 +66376,7 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 2,
-    "Follow-up to unreleased work": 23,
+    "Follow-up to unreleased work": 24,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 4,
     "test-only": 1
