@@ -22974,6 +22974,9 @@ async function main(args, options) {
     if (created.session.model && cliThinkingOverride) {
       created.session.setThinkingLevel(created.session.thinkingLevel);
     }
+    if (created.modelFallbackMessage && created.session.model) {
+      diagnostics.push({ type: "warning", message: created.modelFallbackMessage });
+    }
     return {
       ...created,
       services: services2,
@@ -23057,7 +23060,8 @@ async function main(args, options) {
     const interactiveMode = new InteractiveMode(runtime, {
       migratedProviders,
       startupDiagnostics,
-      modelFallbackMessage,
+      // A fallback to another model is already in startupDiagnostics.
+      modelFallbackMessage: session.model ? void 0 : modelFallbackMessage,
       autoTrustOnReloadCwd,
       initialMessage,
       initialImages,
