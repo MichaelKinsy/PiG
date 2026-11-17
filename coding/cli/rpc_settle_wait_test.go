@@ -447,7 +447,7 @@ func TestRPCNodeInputEndDuringInputHandlerWaitComparedWithPi(t *testing.T) {
 			case <-waited:
 				exited = true
 				p.exited = true
-			case <-time.After(5 * time.Second):
+			case <-time.After(testbudget.Wait(t)):
 			}
 			if !exited {
 				_, _ = peer.Write([]byte("go\n"))
