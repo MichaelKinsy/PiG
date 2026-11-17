@@ -89,8 +89,15 @@ func listenTestBinary(t *testing.T) string {
 // startListenServerBinary starts the server from the pig executable at binary.
 func startListenServerBinary(t *testing.T, binary string, env []string, args ...string) *listenServer {
 	t.Helper()
+	return startListenServerBinaryAt(t, "", binary, env, args...)
+}
+
+// startListenServerBinaryAt is startListenServerBinary with the server's working directory set to cwd ("" keeps the test's).
+func startListenServerBinaryAt(t *testing.T, cwd, binary string, env []string, args ...string) *listenServer {
+	t.Helper()
 	s := &listenServer{t: t, errBuf: &lockedBuffer{}, exited: make(chan struct{}), budget: testbudget.Wait(t)}
 	cmd := exec.Command(binary, args...)
+	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), env...)
 	cmd.Stderr = s.errBuf
 	cmd.WaitDelay = 10 * time.Second

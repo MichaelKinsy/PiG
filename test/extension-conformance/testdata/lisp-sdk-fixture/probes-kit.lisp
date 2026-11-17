@@ -806,6 +806,14 @@ kit-widget-event=<type>:<value> (a change report is not one). It never closes it
                            (kp-notify ctx (format nil "view-x-state:~A,picked=~D" (pig:view-status-state cur) (pig:jget (pig:view-status-result cur) "picked"))))))))
       ;; D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
       ;; updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+      ;; D521: bigint_tool registers a tool whose schema declares a bigint parameter and answers the kind of value it receives for it and the value.
+      (pig:command ext "bigint_tool" "Register the tool that reports what a bigint argument arrives as"
+                   (lambda (ctx args) (declare (ignore ctx args))
+                     (pig:tool ext "bigint_arg" "Report the kind and value of n"
+                               (pig:obj "type" "object" "required" (vector "n") "properties" (pig:obj "n" (pig:obj "type" "bigint")))
+                               (lambda (ctx params) (declare (ignore ctx))
+                                 (let ((value (pig:jget params "n")))
+                                   (format nil "~A:~A" (if (stringp value) "string" "other") value))))))
       (pig:command ext "ui_view_tool" "Register the tool that shows a titled view"
                    (lambda (ctx args) (declare (ignore ctx args))
                      (pig:tool ext "view_show" "Mount, show and focus a titled view" (pig:obj "type" "object")

@@ -1760,6 +1760,19 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_session_actions_on", "Subscribe to the event named by the argument with a handler that calls the session actions", event_session_actions_on)
     ext.command("event_session_actions_stored", "Call the session actions through the context an event handler kept", event_session_actions_stored)
+
+    # tool_call_cancel_on subscribes to tool_call with a handler that waits for the cancel signal and then answers (D650 claim 6).
+    def tool_call_cancel_on(ctx, _args):
+        def handler(hctx, _data):
+            hctx.notify("cancel_wait", "info")
+            while not hctx.is_cancelled():
+                time.sleep(0.005)
+            hctx.notify("cancel_seen", "info")
+            return {"block": True, "reason": "answered after the abort"}
+
+        ext.on_event("tool_call", handler)
+
+    ext.command("tool_call_cancel_on", "Subscribe to tool_call with a handler that waits for the cancel signal", tool_call_cancel_on)
     ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
     ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
     # mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
@@ -2682,6 +2695,21 @@ def new_extension() -> pig_sdk.Extension:
             execute=view_show,
         ))
 
+    # D521: bigint_tool registers a tool whose schema declares a bigint parameter and answers the kind of value it receives for it and the value.
+    def bigint_tool_probe(ctx, _args):
+        def bigint_arg(_ctx, params):
+            value = params["n"]
+            return {"content": ("string" if isinstance(value, str) else "other") + ":" + str(value)}
+
+        ctx.register_tool(pig_sdk.ToolDefinition(
+            name="bigint_arg",
+            label="bigint_arg",
+            description="Report the kind and value of n",
+            parameters={"type": "object", "required": ["n"], "properties": {"n": {"type": "bigint"}}},
+            execute=bigint_arg,
+        ))
+
+    ext.command("bigint_tool", "Register the tool that reports what a bigint argument arrives as", bigint_tool_probe)
     ext.command("ui_view_tool", "Register the tool that shows a titled view", view_tool_probe)
 
     # D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The argument is

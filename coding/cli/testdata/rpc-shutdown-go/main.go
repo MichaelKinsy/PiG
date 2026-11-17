@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 )
@@ -21,6 +22,29 @@ func main() {
 	if os.Getenv("RPC_SHUTDOWN_GO_SETTLED_BLOCK") != "" {
 		ext.OnEvent(sdk.EventAgentSettled, func(ctx sdk.Context, _ map[string]any) (any, error) {
 			<-ctx.Done()
+			return nil, nil
+		})
+	}
+	// RPC_SHUTDOWN_GO_SETTLED_TIMER_MS makes its agent_settled handler wait that many milliseconds on a timer; RPC_SHUTDOWN_GO_SETTLED_WATCH also ends the wait when the handler's context is cancelled.
+	if ms := os.Getenv("RPC_SHUTDOWN_GO_SETTLED_TIMER_MS"); ms != "" {
+		wait, err := time.ParseDuration(ms + "ms")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "rpc-shutdown-go: %v\n", err)
+			os.Exit(1)
+		}
+		watch := os.Getenv("RPC_SHUTDOWN_GO_SETTLED_WATCH") != ""
+		ext.OnEvent(sdk.EventAgentSettled, func(ctx sdk.Context, _ map[string]any) (any, error) {
+			if mark := os.Getenv("RPC_SHUTDOWN_GO_SETTLED_MARK"); mark != "" {
+				_ = os.WriteFile(mark, []byte("started"), 0o600)
+			}
+			if watch {
+				select {
+				case <-time.After(wait):
+				case <-ctx.Done():
+				}
+			} else {
+				time.Sleep(wait)
+			}
 			return nil, nil
 		})
 	}

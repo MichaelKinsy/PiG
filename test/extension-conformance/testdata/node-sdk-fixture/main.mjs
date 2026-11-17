@@ -1184,6 +1184,16 @@ export default function (pi) {
   pi.registerCommand("ui_view_events", { description: "Report how often the abilities watcher ran", handler: async (_args, ctx) => ctx.ui.notify(`view-events:${viewWatch.events}`, "info") });
   // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
   // updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+  // D521: bigint_tool registers a tool whose schema declares a bigint parameter and answers the kind of value it receives for it and the value.
+  pi.registerCommand("bigint_tool", { description: "Register the tool that reports what a bigint argument arrives as", handler: async () => {
+    pi.registerTool({
+      name: "bigint_arg",
+      label: "bigint_arg",
+      description: "Report the kind and value of n",
+      parameters: { type: "object", required: ["n"], properties: { n: { type: "bigint" } } },
+      async execute(_id, params) { return { content: [{ type: "text", text: `${typeof params.n === "string" ? "string" : "other"}:${params.n}` }] }; },
+    });
+  } });
   pi.registerCommand("ui_view_tool", { description: "Register the tool that shows a titled view", handler: async () => {
     pi.registerTool({
       name: "view_show",

@@ -2499,6 +2499,35 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // tool_call_cancel_on subscribes to tool_call with a handler that waits for the cancel signal and then answers (D650 claim 6).
+    let tool_call_cancel_subscriber = ext.event_subscriber();
+    let tool_call_cancel_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "tool_call_cancel_on",
+        "Subscribe to tool_call with a handler that waits for the cancel signal",
+        move |_ctx, _args| {
+            let subscription = subscribe(
+                &tool_call_cancel_subscriber,
+                "tool_call",
+                move |ctx, _data| {
+                    ctx.notify("cancel_wait", "info");
+                    while !ctx.is_cancelled() {
+                        std::thread::sleep(std::time::Duration::from_millis(5));
+                    }
+                    ctx.notify("cancel_seen", "info");
+                    Ok(Some(
+                        json!({"block": true, "reason": "answered after the abort"}),
+                    ))
+                },
+            );
+            tool_call_cancel_subscriptions
+                .lock()
+                .unwrap()
+                .push(subscription);
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "host_error_probe",
         "Report what a host error on navigateTree looks like to the extension",
@@ -4606,6 +4635,29 @@ fn main() {
     // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it,
     // shows it and updates it with a focus request, the same way in every SDK fixture (conformance
     // TestConformance_UIViewToolShowsAndFocuses).
+    // D521: bigint_tool registers a tool whose schema declares a bigint parameter and answers the kind of value it receives for it and the value.
+    ext.command(
+        "bigint_tool",
+        "Register the tool that reports what a bigint argument arrives as",
+        |ctx, _args| {
+            let tool = ToolDefinition::new(
+                "bigint_arg",
+                "bigint_arg",
+                "Report the kind and value of n",
+                json!({"type": "object", "required": ["n"], "properties": {"n": {"type": "bigint"}}}),
+                |_ctx, params| {
+                    let value = params.get("n").cloned().unwrap_or(Value::Null);
+                    let kind = if value.is_string() { "string" } else { "other" };
+                    let shown = value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string());
+                    ToolResult::text(format!("{kind}:{shown}"))
+                },
+            );
+            match ctx.register_tool(tool) {
+                Ok(()) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.command(
         "ui_view_tool",
         "Register the tool that shows a titled view",

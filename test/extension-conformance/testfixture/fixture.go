@@ -577,6 +577,16 @@ func Extension() *sdk.Extension {
 		ctx.Notify("stored_actions:"+reportSessionActions(kept), "info")
 		return nil
 	})
+	// tool_call_cancel_on subscribes to tool_call with a handler that waits for the run's cancel signal and then answers (D650 claim 6: a handler that honours ctx.Done returns after the abort).
+	ext.Command("tool_call_cancel_on", "Subscribe to tool_call with a handler that waits for the cancel signal", func(ctx sdk.Context, _ string) error {
+		ext.OnEvent("tool_call", func(hctx sdk.Context, _ map[string]any) (any, error) {
+			hctx.Notify("cancel_wait", "info")
+			<-hctx.Done()
+			hctx.Notify("cancel_seen", "info")
+			return map[string]any{"block": true, "reason": "answered after the abort"}, nil
+		})
+		return nil
+	})
 	ext.Command("active_tools_get", "Report the active tools", func(ctx sdk.Context, _ string) error {
 		names, err := ctx.GetActiveTools()
 		if err != nil {
@@ -1458,6 +1468,17 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	redrawIntent := registerViewRows(ext)
+	// D521: bigint_tool registers a tool whose schema declares a bigint parameter and answers the kind of value it receives for it and the value (the same in every SDK fixture).
+	ext.Command("bigint_tool", "Register the tool that reports what a bigint argument arrives as", func(ctx sdk.Context, _ string) error {
+		ctx.RegisterTool(sdk.ToolDefinition{Name: "bigint_arg", Label: "bigint_arg", Description: "Report the kind and value of n", Parameters: sdk.Schema{"type": "object", "required": []string{"n"}, "properties": map[string]any{"n": map[string]any{"type": "bigint"}}}, Execute: func(_ sdk.Context, params map[string]any) (any, error) {
+			kind := "other"
+			if _, ok := params["n"].(string); ok {
+				kind = "string"
+			}
+			return map[string]string{"content": fmt.Sprintf("%s:%v", kind, params["n"])}, nil
+		}})
+		return nil
+	})
 	// D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it,
 	// shows it and updates it with a focus request, the same way in every SDK fixture (conformance
 	// TestConformance_UIViewToolShowsAndFocuses). The title and the node are the caller's.
