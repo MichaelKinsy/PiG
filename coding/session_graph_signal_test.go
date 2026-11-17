@@ -558,3 +558,23 @@ func TestGraphTwoRunsAbortedAtBirthShareOneContext(t *testing.T) {
 		t.Fatalf("a live run after them: %v, want a new live context", third)
 	}
 }
+
+// read runs under Host.pushState (//pig:hotpath) for every request, with its lock held: the token compare and the keep of a held run allocate nothing, whether the answer has a token or not. (A new run makes a context, as it always did.)
+func TestGraphSignalReadOfAHeldRunAllocatesNothing(t *testing.T) {
+	var s graphSignal
+	run := uint64(1)
+	for name, state := range map[string]*graphSignalState{
+		"no token": {}, "token": {Run: &run}, "token, aborted": {Aborted: true, Run: &run, EndedAborted: true},
+	} {
+		ask := func() (*graphSignalState, error) { return state, nil }
+		held := s.read(ask)
+		if n := testing.AllocsPerRun(100, func() {
+			if s.read(ask) != held {
+				t.Fatalf("%s: a read of the held run returned another context", name)
+			}
+		}); n != 0 {
+			t.Errorf("%s: a read of the held run allocates %v times, want 0", name, n)
+		}
+		s = graphSignal{}
+	}
+}
