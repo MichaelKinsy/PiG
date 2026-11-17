@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestGoPackedCellBuildWaitsForSDKStageLock(t *testing.T) {
@@ -51,7 +52,7 @@ func TestGoPackedCellBuildWaitsWhileSDKRootIsBeingReplaced(t *testing.T) {
 	t.Setenv("PIG_HOME", configRoot)
 	t.Setenv("PIG_SDK_GO_ROOT", "")
 	t.Setenv("PIG_SOURCE_ROOT", "")
-	t.Setenv("HOME", t.TempDir())
+	testenv.SetHome(t, t.TempDir())
 
 	sdkRoot := testStagedSDKDir(t, configRoot, "go")
 	if err := os.MkdirAll(sdkRoot, 0o755); err != nil {
