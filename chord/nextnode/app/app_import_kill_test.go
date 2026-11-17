@@ -703,3 +703,53 @@ func TestNothingIsServedAndNoWorkerStartsUntilTheStartHasResolvedItsIntents(t *t
 		t.Errorf("the start resolved its intent and served as\n%s\nwant\n%s", strings.Join(events, "\n"), strings.Join(want, "\n"))
 	}
 }
+
+// One unusable address at start, with no intent involved: the other addresses serve, a hold of that address fails with the worker's public
+// error, and the app reports a `workers` error that names the cause and a `host` error (`resolve_failed`). This is how the app treats an
+// unusable address, and the rule for an unusable intent (TestAnIntentThatCannotBeUsedBlocksItsAddressOnly) is the same. The hold waits for
+// the ready timeout, which the test sets through the app's options (about 13 seconds in all).
+func TestOneAddressWhoseStoreFilesAreGarbageFailsItsOwnWorkerAndTheOthersServe(t *testing.T) {
+	dataDir, root, _ := seamServer(t, func(s started) { populate(t, s, "p2", "notes of p2", "second", "blue") })
+	garbage := []byte("this is not a database, it is garbage that is long enough to look like a header.....................................")
+	for _, name := range []string{kitStore, archiveStore} {
+		if err := os.WriteFile(filepath.Join(WorkerDirectory(dataDir, projectAddress("p2")), name), garbage, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s := restarted(t, dataDir, root, func(o *AppOptions) { o.Timeouts.ReadyTimeout = 10 * time.Second })
+	other := holdNotes(t, s, "p1")
+	if got := member(t, other, "text"); got != "notes of p1" {
+		t.Errorf("p1 notes = %v", got)
+	}
+	other.Release()
+	held, err := s.app.Host.Get(background, notes, delta.JsonObjectOf("id", "p2"), host.GetOptions{})
+	if err == nil {
+		_, err = held.Member("text").Value()
+		held.Release()
+	}
+	if err == nil || !strings.Contains(err.Error(), "worker failed") {
+		t.Errorf("a hold of the unusable address = %v, want an error that says the worker failed", err)
+	}
+	var kinds []AppErrorKind
+	workers, hosts := "", ""
+	for _, reported := range s.errors.all() {
+		kinds = append(kinds, reported.Kind)
+		text := fmt.Sprint(reported.Error)
+		switch reported.Kind {
+		case AppErrorWorkers:
+			workers += text + "\n"
+		case AppErrorHost:
+			hosts += text + "\n"
+		}
+	}
+	slices.Sort(kinds)
+	if got := slices.Compact(kinds); !slices.Equal(got, []AppErrorKind{AppErrorHost, AppErrorWorkers}) {
+		t.Errorf("the app reported errors of kinds %v, want host and workers", got)
+	}
+	if !strings.Contains(workers, "project|p2") || !strings.Contains(workers, "file is not a database") {
+		t.Errorf("the workers errors %q do not name project|p2 and the cause", workers)
+	}
+	if !strings.Contains(hosts, "resolve_failed") || !strings.Contains(hosts, "project|p2") {
+		t.Errorf("the host errors %q do not say resolve_failed for project|p2", hosts)
+	}
+}
