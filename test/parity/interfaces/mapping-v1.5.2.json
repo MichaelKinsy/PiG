@@ -129165,9 +129165,9 @@
         "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_core_facet_test.go#TestNodeLoadNeedsOneWayToMakeEachCoreFacet",
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload"
+        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes"
       ]
     },
     {
@@ -129187,9 +129187,9 @@
         "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_core_facet_test.go#TestNodeLoadNeedsOneWayToMakeEachCoreFacet",
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload"
+        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes"
       ]
     },
     {
@@ -129365,9 +129365,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_core_facet_test.go#TestNodeLoadNeedsOneWayToMakeEachCoreFacet",
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload"
+        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129388,9 +129388,9 @@
         "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_core_facet_test.go#TestNodeLoadNeedsOneWayToMakeEachCoreFacet",
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
+        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129658,9 +129658,9 @@
         "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_core_facet_test.go#TestNodeLoadNeedsOneWayToMakeEachCoreFacet",
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload"
+        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes"
       ]
     },
     {
@@ -129680,9 +129680,9 @@
         "call:chord/nextnode/plugins/plugins_runtime.go#NewPluginRuntime"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_core_facet_test.go#TestNodeLoadNeedsOneWayToMakeEachCoreFacet",
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload"
+        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes"
       ]
     },
     {
@@ -130294,9 +130294,9 @@
         "call:chord/nextnode/plugins/plugins_plugins.go#CreatePlugins"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_core_facet_test.go#TestNodeLoadNeedsOneWayToMakeEachCoreFacet",
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAFailedGoCoreFacetKeepsItsDependentPluginOldAtReload"
+        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -130317,9 +130317,9 @@
         "call:chord/nextnode/plugins/plugins_runtime.go#PluginRuntime.Load"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_core_facet_test.go#TestNodeLoadNeedsOneWayToMakeEachCoreFacet",
         "test:chord/nextnode/plugins/plugins_examples_test.go#TestExample39BrowserBuildEvaluatedOnAPage",
-        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes",
-        "test:chord/nextnode/plugins/plugins_node_bridged_test.go#TestBridgedAProxyRequestAndAGoFunctionCallInFlightTogetherEachGetItsOwnAnswer"
+        "test:chord/nextnode/plugins/plugins_node_bridged_events_test.go#TestAPluginsCallOfATypeTheGoHostServesOverTheNodeHostsTrustedLinkCompletes"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
