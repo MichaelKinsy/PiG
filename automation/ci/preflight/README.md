@@ -66,7 +66,7 @@ Starting a job takes about 50 s.
 
 ## config.yaml
 
-`engine-revision`, `tools` and `checks`.
+`engine-revision`, `tools`, `checks` and `fix-title-exempt`.
 
 `tools` are the scanners, pinned by release and SHA-256, or by a hash-locked
 pip requirements file.
@@ -99,6 +99,21 @@ A scan:
 | `exit` | the codes that mean clean and the ones that mean findings; any other is an error |
 | `report` | where the findings are (`out` or `stdout`) and their format: `json`, `json-lines`, or `lines` read with a `pattern` whose named groups are `file`, `line` and `message`. A findings exit with no finding read is an error unless `unread-findings: pass` |
 | `added-lines-only` | keep only findings on lines the PR adds |
+
+### fix-title-exempt
+
+The `bug-ledger` and `changelog` checks treat a commit titled as a fix (`Fix ...`, `fix: ...`, `<area>: fix ...`) as proof that the pull request fixes something, whatever its `Fix:` answer says. A feature pull request can carry such commits for code it adds itself: nothing released was faulty, so a bug-ledger entry and a `### Fixed` line would be untrue, and `Fix: no` fails. `fix-title-exempt` is the narrow way out:
+
+```yaml
+fix-title-exempt:
+  - pr: 404
+    reason: the fix-titled commits of this pull request repair code that the pull request itself adds; no released behaviour was faulty
+    commits: [<full 40-digit sha>, ...]
+```
+
+With `Fix: no`, a fix-titled commit whose full sha is listed under this pull request's number is not evidence. The check passes with one `NOTE` line (and a notice annotation) that names the pull request, the commits and the reason. Everything else fails as before: a fix-titled commit the entry does not list (the message names the entry: its list must be reviewed again before it names the new commit), a listed sha in another pull request, a changed fragment that adds `### Fixed` (the exemption never covers fragments), and `Fix: yes` (it still needs its ledger change and its fragment with the fix marker). The entry is read from main's `config.yaml`, never from the pull request, so it takes effect only after its own pull request merges.
+
+The configuration is an error for every pull request, never a silent skip, when an entry has no `pr`, a reason under 60 characters, no commits, a sha that is not 40 lowercase hex digits, a duplicate sha, an unknown key, or when two entries name the same pull request. Editing the list decides the `bug-ledger` and `changelog` checks again.
 
 ## Reuse and invalidation
 
