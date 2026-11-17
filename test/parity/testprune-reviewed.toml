@@ -982,3 +982,9 @@ commit = "3090be6e3aef3fe0ea59cf69ae7afc53cd7ccc82"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The one value the pre-flight counts as changed is a string the test itself prints and waits for, not an expectation of behavior: the probe call that Close has to wait for printed `slow call running` and now prints `held call running`, and the test's OnOutput watches for that line to know the call has started. The call itself changed from a 2 s setTimeout to a wait on a file the test creates, which is why it is named `held`. The 200 ms stop grace is the same in the old and the new test, and no duration is an expected value. The production change of the commit is a test seam only: NodeHost.startAfter, which Close calls where it called time.NewTimer, defaults to afterTimer, the same wall-time timer (a Reset of the single timer became stopping it and starting a timer for closeTimeout plus the grace, with the same lengths and the same kill), so Close behaves as before outside a test that replaces the seam. Pi has no such host or test (its workers stop a child with one GRACE kill, workers.ts #shutdown), and no Pi line is behind the sentinel, so no Pi-derived expectation moved."
+
+[[entry]]
+path = "coding/extension/host/subprocess/autocomplete_sync_error_test.go"
+commit = "c3c2260ce7aafa286c7fa121ab8b5f024c609507"
+class = "message-only"
+reason = "The commit rewrites TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor from a 50 ms real-time timeout into synctest-driven helpers and moves its not-ready-UI case into TestAwaitEditorInstalledDoesNotWaitWithoutAnEditor. The literals that left the file are that test's failure messages (\"an editor the host has not bound must be waited for, got %v\", \"a UI that is not ready installs the editor when it becomes so: %v\"); no asserted value changed and no Pi behavior is involved: the awaiting caller still returns only once the host bound the editor, as the unchanged comment on the test says."
