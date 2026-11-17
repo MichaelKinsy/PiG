@@ -2438,3 +2438,28 @@ Remove when: Pi gives an extension a retry decision hook per failed request, or 
 
 Approval: owner, 2026-11-15T06:56:17Z. Owner decision: approved 2026-11-15T06:56:17Z (handoffs/0.8.0/OWNER-DECISIONS.md, that line): D653 and the stacked retry-decider seam (D654) are approved for 0.8.0.
 SCRUTINIZED:approved 2026-11-15
+
+## D655 A Go program can read a branch's entries by reference and read only the bodies it needs (`BranchRefs`, `ReadEntries`)
+
+Summary: A program that embeds PiG can list a branch's entries without reading them and then read, with an error and a context, only the entries it picks, so a page of a long session costs the page.
+
+Audience: author
+
+Stock disposition: inert capability. Stock PiG selects nothing: no command, extension host, RPC method or default reads a branch this way. The program that embeds `coding.SessionManager` calls the two methods when it wants them; the extension SDKs and the extension host's `getBranch` are unchanged and stay Pi-shaped.
+
+What: Pi holds every entry decoded in memory (`SessionManager.getBranch`, `getEntry`), so it has no selective read and no read that can fail after the file is opened. PiG keeps the entries of a long session in its snapshot of the file and reads them back on demand (D112), so `GetBranch` decodes every message of the branch before it returns (2000 entries of 4 KiB: 1744 record reads and decodes for a page of 5), `GetEntry` reads one entry with no batch, and none of the getters has an error or a context. Two methods of the session manager and one value type add what an embedding program needs, and change no existing method, the eager getters, the session file or the wire:
+
+- `BranchRef` (`coding.BranchRef`): `ID`, `ParentID`, `Type`, `Role` (the message's role, empty for any other entry) and `Timestamp` of one entry. It is a plain value: no file handle, no part of the snapshot. The log is append-only, so an id names the same entry for the life of the session; a leaf move changes what `BranchRefs` returns and never what `ReadEntries` returns for an id.
+- `BranchRefs(fromID...)`: `GetBranch`'s path as references: the same entries in the same order, the same rule for `fromID` (the current leaf when none is given; an unknown id or an empty one gives nil), and an id that two entries carry resolved as `GetBranch` resolves it (the newest). It reads no entry body.
+- `ReadEntries(ctx, ids)`: the entries with the given ids, decoded, in the order given (an id given twice is returned twice), read in one batch in file order. The session's lock is held only to find the entries, so an append does not wait for the read. An unknown id, a record that cannot be read back as it was indexed (the error is a `*coding.RecordChangedError`, which `errors.As` finds, and it names the entry), and a context that is done before the read or between the records of two sources (each compressed block of a long session is one) return an error and no entries: no partial result, and no panic. A done context's error is the context's. `EntryReads` counts the records the call read.
+
+Why: an embedding program that shows a page of a long session needs the order and the control records of the whole branch and the bodies of one page; reading the branch whole is the cost it cannot avoid today, and the internal lazy entry that would let it read less panics when its record cannot be read. The request is issue #451; the design is the proposal's section 5 (owner decision 11, 0.8.0).
+
+Call-site markers: `internal/codingagent/session_branch_refs.go` (`BranchRef`, `BranchRefs`, `ReadEntries`), `internal/sessionentry/lazy.go` (`MaterializeAllContext`).
+
+Locked by: `TestBranchRefsAreGetBranch`, `TestBranchRefsReadNoBody`, `TestBranchRefsCostNoReads`, `TestReadEntriesKeepsTheOrderAndReadsOnlyTheGivenEntries`, `TestReadEntriesOfAnUnknownIDIsAnErrorAndNoPartialResult`, `TestReadEntriesOfAChangedRecordIsTheRecordChangedError`, `TestReadEntriesOfACancelledContextReadsNothing`, `TestReadEntriesDuringAppends` and `TestReadEntriesOfASessionWithoutASnapshot` (`internal/codingagent/session_branch_refs_test.go`), `TestMaterializeAllContextStopsBetweenSources` (`internal/sessionentry/lazy_context_test.go`), `ExampleSessionManager_ReadEntries` (`coding/session_branch_reads_example_test.go`); measured by `BenchmarkBranchRefsOf10000` and `BenchmarkReadEntries50Of10000`.
+
+Remove when: Pi has a selective branch read of its own, or the embedding programs that use it drop it.
+
+Approval: owner decision 11 for 0.8.0 (issue #451, additive Go-embedding read API, errors not panics, reference lifetime as specified), relayed by the release coordinator on 2026-11-16.
+SCRUTINIZED:approved

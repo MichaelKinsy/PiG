@@ -2,6 +2,7 @@ package sessionentry
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -137,6 +138,12 @@ func ReadRaw(entry FileEntry) (json.RawMessage, error) {
 
 // ReadRaws is the record of each entry, reading the records of LazyEntry values of one source together in source order.
 func ReadRaws(entries []SessionEntry) ([]json.RawMessage, error) {
+	//portlint:allow ctxbackground the entry point of the reads that have no caller context; ReadRawsContext takes one
+	return ReadRawsContext(context.Background(), entries)
+}
+
+// ReadRawsContext is ReadRaws that stops when ctx is done, before the read of each source's records, with ctx's error.
+func ReadRawsContext(ctx context.Context, entries []SessionEntry) ([]json.RawMessage, error) {
 	out := make([]json.RawMessage, len(entries))
 	type pending struct {
 		entries []*LazyEntry
@@ -160,6 +167,9 @@ func ReadRaws(entries []SessionEntry) ([]json.RawMessage, error) {
 		p.index = append(p.index, i)
 	}
 	for _, src := range sources {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		p := bySource[src]
 		read := make([]json.RawMessage, len(p.entries))
 		if err := readFrom(src, p.entries, read); err != nil {
@@ -189,6 +199,15 @@ func Materialize(entry SessionEntry) (SessionEntry, error) {
 // MaterializeAll is Materialize of each entry, reading the records of LazyEntry values together and decoding a long run of them on several
 // goroutines, joined before it returns; the error is the one of the first entry that fails. It returns entries itself when none is lazy.
 func MaterializeAll(entries []SessionEntry) ([]SessionEntry, error) {
+	//portlint:allow ctxbackground the entry point of the reads that have no caller context; MaterializeAllContext takes one
+	return MaterializeAllContext(context.Background(), entries)
+}
+
+// MaterializeAllContext is MaterializeAll that stops when ctx is done, before the read of each source's records and before the decode, with
+// ctx's error and no entries.
+//
+// pig additive (D655): ReadEntries of an embedding program reads a batch it can cancel; Pi holds every entry decoded and reads none.
+func MaterializeAllContext(ctx context.Context, entries []SessionEntry) ([]SessionEntry, error) {
 	lazy := 0
 	for _, entry := range entries {
 		if _, ok := entry.(*LazyEntry); ok {
@@ -198,8 +217,11 @@ func MaterializeAll(entries []SessionEntry) ([]SessionEntry, error) {
 	if lazy == 0 {
 		return entries, nil
 	}
-	raws, err := ReadRaws(entries)
+	raws, err := ReadRawsContext(ctx, entries)
 	if err != nil {
+		return nil, err
+	}
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 	out := make([]SessionEntry, len(entries))

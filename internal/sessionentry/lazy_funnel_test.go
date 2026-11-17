@@ -136,9 +136,10 @@ const codingagentPath = "github.com/MichaelKinsy/PiG/internal/codingagent"
 // it gets only to the error-returning funnel (ReadRaws, MaterializeAll) or to Base, so no LazyEntry reaches asMessage or Raw, which panic on a
 // record that changed on disk.
 var (
-	lazyRoutes     = map[string]bool{"HandleReads": true, "entryHandles": true, "branchHandles": true, "treeHandles": true, "entryHandlesLocked": true}
+	lazyRoutes     = map[string]bool{"HandleReads": true, "entryHandles": true, "branchHandles": true, "treeHandles": true, "entryHandlesLocked": true, "entryHandlesStaleLocked": true}
 	lazyRouteFiles = map[string]bool{
 		"internal/codingagent/session_lazy.go":           true,
+		"internal/codingagent/session_branch_refs.go":    true,
 		"internal/codingagent/session.go":                true,
 		"internal/codingagent/extension_session_read.go": true,
 		"coding/cli/rpc_mode.go":                         true,

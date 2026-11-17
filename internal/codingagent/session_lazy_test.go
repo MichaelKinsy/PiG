@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -162,63 +163,67 @@ func TestLazyEntriesKeepTheirTimestamps(t *testing.T) {
 	}
 }
 
-// A session that got no snapshot reads its records back from the session file. A lazy entry whose record changed there under the session
-// (rewritten in place, cut short or removed) is an error of every read that returns its record or its message, naming the entry: no read
-// returns other bytes or the base members alone.
+// A session reads the records it does not hold from its snapshot. A lazy entry whose record changed there under the session (the snapshot's
+// bytes rewritten in place, cut short or unreadable, as after an I/O error) is an error of every read that returns its record or its message,
+// naming the entry: no read returns other bytes or the base members alone. (A session that can make no snapshot holds its entries in memory
+// and has no lazy entry: TestResumedSessionWithoutASnapshotReadsAsLoadedAfterItsFileChanges.)
 func TestLazyEntryOfAChangedRecordIsAnError(t *testing.T) {
-	withoutSnapshots(t)
-	for _, change := range []string{"rewritten", "truncated", "removed"} {
-		t.Run(change, func(t *testing.T) {
-			live, _ := randomStoreSession(t, 3, 200)
-			session, err := NewSessionManagerWithDir(t.TempDir(), filepath.Dir(live.Path())).Open(live.Path())
-			if err != nil {
-				t.Fatal(err)
-			}
-			entries := HandleReads{Session: session}.GetEntries()
-			var target *sessionentry.LazyEntry
-			for _, entry := range entries {
-				if lazy, ok := entry.(*sessionentry.LazyEntry); ok {
-					target = lazy
-					break
+	snapshotModes(t, func(t *testing.T) {
+		for _, change := range []string{"rewritten", "truncated", "removed"} {
+			t.Run(change, func(t *testing.T) {
+				live, _ := randomStoreSession(t, 3, 200)
+				session, err := NewSessionManagerWithDir(t.TempDir(), filepath.Dir(live.Path())).Open(live.Path())
+				if err != nil {
+					t.Fatal(err)
 				}
-			}
-			if target == nil {
-				t.Fatal("no lazy entry")
-			}
-			data, err := os.ReadFile(session.Path())
-			if err != nil {
-				t.Fatal(err)
-			}
-			raw, err := sessionentry.ReadRaw(target)
-			if err != nil {
-				t.Fatal(err)
-			}
-			at := strings.Index(string(data), string(raw))
-			switch change {
-			case "rewritten":
-				changed := strings.Replace(string(raw), `"role":"`, `"role":"X`, 1)[:len(raw)]
-				data = append(append(data[:at:at], changed...), data[at+len(raw):]...)
-				err = os.WriteFile(session.Path(), data, 0o600)
-			case "truncated":
-				err = os.WriteFile(session.Path(), data[:at+len(raw)/2], 0o600)
-			case "removed":
-				err = os.Remove(session.Path())
-			}
-			if err != nil {
-				t.Fatal(err)
-			}
-			var changed *sessionentry.RecordChangedError
-			if _, err := sessionentry.ReadRaws(entries); !errors.As(err, &changed) || change != "removed" && changed.ID != target.Base().ID {
-				t.Fatalf("ReadRaws: %v, want the RecordChangedError of %s", err, target.Base().ID)
-			}
-			if _, _, err := sessionentry.AsMessage(target); !errors.As(err, &changed) {
-				t.Fatalf("AsMessage: %v, want a RecordChangedError", err)
-			}
-			if _, err := json.Marshal(entries); !errors.As(err, &changed) {
-				t.Fatalf("Marshal: %v, want a RecordChangedError", err)
-			}
-		})
-	}
+				entries := HandleReads{Session: session}.GetEntries()
+				var target *sessionentry.LazyEntry
+				for _, entry := range entries {
+					if lazy, ok := entry.(*sessionentry.LazyEntry); ok {
+						target = lazy
+						break
+					}
+				}
+				if target == nil {
+					t.Fatal("no lazy entry")
+				}
+				snapshot := session.snapshot
+				if snapshot == nil {
+					t.Fatal("the session has no snapshot")
+				}
+				data, err := io.ReadAll(io.NewSectionReader(snapshot.file, 0, snapshot.size))
+				if err != nil {
+					t.Fatal(err)
+				}
+				raw, err := sessionentry.ReadRaw(target)
+				if err != nil {
+					t.Fatal(err)
+				}
+				at := strings.Index(string(data), string(raw))
+				switch change {
+				case "rewritten":
+					_, err = snapshot.file.WriteAt([]byte(strings.Replace(string(raw), `"role":"`, `"role":"X`, 1)[:len(raw)]), int64(at))
+				case "truncated":
+					err = snapshot.file.Truncate(int64(at + len(raw)/2))
+				case "removed":
+					err = snapshot.file.Close()
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				var changed *sessionentry.RecordChangedError
+				if _, err := sessionentry.ReadRaws(entries); !errors.As(err, &changed) || change != "removed" && changed.ID != target.Base().ID {
+					t.Fatalf("ReadRaws: %v, want the RecordChangedError of %s", err, target.Base().ID)
+				}
+				if _, _, err := sessionentry.AsMessage(target); !errors.As(err, &changed) {
+					t.Fatalf("AsMessage: %v, want a RecordChangedError", err)
+				}
+				if _, err := json.Marshal(entries); !errors.As(err, &changed) {
+					t.Fatalf("Marshal: %v, want a RecordChangedError", err)
+				}
+			})
+		}
+	})
 }
 
 // Whole-history reads on several goroutines while the session appends and compacts each read a consistent log: every lazy entry they return

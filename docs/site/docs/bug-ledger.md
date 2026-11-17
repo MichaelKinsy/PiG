@@ -1172,6 +1172,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7febcec](#bf-7febcec) | Quitting while an OAuth token refresh is in flight no longer loses the new token | PiG's own defect | All platforms | Unreleased |
 | [BF-8001cc5](#bf-8001cc5) | `SettingsManager` collection getters (getPackages, getExtensionPaths, getSkillPaths, getPromptTemplatePaths… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8001cc5-2](#bf-8001cc5-2) | `SettingsManager.getCompactionSettings` (+ `getCompactionReserveTokens`, `getCompactionKeepRecentTokens`)… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8013c00](#bf-8013c00) | A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room… | PiG's own defect | All platforms | Unreleased |
 | [BF-8019120](#bf-8019120) | `pig config` in the default theme no longer draws the space after a dim checkbox, or the name of a… | PiG's own defect | All platforms | Unreleased |
 | [BF-801cadd](#bf-801cadd) | fix(codingagent): session files decode invalid UTF-8 as Node does | PiG's own defect | All platforms | Unreleased |
 | [BF-8022d7a](#bf-8022d7a) | fix(chord/nextnode): no JSON decode into an interface value in the terminal pipe or the browser driver… | PiG's own defect | All platforms | Unreleased |
@@ -18295,6 +18296,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0ae4683246` (2026-10-08), `e8cc072521` (2026-10-08), `433d232815` (2026-10-09), `8001cc51af` (2026-10-10)
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `chord/delta/own_key_order_test.go::TestDiffRevisionsVisitsArrayIndexKeysFirstInNumericOrder` and 6 more in docs/bug-ledger.json
 - **Release note:** `SettingsManager.getCompactionSettings` (+ `getCompactionReserveTokens`, `getCompactionKeepRecentTokens`), `getShellPath`, `getSessionDir`, `getThemeSetting`, `getTheme`, `getModelThinkingLevel`: new live-Pi oracle `TestSettingsManagerResolvedGettersMatchPi` (3,000 layered global/project file pairs; model override beats ordinary setting beats default; invalid authored token values and unsafe integers compared by thrown message; path settings through normalizePath with home expansion and file URLs; a theme containing "/" reads as unset). No bug found. 9 mutations red (override ignored, either validation removed, override key, object message, theme slash rule, normalizePath bypass, model-level key). Not compared: wrong-typed values, empty strings.
+
+### BF-8013c00
+
+**A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or no right to write the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error, or a prompt that had lost turns.
+- **Root cause:** without a snapshot the entries were located by the file offsets of their lines in the live file, and a load that made no snapshot, a snapshot write that failed and the first write of a new session were all left to read from that file
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8013c00611` (2026-11-16)
+- **Tests:** `internal/codingagent/session_lazy_test.go::TestLazyEntryOfAChangedRecordIsAnError`, `internal/codingagent/session_nosnapshot_test.go::TestCreatedSessionWithoutASnapshotReadsAsWrittenAfterItsFileChanges`, `internal/codingagent/session_nosnapshot_test.go::TestForkAfterTheFileChangesWithoutASnapshotWritesTheLoadedBranch`, `internal/codingagent/session_nosnapshot_test.go::TestLeafMovedAfterTheFileChangesWithoutASnapshotBuildsTheLoadedContext`, `internal/codingagent/session_nosnapshot_test.go::TestResumedSessionWithoutASnapshotReadsAsLoadedAfterItsFileChanges`, `internal/codingagent/session_nosnapshot_test.go::TestSessionWhoseSnapshotWriteFailsLaterReadsAsLoadedAfterItsFileChanges`, `internal/codingagent/session_nosnapshot_test.go::TestSessionWithoutASnapshotKeepsOnlyItsContextTailDecoded`
+- **Release note:** A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or no right to write the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error, or a prompt that had lost turns. Such a session now reads the whole file once and keeps its entries in memory, as Pi does, and never reads the file again.
 
 ### BF-8019120
 
