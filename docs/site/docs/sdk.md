@@ -269,6 +269,24 @@ defer session.Close()
 
 An explicit Services CWD wins over the manager's CWD. Without a manager override, new persisted Sessions use the selected Services agent directory. `GetSessionFile` returns nil in memory. A persisted manager selects a file path before the first user or assistant message creates it, so `IsPersisted` does not imply that the file already exists. Forks and clones keep the source persistence mode. A retained branch without a user or assistant message defers its file write. A factory-owned Runtime fork replaces the Session but retains the in-memory SessionManager object.
 
+### Read part of a long branch
+
+`SessionManager.GetBranch` reads and decodes every message of the branch it returns. A program that shows one page of a long session reads in two steps instead. `BranchRefs(fromID...)` returns the path `GetBranch` returns (the same entries, order and `fromID` rules) as `coding.BranchRef` values with the `ID`, `ParentID`, `Type`, `Role` and `Timestamp` of each entry, and reads no entry body. `ReadEntries(ctx, ids)` reads and decodes the entries with the given ids, in the order given, in one batch:
+
+```go
+manager, _ := coding.NewInMemorySessionManager(".")
+// ... append entries, or use the manager of a resumed Session
+refs := manager.BranchRefs() // the whole branch, in order, with no entry body read
+page := []string{refs[1].ID, refs[2].ID}
+entries, err := manager.ReadEntries(ctx, page)
+var changed *coding.RecordChangedError
+if errors.As(err, &changed) {
+    // the record of changed.ID cannot be read back as it was indexed
+}
+```
+
+A `BranchRef` is a plain value that holds no file handle and no part of the log. The log is append-only, so an id names the same entry for the life of the `SessionManager`: moving the leaf changes what `BranchRefs` returns, never what `ReadEntries` returns for an id. `ReadEntries` takes the session's lock only to find the entries, so an append does not wait for the read. An unknown id, a record that cannot be read back, and a `ctx` that is done before the read or between the records of two sources each return an error and no entries: there is no partial result and no panic. The error of a done `ctx` is the context's, and one for a record is a `*coding.RecordChangedError` naming the entry. `EntryReads` counts the records a read took from the log. These methods are an addition of PiG's (D655): Pi holds every entry decoded and has no such read, and the extension SDKs' `getBranch` is unchanged.
+
 Direct calls to a Session's tools receive its current identity, model and thinking state. A tool call with an explicit ToolEnvironment keeps that context instead. Clones keep separate context bindings.
 
 ### Supply an Agent or a cache warmer
