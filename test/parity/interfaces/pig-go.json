@@ -91081,6 +91081,116 @@
       "shapeHash": "sha256:fdf2666500c9db0c0757e98a258a441287e79edd40263ea0631840f16863241a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aceInheritOnly",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aceInheritOnly",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclDataAccess",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclDataAccess",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclFileAppendData",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclFileAppendData",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclFileReadData",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclFileReadData",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclFileWriteData",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclFileWriteData",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclGenericAll",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclGenericAll",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclGenericRead",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclGenericRead",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclGenericWrite",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclGenericWrite",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclWriteDAC",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclWriteDAC",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#aclWriteOwner",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "aclWriteOwner",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#acpBuildTarget",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "acpBuildTarget",
@@ -94898,6 +95008,17 @@
       "shapeHash": "sha256:387f2027b7dee4d63c832aaf0e9a84b1b4b5ad46ffb4d5cdbd880d8812a6dde2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#describeSID",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "describeSID",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sid string) string"
+      },
+      "shapeHash": "sha256:33f2a80152237c065c9dfa24a26948fa83c6d75dc376d2c167e673c4c5352a52"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#detailedVersionString",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "detailedVersionString",
@@ -97536,6 +97657,17 @@
         "type": "func(path string) (net.Listener, error)"
       },
       "shapeHash": "sha256:3b816aeae8b67b4c2e5949f94a7ccb66aa83b8ceaefdea7154d81a90009e9b62"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenSocketRefusal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "listenSocketRefusal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(user string, dacl windowsDACL) string"
+      },
+      "shapeHash": "sha256:4955f7952bd415817a59b2e9cb95e87a8015cace98253083ec6432bd9734c68b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#listenTerminationSignals",
@@ -105535,6 +105667,50 @@
       "shapeHash": "sha256:6c550f6c470c22b115615ed9a1e944029b82f1453d94cdcc1778d7bda85d38c7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#sidAdministrators",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "sidAdministrators",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#sidCreatorGroup",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "sidCreatorGroup",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#sidCreatorOwner",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "sidCreatorOwner",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#sidSystem",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "sidSystem",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#signPigBuild",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "signPigBuild",
@@ -107931,6 +108107,39 @@
         "type": "func() string"
       },
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#wellKnownSIDNames",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "wellKnownSIDNames",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "map[string]string"
+      },
+      "shapeHash": "sha256:745c198d1e8b89727fedc49d3ee1a081d44e828b69940e1f62928394d51a0f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#windowsACE",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "windowsACE",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "windowsACE"
+      },
+      "shapeHash": "sha256:8884cc764041b0d43fbea993cb6a14424f36da180ed52c78e971f1346a812dd2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#windowsDACL",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "windowsDACL",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "windowsDACL"
+      },
+      "shapeHash": "sha256:2509477c46cb0630e0edbc472564b18d17392a8b942651add880b035c0f15a67"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#withAuthMockClient",
