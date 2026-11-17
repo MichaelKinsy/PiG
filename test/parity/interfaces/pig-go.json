@@ -127975,6 +127975,17 @@
       "shapeHash": "sha256:b7b269a46655ede7b038f9a18ece9834c7d9620fcbf6b293aefb26db7131337e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#anyRacy",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "anyRacy",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(stamps []treeStamp, began time.Time) bool"
+      },
+      "shapeHash": "sha256:6191f3a9ecfa99106ddb2cffe1c4a97a3921dedbb49f67e5a78baf21108120b9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#brokenToolchain",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "brokenToolchain",
@@ -128822,6 +128833,17 @@
       "shapeHash": "sha256:996ddf571645c7a9e4d3e91d4c47875085ff824fe570695f5ef06513b271d8a2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#errTreeChanged",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "errTreeChanged",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "error"
+      },
+      "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#exeNameForRuntime",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "exeNameForRuntime",
@@ -128941,6 +128963,17 @@
         "type": "func(extensions []GoExtension, preferred string) (string, error)"
       },
       "shapeHash": "sha256:84f4e82aa617c0c863b956a87699ecd30d5598dc1e9ed22359a8e5689e1eb989"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#forgetTree",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "forgetTree",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(abs string, memo *memoizedTree)"
+      },
+      "shapeHash": "sha256:68af94a811c3a86e2e489bb9ad670dded98635d8c3b8d6aaf10f3c2c74cd96dc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#gcLockRetry",
@@ -129306,6 +129339,17 @@
       "shapeHash": "sha256:b3dc83c8c1370f6444063d5084385fd53840d9369b0026b829c2971675c92aa7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#hashAndMemoizeTree",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "hashAndMemoizeTree",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(abs string) string"
+      },
+      "shapeHash": "sha256:632eb806f7a7f10dad9ed876c462372a8b031d8cb9ac58db9bb99eccf15af613"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#hashBuildInput",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "hashBuildInput",
@@ -129370,6 +129414,17 @@
         "type": "func(fsys io/fs.FS, label string, vanish *VanishTracker) string"
       },
       "shapeHash": "sha256:6f33f398a619a8a36d85aac2184031da9cce60aec75a7f9d628107e32c72cf20"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#hashPhysicalTree",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "hashPhysicalTree",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(abs string, stamps *[]treeStamp) string"
+      },
+      "shapeHash": "sha256:8794efdf742a0688c208eb23bc7933a8b6326dab2bd7044075b787709cbc85ca"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#hashTree",
@@ -129458,6 +129513,17 @@
         "type": "func(line []byte) bool"
       },
       "shapeHash": "sha256:c7fd34088e97b997db218b173b88929cfdfaaa39142d170981e63f9ba028f2ef"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#isSDKStagingArea",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "isSDKStagingArea",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string) bool"
+      },
+      "shapeHash": "sha256:451b0d543749447787c9a569018000fef5d03bb4235deb5a55dbf6b58d4ae8a5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#isSHA256Hex",
@@ -129647,6 +129713,17 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#maxMemoizedTrees",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "maxMemoizedTrees",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#maxSummaryRunes",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "maxSummaryRunes",
@@ -129656,6 +129733,28 @@
         "type": "untyped int"
       },
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#memoizedTree",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "memoizedTree",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "memoizedTree"
+      },
+      "shapeHash": "sha256:2c8046b016ac1c6b62ecee048f7a2cfe0a9b4d77bc4acabb0391887252144783"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#memoizedTrees",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "memoizedTrees",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "struct{mu sync.Mutex; byRoot map[string]*memoizedTree}"
+      },
+      "shapeHash": "sha256:e7bae88365ae2e0f39ec71df11b97247f7208e895657fb375207c301e71119b7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#mergeGoSum",
@@ -130208,6 +130307,138 @@
       "shapeHash": "sha256:00404e686415370f1711c4d7acfa2905444d3cf23cef2e10c47d445ebe690f96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "time.Duration"
+      },
+      "shapeHash": "sha256:83488df5bf69d53eed0fce849900072064e69ce5fc0b1a0f19720f7f5af6ce46"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow.Abs",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow.Abs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() time.Duration"
+      },
+      "shapeHash": "sha256:182a2bb05a9afffa29d82fa1b9199409a6edc02648d561478a37684fc219d429"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow.Hours",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow.Hours",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow.Microseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow.Microseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow.Milliseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow.Milliseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow.Minutes",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow.Minutes",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow.Nanoseconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow.Nanoseconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() int64"
+      },
+      "shapeHash": "sha256:90a5474f09278770f4673cfb45cf590f4269dcf8700e829efb33302c71576e01"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow.Round",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow.Round",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow.Seconds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow.Seconds",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() float64"
+      },
+      "shapeHash": "sha256:dd83be6ee46574c9a5e582bb0e3ecaa65591b89698409ba285fe424794c25f12"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow.String",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow.String",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow.Truncate",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow.Truncate",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(m time.Duration) time.Duration"
+      },
+      "shapeHash": "sha256:39141cddd85eb7dfd5f1aefdd730190ba3f474ef79255ee327bb2fbccb4168ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#racyTreeWindow.format",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "racyTreeWindow.format",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(buf *[32]byte) int"
+      },
+      "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#readCellFailureMetadata",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "readCellFailureMetadata",
@@ -130272,6 +130503,17 @@
         "type": "func(path string, fingerprint string) (string, bool)"
       },
       "shapeHash": "sha256:e568205d0afd9e2cd19fb60b52430e7a456564e42fe21c20b677e19ad4f8edff"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#readTreeFile",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "readTreeFile",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) ([]byte, error)"
+      },
+      "shapeHash": "sha256:d7de7db1d63712eb1ed7ec6bb5460df55a4d8f9ea291b20da87a38d300b55321"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#removeTreeContext",
@@ -130802,6 +131044,17 @@
       "shapeHash": "sha256:03d9e42d52d4b1a4bde77c297494f230afafdd8754a38685b78821cceac00993"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#resolveTreeRoot",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "resolveTreeRoot",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(root string) (string, error)"
+      },
+      "shapeHash": "sha256:005dc38a2634055b614b96c0cc93327ddaf306ae7e2f97fba61de69403750d9f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#reuseGoPackedCell",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "reuseGoPackedCell",
@@ -130934,6 +131187,17 @@
       "shapeHash": "sha256:6e3ad345d611c3a4fed68fe24440b9ecca5671ba82bf5f3d24550daa0859b7be"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#sdkTreeHash",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "sdkTreeHash",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(root string) string"
+      },
+      "shapeHash": "sha256:cbca0c9fefb5a16b8b483367002b488f82abcac5c198b8d9149313c4347b8017"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#sdkVersionFor",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "sdkVersionFor",
@@ -131042,6 +131306,17 @@
         "type": "func(lang string) []string"
       },
       "shapeHash": "sha256:123857933b4c084b58b71b8a8b231ad060db3d869d8e43cc3af0e3e26b19cfb9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#stagedSDKTree",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "stagedSDKTree",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(abs string) bool"
+      },
+      "shapeHash": "sha256:efaf90d94501e9dee870d6dd891af69c26fd69bc256dca6060321226ccb96283"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#staleScratchAge",
@@ -131174,6 +131449,17 @@
         "type": "func(buf *[32]byte) int"
       },
       "shapeHash": "sha256:2dfd215036b14c3898ddd16ce618fec9fa6ba141357d49869e3171fbf3801867"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#stampOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "stampOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(path string, info io/fs.FileInfo) treeStamp"
+      },
+      "shapeHash": "sha256:ca9fa31750126bd749f291daabb105cfe07ee048567e0b5b52fe751caccab32d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#statHasFile",
@@ -131770,6 +132056,39 @@
       "shapeHash": "sha256:fdfe609a45f2c2fc2649d0d0c2822d259ad9efbae653c8bdc35d337a66f4b8cb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#treeMemoClock",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "treeMemoClock",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func() time.Time"
+      },
+      "shapeHash": "sha256:2e22bffc678f9368aec638f9e5c41c11f2326f6894a601fde6fd2616a093ec7b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#treeStamp",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "treeStamp",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "treeStamp"
+      },
+      "shapeHash": "sha256:e48783326519fd4acbbc1c4401ee695104910e2b85615f61687c2d4296ce9b4b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#treeStampsMatch",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "treeStampsMatch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(abs string, stamps []treeStamp) bool"
+      },
+      "shapeHash": "sha256:f64eef3e9760e94db9586239d60c84b2eb974b39860240be1aba9208b22f95de"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#trimBuildLogs",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "trimBuildLogs",
@@ -131834,6 +132153,17 @@
         "type": "func(path string, d io/fs.DirEntry, fn io/fs.WalkDirFunc) error"
       },
       "shapeHash": "sha256:0e7b9ba56891388cedae7aa397f2f6b8dca3d94c20d7540f1d83e70bdbc8e3f6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#walkHashedFiles",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
+      "name": "walkHashedFiles",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(abs string, visit func(path string, info io/fs.FileInfo) error) error"
+      },
+      "shapeHash": "sha256:a1f117a9386080a164e9ad0db137525832f8d9bcf9163ce001c172376ad12e64"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#windowsDeletion",
