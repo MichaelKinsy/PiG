@@ -88,10 +88,28 @@ type check struct {
 }
 
 type config struct {
-	EngineRevision int     `yaml:"engine-revision"`
-	Tools          []tool  `yaml:"tools"`
-	Checks         []check `yaml:"checks"`
+	EngineRevision int                 `yaml:"engine-revision"`
+	Tools          []tool              `yaml:"tools"`
+	Checks         []check             `yaml:"checks"`
+	FixTitleExempt []fixTitleExemption `yaml:"fix-title-exempt"`
 }
+
+// fixTitleExemption names one pull request whose own commits repair code the same pull request adds. With `Fix: no`, the
+// fix-titled commits listed here are not evidence of a fix. It never covers a commit it does not list, another pull
+// request, or a changelog fragment.
+type fixTitleExemption struct {
+	PR      int      `yaml:"pr" json:"pr"`
+	Reason  string   `yaml:"reason" json:"reason"`
+	Commits []string `yaml:"commits" json:"commits"`
+}
+
+// minFixExemptReason keeps a reason from being a placeholder: it is shown in the check's output and the comment.
+const minFixExemptReason = 60
+
+var fullSHARE = regexp.MustCompile(`^[0-9a-f]{40}$`)
+
+// fixTitleRules are the rules whose verdict reads the list, so an edit of the list decides them again.
+var fixTitleRules = []string{"fix-ledger", "changelog-fragment"}
 
 const (
 	stageCheap = "cheap"
@@ -126,6 +144,9 @@ func loadConfig(data []byte) (config, error) {
 			return config{}, fmt.Errorf("config: tool %d: %w", i+1, err)
 		}
 	}
+	if err := validateFixTitleExempt(cfg.FixTitleExempt); err != nil {
+		return config{}, fmt.Errorf("config: fix-title-exempt: %w", err)
+	}
 	seen := map[string]bool{}
 	for i := range cfg.Checks {
 		c := &cfg.Checks[i]
@@ -139,8 +160,49 @@ func loadConfig(data []byte) (config, error) {
 		if err := c.validate(); err != nil {
 			return config{}, fmt.Errorf("config: check %q: %w", c.Name, err)
 		}
+		if len(cfg.FixTitleExempt) > 0 && slices.Contains(fixTitleRules, c.Rule) {
+			raw, err := json.Marshal(cfg.FixTitleExempt)
+			if err != nil {
+				return config{}, err
+			}
+			sum := sha256.Sum256(append([]byte(c.declared), raw...))
+			c.declared = hex.EncodeToString(sum[:])
+			c.definition = c.declared
+		}
 	}
 	return cfg, nil
+}
+
+func validateFixTitleExempt(list []fixTitleExemption) error {
+	prs := map[int]bool{}
+	for i, e := range list {
+		where := fmt.Sprintf("entry %d", i+1)
+		switch {
+		case e.PR < 1:
+			return fmt.Errorf("%s needs pr, the pull request number", where)
+		case prs[e.PR]:
+			return fmt.Errorf("%s: pull request #%d is listed twice; one entry lists all its commits", where, e.PR)
+		}
+		prs[e.PR] = true
+		where = fmt.Sprintf("entry %d (PR #%d)", i+1, e.PR)
+		if n := len([]rune(strings.TrimSpace(e.Reason))); n < minFixExemptReason {
+			return fmt.Errorf("%s: reason has %d characters, at least %d are needed to say why no fix is being claimed", where, n, minFixExemptReason)
+		}
+		if len(e.Commits) == 0 {
+			return fmt.Errorf("%s lists no commits", where)
+		}
+		seen := map[string]bool{}
+		for _, sha := range e.Commits {
+			switch {
+			case !fullSHARE.MatchString(sha):
+				return fmt.Errorf("%s: commit %q is not a full 40-digit lowercase sha", where, sha)
+			case seen[sha]:
+				return fmt.Errorf("%s: commit %s is listed twice", where, sha)
+			}
+			seen[sha] = true
+		}
+	}
+	return nil
 }
 
 func (t tool) validate() error {
