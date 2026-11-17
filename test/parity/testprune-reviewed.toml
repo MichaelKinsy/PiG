@@ -989,3 +989,10 @@ commit = "6fe688207d8dee14cd2a64fbc01a4fb8278a2a7a"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The one value the lint counts as changed is a length the test computes, not an expectation of behavior: the worst-case socket path of the kept socket directory was written with the literal leaf `e-9999.sock` and is now written with the constant worstRuntimeSocketLeaf, the longest leaf of the new per-generation socket path (`<count>.s`, at most 9 bytes), because newSocketPath replaced the per-name path `e-<counter>.sock` in host.go, packed_go.go, platform.go and retention.go. The path of a socket is a PiG host detail: Pi has no subprocess extension host and makes no sockets, so no Pi line is behind the value and no Pi-derived expectation moved."
+
+[[entry]]
+path = "test/parity/cmd/portmapcheck/replaycache_test.go"
+commit = "979e2190db1e5fe49a5da192970b54cf159ba79a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "A tool-internal expectation of PiG's portmapcheck, not Pi behavior: the cache server now hands a shared-cache hit out as a copy in the run's private cache (the review thread at replaycacheserver.go:226 asked for it: a go cache trim could delete the shared file mid-replay), so TestCacheServerAnswersOnlyWhatItCanVerify expects the DiskPath of the hit under the store, not under the shared cache, and TestServerReadsTheLayoutOfGo compares that path relative to the store with go's own path relative to its cache. The expected value moves from the shared file's path to the copy's; the bytes, size and output id are unchanged."
