@@ -35,55 +35,64 @@ func TestEveryListedCatalogEntryIsRecognizedAndEncodesAsItsRecord(t *testing.T) 
 	}
 }
 
+// catalogFamilyEntries is one entry of each API kind the bundled catalog holds that satisfies has, in the order the kinds first appear in the catalog: the
+// provider families are read from the data, not listed.
+func catalogFamilyEntries(has func(*GeneratedModel) bool) []*GeneratedModel {
+	seen := map[API]bool{}
+	var picked []*GeneratedModel
+	for i := range GeneratedModels {
+		entry := &GeneratedModels[i]
+		if seen[entry.API] || !has(entry) {
+			continue
+		}
+		seen[entry.API] = true
+		picked = append(picked, entry)
+	}
+	return picked
+}
+
 // reflect.DeepEqual tells a nil slice or map from an empty one, which the record does not (omitempty): such a model is reported changed, takes the
-// encoding path, and emits the same bytes. A model that differs in a member the record keeps takes that path and emits different ones.
+// encoding path, and emits the same bytes. A model that differs in a member the record keeps takes that path and emits different ones. Each case runs
+// against one entry of every API family that has the member in the state the case changes: the nil-to-empty cases need an entry whose member is nil
+// and fail when the catalog holds none, so a case cannot pass by changing nothing.
 func TestCatalogModelDeepEqualErrsTowardTheEncodingPath(t *testing.T) {
-	base := func() *Model { return GeneratedModels[0].ToModel() }
+	everyEntry := func(*GeneratedModel) bool { return true }
 	for _, test := range []struct {
-		name   string
-		change func(*Model)
-		same   bool
+		name         string
+		precondition func(*GeneratedModel) bool
+		change       func(*Model)
+		same         bool
 	}{
-		{"empty thinking level map for none", func(m *Model) {
-			if m.ThinkingLevelMap == nil {
-				m.ThinkingLevelMap = ThinkingLevelMap{}
-			}
-		}, true},
-		{"empty sampling params for none", func(m *Model) {
-			if m.SamplingParams == nil {
-				m.SamplingParams = map[string]any{}
-			}
-		}, true},
-		{"empty prompt cache for none", func(m *Model) {
-			if m.PromptCache == nil {
-				m.PromptCache = ModelPromptCache{}
-			}
-		}, true},
-		{"empty headers for none", func(m *Model) {
-			if m.ProviderMeta.Headers == nil {
-				m.ProviderMeta.Headers = map[string]string{}
-			}
-		}, true},
-		{"a changed context window", func(m *Model) { m.Capabilities.ContextWindow++ }, false},
-		{"a changed name", func(m *Model) { m.DisplayName += "!" }, false},
-		{"a changed reasoning flag", func(m *Model) { m.ProviderMeta.Reasoning = !m.ProviderMeta.Reasoning }, false},
+		{"empty thinking level map for none", func(e *GeneratedModel) bool { return e.ThinkingLevelMap == nil }, func(m *Model) { m.ThinkingLevelMap = ThinkingLevelMap{} }, true},
+		{"empty sampling params for none", func(e *GeneratedModel) bool { return e.SamplingParams == nil }, func(m *Model) { m.SamplingParams = map[string]any{} }, true},
+		{"empty prompt cache for none", func(e *GeneratedModel) bool { return e.PromptCache == nil }, func(m *Model) { m.PromptCache = ModelPromptCache{} }, true},
+		{"empty headers for none", func(e *GeneratedModel) bool { return e.Headers == nil }, func(m *Model) { m.ProviderMeta.Headers = map[string]string{} }, true},
+		{"a changed context window", everyEntry, func(m *Model) { m.Capabilities.ContextWindow++ }, false},
+		{"a changed name", everyEntry, func(m *Model) { m.DisplayName += "!" }, false},
+		{"a changed reasoning flag", everyEntry, func(m *Model) { m.ProviderMeta.Reasoning = !m.ProviderMeta.Reasoning }, false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			model := base()
-			test.change(model)
-			if _, unchanged := unchangedBundledRecord(model); unchanged {
-				t.Fatal("the changed model was recognized as the entry's")
+			entries := catalogFamilyEntries(test.precondition)
+			if len(entries) == 0 {
+				t.Fatalf("no catalog entry satisfies the case's precondition: the case would change nothing")
 			}
-			got, ok, err := CatalogModelJSON(model)
-			if err != nil || !ok {
-				t.Fatalf("ok %t, %v", ok, err)
-			}
-			encoded, err := marshalCatalogModelByEncoding(model)
-			if err != nil || !bytes.Equal(got, encoded) {
-				t.Fatalf("the model encodes as\n%s\nand by the encoding path as\n%s (%v)", got, encoded, err)
-			}
-			if same := bytes.Equal(got, []byte(GeneratedModels[0].Record)); same != test.same {
-				t.Fatalf("emits the record: %t, want %t", same, test.same)
+			for _, entry := range entries {
+				model := entry.ToModel()
+				test.change(model)
+				if _, unchanged := unchangedBundledRecord(model); unchanged {
+					t.Fatalf("%s %s/%s: the changed model was recognized as the entry's", entry.API, entry.Provider, entry.ID)
+				}
+				got, ok, err := CatalogModelJSON(model)
+				if err != nil || !ok {
+					t.Fatalf("%s %s/%s: ok %t, %v", entry.API, entry.Provider, entry.ID, ok, err)
+				}
+				encoded, err := marshalCatalogModelByEncoding(model)
+				if err != nil || !bytes.Equal(got, encoded) {
+					t.Fatalf("%s %s/%s: the model encodes as\n%s\nand by the encoding path as\n%s (%v)", entry.API, entry.Provider, entry.ID, got, encoded, err)
+				}
+				if same := bytes.Equal(got, []byte(entry.Record)); same != test.same {
+					t.Fatalf("%s %s/%s: emits the record: %t, want %t", entry.API, entry.Provider, entry.ID, same, test.same)
+				}
 			}
 		})
 	}
