@@ -34,13 +34,12 @@ pi_extensions = [
 
 [tmux]
 width = 100
-height = 60
+# The pane is shorter than the transcript, so both screens scroll and show their last 30 rows: the startup banner differs in height between the binaries (the pane's blank padding followed it), and scrolled off it leaves no padding to compare.
+height = 30
 ready_pattern_pig = "[Extensions]"
 ready_pattern_pi = "[Extensions]"
 ready_timeout_seconds = 30
 capture_start = "Reload failed: "
-# The crop ends at the last chat line: the screen below it is blank padding whose height depends on the startup header the two binaries print above the crop.
-capture_end = "ext-tool-done: late probe done"
 
 [[tmux.steps]]
 keys = ["/late-then-reload-fails", "Enter"]

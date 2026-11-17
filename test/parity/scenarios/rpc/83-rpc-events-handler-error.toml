@@ -30,7 +30,7 @@ stderr_equal = true
 exit_code = 0
 runs = 3
 both_contain = ['"type":"extension_error"', '"event":"events:demo:boom"', '"error":"demo handler failed"', '"id":"cmd","type":"response","command":"prompt","success":true']
-both_not_contain = ['"success":false', 'Event handler error']
+both_not_contain = ['"success":false', 'Event handler error', '"stack"']
 
 [[assert.json_aliases]]
 paths = ["/**/extensionPath"]
