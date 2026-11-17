@@ -10870,18 +10870,26 @@
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h\u003cnumber\u003e` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed. The host process now removes that directory when it terminates its processes, and a generation that asks for a socket path while the process exits no longer makes a new one.",
+      "releaseNote": "A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h\u003cnumber\u003e` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed. The host process now removes that directory when it terminates its processes, and a generation that asks for a socket path while the process exits no longer makes a new one, whether or not the Host had already made a socket path.",
       "origin": "release note",
       "commits": [
         {
           "hash": "338965f248",
           "date": "2026-11-16"
+        },
+        {
+          "hash": "a782807087",
+          "date": "2026-11-17"
         }
       ],
       "tests": [
         "coding/cli/rpc_exit_socket_dir_test.go::TestAnRPCPigThatEndsNormallyLeavesNoSocketDirectory",
+        "coding/extension/host/subprocess/socket_path_budget_test.go::TestTheLongestSocketPathOfTheDeepestKeptDirectoryBindsAtTheLimit",
+        "coding/extension/host/subprocess/socket_state_test.go::TestSocketPathAllocationRacingRemoval",
+        "coding/extension/host/subprocess/socket_state_test.go::TestSocketRuntimeDirIsRefusedForeverOnceRemoved",
         "coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesMakesNoRuntimeDirectoryAndNoneAfterIt",
-        "coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesRemovesTheRuntimeDirectory"
+        "coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesRemovesTheRuntimeDirectory",
+        "coding/extension/host/subprocess/ts_runtime_verified_linux_test.go::TestTypeScriptRuntimeLaunchesReleaseTheVerifiedHandle"
       ]
     },
     {
