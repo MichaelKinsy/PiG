@@ -43325,14 +43325,14 @@
     {
       "id": "BF-ec5350e",
       "title": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room…",
-      "symptom": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or permission for the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error or missing turns.",
+      "symptom": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or no right to write the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error, or a prompt that had lost turns.",
       "rootCause": "A session file is read back by file offset only when the session holds a private snapshot of it. When the snapshot could not be made (no clone, a failed copy, a first write that left none), the load located entries by their lines in the live file, so a change another program made to the file reached later reads: GetBranch, GetEntries, GetTree, the context builders, get_entries, get_tree, the JSONL export and a fork returned other bytes, an error or a prompt with missing turns. Pi reads the whole file into memory and never reads it again.",
       "rootCauseSource": "commit",
-      "userImpact": "Credential or permission exposure",
+      "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or permission for the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error or missing turns. Such a session now reads the whole file once and keeps its entries in memory, as Pi does, and never reads the file again. \u003c!-- cause: without a snapshot the entries were located by the file offsets of their lines in the live file, and a load that made no snapshot, a snapshot write that failed and the first write of a new session were all left to read from that file --\u003e",
+      "releaseNote": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or no right to write the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error, or a prompt that had lost turns. Such a session now reads the whole file once and keeps its entries in memory, as Pi does, and never reads the file again. \u003c!-- cause: without a snapshot the entries were located by the file offsets of their lines in the live file, and a load that made no snapshot, a snapshot write that failed and the first write of a new session were all left to read from that file --\u003e",
       "origin": "release note",
       "commits": [
         {
