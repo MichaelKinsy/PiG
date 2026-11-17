@@ -8,9 +8,8 @@
 # the connection answered the request with its own "connection closed" and the runner reported it as `Extension "<path>" error: connection closed`. A cut-off the host asked for is no error of the extension.
 # The error is a transient frame: PiG's fork rebuilds the transcript after it, so the settled capture of the unfixed code equals Pi's (both_not_contain and escaped_output_equal
 # pass on it). The step that picks the row therefore watches the pane every 10 ms (frame_watch, pig_no_stale_frames) for the extension error row, and PiG's pane held that row in 15 of 240
-# samples of a run before the fix. The whole settled capture is compared as it stands (escaped_output_equal, no crop, no normalization). The raw stream from "/fork" on is not equal
-# to Pi's (transcript_sequences_equal differs at token 11: PiG moves the cursor 2 rows down where Pi moves 1 up, and PiG repaints the transcript after the fork, 641 tokens against 586), a
-# difference of the typed-ahead startup window that this scenario does not own, so the stream is not asserted.
+# samples of a run before the fix. The whole settled capture is compared as it stands (escaped_output_equal, no crop, no normalization).
+# Open difference of the raw stream from "/fork" on (token 11): fix/autocomplete-provider-waits-for-the-extension-bind.
 #
 # Upstream evidence (Pi 1.5.2, probed on the comparator with this scenario's own runs, 3 declared runs in 3 invocations unloaded and 3 under 24 busy loops): no extension error row in any sampled pane or in the capture; the settled capture is the one PiG shows.
 
