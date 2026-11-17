@@ -127,7 +127,7 @@ func TestUnpackSourceRequiresTheBytesMetaRecords(t *testing.T) {
 	}
 	pack := func() string {
 		dir := t.TempDir()
-		if err := packSource(recorded, dir, "2026-11-15T08:45:18.072Z"); err != nil {
+		if err := packSource(recorded, dir, "2026-11-15T08:45:18.072Z", nil); err != nil {
 			t.Fatal(err)
 		}
 		return dir

@@ -2753,6 +2753,11 @@ patch("e56d35ce5ece", "pi-coding-agent/core/model-resolver.js", [
 ]);
 // END backport e56d35ce5ece
 
+// BEGIN backport cead615b48b8
+// cead615b48b8: the Codex context windows of GPT-6.2 (Sol 500000, Astra 272000) are catalog data: the pi-overlay file catalog/providers/openai-codex.ts (Pi's, at this commit) makes the oracle's openai-codex provider data. No compiled file of the package changes.
+// not carried: packages/ai catalog/providers/openai-codex.ts, packages/ai test and CHANGELOG: the package ships none of them; the generated data carries the change.
+// END backport cead615b48b8
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.
