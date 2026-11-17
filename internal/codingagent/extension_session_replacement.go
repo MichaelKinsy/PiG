@@ -139,6 +139,11 @@ func (m *InteractiveMode) replaceThroughRuntime(ctx context.Context, operation, 
 
 // replaceSessionFromCommand awaits the same Session owner used by extension commands while servicing extension dialogs and event barriers on the input loop.
 func (m *InteractiveMode) replaceSessionFromCommand(ctx context.Context, operation, target string) error {
+	// A frame requested before an awaited session operation is painted before the operation begins, as in Pi: the key press that closed the picker asked for a frame
+	// (tui.ts:1033-1041, process.nextTick) that runs inside Pi's await (interactive-mode.ts:5614-5618 done() then await runtimeHost.fork; agent-session-runtime.ts:262-267),
+	// so the old transcript with the selector gone is on screen for as long as the swap takes. PiG's 16 ms throttle would paint it only when the swap outlasts that.
+	// /tree does not pass here: navigateTree serves frames while it awaits.
+	m.tuiInst.Render()
 	if m.runtimeHost != nil {
 		return m.replaceThroughRuntime(ctx, operation, target)
 	}

@@ -23,7 +23,6 @@ func (m *InteractiveMode) rebuildChatFromSession() {
 func (m *InteractiveMode) rebuildChat(populateHistory bool) {
 	m.disposeArminComponents()
 	m.chatContainer.Clear()
-	m.tuiInst.ForceFullRender()
 	m.renderSessionEntriesWithHistory(populateHistory)
 }
 
