@@ -23537,13 +23537,13 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** PiG's own defect
 - **Symptom:** A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`.
-- **Root cause:** Not recorded.
+- **Root cause:** The nested start of tool_prepare_loadout (the Node runtime answers the hook inside the registerTool or setActiveTools call it waits on) refused the hook when another request waited unstarted in the process. A parallel batch does that: one tool calls pi.registerTool while a second tool of the same extension is called in the same message, its tool_call frame is handed to the serve loop before the host asks the hook, and the hook was answered with an error the host reports as a prepare_loadout extension error, where Pi runs the hook inside the call.
 - **User impact:** Crash, hang or runaway process
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `f9b8dbada8` (2026-11-16)
+- **Fix commits:** `42826e53df` (2026-11-16, #516), `f9b8dbada8` (2026-11-16)
 - **Tests:** `coding/extension/host/subprocess/prepare_loadout_sync_test.go::TestNodeRuntimeStartsPrepareLoadoutNestedInARefreshItWaitsOn`
-- **Release note:** A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`. The hook now runs inside that call, as in Pi.
+- **Release note:** A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`. The hook now runs inside that call, as in Pi. <!-- cause: the Node runtime started tool_prepare_loadout only between its calls, so while registerTool or setActiveTools waited in a synchronous host call the refresh that asks every hook deadlocked -->
 
 ### BF-fa0eadb
 

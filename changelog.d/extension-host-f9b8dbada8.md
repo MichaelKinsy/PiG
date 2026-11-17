@@ -1,3 +1,3 @@
 ### Fixed
 
-- A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`. The hook now runs inside that call, as in Pi. <!-- fix: f9b8dbada8 -->
+- A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`. The hook now runs inside that call, as in Pi. <!-- fix: f9b8dbada8, 42826e53df --> <!-- cause: the Node runtime started tool_prepare_loadout only between its calls, so while registerTool or setActiveTools waited in a synchronous host call the refresh that asks every hook deadlocked -->

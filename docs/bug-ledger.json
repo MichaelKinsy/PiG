@@ -46373,15 +46373,20 @@
       "id": "BF-f9b8dba",
       "title": "A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same…",
       "symptom": "A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`.",
-      "rootCause": "",
-      "rootCauseSource": "",
+      "rootCause": "The nested start of tool_prepare_loadout (the Node runtime answers the hook inside the registerTool or setActiveTools call it waits on) refused the hook when another request waited unstarted in the process. A parallel batch does that: one tool calls pi.registerTool while a second tool of the same extension is called in the same message, its tool_call frame is handed to the serve loop before the host asks the hook, and the hook was answered with an error the host reports as a prepare_loadout extension error, where Pi runs the hook inside the call.",
+      "rootCauseSource": "commit",
       "userImpact": "Crash, hang or runaway process",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`. The hook now runs inside that call, as in Pi.",
+      "releaseNote": "A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`. The hook now runs inside that call, as in Pi. \u003c!-- cause: the Node runtime started tool_prepare_loadout only between its calls, so while registerTool or setActiveTools waited in a synchronous host call the refresh that asks every hook deadlocked --\u003e",
       "origin": "release note",
       "commits": [
+        {
+          "hash": "42826e53df",
+          "date": "2026-11-16",
+          "pr": "516"
+        },
         {
           "hash": "f9b8dbada8",
           "date": "2026-11-16"
