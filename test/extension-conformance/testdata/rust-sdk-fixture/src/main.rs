@@ -4629,6 +4629,29 @@ fn main() {
     // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it,
     // shows it and updates it with a focus request, the same way in every SDK fixture (conformance
     // TestConformance_UIViewToolShowsAndFocuses).
+    // D521: bigint_tool registers a tool whose schema declares a bigint parameter and answers the kind of value it receives for it and the value.
+    ext.command(
+        "bigint_tool",
+        "Register the tool that reports what a bigint argument arrives as",
+        |ctx, _args| {
+            let tool = ToolDefinition::new(
+                "bigint_arg",
+                "bigint_arg",
+                "Report the kind and value of n",
+                json!({"type": "object", "required": ["n"], "properties": {"n": {"type": "bigint"}}}),
+                |_ctx, params| {
+                    let value = params.get("n").cloned().unwrap_or(Value::Null);
+                    let kind = if value.is_string() { "string" } else { "other" };
+                    let shown = value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string());
+                    ToolResult::text(format!("{kind}:{shown}"))
+                },
+            );
+            match ctx.register_tool(tool) {
+                Ok(()) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.command(
         "ui_view_tool",
         "Register the tool that shows a titled view",

@@ -2695,6 +2695,21 @@ def new_extension() -> pig_sdk.Extension:
             execute=view_show,
         ))
 
+    # D521: bigint_tool registers a tool whose schema declares a bigint parameter and answers the kind of value it receives for it and the value.
+    def bigint_tool_probe(ctx, _args):
+        def bigint_arg(_ctx, params):
+            value = params["n"]
+            return {"content": ("string" if isinstance(value, str) else "other") + ":" + str(value)}
+
+        ctx.register_tool(pig_sdk.ToolDefinition(
+            name="bigint_arg",
+            label="bigint_arg",
+            description="Report the kind and value of n",
+            parameters={"type": "object", "required": ["n"], "properties": {"n": {"type": "bigint"}}},
+            execute=bigint_arg,
+        ))
+
+    ext.command("bigint_tool", "Register the tool that reports what a bigint argument arrives as", bigint_tool_probe)
     ext.command("ui_view_tool", "Register the tool that shows a titled view", view_tool_probe)
 
     # D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The argument is
