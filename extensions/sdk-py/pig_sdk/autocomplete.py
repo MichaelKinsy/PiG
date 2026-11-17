@@ -75,6 +75,12 @@ class _AutocompleteRegistry:
 
     def dispatch(self, ctx, args):
         operation = args["operation"]
+        if operation == "changed":
+            # The host rebuilt the provider chain (Pi's setupAutocompleteProvider hands it to the installed editor, interactive-mode.ts:848-850). An editor component here is a proxy of the host's editor, which already holds the rebuilt provider; nothing in this SDK keeps the descriptor, so its host reference is released at once.
+            provider_id = (args.get("current") or {}).get("id")
+            if provider_id:
+                _release_current(weakref.ref(ctx.extension), provider_id)
+            return None
         if operation == "wrap":
             with self._lock:
                 factory = self._factories[args["factoryId"]]
