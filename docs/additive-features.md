@@ -2284,7 +2284,7 @@ What: Pi's extension UI is in-process component objects, so a Go, Python, Rust, 
 
 Pi source: none (Pi's extension UI is in-process `Component` objects). Cancellation follows `AbortSignal` on a handler's `ctx.signal`.
 
-Why: the owner approved one protocol for terminal, web, desktop and ACP clients on 2026-11-10 (multilang-plugins D614). The records are PiG's own and unversioned; no code, schema text or identifier is copied from another project (the provenance guard is `automation/ci/check-public-hygiene.py`).
+Why: the owner approved one protocol for terminal, web, desktop and ACP clients on 2026-11-09 (multilang-plugins D614). The records are PiG's own and unversioned; no code, schema text or identifier is copied from another project (the provenance guard is `automation/ci/check-public-hygiene.py`).
 
 Stock behavior: no client attached, so a mount fails with `unsupported` and nothing is drawn. Existing extensions, Pi's wire and the parity scenarios are unchanged: `ui.view.*` calls and `uiAbilities` exist only for an extension that uses them, and the dependency is one-way (`make gui-import-guard`: chord never imports `coding/uiview`). A client that sends none of the carrier's seven commands is written Pi's bytes: the rpc parity family is unchanged, and `TestRPCUIViewNeverAttachedClientSeesPiBytes` compares a session whose extension mounts a view with the same session without the mount. An interactive session with no Piglet, or with a Piglet that does not set `viewClient`, attaches no client. With `viewClient: terminal` and no mount, it writes the terminal the bytes it writes without the key (`TestTerminalViewClientNeverMountedCostsNothing`), and once a mount ended it draws what a session that never mounted draws (`TestTerminalViewClientMountThenUnmountLeavesNoTrace`, `TestUIViewMountThenUnmountIsTheSessionThatNeverMounted`).
 
@@ -2296,7 +2296,7 @@ Parity allowance: no Pi scenario mounts a view; Pi clients never see `ui.view.mo
 
 Remove when: the owner drops it, or Pi ships a portable extension UI (then port it).
 
-Approval: owner decision relayed 2026-11-10 (via Main): D614 approved as one protocol, re-expressed from concepts (multilang-plugins appendix D), with the amendments above. Amendment approval: owner decision of 2026-11-12T20:58Z, relayed through Main: "D614 amendment APPROVED: N1 to N7 with the section 4 bounds, F4, F5."
+Approval: owner decision relayed 2026-11-09 (via Main; the channel's post of 2026-11-09T06:01Z records it at about 06:02Z: `OWNER: "proceed" on multilang-plugins rev 3.1 with all 6 recommended answers`, whose Q6 is D613/D614 plus the D107 additions): D614 approved as one protocol, re-expressed from concepts (multilang-plugins appendix D), with the amendments above. Amendment approval: owner decision of 2026-11-12T20:58Z, relayed through Main: "D614 amendment APPROVED: N1 to N7 with the section 4 bounds, F4, F5."
 SCRUTINIZED:approved
 
 ## D621 Interactive runs keep a heap goal of at least 16 MiB, at GOGC 150 until the live heap passes 8 MiB
