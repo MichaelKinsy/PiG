@@ -25,7 +25,70 @@ import (
 
 // messageEventRow is one handler of one event that edits it in place, at one of two levels: `top` assigns a member of the event object itself, `deep` edits inside the
 // message (or the first user message of the messages list) the event carries.
+// The pins of a top-level member: `type` assigns event.type, `once` assigns a member in the event's first dispatch only (and reports whether a later dispatch starts with it),
+// `reassign` replaces a declared member wholesale, `delete` removes one.
 type messageEventRow struct{ event, level string }
+
+// memberRows are, for the events whose declared member a row reassigns or deletes, the member and the JSON a handler reassigns it to (agent_start declares none).
+var memberRows = map[string]struct{ member, value string }{
+	"message_start":  {"message", `{"role":"user","content":"` + inPlaceEdited + `","timestamp":1}`},
+	"message_update": {"assistantMessageEvent", `{"type":"` + inPlaceEdited + `"}`},
+	"turn_start":     {"turnIndex", `"` + inPlaceEdited + `"`},
+	"agent_end":      {"messages", `[{"role":"user","content":"` + inPlaceEdited + `","timestamp":1}]`},
+}
+
+// rowApplies tells whether the event has a row at the level: the pins of a top-level member are the five events whose members a handler of Pi assigns and the later handlers
+// see; a declared member is reassigned or deleted only where the event declares one.
+func rowApplies(event, level string) bool {
+	switch level {
+	case "top":
+		return true
+	case "deep":
+		return event != "turn_start" && event != "agent_start"
+	case "type", "once":
+		return slices.Contains([]string{"message_start", "message_update", "turn_start", "agent_start", "agent_end"}, event)
+	}
+	_, declared := memberRows[event]
+	return declared
+}
+
+// deepApplies tells whether the row reads the message the event carries.
+func (r messageEventRow) deepApplies() bool { return r.level == "top" || r.level == "deep" }
+
+// topField is the member of the event the row's later handlers are asked about.
+func (r messageEventRow) topField() string {
+	switch r.level {
+	case "type":
+		return "type"
+	case "reassign", "delete":
+		return memberRows[r.event].member
+	}
+	return "probeTop"
+}
+
+// topHit tells whether the JSON of the topField member (or `absent`) shows what the row's edit did.
+func (r messageEventRow) topHit(value string) bool {
+	if r.level == "delete" {
+		return value == "absent"
+	}
+	return strings.Contains(value, inPlaceEdited)
+}
+
+// editCommand is the fixture command line that subscribes the row's editing handler.
+func (r messageEventRow) editCommand() (command, args string) {
+	quoted := `"` + inPlaceEdited + `"`
+	switch r.level {
+	case "top", "deep":
+		return "event_level_edit_probe", r.event + " " + r.level
+	case "type":
+		return "event_member_probe", r.event + " set type " + quoted
+	case "once":
+		return "event_member_probe", r.event + " once probeTop " + quoted
+	case "reassign":
+		return "event_member_probe", r.event + " set " + memberRows[r.event].member + " " + memberRows[r.event].value
+	}
+	return "event_member_probe", r.event + " delete " + memberRows[r.event].member
+}
 
 func (r messageEventRow) name() string { return r.event + "/" + r.level }
 
@@ -33,11 +96,10 @@ func (r messageEventRow) name() string { return r.event + "/" + r.level }
 func messageEventRows() []messageEventRow {
 	var rows []messageEventRow
 	for _, event := range []string{"message_start", "message_update", "turn_start", "turn_end", "agent_start", "agent_end", "message_end", "context"} {
-		for _, level := range []string{"top", "deep"} {
-			if level == "deep" && (event == "turn_start" || event == "agent_start") {
-				continue
+		for _, level := range []string{"top", "deep", "type", "once", "reassign", "delete"} {
+			if rowApplies(event, level) {
+				rows = append(rows, messageEventRow{event, level})
 			}
-			rows = append(rows, messageEventRow{event, level})
 		}
 	}
 	return rows
@@ -55,6 +117,8 @@ type messageEventObservation struct {
 	Requests [2]bool
 	// Events are `<type>:<role>` of the events the session's own listeners received with the edit.
 	Events []string
+	// Stale tells whether a later dispatch of the event started with an edit a `once` row made in an earlier one.
+	Stale bool
 }
 
 func (o *messageEventObservation) normalize() {
@@ -80,7 +144,7 @@ func piObservations(t *testing.T) map[string]messageEventObservation {
 	}
 	var rows []map[string]string
 	for _, row := range messageEventRows() {
-		rows = append(rows, map[string]string{"event": row.event, "level": row.level})
+		rows = append(rows, map[string]string{"event": row.event, "level": row.level, "member": memberRows[row.event].member, "value": memberRows[row.event].value})
 	}
 	out := testenv.PiEvalJSON(t, string(script), map[string]any{"pi": "file://" + pi, "rows": rows})
 	var raw map[string]struct {
@@ -95,6 +159,7 @@ func piObservations(t *testing.T) map[string]messageEventObservation {
 			Hit  bool
 		}
 		Requests []bool
+		Stale    bool
 		Events   []struct {
 			Type string
 			Role string
@@ -129,6 +194,7 @@ func piObservations(t *testing.T) map[string]messageEventObservation {
 			}
 		}
 		copy(o.Requests[:], r.Requests)
+		o.Stale = r.Stale
 		for _, e := range r.Events {
 			if e.Hit {
 				o.Events = append(o.Events, e.Type+":"+e.Role)
@@ -171,13 +237,14 @@ func observePiG(t *testing.T, tc harnessCase, row messageEventRow) messageEventO
 	h.runner = inproc.NewRunner(h.host.Extensions(), t.TempDir())
 	h.bridge.SetUIPromptScope(h.runner)
 
-	runConformanceCommandArgs(t, h, "event_level_edit_probe", row.event+" "+row.level)
-	runConformanceCommandArgs(t, h, "event_field_probe", row.event+" probeTop")
+	command, commandArgs := row.editCommand()
+	runConformanceCommandArgs(t, h, command, commandArgs)
+	runConformanceCommandArgs(t, h, "event_field_probe", row.event+" "+row.topField())
 	field := "message"
 	if row.event == "agent_end" || row.event == "context" {
 		field = "messages"
 	}
-	if row.event != "turn_start" && row.event != "agent_start" {
+	if row.deepApplies() && row.event != "turn_start" && row.event != "agent_start" {
 		runConformanceCommandArgs(t, h, "event_field_probe", row.event+" "+field)
 	}
 	observed, requests, entries, events := runTwoPrompts(t, h)
@@ -185,12 +252,37 @@ func observePiG(t *testing.T, tc harnessCase, row messageEventRow) messageEventO
 	var o messageEventObservation
 	for _, line := range observed {
 		switch {
-		case strings.HasPrefix(line, "event_field:"+row.event+".probeTop="):
-			value := strings.TrimSuffix(strings.TrimPrefix(line, "event_field:"+row.event+".probeTop="), ":info")
-			if value == `"`+inPlaceEdited+`"` {
+		case strings.HasPrefix(line, "event_field:"+row.event+"."+row.topField()+"="):
+			if row.topHit(strings.TrimSuffix(strings.TrimPrefix(line, "event_field:"+row.event+"."+row.topField()+"="), ":info")) {
 				add(&o, "A", ":top")
 			}
-		case strings.HasPrefix(line, "event_field:"+row.event+"."+field+"="):
+		case strings.HasPrefix(line, "member_probe_stale:"+row.event+":"):
+			if strings.TrimSuffix(strings.TrimPrefix(line, "member_probe_stale:"+row.event+":"), ":info") == "true" {
+				o.Stale = true
+			}
+		case strings.HasPrefix(line, "peerfacts:"+row.event+":"):
+			var facts struct {
+				ProbeTop, Type bool
+				Present, HasX  []string
+			}
+			if err := json.Unmarshal([]byte(strings.TrimSuffix(strings.TrimPrefix(line, "peerfacts:"+row.event+":"), ":info")), &facts); err != nil {
+				t.Fatalf("peer facts %q: %v", line, err)
+			}
+			hit := false
+			switch row.level {
+			case "type":
+				hit = facts.Type
+			case "reassign":
+				hit = slices.Contains(facts.HasX, row.topField())
+			case "delete":
+				hit = !slices.Contains(facts.Present, row.topField())
+			default:
+				hit = facts.ProbeTop
+			}
+			if hit {
+				add(&o, "B", ":top")
+			}
+		case row.deepApplies() && strings.HasPrefix(line, "event_field:"+row.event+"."+field+"="):
 			value := strings.TrimSuffix(strings.TrimPrefix(line, "event_field:"+row.event+"."+field+"="), ":info")
 			if role, hit := messageEdit(value); hit {
 				add(&o, "A", role+":deep")
@@ -198,10 +290,7 @@ func observePiG(t *testing.T, tc harnessCase, row messageEventRow) messageEventO
 		case strings.HasPrefix(line, "peer:"+row.event+":"):
 			parts := strings.SplitN(strings.TrimSuffix(strings.TrimPrefix(line, "peer:"+row.event+":"), ":info"), ":", 3)
 			if len(parts) == 3 {
-				if parts[1] == "true" {
-					add(&o, "B", ":top")
-				}
-				if parts[2] == "true" {
+				if row.deepApplies() && parts[2] == "true" {
 					add(&o, "B", parts[0]+":deep")
 				}
 			}
@@ -391,6 +480,34 @@ var curePending = map[string]string{
 	"agent_end/top":       "the event is not one object across handlers and extensions",
 }
 
+// curedBy lists, for a row of curePending, the SDKs (a word of the harness name) whose build already cures it: the row must match Pi there, and must still differ in the others.
+var curedBy = map[string][]string{}
+
+func init() {
+	const members = "a member of the event assigned, reassigned or deleted by a handler is not seen by the later handlers of the dispatch"
+	for _, row := range messageEventRows() {
+		if row.level == "type" || row.level == "once" || row.level == "reassign" || row.level == "delete" {
+			curePending[row.name()] = members
+		}
+	}
+}
+
+// pendingFor tells whether the row is still pending for the harness.
+func pendingFor(harness, row string) (string, bool) {
+	reason, pending := curePending[row]
+	if !pending {
+		return "", false
+	}
+	for _, sdk := range curedBy[row] {
+		for _, word := range strings.Split(harness, "-") {
+			if word == sdk {
+				return "", false
+			}
+		}
+	}
+	return reason, true
+}
+
 // TestInPlaceMessageEventEditsMatchPi pins what a handler's in-place edit of a message event does, at two levels, against Pi's own AgentSession: an edit of a member of the
 // event object itself, and an edit inside the message (or messages) the event carries. For each of the events the table is what the next handler of the extension sees,
 // what a handler of another extension sees, which entries the session holds with the edit, which of the two provider requests carry it, and which events the session's
@@ -402,7 +519,7 @@ func TestInPlaceMessageEventEditsMatchPi(t *testing.T) {
 	t.Parallel()
 	pi := piObservations(t)
 	for _, row := range messageEventRows() {
-		t.Logf("pi %-22s A=%v B=%v entries=%v requests=%v events=%v", row.name(), pi[row.name()].A, pi[row.name()].B, pi[row.name()].Entries, pi[row.name()].Requests, pi[row.name()].Events)
+		t.Logf("pi %-22s A=%v B=%v entries=%v requests=%v events=%v stale=%v", row.name(), pi[row.name()].A, pi[row.name()].B, pi[row.name()].Entries, pi[row.name()].Requests, pi[row.name()].Events, pi[row.name()].Stale)
 	}
 	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
@@ -410,8 +527,8 @@ func TestInPlaceMessageEventEditsMatchPi(t *testing.T) {
 				t.Run(row.name(), func(t *testing.T) {
 					got := observePiG(t, tc, row)
 					want := pi[row.name()]
-					t.Logf("pig %-22s A=%v B=%v entries=%v requests=%v events=%v", row.name(), got.A, got.B, got.Entries, got.Requests, got.Events)
-					if reason, pending := curePending[row.name()]; pending {
+					t.Logf("pig %-22s A=%v B=%v entries=%v requests=%v events=%v stale=%v", row.name(), got.A, got.B, got.Entries, got.Requests, got.Events, got.Stale)
+					if reason, pending := pendingFor(tc.name, row.name()); pending {
 						if reflect.DeepEqual(got, want) {
 							t.Errorf("%s %s matches Pi: remove it from curePending (%s)", tc.name, row.name(), reason)
 						}

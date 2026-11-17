@@ -5171,6 +5171,45 @@ fn main() {
             CommandResult::Ok
         },
     );
+    let event_member_subscriber = ext.event_subscriber();
+    let event_member_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    // event_member_probe `<event> <set|delete|once> <member> [json]`: a handler that assigns the member the JSON, deletes it, or (once) assigns it in its first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there.
+    ext.command(
+        "event_member_probe",
+        "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event",
+        move |_ctx, args| {
+            let mut words = args.trim().splitn(4, char::is_whitespace);
+            let name = words.next().unwrap_or("").to_string();
+            let op = words.next().unwrap_or("").to_string();
+            let member = words.next().unwrap_or("").to_string();
+            let value: Value = match words.next().map(str::trim) {
+                Some(raw) if !raw.is_empty() => match serde_json::from_str(raw) {
+                    Ok(value) => value,
+                    Err(err) => return CommandResult::Error(err.to_string()),
+                },
+                _ => Value::Null,
+            };
+            let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+            let reported = name.clone();
+            let subscription = subscribe(&event_member_subscriber, &name, move |ctx, data| {
+                let call = calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+                if op == "delete" {
+                    if let Some(object) = data.as_object_mut() {
+                        object.remove(&member);
+                    }
+                } else if op == "once" && call > 1 {
+                    let stale = data.get(member.as_str()) == Some(&value);
+                    ctx.notify(&format!("member_probe_stale:{}:{}", reported, stale), "info");
+                } else {
+                    data[member.as_str()] = value.clone();
+                }
+                Ok(None)
+            });
+            event_member_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "host_state_probe",
         "Report the thinking level and the session commands",

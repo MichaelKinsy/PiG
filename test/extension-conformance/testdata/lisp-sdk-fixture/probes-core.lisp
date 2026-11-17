@@ -776,6 +776,23 @@
                                                ((stringp content) (setf (gethash "content" target) edited))
                                                (t (setf (gethash "probe" target) edited)))))))
                                    nil))))))
+      ;; event_member_probe: `<event> <set|delete|once> <member> [json]`, a handler that assigns the member the JSON, deletes it, or (once) assigns it in its first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there.
+      (pig:command ext "event_member_probe" "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (multiple-value-bind (name rest) (split-first args)
+                       (multiple-value-bind (op rest) (split-first rest)
+                         (multiple-value-bind (member raw) (split-first rest)
+                           (let ((value (if (plusp (length (string-trim '(#\Space #\Newline #\Tab) (or raw "")))) (pig:from-json raw) nil))
+                                 (calls 0))
+                             (pig:on ext name
+                                     (lambda (hctx data)
+                                       (incf calls)
+                                       (cond ((equal op "delete") (remhash member data))
+                                             ((and (equal op "once") (> calls 1))
+                                              (core-info hctx (format nil "member_probe_stale:~A:~A" name
+                                                                      (if (and (nth-value 1 (gethash member data)) (equal (pig:to-json (gethash member data)) (pig:to-json value))) "true" "false"))))
+                                             (t (setf (gethash member data) value)))
+                                       nil))))))))
       (pig:command ext "event_probe_result" "Queue the JSON result the next event_probe_on handler call of an event returns"
                    (lambda (ctx args) (declare (ignore ctx))
                      (multiple-value-bind (name raw) (split-first args)

@@ -3116,6 +3116,24 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, make)
 
     ext.command("event_level_edit_probe", "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place", event_level_edit_probe)
+    def event_member_probe(ctx, args):
+        # `<event> <set|delete|once> <member> [json]`: a handler that assigns the member the JSON, deletes it, or (once) assigns it in its first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there.
+        name, op, member, *rest = args.split(None, 3)
+        value = json.loads(rest[0]) if rest else None
+        calls = [0]
+
+        def make(hctx, data):
+            calls[0] += 1
+            if op == "delete":
+                data.pop(member, None)
+            elif op == "once" and calls[0] > 1:
+                hctx.notify("member_probe_stale:%s:%s" % (name, "true" if member in data and data[member] == value else "false"), "info")
+            else:
+                data[member] = value
+
+        ext.on_event(name, make)
+
+    ext.command("event_member_probe", "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event", event_member_probe)
     event_probe_on_offs: dict = {}
 
     event_probe_results: dict = {}

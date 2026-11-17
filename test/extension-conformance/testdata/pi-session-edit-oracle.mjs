@@ -5,7 +5,18 @@ const { join } = await import("node:path");
 const { tmpdir } = await import("node:os");
 const { createAgentSession, DefaultResourceLoader, ModelRuntime, SessionManager, SettingsManager } = await import(input.pi);
 const X = "other-event-edit";
-const runRow = async ({ event, level }) => {
+const runRow = async ({ event, level, member, value }) => {
+  let stale = false, calls = 0;
+  const memberValue = value ? JSON.parse(value) : undefined;
+  const deepLevel = level === "top" || level === "deep";
+  const topFlag = e => {
+    switch (level) {
+      case "type": return e.type === X;
+      case "reassign": return member in e && JSON.stringify(e[member]).includes(X);
+      case "delete": return !(member in e);
+      default: return e.probeTop === X;
+    }
+  };
   const dir = mkdtempSync(join(tmpdir(), "oracle-"));
   const requests = [];
   const server = http.createServer(async (req, res) => {
@@ -21,9 +32,13 @@ const runRow = async ({ event, level }) => {
   const settings = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false }, cacheWarming: { mode: "off" } });
   const target = e => e.message ?? (Array.isArray(e.messages) ? (e.messages.find(m => m.role === "user") ?? e.messages[0]) : undefined);
   const observed = [];
-  const watch = who => e => observed.push({ who, role: target(e)?.role ?? "", top: e.probeTop === X, deep: JSON.stringify(e.message ?? e.messages ?? null).includes(X) || target(e)?.probe === X });
+  const watch = who => e => observed.push({ who, role: target(e)?.role ?? "", top: topFlag(e), deep: deepLevel && (JSON.stringify(e.message ?? e.messages ?? null).includes(X) || target(e)?.probe === X) });
   const editor = e => {
     if (level === "top") { e.probeTop = X; return; }
+    if (level === "type") { e.type = X; return; }
+    if (level === "once") { calls++; if (calls > 1) { if (e.probeTop === X) stale = true; return; } e.probeTop = X; return; }
+    if (level === "reassign") { e[member] = JSON.parse(value); return; }
+    if (level === "delete") { delete e[member]; return; }
     const t = target(e);
     if (!t) return;
     if (Array.isArray(t.content) && t.content[0] && typeof t.content[0] === "object" && t.content[0].type === "text") t.content[0].text = X;
@@ -43,7 +58,7 @@ const runRow = async ({ event, level }) => {
   await session.prompt("second");
   const entries = manager.getEntries().filter(e => e.type === "message").map(e => ({ role: e.message.role, hit: JSON.stringify(e.message).includes(X) }));
   server.close();
-  return { observed, entries, requests: requests.map(r => r.includes(X)), events };
+  return { observed, entries, requests: requests.map(r => r.includes(X)), events, stale };
 };
 const out = {};
 for (const row of input.rows) out[row.event + "/" + row.level] = await runRow(row);

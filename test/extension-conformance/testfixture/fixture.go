@@ -1890,6 +1890,35 @@ func Extension() *sdk.Extension {
 		})
 		return nil
 	})
+	// event_member_probe `<event> <set|delete|once> <member> [json]` subscribes to the event with a handler that assigns the member the JSON, deletes it, or (once) assigns it in its
+	// first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there (TestInPlaceMessageEventEditsMatchPi).
+	ext.Command("event_member_probe", "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event", func(ctx sdk.Context, args string) error {
+		fields := strings.SplitN(strings.TrimSpace(args), " ", 4)
+		if len(fields) < 3 {
+			return fmt.Errorf("event_member_probe wants <event> <op> <member> [json]")
+		}
+		name, op, member := fields[0], fields[1], fields[2]
+		var value any
+		if len(fields) == 4 {
+			if err := json.Unmarshal([]byte(fields[3]), &value); err != nil {
+				return err
+			}
+		}
+		calls := 0
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			calls++
+			switch {
+			case op == "delete":
+				delete(data, member)
+			case op == "once" && calls > 1:
+				hctx.Notify(fmt.Sprintf("member_probe_stale:%s:%t", name, reflect.DeepEqual(data[member], value)), "info")
+			default:
+				data[member] = value
+			}
+			return nil, nil
+		})
+		return nil
+	})
 	ext.Command("host_state_probe", "Report the thinking level and the session commands", func(ctx sdk.Context, _ string) error {
 		level, err := ctx.GetThinkingLevel()
 		if err != nil {

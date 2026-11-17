@@ -8,6 +8,10 @@ export default function (pi) {
     pi.on(name, async (event, ctx) => {
       const carried = JSON.stringify(event.message ?? event.messages ?? null).includes(edited);
       ctx.ui.notify(`peer:${name}:${target(event)?.role ?? ""}:${event.probeTop === edited}:${carried}`, "info");
+      // The members the pins of a top-level member look at: which declared members the event still has, and which of them carry the edit.
+      const present = ["message", "messages", "assistantMessageEvent", "turnIndex"].filter((member) => member in event);
+      const hasX = present.filter((member) => JSON.stringify(event[member]).includes(edited));
+      ctx.ui.notify(`peerfacts:${name}:${JSON.stringify({ probeTop: event.probeTop === edited, type: event.type === edited, present, hasX })}`, "info");
     });
   }
 }
