@@ -5,6 +5,7 @@ package cellpack
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,11 +15,6 @@ import (
 	"testing"
 	"testing/fstest"
 )
-
-func sizeAndIdentity(info os.FileInfo) string {
-	stat := info.Sys().(*syscall.Stat_t)
-	return fmt.Sprintf("%d inode %d", info.Size(), stat.Ino)
-}
 
 // copyTree copies a folder, so a link can stand in for it with the same content.
 func copyTree(t *testing.T, from, to string) {
@@ -175,7 +171,7 @@ func TestNodeCellStartHelperProcess(t *testing.T) {
 	data, digest := nodeArchive(t, nodeFixtureEntries(true)...)
 	fsys := fstest.MapFS{"cells/node/abc.tar": {Data: data}}
 	result := "ok"
-	if err := extract(fsys, nodeManifest(digest), os.Getenv(envNodeDest)); err != nil {
+	if err := extract(fsys, nodeManifest(digest), os.Getenv(envNodeDest), io.Discard); err != nil {
 		result = "ERR:" + err.Error()
 	}
 	if err := os.WriteFile(os.Getenv(envNodeResult), []byte(result), 0o644); err != nil {

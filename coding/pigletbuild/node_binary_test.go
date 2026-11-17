@@ -120,7 +120,13 @@ func TestNodeExtensionStripConflictNamesTheStripEntry(t *testing.T) {
 // and the working directory.
 func runNodeBinary(t *testing.T, binary, pathEnv string, args ...string) (int, string, string, string) {
 	t.Helper()
-	home := t.TempDir()
+	return runNodeBinaryAt(t, binary, t.TempDir(), pathEnv, args...)
+}
+
+// runNodeBinaryAt is runNodeBinary with the home it runs in given, so a second start sees what the first left in the
+// configuration root.
+func runNodeBinaryAt(t *testing.T, binary, home, pathEnv string, args ...string) (int, string, string, string) {
+	t.Helper()
 	work := t.TempDir()
 	cmd := exec.CommandContext(t.Context(), binary, append(args, "--model", "test-faux/faux-1", "--no-session", "--offline")...)
 	cmd.Dir = work
@@ -228,6 +234,79 @@ func TestPigletBinaryRunsItsNodeExtension(t *testing.T) {
 			t.Fatalf("exit %d, want Stock PiG's startup exit 1\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
 		}
 	})
+}
+
+// A Piglet Binary starts again with a Node source file of its extracted copy edited, a file added that the extension
+// would import, and a node_modules beside the sources: the Node runtime still runs the code the Binary was built with,
+// because every start compares the extracted copy with the archive in the Binary, as it compares an embedded Go, Rust
+// or Python cell binary with its bytes. The repair is announced once, on stderr, never on stdout.
+func TestPigletBinaryRunsTheOriginalNodeSourcesAfterTheExtractedCopyIsEdited(t *testing.T) {
+	execPath, err := exec.CommandContext(t.Context(), "node", "-p", "process.execPath").Output()
+	if err != nil {
+		t.Fatalf("node is required to run the Binary's TypeScript extension: %v", err)
+	}
+	withNode := filepath.Dir(strings.TrimSpace(string(execPath)))
+	root := t.TempDir()
+	isolateBuildHome(t, root)
+	binary := filepath.Join(root, nativeBinaryName("pig-nodebin"))
+	piglet := writeNodePiglet(t, root, "")
+	var stdout, stderr strings.Builder
+	if code := runBuild([]string{piglet, "--format", "binary", "--builder", "native", "--out", binary}, &stdout, &stderr); code != 0 {
+		t.Fatalf("pig piglet build exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout.String(), stderr.String())
+	}
+	home := t.TempDir()
+	const ask = "Run: extension echo hello"
+	run := func() (string, string) {
+		t.Helper()
+		code, out, errOut, _ := runNodeBinaryAt(t, binary, home, withNode, "--mode", "json", "-p", ask)
+		if code != 0 {
+			t.Fatalf("exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+		}
+		return out, errOut
+	}
+	if out, errOut := run(); !strings.Contains(out, "NODE-BINARY-ECHO hello") || strings.Contains(errOut, "extracted them again") {
+		t.Fatalf("first start\nstdout:\n%s\nstderr:\n%s", out, errOut)
+	}
+	entries, err := filepath.Glob(filepath.Join(home, ".pig", "piglet-binary-cells", "node", "*", "sources", "greeter"))
+	if err != nil || len(entries) != 1 {
+		t.Fatalf("extracted member folders = %v, %v; want one", entries, err)
+	}
+	member := entries[0]
+	for path, body := range map[string]string{
+		filepath.Join(member, "lib", "echo.ts"):                           "export function echo(text: string): string { return `EDITED ${text}`; }\n",
+		filepath.Join(member, "lib", "extra.ts"):                          "export const extra = 1;\n",
+		filepath.Join(member, "node_modules", "shadow", "package.json"):   "{\"name\":\"shadow\"}\n",
+		filepath.Join(filepath.Dir(filepath.Dir(member)), "package.json"): "{\"type\":\"commonjs\"}\n",
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	out, errOut := run()
+	if !strings.Contains(out, "NODE-BINARY-ECHO hello") || strings.Contains(out, "EDITED") {
+		t.Fatalf("the edited extracted copy ran\nstdout:\n%s\nstderr:\n%s", out, errOut)
+	}
+	if strings.Count(errOut, "extracted them again") != 1 || !strings.Contains(errOut, "pig: warning: the extracted Node sources in ") || strings.Contains(out, "extracted them again") {
+		t.Fatalf("the repair is not announced once on stderr\nstdout:\n%s\nstderr:\n%s", out, errOut)
+	}
+	for _, gone := range []string{
+		filepath.Join(member, "lib", "extra.ts"),
+		filepath.Join(member, "node_modules"),
+		filepath.Join(filepath.Dir(filepath.Dir(member)), "package.json"),
+	} {
+		if _, err := os.Lstat(gone); !errors.Is(err, os.ErrNotExist) {
+			t.Errorf("%s survived the repair: %v", gone, err)
+		}
+	}
+	if body, err := os.ReadFile(filepath.Join(member, "lib", "echo.ts")); err != nil || !strings.Contains(string(body), "NODE-BINARY-ECHO") {
+		t.Errorf("echo.ts after the repair = %q, %v", body, err)
+	}
+	if out, errOut := run(); !strings.Contains(out, "NODE-BINARY-ECHO hello") || strings.Contains(errOut, "extracted them again") {
+		t.Fatalf("the start after the repair\nstdout:\n%s\nstderr:\n%s", out, errOut)
+	}
 }
 
 // nativeBinaryName is the --out name of a native Piglet Binary: Windows rejects an output without an executable extension

@@ -40,21 +40,41 @@ func nodeSourcesDir(dest, digest string) string {
 // publishes its sources once per digest. Publication is the content-addressed,
 // atomic cache entry Stock PiG uses for its own Node runtime, so concurrent
 // Binaries share one complete extraction and never observe a partial one.
-func extractNodeCell(data []byte, c CellEntry, dest string) error {
+//
+// Every start compares the published entry with the archive (verifyNodeEntry), as
+// every start compares an embedded Go, Rust or Python cell binary with its
+// embedded bytes. A clean entry is left alone. One that differs, whatever its
+// ready.json says, is replaced from the verified archive under the entry's lock
+// and one line on warn names its folder and the first difference. A module-lookup
+// name in either folder above the entry cannot be replaced away, so the start
+// fails.
+// pig additive (D18): the extracted Node sources are re-checked at every start.
+func extractNodeCell(data []byte, c CellEntry, dest string, warn io.Writer) error {
 	sum := sha256.Sum256(data)
 	digest := hex.EncodeToString(sum[:])
 	if c.Digest != digest {
 		return fmt.Errorf("archive digest %s does not match its manifest digest %q", digest, c.Digest)
 	}
+	if err := refuseModuleLookupNames(filepath.Join(dest, nodeLanguage), dest); err != nil {
+		return err
+	}
 	entryDir := filepath.Dir(nodeSourcesDir(dest, digest))
-	_, err := runtimecell.PublishArtifact(context.Background(), entryDir, nodeArchiveMarker, digest, nodeLanguage, func(scratch string) (string, error) {
+	entry, err := runtimecell.PublishVerifiedArtifact(context.Background(), entryDir, nodeArchiveMarker, digest, nodeLanguage, func(dir string) error {
+		return verifyNodeEntry(data, dir)
+	}, func(scratch string) (string, error) {
 		if err := untarNodeSources(data, filepath.Join(scratch, nodeSourcesName)); err != nil {
 			return "", err
 		}
 		marker := filepath.Join(scratch, nodeArchiveMarker)
 		return marker, os.WriteFile(marker, []byte(digest), 0o644)
 	}, nodeSourcesName)
-	return err
+	if err != nil {
+		return err
+	}
+	if entry.Replaced != nil {
+		_, _ = fmt.Fprintf(warn, "pig: warning: the extracted Node sources in %s differ from the Binary's archive (%v); extracted them again\n", entryDir, entry.Replaced)
+	}
+	return nil
 }
 
 // untarNodeSources unpacks a Node cell archive into root. It accepts only

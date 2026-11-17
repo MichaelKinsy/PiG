@@ -52,13 +52,16 @@ func LoadedCells() []LoadedCell {
 // Register wires this binary's embedded cells into the host prebuilt-cell seam
 // and records source-free cell entries that startup can load directly. It is a
 // no-op when the embedded manifest is empty (stock pig), so it never changes
-// stock behavior.
+// stock behavior. A Node cell whose extracted sources were replaced because they
+// differed from the archive writes one warning line to stderr; startup calls
+// Register before any mode starts, so the line precedes the session and never
+// reaches stdout.
 func Register() error {
-	return registerFrom(cells)
+	return registerFrom(cells, os.Stderr)
 }
 
-// registerFrom is Register for the cells embedded in fsys.
-func registerFrom(fsys fs.FS) error {
+// registerFrom is Register for the cells embedded in fsys, warning on warn.
+func registerFrom(fsys fs.FS, warn io.Writer) error {
 	loadedCells = nil
 	m, err := loadManifest(fsys)
 	if err != nil {
@@ -71,7 +74,7 @@ func registerFrom(fsys fs.FS) error {
 	if err != nil {
 		return err
 	}
-	if err := extract(fsys, m, dest); err != nil {
+	if err := extract(fsys, m, dest, warn); err != nil {
 		return err
 	}
 	runtimecell.SetPrebuiltResolver(NewResolver(m, dest))
@@ -132,16 +135,18 @@ func loadManifest(fsys fs.FS) (Manifest, error) {
 // directory and a rename, so a reader never observes a half-written binary;
 // only a transient lock on the rename is retried (internal/fsretry), and a
 // rename that fails while a peer has meanwhile published the same bytes
-// succeeds. A Node cell's archive is checked against its digest and unpacked
-// into the directory nodeSourcesDir names.
-func extract(fsys fs.FS, m Manifest, dest string) error {
+// succeeds. A Node cell's archive is checked against its digest, and its
+// extracted directory (nodeSourcesDir) against the archive at every start, as a
+// cell binary is against its bytes (extractNodeCell); a differing directory is
+// replaced and warn gets one line for it.
+func extract(fsys fs.FS, m Manifest, dest string, warn io.Writer) error {
 	for _, c := range m.Cells {
 		data, err := fs.ReadFile(fsys, path.Join("cells", c.Binary))
 		if err != nil {
 			return fmt.Errorf("read embedded cell %s: %w", c.Binary, err)
 		}
 		if c.Language == nodeLanguage {
-			if err := extractNodeCell(data, c, dest); err != nil {
+			if err := extractNodeCell(data, c, dest, warn); err != nil {
 				return fmt.Errorf("extract Node cell %s: %w", c.Binary, err)
 			}
 			continue

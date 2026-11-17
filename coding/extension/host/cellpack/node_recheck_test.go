@@ -3,6 +3,7 @@ package cellpack
 import (
 	"archive/tar"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"io/fs"
@@ -14,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 )
 
 // nodeFixture is a Node cell extracted once into dest. The tests below change
@@ -21,6 +24,7 @@ import (
 type nodeFixture struct {
 	fsys     fstest.MapFS
 	m        Manifest
+	warnings bytes.Buffer // what starts wrote as warnings
 	data     []byte
 	digest   string
 	dest     string
@@ -73,7 +77,7 @@ func newNodeFixture(t *testing.T, links bool) *nodeFixture {
 }
 
 // start is one Binary start as far as the Node cell goes.
-func (f *nodeFixture) start() error { return extract(f.fsys, f.m, f.dest) }
+func (f *nodeFixture) start() error { return extract(f.fsys, f.m, f.dest, &f.warnings) }
 
 func (f *nodeFixture) path(rel string) string { return filepath.Join(f.root, filepath.FromSlash(rel)) }
 
@@ -337,7 +341,7 @@ func TestNodeCellStartRefusesModuleLookupNamesAboveTheEntry(t *testing.T) {
 			// A first start is refused as well, before anything is extracted.
 			fresh := t.TempDir()
 			writeAll(t, filepath.Join(fresh, tc.folder, tc.name), "{}")
-			if err := extract(f.fsys, f.m, fresh); err == nil || !strings.Contains(err.Error(), filepath.Join(fresh, tc.folder, tc.name)) {
+			if err := extract(f.fsys, f.m, fresh, io.Discard); err == nil || !strings.Contains(err.Error(), filepath.Join(fresh, tc.folder, tc.name)) {
 				t.Fatalf("first start = %v; want an error naming the path", err)
 			}
 			if _, err := os.Lstat(filepath.Join(fresh, "node", f.digest)); err == nil {
@@ -387,4 +391,88 @@ func snapshotTree(t *testing.T, dir string) []string {
 		t.Fatal(err)
 	}
 	return out
+}
+
+// A repair is announced once, on the warning writer, by the start that made it: one line in the form of the neighbouring startup warnings, naming the entry folder and the first difference (what, and the path in the entry). A clean start, and the start after a repair, say nothing.
+func TestNodeCellStartWarnsOnceNamingTheFirstDifference(t *testing.T) {
+	for name, test := range map[string]struct {
+		tamper func(t *testing.T, f *nodeFixture)
+		want   string
+	}{
+		"changed": {func(t *testing.T, f *nodeFixture) {
+			writeAll(t, f.path("greeter/lib/echo.ts"), "export const echo = () => 'evil';\n")
+		}, "changed: sources/greeter/lib/echo.ts"},
+		"missing": {func(t *testing.T, f *nodeFixture) {
+			if err := os.Remove(f.path("greeter/bin/run")); err != nil {
+				t.Fatal(err)
+			}
+		}, "missing: sources/greeter/bin/run"},
+		"added": {func(t *testing.T, f *nodeFixture) {
+			writeAll(t, f.path("greeter/node_modules/shadow/index.js"), "evil")
+		}, "added: sources/greeter/node_modules/shadow"},
+		"added beside the sources": {func(t *testing.T, f *nodeFixture) {
+			writeAll(t, filepath.Join(f.entryDir, "package.json"), "{}")
+		}, "added: package.json"},
+		"the first of several, in archive order": {func(t *testing.T, f *nodeFixture) {
+			writeAll(t, f.path("greeter/extra.ts"), "x")
+			writeAll(t, f.path("greeter/lib/echo.ts"), "export const echo = () => 'evil';\n")
+			writeAll(t, f.path("greeter/index.ts"), "evil")
+		}, "changed: sources/greeter/index.ts"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newNodeFixture(t, false)
+			if f.warnings.Len() != 0 {
+				t.Fatalf("the first start warned: %q", f.warnings.String())
+			}
+			if err := f.start(); err != nil || f.warnings.Len() != 0 {
+				t.Fatalf("a clean start = %v, warned %q", err, f.warnings.String())
+			}
+			test.tamper(t, f)
+			if err := f.start(); err != nil {
+				t.Fatal(err)
+			}
+			want := "pig: warning: the extracted Node sources in " + f.entryDir + " differ from the Binary's archive (" + test.want + "); extracted them again\n"
+			if f.warnings.String() != want {
+				t.Fatalf("warning = %q\nwant      %q", f.warnings.String(), want)
+			}
+			f.warnings.Reset()
+			if err := f.start(); err != nil || f.warnings.Len() != 0 {
+				t.Fatalf("the start after the repair = %v, warned %q", err, f.warnings.String())
+			}
+		})
+	}
+}
+
+// Register is the startup entry: it extracts, repairs and warns the same way, and the warning goes to the writer registerFrom is given (Register gives stderr), never anywhere a mode prints its result.
+func TestRegisterRepairsAndWarnsOnTheGivenWriter(t *testing.T) {
+	data, digest := nodeArchive(t, nodeFixtureEntries(false)...)
+	manifest, err := json.Marshal(nodeManifest(digest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fsys := fstest.MapFS{"cells/manifest.json": {Data: manifest}, "cells/node/abc.tar": {Data: data}}
+	t.Cleanup(func() {
+		runtimecell.SetPrebuiltResolver(nil)
+		loadedCells = nil
+	})
+	t.Setenv("PIG_HOME", filepath.Join(t.TempDir(), "home"))
+	var warnings bytes.Buffer
+	if err := registerFrom(fsys, &warnings); err != nil || warnings.Len() != 0 {
+		t.Fatalf("first registerFrom = %v, warned %q", err, warnings.String())
+	}
+	loaded := LoadedCells()
+	if len(loaded) != 1 {
+		t.Fatalf("loaded cells = %#v", loaded)
+	}
+	writeAll(t, filepath.Join(loaded[0].BinaryPath, "greeter", "index.ts"), "evil")
+	if err := registerFrom(fsys, &warnings); err != nil {
+		t.Fatal(err)
+	}
+	want := "(changed: sources/greeter/index.ts); extracted them again\n"
+	if !strings.HasSuffix(warnings.String(), want) || strings.Count(warnings.String(), "\n") != 1 {
+		t.Fatalf("warning = %q, want one line ending %q", warnings.String(), want)
+	}
+	if body, err := os.ReadFile(filepath.Join(LoadedCells()[0].BinaryPath, "greeter", "index.ts")); err != nil || string(body) != "export default function () {}\n" {
+		t.Fatalf("index.ts = %q, %v after the repair", body, err)
+	}
 }
