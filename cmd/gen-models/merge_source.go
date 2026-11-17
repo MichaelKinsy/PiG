@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -235,7 +236,11 @@ func mergeSource(dir string, ids []string, fetch func(url string) ([]byte, error
 
 // fetchLive reads one URL with the default client, which the tests replace.
 func fetchLive(url string) ([]byte, error) {
-	response, err := http.Get(url) //nolint:noctx // a one-shot generator tool; the client carries the hardened transport
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := http.DefaultClient.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -248,7 +253,7 @@ func fetchLive(url string) ([]byte, error) {
 
 func runMergeSource(dir, idList string) int {
 	var ids []string
-	for _, id := range strings.Split(idList, ",") {
+	for id := range strings.SplitSeq(idList, ",") {
 		if id = strings.TrimSpace(id); id != "" {
 			ids = append(ids, id)
 		}

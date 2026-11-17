@@ -157,7 +157,7 @@ type sourceMeta struct {
 	ArchiveSHA256 string           `json:"archiveSha256"`
 	Responses     []sourceResponse `json:"responses"`
 	// Merges are the -merge-source runs applied to the recording, oldest first: rows of a later live fetch taken into it (merge_source.go).
-	Merges []sourceMerge `json:"merges,omitempty"`
+	Merges []sourceMerge `json:"merges,omitzero"`
 }
 
 type sourceResponse struct {
