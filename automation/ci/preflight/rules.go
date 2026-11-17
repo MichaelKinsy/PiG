@@ -103,6 +103,8 @@ func (p params) regexps(keys ...string) error {
 
 type ruleEnv struct {
 	root string
+	// fixExempt is config.yaml's fix-title-exempt list.
+	fixExempt []fixTitleExemption
 
 	once     sync.Once
 	licenses []string
@@ -309,11 +311,32 @@ func ruleUpToDate(d *data, _ params, _ *ruleEnv) outcome {
 
 var fixTitleRE = regexp.MustCompile(`^(?:Fix\b|fix(?:\([^)]*\))?:|[\w./-]+: fix\b)`)
 
-func fixEvidence(d *data) []string {
-	var why []string
+// exemption is the fix-title-exempt entry of pull request pr, or nil.
+func (e *ruleEnv) exemption(pr int) *fixTitleExemption {
+	if e == nil {
+		return nil
+	}
+	for i := range e.fixExempt {
+		if e.fixExempt[i].PR == pr {
+			return &e.fixExempt[i]
+		}
+	}
+	return nil
+}
+
+// fixEvidence returns what says this pull request fixes something, and the fix-titled commits that its fix-title-exempt
+// entry lists, which say nothing. A changelog fragment is never exempt.
+func fixEvidence(d *data, env *ruleEnv) (why []string, exempt []string) {
+	entry := env.exemption(d.PR)
 	for _, c := range d.Commits {
 		title, _, _ := strings.Cut(c.Commit.Message, "\n")
-		if fixTitleRE.MatchString(title) {
+		switch {
+		case !fixTitleRE.MatchString(title):
+		case entry != nil && slices.Contains(entry.Commits, c.SHA):
+			exempt = append(exempt, short(c.SHA))
+		case entry != nil:
+			why = append(why, fmt.Sprintf("commit %s %q, which the fix-title-exempt entry of PR #%d in automation/ci/preflight/config.yaml does not list (its list must be reviewed again before it names this commit)", short(c.SHA), title, d.PR))
+		default:
 			why = append(why, fmt.Sprintf("commit %s %q", short(c.SHA), title))
 		}
 	}
@@ -322,7 +345,7 @@ func fixEvidence(d *data) []string {
 			why = append(why, f.Filename+" adds a ### Fixed section")
 		}
 	}
-	return why
+	return why, exempt
 }
 
 func isFragment(name string) bool {
@@ -333,14 +356,18 @@ func changed(d *data, name string) bool {
 	return slices.ContainsFunc(d.Files, func(f prFile) bool { return f.Filename == name })
 }
 
-func ruleFixLedger(d *data, p params, _ *ruleEnv) outcome {
+func ruleFixLedger(d *data, p params, env *ruleEnv) outcome {
 	isFix, ok := yesNo(d.Pull.Body, "Fix")
-	evidence := fixEvidence(d)
+	evidence, exempt := fixEvidence(d, env)
 	switch {
 	case ok && !isFix && len(evidence) > 0:
 		return fail("the template says `Fix: no`, but %s", strings.Join(evidence, "; "))
 	case !ok && len(evidence) == 0:
 		return fail("cannot tell whether this is a fix: the template has no `Fix: yes` or `Fix: no`")
+	case !isFix && len(evidence) == 0 && len(exempt) > 0:
+		o := pass(fmt.Sprintf("not a fix: %d fix-titled commit(s) are exempt", len(exempt)))
+		o.notices = []string{fmt.Sprintf("PR #%d: fix-title-exempt in automation/ci/preflight/config.yaml exempts %d fix-titled commit(s) (%s): %s", d.PR, len(exempt), strings.Join(exempt, ", "), strings.TrimSpace(env.exemption(d.PR).Reason))}
+		return o
 	case !isFix && len(evidence) == 0:
 		return pass("not a fix")
 	case !changed(d, p.str("ledger")):
@@ -360,10 +387,12 @@ func (d *data) prCommit(prefix string) bool {
 	return slices.ContainsFunc(d.Commits, func(c prCommit) bool { return strings.HasPrefix(c.SHA, prefix) })
 }
 
-func ruleChangelog(d *data, _ params, _ *ruleEnv) outcome {
+func ruleChangelog(d *data, _ params, env *ruleEnv) outcome {
 	isFix, fixOK := yesNo(d.Pull.Body, "Fix")
 	userFacing, ufOK := yesNo(d.Pull.Body, "User-facing")
-	isFix = isFix || len(fixEvidence(d)) > 0
+	if why, _ := fixEvidence(d, env); len(why) > 0 {
+		isFix = true
+	}
 	if !fixOK && !ufOK && !isFix {
 		return fail("cannot tell whether a fragment is needed: the template has no `Fix:` or `User-facing:` answer")
 	}

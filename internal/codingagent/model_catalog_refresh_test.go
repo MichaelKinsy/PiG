@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -21,10 +22,12 @@ type interactiveCatalogStore struct {
 	started      chan context.Context
 	ignoreCancel bool
 	readError    error
+	// providerID is the provider whose read holds; "radius" when empty.
+	providerID string
 }
 
 func (s *interactiveCatalogStore) Read(ctx context.Context, providerID string) (*ai.ModelsStoreEntry, error) {
-	if providerID == "radius" {
+	if providerID == cmp.Or(s.providerID, "radius") {
 		s.started <- ctx
 		if s.ignoreCancel {
 			<-s.release
@@ -265,6 +268,7 @@ func TestModelPickerRefreshUpdatesSnapshotAndPreservesScope(t *testing.T) {
 				t.Fatal(err)
 			}
 			registry.RefreshCatalogs(t.Context(), CatalogRefreshOptions{})
+			settleModelTasks(registry)
 			synctest.Test(t, func(t *testing.T) {
 				blocked := &interactiveCatalogStore{InMemoryModelsStore: store, release: make(chan struct{}), started: make(chan context.Context, 4)}
 				registry.SetModelsStore(blocked)
