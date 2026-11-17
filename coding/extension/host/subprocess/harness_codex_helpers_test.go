@@ -17,8 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/MichaelKinsy/PiG/internal/testbudget"
 	"github.com/gorilla/websocket"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // The three Codex WebSocket helpers of `@earendil-works/pi-ai/api/openai-codex-responses` act on process-local maps in Pi. A detached helper that resolves the module from PiG's harness peer reaches the
@@ -193,7 +194,6 @@ func runCodexScenario(t *testing.T, server *codexE2EServer, node, dir, pigBinary
 		t.Fatal(err)
 	}
 	scratch := t.TempDir()
-	//nolint:gosec // G204 (class b): node from exec.LookPath and a script the test wrote.
 	command := exec.CommandContext(t.Context(), node, file)
 	command.Dir = dir
 	command.Env = append(os.Environ(), "CODEX_SERVER="+server.URL, "HOME="+scratch, "PIG_HOME="+scratch, "PI_HOME="+scratch, "PIG_CODING_AGENT_DIR="+scratch, "PI_CODING_AGENT_DIR="+scratch)
@@ -228,7 +228,6 @@ func runCodexScenario(t *testing.T, server *codexE2EServer, node, dir, pigBinary
 func buildPigBinary(t *testing.T, dir string) string {
 	t.Helper()
 	binary := filepath.Join(dir, "pig")
-	//nolint:gosec // G204 (class b): fixed go build of this module's own command.
 	build := exec.CommandContext(t.Context(), "go", "build", "-o", binary, "./cmd/pig")
 	build.Dir = findModuleRoot(t)
 	if out, err := build.CombinedOutput(); err != nil {
@@ -322,7 +321,7 @@ func recordingBinary(t *testing.T, real, pidFile string) string {
 	t.Helper()
 	wrapper := filepath.Join(t.TempDir(), "pig-wrapper")
 	script := "#!/bin/sh\necho $$ > '" + pidFile + ".tmp' && mv '" + pidFile + ".tmp' '" + pidFile + "'\nexec '" + real + "' \"$@\"\n"
-	if err := os.WriteFile(wrapper, []byte(script), 0o700); err != nil { //nolint:gosec // G306 (class b): a test-owned executable wrapper.
+	if err := os.WriteFile(wrapper, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	return wrapper
@@ -335,7 +334,6 @@ func runHelper(t *testing.T, node, dir, binary, body string) {
 		t.Fatal(err)
 	}
 	scratch := t.TempDir()
-	//nolint:gosec // G204 (class b): node from exec.LookPath and a script the test wrote.
 	command := exec.CommandContext(t.Context(), node, file)
 	command.Dir = dir
 	command.Env = append(os.Environ(), "PIG_HARNESS_BINARY="+binary, "HOME="+scratch, "PIG_HOME="+scratch, "PI_HOME="+scratch, "PIG_CODING_AGENT_DIR="+scratch, "PI_CODING_AGENT_DIR="+scratch)

@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 const childProbeShared = `
@@ -83,9 +84,7 @@ func TestChildAndWorkerImportsOfPiAiResolveAsUnderPi(t *testing.T) {
 			if err := os.MkdirAll(filepath.Join(dir, "node_modules", "@earendil-works"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.Symlink(aiRoot, filepath.Join(dir, "node_modules", "@earendil-works", "pi-ai")); err != nil {
-				t.Fatal(err)
-			}
+			testenv.Symlink(t, aiRoot, filepath.Join(dir, "node_modules", "@earendil-works", "pi-ai"))
 		}
 		for name, source := range map[string]string{
 			"worker.mjs": `import { parentPort, workerData } from "node:worker_threads";` + childProbeShared + `parentPort.postMessage(await probeAll(workerData));`,
@@ -107,7 +106,6 @@ func TestChildAndWorkerImportsOfPiAiResolveAsUnderPi(t *testing.T) {
 			}
 			return out
 		}
-		//nolint:gosec // G204 (class b): node from exec.LookPath, a testdata script and paths the test built.
 		cmd := exec.CommandContext(t.Context(), node, script, "virtual", agent, extension)
 		cmd.Env = append(os.Environ(), "TMPDIR="+t.TempDir())
 		out, err := cmd.Output()

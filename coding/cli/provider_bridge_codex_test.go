@@ -13,9 +13,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
-	"github.com/gorilla/websocket"
 )
 
 // pi: packages/ai/src/api/openai-codex-responses.ts closeOpenAICodexWebSocketSessions / resetOpenAICodexWebSocketDebugStats / getOpenAICodexWebSocketDebugStats

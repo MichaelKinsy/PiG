@@ -107,7 +107,6 @@ func TestExtensionImportsOfPiAiSubpathsResolveAsUnderPi(t *testing.T) {
 	}
 	pi := map[string]map[string]subpathOutcome{}
 	for _, mode := range []string{"alias", "virtual"} {
-		//nolint:gosec // G204 (class b): node from exec.LookPath, a testdata script and paths the test built.
 		cmd := exec.CommandContext(t.Context(), node, script, mode, agent, probe)
 		cmd.Env = append(os.Environ(), "TMPDIR="+t.TempDir())
 		out, err := cmd.Output()

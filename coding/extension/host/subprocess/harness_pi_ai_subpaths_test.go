@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // TestHelperResolvingPiAiFromTheHarnessSeesPisExports: a detached helper process (pi-subagents' background runner) imports `@earendil-works/pi-ai/<subpath>` as plain Node resolves it from the package that process.argv[1] belongs to: Pi's install has the pinned pi-ai package next to pi-coding-agent, PiG's harness has its generated peer (internal/noderuntimepeers). Every `./api/*` subpath Pi's package.json exports must import in the helper with the same export names and kinds as under Pi, or fail as a missing subpath does.
@@ -40,7 +42,6 @@ process.stdout.write(JSON.stringify(out));`
 		if err := os.WriteFile(file, []byte(script), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		//nolint:gosec // G204 (class b): node from exec.LookPath and a script the test wrote.
 		out, err := exec.CommandContext(t.Context(), node, file).Output()
 		if err != nil {
 			t.Fatalf("helper in %s: %v\n%s", dir, err, out)
@@ -56,9 +57,7 @@ process.stdout.write(JSON.stringify(out));`
 	if err := os.MkdirAll(filepath.Join(piDir, "node_modules", "@earendil-works"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(aiRoot, filepath.Join(piDir, "node_modules", "@earendil-works", "pi-ai")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, aiRoot, filepath.Join(piDir, "node_modules", "@earendil-works", "pi-ai"))
 	runtime := t.TempDir()
 	if err := extractNodeRuntime(runtime); err != nil {
 		t.Fatal(err)

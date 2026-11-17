@@ -34,7 +34,7 @@ func unresolvedRelativeImports(t *testing.T, fsys fs.FS) []string {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !(strings.HasSuffix(file, ".js") || strings.HasSuffix(file, ".mjs")) || strings.Contains(file, "/sdk-bundle/") || strings.Contains(file, "/node_modules/") {
+		if d.IsDir() || (!strings.HasSuffix(file, ".js") && !strings.HasSuffix(file, ".mjs")) || strings.Contains(file, "/sdk-bundle/") || strings.Contains(file, "/node_modules/") {
 			return nil
 		}
 		data, err := fs.ReadFile(fsys, file)
@@ -74,7 +74,7 @@ func unresolvedRelativeImports(t *testing.T, fsys fs.FS) []string {
 		}
 		for _, m := range relativeNamedImport.FindAllStringSubmatch(text, -1) {
 			var names []string
-			for _, item := range strings.Split(m[1], ",") {
+			for item := range strings.SplitSeq(m[1], ",") {
 				if name, _, _ := strings.Cut(strings.TrimSpace(item), " as "); name != "" {
 					names = append(names, strings.TrimSpace(name))
 				}

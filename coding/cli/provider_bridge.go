@@ -63,8 +63,8 @@ type codexStatsWire struct {
 	FullContextRequests     int     `json:"fullContextRequests"`
 	DeltaRequests           int     `json:"deltaRequests"`
 	LastInputItems          int     `json:"lastInputItems"`
-	LastDeltaInputItems     *int    `json:"lastDeltaInputItems,omitempty"`     //portlint:allow emptydrop an absent member is Pi's unset member
-	LastPreviousResponseID  *string `json:"lastPreviousResponseId,omitempty"`  //portlint:allow emptydrop an absent member is Pi's unset member
+	LastDeltaInputItems     *int    `json:"lastDeltaInputItems,omitempty"`    //portlint:allow emptydrop an absent member is Pi's unset member
+	LastPreviousResponseID  *string `json:"lastPreviousResponseId,omitempty"` //portlint:allow emptydrop an absent member is Pi's unset member
 	WebSocketFailures       int     `json:"websocketFailures"`
 	SSEFallbacks            int     `json:"sseFallbacks"`
 	WebSocketFallbackActive *bool   `json:"websocketFallbackActive,omitempty"` //portlint:allow emptydrop an absent member is Pi's unset member

@@ -118,7 +118,7 @@ func TestProviderBridgeClientCodexWebSocketHelpers(t *testing.T) {
 	dir := t.TempDir()
 	write := func(name, body string) string {
 		path := filepath.Join(dir, name)
-		if err := os.WriteFile(path, []byte(body), 0o644); err != nil { //nolint:gosec // G306 (class b): test-owned scripts read by node.
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		return path
@@ -128,7 +128,6 @@ func TestProviderBridgeClientCodexWebSocketHelpers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	//nolint:gosec // G204 (class b): node from exec.LookPath and scripts the test wrote.
 	command := exec.CommandContext(t.Context(), node, script, filepath.Join(runtime, "shims", "provider-bridge-client.mjs"))
 	command.Env = append(os.Environ(), "PIG_HARNESS_BINARY="+binary, fakeProviderBridgeNodeEnv+"="+node, fakeProviderBridgeScriptEnv+"="+fake, "FAKE_BRIDGE_LOG="+logPath)
 	done := make(chan struct{})
@@ -151,16 +150,19 @@ func TestProviderBridgeClientCodexWebSocketHelpers(t *testing.T) {
 		t.Fatalf("client script: %v\n%s\n%s", err, output, stderr)
 	}
 	var got struct {
-		NoChild                struct{ Stats, Started bool }
-		FirstKeys              []string
-		FirstUndefinedMembers  struct{ Delta, Previous, Error, Active bool }
-		Copy                   int
-		Unknown                bool
-		Lag                    []struct {
+		NoChild               struct{ Stats, Started bool }
+		FirstKeys             []string
+		FirstUndefinedMembers struct{ Delta, Previous, Error, Active bool }
+		Copy                  int
+		Unknown               bool
+		Lag                   []struct {
 			Type     string
 			Requests int
 		}
-		LagDelta    struct{ Delta int; Previous string }
+		LagDelta struct {
+			Delta    int
+			Previous string
+		}
 		FailureKeys []string
 		Failure     struct {
 			Failures int

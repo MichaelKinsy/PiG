@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The values the stand-ins re-export from Pi's own modules (api/openai-completions convertMessages, api/pi-messages PiMessagesResponseError, every api/google-shared value),
@@ -88,7 +90,6 @@ func TestRestoredAPIValuesBehaveAsUnderPi(t *testing.T) {
 		if err := os.WriteFile(file, []byte(apiValueRows), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		//nolint:gosec // G204 (class b): node from exec.LookPath and a script the test wrote.
 		out, err := exec.CommandContext(t.Context(), node, file).CombinedOutput()
 		if err != nil {
 			t.Fatalf("helper in %s: %v\n%s", dir, err, out)
@@ -103,9 +104,7 @@ func TestRestoredAPIValuesBehaveAsUnderPi(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(piDir, "node_modules", "@earendil-works"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(aiRoot, filepath.Join(piDir, "node_modules", "@earendil-works", "pi-ai")); err != nil {
-		t.Fatal(err)
-	}
+	testenv.Symlink(t, aiRoot, filepath.Join(piDir, "node_modules", "@earendil-works", "pi-ai"))
 	runtime := t.TempDir()
 	if err := extractNodeRuntime(runtime); err != nil {
 		t.Fatal(err)

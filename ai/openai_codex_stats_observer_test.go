@@ -8,8 +8,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/internal/codexwsobserve"
 	"github.com/gorilla/websocket"
+
+	"github.com/MichaelKinsy/PiG/internal/codexwsobserve"
 )
 
 // pi: packages/ai/src/api/openai-codex-responses.ts getOrCreateWebSocketDebugStats, recordWebSocketFailure, recordWebSocketSseFallback, resetOpenAICodexWebSocketDebugStats
