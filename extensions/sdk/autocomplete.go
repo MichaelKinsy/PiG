@@ -145,6 +145,14 @@ func (e *Extension) dispatchAutocomplete(ctx Context, raw json.RawMessage) (any,
 	if err := json.Unmarshal(raw, &request); err != nil {
 		return nil, err
 	}
+	if request.Operation == "changed" {
+		// The host rebuilt the provider chain (Pi's setupAutocompleteProvider hands it to the installed editor, interactive-mode.ts:848-850).
+		// An editor component here is a proxy of the host's editor, which already holds the rebuilt provider; nothing in this SDK keeps the descriptor, so its host reference is released at once.
+		if request.Current.ID != "" {
+			releaseAutocompleteLease(autocompleteLeaseCleanup{conn: e.conn, id: request.Current.ID})
+		}
+		return nil, nil
+	}
 	registry := &e.autocomplete
 	registry.mu.Lock()
 	factory, provider := registry.factories[request.FactoryID], registry.providers[request.ID]

@@ -20803,6 +20803,31 @@
       ]
     },
     {
+      "id": "BF-5d60aa5",
+      "title": "A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with…",
+      "symptom": "A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with `autocomplete provider is no longer available` when the install ran before the autocomplete rebuild that follows `session_start` (and on a later `/reload`).",
+      "rootCause": "The host reports every autocomplete rebuild to the runtime that installed an editor as autocomplete.sync {operation: \"changed\", current}, as Pi's setupAutocompleteProvider calls setAutocompleteProvider on the installed editor. The Node runtime handled it; the Go, Rust, Python and Lisp SDKs looked the descriptor up as a provider id, answered an error, and the host turned that error into an uncaught exception that ended the session whenever the install ran before the rebuild that follows session_start.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with `autocomplete provider is no longer available` when the install ran before the autocomplete rebuild that follows `session_start` (and on a later `/reload`). The host reports each rebuild to the editor's runtime, and those SDKs answered the notice with an error that the host raised as an uncaught exception; they now accept it, as the Node runtime always did.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5d60aa5d36",
+          "date": "2026-11-16",
+          "pr": "497"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/autocomplete_installed_editor_test.go::TestInstalledSubprocessEditorHearsTheRebuildInEitherOrder",
+        "test/extension-conformance/autocomplete_changed_test.go::TestAutocompleteChangedReachesInstalledNativeEditor",
+        "test/parity/scenarios/autocomplete/14-custom-editor-installed-at-session-start.toml"
+      ]
+    },
+    {
       "id": "BF-5d6bb25",
       "title": "The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or…",
       "symptom": "The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or slice it is inside instead of stopping at a depth of 1,000: a payload that holds itself still fails as the marshaler fails, and a payload nested deeper than 1,000 levels has its large strings spliced like any other (the body is the same bytes).",
