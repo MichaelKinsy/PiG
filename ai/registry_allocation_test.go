@@ -3,6 +3,8 @@ package ai
 import (
 	"reflect"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/benchalloc"
 )
 
 // Filtering keeps the generated provider and model order and returns an owned slice.
@@ -45,15 +47,16 @@ func BenchmarkListModelsByProvider(b *testing.B) {
 	}
 }
 
-// BenchmarkGeneratedToModelCatalog materializes the whole generated catalog as ModelRuntime startup does.
+// BenchmarkGeneratedToModelCatalog materializes the whole generated catalog as ModelRuntime startup does, on the live catalog: it exists to cost the conversion of the data that ships. Its allocs/op is allocations per 1,000 listed entries, measured over the loop by runtime.ReadMemStats (internal/benchalloc), so a refresh that adds entries does not move the row while a model that costs more to convert does.
 func BenchmarkGeneratedToModelCatalog(b *testing.B) {
 	models := ListModels("")
-	b.ReportAllocs()
-	for b.Loop() {
-		for i := range models {
-			_ = models[i].ToModel()
-		}
-	}
+	b.Run("per-1000-entries", func(b *testing.B) {
+		benchalloc.Per1000Entries(b, len(models), func() {
+			for i := range models {
+				_ = models[i].ToModel()
+			}
+		})
+	})
 }
 
 // referenceCapabilities is the pre-optimization ToCapabilities: MaxThinking is the highest level GetSupportedThinkingLevels reports for a model whose only reasoning signal is thinkingMaxLevel.
