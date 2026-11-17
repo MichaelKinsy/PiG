@@ -725,7 +725,8 @@ validation report, or Pig drops `pig install --validate-only --json`.
 
 PORT_MAP path: n/a (downstream-only validation/interop surface; does not map to
 any upstream pi file).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:6a0edf24f8bee74f
 
 ## D31 Fused in-process extension runtime for Piglet Binaries
 
@@ -976,7 +977,8 @@ is locked by `coding/cli/package_commands_test.go`
 PORT_MAP path: `packages/coding-agent/src/package-manager-cli.ts` for Package
 list parity; additive status and Piglet record inventory have no upstream path.
 Ratification: explicitly approved by the user for section SHA-256 `84552a728172209b60df6a68f7d120207cd2e29e0346ef8afb4782eac6b56485`.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:5d04dcc3e7e3aed3
 ## D52 Extension terminal-geometry context (`ctx.width` / `ctx.height`)
 
 Summary: Extensions can read the terminal width and height and learn when either one changes.
@@ -1034,7 +1036,8 @@ and the startup kick), and the per-SDK context getters under
 Observationally identical, no upstream divergence to track: the timeline
 of the height notification relative to other ready-time events is the
 pig-additive contract; see `docs/extension-api-parity.md` geometry row.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:e3158e5dfabbcb6a
 
 Remove when: upstream delivers terminal height (or width height) to the
 extension SDK context, obsoleting the pig-additive geometry surface.
@@ -1704,7 +1707,8 @@ Locked by: `TestLineageOfASourceChainsRootFirstWithEachLinksChanges`, `TestLinea
 Remove when: Pi has Piglets with an equivalent inspection command.
 
 Approval: owner, 2026-10-14T00:15:47Z (TERN-CLAUDE-CHANNEL: "D170 and D172 approved"; recorded in owner-signoff.md).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:aa4a81978f7cf013
 
 ## D172 Idle spinner parking and idle heap return
 
@@ -1733,7 +1737,8 @@ Not shipped: a higher GOGC (measured within noise). The GOMAXPROCS default is D1
 Remove when: never; policy only.
 
 Approval: owner ruling 2026-10-13 (LW-ROADMAP.md section 6, ruling 5: "S6: spinner and idle GC now").
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:43ae1517df36b811
 
 ## D174 GOMAXPROCS 2 runtime policy (1 in rpc mode); loaders the user waits on run at the default width
 
@@ -1913,7 +1918,8 @@ Locked by: `TestSessionGraphExtensionRunnerAcrossSDKs` (the runtime made first h
 Remove when: Pi's `DefaultResourceLoader` takes a runtime, or Pi exports `loadExtensions`.
 
 Approval: owner decision (3) on the extension runner spec (2026-10-24), recorded by Main as D201.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:c1be52613db6d77d
 
 ## D202 A Piglet Binary accepts overlay Piglets unless it is built closed (`build.closed`)
 
@@ -2015,7 +2021,8 @@ Locked by: `TestOwnedThinkingRunsLeaveNoSpacing`, `TestOwnedThinkingRunsToggles`
 Remove when: Pi gives an extension an official way to own its thinking rows, or the compact-UI extensions that use it are gone.
 
 Approval: owner decision on issue #384, 2026-10-29: build the hook for 0.6.0 as `ownThinkingRuns(enabled = true)`, with a runtime toggle, keeping click-to-hide.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:d9d32c78ab9d97ae
 
 ---
 

@@ -583,7 +583,8 @@ Locked by: `tui/terminal_image_test.go` -
 Kitty sequence or reserved rows).
 PORT_MAP path: `packages/tui/src/terminal-image.ts` (intentional nested-terminal
 interop guard beyond upstream's tmux-only gate).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:b3a62ac9028c3ae8
 
 ## D48 Orphaned and duplicate tool results are stripped from normalized history
 
@@ -671,7 +672,8 @@ pinned pi 0.84's openai-completions transform against a hermetic endpoint; its
 `[diverge]` block asserts pig omits the orphaned `call_x` from the provider
 request (`tool_call_ids_in_request: []`) while pi sends it (`[call_x]`).
 Ratification: user-ratified (2026-08-10 review: approved, "do it properly").
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:32866883a7ccf8c6
 
 ## D51 Interactive SIGINT restores the terminal before numeric exit 130
 
@@ -1039,7 +1041,7 @@ Call-site markers:
 - `tui/editor.go`: the final-grapheme cursor in `Editor.buildVisualLines`.
 - `tui/editor.go`: the autocomplete row bound in `Editor.Render`.
 
-Locked by: `tui/component_width_table_test.go` `TestSelectorDialogListComponentsNeverExceedRenderWidth`, whose `TruncatedText`, `UserMessageSelectorComponent`, `UserMessageSelectorScrolled`, `UserMessageSelectorEmpty`, and `EditorSlashAutocomplete` cases render every width from 1 through 120 and reject any over-wide row, and `tui/editor_overlay_cursor_test.go` `TestEditorCursorAtWidthOneStaysInBounds` pins the editor's width-1 row. Restoring upstream's full padding or removing the selector's final clip fails the matching width-1 case.
+Locked by: `tui/component_width_table_test.go` `TestSelectorDialogListComponentsNeverExceedRenderWidth`, whose `TruncatedText`, `UserMessageSelectorComponent`, `UserMessageSelectorScrolled`, `UserMessageSelectorEmpty`, `EditorSlashAutocomplete`, and `SettingsList` cases render every width from 1 through 120 and reject any over-wide row, and `tui/component_width_sweep_test.go` `TestComponentWidthSweep`'s `SettingsList` case sweeps the same widths, and `tui/editor_overlay_cursor_test.go` `TestEditorCursorAtWidthOneStaysInBounds` pins the editor's width-1 row. Restoring upstream's full padding or removing the selector's final clip fails the matching width-1 case.
 
 Parity allowance: paired interactive scenarios use a viable terminal width. The intentional difference exists only when these rows cannot fit; the width matrix directly locks the allowed behavior and its boundary.
 
@@ -1047,7 +1049,8 @@ PORT_MAP paths: `packages/tui/src/components/truncated-text.ts`, `packages/codin
 
 Remove when: upstream clamps `TruncatedText` padding, bounds every user-message selector row, and fits the editor's end-of-line cursor at width 1, or its main screen safely handles over-wide rows without terminating.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:450b12442748d74a
 
 ## D68 Windows owner-only files are enforced by DACL
 
@@ -1324,6 +1327,7 @@ Observable effect: (1) an extension whose command continues through a timer or I
 Scope: only RPC stdin end, and only these two cases. Outside them, which commands answer, the held responses, the per-command window, the ordering of suspensions before responses, pending dialogs, `session_shutdown` delivery and exit codes are not waived and must match Pi.
 
 Owner decision: 2026-09-29, owner Michael Kinsy approves this divergence ("RPC shutdown residuals from process-per-extension hosting") because extensions run in separate runtime processes and the exact fixes are neither cheap nor safe now. Approval covers only the scope above.
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
 Call-site markers: `coding/extension/host/subprocess/runtime-node/runtime.mjs`: `armRequestWindow`. `coding/extension/host/subprocess/host.go`: `setQuitHandlerSuspended`. `coding/cli/rpc_shutdown_test.go`: the `afterExit` tolerance in `TestRPCInputEndAfterExtensionCommandComparedWithPi`.
 
@@ -1333,7 +1337,7 @@ Parity allowance: the Pi rows of the comparison tests are strict, except the row
 
 Remove when: the host stops or freezes a runtime process before a suspended continuation can run and the stdin-end window is aggregated across runtime processes, or PiG runs extensions on one shared event loop as Pi does.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:474dbe3eed4a4610
 
 ## D86 RPC settle tail and command admission: a handler of a runtime that cannot report its wait is taken to wait once it outlives a quantum
 
@@ -1529,6 +1533,7 @@ What: When a subprocess editor opts into embedded working status, Pi runs the St
 Why: One animation timer on the host keeps the spinner in step with the rest of the UI across the process boundary, and the host decides placement before the editor can answer.
 
 Owner decision: 2026-10-05, owner Michael Kinsy (pr137).
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
 Call-site markers: `coding/extension/host/subprocess/runtime-node/editor-component.mjs` (install opt-in and indicator construction), `coding/extension/remote_editor.go` (`RemoteEditorStatus`).
 
@@ -1538,7 +1543,7 @@ Parity allowance: observable rows match Pi; only timer ownership and opt-in re-c
 
 Remove when: the editor protocol can return a live opt-in and snapshots are replaced by an editor-side timer.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:117f0fccd57dbe53
 
 ## D96 The remote execution daemon is a Go program, not Pi's Rust binary
 
@@ -2238,7 +2243,8 @@ Parity allowance: `test/parity/scenarios/tools/31-print-bash-long-last-line.toml
 
 Remove when: Pi reports the size of the last counted line.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:a435c14a060051f9
 
 ## D156 MCP server `url` expands environment references (Pi #10654)
 
@@ -2666,6 +2672,7 @@ Why: OpenRouter accepts `:nitro` (providers sorted by throughput, priority servi
 Scope: one rule, `ai/openrouter_variants.go` (`OpenRouterRoutingVariants`, `OpenRouterVariant`, `WithOpenRouterRoutingVariants`, and `WithOpenRouterRoutingVariantModels` for a saved list), data-driven from OpenRouter's documented suffix list; no model is named. Used by `ai.ListModels` (OpenRouter and the whole catalog), `ai.LookupModel` and `ai.LookupModelExact` (a variant the catalog does not list is derived from its base and cached), `builtinChatCatalogListed` (the registry's selector, `--list-models`, RPC and SDK lists; built on first use), `builtinChatCatalogListing` (`RuntimeModels` and `GetAllModelDataSources`, which read each listed model's id and name from `ai.OpenRouterListing`, the walk that builds the list, and build no variant, so a caller that only resolves a model, or reads the available models of a registry without OpenRouter auth, builds none until one is selected), `GetProviderModelDataByID` and the model reference resolver (`withNamedRoutingVariants`: a reference that names `:nitro` or `:floor` finds the variant of the model it means). A partial model text (`--model 4o`, scoped-model patterns, the resolver's fuzzy match) is not matched against a variant unless the text itself names `:nitro` or `:floor`, so every text Pi resolves resolves to the same model here (Pi's reverse-collation tie break would otherwise prefer `:nitro`). The listed price is the base model's rate; OpenRouter bills a request at the rate of the endpoint that served it (a priority endpoint for `:nitro`, a flex endpoint for `:floor`). Image and classifier models, other providers, the remote catalog overlay and the other routing variants (`:exacto`, `:online`) are unchanged.
 
 Owner decision: approved by owner Michael Kinsy on 2026-10-24 (issue #315, an additive extension that overlaps Pi's catalog).
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
 Call-site markers: `ai/openrouter_variants.go` (`OpenRouterVariant`), `ai/registry.go` (`ListModels`, `LookupModel`, `LookupModelExact`), `internal/codingagent/builtin_chat_catalog.go` (`builtinChatCatalogListed`), `internal/codingagent/model_catalog_data.go` (`GetProviderModelData`, `GetProviderModelDataByID`), `internal/codingagent/remote_catalog_provider.go` (`withPersonalizedCatalogOverlay`), `internal/codingagent/model_pattern.go` (`withNamedRoutingVariants`, `fuzzyMatches`).
 
@@ -2675,7 +2682,7 @@ Parity allowance: the bundled catalog and every comparison of it with Pi (`TestC
 
 Remove when: Pi lists the routing variants (or OpenRouter lists them in `/models`), or the owner reverses the decision; then the derivation in `ai/openrouter_variants.go`, its markers, the allowance in the oracle test and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:15bf08a790edf797
 
 ## D200 With no home directory PiG still runs the commands that load no resources, where Pi crashes at import, and fails with Pi's error where Pi's home lookup would run
 
