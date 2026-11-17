@@ -129880,9 +129880,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallDependencies"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_kill_unix_test.go#TestInstallDependenciesKillsACommandThatIgnoresTheAbortsSigtermAfterTheStopGrace",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesGitDependenciesInstallsAGitDependencyPinnedToACommitWithNpmTheBuildInlinesThatCommitsFile",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesGitDependenciesReachesAPluginInsideAMultiPluginRepositoryThroughADependencyOnTheWholeRepositoryByPath"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesGitDependenciesInstallsAGitDependencyPinnedToACommitWithNpmTheBuildInlinesThatCommitsFile"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -129903,9 +129903,9 @@
         "call:chord/nextnode/plugins/plugins_install.go#InstallDependencies"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_install_kill_unix_test.go#TestInstallDependenciesKillsACommandThatIgnoresTheAbortsSigtermAfterTheStopGrace",
         "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesEndsWithTheCommandThoughAProcessItStartedHoldsItsPipes",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesGitDependenciesInstallsAGitDependencyPinnedToACommitWithNpmTheBuildInlinesThatCommitsFile",
-        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesGitDependenciesReachesAPluginInsideAMultiPluginRepositoryThroughADependencyOnTheWholeRepositoryByPath"
+        "test:chord/nextnode/plugins/plugins_install_test.go#TestInstallDependenciesGitDependenciesInstallsAGitDependencyPinnedToACommitWithNpmTheBuildInlinesThatCommitsFile"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -130487,7 +130487,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_executable_test.go#TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThereItsBuildFailsAndTheRestRuns",
-        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsCurrentIsEmptyBeforeAKindsFirstUseThenItsBuiltSet"
+        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsCurrentIsEmptyBeforeAKindsFirstUseThenItsBuiltSet",
+        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsRolloutHandsTheStepTheSetsItsRolloutLeftForItsKinds"
       ]
     },
     {
@@ -130508,7 +130509,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_executable_test.go#TestAppStartsWhenAnOptionalPluginsFacetImportsAFileThatIsNotThereItsBuildFailsAndTheRestRuns",
-        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsCurrentIsEmptyBeforeAKindsFirstUseThenItsBuiltSet"
+        "test:chord/nextnode/plugins/plugins_current_proof_test.go#TestPluginsCurrentIsEmptyBeforeAKindsFirstUseThenItsBuiltSet",
+        "test:chord/nextnode/plugins/plugins_plugins_test.go#TestPluginsRolloutHandsTheStepTheSetsItsRolloutLeftForItsKinds"
       ]
     },
     {
@@ -183472,7 +183474,7 @@
       "evidence": [
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers",
-        "test:test/extension-conformance/ui_view_tool_test.go#TestConformance_UIViewToolShowsAndFocuses"
+        "test:test/extension-conformance/tool_bigint_argument_test.go#TestToolReceivesABigintArgumentAsTheDigitsStringWithNAcrossSDKs"
       ]
     },
     {
@@ -183494,7 +183496,7 @@
       "evidence": [
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers",
-        "test:test/extension-conformance/ui_view_tool_test.go#TestConformance_UIViewToolShowsAndFocuses"
+        "test:test/extension-conformance/tool_bigint_argument_test.go#TestToolReceivesABigintArgumentAsTheDigitsStringWithNAcrossSDKs"
       ]
     },
     {
