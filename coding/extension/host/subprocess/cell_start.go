@@ -185,11 +185,12 @@ func (me *managedExt) activateNode() error {
 	if me.host != nil && me.host.uiBridge != nil {
 		bridge := me.host.uiBridge
 		// Notifications may have arrived during later factories. Activation must not overwrite that state with the earlier registration snapshot.
-		if me.wantsModelRegistry {
+		registered := me.registration()
+		if registered.wantsModelRegistry {
 			ready.Ready.Models = bridge.ModelCatalog()
 		}
 		me.entryCursorMu.Lock()
-		ready.Ready.State = bridge.Snapshot(me.flagNames, 0, me.host.subscribedToSessionLog(me.config.Name))
+		ready.Ready.State = bridge.Snapshot(registered.flagNames, 0, me.host.subscribedToSessionLog(me.config.Name))
 		if ready.Ready.State.Session != nil {
 			me.entryCursor = ready.Ready.State.Session.EntryCount
 		}

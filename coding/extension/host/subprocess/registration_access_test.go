@@ -14,23 +14,22 @@ type registrationSeen struct {
 }
 
 func registrationOf(me *managedExt) registrationSeen {
-	return registrationSeen{me.flagNames, me.flagDefaults, me.wantsSessionLog, me.wantsModelRegistry}
+	r := me.registration()
+	return registrationSeen{r.flagNames, r.flagDefaults, r.wantsSessionLog, r.wantsModelRegistry}
 }
 
 func setRegistrationFor(me *managedExt, r registrationSeen) {
-	me.flagNames, me.flagDefaults, me.wantsSessionLog, me.wantsModelRegistry = r.flagNames, r.flagDefaults, r.wantsSessionLog, r.wantsModelRegistry
+	me.setRegistration(&registeredState{flagNames: r.flagNames, flagDefaults: r.flagDefaults, wantsSessionLog: r.wantsSessionLog, wantsModelRegistry: r.wantsModelRegistry})
 }
 
 // joinProcessFor records that me runs in the process of origin, as adoptProcess does.
 func joinProcessFor(me *managedExt, share *processShare, origin *managedExt, cmd *exec.Cmd, exited <-chan struct{}) {
-	me.share, me.procOwner = share, origin
-	me.setProcessHandle(nil, nil, cmd, exited)
+	me.joinProcess(share, origin, nil, nil, cmd, exited)
 }
 
 // clearProcessFor forgets the process me ran in, as a start does before it spawns or adopts the next.
 func clearProcessFor(me *managedExt) {
-	me.setProcessHandle(nil, nil, nil, nil)
-	me.share, me.procOwner = nil, nil
+	me.clearProcess()
 }
 
 // processLinkOf reads the handle and the link of me's process under the guard of the handle.

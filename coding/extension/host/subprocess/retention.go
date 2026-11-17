@@ -191,11 +191,12 @@ func (h *Host) Retain() {
 		}
 	}
 	for _, me := range h.exts {
+		share := me.processShare()
 		switch {
 		case me.packedProcess != nil && !me.packedProcess.stopping.Load():
 			add(me.packedProcess.share, me.connection())
-		case me.packedProcess == nil && me.share != nil:
-			add(me.share, me.connection())
+		case me.packedProcess == nil && share != nil:
+			add(share, me.connection())
 		}
 	}
 	h.mu.Unlock()
@@ -277,7 +278,7 @@ func (h *Host) retentionKey(ctx context.Context, artifact string, node bool) str
 
 // withdrawProcessFromRetention keeps every later claim off the process hosting me, packed or isolated. The host calls it when a connection closes without the host closing it.
 func (me *managedExt) withdrawProcessFromRetention() {
-	share := me.share
+	share := me.processShare()
 	if me.packedProcess != nil {
 		share = me.packedProcess.share
 	}
