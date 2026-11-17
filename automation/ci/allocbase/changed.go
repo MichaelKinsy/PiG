@@ -37,6 +37,8 @@ type goGraph struct {
 	Imports map[string][]string
 	// Embeds maps a repository-relative file a package embeds to the import paths that embed it.
 	Embeds map[string][]string
+	// TestEmbeds maps a file only the tests of a package embed to that package: it changes the package's own tests and benchmarks, and nothing that imports the package.
+	TestEmbeds map[string][]string
 }
 
 // selectionInput is everything selectChanged reads. The git and go list calls fill it in; the tests fill it in by hand.
@@ -47,6 +49,8 @@ type selectionInput struct {
 	// HoldsBenchmark says whether a changed _test.go file holds a func Benchmark now or held one at the merge base: a changed benchmark file, a deleted one and a rewritten one all change what the run finds.
 	HoldsBenchmark func(file string) bool
 	BaseRows, Rows []entry
+	// Workspace names the repository-relative directories of the go.work members ("." is the root module). It is called only when a go.mod or go.sum below the root changed.
+	Workspace func() ([]string, error)
 	// Graph is called once, and only when a changed file can belong to a package.
 	Graph func() (goGraph, error)
 }
@@ -61,7 +65,7 @@ func importPath(module, dir string) string {
 	return module + "/" + dir
 }
 
-// selectChanged names the hot packages the change makes the run measure: the package of a changed benchmark file, of a changed non-test file (source, embedded or data file, or a file under its testdata), of a changed or removed baseline row, and one the tool's list gained; every hot package that imports (tests included) a package with a changed non-test file; and every hot package when go.mod, go.sum, go.work or go.work.sum changed. A changed _test.go file without a benchmark and a Markdown file select nothing, and a package outside the tool's list is never selected: the nightly does not run it either, so no baseline entry is owed for its benchmarks.
+// selectChanged names the hot packages the change makes the run measure: the package of a changed benchmark file, of a changed non-test file (source, embedded or data file, or a file under its testdata; a file a package embeds belongs to that package even below a subdirectory of it), of a changed or removed baseline row, and one the tool's list gained; every hot package that imports (tests included) a package with a changed non-test file; and every hot package when go.work, go.work.sum, or the go.mod or go.sum of the root or of another go.work member changed. A changed _test.go file without a benchmark and a Markdown file select nothing, and a package outside the tool's list is never selected: the nightly does not run it either, so no baseline entry is owed for its benchmarks.
 func selectChanged(in selectionInput) ([]selected, error) {
 	reasons := map[string][]string{}
 	add := func(pkg, why string) {
@@ -73,10 +77,19 @@ func selectChanged(in selectionInput) ([]selected, error) {
 	for _, file := range in.Files {
 		dir, base := path.Split(file)
 		dir = strings.TrimSuffix(dir, "/")
+		member := false
+		if dir != "" && (base == "go.mod" || base == "go.sum") {
+			members, err := in.Workspace()
+			if err != nil {
+				return nil, err
+			}
+			member = slices.Contains(members, dir)
+		}
 		switch {
-		case dir == "" && (base == "go.mod" || base == "go.sum" || base == "go.work" || base == "go.work.sum"):
+		case dir == "" && (base == "go.mod" || base == "go.sum" || base == "go.work" || base == "go.work.sum"), member:
+			// go.work resolves one build list for every member, so a member's manifest changes every package, as the root's does.
 			for _, pkg := range in.Hot {
-				add(pkg, base+" changed")
+				add(pkg, file+" changed")
 			}
 		case strings.HasSuffix(base, ".md"):
 		case strings.HasSuffix(base, "_test.go"):
@@ -125,6 +138,11 @@ func selectChanged(in selectionInput) ([]selected, error) {
 			changed[importPath(graph.Module, path.Dir(file))] = file
 			for _, owner := range graph.Embeds[file] {
 				changed[owner] = file
+				// The embedding package is measured too, not only what imports it: the file is in its binary.
+				add("./"+strings.TrimPrefix(strings.TrimPrefix(owner, graph.Module), "/"), "embedded file "+file)
+			}
+			for _, owner := range graph.TestEmbeds[file] {
+				add("./"+strings.TrimPrefix(strings.TrimPrefix(owner, graph.Module), "/"), "embedded file "+file)
 			}
 		}
 		importers := map[string][]string{}
@@ -235,16 +253,16 @@ func loadGraph(root string, hot []string) (goGraph, error) {
 	if err != nil {
 		return goGraph{}, err
 	}
-	out, err := output(root, "go", append([]string{"list", "-deps", "-test", "-json=ImportPath,Dir,Imports,EmbedFiles"}, hot...)...)
+	out, err := output(root, "go", append([]string{"list", "-deps", "-test", "-json=ImportPath,Dir,Imports,EmbedFiles,TestEmbedFiles,XTestEmbedFiles"}, hot...)...)
 	if err != nil {
 		return goGraph{}, err
 	}
-	graph := goGraph{Module: strings.TrimSpace(string(module)), Imports: map[string][]string{}, Embeds: map[string][]string{}}
+	graph := goGraph{Module: strings.TrimSpace(string(module)), Imports: map[string][]string{}, Embeds: map[string][]string{}, TestEmbeds: map[string][]string{}}
 	decoder := json.NewDecoder(bytes.NewReader(out))
 	for decoder.More() {
 		var listed struct {
-			ImportPath, Dir     string
-			Imports, EmbedFiles []string
+			ImportPath, Dir                                      string
+			Imports, EmbedFiles, TestEmbedFiles, XTestEmbedFiles []string
 		}
 		if err := decoder.Decode(&listed); err != nil {
 			return goGraph{}, fmt.Errorf("go list -deps -test: %w", err)
@@ -255,14 +273,49 @@ func loadGraph(root string, hot []string) (goGraph, error) {
 				graph.Imports[pkg] = append(graph.Imports[pkg], to)
 			}
 		}
-		for _, file := range listed.EmbedFiles {
-			rel, err := filepath.Rel(root, filepath.Join(listed.Dir, file))
-			if err == nil && !strings.HasPrefix(rel, "..") {
-				graph.Embeds[filepath.ToSlash(rel)] = append(graph.Embeds[filepath.ToSlash(rel)], pkg)
+		record := func(into map[string][]string, files []string) {
+			for _, file := range files {
+				rel, err := filepath.Rel(root, filepath.Join(listed.Dir, file))
+				if err == nil && !strings.HasPrefix(rel, "..") && !slices.Contains(into[filepath.ToSlash(rel)], pkg) {
+					into[filepath.ToSlash(rel)] = append(into[filepath.ToSlash(rel)], pkg)
+				}
 			}
 		}
+		record(graph.Embeds, listed.EmbedFiles)
+		record(graph.TestEmbeds, listed.TestEmbedFiles)
+		record(graph.TestEmbeds, listed.XTestEmbedFiles)
 	}
 	return graph, nil
+}
+
+// workspaceMembers lists the directories of the go.work members, relative to the repository root and slash-separated; the root alone when there is no go.work.
+func workspaceMembers(root string) ([]string, error) {
+	members := []string{"."}
+	if _, err := os.Stat(filepath.Join(root, "go.work")); err != nil {
+		return members, nil
+	}
+	out, err := output(root, "go", "work", "edit", "-json")
+	if err != nil {
+		return nil, err
+	}
+	var work struct{ Use []struct{ DiskPath string } }
+	if err := json.Unmarshal(out, &work); err != nil {
+		return nil, fmt.Errorf("go work edit -json: %w", err)
+	}
+	for _, use := range work.Use {
+		dir := filepath.Clean(use.DiskPath)
+		if filepath.IsAbs(dir) {
+			rel, err := filepath.Rel(root, dir)
+			if err != nil {
+				continue
+			}
+			dir = rel
+		}
+		if dir = filepath.ToSlash(dir); !slices.Contains(members, dir) {
+			members = append(members, dir)
+		}
+	}
+	return members, nil
 }
 
 // normalizeImportPath folds a test variant into the package it tests: "p [p.test]" and "p_test" are p, and "p.test" is p's test binary.
@@ -304,6 +357,7 @@ func changedPackages(root, ref string, committedOnly bool, hot []string, rows []
 		}
 		return err == nil && funcBenchmark.Match(source)
 	}
+	in.Workspace = func() ([]string, error) { return workspaceMembers(root) }
 	in.Graph = func() (goGraph, error) { return loadGraph(root, hot) }
 	selection, err := selectChanged(in)
 	return selection, len(files), err
