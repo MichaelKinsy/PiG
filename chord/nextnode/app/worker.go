@@ -173,9 +173,14 @@ func runWorker(options WorkerOptions, start workers.WorkerStart, ctx context.Con
 		{Name: "chord.app.files", Facet: FilesFacet(files, kit.Files, kit.Uploads)},
 		{Name: "chord.app.data.export", Facet: HostDataFacet(kit.Dir, opened, token)},
 	}
+	// pig divergence (D460): Pi's worker loads `translationsFacet()` beside the data facet (`worker.ts:85`); `themesFacet()` is the server's only.
+	nodeCore, err := piCoreFacets(kit.Dir, piTranslations)
+	if err != nil {
+		return nil, err
+	}
 	load := workers.WorkerLoad{
 		Kind: kit.Facet, HostKind: hostKind, Core: goCore,
-		NodeCore: []plugins.CoreFacet{{Name: "chord.app.data", Module: dataModule}},
+		NodeCore: append([]plugins.CoreFacet{{Name: "chord.app.data", Module: dataModule}}, nodeCore...),
 		Bridged: []plugins.BridgedFacet{
 			{Name: "chord.app.worker-info", Contracts: []*contracts.Contract{WorkerInfo}},
 			{Name: "chord.app.files", Contracts: []*contracts.Contract{Files, FilesFolder}},
