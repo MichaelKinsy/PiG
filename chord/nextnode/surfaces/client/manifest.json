@@ -1,7 +1,7 @@
 {
-	"commit": "f6600b58f347a4f685bbe45501f939acbb7c5b9f",
+	"commit": "5f89cc0a7df669813650bfdac498f8ff865e8233",
 	"pin": "b4afdddf44e059c67ccf5097e5317d913521b470",
-	"catchup": "f6600b58f347a4f685bbe45501f939acbb7c5b9f",
+	"catchup": "5f89cc0a7df669813650bfdac498f8ff865e8233",
 	"patches": [
 		{
 			"name": "D636-apply-acquired-pick.patch",
@@ -26,7 +26,7 @@
 		},
 		{
 			"path": "pi/chord/src/contracts/contract.ts",
-			"sha256": "54e73d3530f2b1ddd34e0cd5d87e098444c70eb0e948b1225a1e672b094aa8b2"
+			"sha256": "fc41dcf164d93b7ffddb9b1d8956ac8e573ea61ff126c3b2422bf45bd16f7862"
 		},
 		{
 			"path": "pi/chord/src/contracts/declare.ts",
@@ -46,7 +46,7 @@
 		},
 		{
 			"path": "pi/chord/src/contracts/index.ts",
-			"sha256": "a23c8b32aed9cf079024944e17856a0e6bf40a64ef77e96dfa5315b454e51c09"
+			"sha256": "697d58c09390d346c15fc33e97c6e1d4478e39dfd73a8983a19a191037ff9c52"
 		},
 		{
 			"path": "pi/chord/src/contracts/internal.ts",
