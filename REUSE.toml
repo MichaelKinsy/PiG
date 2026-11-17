@@ -233,6 +233,14 @@ precedence = "override"
 SPDX-FileCopyrightText = "Copyright Eemeli Aro <eemeli@gmail.com>"
 SPDX-License-Identifier = "ISC"
 
+# The three enum declarations of @google/genai 2.32.0 that Pi's api/google-shared module uses, copied byte for byte
+# (automation/gen/vendor-pi-ai-apis.mjs).
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/google-genai-enums.mjs"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright 2025 Google LLC"
+SPDX-License-Identifier = "Apache-2.0"
+
 # The unmodified ES module build of marked 18.0.11, the Markdown parser
 # pi-tui's Markdown component uses.
 [[annotations]]

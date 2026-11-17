@@ -6,9 +6,7 @@ import {
   CACHE_WARMING_MINIMUM_EXPECTED_SAVINGS,
   DEFAULT_MAX_AGENT_RETRY_DELAY_MS,
   EventStream,
-  StreamingJsonParser,
   StringEnum,
-  ToolCallArgumentsStream,
   cleanupSessionResources,
   createAssistantMessageEventStream,
   createFauxCore,
@@ -28,17 +26,21 @@ import {
   isRetryableAssistantError,
   lazyApi,
   lazyStream,
-  parseJsonWithRepair,
-  parseStreamingJson,
-  parseToolCallArguments,
   registerSessionResourceCleanup,
-  repairJson,
   retryAssistantCall,
   retryDelayMs,
   uuidv7,
   validateToolArguments,
   validateToolCall
-} from "./chunk-BXB7XG3T.js";
+} from "./chunk-KBKZS46H.js";
+import {
+  StreamingJsonParser,
+  ToolCallArgumentsStream,
+  parseJsonWithRepair,
+  parseStreamingJson,
+  parseToolCallArguments,
+  repairJson
+} from "./chunk-EDPW3NGU.js";
 import {
   ANTHROPIC_API_KEY_ENV,
   ANTHROPIC_AUTH_TOKEN_ENV,
@@ -62,11 +64,11 @@ import {
   openAICodexResponsesApi,
   openAIResponsesApi,
   piMessagesApi
-} from "./chunk-JB4PBG5G.js";
+} from "./chunk-YRYDDQ6G.js";
 import {
   anthropicMessagesApi,
   openAICompletionsApi
-} from "./chunk-5CSRYRMQ.js";
+} from "./chunk-42YLIJQD.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -76,49 +78,51 @@ import {
   InMemoryCredentialStore,
   InMemoryModelsStore,
   ModelsError,
-  PI_AI_VERSION,
-  PI_ATTRIBUTION,
-  appendAssistantMessageDiagnostic,
   calculateCost,
   clampThinkingLevel,
   collapseSystemMessages,
-  contentText,
-  createAssistantMessageDiagnostic,
   createInitialSystemMessage,
   createModels,
   createProvider,
   declarationsEqual,
   defaultProviderAuthContext,
-  extractDiagnosticError,
-  formatThrownValue,
-  formatUserAgent,
-  getAttributionHeaders,
-  getClientVersion,
   getCurrentSystemMessage,
   getCurrentSystemPrompt,
   getCurrentTools,
   getDeclaredTools,
-  getIdentityHeaders,
   getInitialSystemMessage,
   getModelType,
-  getOpenCodeSessionHeaders,
   getSupportedThinkingLevels,
-  getSystemMessageText,
   getToolStateChanges,
   hasApi,
   hasNonAdditiveToolChanges,
   hasToolRedefinitions,
   isModelType,
-  mergeClientIdentity,
   modelsAreEqual,
   normalizeContext,
-  renderSystemMessageUpdate,
   resolveTranscript,
   resolveTranscriptTools,
   toToolDeclaration,
-  withClientIdentity,
   withoutInitialSystemMessage
-} from "./chunk-TG7FIA7M.js";
+} from "./chunk-TDDSYJUL.js";
+import {
+  PI_AI_VERSION,
+  PI_ATTRIBUTION,
+  appendAssistantMessageDiagnostic,
+  contentText,
+  createAssistantMessageDiagnostic,
+  extractDiagnosticError,
+  formatThrownValue,
+  formatUserAgent,
+  getAttributionHeaders,
+  getClientVersion,
+  getIdentityHeaders,
+  getOpenCodeSessionHeaders,
+  getSystemMessageText,
+  mergeClientIdentity,
+  renderSystemMessageUpdate,
+  withClientIdentity
+} from "./chunk-D4UU5BNJ.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";

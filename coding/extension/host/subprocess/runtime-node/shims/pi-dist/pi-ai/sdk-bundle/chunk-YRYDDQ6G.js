@@ -9,7 +9,7 @@ import {
   openAICompletionsApi,
   openrouterProvider,
   typesafeSystemOneApi
-} from "./chunk-5CSRYRMQ.js";
+} from "./chunk-42YLIJQD.js";
 import {
   envApiKeyAuth,
   lazyOAuth
@@ -18,7 +18,7 @@ import {
   createModels,
   createProvider,
   isModelType
-} from "./chunk-TG7FIA7M.js";
+} from "./chunk-TDDSYJUL.js";
 import {
   __name
 } from "./chunk-SHUYVCID.js";
@@ -1081,7 +1081,7 @@ __name(cloudflareAIGatewayProvider, "cloudflareAIGatewayProvider");
 
 // pi-dist/pi-ai/api/cloudflare-workers-ai-system-one.lazy.js
 var cloudflareWorkersAISystemOneApi = /* @__PURE__ */ __name(() => ({
-  classify: /* @__PURE__ */ __name(async (model, context, options) => (await import("./chunk-IKEWKJ4S.js")).classify(model, context, options), "classify")
+  classify: /* @__PURE__ */ __name(async (model, context, options) => (await import("./chunk-AUT5B5AB.js")).classify(model, context, options), "classify")
 }), "cloudflareWorkersAISystemOneApi");
 
 // pi-dist/pi-ai/providers/cloudflare-workers-ai.js
@@ -1431,7 +1431,7 @@ __name(nvidiaProvider, "nvidiaProvider");
 
 // pi-dist/pi-ai/api/openai-decisions.lazy.js
 var openAIDecisionsApi = /* @__PURE__ */ __name(() => ({
-  classify: /* @__PURE__ */ __name(async (model, context, options) => (await import("./chunk-CUL6WRVA.js")).classify(model, context, options), "classify")
+  classify: /* @__PURE__ */ __name(async (model, context, options) => (await import("./chunk-M2SJ6NSV.js")).classify(model, context, options), "classify")
 }), "openAIDecisionsApi");
 
 // pi-dist/pi-ai/providers/openai.js
@@ -1627,7 +1627,7 @@ __name(qwenTokenPlanIndividualCnProvider, "qwenTokenPlanIndividualCnProvider");
 
 // pi-dist/pi-ai/api/pi-messages.lazy.js
 import { lazyApi as lazyApi7 } from "../api/lazy.js";
-var piMessagesApi = /* @__PURE__ */ __name(() => lazyApi7(() => import("./chunk-MMH2PBWS.js")), "piMessagesApi");
+var piMessagesApi = /* @__PURE__ */ __name(() => lazyApi7(() => import("./chunk-MQPUEEUP.js")), "piMessagesApi");
 
 // pi-dist/pi-ai/providers/radius.js
 import { loadRadiusOAuth } from "../auth/oauth/load.js";

@@ -34,6 +34,14 @@
       "sha256": "12339f3ef1ebf42d4148098734c6e1035d704a58656f95f4cd601b1bb8f7e96c"
     },
     {
+      "path": "pi-dist/pi-ai/api/constrained-sampling.js",
+      "sha256": "a2f8da97ff83ba02fb96a507fc31430423e55057260b50dff04bb0ca1ee9d129"
+    },
+    {
+      "path": "pi-dist/pi-ai/api/github-copilot-headers.js",
+      "sha256": "cd09a447ea282f5df02aab057f372d48ab95d72adb1d9d74510a2b5e1c7d78b3"
+    },
+    {
       "path": "pi-dist/pi-ai/api/google-generative-ai.js",
       "sha256": "d6386e6305951cc59951f285dd2fa6928c07b7db1b18dc4137b03a9fecd21080"
     },
@@ -66,8 +74,12 @@
       "sha256": "cc69ef7cb93175b8ae30e9b6f749cc5c978cd0c168d0bf379ed48a3d7e9c120a"
     },
     {
+      "path": "pi-dist/pi-ai/api/openai-completions.impl.js",
+      "sha256": "94f27f5fe9576e56d041f38b86143ef1122b78edf90a5a3e9641803426b00268"
+    },
+    {
       "path": "pi-dist/pi-ai/api/openai-completions.js",
-      "sha256": "d1b07ac40b0c9e78d9c50c835daec6875e4d02108fed77d3fb77330cf7126206"
+      "sha256": "48ade6897e21054d0625fce31662e4bc9b34fd85a70aa6d29b0d48c3dbf1e632"
     },
     {
       "path": "pi-dist/pi-ai/api/openai-completions.lazy.js",
@@ -80,6 +92,10 @@
     {
       "path": "pi-dist/pi-ai/api/openai-decisions.lazy.js",
       "sha256": "53ecd3713b1c3f1d4966e45618047acb3315aba420bd34c8c01a376b096c25c0"
+    },
+    {
+      "path": "pi-dist/pi-ai/api/openai-prompt-cache.js",
+      "sha256": "cdb4c30de4e8918994e18556529077ee5d952db0d6960bb299a76f6d8d139d2a"
     },
     {
       "path": "pi-dist/pi-ai/api/openai-responses.js",
@@ -98,16 +114,28 @@
       "sha256": "0ae9c490e8050e8e958d076a9c7ecb21715aa8bc5f85127619d822ca10bc62a6"
     },
     {
+      "path": "pi-dist/pi-ai/api/pi-messages.impl.js",
+      "sha256": "762c1f0ed385f88fa7005ac7ef80595aa92d6c280158eb80f02199c94f876a38"
+    },
+    {
       "path": "pi-dist/pi-ai/api/pi-messages.js",
-      "sha256": "92da156357e1e610e604b36334d0da6f5fdd53b71a38e57faed6aa86c4427d7d"
+      "sha256": "28af917edf2faab163fd0170c181873289362e12b3766734e6ba303cdb9da8a4"
     },
     {
       "path": "pi-dist/pi-ai/api/pi-messages.lazy.js",
       "sha256": "857a77e2a89923a9c88c136bc06072b9c9577574dd01da97ce2966a646f7d430"
     },
     {
+      "path": "pi-dist/pi-ai/api/simple-options.js",
+      "sha256": "7e80e985f50d968dfd4422ed501d87280236470bff996c8f05f18d220dce1e53"
+    },
+    {
       "path": "pi-dist/pi-ai/api/system-one-shared.js",
       "sha256": "392c6e7d279b016424ff44f9c1c4b4ce4068f3d132b5243461532c14dd83ed18"
+    },
+    {
+      "path": "pi-dist/pi-ai/api/transform-messages.js",
+      "sha256": "5654d81fdacdf3f3e9ca9eb89c4dfa71b742b852163ecd49ba38307f876db63e"
     },
     {
       "path": "pi-dist/pi-ai/api/typesafe-system-one.js",
@@ -758,6 +786,14 @@
       "sha256": "801ecb214fdd46b059454c515f09624c3c968eb669722dcec846b79017bd04f2"
     },
     {
+      "path": "pi-dist/pi-ai/utils/estimate.js",
+      "sha256": "b5b606011ab0dce2a5db309dd812c9b8ddd0bbcbc9416de699fb9cd087cc84d6"
+    },
+    {
+      "path": "pi-dist/pi-ai/utils/hash.js",
+      "sha256": "7dd6b602e479f30b32d1babeacb1fcb96bd234b13355991caa169013f7885d57"
+    },
+    {
       "path": "pi-dist/pi-ai/utils/headers.js",
       "sha256": "69a355967b3e735a9b22d46f4cf41b901eb2ce29c2c438b20d46de67668533c7"
     },
@@ -778,6 +814,10 @@
       "sha256": "7c8f802c2c77671f4b1721a07f3fefd007a2b332b222cd644ba285b3a74d9693"
     },
     {
+      "path": "pi-dist/pi-ai/utils/openrouter-cost.js",
+      "sha256": "b1a835e5a4f02fc4cd8e7cdf0492195123465a3c10d556385c2e5768f1bf2a58"
+    },
+    {
       "path": "pi-dist/pi-ai/utils/overflow.js",
       "sha256": "bc0b743fdbf33fe3dd2bb69b1838166ac0b6957f74051213fcaf336c11d041a3"
     },
@@ -788,6 +828,10 @@
     {
       "path": "pi-dist/pi-ai/utils/retry.js",
       "sha256": "231c5186c9db18e29c0f0ea3fc4201c3fb04424e72aa7ed5582a3aeafbaff93a"
+    },
+    {
+      "path": "pi-dist/pi-ai/utils/sanitize-unicode.js",
+      "sha256": "77cb844b43f502cc24b25ef284ec5a6f6ac375ac994bcf688275848e1475bc80"
     },
     {
       "path": "pi-dist/pi-ai/utils/streaming-json.js",
