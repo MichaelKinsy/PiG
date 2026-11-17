@@ -35,7 +35,12 @@ ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
 
 [[tmux.steps]]
-keys = ["/compact", "Enter"]
+keys = ["/compact"]
+wait_visible_contains = ["/compact"]
+wait_timeout_seconds = 25
+
+[[tmux.steps]]
+keys = ["Enter"]
 wait_contains = ["[compaction]"]
 wait_timeout_seconds = 25
 settle_seconds = 3
