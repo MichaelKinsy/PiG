@@ -73,12 +73,12 @@ func TestSocketPathAllocationRacingRemoval(t *testing.T) {
 				for range 20 {
 					doneBefore := removalDone.Load()
 					path, err := h.newSocketPath()
-					startedAfter := removalStarted.Load()
 					switch {
 					case err == nil && doneBefore:
 						t.Errorf("round %d: path %q made after the removal finished", round, path)
-					case err == nil && !startedAfter:
-						if _, statErr := os.Stat(filepath.Dir(path)); statErr != nil {
+					case err == nil:
+						// The directory is read first and the flag after: a missing directory needs a removal that had started by then.
+						if _, statErr := os.Stat(filepath.Dir(path)); statErr != nil && !removalStarted.Load() {
 							t.Errorf("round %d: path %q returned with no removal started, directory: %v", round, path, statErr)
 						}
 					case err != nil && !errors.Is(err, errSockRuntimeRemoved):
