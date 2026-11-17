@@ -87,6 +87,7 @@ func nonInteractiveGitEnv(env []string) []string {
 // Like waitForChildProcess it waits for the child and then for its pipes to end or to fall idle, so a background process an npm script left holding them does not block the call.
 // Ports packages/coding-agent/src/core/package-manager.ts (runCommandCaptured, CAPTURED_OUTPUT_TAIL_CHARS, GIT_CREDENTIALS_HINT, GIT_PROMPT_FAILURE).
 func runPackageProcessCaptured(dir, name string, args ...string) error {
+	//portlint:allow ctxbackground Pi's runCommandCaptured (package-manager.ts:2995, Pi b513b64d8ac8) takes only {cwd}: no AbortSignal, so no caller can cancel the child there either (the same as spawnCommand/runCommand, whose RunPackageProcess sibling is baselined)
 	cmd := packageCommand(context.Background(), dir, name, args...)
 	env := cmd.Env
 	if env == nil {
