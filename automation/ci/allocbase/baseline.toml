@@ -2775,6 +2775,16 @@ allocs = 1
 
 [[benchmark]]
 package = "./internal/codingagent"
+benchmark = "BenchmarkBranchRefsOf10000/BranchRefs"
+allocs = 20001
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkBranchRefsOf10000/GetBranch"
+allocs = 292389
+
+[[benchmark]]
+package = "./internal/codingagent"
 benchmark = "BenchmarkBuildContext"
 allocs = 9008
 
@@ -3167,6 +3177,26 @@ allocs = 36
 package = "./internal/codingagent"
 benchmark = "BenchmarkPromptTemplateExpansion/unicode"
 allocs = 18
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkReadEntries50Of10000/Page/GetEntry"
+allocs = 1851
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkReadEntries50Of10000/Page/ReadEntries"
+allocs = 1599
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkReadEntries50Of10000/Spread/GetEntry"
+allocs = 1851
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkReadEntries50Of10000/Spread/ReadEntries"
+allocs = 1596
 
 [[benchmark]]
 package = "./internal/codingagent"

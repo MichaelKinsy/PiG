@@ -27,7 +27,7 @@ func (c *cancelingRecords) ReadRecords(ats []sessionentry.RecordAt, out []json.R
 func TestMaterializeAllContextStopsBetweenSources(t *testing.T) {
 	record := json.RawMessage(`{"type":"message","id":"a","parentId":null,"timestamp":"t","message":{"role":"user","content":"x","timestamp":1}}`)
 	ctx, cancel := context.WithCancel(context.Background())
-	first := &cancelingRecords{memRecords: memRecords{records: []json.RawMessage{record}}, cancel: cancel}
+	first := &cancelingRecords{records: []json.RawMessage{record}, cancel: cancel}
 	second := &memRecords{records: []json.RawMessage{record}}
 	a := sessionentry.NewLazyEntry("a", nil, "t", first, sessionentry.RecordAt{})
 	b := sessionentry.NewLazyEntry("a", nil, "t", second, sessionentry.RecordAt{})

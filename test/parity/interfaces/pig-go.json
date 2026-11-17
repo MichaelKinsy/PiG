@@ -70665,6 +70665,17 @@
       "shapeHash": "sha256:0b38564715b315f0e5ed58e52f67ef391c1041f70ce1c2fdef3f6dd8d88f929f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#BranchRef",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "BranchRef",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "BranchRef"
+      },
+      "shapeHash": "sha256:2ea341a76d451278871f8c90740b734c0a5d5eecdf99367a016628ab98f933da"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#BranchSummaryEntry",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "BranchSummaryEntry",
@@ -76669,6 +76680,17 @@
         "type": "func(providerID string, authPath ...string) *github.com/MichaelKinsy/PiG/ai.Credential"
       },
       "shapeHash": "sha256:0d982dcff21e42b79f35fb961b91df65029178b893e2df60e79813a8799d9da1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#RecordChangedError",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "RecordChangedError",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "RecordChangedError"
+      },
+      "shapeHash": "sha256:64a765b1592224c29e8574a3eebed2e5c4bf9f727a5d5a2572bffed48a129f44"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ReloadOption",
@@ -255982,6 +256004,17 @@
       "shapeHash": "sha256:1a4ec60841130255941c806a14244648d450464c704cd1ac0e283b6282c760cc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#BranchRef",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "BranchRef",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "BranchRef"
+      },
+      "shapeHash": "sha256:2ea341a76d451278871f8c90740b734c0a5d5eecdf99367a016628ab98f933da"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#BranchSummaryConfig",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "BranchSummaryConfig",
@@ -264771,6 +264804,17 @@
       "shapeHash": "sha256:912938ec83098b195020f2264098ec0a97d1a536b82672787f53e96ea2d94bfb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.BranchRefs",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.BranchRefs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fromID ...string) []BranchRef"
+      },
+      "shapeHash": "sha256:894a08780827c003f4c51a12607509a8fba531433213d69ce676e696ea529a5a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.BranchWithSummary",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "HandleReads.BranchWithSummary",
@@ -265255,6 +265299,17 @@
       "shapeHash": "sha256:dd178afd0019b3dd63b85f83db921694603c28a51fe36dd1c2867df5c3a08cb9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.ReadEntries",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.ReadEntries",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, ids []string) ([]SessionEntry, error)"
+      },
+      "shapeHash": "sha256:c24668de1057a6f471a43ce907ac1b1e987d524c6f5e90a70b0b1d1d3ef798e2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.ResetLeaf",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "HandleReads.ResetLeaf",
@@ -265651,6 +265706,28 @@
       "shapeHash": "sha256:0f736d8d69d340a5714f5f79f2c59ae0ecc45143be3a73d1e22d8543a5606126"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.entryHandlesOf",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.entryHandlesOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ids []string) ([]SessionEntry, error)"
+      },
+      "shapeHash": "sha256:338443726c9273a07eb3cc75493046d9d0f65c88fa78639788d5e12548ad7b6f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.entryHandlesStaleLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.entryHandlesStaleLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(indexes []int32, stale *sync/atomic.Int64) []SessionEntry"
+      },
+      "shapeHash": "sha256:f0a4f11e1c5e171129dfbe794a873fbb5df8a79ee7596befdd52199459dd3e3f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.factsLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "HandleReads.factsLocked",
@@ -266003,6 +266080,17 @@
       "shapeHash": "sha256:0f736d8d69d340a5714f5f79f2c59ae0ecc45143be3a73d1e22d8543a5606126"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.readSlotsStaleLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.readSlotsStaleLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(indexes []int32, stale *sync/atomic.Int64) []SessionEntry"
+      },
+      "shapeHash": "sha256:f0a4f11e1c5e171129dfbe794a873fbb5df8a79ee7596befdd52199459dd3e3f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.replaceSessionLog",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "HandleReads.replaceSessionLog",
@@ -266122,6 +266210,17 @@
         "type": "func(slot *entrySlot, text string)"
       },
       "shapeHash": "sha256:75cec9954fc5be0253244d76f0431a35dac7b8c1e3b4268a6f26c242eec4260e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.timestampLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "HandleReads.timestampLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(i int) string"
+      },
+      "shapeHash": "sha256:f8e697be22d55c30f84099e2f6de1f74b679df86ed8282b28cad72a154b2bcb9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#HandleReads.treeFactsLocked",
@@ -279456,6 +279555,17 @@
       "shapeHash": "sha256:0a8b8cd3f7ebacdb0d4038daeac55ad10a6e705ad8c2b85e286326570ea56863"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#RecordChangedError",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "RecordChangedError",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "RecordChangedError"
+      },
+      "shapeHash": "sha256:64a765b1592224c29e8574a3eebed2e5c4bf9f727a5d5a2572bffed48a129f44"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#RecordCrash",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "RecordCrash",
@@ -280688,6 +280798,17 @@
       "shapeHash": "sha256:912938ec83098b195020f2264098ec0a97d1a536b82672787f53e96ea2d94bfb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.BranchRefs",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.BranchRefs",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fromID ...string) []BranchRef"
+      },
+      "shapeHash": "sha256:894a08780827c003f4c51a12607509a8fba531433213d69ce676e696ea529a5a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.BranchWithSummary",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "Session.BranchWithSummary",
@@ -281172,6 +281293,17 @@
       "shapeHash": "sha256:dd178afd0019b3dd63b85f83db921694603c28a51fe36dd1c2867df5c3a08cb9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.ReadEntries",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.ReadEntries",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, ids []string) ([]SessionEntry, error)"
+      },
+      "shapeHash": "sha256:c24668de1057a6f471a43ce907ac1b1e987d524c6f5e90a70b0b1d1d3ef798e2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.ResetLeaf",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "Session.ResetLeaf",
@@ -281568,6 +281700,28 @@
       "shapeHash": "sha256:0f736d8d69d340a5714f5f79f2c59ae0ecc45143be3a73d1e22d8543a5606126"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.entryHandlesOf",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.entryHandlesOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ids []string) ([]SessionEntry, error)"
+      },
+      "shapeHash": "sha256:338443726c9273a07eb3cc75493046d9d0f65c88fa78639788d5e12548ad7b6f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.entryHandlesStaleLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.entryHandlesStaleLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(indexes []int32, stale *sync/atomic.Int64) []SessionEntry"
+      },
+      "shapeHash": "sha256:f0a4f11e1c5e171129dfbe794a873fbb5df8a79ee7596befdd52199459dd3e3f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.factsLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "Session.factsLocked",
@@ -281920,6 +282074,17 @@
       "shapeHash": "sha256:0f736d8d69d340a5714f5f79f2c59ae0ecc45143be3a73d1e22d8543a5606126"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.readSlotsStaleLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.readSlotsStaleLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(indexes []int32, stale *sync/atomic.Int64) []SessionEntry"
+      },
+      "shapeHash": "sha256:f0a4f11e1c5e171129dfbe794a873fbb5df8a79ee7596befdd52199459dd3e3f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.replaceSessionLog",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "Session.replaceSessionLog",
@@ -282039,6 +282204,17 @@
         "type": "func(slot *entrySlot, text string)"
       },
       "shapeHash": "sha256:75cec9954fc5be0253244d76f0431a35dac7b8c1e3b4268a6f26c242eec4260e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.timestampLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "Session.timestampLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(i int) string"
+      },
+      "shapeHash": "sha256:f8e697be22d55c30f84099e2f6de1f74b679df86ed8282b28cad72a154b2bcb9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#Session.treeFactsLocked",

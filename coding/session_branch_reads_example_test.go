@@ -18,8 +18,7 @@ func ExampleSessionManager_ReadEntries() {
 	}
 	refs := manager.BranchRefs() // the whole branch, in order, with no entry body read
 	entries, err := manager.ReadEntries(context.Background(), []string{refs[2].ID, refs[1].ID})
-	var changed *coding.RecordChangedError
-	if errors.As(err, &changed) {
+	if changed, ok := errors.AsType[*coding.RecordChangedError](err); ok {
 		fmt.Println("cannot read back", changed.ID)
 	}
 	fmt.Println(len(refs), len(entries), err, entries[0].Base().ID == refs[2].ID)
