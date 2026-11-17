@@ -2161,7 +2161,7 @@ Locked by: `TestParseArgsListen`, `TestParseArgsListenShareExtensions`, `TestPig
 
 Remove when: Pi gains a multi-session RPC mode.
 
-Approval: approved by owner Michael Kinsy on 2026-11-06. The owner's 2026-11-06 decision makes isolation the default and sharing an opt-in.
+Approval: approved by owner Michael Kinsy on 2026-11-06. The owner's 2026-11-06 decision makes isolation the default and sharing an opt-in. Owner decision 13 of 2026-11-17 approved PR #404 for 0.8.0 on a maintainer branch, and owner decision 20 of 2026-11-17 approved isolated by default.
 SCRUTINIZED:approved
 
 ## D263 A host that cannot run generated machine code can run Code Mode on wazero's interpreter
