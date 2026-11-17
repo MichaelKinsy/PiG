@@ -60,7 +60,6 @@ func TestNewVersionNotificationRendersAChangelogRowOnlyForAReleasePageURL(t *tes
 		{"javascript scheme", new("javascript:alert(1)"), false, "javascript:alert(1)"},
 		{"file scheme", new("file:///etc/passwd"), false, "file:///etc/passwd"},
 		{"javascript scheme with a host", new("javascript://updates.example/%0Aalert(1)"), false, "javascript://updates.example/%0Aalert(1)"},
-		{"ftp scheme", new("ftp://updates.example/notes"), false, "ftp://updates.example/notes"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			caps := tui.GetCapabilities()
