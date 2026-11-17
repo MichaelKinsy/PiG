@@ -143,9 +143,9 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) err
 			cached++
 		}
 	}
-	fmt.Fprintf(os.Stderr, "portmap: %d rows: %d cached, %d run; %d test binaries built (%s), %d evidence runs (%s), mutant replays %s; %s wall\n",
+	fmt.Fprintf(os.Stderr, "portmap: %d rows: %d cached, %d run; %d test binaries built (%s), %d evidence runs (%s), mutant replays %s (cache: %s); %s wall\n",
 		len(units), cached, len(units)-cached, stats.builds, stats.buildTime.Round(time.Second), stats.runs, stats.runTime.Round(time.Second),
-		mutantTime.Round(time.Second), time.Since(started).Round(time.Second))
+		mutantTime.Round(time.Second), replays.summary(), time.Since(started).Round(time.Second))
 	for _, s := range stats.slowest(5) {
 		fmt.Fprintf(os.Stderr, "portmap:   slow %s\n", s)
 	}
