@@ -1539,6 +1539,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				if edited, ok := toolCall.edit(); ok {
 					reply["_pigToolCallInput"] = edited
 				}
+				if assigned, ok := toolCall.assigned(); ok {
+					reply["_pigToolCallEventInput"] = assigned
+				}
 				result = reply
 			}
 			if promptOptions != nil {
@@ -1709,7 +1712,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				Input json.RawMessage `json:"input"`
 			}
 			_ = unmarshalFrameMember(req.Args, &source)
-			toolCall = newToolCallInput(data["input"], source.Input)
+			toolCall = newToolCallInput(data, source.Input)
 		}
 		// sentMember is the member of the event as the host sent it, decoded again: the handler may have edited its copy.
 		sentMember := func(member string) any {
@@ -1794,6 +1797,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			reply := map[string]any{"_pigToolCallResult": result}
 			if edited, ok := toolCall.edit(); ok {
 				reply["_pigToolCallInput"] = edited
+			}
+			if assigned, ok := toolCall.assigned(); ok {
+				reply["_pigToolCallEventInput"] = assigned
 			}
 			result = reply
 		}
@@ -2707,16 +2713,29 @@ func (e *Extension) stopWidthDeliveries() {
 	e.widthMu.Unlock()
 }
 
-// toolCallInput is the input a tool_call handler received. The tool runs with that object (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so an edit counts only when the handler changed its members; assigning another value to event["input"] changes nothing the tool receives. source is the input as the host wrote it, which gives the member order an edit keeps.
+// toolCallInput is the input a tool_call handler received. The tool runs with that object (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so an edit counts only when the handler changed its members; assigning another value to event["input"] changes nothing the tool receives, and is the input the next handlers read (runner.ts emitToolCall hands them the one event). source is the input as the host wrote it, which gives the member order an edit keeps.
 type toolCallInput struct {
+	event  map[string]any
 	input  any
 	source json.RawMessage
 	before []byte
 }
 
-func newToolCallInput(input any, source json.RawMessage) *toolCallInput {
+func newToolCallInput(event map[string]any, source json.RawMessage) *toolCallInput {
+	input := event["input"]
 	before, _ := json.MarshalJS(input)
-	return &toolCallInput{input: input, source: source, before: before}
+	return &toolCallInput{event: event, input: input, source: source, before: before}
+}
+
+// assigned returns the value the handler assigned to event["input"], when it is another object than the one the event carried.
+func (t *toolCallInput) assigned() (any, bool) {
+	now := t.event["input"]
+	nowMap, nowOK := now.(map[string]any)
+	wasMap, wasOK := t.input.(map[string]any)
+	if nowOK && wasOK {
+		return now, reflect.ValueOf(nowMap).Pointer() != reflect.ValueOf(wasMap).Pointer()
+	}
+	return now, now != nil || t.input != nil
 }
 
 // edit returns the input as JSON when the handler left its members different from the ones it received. A retained member keeps the place it had, as an assignment to a JavaScript object leaves it.

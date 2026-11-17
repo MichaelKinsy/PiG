@@ -6619,6 +6619,9 @@ class Extension:
                     reply: dict[str, Any] = {"_pigToolCallResult": result}
                     if _json_text(tool_input) != before:
                         reply["_pigToolCallInput"] = tool_input
+                    # A new dict assigned to data["input"] is the input the next handlers read (runner.ts emitToolCall hands them the one event); the tool keeps the dict it carried.
+                    if data.get("input") is not tool_input:
+                        reply["_pigToolCallEventInput"] = data.get("input")
                     self._respond(req_id, reply, error)
                     return
                 # Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, turn_end, agent_end, the entry and the next request hold, even when it fails afterwards. The host cannot share the dict, so the reply carries the message the handler left when its JSON text differs from the one it received (member order included). Assigning a new dict to data["message"] changes nothing, as assigning event.message changes nothing in Pi.

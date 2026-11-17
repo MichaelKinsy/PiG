@@ -271,6 +271,8 @@
              (serious-condition (c) (setf error-message (condition-message c))))
            (let ((reply (obj "_pigToolCallResult" result)))
              (unless (equal (to-json input) before) (setf (gethash "_pigToolCallInput" reply) input))
+             ;; a new object assigned to the event's input is what the next handlers read (runner.ts emitToolCall hands them the one event); the tool keeps the object it carried
+             (unless (eq (jget data "input") input) (setf (gethash "_pigToolCallEventInput" reply) (jget data "input")))
              (values reply error-message))))
         ((equal event "before_agent_start")
          (let ((options (jget data "systemPromptOptions")) result error-message)

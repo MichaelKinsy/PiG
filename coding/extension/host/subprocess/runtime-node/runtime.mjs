@@ -5673,7 +5673,7 @@ export class Runtime {
             await this.respond(id, { _pigBoundaryEntries: entries, _pigBoundaryResult: result }, error);
             return;
           }
-          // Pi hands every tool_call handler the one event object, and a handler edits event.input in place (runner.ts emitToolCall). The host cannot share the object, so the reply carries the input the handler left, when it differs from the one it received, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so a handler that assigns a new object to event.input changes nothing the tool receives.
+          // Pi hands every tool_call handler the one event object, and a handler edits event.input in place (runner.ts emitToolCall). The host cannot share the object, so the reply carries the input the handler left, when it differs from the one it received, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so a handler that assigns a new object to event.input changes nothing the tool receives; the next handlers read the assigned object, which the reply carries apart from the edit.
           if (request.event === "tool_call") {
             const input = event.input;
             const before = JSON.stringify(input);
@@ -5686,7 +5686,9 @@ export class Runtime {
               error = err instanceof Error ? err : new Error(`Extension failed, blocking execution: ${String(err)}`);
             }
             const edited = JSON.stringify(input) !== before;
-            await this.respond(id, { ...(edited ? { _pigToolCallInput: input } : {}), _pigToolCallResult: result }, error);
+            // A handler that assigns a new object to event.input leaves it in the one event the next handlers receive (runner.ts emitToolCall), and the tool still runs with the object it carried.
+            const assigned = event.input !== input;
+            await this.respond(id, { ...(edited ? { _pigToolCallInput: input } : {}), ...(assigned ? { _pigToolCallEventInput: event.input } : {}), _pigToolCallResult: result }, error);
             return;
           }
           if (request.event === "before_agent_start") {

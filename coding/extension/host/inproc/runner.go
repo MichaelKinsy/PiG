@@ -1626,7 +1626,12 @@ func (r *Runner) EmitToolCall(ctx context.Context, event extension.ToolCallEvent
 			continue
 		}
 		for i, handler := range handlers {
-			handlerResult, err := callHandler(handler, event, dispatchCtx)
+			// A subprocess handler that assigned event.input left the next handlers that input (eventwire.Dispatch.Detach); the call's own input stays.
+			current := event
+			if detached, ok := wire.Detached().(extension.CustomToolCallEvent); ok {
+				current = detached
+			}
+			handlerResult, err := callHandler(handler, current, dispatchCtx)
 			if !snapshot.jsonOnly[i] {
 				// A handler that holds the event's Go values may have edited its input.
 				wire.Changed()

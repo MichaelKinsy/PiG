@@ -4838,6 +4838,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				parent = dispatchContext
 			}
 		}
+		// A handler of the dispatch that assigned event.input left the next handlers a different input than the call's own.
+		if event == "tool_call" && len(args) > 0 {
+			if detached, ok := eventwire.FromContext(parent).Detached().(extension.CustomToolCallEvent); ok {
+				args = append([]any{detached}, args[1:]...)
+			}
+		}
 		if event == "mcp_servers_change" {
 			// The registration that fired the event waits for its first handler's acknowledgment (inproc Runner.onMcpServersChange). A handler in another process acknowledges here, before a frame is written, so a registration never waits on extension IPC; the request is still sent and its failure reported. Upstream runs that handler's synchronous part inside the registration (runner.ts:465-468).
 			invocation.Acknowledge(parent)
@@ -5038,6 +5044,17 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 					eventWire.Changed()
 					if err := applyToolCallInput(args[0], reply.Input); err != nil {
 						return nil, fmt.Errorf("decode tool_call input: %w", err)
+					}
+				}
+				// upstream: a handler that assigns a new object to event.input leaves that object in the one event the next handlers receive, and the tool runs with the args object the event carried (agent-loop.ts prepareToolCall), so the assignment reaches the next handlers only. The dispatch keeps a copy of the event with that input; every later handler receives it, and its own edits and assignments apply to it, as they apply to the object it replaced in Pi.
+				if len(reply.EventInput) > 0 {
+					detached, err := detachToolCallInput(args[0], reply.EventInput)
+					if err != nil {
+						return nil, fmt.Errorf("decode tool_call event input: %w", err)
+					}
+					if detached != nil {
+						eventWire.Changed()
+						eventWire.Detach(*detached)
 					}
 				}
 				resp.Response.Result = reply.Result
