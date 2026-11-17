@@ -300,15 +300,16 @@ export class TuiAltScreen extends TuiBase {
     }
     scrollBy(lines) {
         this.getPrimaryScrollView().scrollBy(lines);
-        this.requestRender();
+        // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        this.requestViewRender();
     }
     scrollToTop() {
         this.getPrimaryScrollView().scrollToStart();
-        this.requestRender();
+        this.requestViewRender();
     }
     scrollToBottom() {
         this.getPrimaryScrollView().scrollToEnd();
-        this.requestRender();
+        this.requestViewRender();
     }
     scrollToPrompt(direction) {
         if (!this.currentLayout)
@@ -321,7 +322,7 @@ export class TuiAltScreen extends TuiBase {
             if (!OSC133_PROMPT_START.test(lines[row] ?? ""))
                 continue;
             scrollView.scrollTo(row);
-            this.requestRender();
+            this.requestViewRender();
             return;
         }
     }
@@ -820,7 +821,9 @@ export class TuiAltScreen extends TuiBase {
         if (remaining !== 0 && !seen.has(primary))
             primary.scrollBy(remaining);
         this.updateScrollbarHover(event.x, event.y);
-        this.requestRender();
+        // Scrolling moves the viewport only. Reusing the previous component output keeps a wheel
+        // frame O(viewport); re-rendering a long transcript on every wheel event saturated a core.
+        this.requestViewRender();
     }
     parseSgrMouseEvent(data) {
         const match = /^\x1b\[<(\d+);(\d+);(\d+)([Mm])$/.exec(data);
@@ -1089,7 +1092,8 @@ export class TuiAltScreen extends TuiBase {
         const point = this.getScrollSelectionPoint(scrollView, pointer.x, pointer.y);
         if (point)
             this.updateSelectionFocus(point);
-        this.requestRender();
+        // Selection is painted onto the screen after layout, so it needs no new component output.
+        this.requestViewRender();
     }
     stopSelectionAutoScroll() {
         if (this.selectionAutoScrollTimer) {
@@ -1456,9 +1460,12 @@ export class TuiAltScreen extends TuiBase {
         const width = Math.max(1, this.terminal.columns);
         const height = Math.max(1, this.terminal.rows);
         const root = this.layoutRoot ?? this.implicitScrollView;
-        let nextLayout = renderLayoutFrame(root, width, height, () => this.requestRender());
+        const requestViewRender = () => this.requestViewRender();
+        const reusableOutput = this.contentChanged ? undefined : this.currentLayout?.renderCache;
+        this.contentChanged = false;
+        let nextLayout = renderLayoutFrame(root, width, height, requestViewRender, reusableOutput);
         if (this.refreshSearch(nextLayout)) {
-            nextLayout = renderLayoutFrame(root, width, height, () => this.requestRender());
+            nextLayout = renderLayoutFrame(root, width, height, requestViewRender, nextLayout.renderCache);
         }
         // Resolve fake cursors before highlighting and compositing, which only track SGR codes
         let screen = this.resolveFakeCursors(nextLayout.lines.map((line) => line.replace(OSC133_ZONE_PREFIX, "")));

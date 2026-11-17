@@ -579,7 +579,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/assistant-message.js",
-      "sha256": "5a70a2cddfb9424163d590dd8a87300142b2429613e6315008d74b843b63c815"
+      "sha256": "d70c4319d7b80e10eef5b4f50cbfc5cbd9930d7c770f70bb561302fa19ea9269"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/auth-url.js",
@@ -699,7 +699,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/radius-login-selector.js",
-      "sha256": "614dc09b9903b251f66fdc653134acb32016b6abc76b9ff7e31eb4cb29c606e9"
+      "sha256": "75ae86ed856dd696271471572cea1733a9ad3c56085b0ad41ef62fe7a7bab373"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/scoped-models-selector.js",
@@ -763,7 +763,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/user-message.js",
-      "sha256": "cd1622e31def1c3e0d64214d2dd8ab961b1cd44412056789214f28e99fd090a3"
+      "sha256": "37a9d05ddb90c72bfb62b05bdb0d169f83794094e91f9cedf1f79dd018f3b573"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/components/visual-truncate.js",

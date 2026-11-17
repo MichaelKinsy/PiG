@@ -8314,6 +8314,8 @@ var AssistantMessageComponent = class extends Container11 {
   timestamp;
   thinkingVisibilityOverrides = /* @__PURE__ */ new Map();
   markdownSlots = [];
+  // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+  zoneLines;
   constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super();
     this.hideThinkingBlock = hideThinkingBlock;
@@ -8360,9 +8362,13 @@ var AssistantMessageComponent = class extends Container11 {
     if (this.hasToolCalls || lines.length === 0) {
       return lines;
     }
-    lines[0] = OSC133_ZONE_START + lines[0];
-    lines[lines.length - 1] = OSC133_ZONE_END + OSC133_ZONE_FINAL + lines[lines.length - 1];
-    return lines;
+    if (this.zoneLines?.source !== lines) {
+      const zoned = [...lines];
+      zoned[0] = OSC133_ZONE_START + zoned[0];
+      zoned[zoned.length - 1] = OSC133_ZONE_END + OSC133_ZONE_FINAL + zoned[zoned.length - 1];
+      this.zoneLines = { source: lines, lines: zoned };
+    }
+    return this.zoneLines.lines;
   }
   updateContent(message, isStreaming = this.isStreaming) {
     this.lastMessage = message;
@@ -10209,7 +10215,7 @@ var RadiusLoginMenuComponent = class extends ExtensionSelectorComponent {
     this.stopAnimationTimer = startBrandAnimation(tui, () => this.animating);
   }
   render(width) {
-    const lines = super.render(width);
+    const lines = [...super.render(width)];
     const { label, text } = this.radiusOption;
     const selectedLine = new Text20(theme.fg("accent", "\u2192 ") + theme.fg("accent", label), 1, 0).render(width)[0];
     const index = selectedLine === void 0 ? -1 : lines.indexOf(selectedLine);
@@ -13212,6 +13218,8 @@ var UserMessageComponent = class extends Container29 {
   markdownTransformers;
   messageId;
   timestamp;
+  // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+  zoneLines;
   constructor(text, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
     super();
     this.text = text;
@@ -13242,9 +13250,13 @@ var UserMessageComponent = class extends Container29 {
     if (lines.length === 0) {
       return lines;
     }
-    lines[0] = OSC133_ZONE_START2 + lines[0];
-    lines[lines.length - 1] = OSC133_ZONE_END2 + OSC133_ZONE_FINAL2 + lines[lines.length - 1];
-    return lines;
+    if (this.zoneLines?.source !== lines) {
+      const zoned = [...lines];
+      zoned[0] = OSC133_ZONE_START2 + zoned[0];
+      zoned[zoned.length - 1] = OSC133_ZONE_END2 + OSC133_ZONE_FINAL2 + zoned[zoned.length - 1];
+      this.zoneLines = { source: lines, lines: zoned };
+    }
+    return this.zoneLines.lines;
   }
 };
 

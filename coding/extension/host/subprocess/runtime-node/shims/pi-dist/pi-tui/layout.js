@@ -20,7 +20,8 @@ function renderCached(context, component, width) {
     }
     let lines = widths.get(safeWidth);
     if (!lines) {
-        lines = component.render(safeWidth);
+        // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        lines = context.reusableOutput?.get(component)?.get(safeWidth) ?? component.render(safeWidth);
         widths.set(safeWidth, lines);
     }
     return lines;
@@ -277,12 +278,22 @@ function paintBox(box, screen, totalWidth) {
     }
     paintScrollbar(box, screen, totalWidth);
 }
-export function renderLayoutFrame(root, width, height, requestRender) {
+/**
+ * Lay out and paint one frame.
+ *
+ * `reusableOutput` is an earlier frame's `renderCache`; its output is used instead of calling
+ * `render()`. Pass it only when no component changed since that frame, e.g. when only a scroll
+ * position moved: the frame then costs O(viewport) instead of re-rendering the whole scrollable
+ * document. Each frame keeps only the output it used, so reuse never accumulates across frames.
+ */
+export function renderLayoutFrame(root, width, height, requestRender, reusableOutput) {
     const safeWidth = Math.max(1, Math.floor(width));
     const safeHeight = Math.max(1, Math.floor(height));
+    const renderCache = new Map();
     const context = {
         viewport: { width: safeWidth, height: safeHeight },
-        renderCache: new Map(),
+        renderCache,
+        reusableOutput,
         requestRender,
         primaryScrollView: undefined,
     };
@@ -300,6 +311,7 @@ export function renderLayoutFrame(root, width, height, requestRender) {
         height: safeHeight,
         lines,
         ...(context.primaryScrollView === undefined ? {} : { primaryScrollView: context.primaryScrollView }),
+        renderCache,
     };
 }
 function containsPoint(rect, x, y) {

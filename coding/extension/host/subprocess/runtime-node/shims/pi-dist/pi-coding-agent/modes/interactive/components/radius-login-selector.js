@@ -26,7 +26,9 @@ class RadiusLoginMenuComponent extends ExtensionSelectorComponent {
         this.stopAnimationTimer = startBrandAnimation(tui, () => this.animating);
     }
     render(width) {
-        const lines = super.render(width);
+        // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        // Container output is shared across frames; copy before replacing the animated line.
+        const lines = [...super.render(width)];
         const { label, text } = this.radiusOption;
         const selectedLine = new Text(theme.fg("accent", "→ ") + theme.fg("accent", label), 1, 0).render(width)[0];
         const index = selectedLine === undefined ? -1 : lines.indexOf(selectedLine);

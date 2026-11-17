@@ -14,6 +14,8 @@ export class UserMessageComponent extends Container {
     markdownTransformers;
     messageId;
     timestamp;
+    // Pi b7bb7ca905b8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    zoneLines;
     constructor(text, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
         super();
         this.text = text;
@@ -46,9 +48,14 @@ export class UserMessageComponent extends Container {
         if (lines.length === 0) {
             return lines;
         }
-        lines[0] = OSC133_ZONE_START + lines[0];
-        lines[lines.length - 1] = OSC133_ZONE_END + OSC133_ZONE_FINAL + lines[lines.length - 1];
-        return lines;
+        // Container output is shared across frames; copy it once per change instead of mutating it.
+        if (this.zoneLines?.source !== lines) {
+            const zoned = [...lines];
+            zoned[0] = OSC133_ZONE_START + zoned[0];
+            zoned[zoned.length - 1] = OSC133_ZONE_END + OSC133_ZONE_FINAL + zoned[zoned.length - 1];
+            this.zoneLines = { source: lines, lines: zoned };
+        }
+        return this.zoneLines.lines;
     }
 }
 //# sourceMappingURL=user-message.js.map
