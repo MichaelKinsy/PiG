@@ -19,7 +19,7 @@ path = "packages/coding-agent/CHANGELOG.md"
 change = "modified"
 disposition = "designed-out"
 evidence = []
-rationale = "beffcde92dea: Pi's package changelog entry (one Fixed line, #10470). PiG's user-visible change is its own changelog.d fragment (followmain44rpcstartonce-beffcde92dea.md)."
+rationale = "beffcde92dea: Pi's package changelog entry (one Fixed line, #10470). PiG's user-visible change is its own changelog.d fragment (followmain44rpcstartonce-4da149a979.md)."
 oracle = "not carried: Pi's changelog entry is not part of the installed package's behaviour."
 
 [[files]]

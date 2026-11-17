@@ -102241,9 +102241,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(session *github.com/MichaelKinsy/PiG/coding.Session) *sync/atomic.Bool"
+        "type": "func(session *github.com/MichaelKinsy/PiG/coding.Session)"
       },
-      "shapeHash": "sha256:9fd9f223df0a8a75ec4582b326cdd02ab5c1a7ad1ae1c34ba6826d36f89b6946"
+      "shapeHash": "sha256:ce569a49c2cb29b087d430df0896ede167560e5c354ace1a7b094571fa8d9b76"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.newAdmission",
@@ -102255,17 +102255,6 @@
         "type": "func(session *github.com/MichaelKinsy/PiG/coding.Session, runner *github.com/MichaelKinsy/PiG/coding/extension/host/inproc.Runner, catalog headlessCommandCatalog, commands *rpcCommandJoin) *rpcAdmission"
       },
       "shapeHash": "sha256:3d60fd1d1c214489713d3a7a313e014df12fe6015776537bf2765ce3a65799b1"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.rebindAgain",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "rpcHost.rebindAgain",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context) error"
-      },
-      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.state",
