@@ -71,6 +71,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0684c43](#bf-0684c43) | A build's training run ended on a 200 ms timer: every extension of every build waited 200 ms, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-06a8890](#bf-06a8890) | fix(bug): tell the reporter exactly what to do with the /bug archive | PiG's own defect | All platforms | Unreleased |
 | [BF-06cb94f](#bf-06cb94f) | In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-06e97f2](#bf-06e97f2) | fix(codingagent): two session snapshots made in one clock tick no longer take one file name | PiG's own defect | All platforms | Unreleased |
 | [BF-07151d0](#bf-07151d0) | In print and JSON mode, Node extensions in separate processes now keep Pi's order when a later extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0749ea1](#bf-0749ea1) | `pig extension preview-login` did not enable editor views or `TuiAltScreen`, so an editor in a view of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-0790d5e](#bf-0790d5e) | `String.prototype.trim` vs `strings.TrimSpace`: four Pi `.trim()` sites used Go's `strings.TrimSpace`, which… | PiG's own defect | All platforms | 0.5.0 |
@@ -3069,6 +3070,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `06cb94f85e` (2026-11-02)
 - **Tests:** `tui/tui_alt_screen_x10_units_test.go::TestLegacyX10MouseReportCountsUTF16Units`
 - **Release note:** In the alt-screen, a wheel scroll reported in the legacy X10 mouse form (terminals without SGR mouse mode) no longer shows up as typed text when the pointer is at column or row 95 or higher; the report is counted in UTF-16 units as Pi counts it, so it scrolls.
+
+### BF-06e97f2
+
+**fix(codingagent): two session snapshots made in one clock tick no longer take one file name**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codingagent): two session snapshots made in one clock tick no longer take one file name
+- **Root cause:** A snapshot file was named from the wall clock (nanoseconds) and the process id, created with CREATE_NEW on Windows and clonefile on macOS. A Windows clock ticks every half to fifteen milliseconds, so two loads that started in one tick took the same name; the one that came second found the first snapshot still open, was refused as "file exists", and its fallback took the same name again, so it had no snapshot (TestParallelIndexStopsAsTheSerialLoadDoes failed on Windows only, on the "header alone" row, the one row whose serial load keeps its snapshot while the parallel load starts).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `06e97f29b2` (2026-11-17)
+- **Tests:** `internal/codingagent/session_index_parallel_test.go::TestParallelIndexStopsAsTheSerialLoadDoes`, `internal/codingagent/session_snapshot_name_test.go::TestSnapshotFileSkipsANameAnotherFileHolds`, `internal/codingagent/session_snapshot_name_test.go::TestSnapshotFileStopsOnAnyOtherError`, `internal/codingagent/session_snapshot_name_test.go::TestSnapshotFilesTakenAtOnceAllSucceedWithNamesOfTheirOwn`, `internal/codingagent/session_snapshot_name_test.go::TestSnapshotsOfSmallFilesTakenAtOnceAllSucceed`
 
 ### BF-07151d0
 
