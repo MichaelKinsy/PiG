@@ -70,7 +70,7 @@ func TestExitFrameRequestedByTheExitIsPaintedInsideTheDrain(t *testing.T) {
 		for _, end := range ends {
 			t.Run(fmt.Sprintf("%s in %s", end.name, tuiMode), func(t *testing.T) {
 				child := startExitBytesChild(t, true, end.run, exitBytesTuiModeEnv+"="+tuiMode)
-				child.await("the mode to be ready for input", child.ready)
+				child.awaitReady()
 				end.end(t, child)
 				child.finish()
 				// The pseudo-terminal's copy ends with the process: what it holds after the exit was sent is the exit's.
@@ -109,7 +109,7 @@ func TestExitSignalDisposeFrameIsPaintedInsideTheDrain(t *testing.T) {
 		for _, sig := range []syscall.Signal{syscall.SIGTERM, syscall.SIGHUP} {
 			t.Run(fmt.Sprintf("%v in %s", sig, tuiMode), func(t *testing.T) {
 				child := startExitBytesChild(t, true, false, exitBytesTuiModeEnv+"="+tuiMode, exitBytesRuntimeEnv+"=true", exitBytesSlowDisposeEnv+"=true")
-				child.await("the mode to be ready for input", child.ready)
+				child.awaitReady()
 				sentAt := child.captured.len()
 				if err := child.cmd.Process.Signal(sig); err != nil {
 					t.Fatal(err)
