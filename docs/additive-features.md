@@ -879,7 +879,9 @@ adds `pig login --list [--json]`. Before a session, Pig resolves enabled
 extensions. For each source extension without a valid projection for the exact
 source configuration and immutable artifact digest, Pig starts it for
 registration inspection, collects runtime OAuth provider declarations, and
-stops it without dispatching lifecycle or capability handlers. A valid
+stops it without dispatching lifecycle or capability handlers. Pre-session
+settings use the saved or default project trust; no extension handler is invoked
+to decide it. A valid
 projection avoids startup. Factory construction during a projection miss still
 executes extension code; it is not a side-effect-free metadata read. Embedded
 packed members are inspected independently through the complete compiled
@@ -901,7 +903,7 @@ and machine-readable discovery.
 
 Call-site markers:
 - `coding/cli/auth_commands.go`: target listing and credential-store dispatch.
-- `coding/cli/package_commands.go`: pre-session settings use saved/default project trust without invoking extension handlers.
+- `coding/cli/package_commands.go`: pre-session settings (saved or default project trust).
 - `coding/cli/auth_contributions.go`: registration-only inspection and owner-only
   login startup.
 - `coding/extension/host/subprocess/host.go`: runtime provider ownership.
@@ -917,7 +919,8 @@ OAuth registration tests; existing OAuth conformance and TUI external-store
 coverage.
 PORT_MAP path: n/a.
 Ratification: explicitly approved by the user for section SHA-256 `73a5ebf45b3f9b35b2f02fe24dec8c9d843b019a7907fccd9621815ef30f8139`.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: approved (group 1 remainder)
+SCRUTINIZED:approved 2026-11-17 text-sha256:2b74090250b35f2f
 ## D41 Additive typed status and Piglet inventory
 
 Summary: The pig package list, pig status, and pig piglet list commands can print Packages, Resources, and Piglets as JSON.
@@ -1107,7 +1110,8 @@ Tests:
 - `coding/cli/extension_login_preview_command_test.go`
 
 PORT_MAP path: n/a, because this is a downstream extension API.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: approved (group 1 remainder)
+SCRUTINIZED:approved 2026-11-17 text-sha256:6b762bff110df0e0
 
 ## D67 Windows container builds use the image default user
 
