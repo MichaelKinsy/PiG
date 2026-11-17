@@ -183,7 +183,7 @@ func TestListenAdmissionRefusalToAPeerThatNeverReadsDoesNotHoldTheLoop(t *testin
 	go func() { a.serve(&wg, stalled, func() { t.Error("served past the cap") }); close(done) }()
 	select {
 	case <-done:
-	case <-time.After(5 * time.Second):
+	case <-time.After(testbudget.Wait(t)):
 		t.Fatal("a refusal to a peer that never reads held the accept loop")
 	}
 	if _, err := stalled.Write([]byte("x")); err == nil {
