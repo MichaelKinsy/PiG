@@ -291,8 +291,8 @@ func startWaitingNodeInput(t *testing.T, impl rpcSettleImplementation, env ...st
 }
 
 // A before_agent_start handler that waits on a socket is awaiting I/O inside prompt() too (agent-session.ts _startRun awaits emitBeforeAgentStart): Pi's RPC loop reads the next stdin line meanwhile, so get_state is answered before the run starts and before the prompt's response.
-func TestRPCCommandDuringBeforeAgentStartHandlerNetworkWaitAnswersForNodeRuntimes(t *testing.T) {
-	for _, impl := range rpcSettleNodeImplementations(t) {
+func TestRPCCommandDuringBeforeAgentStartHandlerNetworkWaitAnswersAcrossSDKs(t *testing.T) {
+	for _, impl := range rpcSettleImplementations(t) {
 		t.Run(impl.name, func(t *testing.T) {
 			peer := newRPCSettlePeer(t)
 			p := impl.start(t, "RPC_SETTLE_START_ADDR="+peer.addr())
@@ -346,5 +346,128 @@ func TestRPCNodeHandlerThatOnlyRunsMicrotasksHoldsStdin(t *testing.T) {
 				p.closeAndWait("after the get_state response")
 			})
 		}
+	}
+}
+
+// rpcWaitLabels consumes records until done reports true and returns the labels of the ones that order a conversation with a waiting handler: responses, extension errors and the run's start, end and settle.
+func rpcWaitLabels(p *rpcProcess, what string, done func(rpcRecord) bool) []string {
+	var labels []string
+	p.await(what, func(r rpcRecord) bool {
+		switch r["type"] {
+		case "response", "extension_error", "agent_start", "agent_end", "agent_settled":
+			labels = append(labels, rpcLabel(r))
+		}
+		return done(r)
+	})
+	return labels
+}
+
+func rpcResponseTo(id string) func(rpcRecord) bool {
+	return func(r rpcRecord) bool { return r["type"] == "response" && r["id"] == id }
+}
+
+// A Node input handler that awaits I/O leaves the loop free, so what a client does meanwhile is as in Pi: two lines keep their order, a handler that throws after its wait is an extension error and the run goes on, an abort is answered at once, and stdin's end shuts the process down without waiting for the handler. Each scenario records what Pi did and requires Pig's runtime, isolated and packed, to have written the same records.
+func TestRPCNodeInputHandlerWaitSemanticsComparedWithPi(t *testing.T) {
+	type scenario struct {
+		name string
+		env  []string
+		run  func(t *testing.T, p *rpcProcess, release func()) []string
+	}
+	scenarios := []scenario{
+		{"two lines keep their order", nil, func(t *testing.T, p *rpcProcess, release func()) []string {
+			p.sendJSON(map[string]any{"id": "s1", "type": "get_state"})
+			p.sendJSON(map[string]any{"id": "s2", "type": "get_commands"})
+			during := rpcWaitLabels(p, "both responses during the wait", rpcResponseTo("s2"))
+			if want := []string{"response s1", "response s2"}; !slices.Equal(during, want) {
+				t.Fatalf("records during the wait = %v, want %v\n%s", during, want, p.stderr.String())
+			}
+			release()
+			return append(during, rpcWaitLabels(p, "agent_settled", func(r rpcRecord) bool { return r["type"] == "agent_settled" })...)
+		}},
+		{"a handler that throws after its wait", []string{"RPC_SETTLE_INPUT_THROW=1"}, func(t *testing.T, p *rpcProcess, release func()) []string {
+			p.sendJSON(map[string]any{"id": "s", "type": "get_state"})
+			during := rpcWaitLabels(p, "the get_state response during the wait", rpcResponseTo("s"))
+			if want := []string{"response s"}; !slices.Equal(during, want) {
+				t.Fatalf("records during the wait = %v, want %v\n%s", during, want, p.stderr.String())
+			}
+			release()
+			return append(during, rpcWaitLabels(p, "agent_settled", func(r rpcRecord) bool { return r["type"] == "agent_settled" })...)
+		}},
+		{"an abort during the wait", nil, func(t *testing.T, p *rpcProcess, release func()) []string {
+			p.sendJSON(map[string]any{"id": "a", "type": "abort"})
+			during := rpcWaitLabels(p, "the abort response during the wait", rpcResponseTo("a"))
+			if want := []string{"response a"}; !slices.Equal(during, want) {
+				t.Fatalf("records during the wait = %v, want %v\n%s", during, want, p.stderr.String())
+			}
+			release()
+			return append(during, rpcWaitLabels(p, "agent_settled", func(r rpcRecord) bool { return r["type"] == "agent_settled" })...)
+		}},
+	}
+	for _, sc := range scenarios {
+		var want []string
+		for _, impl := range rpcSettleNodeImplementations(t) {
+			t.Run(sc.name+"/"+impl.name, func(t *testing.T) {
+				p, peer := startWaitingNodeInput(t, impl, sc.env...)
+				release := func() {
+					if _, err := peer.Write([]byte("go\n")); err != nil {
+						t.Fatal(err)
+					}
+				}
+				got := sc.run(t, p, release)
+				p.closeAndWait("after the scenario")
+				if impl.name == "pi" {
+					want = got
+					t.Logf("Pi wrote %v", got)
+					return
+				}
+				if want == nil {
+					t.Skip("Pi's row did not run")
+				}
+				if !slices.Equal(got, want) {
+					t.Fatalf("records = %v, Pi wrote %v\n%s", got, want, p.stderr.String())
+				}
+			})
+		}
+	}
+}
+
+// Stdin's end while a Node input handler awaits I/O is not held back by the handler: Pi reads the end in its loop and shuts down (rpc-mode.ts:826-829), and so does Pig, whose shutdown does not wait for a handler that is suspended.
+func TestRPCNodeInputEndDuringInputHandlerWaitComparedWithPi(t *testing.T) {
+	var piExited bool
+	for _, impl := range rpcSettleNodeImplementations(t) {
+		t.Run(impl.name, func(t *testing.T) {
+			p, peer := startWaitingNodeInput(t, impl)
+			p.sendJSON(map[string]any{"id": "s", "type": "get_state"})
+			p.await("the get_state response during the wait", rpcResponseTo("s"))
+			p.closeInput()
+			waited := make(chan error, 1)
+			go func() { waited <- p.cmd.Wait() }()
+			exited := false
+			select {
+			case <-waited:
+				exited = true
+				p.exited = true
+			case <-time.After(5 * time.Second):
+			}
+			if !exited {
+				_, _ = peer.Write([]byte("go\n"))
+				select {
+				case <-waited:
+					p.exited = true
+				case <-time.After(p.budget):
+					_ = p.cmd.Process.Kill()
+					<-waited
+					p.exited = true
+				}
+			}
+			if impl.name == "pi" {
+				piExited = exited
+				t.Logf("Pi exited before the handler returned: %v", exited)
+				return
+			}
+			if exited != piExited {
+				t.Fatalf("exited before the handler returned = %v, Pi %v\n%s", exited, piExited, p.stderr.String())
+			}
+		})
 	}
 }

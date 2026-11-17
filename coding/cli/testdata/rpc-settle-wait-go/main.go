@@ -1,4 +1,4 @@
-// Command rpc-settle-wait-go is a Go-SDK extension whose agent_settled handler and hold command wait on a plain TCP read: they dial RPC_SETTLE_ADDR, announce themselves with a "waiting" line and return when the peer writes a line. Without RPC_SETTLE_ADDR they return at once. With RPC_SETTLE_DONE the hold command writes that file once its wait returned. The agent_settled handler and hold command dial RPC_SETTLE_ADDR; the input handler dials RPC_SETTLE_INPUT_ADDR. The wait is no SDK call, so nothing but the read itself tells the extension runtime from a handler that computes.
+// Command rpc-settle-wait-go is a Go-SDK extension whose agent_settled handler and hold command wait on a plain TCP read: they dial RPC_SETTLE_ADDR, announce themselves with a "waiting" line and return when the peer writes a line. Without RPC_SETTLE_ADDR they return at once. With RPC_SETTLE_DONE the hold command writes that file once its wait returned. The agent_settled handler and hold command dial RPC_SETTLE_ADDR; the input handler dials RPC_SETTLE_INPUT_ADDR and the before_agent_start handler RPC_SETTLE_START_ADDR. The wait is no SDK call, so nothing but the read itself tells the extension runtime from a handler that computes.
 package main
 
 import (
@@ -33,6 +33,7 @@ func main() {
 	ext := sdk.New("rpc-settle-wait-go")
 	ext.OnEvent(sdk.EventAgentSettled, func(sdk.Context, map[string]any) (any, error) { return nil, wait("RPC_SETTLE_ADDR") })
 	ext.OnEvent(sdk.EventInput, func(sdk.Context, map[string]any) (any, error) { return nil, wait("RPC_SETTLE_INPUT_ADDR") })
+	ext.OnEvent(sdk.EventBeforeAgentStart, func(sdk.Context, map[string]any) (any, error) { return nil, wait("RPC_SETTLE_START_ADDR") })
 	// Handlers of the two events Pi emits without awaiting them: with RPC_NAME_ADDR they wait on the peer, with RPC_NAME_BUSY_MS they compute for that long without waiting, and then they notify.
 	for _, event := range []string{sdk.EventSessionInfoChanged, sdk.EventThinkingLevelSelect} {
 		ext.OnEvent(event, func(ctx sdk.Context, _ map[string]any) (any, error) {
