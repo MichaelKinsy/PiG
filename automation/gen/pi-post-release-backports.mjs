@@ -1582,10 +1582,6 @@ patch("c8c456c85c6e", "pi-coding-agent/main.js", [
 ]);
 // END backport c8c456c85c6e
 // not carried: pi-coding-agent/utils/deprecation.js (deleted file): warnDeprecation had no caller and the package does not export it; a backport table patches files and cannot delete one, and nothing observable reads it.
-||||||| 297b8449d5
-
-||||||| 16b44bf4ca
-
 
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
