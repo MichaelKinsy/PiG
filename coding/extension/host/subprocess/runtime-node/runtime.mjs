@@ -1223,11 +1223,12 @@ function armRequestWindow(owner, early = false) {
       return;
     }
     owner.turned = true;
-    // pig divergence (D86 cured): the window of an input or before_agent_start handler closing unanswered is the handler awaiting a timer, I/O or another real wait, which is what Pi's loop serves stdin during. The caller that holds stdin for the handler (rpcAwaitHandler) is released by the same blocked report a command's await sends.
-    if (owner.reportsWait) {
+    // pig divergence (D86 cured): the window of an input, before_agent_start or command handler closing unanswered is the handler awaiting a timer, I/O or another real wait, which is what Pi's loop serves stdin during. The caller that holds stdin for the handler (rpcAwaitHandler) is released by this blocked report, once. A command that awaits waitForIdle is reported by the host (Conn.settleBlockedCall): Pi's call returns at once while the Session is idle.
+    if (owner.reportsWait && !owner.waitReported && !(owner.command && awaitsWaitForIdle(owner.connection, owner.id))) {
+      owner.waitReported = true;
       if (!owner.connection.closed) owner.connection.requestState(owner.id, "blocked", "external_io");
-      return;
     }
+    if (owner.reportsWait && !owner.command) return;
     // A command's suspension decides only what stdin's end makes of it. Reporting it before then would latch a continuation that Pi runs before it reads stdin's end, so the report waits for runtime_input_end (releaseCommandSuspensions).
     if (owner.command && !owner.quit && !drain.inputEnded) {
       owner.unreportedAt = hostCallEpoch(owner);
@@ -5591,10 +5592,12 @@ export class Runtime {
           if (!cmd) throw new Error(`unknown command: ${request.tool}`);
           const owner = this.requestContext.getStore();
           if (owner?.id === id) owner.command = true;
-          if (owner?.id === id && this.contextValues.mode === "rpc") armRequestWindow(owner, true);
+          if (owner?.id === id && this.contextValues.mode === "rpc") {
+            owner.reportsWait = true;
+            armRequestWindow(owner, true);
+          }
           const pending = cmd.handler?.(request.args ?? "", ctx);
           if (owner?.id === id) Promise.resolve(pending).then(() => { owner.handlerSettled = true; }, () => { owner.handlerSettled = true; });
-          if (this.contextValues.mode === "rpc") await this.acknowledgeInvocation(id, pending);
           await pending;
           await this.respond(id, null);
           return;
