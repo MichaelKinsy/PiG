@@ -385,6 +385,8 @@ export class InteractiveMode {
         this.runtimeHost.setRebindSession(async () => {
             await this.rebindCurrentSession({ renderBeforeBind: true });
             this.themeController.applyFromSettings();
+            // Pi c47ad0432bb8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+            this.showRuntimeDiagnostics(this.runtimeHost.takeUnreportedDiagnostics());
         });
         this.version = VERSION;
         this.renderer = createInteractiveTui({
@@ -896,17 +898,7 @@ export class InteractiveMode {
         });
         // Show startup warnings
         const { migratedProviders, startupDiagnostics, modelFallbackMessage, initialMessage, initialImages, initialMessages, } = this.options;
-        for (const diagnostic of startupDiagnostics ?? []) {
-            if (diagnostic.type === "error") {
-                this.showError(diagnostic.message);
-            }
-            else if (diagnostic.type === "warning") {
-                this.showWarning(diagnostic.message);
-            }
-            else {
-                this.showStatus(diagnostic.message);
-            }
-        }
+        this.showRuntimeDiagnostics(startupDiagnostics ?? []);
         if (migratedProviders && migratedProviders.length > 0) {
             this.showWarning(`Migrated credentials to auth.json: ${migratedProviders.join(", ")}`);
         }
@@ -1693,6 +1685,19 @@ export class InteractiveMode {
         if (this.editor !== this.defaultEditor) {
             this.editor.setPaddingX?.(editorPaddingX);
             this.editor.setAutocompleteMaxVisible?.(autocompleteMaxVisible);
+        }
+    }
+    showRuntimeDiagnostics(diagnostics) {
+        for (const diagnostic of diagnostics) {
+            if (diagnostic.type === "error") {
+                this.showError(diagnostic.message);
+            }
+            else if (diagnostic.type === "warning") {
+                this.showWarning(diagnostic.message);
+            }
+            else {
+                this.showStatus(diagnostic.message);
+            }
         }
     }
     async rebindCurrentSession(options = {}) {

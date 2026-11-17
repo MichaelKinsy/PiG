@@ -30,7 +30,9 @@ export async function agentSessionRuntimeScript({ cwd, agentDir, root, runtimePr
       cwd: options.cwd, agentDir: options.agentDir, settingsManager: settings, modelRuntime: rt, resourceLoaderOptions: { ...quiet, additionalExtensionPaths: [runtimeProbe] },
     });
     const { session, modelFallbackMessage } = await createAgentSessionFromServices({ services, sessionManager: options.sessionManager, sessionStartEvent: options.sessionStartEvent });
-    return { session, services, diagnostics: services.diagnostics, modelFallbackMessage };
+    const diagnostics = [...services.diagnostics, { type: "warning", message: "runtime diagnostics: startup" }];
+    if (calls.length > 1) diagnostics.push({ type: "error", message: "runtime diagnostics: replaced" });
+    return { session, services, diagnostics, modelFallbackMessage };
   };
   const manager = SessionManager.create(cwd, sessionDir);
   const firstFile = () => runtimeFile;
@@ -67,6 +69,9 @@ export async function agentSessionRuntimeScript({ cwd, agentDir, root, runtimePr
     cwd: runtime.cwd, diagnostics: runtime.diagnostics, fallback: orNull(runtime.modelFallbackMessage), sameLog: runtime.session.sessionManager.getSessionId() === manager.getSessionId(),
     servicesCwd: runtime.services.cwd, servicesAgentDir: runtime.services.agentDir === agentDir, calls: calls.length,
   };
+  // takeUnreportedDiagnostics (Pi's c47ad0432bb8): the startup diagnostics once, the next replacement's own once, an unchanged one never again after a later replacement.
+  r.takenAtStartup = runtime.takeUnreportedDiagnostics();
+  r.takenAtStartupAgain = runtime.takeUnreportedDiagnostics();
   await runtime.session.prompt("one");
   r.prompted = { kinds: kinds(), persisted: existsSync(firstFile()) };
 
@@ -83,6 +88,8 @@ export async function agentSessionRuntimeScript({ cwd, agentDir, root, runtimePr
     result: created, fresh: isNew(), parentIsFirst: runtime.session.sessionManager.getHeader()?.parentSession === firstFile(), kinds: kinds(), roles: runtime.session.messages.map((message) => message.role),
     calls: calls.slice(1), rebinds, invalidations,
   };
+  r.takenAfterNew = runtime.takeUnreportedDiagnostics();
+  r.takenAfterNewAgain = runtime.takeUnreportedDiagnostics();
   await runtime.session.prompt("two");
   const secondFile = runtime.session.sessionManager.getSessionFile();
 
@@ -94,6 +101,7 @@ export async function agentSessionRuntimeScript({ cwd, agentDir, root, runtimePr
     result: forked, fresh: isNew(), parentIsNotSecond: runtime.session.sessionManager.getSessionFile() !== secondFile, roles: runtime.session.messages.map((message) => message.role),
     kinds: kinds(), calls: calls.length - 2,
   };
+  r.takenAfterFork = runtime.takeUnreportedDiagnostics();
   await runtime.session.prompt("three");
   const assistant = runtime.session.sessionManager.getEntries().find((entry) => entry.type === "message" && entry.message.role === "assistant");
   const forkedAt = await runtime.fork(assistant.id, { position: "at" });

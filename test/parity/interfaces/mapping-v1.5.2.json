@@ -157570,8 +157570,8 @@
       ],
       "evidence": [
         "test:coding/runtime_before_invalidate_upstream_test.go#TestBeforeSessionInvalidateRunsBetweenShutdownAndRebind",
-        "test:coding/session_replaced_2860_upstream_test.go#TestReplacedSession2860Switch",
-        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalNewResumeEvents"
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsDoesNotRepeatAFixedAndReappearingDiagnostic",
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsReturnsEachDiagnosticOnceAtStartupAndAfterReplacements"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -157593,8 +157593,8 @@
       ],
       "evidence": [
         "test:coding/runtime_before_invalidate_upstream_test.go#TestBeforeSessionInvalidateRunsBetweenShutdownAndRebind",
-        "test:coding/session_replaced_2860_upstream_test.go#TestReplacedSession2860Switch",
-        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalNewResumeEvents"
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsDoesNotRepeatAFixedAndReappearingDiagnostic",
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsReturnsEachDiagnosticOnceAtStartupAndAfterReplacements"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -167512,7 +167512,9 @@
         "call:coding/cli/cli_session_factory.go#cliSessionFactory.create"
       ],
       "evidence": [
-        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction"
+        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction",
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsDoesNotRepeatAFixedAndReappearingDiagnostic",
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsKeysByTypeAndMessage"
       ]
     },
     {
@@ -191312,12 +191314,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/settings_diagnostics.go#InteractiveMode.showStartupDiagnostics"
+        "call:internal/codingagent/settings_diagnostics.go#InteractiveMode.showInitNotices"
       ],
       "evidence": [
         "test:internal/codingagent/reload_trust_models_test.go#TestInitNoticesFollowUpstreamOrder",
         "test:internal/codingagent/settings_diagnostics_test.go#TestInvalidSettingsWarningRendersStartupDiagnosticsInsideTranscript",
-        "test:internal/codingagent/settings_diagnostics_test.go#TestShowStartupDiagnosticsRendersEachType"
+        "test:internal/codingagent/settings_diagnostics_test.go#TestShowRuntimeDiagnosticsRendersEachType"
       ]
     },
     {

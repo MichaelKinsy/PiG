@@ -1645,7 +1645,10 @@ def agent_session_runtime_script(ctx, args):
             resource_loader_options=dict(quiet, additional_extension_paths=[args["runtimeProbe"]]),
         ))
         session = pig_sdk.create_agent_session_from_services(ctx, pig_sdk.CreateAgentSessionFromServicesOptions(services=services, session_manager=options.session_manager, session_start_event=start))
-        return pig_sdk.CreateAgentSessionRuntimeResult(session=session, services=services, diagnostics=services.diagnostics, model_fallback_message=session.model_fallback_message)
+        diagnostics = [*services.diagnostics, {"type": "warning", "message": "runtime diagnostics: startup"}]
+        if len(calls) > 1:
+            diagnostics.append({"type": "error", "message": "runtime diagnostics: replaced"})
+        return pig_sdk.CreateAgentSessionRuntimeResult(session=session, services=services, diagnostics=diagnostics, model_fallback_message=session.model_fallback_message)
 
     manager = SessionManager.create(ctx, cwd, session_dir)
     run_file = manager.get_session_file()
@@ -1700,6 +1703,8 @@ def agent_session_runtime_script(ctx, args):
         "cwd": runtime.cwd, "diagnostics": runtime.diagnostics, "fallback": runtime.model_fallback_message, "sameLog": current().get_session_id() == manager.get_session_id(),
         "servicesCwd": runtime.services.cwd, "servicesAgentDir": runtime.services.agent_dir == agent_dir, "calls": len(calls),
     }
+    r["takenAtStartup"] = runtime.take_unreported_diagnostics()
+    r["takenAtStartupAgain"] = runtime.take_unreported_diagnostics()
     runtime.session.prompt("one")
     r["prompted"] = {"kinds": kinds(), "persisted": os.path.exists(run_file)}
 
@@ -1710,6 +1715,8 @@ def agent_session_runtime_script(ctx, args):
         "result": created, "fresh": is_new(), "parentIsFirst": parent_is(run_file), "kinds": kinds(), "roles": roles(), "calls": list(calls[1:]),
         "rebinds": counts["rebinds"], "invalidations": counts["invalidations"],
     }
+    r["takenAfterNew"] = runtime.take_unreported_diagnostics()
+    r["takenAfterNewAgain"] = runtime.take_unreported_diagnostics()
     runtime.session.prompt("two")
 
     second_file = current().get_session_file()
@@ -1717,6 +1724,7 @@ def agent_session_runtime_script(ctx, args):
     r["forkCancelled"] = {"result": cancelling(lambda: runtime.fork(two_id)), "sameSession": not is_new()}
     forked = runtime.fork(two_id)
     r["fork"] = {"result": forked, "fresh": is_new(), "parentIsNotSecond": current().get_session_file() != second_file, "roles": roles(), "kinds": kinds(), "calls": len(calls) - 2}
+    r["takenAfterFork"] = runtime.take_unreported_diagnostics()
     runtime.session.prompt("three")
     forked_at = runtime.fork(assistant_id(), {"position": "at"})
     r["forkAt"] = {"result": forked_at, "fresh": is_new(), "roles": roles()}

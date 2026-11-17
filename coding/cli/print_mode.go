@@ -88,6 +88,8 @@ type printModeRuntime struct {
 	Session     coding.SessionStartOptions
 	ResumePath  string
 	SessionName string
+	// Diagnostics are the build's diagnostics (cliBuild.runtimeDiagnostics): the Runtime holds them for the mode to report once.
+	Diagnostics []codingagent.AgentSessionRuntimeDiagnostic
 	// ToolRegistryAllowed and ToolRegistryExcluded bound the tool registry
 	// pi.getAllTools() reports (see toolRegistryFilters).
 	ToolRegistryAllowed  map[string]struct{}
@@ -110,7 +112,7 @@ func (h printModeRuntime) startOptions() coding.SessionStartOptions {
 }
 
 func (h printModeRuntime) inputs() cliSessionInputs {
-	return cliSessionInputs{Services: h.Services, Extensions: h.Extensions, Start: h.Session, Host: h.Host, Bridge: h.Bridge, Runtime: h.Runtime, Invalidate: h.Invalidate, Release: h.Release}
+	return cliSessionInputs{Services: h.Services, Extensions: h.Extensions, Start: h.Session, Host: h.Host, Bridge: h.Bridge, Runtime: h.Runtime, Diagnostics: h.Diagnostics, Invalidate: h.Invalidate, Release: h.Release}
 }
 
 // printModeOptions mirrors upstream PrintModeOptions (print-mode.ts).
@@ -166,6 +168,8 @@ func startPrintMode(ctx context.Context, host printModeRuntime, opts printModeOp
 	if err != nil {
 		return 1, fmt.Errorf("construct session: %w", err)
 	}
+	// main.ts takes the startup diagnostics from the runtime and writes them to stderr before the mode runs (c47ad0432bb8).
+	codingagent.WriteDiagnosticsToStderr(rt.TakeUnreportedDiagnostics())
 	opts.toolRegistryAllowed, opts.toolRegistryExcluded = host.ToolRegistryAllowed, host.ToolRegistryExcluded
 	return runPrintMode(ctx, rt, opts)
 }
@@ -519,7 +523,12 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		return nil
 	}
 	rt.SetRebindSession(func(ctx context.Context, session *coding.Session) error {
-		return bind(ctx, session, session.StartEvent(), false)
+		if err := bind(ctx, session, session.StartEvent(), false); err != nil {
+			return err
+		}
+		// print-mode.ts setRebindSession: the replacement's diagnostics follow the rebind, on stderr (c47ad0432bb8).
+		codingagent.WriteDiagnosticsToStderr(rt.TakeUnreportedDiagnostics())
+		return nil
 	})
 	// print-mode.ts:97-99: ctx.reload() runs session.reload() and then rebinds the Session's extensions.
 	rt.SetReload(func(ctx context.Context, session *coding.Session) error {

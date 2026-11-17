@@ -1023,6 +1023,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6f26a84](#bf-6f26a84) | Xiaomi MiMo models send only the thinking on/off toggle (no `reasoning_effort`) and expose only the `off` and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f4a82f](#bf-6f4a82f) | Validation errors for `propertyNames` name the failing member in their path, `contains` reports only "must… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6f553ca](#bf-6f553ca) | `pig update --models` warns about a provider whose OAuth login can no longer be refreshed (`Warning: skipped… | PiG's own defect | All platforms | Unreleased |
+| [BF-6f6f6ba](#bf-6f6f6ba) | Follows Pi c47ad0432bb8 (#12115, related to #11264): problems found when the session is replaced with `/new`… | PiG's own defect | All platforms | Unreleased |
 | [BF-6f74b70](#bf-6f74b70) | The in-memory telemetry recorder stored two copies of each event's time, so the second and later events of a… | PiG's own defect | All platforms | Unreleased |
 | [BF-6f949d9](#bf-6f949d9) | A Node extension start no longer loads pi-tui's text-width module; it loads when an image line is first… | PiG's own defect | All platforms | Unreleased |
 | [BF-6f9cf77](#bf-6f9cf77) | RPC mode: an extension dialog whose signal is already aborted now resolves its default without writing an… | PiG's own defect | All platforms | Unreleased |
@@ -16197,6 +16198,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `6f553cab69` (2026-11-09)
 - **Tests:** None recorded.
 - **Release note:** `pig update --models` warns about a provider whose OAuth login can no longer be refreshed (`Warning: skipped model catalog for <provider>: ...`, with the `pig auth login <provider>` command to sign in again) and finishes successfully; it fails only for other refresh errors, and the failure lists only those.
+
+### BF-6f6f6ba
+
+**Follows Pi c47ad0432bb8 (#12115, related to #11264): problems found when the session is replaced with `/new`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Follows Pi c47ad0432bb8 (#12115, related to #11264): problems found when the session is replaced with `/new`, `/resume`, `/fork`, an import or RPC `new_session`, `switch_session` and `fork` (and an extension's `ctx.newSession()`, `switchSession()` and `fork()`) were never shown: the runtime kept the diagnostics of the replacement and only the startup read them, so a project extension that fails to load after `/resume` into another project, invalid settings of that project, or an `enabledModels` pattern that matches nothing after a settings change gave no chat line, no stderr line and no event.
+- **Root cause:** the runtime stored the replacement's diagnostics and no mode read them after startup; present since v0.5.1 (the runtime's Diagnostics field); the report is new with the change
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `6f6f6bab9a` (2026-11-16)
+- **Tests:** `coding/cli/rpc_replacement_diagnostics_upstream_test.go::TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce`, `coding/runtime_take_unreported_diagnostics_upstream_test.go::TestTakeUnreportedDiagnosticsReturnsEachDiagnosticOnceAtStartupAndAfterReplacements`
+- **Release note:** Follows Pi c47ad0432bb8 (#12115, related to #11264): problems found when the session is replaced with `/new`, `/resume`, `/fork`, an import or RPC `new_session`, `switch_session` and `fork` (and an extension's `ctx.newSession()`, `switchSession()` and `fork()`) were never shown: the runtime kept the diagnostics of the replacement and only the startup read them, so a project extension that fails to load after `/resume` into another project, invalid settings of that project, or an `enabledModels` pattern that matches nothing after a settings change gave no chat line, no stderr line and no event. Interactive mode now shows them in the chat, print, JSON and RPC modes write them to stderr (RPC never writes them to stdout), and a problem already reported is not repeated. The new `AgentSessionRuntime.takeUnreportedDiagnostics()` (Go `TakeUnreportedDiagnostics`, Rust, Python and Lisp `take_unreported_diagnostics`) gives an SDK host each diagnostic once at startup and after each replacement.
 
 ### BF-6f74b70
 

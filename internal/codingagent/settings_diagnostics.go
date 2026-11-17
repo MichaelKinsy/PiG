@@ -6,7 +6,6 @@ package codingagent
 
 import (
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -48,35 +47,10 @@ func DeduplicateDiagnostics(diagnostics []AgentSessionRuntimeDiagnostic) []Agent
 	return out
 }
 
-// ReportDiagnostics writes diagnostics to stderr for non-interactive modes: "Error: " in red, "Warning: " in yellow and info dimmed. Like upstream main.ts
-// reportDiagnostics, which styles them with the default chalk instance, the colors follow chalk's stdout color level, not whether stderr is a terminal.
-func ReportDiagnostics(diagnostics []AgentSessionRuntimeDiagnostic) {
-	color := chalkModifiersEnabled()
+// showRuntimeDiagnostics renders runtime diagnostics in the chat: an error as an error, a warning as a warning, anything else as a status line. Startup shows its diagnostics after the welcome banner, and the rebind callback shows a replacement's before the replacing command's own message.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts showRuntimeDiagnostics (c47ad0432bb8); it runs on the owner.
+func (m *InteractiveMode) showRuntimeDiagnostics(diagnostics []AgentSessionRuntimeDiagnostic) {
 	for _, diagnostic := range diagnostics {
-		fmt.Fprintln(os.Stderr, formatReportedDiagnostic(diagnostic, color))
-	}
-}
-
-func formatReportedDiagnostic(diagnostic AgentSessionRuntimeDiagnostic, color bool) string {
-	var prefix, open, closeSeq string
-	switch diagnostic.Type {
-	case "error":
-		prefix, open, closeSeq = "Error: ", "\x1b[31m", "\x1b[39m"
-	case "warning":
-		prefix, open, closeSeq = "Warning: ", "\x1b[33m", "\x1b[39m"
-	default:
-		open, closeSeq = "\x1b[2m", "\x1b[22m"
-	}
-	if !color {
-		return prefix + diagnostic.Message
-	}
-	return ChalkApply(open, closeSeq, prefix+diagnostic.Message)
-}
-
-// showStartupDiagnostics renders startup diagnostics in the chat after the
-// welcome banner. Mirrors the upstream InteractiveMode.init loop.
-func (m *InteractiveMode) showStartupDiagnostics() {
-	for _, diagnostic := range m.opts.StartupDiagnostics {
 		switch diagnostic.Type {
 		case "error":
 			m.showError(diagnostic.Message)
@@ -101,7 +75,7 @@ func (m *InteractiveMode) showModelsJSONError() {
 // showInitNotices shows the startup notices in upstream init order: diagnostics, migrated credentials, the models.json error, then the model fallback message, even under quiet startup. PiG's frame pacing notice follows the diagnostics (showFramePacingNotice, D625).
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
 func (m *InteractiveMode) showInitNotices() {
-	m.showStartupDiagnostics()
+	m.showRuntimeDiagnostics(m.opts.StartupDiagnostics)
 	m.showFramePacingNotice()
 	if len(m.opts.MigratedProviders) > 0 {
 		m.showWarning("Migrated credentials to auth.json: " + strings.Join(m.opts.MigratedProviders, ", "))

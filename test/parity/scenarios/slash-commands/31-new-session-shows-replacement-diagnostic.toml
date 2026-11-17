@@ -1,0 +1,53 @@
+# Behavior family: slash-commands
+# Surface: /new shows a diagnostic that appeared since startup in the chat, above "New session started".
+#
+# Upstream evidence (Pi c47ad0432bb8, #12115, related to #11264): interactive-mode.ts setRebindSession runs rebindCurrentSession, applies the theme and then
+# showRuntimeDiagnostics(runtimeHost.takeUnreportedDiagnostics()): each new diagnostic is shown like a startup diagnostic (showWarning: Spacer(1) and
+# ThemedText(theme.fg("warning", `Warning: ${message}`), 1, 0)). The runtime factory runs again on /new; before the commit the enabledModels pattern added after startup
+# showed nothing. The step `!` command adds a pattern that matches no model to the settings of the agent directory each binary runs with (both set the variable their
+# own name for it); /new then shows the warning in the new chat, above the status line.
+# The comparator is the one of 03-new-session: the escaped bytes of the warning line are identical in both binaries (measured: the warning, the two blank rows and the
+# line order), and only the accent colour of the "✓ New session started" line differs (pig paints it 38;2;167;152;215, pi 38;5;5: a difference of that line, which this
+# change does not touch and 03-new-session already normalizes), which this scenario does not assert.
+name = "31-new-session-shows-replacement-diagnostic"
+description = "/new shows the unmatched model scope pattern that appeared since startup as a chat warning, as pi does."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 30
+settle_seconds = 1
+capture_start = "Warning: No models match pattern"
+capture_end = "✓ New session started"
+
+[[tmux.steps]]
+keys = ["!printf '%s' '{\"enabledModels\":[\"fixture/model-one\",\"fixture/model-two\",\"github-copilot/nope\"]}' > \"${PIG_CODING_AGENT_DIR:-$PI_CODING_AGENT_DIR}/settings.json\"", "Enter"]
+wait_stable_milliseconds = 1500
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/new", "Enter"]
+wait_contains = ["✓ New session started"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-replacement-diagnostics"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-replacement-diagnostics", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Warning: No models match pattern \"github-copilot/nope\"", "✓ New session started"]
+both_not_contain = ["panic:", "goroutine "]
+output_normalized_equal = true
+runs = 3

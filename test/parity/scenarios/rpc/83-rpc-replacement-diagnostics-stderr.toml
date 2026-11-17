@@ -1,0 +1,61 @@
+# Behavior family: rpc
+# Surface: a diagnostic that first appears on new_session goes to stderr once, never to stdout (the RPC protocol stream).
+#
+# Upstream evidence (Pi c47ad0432bb8, #12115, related to #11264): rpc-mode.ts setRebindSession awaits rebindSession() and then calls
+# writeDiagnosticsToStderr(runtimeHost.takeUnreportedDiagnostics()) ("stderr, never stdout: stdout carries the RPC protocol"). The runtime factory runs again on every
+# new_session; the trace: start with enabledModels ["test-faux/faux-1"], change the settings to add "github-copilot/missing-model", send new_session twice: stderr
+# carries `Warning: No models match pattern "github-copilot/missing-model"` once (the second replacement's diagnostic equals the first's) and no event or response carries it.
+# The settings change is an RPC bash command that writes the copy of the agent directory each binary runs with. stderr_equal compares the whole stream.
+name = "83-rpc-replacement-diagnostics-stderr"
+description = "RPC: new_session reports a diagnostic that appeared since startup on stderr once, and stdout carries frames only"
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"new-1","type":"new_session"}'
+wait_event = '{"id":"new-1","type":"response","command":"new_session","success":true}'
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"edit","type":"bash","command":"printf %s \"{\\\"enabledModels\\\":[\\\"fixture/model-one\\\",\\\"fixture/model-three\\\",\\\"github-copilot/missing-model\\\"]}\" > \"${PIG_CODING_AGENT_DIR:-$PI_CODING_AGENT_DIR}/settings.json\""}'
+wait_event = '{"id":"edit","type":"response","command":"bash","success":true}'
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"new-2","type":"new_session"}'
+wait_event = '{"id":"new-2","type":"response","command":"new_session","success":true}'
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"new-3","type":"new_session"}'
+wait_event = '{"id":"new-3","type":"response","command":"new_session","success":true}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/multi-model-scoped/agent"]
+pig_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
+pi = ["PI_CODING_AGENT_DIR=testdata/multi-model-scoped/agent"]
+pi_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = [
+  '"id":"new-1","type":"response","command":"new_session","success":true',
+  '"id":"new-2","type":"response","command":"new_session","success":true',
+  '"id":"new-3","type":"response","command":"new_session","success":true',
+]
+both_not_contain = [
+  '"success":false',
+  'No models match pattern',
+]

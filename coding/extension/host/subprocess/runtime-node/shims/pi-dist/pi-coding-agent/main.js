@@ -34,7 +34,7 @@ import { restoreStdout, takeOverStdout } from "./core/output-guard.js";
 import { resolveProjectTrusted } from "./core/project-trust.js";
 import { formatMissingSessionCwdPrompt, getMissingSessionCwdIssue, getMissingSessionCwdOptions, MissingSessionCwdError, } from "./core/session-cwd.js";
 import { assertValidSessionId, SessionManager } from "./core/session-manager.js";
-import { collectSettingsDiagnostics, deduplicateDiagnostics } from "./core/settings-diagnostics.js";
+import { collectSettingsDiagnostics, deduplicateDiagnostics, writeDiagnosticsToStderr } from "./core/settings-diagnostics.js";
 import { SettingsManager } from "./core/settings-manager.js";
 import { printTimings, resetTimings, time } from "./core/timings.js";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "./core/trust-manager.js";
@@ -68,13 +68,6 @@ async function readPipedStdin() {
         });
         process.stdin.resume();
     });
-}
-function reportDiagnostics(diagnostics) {
-    for (const diagnostic of diagnostics) {
-        const color = diagnostic.type === "error" ? chalk.red : diagnostic.type === "warning" ? chalk.yellow : chalk.dim;
-        const prefix = diagnostic.type === "error" ? "Error: " : diagnostic.type === "warning" ? "Warning: " : "";
-        console.error(color(`${prefix}${diagnostic.message}`));
-    }
 }
 function isTruthyEnvFlag(value) {
     if (!value)
@@ -769,10 +762,15 @@ export async function main(args, options) {
     setCapabilityOverrides(settingsManager.getTerminalCapabilityOverrides());
     applyHttpProxySettings(settingsManager.getGlobalSettings().httpProxy);
     configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
-    const startupDiagnostics = deduplicateDiagnostics([...startupSettingsDiagnostics, ...runtime.diagnostics]);
+    // Pi c47ad0432bb8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    // Taking them marks them reported, so the modes do not report them again after a session replacement.
+    const startupDiagnostics = deduplicateDiagnostics([
+        ...startupSettingsDiagnostics,
+        ...runtime.takeUnreportedDiagnostics(),
+    ]);
     const hasRuntimeErrors = runtime.diagnostics.some((diagnostic) => diagnostic.type === "error");
     if (parsed.help) {
-        reportDiagnostics(startupDiagnostics);
+        writeDiagnosticsToStderr(startupDiagnostics);
         const extensionFlags = resourceLoader
             .getExtensions()
             .extensions.flatMap((extension) => Array.from(extension.flags.values()));
@@ -780,7 +778,7 @@ export async function main(args, options) {
         process.exit(0);
     }
     if (parsed.listModels !== undefined) {
-        reportDiagnostics(startupDiagnostics);
+        writeDiagnosticsToStderr(startupDiagnostics);
         const searchPattern = typeof parsed.listModels === "string" ? parsed.listModels : undefined;
         await listModels(modelRuntime, searchPattern, AbortSignal.timeout(15_000));
         process.exit(0);
@@ -804,7 +802,7 @@ export async function main(args, options) {
     }
     time("resolveModelScope");
     if (appMode !== "interactive" || hasRuntimeErrors) {
-        reportDiagnostics(startupDiagnostics);
+        writeDiagnosticsToStderr(startupDiagnostics);
     }
     if (hasRuntimeErrors) {
         if (runtime.diagnostics.some((diagnostic) => diagnostic.message.includes("Failed to load extension"))) {
