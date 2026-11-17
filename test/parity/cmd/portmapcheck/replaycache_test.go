@@ -449,7 +449,7 @@ func TestSweepRemovesOnlyWhatNoLiveRunOwns(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sweepReplayDirs(tmp, now)
+	_, _ = sweepReplayDirs(tmp, now)
 	for name, tc := range map[string]struct {
 		dir  string
 		kept bool
@@ -469,7 +469,7 @@ func TestSweepRemovesOnlyWhatNoLiveRunOwns(t *testing.T) {
 		target := mkReplayDir(t, t.TempDir(), "target", nil, replayStaleAfter+time.Hour)
 		link := filepath.Join(tmp, replayDirPrefix+"link")
 		testenv.RequireDirectoryLink(t, target, link)
-		sweepReplayDirs(tmp, now)
+		_, _ = sweepReplayDirs(tmp, now)
 		if !exists(target) || !exists(link) {
 			t.Errorf("a symbolic link with the name of a replay directory was followed")
 		}
@@ -491,7 +491,7 @@ func TestSweepRemovesLegacyClonesByAge(t *testing.T) {
 		t.Fatal(err)
 	}
 	cache := mkReplayDir(t, parent, "go-build", nil, replayStaleAfter+time.Hour)
-	sweepLegacyClones(parent, now)
+	_, _ = sweepLegacyClones(parent, now)
 	if !exists(young) || exists(old) || exists(cut) || !exists(cache) {
 		t.Fatalf("young kept=%v old kept=%v cut kept=%v the cache itself kept=%v", exists(young), exists(old), exists(cut), exists(cache))
 	}
@@ -511,6 +511,53 @@ func TestCleanReplaysRemovesLeftovers(t *testing.T) {
 	if exists(orphan) || exists(legacy) || !strings.Contains(out.String(), "2 leftover replay directories removed") {
 		t.Fatalf("orphan kept=%v legacy kept=%v output %q", exists(orphan), exists(legacy), out.String())
 	}
+}
+
+// TestCleanReplaysFailsWhatItCannotSweep: a cleanup that cannot read a directory or remove a leftover says so, naming the path, and
+// fails; the other leftovers are still removed.
+func TestCleanReplaysFailsWhatItCannotSweep(t *testing.T) {
+	t.Run("a temporary directory that cannot be read", func(t *testing.T) {
+		file := filepath.Join(t.TempDir(), "not-a-directory") // ReadDir of a file fails on every system and for every user
+		if err := os.WriteFile(file, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"TMPDIR", "TMP", "TEMP"} {
+			t.Setenv(name, file)
+		}
+		t.Setenv("GOCACHE", filepath.Join(t.TempDir(), "go-build"))
+		var out strings.Builder
+		err := cleanReplayLeftovers(&out)
+		if err == nil || !strings.Contains(err.Error(), file) {
+			t.Fatalf("an unreadable temporary directory must fail and name %s, got %v", file, err)
+		}
+	})
+	t.Run("a leftover that cannot be removed", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("a read-only directory does not stop its entries from being removed on Windows")
+		}
+		if os.Geteuid() == 0 {
+			t.Skip("root removes entries of a read-only directory")
+		}
+		tmp := scratchTemp(t)
+		t.Setenv("GOCACHE", filepath.Join(t.TempDir(), "go-build"))
+		stuck := mkReplayDir(t, tmp, replayDirPrefix+"stuck", nil, replayStaleAfter+time.Hour)
+		if err := os.WriteFile(filepath.Join(stuck, "cache", "f"), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(filepath.Join(stuck, "cache"), 0o500); err != nil { // its entry cannot be unlinked
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Chmod(filepath.Join(stuck, "cache"), 0o700) })
+		gone := mkReplayDir(t, tmp, replayDirPrefix+"gone", nil, replayStaleAfter+time.Hour)
+		var out strings.Builder
+		err := cleanReplayLeftovers(&out)
+		if err == nil || !strings.Contains(err.Error(), stuck) {
+			t.Fatalf("a leftover that cannot be removed must fail and name %s, got %v", stuck, err)
+		}
+		if exists(gone) || !strings.Contains(out.String(), "1 leftover replay directories removed") {
+			t.Fatalf("the other leftover must still be removed: kept=%v output %q", exists(gone), out.String())
+		}
+	})
 }
 
 // TestMutantReplaysLeaveTheSharedBuildCacheAlone: whatever the go command of a replay writes into its build cache is gone when the check ends
