@@ -1,6 +1,7 @@
 # Behavior family: extensions-runtime
 # Surface: a pi.events handler that fails after a failed /reload left its runner stale reports nothing.
 #
+# Upstream evidence
 # Upstream (Pi 18e99051be24, #12233): runtime.reportError is bound in the Runner constructor and calls emitError() only `if (!this.staleMessage)`
 # (runner.ts). session.reload() invalidates the old runner right after session_shutdown (agent-session.ts:3825-3826) and a reload that throws keeps
 # the session on that stale runner (scenario 99-failed-reload-then-prompts), so the late failure of a handler that was running when the reload began is
@@ -10,7 +11,7 @@
 # testdata/ext/events-late-failure-failed-reload.mjs emits demo:late (its handler throws 1.5 s later) and then reloads with a settings entry the
 # resource loader rejects; the step waits for the failure to pass, and a tool call shows the session is alive.
 
-name = "109-events-late-failure-after-failed-reload"
+name = "112-events-late-failure-after-failed-reload"
 description = "A pi.events handler that fails after a failed reload left the runner stale reports nothing"
 covers = [
   "packages/coding-agent/src/core/extensions/loader.ts",

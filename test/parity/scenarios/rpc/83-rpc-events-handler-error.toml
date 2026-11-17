@@ -1,6 +1,6 @@
 # Pi 18e99051be24 (#12233): a pi.events handler that throws is reported to the extension error listener, which RPC mode forwards as an
 # `extension_error` event (rpc-mode.ts), with the extension's path, event `events:<channel>` and the message (the RPC event carries no stack; the
-# interactive chat does: scenario 108), and nothing is written to
+# interactive chat does: scenario 111), and nothing is written to
 # stderr (the event bus's console.error line is gone). The handler runs inside the emit of /events-boom's command handler, so the event is written
 # before the command's prompt response.
 name = "83-rpc-events-handler-error"

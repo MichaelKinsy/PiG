@@ -1,6 +1,7 @@
 # Behavior family: extensions-runtime
 # Surface: a throwing pi.events handler is an extension error, and the screen stays clean.
 #
+# Upstream evidence
 # Upstream (Pi 18e99051be24, #12233, follow-up of #11264): extensions get events two ways. pi.on handlers run in the runner, which catches their
 # errors into emitError(), so every mode shows them. pi.events.on handlers run in the shared event bus, whose only error handling was
 # console.error("Event handler error (...)"); in interactive mode that write lands on the terminal behind the TUI and corrupts the screen.
@@ -12,7 +13,7 @@
 # which emits demo:boom. The crop starts at "error:", which ends the notice's path (the two binaries' snapshot paths have one length, so the notice
 # breaks at one column), and ends at the stack's last line. The oracle is the installed Pi with the commit backported.
 
-name = "108-events-handler-error"
+name = "111-events-handler-error"
 description = "A pi.events handler that throws is shown as an extension error with its stack, not written behind the TUI"
 covers = [
   "packages/coding-agent/src/core/extensions/loader.ts",

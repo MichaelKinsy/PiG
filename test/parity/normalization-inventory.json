@@ -1242,7 +1242,25 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/extensions-runtime/108-events-handler-error.toml",
+      "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "dialogs-ok:",
+            "capture_end": "note:ready"
+          },
+          "reason": "Owned visible surface: Subprocess extension tool opens Select, Input, and Editor and receives submitted values",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/111-events-handler-error.toml",
       "transforms": [
         {
           "kind": "terminal_crop",
@@ -1260,7 +1278,7 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/extensions-runtime/109-events-late-failure-after-failed-reload.toml",
+      "scenario": "test/parity/scenarios/extensions-runtime/112-events-late-failure-after-failed-reload.toml",
       "transforms": [
         {
           "kind": "terminal_crop",
@@ -1268,24 +1286,6 @@
             "capture_start": "Reload failed: "
           },
           "reason": "Owned visible surface: A pi.events handler that fails after a failed reload left the runner stale reports nothing",
-          "limitations": "No claim about output outside this crop or transient terminal bytes."
-        },
-        {
-          "kind": "cwd_snapshot_digits",
-          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
-        }
-      ]
-    },
-    {
-      "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
-      "transforms": [
-        {
-          "kind": "terminal_crop",
-          "configuration": {
-            "capture_start": "dialogs-ok:",
-            "capture_end": "note:ready"
-          },
-          "reason": "Owned visible surface: Subprocess extension tool opens Select, Input, and Editor and receives submitted values",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
