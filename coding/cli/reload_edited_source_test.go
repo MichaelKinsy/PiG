@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // reloadSourceProbe is one extension whose factory logs the version its helper source file defines and whose /rl command awaits the reload. entry is the path that -e names and version the file the test edits, both relative to the probe directory; build is the longest a cold build of the probe may take.
@@ -98,6 +99,7 @@ func TestReloadRunsTheCurrentSourceOfACommandLineExtension(t *testing.T) {
 				}
 			}
 			home, cwd, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()
+			testenv.DisableGoTelemetryForChild(t, home)
 			agentDir := filepath.Join(home, "pig")
 			if err := os.MkdirAll(agentDir, 0o755); err != nil {
 				t.Fatal(err)
