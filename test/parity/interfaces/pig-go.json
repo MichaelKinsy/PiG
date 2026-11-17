@@ -139090,6 +139090,17 @@
       "shapeHash": "sha256:e183963e42379820da9a56118d1642deba99660a2961764544e00c295825966b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#awaitReplyDispatch",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "awaitReplyDispatch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(c *Conn, dispatched \u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:50eeea57225f1fdb6c332f90ffa19f0452cb8aff8964d7e89dcf7af682b4be33"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#awaitStderrDrained",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "awaitStderrDrained",

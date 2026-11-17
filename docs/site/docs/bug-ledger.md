@@ -393,6 +393,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4c032a0](#bf-4c032a0) | A description decoded from the wire is written back with every schema member in the order it was declared in… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4c45afa](#bf-4c45afa) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
 | [BF-4c7ccf2](#bf-4c7ccf2) | A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4ce10d3](#bf-4ce10d3) | fix(subprocess): the session_start reply waits for the notices the handler sent before it | PiG's own defect | All platforms | Unreleased |
 | [BF-4d04134](#bf-4d04134) | The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4d2f44e](#bf-4d2f44e) | A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4d32556](#bf-4d32556) | `Math.exp` in `internal/jsmath` returns Node's bits on arm64 | PiG's own defect | All platforms | 0.7.0 |
@@ -1248,6 +1249,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c350117](#bf-c350117) | Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c371a13](#bf-c371a13) | OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142) | PiG's own defect | All platforms | 0.5.2 |
 | [BF-c3a6eca](#bf-c3a6eca) | Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c3c2260](#bf-c3c2260) | fix(subprocess): the wait for the installed editor follows a replacing install and prefers a bound editor to… | PiG's own defect | All platforms | Unreleased |
 | [BF-c416945](#bf-c416945) | fix(ai): tool-argument member order keeps a key with an escaped lone surrogate | PiG's own defect | All platforms | Unreleased |
 | [BF-c4734ed](#bf-c4734ed) | fix(durable/core): the span's resume stage is one if, not a one-case switch | PiG's own defect | All platforms | Unreleased |
 | [BF-c4ad739](#bf-c4ad739) | Extension shortcut conflict warnings name both extensions ("registered by both A and B | PiG's own defect | All platforms | 0.5.0 |
@@ -6823,6 +6825,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4c7ccf231e` (2026-10-13)
 - **Tests:** `ai/classifier_shared_exports_test.go::TestParseClassifierUsagePricesTheModelCatalog`
 - **Release note:** A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count and its cost, as Pi does, instead of capping it.
+
+### BF-4ce10d3
+
+**fix(subprocess): the session_start reply waits for the notices the handler sent before it**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(subprocess): the session_start reply waits for the notices the handler sent before it
+- **Root cause:** Pi applies an editor a session_start handler installed before the emit returns. The host accepted the handler reply from the read loop while the install notice was still queued for the dispatcher, so the bind after the emit could rebuild the autocomplete provider with no editor installed (parity scenarios 14 and 19 red under load). The reply now holds until the host dispatched the frames the handler sent before it (Conn.dispatchBarrier), as the tool result already does. Other event kinds and commands keep the unordered reply.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4ce10d30b5` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestSessionStartReplyWaitsForTheEditorInstallNotice`
 
 ### BF-4d04134
 
@@ -18685,6 +18700,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c3a6eca380` (2026-10-11)
 - **Tests:** `tui/assistant_message_render_oracle_test.go::TestAssistantMessageComponentRenderMatchesPi`, `tui/basic_components_oracle_test.go::TestBasicComponentsRenderLikePi`, `tui/markdown_unicode_space_oracle_test.go::TestMarkdownUnicodeSpaceLinesMatchPi`, `tui/model_selector_oracle_test.go::TestModelSelectorInputMatchesPi`, `tui/user_message_render_oracle_test.go::TestUserMessageComponentRenderMatchesPi`
 - **Release note:** Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others JavaScript's trim removes) in and after lists, a list item whose first line is one such space, a heading line holding U+2028 or U+2029, a table whose last line is such a space at a narrow width, and a `$$` or `\[` block whose text is only whitespace.
+
+### BF-c3c2260
+
+**fix(subprocess): the wait for the installed editor follows a replacing install and prefers a bound editor to…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(subprocess): the wait for the installed editor follows a replacing install and prefers a bound editor to an ended context
+- **Root cause:** - AwaitEditorInstalled waits again on the editor that replaced the one it waited for - an editor that is bound is in place whatever the state of the context - tests: no editor (no wait), the extension ends while the bind is pending, the context ends, a replacing install, a busy owner loop at the install, shutdown while the editor is not bound, and the rebind and reload steps make the wait
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c3c2260ce7` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledDoesNotWaitWithoutAnEditor`, `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledReturnsTheCauseOfItsContext`, `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledReturnsWhenTheExtensionEndsWhileTheBindIsPending`, `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheEditorThatReplacedTheOne`, `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor`, `internal/codingagent/autocomplete_editor_await_test.go::TestInstalledEditorIsBoundWhileTheOwnerLoopIsBusyAtTheInstall`, `internal/codingagent/autocomplete_editor_await_test.go::TestShutdownWhileTheInstalledEditorIsNotBoundEndsTheWait`, `internal/codingagent/autocomplete_sync_error_caller_test.go::TestRebindWhoseInstalledEditorRefusesTheProviderFailsTheBind` and 1 more in docs/bug-ledger.json
 
 ### BF-c416945
 
