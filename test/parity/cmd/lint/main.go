@@ -83,6 +83,8 @@
 //     sequence (or one OSC number) with a reason, the recorded Pi runs and at
 //     least two distinct recorded positions, under a `# floating-evidence:`
 //     comment: a sequence that never moves is compared, not skipped.
+//     erasures_only narrows a window to its erase-in-display sequences (ESC[2J,
+//     ESC[3J) and does not combine with floating.
 package main
 
 import (
@@ -185,10 +187,11 @@ type jsonPigOnlyRecordRule struct {
 }
 
 type sequenceWindowBlock struct {
-	Window   string                  `toml:"window"`
-	From     string                  `toml:"from"`
-	Until    string                  `toml:"until"`
-	Floating []floatingSequenceBlock `toml:"floating"`
+	Window       string                  `toml:"window"`
+	From         string                  `toml:"from"`
+	Until        string                  `toml:"until"`
+	Floating     []floatingSequenceBlock `toml:"floating"`
+	ErasuresOnly bool                    `toml:"erasures_only"`
 }
 
 type floatingSequenceBlock struct {
@@ -736,6 +739,9 @@ func lintTranscriptSequences(path, source string, sc *scenario) []violation {
 			bad("transcript-sequences-window", "transcript_sequences_equal window %q replaces from and until", w.Window)
 		case w.Window == "" && w.From == "" && w.Until == "":
 			bad("transcript-sequences-window", "transcript_sequences_equal needs a window name or a from or until marker: the whole stream is not a stable comparison")
+		}
+		if w.ErasuresOnly && len(w.Floating) > 0 {
+			bad("transcript-sequences-erasures", "transcript_sequences_equal erasures_only compares the erase sequences alone, and floating names sequences left out of a full comparison")
 		}
 		for _, f := range w.Floating {
 			floats++

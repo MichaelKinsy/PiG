@@ -224,6 +224,40 @@ func TestEvaluateSequenceWindowsFloating(t *testing.T) {
 	}
 }
 
+// erasures_only compares the erase-in-display sequences of the window and nothing else: a terminal that is wiped (ESC[2J, ESC[3J) where the other is not, or in another
+// order, differs; the frames, titles and text around them do not count.
+func TestEvaluateSequenceWindowsErasuresOnly(t *testing.T) {
+	spec := SequenceWindowSpec{From: "/new", ErasuresOnly: true}
+	wipe := "\x1b[2J\x1b[H\x1b[3J"
+	typed := "> /new\x1b[?2026h"
+	for name, tc := range map[string]struct {
+		pig, pi string
+		want    string
+	}{
+		"neither wipes, the frames differ": {typed + "\x1b[19A\r\x1b]0;a\aX", typed + "\x1b[12A\rY", ""},
+		"both wipe":                        {typed + wipe + "rows", typed + "rows" + wipe, ""},
+		"before the window is not counted": {wipe + typed + "x", typed + "x", ""},
+		"only pig wipes":                   {typed + wipe + "rows", typed + "rows", "differ at position 0 (pig wrote 2, pi wrote 0)"},
+		"only pi wipes":                    {typed + "rows", typed + wipe + "rows", "differ at position 0 (pig wrote 0, pi wrote 2)"},
+		"pig drops the scrollback erase":   {typed + "\x1b[2J\x1b[H", typed + wipe, "differ at position 1 (pig wrote 1, pi wrote 2)"},
+		"the screen erase alone":           {typed + "\x1b[2J", typed + "\x1b[3J", "differ at position 0"},
+		"a clear of the line is not one":   {typed + "\x1b[2K\x1b[K", typed, ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			failures := outcomeOf(t, spec, tc.pig, tc.pi)
+			switch {
+			case tc.want == "" && len(failures) != 0:
+				t.Fatalf("unexpected failures: %q", failures)
+			case tc.want != "" && !slices.ContainsFunc(failures, func(f string) bool { return strings.Contains(f, tc.want) }):
+				t.Fatalf("failures = %q, want one containing %q", failures, tc.want)
+			}
+		})
+	}
+	if err := (SequenceWindowSpec{From: "/new", ErasuresOnly: true, Floating: []FloatingSequence{goodFloating()}}).validate(); err == nil || !strings.Contains(err.Error(), "erasures_only") {
+		t.Fatalf("erasures_only with a floating declaration: %v", err)
+	}
+}
+
 // The recorded startup transcripts (see the fixtures): Pi's three recorded forms agree once the declared floating pair is left out, and differ without the declaration; the comparator reports PiG's recorded startup as the difference from Pi's it is.
 func TestRecordedStartupTranscripts(t *testing.T) {
 	floating := []FloatingSequence{
