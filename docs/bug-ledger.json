@@ -42442,6 +42442,31 @@
       ]
     },
     {
+      "id": "BF-e67ba4d",
+      "title": "`/reload` no longer hangs when extensions that share a packed process (Go, Rust, Python or Lisp) subscribe to…",
+      "symptom": "`/reload` no longer hangs when extensions that share a packed process (Go, Rust, Python or Lisp) subscribe to the event bus with `pi.events.on` while their factory runs.",
+      "rootCause": "A reload that keeps a packed process wrote the admissions of every retained member before the host accepted the first connection. The runner starts each admitted factory on its own goroutine, and a factory that calls the host before it returns (pi.events.on, as the factories of Pi do) waits for the host to serve the connection of its own member. The host serves the connections in member order, so when a later member took the factory turn of the runner first, the host waited for an earlier member that could not start its factory, and /reload never returned.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/reload` no longer hangs when extensions that share a packed process (Go, Rust, Python or Lisp) subscribe to the event bus with `pi.events.on` while their factory runs. The Host wrote the admissions of every retained member before it accepted the first connection. A runner starts each admitted factory on its own goroutine or thread and takes them in whatever order the scheduler picks, and a factory that calls the Host before it returns waits for the Host to serve its member's connection. When a later member took the factory turn first, the Host waited for an earlier member that could not start its factory, so the reload never returned. The Host now admits each retained member after the members before it have registered, which is the order Pi loads its factories in, and every listener hears an emit once after a reload. PiG 0.5.2 through 0.7.0 have the defect. \u003c!-- cause: the Host admitted every retained member of a packed process before it accepted the first connection, while a factory that subscribes to the event bus waits for the Host to serve its own member's connection and the Host serves the members in order --\u003e \u003c!-- tests: coding/extension/host/subprocess/retained_factory_bus_test.go::TestGoFactoryReloadWithFactoryTimeSubscriptionsCompletesAndDeliversOnce, coding/extension/host/subprocess/retained_factory_bus_test.go::TestGoFactoryReloadRetainedMembersBesideAChangedMemberDeliverOnce, test/extension-conformance/events_bridge_reload_test.go::TestNativeEventBusReloadKeepsEveryFactoryTimeListenerOnce --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e67ba4d381",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/reload_fused_events_test.go::TestHostReloadFusedFactoriesWithFactoryTimeSubscriptionsDeliverOnce",
+        "coding/extension/host/subprocess/retained_factory_bus_test.go::TestGoFactoryReloadRetainedMembersBesideAChangedMemberDeliverOnce",
+        "coding/extension/host/subprocess/retained_factory_bus_test.go::TestGoFactoryReloadWithFactoryTimeSubscriptionsCompletesAndDeliversOnce",
+        "test/extension-conformance/events_bridge_reload_test.go::TestNativeEventBusReloadKeepsEveryFactoryTimeListenerOnce"
+      ]
+    },
+    {
       "id": "BF-e69d018",
       "title": "Closing an `env` connection, or losing it, now ends its daemon process with SIGTERM, as in Pi, instead of…",
       "symptom": "Closing an `env` connection, or losing it, now ends its daemon process with SIGTERM, as in Pi, instead of SIGKILL, so a daemon reached through `ssh` can close its remote side.",
