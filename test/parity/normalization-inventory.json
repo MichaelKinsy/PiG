@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "4b7eed1be1404cde27155939a2b82389fb8cc8cc91a72f51280ac4461a104991",
+      "sha256": "11d55a930bbf7b3c7cc6a7293ddee03b8a42fcc25fb3dac7ad541c7dc58bba58",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -32,7 +32,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "404f1fb90381f12f1a45fe3bd248ad25305f25af661a3d369f74d217c2642a4d",
+      "sha256": "4df4016737118a298ae35e6cce00352d37b06da2c0626814a201c732d8c09142",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
@@ -1100,6 +1100,15 @@
           "reason": "Owned visible surface: Subprocess extension tool opens Select, Input, and Editor and receives submitted values",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/113-fork-while-session-start-held.toml",
+      "transforms": [
         {
           "kind": "cwd_snapshot_digits",
           "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."

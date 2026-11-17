@@ -643,7 +643,7 @@ type managedExt struct {
 	supervisor            *Supervisor
 	// conn is the current connection. Only setConnLocked stores it, and only while holding Host.mu, so a Host.mu holder reads a stable value; every other reader loads it once through connection() and keeps that snapshot for the whole operation.
 	conn atomic.Pointer[Conn]
-	// procMu guards the process handle: proc, processTree, cmd and exitedCh. An automatic restart replaces them in startExt while a stop, a crash handler or a status reader can run; it is a leaf lock, never held while calling out.
+	// procMu guards the process handle and the context the process was started under: proc, processTree, cmd, exitedCh, cancel and parentCtx. An automatic restart replaces them in startExt while a stop, a crash handler, a status reader or a handler call that asks whether the host stopped the extension (stoppedByOwner) can run. cancel and parentCtx change together (setStartContext) and are used only through setStartContext, ownerContext, ownerEnded, cancelStart and releaseStart. It is a leaf lock, never held while calling out: a reader copies the value under it and uses the copy after.
 	procMu          sync.Mutex
 	proc            *os.Process
 	processTree     *processTree
@@ -2766,13 +2766,11 @@ func (h *Host) stopManagedSkippingProviders(me *managedExt, reason string, keepP
 	case me.share != nil:
 		// The process ends with its last extension; a spawner's own context is the process's and is cancelled with it.
 		me.releaseShare()
-		if me.procOwner != nil && me.cancel != nil {
-			me.cancel()
+		if me.procOwner != nil {
+			me.cancelStart()
 		}
 	default:
-		if me.cancel != nil {
-			me.cancel()
-		}
+		me.cancelStart()
 		me.killProcess()
 	}
 	if me.sockPath != "" {
@@ -3090,8 +3088,7 @@ func (h *Host) startExtOnce(ctx context.Context, me *managedExt, isRestart bool)
 		}
 	}
 	extCtx, cancel := context.WithCancel(runtimeParent(ctx))
-	me.cancel = cancel
-	me.parentCtx = runtimeParent(ctx)
+	me.setStartContext(cancel, runtimeParent(ctx))
 	defer func() {
 		if err == nil {
 			return
@@ -4161,7 +4158,7 @@ func (h *Host) makeToolPrepareArguments(me *managedExt, toolName string) extensi
 		if conn == nil {
 			return nil, errors.New("extension not connected")
 		}
-		ctx := me.parentCtx
+		ctx := me.ownerContext()
 		if ctx == nil {
 			ctx = context.Background()
 		}
@@ -4189,7 +4186,7 @@ func (h *Host) makeToolReachesTools(me *managedExt, toolName string) extension.T
 		if conn == nil {
 			return extension.ToolReach{}
 		}
-		ctx := me.parentCtx
+		ctx := me.ownerContext()
 		if ctx == nil {
 			//portlint:allow ctxbackground Pi's reachesTools is synchronous and takes no signal (types.ts:621); an extension with no load context has nothing to bound the call
 			ctx = context.Background()
@@ -4313,7 +4310,7 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 			}
 		}
 		if resp.Response != nil && resp.Response.Error != nil {
-			return resp.Response.Error.ToError()
+			return me.answerError(resp.Response.Error)
 		}
 
 		return nil
@@ -4382,7 +4379,7 @@ func (h *Host) makeShortcutHandler(me *managedExt, key string) extension.Shortcu
 		}
 
 		if resp.Response != nil && resp.Response.Error != nil {
-			return resp.Response.Error.ToError()
+			return me.answerError(resp.Response.Error)
 		}
 
 		return nil
@@ -4612,7 +4609,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				resp.Response.Result = boundary.Result
 			}
 			if resp.Response.Error != nil {
-				return nil, resp.Response.Error.ToError()
+				return nil, me.answerError(resp.Response.Error)
 			}
 			// A user_bash reply that names a BashOperations object the extension holds becomes the object Pi's runner holds.
 			if event == "user_bash" && len(resp.Response.Result) > 0 {
@@ -4863,7 +4860,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	// If the context the extension was started under is cancelled, the owner
 	// (app shutdown, /reload, or a test tearing down) initiated the exit. That
 	// is intentional teardown, not a crash, so do not record or restart.
-	if me.parentCtx != nil && me.parentCtx.Err() != nil {
+	if me.ownerEnded() {
 		return
 	}
 	if me.packedProcess != nil && me.packedProcess.stopping.Load() {
@@ -5014,9 +5011,7 @@ func (h *Host) handleUnresponsiveExtension(me *managedExt, failure *ExtensionUnr
 		h.disablePackedMember(me, reason)
 		return
 	}
-	if me.cancel != nil {
-		me.cancel()
-	}
+	me.cancelStart()
 	me.killProcess()
 	if me.supervisor == nil || me.supervisor.IsDisabled() {
 		return
@@ -5074,10 +5069,7 @@ func (h *Host) attemptRestart(me *managedExt) {
 
 	// Release the dead process's context before spawning a fresh one so the
 	// old cancel func and its watcher goroutine don't leak.
-	if me.cancel != nil {
-		me.cancel()
-		me.cancel = nil
-	}
+	me.releaseStart()
 
 	// Shutdown waits for transitionMu after it cancels the recovery context, so a start waiting on a process that never connects ends; the restarted process runs under the same context and ends with the Host.
 	if _, err := h.startExt(h.recoveryContext, me, true); err != nil {
@@ -5216,7 +5208,7 @@ func buildExtCommandSelected(
 func (me *managedExt) stoppedByOwner() bool {
 	return me.shuttingDown.Load() ||
 		(me.host != nil && me.host.shuttingDown.Load()) ||
-		(me.parentCtx != nil && me.parentCtx.Err() != nil) ||
+		me.ownerEnded() ||
 		(me.packedProcess != nil && me.packedProcess.stopping.Load())
 }
 
@@ -5226,6 +5218,15 @@ func (me *managedExt) stoppedByOwner() bool {
 func (me *managedExt) dispatchError(err error) error {
 	if err != nil && me.stoppedByOwner() {
 		return fmt.Errorf("%w: %w", extension.ErrHandlerStopped, err)
+	}
+	return err
+}
+
+// answerError is the error an extension's error answer stands for. An answer the connection made up because the host closed it while the request was pending (ErrorInfo.closedByHost) is no failure of the handler: for a call whose transport failure dispatchError already classifies, it is marked as cut short by the host when the host stopped the extension, as that transport failure is, so the runner does not report it. The extension's own error answer, whatever its text, is returned as it is.
+func (me *managedExt) answerError(info *ErrorInfo) error {
+	err := info.ToError()
+	if info.closedByHost {
+		return me.dispatchError(err)
 	}
 	return err
 }
@@ -5248,6 +5249,47 @@ func (me *managedExt) setProcessHandle(proc *os.Process, tree *processTree, cmd 
 	me.procMu.Lock()
 	defer me.procMu.Unlock()
 	me.proc, me.processTree, me.cmd, me.exitedCh = proc, tree, cmd, exited
+}
+
+// setStartContext records the contexts a start gives the process: cancel ends the one it runs under, and owner is the context whose end means the host stopped the extension, so the process's exit is not a crash. The pair changes in one critical section, so a reader never pairs the new cancel with the old owner.
+func (me *managedExt) setStartContext(cancel context.CancelFunc, owner context.Context) {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	me.cancel, me.parentCtx = cancel, owner
+}
+
+// ownerContext returns the context the extension was started under, or nil when it has none.
+func (me *managedExt) ownerContext() context.Context {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	return me.parentCtx
+}
+
+// ownerEnded reports whether the context the extension was started under has ended: its owner stopped it. The context is read under procMu and asked after it is released.
+func (me *managedExt) ownerEnded() bool {
+	owner := me.ownerContext()
+	return owner != nil && owner.Err() != nil
+}
+
+// cancelStart ends the context the process runs under. The function is read under procMu and called after it is released.
+func (me *managedExt) cancelStart() {
+	me.procMu.Lock()
+	cancel := me.cancel
+	me.procMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
+
+// releaseStart ends the context the process runs under and forgets it, so a restart's start finds none left to leak.
+func (me *managedExt) releaseStart() {
+	me.procMu.Lock()
+	cancel := me.cancel
+	me.cancel = nil
+	me.procMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
 }
 
 // killProcess kills the process tree, or the process when it has no tree.

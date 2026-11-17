@@ -9037,6 +9037,30 @@
       ]
     },
     {
+      "id": "BF-41aa7df",
+      "title": "Ordering `/fork`, `/new` or `/resume` while an extension's `session_start` handler (or any other event…",
+      "symptom": "Ordering `/fork`, `/new` or `/resume` while an extension's `session_start` handler (or any other event, command or shortcut handler of a subprocess extension) has not returned no longer shows `Extension \"\u003cpath\u003e\" error: connection closed`.",
+      "rootCause": "Conn.Close and Retire answer every request still pending with a made-up response, \"connection closed\" with no code. Request returns only a transport failure as an error, so the answer reached the callers as the extension's own error answer, and the three kinds of call whose transport failure the host already classifies (event, command, shortcut: dispatchError marks it ErrHandlerStopped when the host stopped the extension, which the runner does not report) returned it unclassified.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Ordering `/fork`, `/new` or `/resume` while an extension's `session_start` handler (or any other event, command or shortcut handler of a subprocess extension) has not returned no longer shows `Extension \"\u003cpath\u003e\" error: connection closed`. The swap stops the old extension process, and the connection answered the call still pending with its own \"connection closed\"; the host returned that answer as the handler's failure, so the runner reported it. It is now marked as cut short by the host, as the same call ended by a transport error already was, and nothing is shown, as in Pi, whose handler finishes. An error the extension answers itself, whatever its text, and a crash are still reported as before. The old process is stopped, so a handler in flight does not finish as it does in Pi. \u003c!-- cause: Conn.Close answered the requests still pending with a made-up response that Request returns as a plain response, and the response branches of the event, command and shortcut calls returned it without the classification their transport-error branches apply, and no test held a handler across a stop of its extension --\u003e \u003c!-- tests: TestAHandlerPendingWhenTheHostStopsItsExtensionIsNotItsFailure, TestAHostCloseAnswersPendingRequestsWithTheMark --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "41aa7df469",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/conn_closed_by_host_test.go::TestAHostCloseAnswersPendingRequestsWithTheMark",
+        "coding/extension/host/subprocess/conn_closed_by_host_test.go::TestATransportFailureEndsAPendingRequestWithAnErrorNotAMarkedAnswer",
+        "coding/extension/host/subprocess/conn_closed_by_host_test.go::TestTheClosedByHostMarkIsNoWireField"
+      ]
+    },
+    {
       "id": "BF-41b305d",
       "title": "Codemode rejects a `// @options:` line that is not the first line of the script with an error before the…",
       "symptom": "The line used to be ignored, so its `timeout_ms` never applied and the script ran without a deadline (Pi #10631).",
@@ -42700,6 +42724,31 @@
       "tests": [
         "ai/opencode_dropblock_catalog_test.go::TestOpencodeClaudeCatalogCompatReachesTheAnthropicPayload",
         "internal/modelgen/providers/opencode_dropblock_test.go::TestOpencodeClaudeMidConvoEffort"
+      ]
+    },
+    {
+      "id": "BF-e8b66a7",
+      "title": "An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from…",
+      "symptom": "An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from a half-replaced record.",
+      "rootCause": "An automatic restart (startExtOnce) rewrote cancel and parentCtx, the context the extension's process runs under and the owner's context whose end means the host stopped it, on the supervisor's goroutine with no lock, on a managedExt that is already published. The callers of the extension's handlers read parentCtx on their own goroutines: dispatchError (stoppedByOwner) after a failed command, shortcut or event call, and the tool prepareArguments, reachesTools and prepareLoadout hooks.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from a half-replaced record. The restart rewrote the context its new process runs under and the owner context whose end means the host stopped the extension, while a failed command, shortcut or event call read the owner context from its own goroutine; the race detector reported the pair once in a gate run. The two now change together under the lock that already guards the process handle, and every reader copies them under it. No failure a user could see was reproduced: the worst outcome of a read at the wrong moment was a failed call at the instant of a restart judged by the old owner. \u003c!-- cause: the restart wrote cancel and parentCtx of a published extension with no lock, although procMu already guarded the process handle beside them, and no test ran a call that reads the owner context while a restart replaces it --\u003e \u003c!-- tests: TestRestartReplacesTheStartContextBesideItsReaders --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e8b66a7037",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/dispatch_stopped_test.go::TestDispatchErrorMarksCallsTheHostStopped",
+        "coding/extension/host/subprocess/restart_context_race_test.go::TestRestartGivesTheGenerationItsNewOwnerWhole",
+        "coding/extension/host/subprocess/restart_context_race_test.go::TestRestartReplacesTheStartContextBesideItsReaders",
+        "coding/extension/host/subprocess/restart_declarations_test.go::TestRestartAdoptsTheNewRegistrationsDeclarations"
       ]
     },
     {

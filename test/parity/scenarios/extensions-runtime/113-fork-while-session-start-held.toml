@@ -1,0 +1,64 @@
+# Behavior family: extensions-runtime
+# Scenario: /fork ordered while the startup session_start handler of an extension has not returned shows no extension error.
+#
+# held-start.mjs holds the first session_start of the run for 1.5 s (a flag file under the run's own {{TEMP}}; the session /fork starts runs its handler at once). The footer is painted
+# before that handler returns and the resumed transcript after it (interactive-mode.ts init(): rebindCurrentSession awaits the handlers, renderInitialMessages follows), so the user can
+# order /fork while the handler is pending: the command is typed and seen, Enter opens the selector, its first row is seen, and the second Enter picks it while the hold is still on.
+# Pi runs the extension in its own process, lets the handler finish and shows nothing. PiG replaces the Session, stops the old extension process, and the stop cut the pending handler off:
+# the connection answered the request with its own "connection closed" and the runner reported it as `Extension "<path>" error: connection closed`. A cut-off the host asked for is no error of the extension.
+# The error is a transient frame: PiG's fork rebuilds the transcript after it, so the settled capture of the unfixed code equals Pi's (both_not_contain and escaped_output_equal
+# pass on it). The step that picks the row therefore watches the pane every 10 ms (frame_watch, pig_no_stale_frames) for the extension error row, and PiG's pane held that row in 15 of 240
+# samples of a run before the fix. The whole settled capture is compared as it stands (escaped_output_equal, no crop, no normalization).
+# Open difference of the raw stream from "/fork" on (token 11): fix/autocomplete-provider-waits-for-the-extension-bind.
+#
+# Upstream evidence (Pi 1.5.2, probed on the comparator with this scenario's own runs, 3 declared runs in 3 invocations unloaded and 3 under 24 busy loops): no extension error row in any sampled pane or in the capture; the settled capture is the one PiG shows.
+
+name = "113-fork-while-session-start-held"
+description = "A /fork ordered while an extension's startup session_start handler is still pending shows no extension error and the capture equals Pi's."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/core/agent-session-runtime.ts", "packages/coding-agent/src/core/extensions/runner.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/held-start-pig-agent", "HELD_START_FLAG={{TEMP}}/held-start-flag"]
+pi = ["PI_CODING_AGENT_DIR=testdata/held-start-pi-agent", "PI_SKIP_VERSION_CHECK=1", "HELD_START_FLAG={{TEMP}}/held-start-flag"]
+pig_extensions = ["testdata/held-start/held-start.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/held-start/held-start.mjs"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "--session", "sessions/cur.jsonl", "--tui-mode", "regular"]
+pi_args = ["--session-dir", "sessions", "--session", "sessions/cur.jsonl", "--tui-mode", "regular"]
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/held-start-fork"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["/fork"]
+wait_visible_contains = ["/fork"]
+wait_timeout_seconds = 25
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_visible_contains = ["› CUR-Q"]
+wait_timeout_seconds = 25
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Forked to new session"]
+wait_timeout_seconds = 25
+settle_seconds = 3
+[tmux.steps.frame_watch]
+stale_contains = ["Extension \""]
+min_samples = 10
+
+[assert]
+runs = 3
+both_reach_ready = true
+both_contain = ["Forked to new session"]
+both_not_contain = ["error:", "connection closed", "unknown command", "panic:", "goroutine "]
+pig_no_stale_frames = true
+escaped_output_equal = true
