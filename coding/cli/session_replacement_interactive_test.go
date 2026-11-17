@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
@@ -52,18 +53,33 @@ func startInteractivePig(t *testing.T) *interactivePig {
 
 func startInteractivePigWith(t *testing.T, fixture string) *interactivePig {
 	t.Helper()
+	return startInteractivePigOptions(t, fixture, interactivePigOptions{args: []string{"--model", "test-faux/faux-1"}})
+}
+
+// interactivePigOptions shapes one interactive pig process: args are the model flags it starts with, env extends the environment, and prepare runs on the home (PIG_HOME) before the process starts, for a test that seeds the agent directory.
+type interactivePigOptions struct {
+	args    []string
+	env     []string
+	prepare func(home string)
+}
+
+func startInteractivePigOptions(t *testing.T, fixture string, options interactivePigOptions) *interactivePig {
+	t.Helper()
 	binary := buildPigBinaryForSignalTest(t)
 	// The home holds the Session cwds the resume picker prints; a t.TempDir name repeats the test name and, under a nested TMPDIR, pushes the Session name out of the 140-column picker.
 	p := &interactivePig{t: t, log: filepath.Join(t.TempDir(), "replace.log"), output: &ptyOutput{}, home: shortTempDir(t), dir: t.TempDir()}
 	home := p.home
 	seedFirstRunDone(t, filepath.Join(home, "agent"))
+	if options.prepare != nil {
+		options.prepare(home)
+	}
 	master, slave := openPTY(t, 40, 140)
 	p.master = master
 	t.Cleanup(func() { _ = master.Close() })
-	cmd := exec.Command(binary, "--model", "test-faux/faux-1", "-e", fixture, "--session-dir", filepath.Join(home, "sessions"))
+	cmd := exec.Command(binary, append(slices.Clone(options.args), "-e", fixture, "--session-dir", filepath.Join(home, "sessions"))...)
 	cmd.Dir = p.dir
-	cmd.Env = append(os.Environ(), "PIG_HOME="+home, "PIG_CODING_AGENT_DIR="+filepath.Join(home, "agent"),
-		"PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_TEST_REPLACE_LOG="+p.log, "TERM=xterm-256color")
+	cmd.Env = append(append(os.Environ(), "PIG_HOME="+home, "PIG_CODING_AGENT_DIR="+filepath.Join(home, "agent"),
+		"PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_TEST_REPLACE_LOG="+p.log, "TERM=xterm-256color"), options.env...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
 	if err := cmd.Start(); err != nil {
