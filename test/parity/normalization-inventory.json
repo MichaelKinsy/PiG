@@ -2,12 +2,12 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "b2be471e2bbbb68277c129a1f9ffd8dd2efce233801beea09f3a4496fc507fa9",
+      "sha256": "156f18bd0629ceea9794c833f9213e2ac6d3894939960b8f59894b1e5236f756",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
       "source": "test/parity/runner/capture_stable.go",
-      "sha256": "b1cc3c4c0d146cb6330865b6afd6c5d60eb4a26c58721cd38f04ecadfc67ffad",
+      "sha256": "00782127dc61c7cdea4a28a7e9eea6b7834f16dfe782472bab40e8719b9d4e68",
       "reason": "The final terminal capture is the plain screen, the escaped screen and the plain screen again; it is accepted only when both plain captures are equal and hold the scenario's capture_start, and it is retaken every poll within the last step budget until then. Only the capture kinds a comparator reads are cropped to capture_start/capture_end: a capture_start absent from one of those fails the run (the whole captures are kept in the artifacts, with the failure joined to any step failure), and a capture no comparator reads is kept whole under a not-asserted-uncropped artifact name. No comparison is loosened: this is synchronization with the screen and a stricter crop, not a normalization."
     },
     {
@@ -42,12 +42,17 @@
     },
     {
       "source": "test/parity/runner/json_compare.go",
-      "sha256": "cb3d2d566718fd9f5c4da255c04a2d45d4627897b5af617fa35e745f5c4be35a",
-      "reason": "Parsed full records ignore object-member order and equivalent JSON number spelling only. Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists."
+      "sha256": "d6ebcaab4002f0a3d5566994de93850cf77dd5e0e1d026d4c28b7ec5e2752464",
+      "reason": "Parsed full records ignore object-member order and equivalent JSON number spelling only; json_output_ordered_equal compares the same records with object-member order significant at every depth (json_order.go reads the members in wire order, applies the same aliases, and reports the path and whether the difference is order or value). Explicit scalar aliases preserve field presence, types, ordered arrays and bijective ID references; no ignored-field list exists."
+    },
+    {
+      "source": "test/parity/runner/json_order.go",
+      "sha256": "b678c254381d72b13af273f38469c7de8b8461abd4c84d571640528189409509",
+      "reason": "json_output_ordered_equal reads each object's members in the order the program wrote them and requires the members both sides write to follow one order at every depth, after the value comparison has accepted the records. It adds a constraint to json_output_equal and removes none: no member, value or alias is excused."
     },
     {
       "source": "test/parity/runner/json_pig_only.go",
-      "sha256": "af8fb4702a202ed046990b61156373e0ed786d4367b4c6f1a6b0b9fc11b35c66",
+      "sha256": "b348ff92cd2b464319e3c21e37a7b3f2c69fffad300b21300b448f903b35803e",
       "reason": "A json_pig_only_records rule drops whole records from Pig's JSONL output before the comparison, for one numbered divergence's extra event that Pi never emits. It names the divergence, the complete record and the type of the record that must follow it, and every run must carry exactly its declared count of them, each at that position, so a second occurrence, a moved emission or a vanished divergence fails. Pi's output is never edited and no other record, field or order is excused."
     },
     {
@@ -77,7 +82,7 @@
     },
     {
       "source": "test/parity/testdata/provider-wire-pig/main.go",
-      "sha256": "048e77319ec5758485dc9110a354596b5bd4c9fe5ac5e7951ef25461726289ef",
+      "sha256": "c10bb060b61b5d5faa070e617b38b697227401221c97cbd21cbebe101a3c3514",
       "reason": "Legacy role/key/auth summaries are diagnostic only: wireBody now compares the entire captured HTTP request body alongside them. Aggregated provider response summaries do not prove mode events; real-provider RPC/JSON scenarios compare those separately."
     },
     {
@@ -102,7 +107,7 @@
     },
     {
       "source": "test/parity/testdata/test-faux-provider.ts",
-      "sha256": "2b84f77e627afedac81393f3daaf50872eb4d5fa9c72cb7c25659c335865e4c3",
+      "sha256": "26bdb7e827d602bf0462fe80d91cb7fece5ce9ee0e0be557c72ad23d507e633e",
       "reason": "Canned followups exercise specific orchestration/rendering questions, not complete result metadata. Full RPC tool records and real-provider mode scenarios supply result acceptance independently of final prose."
     }
   ],
@@ -1242,6 +1247,128 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/107-removed-extension-provider-after-reload.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A removed extension's provider stays selected and answered by its old closure across two reloads",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "hello 1",
+            "capture_end": "served by closure of load 1, call 3"
+          },
+          "reason": "Owned visible surface: A removed extension's provider stays selected and answered by its old closure across two reloads",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/108-rpc-reload-loads-the-extensions-on-disk.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id"
+          ],
+          "group": "ui",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Notifications have generated UUIDs; retain distinct identities, event order, payloads and all command responses."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-pending-confirm-after-reload-replaced-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits confirm (replaced owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-pending-custom-after-reload-replaced-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits custom (replaced owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-pending-editor-after-reload-replaced-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits editor (replaced owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-pending-input-after-reload-replaced-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits input (replaced owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-pending-select-after-reload-replaced-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits select (replaced owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
       "transforms": [
         {
@@ -1251,6 +1378,91 @@
             "capture_end": "note:ready"
           },
           "reason": "Owned visible surface: Subprocess extension tool opens Select, Input, and Editor and receives submitted values",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/110-pending-confirm-after-reload-removed-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits confirm (removed owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/110-pending-custom-after-reload-removed-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits custom (removed owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/110-pending-editor-after-reload-removed-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits editor (removed owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/110-pending-input-after-reload-removed-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits input (removed owner): is the surface gone, does the late code run, does a second command run",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/110-pending-select-after-reload-removed-owner.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "parity-snap-cwd-"
+          },
+          "reason": "Owned visible surface: A reload while a command awaits select (removed owner): is the surface gone, does the late code run, does a second command run",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -5815,7 +6027,7 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/json/15-json-session-start-replacement.toml",
+      "scenario": "test/parity/scenarios/json/16-json-session-start-replacement.toml",
       "transforms": [
         {
           "kind": "normalize_replace",
@@ -9792,19 +10004,118 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/rpc/83-rpc-events-handler-error.toml",
+      "scenario": "test/parity/scenarios/rpc/83-rpc-send-user-message-delivery-streaming.toml",
       "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
         {
           "kind": "path",
           "paths": [
-            "/**/extensionPath"
+            "/**/sections/cwd"
           ],
-          "reason": "The extension's snapshot path varies per host and run; the member's presence and the event and message stay exact."
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/wall_time_seconds",
+            "/**/durationMs"
+          ],
+          "reason": "Pi measures each response and tool execution (#10549) with a monotonic clock, and bash.ts:392 rounds the command's wall clock to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; the values vary per run. Retain presence, type, position and Pi's one-decimal number spelling."
         }
       ]
     },
     {
-      "scenario": "test/parity/scenarios/rpc/83-rpc-replacement-session-start-once.toml",
+      "scenario": "test/parity/scenarios/rpc/84-rpc-send-user-message-refusal-first.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/wall_time_seconds",
+            "/**/durationMs"
+          ],
+          "reason": "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; Pi measures each response and tool execution (#10549) with a monotonic clock. Retain the fields' presence, position and Pi's number spelling."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/85-rpc-send-user-message-refusal-turn-end.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/*/id",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{36}$",
+          "reason": "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+        },
+        {
+          "kind": "path",
+          "paths": [
+            "/**/sections/cwd"
+          ],
+          "reason": "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+        },
+        {
+          "kind": "duration",
+          "paths": [
+            "/**/wall_time_seconds",
+            "/**/durationMs"
+          ],
+          "reason": "bash.ts:392 measures the command's wall clock and rounds it to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; Pi measures each response and tool execution (#10549) with a monotonic clock. Retain the fields' presence, position and Pi's number spelling."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/87-rpc-replacement-session-start-once.toml",
       "transforms": [
         {
           "kind": "id",
@@ -9827,7 +10138,7 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/rpc/84-rpc-startup-session-start-events.toml",
+      "scenario": "test/parity/scenarios/rpc/88-rpc-startup-session-start-events.toml",
       "transforms": [
         {
           "kind": "id",
@@ -9846,6 +10157,18 @@
             "/**/timestamp"
           ],
           "reason": "Independent entry wall clocks vary; retain presence, type and valid syntax."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/90-rpc-events-handler-error.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/extensionPath"
+          ],
+          "reason": "The extension's snapshot path varies per host and run; the member's presence and the event and message stay exact."
         }
       ]
     },
@@ -11490,6 +11813,28 @@
       "scenario": "test/parity/scenarios/startup/00-startup-banner.toml",
       "transforms": [
         {
+          "kind": "transcript_sequences_floating",
+          "window": "startup",
+          "sequence": "\u001b[>4;2m",
+          "reason": "Pi writes it when the terminal answers its Kitty keyboard query; the answer's time moves it across the first frame.",
+          "evidence_runs": 20,
+          "evidence_positions": [
+            35,
+            204
+          ]
+        },
+        {
+          "kind": "transcript_sequences_floating",
+          "window": "startup",
+          "osc": 0,
+          "reason": "Pi sets the window title in the same step as the CSI > 4 ; 2 m above, and the title ends in the run's random working directory name.",
+          "evidence_runs": 20,
+          "evidence_positions": [
+            36,
+            205
+          ]
+        },
+        {
           "kind": "cwd_snapshot_digits",
           "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
         }
@@ -12024,6 +12369,24 @@
             "capture_end_regex": "─{10}"
           },
           "reason": "Owned visible surface: An unmatched model scope pattern is shown once as a chat warning at startup, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/25-startup-restore-selects-only-from-the-published-availability.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "remember zulu-3120",
+            "capture_end": "No models available"
+          },
+          "reason": "Owned visible surface: A resumed session with an unrestorable saved model gets no model when the account lists none of the catalog, as pi's findInitialModel reads the availability snapshot.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
