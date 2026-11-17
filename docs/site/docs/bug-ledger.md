@@ -1051,6 +1051,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9eda512](#bf-9eda512) | The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9f4702c](#bf-9f4702c) | A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9f893e0](#bf-9f893e0) | A provider or model whose `api` is not the name of a registered API is refused when its first request starts… | PiG's own defect | All platforms | Unreleased |
+| [BF-9f9f622](#bf-9f9f622) | fix(codingagent): two session snapshots made in one clock tick no longer take one file name | PiG's own defect | All platforms | Unreleased |
 | [BF-9faf2de](#bf-9faf2de) | Chord's workers on macOS and the BSDs: a worker killed by a signal (the grace's or the start timer's SIGKILL)… | A fix Pi shipped that PiG ported | macOS | Unreleased |
 | [BF-D110](#bf-d110) | Git sources: `#subdirectory=` selects a subdirectory; `git://` and upper-case schemes yield usable… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D150](#bf-d150) | `--no-stdin` skips the startup read of piped stdin (Pi #10415) | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -15948,6 +15949,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9f893e05d0` (2026-11-13)
 - **Tests:** None recorded.
 - **Release note:** A provider or model whose `api` is not the name of a registered API is refused when its first request starts, with the message of Pi, `No API provider registered for api: <name>`, and nothing is sent. Before, PiG sent the conversation, the system prompt and the credential of the entry to its `baseUrl` as an OpenAI chat-completions request. Affects 0.3.0 through 0.7.0. <!-- cause: the default branch of the api switch that builds a model's provider built an OpenAI chat-completions provider for any name outside the API constants, where Pi looks the name up in its API registry and refuses --> <!-- tests: TestStreamSimpleRefusesAnUnknownAPINameWithPiText, TestUnknownAPINameIsRefusedBeforeAnyRequest, TestRegisteredAPINameRunsItsImplementationUntilUnregistered, TestUnknownAPINamePrintSendsNothingAndReportsPiText, TestUnknownAPINameJSONModeSendsNothingAndReportsPiText, TestUnknownAPINameResumedSessionSendsNothing, TestUnknownAPINameRPCSendsNothingAndReportsPiText, TestUnknownAPINameInteractiveShowsPiTextAndSendsNothing, TestExtensionProviderWithAnUnregisteredAPIIsRefusedAcrossSDKs, model-runtime-store-catalog/33-unknown-api-name-refused -->
+
+### BF-9f9f622
+
+**fix(codingagent): two session snapshots made in one clock tick no longer take one file name**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codingagent): two session snapshots made in one clock tick no longer take one file name
+- **Root cause:** A snapshot file was named from the wall clock (nanoseconds) and the process id, created with CREATE_NEW on Windows and clonefile on macOS. A Windows clock ticks every half to fifteen milliseconds, so two loads that started in one tick took the same name; the one that came second found the first snapshot still open, was refused as "file exists", and its fallback took the same name again, so it had no snapshot (TestParallelIndexStopsAsTheSerialLoadDoes failed on Windows only, on the "header alone" row, the one row whose serial load keeps its snapshot while the parallel load starts).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9f9f62282c` (2026-11-17)
+- **Tests:** `internal/codingagent/session_index_parallel_test.go::TestParallelIndexStopsAsTheSerialLoadDoes`, `internal/codingagent/session_snapshot_name_test.go::TestSnapshotFileSkipsANameAnotherFileHolds`, `internal/codingagent/session_snapshot_name_test.go::TestSnapshotFileStopsOnAnyOtherError`, `internal/codingagent/session_snapshot_name_test.go::TestSnapshotFilesTakenAtOnceAllSucceedWithNamesOfTheirOwn`, `internal/codingagent/session_snapshot_name_test.go::TestSnapshotsOfSmallFilesTakenAtOnceAllSucceed`
 
 ### BF-9faf2de
 
