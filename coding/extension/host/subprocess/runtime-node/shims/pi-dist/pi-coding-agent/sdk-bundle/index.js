@@ -123,7 +123,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-ZRWHWY44.js";
+} from "./chunk-DK2BWUF7.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -2267,7 +2267,7 @@ var tool_search_default = createToolSearchExtension();
 import { createInterface } from "node:readline";
 import { modelsAreEqual as modelsAreEqual2 } from "../../pi-ai/sdk-bundle/index.js";
 import { setCapabilityOverrides as setCapabilityOverrides3 } from "../../../pi-tui.mjs";
-import chalk7 from "../../../chalk/source/index.js";
+import chalk8 from "../../../chalk/source/index.js";
 
 // pi-dist/pi-coding-agent/cli/auth-command.js
 var AuthCommandError = class extends Error {
@@ -5233,6 +5233,15 @@ async function resolveProjectTrusted(options) {
 __name(resolveProjectTrusted, "resolveProjectTrusted");
 
 // pi-dist/pi-coding-agent/core/settings-diagnostics.js
+import chalk4 from "../../../chalk/source/index.js";
+function writeDiagnosticsToStderr(diagnostics) {
+  for (const diagnostic of diagnostics) {
+    const color = diagnostic.type === "error" ? chalk4.red : diagnostic.type === "warning" ? chalk4.yellow : chalk4.dim;
+    const prefix = diagnostic.type === "error" ? "Error: " : diagnostic.type === "warning" ? "Warning: " : "";
+    console.error(color(`${prefix}${diagnostic.message}`));
+  }
+}
+__name(writeDiagnosticsToStderr, "writeDiagnosticsToStderr");
 function collectSettingsDiagnostics(settingsManager) {
   return settingsManager.drainErrors().map(({ scope, path: path6, error }) => ({
     type: "warning",
@@ -6640,7 +6649,7 @@ var builtInExtensions = [
 var loadMcpCommand = /* @__PURE__ */ __name(() => import("./chunk-4E2HV3LO.js"), "loadMcpCommand");
 
 // pi-dist/pi-coding-agent/migrations.js
-import chalk4 from "../../../chalk/source/index.js";
+import chalk5 from "../../../chalk/source/index.js";
 import { existsSync as existsSync4, mkdirSync, readdirSync, readFileSync as readFileSync3, renameSync, rmSync, writeFileSync as writeFileSync2 } from "fs";
 import { dirname, join as join5 } from "path";
 var MIGRATION_GUIDE_URL = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/CHANGELOG.md#extensions-migration";
@@ -6730,10 +6739,10 @@ function migrateCommandsToPrompts(baseDir, label) {
   if (existsSync4(commandsDir) && !existsSync4(promptsDir)) {
     try {
       renameSync(commandsDir, promptsDir);
-      console.log(chalk4.green(`Migrated ${label} commands/ \u2192 prompts/`));
+      console.log(chalk5.green(`Migrated ${label} commands/ \u2192 prompts/`));
       return true;
     } catch (err) {
-      console.log(chalk4.yellow(`Warning: Could not migrate ${label} commands/ to prompts/: ${err instanceof Error ? err.message : err}`));
+      console.log(chalk5.yellow(`Warning: Could not migrate ${label} commands/ to prompts/: ${err instanceof Error ? err.message : err}`));
     }
   }
   return false;
@@ -6787,7 +6796,7 @@ function migrateToolsToBin() {
     }
   }
   if (movedAny) {
-    console.log(chalk4.green(`Migrated managed binaries tools/ \u2192 bin/`));
+    console.log(chalk5.green(`Migrated managed binaries tools/ \u2192 bin/`));
   }
 }
 __name(migrateToolsToBin, "migrateToolsToBin");
@@ -6830,13 +6839,13 @@ async function showDeprecationWarnings(warnings) {
   if (warnings.length === 0)
     return;
   for (const warning of warnings) {
-    console.log(chalk4.yellow(`Warning: ${warning}`));
+    console.log(chalk5.yellow(`Warning: ${warning}`));
   }
-  console.log(chalk4.yellow(`
+  console.log(chalk5.yellow(`
 Move your extensions to the extensions/ directory.`));
-  console.log(chalk4.yellow(`Migration guide: ${MIGRATION_GUIDE_URL}`));
-  console.log(chalk4.yellow(`Documentation: ${EXTENSIONS_DOC_URL}`));
-  console.log(chalk4.dim(`
+  console.log(chalk5.yellow(`Migration guide: ${MIGRATION_GUIDE_URL}`));
+  console.log(chalk5.yellow(`Documentation: ${EXTENSIONS_DOC_URL}`));
+  console.log(chalk5.dim(`
 Press any key to continue...`));
   await new Promise((resolve7) => {
     process.stdin.setRawMode?.(true);
@@ -6868,7 +6877,7 @@ import * as path5 from "node:path";
 import { isRetryableAssistantError } from "../../pi-ai/sdk-bundle/compat.js";
 import * as TuiLayouts from "../../../pi-tui.mjs";
 import { CombinedAutocompleteProvider, Container as Container31, fuzzyFilter as fuzzyFilter8, getCapabilities as getCapabilities4, hyperlink as hyperlink4, Markdown as Markdown7, matchesKey as matchesKey2, Spacer as Spacer28, setCapabilityOverrides as setCapabilityOverrides2, setKeybindings as setKeybindings3, Text as Text31, TruncatedText as TruncatedText3, TuiAltScreen as TuiAltScreen3, TuiMainScreen as TuiMainScreen3, visibleWidth as visibleWidth7 } from "../../../pi-tui.mjs";
-import chalk5 from "../../../chalk/source/index.js";
+import chalk6 from "../../../chalk/source/index.js";
 import { spawn as spawn4 } from "child_process";
 
 // pi-dist/pi-coding-agent/core/cache-stats.js
@@ -13799,6 +13808,7 @@ var InteractiveMode = class _InteractiveMode {
     this.runtimeHost.setRebindSession(async () => {
       await this.rebindCurrentSession({ renderBeforeBind: true });
       this.themeController.applyFromSettings();
+      this.showRuntimeDiagnostics(this.runtimeHost.takeUnreportedDiagnostics());
     });
     this.version = VERSION;
     this.renderer = createInteractiveTui({
@@ -14256,15 +14266,7 @@ ${onboarding()}`, this.getStartupExpansionState(), 1, 0);
       }
     });
     const { migratedProviders, startupDiagnostics, modelFallbackMessage, initialMessage, initialImages, initialMessages } = this.options;
-    for (const diagnostic of startupDiagnostics ?? []) {
-      if (diagnostic.type === "error") {
-        this.showError(diagnostic.message);
-      } else if (diagnostic.type === "warning") {
-        this.showWarning(diagnostic.message);
-      } else {
-        this.showStatus(diagnostic.message);
-      }
-    }
+    this.showRuntimeDiagnostics(startupDiagnostics ?? []);
     if (migratedProviders && migratedProviders.length > 0) {
       this.showWarning(`Migrated credentials to auth.json: ${migratedProviders.join(", ")}`);
     }
@@ -15010,6 +15012,17 @@ ${warningLines()}`, 0, 0));
     if (this.editor !== this.defaultEditor) {
       this.editor.setPaddingX?.(editorPaddingX);
       this.editor.setAutocompleteMaxVisible?.(autocompleteMaxVisible);
+    }
+  }
+  showRuntimeDiagnostics(diagnostics) {
+    for (const diagnostic of diagnostics) {
+      if (diagnostic.type === "error") {
+        this.showError(diagnostic.message);
+      } else if (diagnostic.type === "warning") {
+        this.showWarning(diagnostic.message);
+      } else {
+        this.showStatus(diagnostic.message);
+      }
     }
   }
   async rebindCurrentSession(options = {}) {
@@ -16798,7 +16811,7 @@ ${message}`, ["Yes", "No"], opts, {
     await this.runtimeHost.dispose();
     const resumeCommand = formatResumeCommand(this.sessionManager);
     if (resumeCommand) {
-      process.stdout.write(`${chalk5.dim("To resume this session:")} ${resumeCommand}
+      process.stdout.write(`${chalk6.dim("To resume this session:")} ${resumeCommand}
 `);
     }
     process.exit(0);
@@ -19151,6 +19164,7 @@ async function runPrintMode(runtimeHost, options) {
   registerSignalHandlers();
   runtimeHost.setRebindSession(async () => {
     await rebindSession();
+    writeDiagnosticsToStderr(runtimeHost.takeUnreportedDiagnostics());
   });
   const rebindSession = /* @__PURE__ */ __name(async () => {
     session = runtimeHost.session;
@@ -19949,6 +19963,7 @@ async function runRpcMode(runtimeHost) {
   }), "createExtensionUIContext");
   runtimeHost.setRebindSession(async () => {
     await rebindSession();
+    writeDiagnosticsToStderr(runtimeHost.takeUnreportedDiagnostics());
   });
   const rebindSession = /* @__PURE__ */ __name(async () => {
     session = runtimeHost.session;
@@ -20483,7 +20498,7 @@ import { existsSync as existsSync8, mkdirSync as mkdirSync5, mkdtempSync as mkdt
 import { join as join14, resolve as resolve6 } from "node:path";
 import { ModelsError } from "../../pi-ai/sdk-bundle/index.js";
 import { Markdown as Markdown8 } from "../../../pi-tui.mjs";
-import chalk6 from "../../../chalk/source/index.js";
+import chalk7 from "../../../chalk/source/index.js";
 import lockfile from "../../../proper-lockfile.mjs";
 
 // pi-dist/pi-coding-agent/cli/config-selector.js
@@ -21477,27 +21492,27 @@ async function runManagedSelfUpdate(managedRoot, version) {
 }
 __name(runManagedSelfUpdate, "runManagedSelfUpdate");
 var SELF_UPDATE_NOTE_MARKDOWN_THEME = {
-  heading: /* @__PURE__ */ __name((text) => chalk6.bold(chalk6.yellow(text)), "heading"),
-  link: /* @__PURE__ */ __name((text) => chalk6.cyan(text), "link"),
-  linkUrl: /* @__PURE__ */ __name((text) => chalk6.dim(text), "linkUrl"),
-  code: /* @__PURE__ */ __name((text) => chalk6.yellow(text), "code"),
-  codeBlock: /* @__PURE__ */ __name((text) => chalk6.dim(text), "codeBlock"),
-  codeBlockBorder: /* @__PURE__ */ __name((text) => chalk6.dim(text), "codeBlockBorder"),
-  quote: /* @__PURE__ */ __name((text) => chalk6.dim(text), "quote"),
-  quoteBorder: /* @__PURE__ */ __name((text) => chalk6.dim(text), "quoteBorder"),
-  hr: /* @__PURE__ */ __name((text) => chalk6.dim(text), "hr"),
-  listBullet: /* @__PURE__ */ __name((text) => chalk6.yellow(text), "listBullet"),
-  bold: /* @__PURE__ */ __name((text) => chalk6.bold(text), "bold"),
-  italic: /* @__PURE__ */ __name((text) => chalk6.italic(text), "italic"),
-  strikethrough: /* @__PURE__ */ __name((text) => chalk6.strikethrough(text), "strikethrough"),
-  underline: /* @__PURE__ */ __name((text) => chalk6.underline(text), "underline")
+  heading: /* @__PURE__ */ __name((text) => chalk7.bold(chalk7.yellow(text)), "heading"),
+  link: /* @__PURE__ */ __name((text) => chalk7.cyan(text), "link"),
+  linkUrl: /* @__PURE__ */ __name((text) => chalk7.dim(text), "linkUrl"),
+  code: /* @__PURE__ */ __name((text) => chalk7.yellow(text), "code"),
+  codeBlock: /* @__PURE__ */ __name((text) => chalk7.dim(text), "codeBlock"),
+  codeBlockBorder: /* @__PURE__ */ __name((text) => chalk7.dim(text), "codeBlockBorder"),
+  quote: /* @__PURE__ */ __name((text) => chalk7.dim(text), "quote"),
+  quoteBorder: /* @__PURE__ */ __name((text) => chalk7.dim(text), "quoteBorder"),
+  hr: /* @__PURE__ */ __name((text) => chalk7.dim(text), "hr"),
+  listBullet: /* @__PURE__ */ __name((text) => chalk7.yellow(text), "listBullet"),
+  bold: /* @__PURE__ */ __name((text) => chalk7.bold(text), "bold"),
+  italic: /* @__PURE__ */ __name((text) => chalk7.italic(text), "italic"),
+  strikethrough: /* @__PURE__ */ __name((text) => chalk7.strikethrough(text), "strikethrough"),
+  underline: /* @__PURE__ */ __name((text) => chalk7.underline(text), "underline")
 };
 function reportSettingsErrors(settingsManager, context) {
   const errors = settingsManager.drainErrors();
   for (const { scope, error } of errors) {
-    console.error(chalk6.yellow(`Warning (${context}, ${scope} settings): ${error.message}`));
+    console.error(chalk7.yellow(`Warning (${context}, ${scope} settings): ${error.message}`));
     if (error.stack) {
-      console.error(chalk6.dim(error.stack));
+      console.error(chalk7.dim(error.stack));
     }
   }
 }
@@ -21517,7 +21532,7 @@ function getPackageCommandUsage(command) {
 __name(getPackageCommandUsage, "getPackageCommandUsage");
 var CONFIG_COMMAND_USAGE = `${APP_NAME} config [-l] [--approve|--no-approve]`;
 function printConfigCommandHelp() {
-  console.log(`${chalk6.bold("Usage:")}
+  console.log(`${chalk7.bold("Usage:")}
   ${CONFIG_COMMAND_USAGE}
 
 Open the resource configuration TUI to enable or disable package resources.
@@ -21534,7 +21549,7 @@ __name(printConfigCommandHelp, "printConfigCommandHelp");
 function printPackageCommandHelp(command) {
   switch (command) {
     case "install":
-      console.log(`${chalk6.bold("Usage:")}
+      console.log(`${chalk7.bold("Usage:")}
   ${getPackageCommandUsage("install")}
 
 Install a package and add it to settings.
@@ -21554,7 +21569,7 @@ Examples:
 `);
       return;
     case "remove":
-      console.log(`${chalk6.bold("Usage:")}
+      console.log(`${chalk7.bold("Usage:")}
   ${getPackageCommandUsage("remove")}
 
 Remove a package and its source from settings.
@@ -21571,7 +21586,7 @@ Examples:
 `);
       return;
     case "update":
-      console.log(`${chalk6.bold("Usage:")}
+      console.log(`${chalk7.bold("Usage:")}
   ${getPackageCommandUsage("update")}
 
 Update pi, installed packages, or model catalogs.
@@ -21595,7 +21610,7 @@ Short forms:
 `);
       return;
     case "list":
-      console.log(`${chalk6.bold("Usage:")}
+      console.log(`${chalk7.bold("Usage:")}
   ${getPackageCommandUsage("list")}
 
 List installed packages from user and project settings.
@@ -21815,7 +21830,7 @@ async function refreshModelCatalogs2(agentDir) {
     const failures = [];
     for (const [provider, error] of result.errors) {
       if (error instanceof ModelsError && error.code === "oauth") {
-        console.warn(chalk6.yellow(`Warning: skipped model catalog for ${provider}: ${error.message}
+        console.warn(chalk7.yellow(`Warning: skipped model catalog for ${provider}: ${error.message}
 Log in again with \`${APP_NAME} auth login ${provider}\` to refresh it.`));
       } else {
         failures.push(`${provider}: ${error.message}`);
@@ -21827,7 +21842,7 @@ Log in again with \`${APP_NAME} auth login ${provider}\` to refresh it.`));
   } finally {
     clearTimeout(timeout);
   }
-  console.log(chalk6.green("Model catalogs refreshed"));
+  console.log(chalk7.green("Model catalogs refreshed"));
 }
 __name(refreshModelCatalogs2, "refreshModelCatalogs");
 function printSelfUpdateUnavailable(npmCommand, updatePackageTarget = PACKAGE_NAME) {
@@ -21842,12 +21857,12 @@ function printSelfUpdateUnavailable(npmCommand, updatePackageTarget = PACKAGE_NA
 }
 __name(printSelfUpdateUnavailable, "printSelfUpdateUnavailable");
 function printSelfUpdateFallback(command) {
-  console.error(chalk6.dim(`If this keeps failing, run this command yourself: ${command.display}`));
+  console.error(chalk7.dim(`If this keeps failing, run this command yourself: ${command.display}`));
 }
 __name(printSelfUpdateFallback, "printSelfUpdateFallback");
 function printPnpmSelfUpdateMetadataHint() {
-  console.error(chalk6.yellow("If pnpm reports missing package versions, its cached registry metadata may be stale."));
-  console.error(chalk6.yellow(`Run \`pnpm store prune\` and retry \`${APP_NAME} update --self\`.`));
+  console.error(chalk7.yellow("If pnpm reports missing package versions, its cached registry metadata may be stale."));
+  console.error(chalk7.yellow(`Run \`pnpm store prune\` and retry \`${APP_NAME} update --self\`.`));
 }
 __name(printPnpmSelfUpdateMetadataHint, "printPnpmSelfUpdateMetadataHint");
 function printSelfUpdateNote(note) {
@@ -21856,7 +21871,7 @@ function printSelfUpdateNote(note) {
     return;
   }
   console.log();
-  console.log(chalk6.bold(chalk6.yellow("Update note")));
+  console.log(chalk7.bold(chalk7.yellow("Update note")));
   try {
     const width = Math.max(20, process.stdout.columns ?? 80);
     const renderedLines = new Markdown8(trimmedNote, 0, 0, SELF_UPDATE_NOTE_MARKDOWN_THEME).render(width).map((line) => line.trimEnd());
@@ -21890,12 +21905,12 @@ async function getSelfUpdatePlan(force) {
       shouldRun: true
     };
   }
-  console.log(chalk6.green(`${APP_NAME} is already up to date (v${VERSION})`));
+  console.log(chalk7.green(`${APP_NAME} is already up to date (v${VERSION})`));
   return { packageName, installSpec, version: latestRelease.version, shouldRun: false };
 }
 __name(getSelfUpdatePlan, "getSelfUpdatePlan");
 async function runSelfUpdate(command) {
-  console.log(chalk6.dim(`Updating ${APP_NAME} with ${command.display}...`));
+  console.log(chalk7.dim(`Updating ${APP_NAME} with ${command.display}...`));
   for (const step of command.steps ?? [command]) {
     await new Promise((resolve7, reject) => {
       const child = spawnProcess(step.command, step.args, {
@@ -21926,17 +21941,17 @@ async function runConfiguredSelfUpdate(argv, plan) {
     await runSelfUpdate(command);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown self-update command error";
-    console.error(chalk6.red(`Error: ${message}`));
+    console.error(chalk7.red(`Error: ${message}`));
     process.exitCode = 1;
     return;
   }
   const change = detectInstallChange();
   const installedVersion = change?.kind === "updated" && change.version === plan.version ? change.version : readVersionOnPath();
   if (installedVersion === plan.version) {
-    console.log(chalk6.green(`Updated ${APP_NAME} from ${VERSION} to ${plan.version}`));
+    console.log(chalk7.green(`Updated ${APP_NAME} from ${VERSION} to ${plan.version}`));
     return;
   }
-  console.log(chalk6.yellow(`Ran ${command.display}, but \`${APP_NAME} --version\` reports ${installedVersion ?? "no version"}, not ${plan.version}.`));
+  console.log(chalk7.yellow(`Ran ${command.display}, but \`${APP_NAME} --version\` reports ${installedVersion ?? "no version"}, not ${plan.version}.`));
 }
 __name(runConfiguredSelfUpdate, "runConfiguredSelfUpdate");
 function readVersionOnPath() {
@@ -21964,7 +21979,7 @@ function getCommandAppMode() {
 __name(getCommandAppMode, "getCommandAppMode");
 function reportProjectTrustWarnings(warnings) {
   for (const warning of warnings) {
-    console.error(chalk6.yellow(`Warning: ${warning}`));
+    console.error(chalk7.yellow(`Warning: ${warning}`));
   }
 }
 __name(reportProjectTrustWarnings, "reportProjectTrustWarnings");
@@ -22024,13 +22039,13 @@ async function handleConfigCommand(args, runtimeOptions = {}) {
     } else if (arg === "-na" || arg === "--no-approve") {
       projectTrustOverride = false;
     } else if (arg.startsWith("-")) {
-      console.error(chalk6.red(`Unknown option ${arg} for "config".`));
-      console.error(chalk6.dim(`Use "${APP_NAME} --help" or "${CONFIG_COMMAND_USAGE}".`));
+      console.error(chalk7.red(`Unknown option ${arg} for "config".`));
+      console.error(chalk7.dim(`Use "${APP_NAME} --help" or "${CONFIG_COMMAND_USAGE}".`));
       process.exitCode = 1;
       return true;
     } else {
-      console.error(chalk6.red(`Unexpected argument ${arg}.`));
-      console.error(chalk6.dim(`Usage: ${CONFIG_COMMAND_USAGE}`));
+      console.error(chalk7.red(`Unexpected argument ${arg}.`));
+      console.error(chalk7.dim(`Usage: ${CONFIG_COMMAND_USAGE}`));
       process.exitCode = 1;
       return true;
     }
@@ -22045,7 +22060,7 @@ async function handleConfigCommand(args, runtimeOptions = {}) {
   });
   reportProjectTrustWarnings(projectTrustWarnings);
   if (local && !settingsManager.isProjectTrusted()) {
-    console.error(chalk6.red("Project is not trusted. Use --approve to modify local resource config."));
+    console.error(chalk7.red("Project is not trusted. Use --approve to modify local resource config."));
     process.exitCode = 1;
     return true;
   }
@@ -22061,7 +22076,7 @@ async function handleConfigCommand(args, runtimeOptions = {}) {
   const projectResolvedPaths = settingsManager.isProjectTrusted() ? await new DefaultPackageManager({ cwd, agentDir, settingsManager, builtinExtensions }).resolve() : globalResolvedPaths;
   const installWarnings = new Set([...globalResolvedPaths.installFailures ?? [], ...projectResolvedPaths.installFailures ?? []].map(formatPackageInstallWarning));
   for (const warning of installWarnings) {
-    console.error(chalk6.yellow(`Warning: ${warning}`));
+    console.error(chalk7.yellow(`Warning: ${warning}`));
   }
   await selectConfig({
     resolvedPaths: { global: globalResolvedPaths, project: projectResolvedPaths },
@@ -22084,33 +22099,33 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
     return true;
   }
   if (options.invalidOption) {
-    console.error(chalk6.red(`Unknown option ${options.invalidOption} for "${options.command}".`));
-    console.error(chalk6.dim(`Use "${APP_NAME} --help" or "${getPackageCommandUsage(options.command)}".`));
+    console.error(chalk7.red(`Unknown option ${options.invalidOption} for "${options.command}".`));
+    console.error(chalk7.dim(`Use "${APP_NAME} --help" or "${getPackageCommandUsage(options.command)}".`));
     process.exitCode = 1;
     return true;
   }
   if (options.missingOptionValue) {
-    console.error(chalk6.red(`Missing value for ${options.missingOptionValue}.`));
-    console.error(chalk6.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
+    console.error(chalk7.red(`Missing value for ${options.missingOptionValue}.`));
+    console.error(chalk7.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
     process.exitCode = 1;
     return true;
   }
   if (options.invalidArgument) {
-    console.error(chalk6.red(`Unexpected argument ${options.invalidArgument}.`));
-    console.error(chalk6.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
+    console.error(chalk7.red(`Unexpected argument ${options.invalidArgument}.`));
+    console.error(chalk7.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
     process.exitCode = 1;
     return true;
   }
   if (options.conflictingOptions) {
-    console.error(chalk6.red(options.conflictingOptions));
-    console.error(chalk6.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
+    console.error(chalk7.red(options.conflictingOptions));
+    console.error(chalk7.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
     process.exitCode = 1;
     return true;
   }
   const source = options.source;
   if ((options.command === "install" || options.command === "remove") && !source) {
-    console.error(chalk6.red(`Missing ${options.command} source.`));
-    console.error(chalk6.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
+    console.error(chalk7.red(`Missing ${options.command} source.`));
+    console.error(chalk7.dim(`Usage: ${getPackageCommandUsage(options.command)}`));
     process.exitCode = 1;
     return true;
   }
@@ -22119,7 +22134,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
       await refreshModelCatalogs2(getAgentDir());
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown model catalog refresh error";
-      console.error(chalk6.red(`Error: ${message}`));
+      console.error(chalk7.red(`Error: ${message}`));
       process.exitCode = 1;
     }
     return true;
@@ -22136,7 +22151,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
   });
   reportProjectTrustWarnings(projectTrustWarnings);
   if (!settingsManager.isProjectTrusted() && writesProjectPackageConfig) {
-    console.error(chalk6.red("Project is not trusted. Use --approve to modify local package config."));
+    console.error(chalk7.red("Project is not trusted. Use --approve to modify local package config."));
     process.exitCode = 1;
     return true;
   }
@@ -22149,11 +22164,11 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
     if (event.type === "result" && event.action === "update" && event.message) {
       updatedPackages.push(event.message);
     } else if (event.type === "start") {
-      process.stdout.write(chalk6.dim(`${event.message}
+      process.stdout.write(chalk7.dim(`${event.message}
 `));
     } else if (event.type === "progress" && event.message) {
       warningCount++;
-      process.stdout.write(chalk6.yellow(`${event.message}
+      process.stdout.write(chalk7.yellow(`${event.message}
 `));
     }
   });
@@ -22161,16 +22176,16 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
     switch (options.command) {
       case "install":
         await packageManager.installAndPersist(source, { local: options.local });
-        console.log(chalk6.green(`Installed ${source}`));
+        console.log(chalk7.green(`Installed ${source}`));
         return true;
       case "remove": {
         const removed = await packageManager.removeAndPersist(source, { local: options.local });
         if (!removed) {
-          console.error(chalk6.red(`No matching package found for ${source}`));
+          console.error(chalk7.red(`No matching package found for ${source}`));
           process.exitCode = 1;
           return true;
         }
-        console.log(chalk6.green(`Removed ${source}`));
+        console.log(chalk7.green(`Removed ${source}`));
         return true;
       }
       case "list": {
@@ -22178,18 +22193,18 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
         const userPackages = configuredPackages.filter((pkg) => pkg.scope === "user");
         const projectPackages = configuredPackages.filter((pkg) => pkg.scope === "project");
         if (configuredPackages.length === 0) {
-          console.log(chalk6.dim("No packages installed."));
+          console.log(chalk7.dim("No packages installed."));
           return true;
         }
         const formatPackage = /* @__PURE__ */ __name((pkg) => {
           const display = pkg.filtered ? `${pkg.source} (filtered)` : pkg.source;
           console.log(`  ${display}`);
           if (pkg.installedPath) {
-            console.log(chalk6.dim(`    ${pkg.installedPath}`));
+            console.log(chalk7.dim(`    ${pkg.installedPath}`));
           }
         }, "formatPackage");
         if (userPackages.length > 0) {
-          console.log(chalk6.bold("User packages:"));
+          console.log(chalk7.bold("User packages:"));
           for (const pkg of userPackages) {
             formatPackage(pkg);
           }
@@ -22197,7 +22212,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
         if (projectPackages.length > 0) {
           if (userPackages.length > 0)
             console.log();
-          console.log(chalk6.bold("Project packages:"));
+          console.log(chalk7.bold("Project packages:"));
           for (const pkg of projectPackages) {
             formatPackage(pkg);
           }
@@ -22207,20 +22222,20 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
       case "update": {
         const target = options.updateTarget ?? { type: "self" };
         if (options.showExtensionsSkippedNote) {
-          console.log(chalk6.dim(`Extensions are skipped. Run ${APP_NAME} update --extensions to update extensions.`));
+          console.log(chalk7.dim(`Extensions are skipped. Run ${APP_NAME} update --extensions to update extensions.`));
         }
         if (updateTargetIncludesExtensions(target)) {
           const updateSource = target.type === "extensions" ? target.source : void 0;
           await packageManager.update(updateSource);
           if (isOfflineModeEnabled()) {
-            console.log(chalk6.yellow("Skipped package updates (offline mode)"));
+            console.log(chalk7.yellow("Skipped package updates (offline mode)"));
           } else if (updatedPackages.length === 0 && warningCount > 0) {
-            console.log(chalk6.yellow(updateSource ? `${updateSource} was not updated, see the warnings above` : "No packages were updated, see the warnings above"));
+            console.log(chalk7.yellow(updateSource ? `${updateSource} was not updated, see the warnings above` : "No packages were updated, see the warnings above"));
           } else if (updatedPackages.length === 0) {
-            console.log(chalk6.green(updateSource ? `${updateSource} is already up to date` : "Packages are already up to date"));
+            console.log(chalk7.green(updateSource ? `${updateSource} is already up to date` : "Packages are already up to date"));
           } else {
             const count = updatedPackages.length;
-            console.log(chalk6.green(`Updated ${count} package${count === 1 ? "" : "s"}:`));
+            console.log(chalk7.green(`Updated ${count} package${count === 1 ? "" : "s"}:`));
             for (const message of updatedPackages) {
               console.log(`  ${message}`);
             }
@@ -22230,7 +22245,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
           const configuredSelfUpdateArgv = getConfiguredSelfUpdateArgv(settingsManager.getGlobalSettings().selfUpdateCommand);
           const managedInstallRoot = configuredSelfUpdateArgv ? void 0 : getActiveManagedInstallRoot();
           if (managedInstallRoot && options.force) {
-            console.error(chalk6.red(`Managed ${APP_NAME} installations do not support --force; rerun the installer to repair this installation.`));
+            console.error(chalk7.red(`Managed ${APP_NAME} installations do not support --force; rerun the installer to repair this installation.`));
             process.exitCode = 1;
             return true;
           }
@@ -22247,21 +22262,21 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
               printSelfUpdateNote(selfUpdatePlan.note);
             }
             try {
-              console.log(chalk6.dim(`Updating managed ${APP_NAME} installation...`));
+              console.log(chalk7.dim(`Updating managed ${APP_NAME} installation...`));
               await runManagedSelfUpdate(managedInstallRoot, selfUpdatePlan.version);
             } catch (error) {
               const message = error instanceof Error ? error.message : "Unknown managed update error";
-              console.error(chalk6.red(`Error: ${message}`));
+              console.error(chalk7.red(`Error: ${message}`));
               process.exitCode = 1;
               return true;
             }
-            console.log(chalk6.green(`Updated ${APP_NAME} from ${VERSION} to ${selfUpdatePlan.version}`));
+            console.log(chalk7.green(`Updated ${APP_NAME} from ${VERSION} to ${selfUpdatePlan.version}`));
             return true;
           }
           const installMethod = detectInstallMethod();
           if (process.platform === "win32" && installMethod !== "npm" && installMethod !== "pnpm") {
-            console.error(chalk6.red(`${APP_NAME} self-update on Windows is only supported for npm and pnpm installs.`));
-            console.error(chalk6.dim(`Detected install method: ${installMethod}. Update ${APP_NAME} manually.`));
+            console.error(chalk7.red(`${APP_NAME} self-update on Windows is only supported for npm and pnpm installs.`));
+            console.error(chalk7.dim(`Detected install method: ${installMethod}. Update ${APP_NAME} manually.`));
             process.exitCode = 1;
             return true;
           }
@@ -22285,7 +22300,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
             await runSelfUpdate(selfUpdateCommand);
           } catch (error) {
             const message = error instanceof Error ? error.message : "Unknown package command error";
-            console.error(chalk6.red(`Error: ${message}`));
+            console.error(chalk7.red(`Error: ${message}`));
             if (installMethod === "pnpm") {
               printPnpmSelfUpdateMetadataHint();
             }
@@ -22293,14 +22308,14 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
             process.exitCode = 1;
             return true;
           }
-          console.log(chalk6.green(`Updated ${APP_NAME} from ${VERSION} to ${selfUpdatePlan.version}`));
+          console.log(chalk7.green(`Updated ${APP_NAME} from ${VERSION} to ${selfUpdatePlan.version}`));
           if (installMethod === "npm") {
             const installerCommand = process.platform === "win32" ? 'powershell -c "irm https://pi.dev/install.ps1 | iex"' : "curl -fsSL https://pi.dev/install.sh | sh";
             console.log();
-            console.log(chalk6.yellow(`This npm installation of ${APP_NAME} does not pin its dependencies.`));
-            console.log(chalk6.yellow("Run the installer to migrate to a managed installation that does:"));
+            console.log(chalk7.yellow(`This npm installation of ${APP_NAME} does not pin its dependencies.`));
+            console.log(chalk7.yellow("Run the installer to migrate to a managed installation that does:"));
             console.log();
-            console.log(`  ${chalk6.bold(installerCommand)}`);
+            console.log(`  ${chalk7.bold(installerCommand)}`);
           }
         }
         return true;
@@ -22308,7 +22323,7 @@ async function handlePackageCommand(args, runtimeOptions = {}) {
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown package command error";
-    console.error(chalk6.red(`Error: ${message}`));
+    console.error(chalk7.red(`Error: ${message}`));
     process.exitCode = 1;
     return true;
   }
@@ -22334,14 +22349,6 @@ async function readPipedStdin() {
   });
 }
 __name(readPipedStdin, "readPipedStdin");
-function reportDiagnostics(diagnostics) {
-  for (const diagnostic of diagnostics) {
-    const color = diagnostic.type === "error" ? chalk7.red : diagnostic.type === "warning" ? chalk7.yellow : chalk7.dim;
-    const prefix = diagnostic.type === "error" ? "Error: " : diagnostic.type === "warning" ? "Warning: " : "";
-    console.error(color(`${prefix}${diagnostic.message}`));
-  }
-}
-__name(reportDiagnostics, "reportDiagnostics");
 function isTruthyEnvFlag(value) {
   if (!value)
     return false;
@@ -22421,7 +22428,7 @@ async function runAuthCommand(args) {
     command = parseAuthCommand(args);
   } catch (error) {
     const message = error instanceof AuthCommandError ? error.message : "Failed to parse auth command";
-    console.error(chalk7.red(`Error: ${message}`));
+    console.error(chalk8.red(`Error: ${message}`));
     process.exitCode = 1;
     return true;
   }
@@ -22430,8 +22437,8 @@ async function runAuthCommand(args) {
   const parsed = parseArgs(command.args);
   if (parsed.unknownFlags.size > 0) {
     const option = parsed.unknownFlags.keys().next().value;
-    console.error(chalk7.red(`Unknown option --${option} for "${getAuthCommandName(command.kind)}".`));
-    console.error(chalk7.dim(`Use "${APP_NAME} --help" or "${getAuthCommandUsage(command.kind)}".`));
+    console.error(chalk8.red(`Unknown option --${option} for "${getAuthCommandName(command.kind)}".`));
+    console.error(chalk8.dim(`Use "${APP_NAME} --help" or "${getAuthCommandUsage(command.kind)}".`));
     process.exitCode = 1;
     return true;
   }
@@ -22475,7 +22482,7 @@ async function runAuthCommand(args) {
     process.exitCode = result.status === "ready" ? 0 : result.status === "not_ready" ? 1 : 2;
   } catch (error) {
     const message = error instanceof AuthCommandError ? error.message : "Failed to resolve credential";
-    console.error(chalk7.red(`Error: ${message}`));
+    console.error(chalk8.red(`Error: ${message}`));
     process.exitCode = command.kind === "check" ? 2 : 1;
   }
   return true;
@@ -22543,7 +22550,7 @@ function validateForkFlags(parsed) {
     parsed.noSession ? "--no-session" : void 0
   ].filter((flag) => flag !== void 0);
   if (conflictingFlags.length > 0) {
-    console.error(chalk7.red(`Error: --fork cannot be combined with ${conflictingFlags.join(", ")}`));
+    console.error(chalk8.red(`Error: --fork cannot be combined with ${conflictingFlags.join(", ")}`));
     process.exit(1);
   }
 }
@@ -22557,14 +22564,14 @@ function validateSessionIdFlags(parsed) {
     parsed.resume ? "--resume" : void 0
   ].filter((flag) => flag !== void 0);
   if (conflictingFlags.length > 0) {
-    console.error(chalk7.red(`Error: --session-id cannot be combined with ${conflictingFlags.join(", ")}`));
+    console.error(chalk8.red(`Error: --session-id cannot be combined with ${conflictingFlags.join(", ")}`));
     process.exit(1);
   }
   try {
     assertValidSessionId(parsed.sessionId);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(chalk7.red(`Error: ${message}`));
+    console.error(chalk8.red(`Error: ${message}`));
     process.exit(1);
   }
 }
@@ -22574,7 +22581,7 @@ function openSessionOrExit(path6, sessionDir) {
     return SessionManager.open(path6, sessionDir);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(chalk7.red(`Error: ${message}`));
+    console.error(chalk8.red(`Error: ${message}`));
     process.exit(1);
   }
 }
@@ -22584,7 +22591,7 @@ function forkSessionOrExit(sourcePath, cwd, sessionDir, sessionId) {
     return SessionManager.forkFrom(sourcePath, cwd, sessionDir, { id: sessionId });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(chalk7.red(`Error: ${message}`));
+    console.error(chalk8.red(`Error: ${message}`));
     process.exit(1);
   }
 }
@@ -22597,7 +22604,7 @@ async function createSessionManager(parsed, cwd, sessionDir, settingsManager) {
     if (parsed.sessionId) {
       const existingTarget = findLocalSessionByExactId(parsed.sessionId, cwd, sessionDir);
       if (existingTarget) {
-        console.error(chalk7.red(`Session already exists with id '${parsed.sessionId}'`));
+        console.error(chalk8.red(`Session already exists with id '${parsed.sessionId}'`));
         process.exit(1);
       }
     }
@@ -22608,7 +22615,7 @@ async function createSessionManager(parsed, cwd, sessionDir, settingsManager) {
       case "global":
         return forkSessionOrExit(resolved.path, cwd, sessionDir, parsed.sessionId);
       case "not_found":
-        console.error(chalk7.red(`No session found matching '${resolved.arg}'`));
+        console.error(chalk8.red(`No session found matching '${resolved.arg}'`));
         process.exit(1);
     }
   }
@@ -22619,16 +22626,16 @@ async function createSessionManager(parsed, cwd, sessionDir, settingsManager) {
       case "local":
         return openSessionOrExit(resolved.path, sessionDir);
       case "global": {
-        console.log(chalk7.yellow(`Session found in different project: ${resolved.cwd}`));
+        console.log(chalk8.yellow(`Session found in different project: ${resolved.cwd}`));
         const shouldFork = await promptConfirm("Fork this session into current directory?");
         if (!shouldFork) {
-          console.log(chalk7.dim("Aborted."));
+          console.log(chalk8.dim("Aborted."));
           process.exit(0);
         }
         return forkSessionOrExit(resolved.path, cwd, sessionDir);
       }
       case "not_found":
-        console.error(chalk7.red(`No session found matching '${resolved.arg}'`));
+        console.error(chalk8.red(`No session found matching '${resolved.arg}'`));
         process.exit(1);
     }
   }
@@ -22636,7 +22643,7 @@ async function createSessionManager(parsed, cwd, sessionDir, settingsManager) {
     try {
       const selectedPath = await selectSession((onProgress, signal) => SessionManager.list(cwd, sessionDir, onProgress, signal), (onProgress, signal) => SessionManager.listAll(sessionDir, onProgress, signal), settingsManager);
       if (!selectedPath) {
-        console.log(chalk7.dim("No session selected"));
+        console.log(chalk8.dim("No session selected"));
         process.exit(0);
       }
       return SessionManager.open(selectedPath, sessionDir);
@@ -22652,7 +22659,7 @@ async function createSessionManager(parsed, cwd, sessionDir, settingsManager) {
     if (existingSession) {
       return SessionManager.open(existingSession.path, sessionDir);
     }
-    console.error(chalk7.yellow(`Warning: No project session found with id '${parsed.sessionId}'; creating a new session with that id.`));
+    console.error(chalk8.yellow(`Warning: No project session found with id '${parsed.sessionId}'; creating a new session with that id.`));
   }
   return SessionManager.create(cwd, sessionDir, { id: parsed.sessionId });
 }
@@ -22755,7 +22762,7 @@ async function main(args, options) {
   } catch (error) {
     if (error.code !== "ENOENT")
       throw error;
-    console.error(chalk7.red("Error: The current working directory no longer exists. Change to an existing directory and try again."));
+    console.error(chalk8.red("Error: The current working directory no longer exists. Change to an existing directory and try again."));
     process.exit(1);
   }
   const agentDir = getAgentDir();
@@ -22781,7 +22788,7 @@ async function main(args, options) {
   const parsed = parseArgs(args);
   if (parsed.diagnostics.length > 0) {
     for (const d of parsed.diagnostics) {
-      const color = d.type === "error" ? chalk7.red : chalk7.yellow;
+      const color = d.type === "error" ? chalk8.red : chalk8.yellow;
       console.error(color(`${d.type === "error" ? "Error" : "Warning"}: ${d.message}`));
     }
     if (parsed.diagnostics.some((d) => d.type === "error")) {
@@ -22800,7 +22807,7 @@ async function main(args, options) {
       result = await exportFromFile(parsed.export, outputPath);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to export session";
-      console.error(chalk7.red(`Error: ${message}`));
+      console.error(chalk8.red(`Error: ${message}`));
       process.exit(1);
     }
     console.log(`Exported to: ${result}`);
@@ -22812,7 +22819,7 @@ async function main(args, options) {
     takeOverStdout();
   }
   if (parsed.mode === "rpc" && parsed.fileArgs.length > 0) {
-    console.error(chalk7.red("Error: @file arguments are not supported in RPC mode"));
+    console.error(chalk8.red("Error: @file arguments are not supported in RPC mode"));
     process.exit(1);
   }
   validateForkFlags(parsed);
@@ -22848,14 +22855,14 @@ async function main(args, options) {
           process.exit(0);
       }
     } else {
-      console.error(chalk7.red(new MissingSessionCwdError(missingSessionCwdIssue).message));
+      console.error(chalk8.red(new MissingSessionCwdError(missingSessionCwdIssue).message));
       process.exit(1);
     }
   }
   if (parsed.name !== void 0) {
     const name = normalizeSessionName(parsed.name);
     if (name === void 0) {
-      console.error(chalk7.red("Error: --name requires a non-empty value"));
+      console.error(chalk8.red("Error: --name requires a non-empty value"));
       process.exit(1);
     }
     sessionManager.appendSessionInfo(name);
@@ -22985,16 +22992,19 @@ async function main(args, options) {
   setCapabilityOverrides3(settingsManager.getTerminalCapabilityOverrides());
   applyHttpProxySettings(settingsManager.getGlobalSettings().httpProxy);
   configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
-  const startupDiagnostics = deduplicateDiagnostics([...startupSettingsDiagnostics, ...runtime.diagnostics]);
+  const startupDiagnostics = deduplicateDiagnostics([
+    ...startupSettingsDiagnostics,
+    ...runtime.takeUnreportedDiagnostics()
+  ]);
   const hasRuntimeErrors = runtime.diagnostics.some((diagnostic) => diagnostic.type === "error");
   if (parsed.help) {
-    reportDiagnostics(startupDiagnostics);
+    writeDiagnosticsToStderr(startupDiagnostics);
     const extensionFlags = resourceLoader.getExtensions().extensions.flatMap((extension) => Array.from(extension.flags.values()));
     printHelp(extensionFlags);
     process.exit(0);
   }
   if (parsed.listModels !== void 0) {
-    reportDiagnostics(startupDiagnostics);
+    writeDiagnosticsToStderr(startupDiagnostics);
     const searchPattern = typeof parsed.listModels === "string" ? parsed.listModels : void 0;
     await listModels(modelRuntime, searchPattern, AbortSignal.timeout(15e3));
     process.exit(0);
@@ -23016,22 +23026,22 @@ async function main(args, options) {
   }
   time("resolveModelScope");
   if (appMode !== "interactive" || hasRuntimeErrors) {
-    reportDiagnostics(startupDiagnostics);
+    writeDiagnosticsToStderr(startupDiagnostics);
   }
   if (hasRuntimeErrors) {
     if (runtime.diagnostics.some((diagnostic) => diagnostic.message.includes("Failed to load extension"))) {
-      console.error(chalk7.yellow(EXTENSION_LOAD_FAILURE_HINT));
+      console.error(chalk8.yellow(EXTENSION_LOAD_FAILURE_HINT));
     }
     process.exit(1);
   }
   time("createAgentSession");
   if (appMode !== "interactive" && !session.model) {
-    console.error(chalk7.red(formatNoModelsAvailableMessage()));
+    console.error(chalk8.red(formatNoModelsAvailableMessage()));
     process.exit(1);
   }
   const startupBenchmark = isTruthyEnvFlag(process.env.PI_STARTUP_BENCHMARK);
   if (startupBenchmark && appMode !== "interactive") {
-    console.error(chalk7.red("Error: PI_STARTUP_BENCHMARK only supports interactive mode"));
+    console.error(chalk8.red("Error: PI_STARTUP_BENCHMARK only supports interactive mode"));
     process.exit(1);
   }
   if (!offlineMode && appMode === "rpc") {

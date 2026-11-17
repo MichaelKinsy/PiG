@@ -10,6 +10,7 @@ use crate::context::Context;
 use crate::extension_runner::{CancelledResult, SetupCallback};
 use crate::session_manager_class::{NewSessionOptions, SessionManager};
 use serde_json::{Value, json};
+use std::collections::HashSet;
 use std::fs::OpenOptions;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -130,6 +131,7 @@ struct State {
     services: Arc<AgentSessionServices>,
     diagnostics: Vec<Value>,
     model_fallback_message: Option<String>,
+    reported_diagnostic_keys: HashSet<String>,
     rebind_session: Option<Rebind>,
     before_session_invalidate: Option<Arc<dyn Fn() + Send + Sync>>,
 }
@@ -225,6 +227,7 @@ pub fn create_agent_session_runtime(
             services: Arc::new(result.services),
             diagnostics: result.diagnostics,
             model_fallback_message: result.model_fallback_message,
+            reported_diagnostic_keys: HashSet::new(),
             rebind_session: None,
             before_session_invalidate: None,
         }),
@@ -250,6 +253,18 @@ impl AgentSessionRuntime {
     /// `runtime.diagnostics`.
     pub fn diagnostics(&self) -> Vec<Value> {
         self.state.lock().unwrap().diagnostics.clone()
+    }
+
+    /// `takeUnreportedDiagnostics()`: the current diagnostics that were not returned yet, marked as returned. A diagnostic whose type and message equal one returned before is left out, so an unchanged warning is not returned again after each replacement. The set belongs to the runtime, not to one construction.
+    pub fn take_unreported_diagnostics(&self) -> Vec<Value> {
+        let mut state = self.state.lock().unwrap();
+        let State { diagnostics, reported_diagnostic_keys, .. } = &mut *state;
+        let text = |diagnostic: &Value, member: &str| diagnostic.get(member).and_then(Value::as_str).unwrap_or_default().to_string();
+        diagnostics
+            .iter()
+            .filter(|diagnostic| reported_diagnostic_keys.insert(format!("{}\0{}", text(diagnostic, "type"), text(diagnostic, "message"))))
+            .cloned()
+            .collect()
     }
 
     /// `runtime.modelFallbackMessage`.

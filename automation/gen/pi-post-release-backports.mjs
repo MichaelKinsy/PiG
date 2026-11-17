@@ -1400,6 +1400,159 @@ export async function restoreModelFromSession(savedProvider, savedModelId, curre
 ]);
 // END backport ac78a6068b38
 
+// BEGIN backport c47ad0432bb8
+// c47ad0432bb8 (#12115, #11264): the diagnostics a session replacement's runtime factory returns are reported once: AgentSessionRuntime.takeUnreportedDiagnostics() returns the current diagnostics not returned yet (same type and message
+// as one returned before: left out) and marks them; main.js takes the startup diagnostics with it; each mode calls it in its rebind callback (interactive: in the chat through showRuntimeDiagnostics; print, JSON and RPC: stderr, never stdout).
+// Pi's commit moves main.ts's reportDiagnostics to the new file modes/diagnostics-stderr.ts. The backport table patches existing files only, so writeDiagnosticsToStderr is added to core/settings-diagnostics.js
+// (main.js already imports deduplicateDiagnostics from it; the modes import from it too). The function, its output and its callers are Pi's.
+// not carried: pi-coding-agent/modes/diagnostics-stderr.js (a new file; see above: its function is in core/settings-diagnostics.js) and the declarations (core/agent-session-runtime.d.ts takeUnreportedDiagnostics): declaration files; no backport table patches one, and extensions/sdk-ts/pi-pin.d.ts stays the pinned build's.
+// not carried: packages/coding-agent/test/agent-session-runtime-diagnostics.test.ts, test/rpc-replacement-diagnostics.test.ts, test/suite/regressions/7829-invalid-settings-warning.test.ts (tests of the TypeScript source) and packages/coding-agent/CHANGELOG.md (Pi's changelog entry): the package ships none of them.
+patch("c47ad0432bb8", "pi-coding-agent/core/agent-session-runtime.js", [
+    [`    _modelFallbackMessage;
+    constructor(_session, _services,`, `    _modelFallbackMessage;
+    ${note("c47ad0432bb8").trim()}
+    /** \`type\\0message\` of every diagnostic takeUnreportedDiagnostics() returned so far. */
+    reportedDiagnosticKeys = new Set();
+    constructor(_session, _services,`],
+    [`    get modelFallbackMessage() {
+        return this._modelFallbackMessage;
+    }
+`, `    get modelFallbackMessage() {
+        return this._modelFallbackMessage;
+    }
+    /**
+     * Return the current runtime's diagnostics that were not reported yet, and mark them reported.
+     *
+     * The host calls this at startup and after each session replacement (/new, /resume, /fork,
+     * import), whose runtime collects its diagnostics again. A diagnostic with the same type and
+     * message as one returned before is left out, so an unchanged settings warning is not repeated
+     * on every replacement.
+     */
+    takeUnreportedDiagnostics() {
+        return this._diagnostics.filter((diagnostic) => {
+            const key = \`\${diagnostic.type}\\0\${diagnostic.message}\`;
+            if (this.reportedDiagnosticKeys.has(key))
+                return false;
+            this.reportedDiagnosticKeys.add(key);
+            return true;
+        });
+    }
+`],
+]);
+patch("c47ad0432bb8", "pi-coding-agent/core/settings-diagnostics.js", [
+    [`export function collectSettingsDiagnostics(settingsManager) {
+`, `import chalk from "chalk";
+${note("c47ad0432bb8").trim()}
+/** Print each diagnostic to stderr as \`Error: ...\` (red), \`Warning: ...\` (yellow) or a dim info line. */
+export function writeDiagnosticsToStderr(diagnostics) {
+    for (const diagnostic of diagnostics) {
+        const color = diagnostic.type === "error" ? chalk.red : diagnostic.type === "warning" ? chalk.yellow : chalk.dim;
+        const prefix = diagnostic.type === "error" ? "Error: " : diagnostic.type === "warning" ? "Warning: " : "";
+        console.error(color(\`\${prefix}\${diagnostic.message}\`));
+    }
+}
+export function collectSettingsDiagnostics(settingsManager) {
+`],
+]);
+patch("c47ad0432bb8", "pi-coding-agent/main.js", [
+    ['import { collectSettingsDiagnostics, deduplicateDiagnostics } from "./core/settings-diagnostics.js";', 'import { collectSettingsDiagnostics, deduplicateDiagnostics, writeDiagnosticsToStderr } from "./core/settings-diagnostics.js";'],
+    [`function reportDiagnostics(diagnostics) {
+    for (const diagnostic of diagnostics) {
+        const color = diagnostic.type === "error" ? chalk.red : diagnostic.type === "warning" ? chalk.yellow : chalk.dim;
+        const prefix = diagnostic.type === "error" ? "Error: " : diagnostic.type === "warning" ? "Warning: " : "";
+        console.error(color(\`\${prefix}\${diagnostic.message}\`));
+    }
+}
+`, ""],
+    [`    const startupDiagnostics = deduplicateDiagnostics([...startupSettingsDiagnostics, ...runtime.diagnostics]);
+`, `    ${note("c47ad0432bb8").trim()}
+    // Taking them marks them reported, so the modes do not report them again after a session replacement.
+    const startupDiagnostics = deduplicateDiagnostics([
+        ...startupSettingsDiagnostics,
+        ...runtime.takeUnreportedDiagnostics(),
+    ]);
+`],
+    [`    if (parsed.help) {
+        reportDiagnostics(startupDiagnostics);
+`, `    if (parsed.help) {
+        writeDiagnosticsToStderr(startupDiagnostics);
+`],
+    [`    if (parsed.listModels !== undefined) {
+        reportDiagnostics(startupDiagnostics);
+`, `    if (parsed.listModels !== undefined) {
+        writeDiagnosticsToStderr(startupDiagnostics);
+`],
+    [`    if (appMode !== "interactive" || hasRuntimeErrors) {
+        reportDiagnostics(startupDiagnostics);
+`, `    if (appMode !== "interactive" || hasRuntimeErrors) {
+        writeDiagnosticsToStderr(startupDiagnostics);
+`],
+]);
+patch("c47ad0432bb8", "pi-coding-agent/modes/print-mode.js", [
+    ['import { killTrackedDetachedChildren } from "../utils/shell.js";\n', 'import { writeDiagnosticsToStderr } from "../core/settings-diagnostics.js";\nimport { killTrackedDetachedChildren } from "../utils/shell.js";\n'],
+    [`    runtimeHost.setRebindSession(async () => {
+        await rebindSession();
+    });
+`, `    runtimeHost.setRebindSession(async () => {
+        await rebindSession();
+        ${note("c47ad0432bb8").trim()}
+        writeDiagnosticsToStderr(runtimeHost.takeUnreportedDiagnostics());
+    });
+`],
+]);
+patch("c47ad0432bb8", "pi-coding-agent/modes/rpc/rpc-mode.js", [
+    ['import { killTrackedDetachedChildren } from "../../utils/shell.js";\n', 'import { writeDiagnosticsToStderr } from "../../core/settings-diagnostics.js";\nimport { killTrackedDetachedChildren } from "../../utils/shell.js";\n'],
+    [`    runtimeHost.setRebindSession(async () => {
+        await rebindSession();
+    });
+`, `    runtimeHost.setRebindSession(async () => {
+        await rebindSession();
+        ${note("c47ad0432bb8").trim()}
+        // stderr, never stdout: stdout carries the RPC protocol.
+        writeDiagnosticsToStderr(runtimeHost.takeUnreportedDiagnostics());
+    });
+`],
+]);
+patch("c47ad0432bb8", "pi-coding-agent/modes/interactive/interactive-mode.js", [
+    [`            await this.rebindCurrentSession({ renderBeforeBind: true });
+            this.themeController.applyFromSettings();
+`, `            await this.rebindCurrentSession({ renderBeforeBind: true });
+            this.themeController.applyFromSettings();
+            ${note("c47ad0432bb8").trim()}
+            this.showRuntimeDiagnostics(this.runtimeHost.takeUnreportedDiagnostics());
+`],
+    [`        for (const diagnostic of startupDiagnostics ?? []) {
+            if (diagnostic.type === "error") {
+                this.showError(diagnostic.message);
+            }
+            else if (diagnostic.type === "warning") {
+                this.showWarning(diagnostic.message);
+            }
+            else {
+                this.showStatus(diagnostic.message);
+            }
+        }
+`, `        this.showRuntimeDiagnostics(startupDiagnostics ?? []);
+`],
+    [`    async rebindCurrentSession(options = {}) {
+`, `    showRuntimeDiagnostics(diagnostics) {
+        for (const diagnostic of diagnostics) {
+            if (diagnostic.type === "error") {
+                this.showError(diagnostic.message);
+            }
+            else if (diagnostic.type === "warning") {
+                this.showWarning(diagnostic.message);
+            }
+            else {
+                this.showStatus(diagnostic.message);
+            }
+        }
+    }
+    async rebindCurrentSession(options = {}) {
+`],
+]);
+// END backport c47ad0432bb8
+
 // BEGIN backport c8c456c85c6e
 // c8c456c85c6e (#12234): a fallback to another model ("Could not restore model x/y. Using a/b") is a warning among the runtime's diagnostics, so every mode reports it at startup and
 // after each replacement. Without any model the message is login guidance, which interactive mode still receives as its option; with a model it does not, so a fallback is shown once.
@@ -1430,6 +1583,8 @@ patch("c8c456c85c6e", "pi-coding-agent/main.js", [
 // END backport c8c456c85c6e
 // not carried: pi-coding-agent/utils/deprecation.js (deleted file): warnDeprecation had no caller and the package does not export it; a backport table patches files and cannot delete one, and nothing observable reads it.
 ||||||| 297b8449d5
+
+||||||| 16b44bf4ca
 
 
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime

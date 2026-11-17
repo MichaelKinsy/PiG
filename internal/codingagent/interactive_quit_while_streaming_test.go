@@ -34,6 +34,8 @@ func (h *quitSettleRuntime) SetBeforeSessionInvalidate(func()) {}
 func (h *quitSettleRuntime) SetRebindSession(func(context.Context, InteractiveSessionHandle) error) {
 }
 
+func (h *quitSettleRuntime) TakeUnreportedDiagnostics() []AgentSessionRuntimeDiagnostic { return nil }
+
 func (h *quitSettleRuntime) SetBeforeQuitDispose(settle func()) { h.settle = settle }
 
 func (h *quitSettleRuntime) EmitQuitShutdownAfterStop() { h.dispose(h.settle) }
