@@ -113,7 +113,7 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) err
 			}
 			slots <- struct{}{}
 			t0 := time.Now()
-			why, broke := mutantProblem(root, *r, mutants[r.Row.Pi], replays)
+			why, broke, also := mutantProblem(root, *r, mutants[r.Row.Pi], replays)
 			<-slots
 			mu.Lock()
 			mutantTime += time.Since(t0)
@@ -130,6 +130,10 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) err
 				r.Proven = false
 				r.Reasons = append(r.Reasons, why)
 				return
+			}
+			if also != "" {
+				// The mutant was killed by failed assertions; what else the replay showed is reported, not judged.
+				fmt.Fprintf(os.Stderr, "portmap: %s: mutant killed; %s\n", r.Row.Pi, also)
 			}
 			u.entry.Killed = true
 			storeEntry(root, u.entry)
