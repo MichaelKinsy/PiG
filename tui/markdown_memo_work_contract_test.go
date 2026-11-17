@@ -157,6 +157,7 @@ func TestMarkdownForeignThemeRendersRepeatedTextEachTime(t *testing.T) {
 
 // Text with a "[" renders the same without link definitions whatever follows, so a streamed frame renders only the text that changed.
 func TestMarkdownBracketTextIsMemoizedWithoutDefinitions(t *testing.T) {
+	pauseGC(t) // a collection between two renders frees the memos a Markdown holds weakly, so the count below would depend on the collector; a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	renders := countingInlineRenders(t)
 	text := uniqueParagraphs(31, "Paragraph N with [x] and [text](http://a.b) and **bold**.")
@@ -205,6 +206,7 @@ func TestMarkdownFinishStreamingAfterAnUndrawnDelta(t *testing.T) {
 
 // A default text style without a color function, and the default color, keep the inline renderings.
 func TestMarkdownDefaultStyleWithoutColorKeepsInlineRenderings(t *testing.T) {
+	pauseGC(t) // a collection between two renders frees the memos a Markdown holds weakly, so the count below would depend on the collector; a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	renders := countingInlineRenders(t)
 	text := uniqueParagraphs(31, "Paragraph N with **bold**.")
