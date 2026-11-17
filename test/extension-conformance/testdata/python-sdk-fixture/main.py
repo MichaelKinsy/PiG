@@ -3375,14 +3375,19 @@ def new_extension() -> pig_sdk.Extension:
 
     def event_assign_probe(ctx, args):
         # Subscribe to the event named by the argument with a handler that ASSIGNS a new value to the event's input (tool_call), messages (context) or entries (turn_end) instead of editing the old value in place, and returns nothing.
-        name = args.strip()
+        name, _, variant = args.strip().partition(" ")
         edited = "other-event-edit"
 
         def assign(hctx, data):
             if name == "tool_call":
                 data["input"] = {"command": edited}
             elif name == "context":
-                data["messages"] = [{"role": "user", "content": [{"type": "text", "text": edited}], "timestamp": 1}]
+                if variant == "bad":
+                    data["messages"] = "oops"
+                elif variant == "badmsg":
+                    data["messages"] = [42]
+                else:
+                    data["messages"] = [{"role": "user", "content": [{"type": "text", "text": edited}], "timestamp": 1}]
             elif name == "turn_end":
                 data["entries"] = [{"type": "custom", "customType": edited}]
             else:

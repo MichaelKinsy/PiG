@@ -924,13 +924,18 @@
       ;; event_assign_probe: `<event>`, a handler that ASSIGNS a new value to the event's input (tool_call), messages (context) or entries (turn_end) instead of editing the old value in place, and returns nothing.
       (pig:command ext "event_assign_probe" "Subscribe to the event named by the argument with a handler that assigns a new value to the event's input, messages or entries"
                    (lambda (ctx args) (declare (ignore ctx))
-                     (let ((name (string-trim '(#\Space #\Newline #\Tab) args))
+                     (let* ((words (multiple-value-list (split-first args)))
+                            (name (first words)) (variant (string-trim '(#\Space #\Newline #\Tab) (or (second words) "")))
                            (edited "other-event-edit"))
                        (pig:on ext name
                                (lambda (hctx data) (declare (ignore hctx))
                                  (cond
                                    ((equal name "tool_call") (setf (gethash "input" data) (pig:obj "command" edited)))
-                                   ((equal name "context") (setf (gethash "messages" data) (vector (pig:obj "role" "user" "content" (vector (pig:obj "type" "text" "text" edited)) "timestamp" 1))))
+                                   ((equal name "context")
+                                    (setf (gethash "messages" data)
+                                          (cond ((equal variant "bad") "oops")
+                                                ((equal variant "badmsg") (vector 42))
+                                                (t (vector (pig:obj "role" "user" "content" (vector (pig:obj "type" "text" "text" edited)) "timestamp" 1))))))
                                    ((equal name "turn_end") (setf (gethash "entries" data) (vector (pig:obj "type" "custom" "customType" edited))))
                                    (t (error "event_assign_probe has no event ~A" name)))
                                  nil)))))

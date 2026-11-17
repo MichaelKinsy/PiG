@@ -2505,16 +2505,23 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	// event_assign_probe subscribes to the event named by the argument with a handler that ASSIGNS a new value to the event's input (tool_call), messages (context) or
-	// entries (turn_end) instead of editing the old value in place, and returns nothing (TestAssignedEventMembersFollowPi).
+	// entries (turn_end) instead of editing the old value in place, and returns nothing (TestAssignedEventMembersFollowPi). `context bad` assigns a string and `context badmsg` a list holding a number (TestAssignedContextListIsValidatedLikeAReturnedOne).
 	ext.Command("event_assign_probe", "Subscribe to the event named by the argument with a handler that assigns a new value to the event's input, messages or entries", func(ctx sdk.Context, args string) error {
-		name := strings.TrimSpace(args)
+		name, variant, _ := strings.Cut(strings.TrimSpace(args), " ")
 		const edited = "other-event-edit"
 		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
 			switch name {
 			case "tool_call":
 				data["input"] = map[string]any{"command": edited}
 			case "context":
-				data["messages"] = []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "text", "text": edited}}, "timestamp": 1}}
+				switch variant {
+				case "bad":
+					data["messages"] = "oops"
+				case "badmsg":
+					data["messages"] = []any{float64(42)}
+				default:
+					data["messages"] = []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "text", "text": edited}}, "timestamp": 1}}
+				}
 			case "turn_end":
 				data["entries"] = []any{map[string]any{"type": "custom", "customType": edited}}
 			default:

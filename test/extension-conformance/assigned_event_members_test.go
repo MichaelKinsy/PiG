@@ -15,10 +15,11 @@ import (
 )
 
 // assignedEventCase is one event whose handler ASSIGNS a new value to a member of the event (the event_assign_probe handlers) instead of editing the old value in
-// place, and what Pi does with it: seen is what the next handler of the chain reads, caller what the caller of the emit is left with.
+// place, and what Pi does with it: seen is what the next handler of the chain reads, caller what the caller of the emit is left with. carried is what both are
+// when the SDK carries the assigned member, as the native SDKs do for a context list and the entries of turn_end; nil for tool_call.
 type assignedEventCase struct {
-	event, field string
-	seen, caller map[string]any
+	event, field          string
+	seen, caller, carried map[string]any
 }
 
 func assignedEventCases() []assignedEventCase {
@@ -30,9 +31,11 @@ func assignedEventCases() []assignedEventCase {
 		// handed the event (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), which the assignment does not touch.
 		{event: "tool_call", field: "input", seen: map[string]any{"input": map[string]any{"command": inPlaceEdited}}, caller: map[string]any{"input": map[string]any{"command": "orig"}}},
 		// emitContext makes a fresh event for each handler from its own list and takes a list only from the handler's result or an in-place edit of the list it handed.
-		{event: "context", field: "messages", seen: map[string]any{"messages": []any{user("orig")}}, caller: map[string]any{"messages": []any{user("orig")}}},
+		{event: "context", field: "messages", seen: map[string]any{"messages": []any{user("orig")}}, caller: map[string]any{"messages": []any{user("orig")}},
+			carried: map[string]any{"messages": []any{user(inPlaceEdited)}}},
 		// emitBoundary makes a fresh event for each handler and takes entries only from the handler's result.
-		{event: "turn_end", field: "entries", seen: map[string]any{"entries": []any{}}, caller: map[string]any{"entries": []any{}}},
+		{event: "turn_end", field: "entries", seen: map[string]any{"entries": []any{}}, caller: map[string]any{"entries": []any{}},
+			carried: map[string]any{"entries": []any{map[string]any{"type": "custom", "customType": inPlaceEdited}}}},
 	}
 }
 
@@ -47,9 +50,6 @@ func TestAssignedEventMembersFollowPi(t *testing.T) {
 	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, c := range assignedEventCases() {
-				if c.event != "tool_call" {
-					continue
-				}
 				t.Run(c.event, func(t *testing.T) {
 					h := tc.make(t)
 					t.Cleanup(func() {
@@ -101,17 +101,69 @@ func TestAssignedEventMembersFollowPi(t *testing.T) {
 						}
 						got = map[string]any{"entries": decodeAny(t, entries)}
 					}
-					want := c.caller
-					if c.event == "tool_call" && strings.Contains(tc.name, "rust") {
+					wantCaller, wantSeen := c.caller, c.seen
+					switch {
+					case c.event == "tool_call" && strings.Contains(tc.name, "rust"):
 						// A Rust handler holds the event as one Value, so assigning data["input"] and editing it are the same edit, and the call's input is what the handler left (the language limit D541 states for Rust message events).
-						want = map[string]any{"input": map[string]any{"command": inPlaceEdited}}
+						wantCaller = map[string]any{"input": map[string]any{"command": inPlaceEdited}}
+					case c.carried != nil && !strings.HasPrefix(tc.name, "subprocess-node"):
+						// The native SDKs carry the assigned list (the Go and Rust SDKs since v0.2.0 / v0.3.0, Lisp's turn_end since v0.7.0), the next handler and the request or session hold it; the Node runtime follows Pi.
+						wantCaller, wantSeen = c.carried, c.carried
 					}
-					if !reflect.DeepEqual(got, want) {
-						t.Errorf("%s %s: what the caller is left with\n got %v\nwant %v", tc.name, c.event, got, want)
+					if !reflect.DeepEqual(got, wantCaller) {
+						t.Errorf("%s %s: what the caller is left with\n got %v\nwant %v", tc.name, c.event, got, wantCaller)
 					}
 					seen := map[string]any{c.field: reportedField(t, h, c.event, c.field)}
-					if !reflect.DeepEqual(seen, c.seen) {
-						t.Errorf("%s %s: what the next handler of the chain sees\n got %v\nwant %v", tc.name, c.event, seen, c.seen)
+					if !reflect.DeepEqual(seen, wantSeen) {
+						t.Errorf("%s %s: what the next handler of the chain sees\n got %v\nwant %v", tc.name, c.event, seen, wantSeen)
+					}
+				})
+			}
+		})
+	}
+}
+
+// TestAssignedContextListIsValidatedLikeAReturnedOne requires a native SDK that carries an assigned event.messages to treat a bad one (a string, a list holding a
+// number) as it treats the same value returned from the handler: the host answers both alike, whether it refuses them or not. The Node runtime does not carry an assignment.
+func TestAssignedContextListIsValidatedLikeAReturnedOne(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	t.Parallel()
+
+	for _, tc := range append(sdkHarnessCases(), packedSDKHarnessCases()...) {
+		if strings.HasPrefix(tc.name, "subprocess-node") {
+			continue
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			for _, bad := range []struct{ variant, returned string }{{"bad", `{"messages":"oops"}`}, {"badmsg", `{"messages":[42]}`}} {
+				t.Run(bad.variant, func(t *testing.T) {
+					outcome := func(setup func(h *harness)) string {
+						h := tc.make(t)
+						t.Cleanup(func() {
+							if h.cleanup != nil {
+								h.cleanup()
+							}
+							if h.host != nil {
+								h.host.Shutdown("test done")
+							}
+						})
+						setup(h)
+						ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+						defer cancel()
+						returned, err := h.runner.EmitContext(ctx, []extension.AgentMessage{agentMessageFromJSON(t, `{"role":"user","content":[{"type":"text","text":"orig"}],"timestamp":1}`)})
+						if err != nil {
+							return "error: " + err.Error()
+						}
+						return "messages: " + string(mustMarshal(t, returned))
+					}
+					assigned := outcome(func(h *harness) { runConformanceCommandArgs(t, h, "event_assign_probe", "context "+bad.variant) })
+					returned := outcome(func(h *harness) {
+						runConformanceCommandArgs(t, h, "event_probe_result", "context "+bad.returned)
+						runConformanceCommandArgs(t, h, "event_probe_on", "context")
+					})
+					if assigned != returned {
+						t.Errorf("%s: a handler that assigned the bad list left\n %s\nwhere the same value returned left\n %s", tc.name, assigned, returned)
 					}
 				})
 			}

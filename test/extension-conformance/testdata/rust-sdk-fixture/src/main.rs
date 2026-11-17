@@ -5960,13 +5960,17 @@ fn main() {
         "event_assign_probe",
         "Subscribe to the event named by the argument with a handler that assigns a new value to the event's input, messages or entries",
         move |_ctx, args| {
-            let name = args.trim().to_string();
+            let (name, variant) = args.trim().split_once(' ').map_or((args.trim().to_string(), String::new()), |(n, v)| (n.to_string(), v.to_string()));
             let which = name.clone();
             let subscription = subscribe(&event_assign_subscriber, &name, move |_ctx, data| {
                 match which.as_str() {
                     "tool_call" => data["input"] = serde_json::json!({"command": "other-event-edit"}),
                     "context" => {
-                        data["messages"] = serde_json::json!([{"role": "user", "content": [{"type": "text", "text": "other-event-edit"}], "timestamp": 1}])
+                        data["messages"] = match variant.as_str() {
+                            "bad" => serde_json::json!("oops"),
+                            "badmsg" => serde_json::json!([42]),
+                            _ => serde_json::json!([{"role": "user", "content": [{"type": "text", "text": "other-event-edit"}], "timestamp": 1}]),
+                        }
                     }
                     "turn_end" => {
                         data["entries"] = serde_json::json!([{"type": "custom", "customType": "other-event-edit"}])
