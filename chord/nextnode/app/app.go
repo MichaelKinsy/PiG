@@ -660,8 +660,9 @@ func (a *App) start(opened openedServer, ctx context.Context) error {
 	if err := PrivateStore(pluginsStore); err != nil {
 		return err
 	}
+	// pig divergence (D460): Pi's `themesFacet()` and `translationsFacet()` are core facets of the plugins' host (`app.ts:384`, `:386`): here the Node host's own.
 	node, _, err := a.Plugins.Component.Load(plugins.PluginsLoad{
-		Kind: "server", Modules: modules, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
+		Kind: "server", Core: []plugins.CoreFacet{piThemes, piTranslations}, Modules: modules, Address: &server, Principal: options.Principal.Server, Peer: options.Principal.Server,
 		CloseTimeout: options.Timeouts.close(), ReadyTimeout: options.Timeouts.ready(), ReloadDrainTimeout: options.Timeouts.reloadDrain(), Telemetry: options.Telemetry,
 		PrincipalAttributes: options.PrincipalAttributes,
 		Store:               &plugins.StoreOptions{Path: pluginsStore},

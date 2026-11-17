@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -37,11 +38,13 @@ type PluginScript struct {
 // Pi's own, the subprocess's; naming it here replaces nothing.
 type HostPackages map[string]string
 
-// CoreFacet is one of the app's own facets that is JavaScript: its name (a plugin name) and the module whose default export is the facet,
-// a file the subprocess imports.
+// CoreFacet is one of the app's own facets that is JavaScript, named as a plugin is (its name) and made one of two ways: Module is a file the
+// subprocess imports, whose default export is the facet; Export is the name of a function of Pi's own package (`@earendil-works/chord`)
+// that the host calls to make it (`translationsFacet`), so no file is written for a facet Pi already ships. Exactly one is set.
 type CoreFacet struct {
 	Name   string
 	Module string
+	Export string
 }
 
 // pig divergence (D607): Pi's load takes a Host, core PluginFacets and module values; this takes the options of the subprocess host's start.
@@ -207,7 +210,8 @@ type heartbeatWire struct {
 
 type coreWire struct {
 	Name   string `json:"name"`
-	Module string `json:"module"`
+	Module string `json:"module,omitempty"`
+	Export string `json:"export,omitempty"`
 }
 
 type addressWire struct {
@@ -297,6 +301,11 @@ func nonNil(list []string) []string {
 func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHost, host.LoadReport, error) {
 	if options.Peer == nil {
 		return nil, host.LoadReport{}, errors.New("plugins.load: a Peer is required")
+	}
+	for _, core := range options.Core {
+		if (core.Module == "") == (core.Export == "") {
+			return nil, host.LoadReport{}, fmt.Errorf("plugins.load: core facet %q needs a Module or an Export, not both or neither", core.Name)
+		}
 	}
 	packages, err := goPackagesWire(options.GoPackages, options.Modules)
 	if err != nil {
