@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "7d474a354637b82c9ee6a5012afc17b8b38df8341ce730c5f91846c8cc018da7",
+      "sha256": "b2be471e2bbbb68277c129a1f9ffd8dd2efce233801beea09f3a4496fc507fa9",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -5171,6 +5171,78 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/76-resume-model-fallback-warning.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Warning: Could not restore model",
+            "capture_end": "Resumed session"
+          },
+          "reason": "Owned visible surface: /resume into a session whose model is gone shows the fallback warning above Resumed session, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/77-resume-model-fallback-warning-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Warning: Could not restore model",
+            "capture_end": "Resumed session"
+          },
+          "reason": "Owned visible surface: /resume into a session whose model is gone shows the fallback warning above Resumed session in the alternate screen, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/78-continue-model-fallback-warning-once.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "hello aaaaaaaa",
+            "capture_end": "$ echo startup-done"
+          },
+          "reason": "Owned visible surface: --continue into a session whose model is gone shows the fallback warning once, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/79-second-resume-model-fallback-repeats-no-warning.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "hello aaaaaaaa",
+            "capture_end": "$ echo second-resume-done"
+          },
+          "reason": "Owned visible surface: A second /resume into the session whose model is gone adds no second fallback warning, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/json/01-json-mode-streams-events.toml",
       "transforms": [
         {
@@ -5686,6 +5758,52 @@
         {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: --mode json: the diagnostic of a replacement is on stderr once and not in the event stream",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/json/17-json-model-fallback-stderr.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"(id|parentId)\":\"[0-9a-f-]{8,36}\"",
+          "with": "\"$1\":\"<ID>\"",
+          "reason": "Generated entry keys and the session header id are random per run; keep each member's name and position."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"cwd\":\"[^\"]*\"",
+          "with": "\"cwd\":\"<CWD>\"",
+          "reason": "D2: each binary runs in its own isolated cwd."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "/tmp/parity-snap-cwd-[0-9]+",
+          "with": "<CWD>",
+          "reason": "D2: the isolated cwd root differs per run and binary; the system prompt's cwd section keeps its position."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Independent wall-clock durations of the assistant turn vary by a millisecond; the member's name and position stay byte-compared."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: --mode json -c into a session whose model is gone: the fallback is a warning on stderr, the event stream on stdout",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         }
       ]
@@ -7017,6 +7135,16 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/print/13-print-model-fallback-stderr.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: print -c into a session whose model is gone: the fallback is a warning on stderr, the answer on stdout",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/project-trust/06-session-cwd-precedes-project-resource-loading.toml",
       "transforms": [
         {
@@ -7576,6 +7704,12 @@
       "scenario": "test/parity/scenarios/rpc/22-rpc-unknown-model-preflight.toml",
       "transforms": [
         {
+          "kind": "stderr_normalize_replace",
+          "pattern": "/[^ \\n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\\.md",
+          "with": "<DOCS>/$1.md",
+          "reason": "D2/D22: the documentation root is distribution-specific; keep the file names and the guidance text. Pi c8c456c85c6e (main.ts:917-918) makes the no-models guidance a warning on stderr in every mode, so the stderr comparison meets the root."
+        },
+        {
           "kind": "path",
           "paths": [
             "/*/error"
@@ -7767,6 +7901,17 @@
         {
           "kind": "canonical_json",
           "reason": "JSON object member order is not semantic. Raw stdout remains retained; fields and record order are not projected."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/29-rpc-sigterm-open-stdin.toml",
+      "transforms": [
+        {
+          "kind": "stderr_normalize_replace",
+          "pattern": "/[^ \\n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\\.md",
+          "with": "<DOCS>/$1.md",
+          "reason": "D2/D22: the documentation root is distribution-specific; keep the file names and the guidance text. Pi c8c456c85c6e (main.ts:917-918) makes the no-models guidance a warning on stderr in every mode, so the stderr comparison meets the root."
         }
       ]
     },

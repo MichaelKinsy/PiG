@@ -24,6 +24,11 @@ func EvaluateOutcome(o *ScenarioOutcome) {
 			o.Failures = append(o.Failures, fmt.Sprintf("normalize_replace %q requires a reason", rule.Pattern))
 		}
 	}
+	for _, rule := range a.StderrNormalizeReplace {
+		if strings.TrimSpace(rule.Reason) == "" {
+			o.Failures = append(o.Failures, fmt.Sprintf("stderr_normalize_replace %q requires a reason", rule.Pattern))
+		}
+	}
 	o.Pig.MedianMs = medianRuntime(o.Pig.Runs)
 	o.Pi.MedianMs = medianRuntime(o.Pi.Runs)
 
@@ -183,8 +188,21 @@ func EvaluateOutcome(o *ScenarioOutcome) {
 			g, p := o.Pig.Runs[run], o.Pi.Runs[run]
 			if !g.StderrCaptured || !p.StderrCaptured {
 				o.Failures = append(o.Failures, "stderr_equal requires separately captured stderr")
-			} else if g.Stderr != p.Stderr {
-				o.Failures = append(o.Failures, fmt.Sprintf("run %d stderr mismatch: pig=%q pi=%q", run+1, g.Stderr, p.Stderr))
+			} else {
+				// Individually justified replacements for the stderr comparison only (a documentation root in a warning is distribution-specific).
+				gs, ps := g.Stderr, p.Stderr
+				for _, rule := range a.StderrNormalizeReplace {
+					if strings.TrimSpace(rule.Reason) == "" {
+						continue
+					}
+					if re, err := regexp.Compile(rule.Pattern); err == nil {
+						gs = re.ReplaceAllString(gs, rule.With)
+						ps = re.ReplaceAllString(ps, rule.With)
+					}
+				}
+				if gs != ps {
+					o.Failures = append(o.Failures, fmt.Sprintf("run %d stderr mismatch: pig=%q pi=%q", run+1, g.Stderr, p.Stderr))
+				}
 			}
 		}
 	}

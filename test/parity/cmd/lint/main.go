@@ -152,6 +152,7 @@ type assertBlock struct {
 	FinalFrameCursorOnlyPi  *int                    `toml:"final_frame_cursor_only_pi"`
 	Runs                    int                     `toml:"runs"`
 	NormalizeReplace        []normalizeReplaceBlock `toml:"normalize_replace"`
+	StderrNormalizeReplace  []normalizeReplaceBlock `toml:"stderr_normalize_replace"`
 	Extensions              extensionAssertBlock    `toml:"extensions"`
 
 	TranscriptSequencesEqual []sequenceWindowBlock `toml:"transcript_sequences_equal"`
@@ -675,6 +676,11 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 	for _, rule := range sc.Assert.NormalizeReplace {
 		if strings.TrimSpace(rule.Reason) == "" {
 			out = append(out, violation{path, "normalize-rule-reason-missing", fmt.Sprintf("normalize_replace %q requires its own reason", rule.Pattern)})
+		}
+	}
+	for _, rule := range sc.Assert.StderrNormalizeReplace {
+		if strings.TrimSpace(rule.Reason) == "" {
+			out = append(out, violation{path, "normalize-rule-reason-missing", fmt.Sprintf("stderr_normalize_replace %q requires its own reason", rule.Pattern)})
 		}
 	}
 	out = append(out, lintTranscriptSequences(path, source, sc)...)
