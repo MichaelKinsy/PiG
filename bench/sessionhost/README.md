@@ -1,15 +1,15 @@
 # sessionhost: memory of N concurrent RPC sessions
 
-`sessionhost.py` compares two ways to serve N RPC sessions: arm `listen`, one `pig --mode rpc --listen` process with N connections, and arm `rpc`, N `pig --mode rpc` processes (D232). Both arms use the same agent directory, the same scripted model and the same workload, and sample the memory of the whole process tree before the first turn and after every turn.
+`sessionhost.py` compares three ways to serve N RPC sessions (D232): arm `listen`, one `pig --mode rpc --listen` process with N connections whose sessions have their own extension processes (the default); arm `listen-shared`, the same with `--listen-share-extensions`; and arm `rpc`, N `pig --mode rpc` processes. Both arms use the same agent directory, the same scripted model and the same workload, and sample the memory of the whole process tree before the first turn and after every turn.
 
 ```sh
 go build -trimpath -o /tmp/pig-listen ./cmd/pig
-python3 bench/sessionhost/sessionhost.py --pig /tmp/pig-listen --sessions 1 10 50 100 --json-out sessionhost.json
-python3 bench/sessionhost/sessionhost.py --pig /tmp/pig-listen --extensions --sessions 1 10 20 --json-out sessionhost-ext.json
+python3 bench/sessionhost/sessionhost.py --pig /tmp/pig-listen --sessions 1 10 100 --json-out sessionhost.json
+python3 bench/sessionhost/sessionhost.py --pig /tmp/pig-listen --extensions --sessions 1 10 100 --json-out sessionhost-ext.json
 ```
 
 - `--extensions` adds the two extension fixtures of `coding/cli/testdata` (`listen-counter-go`, `listen-counter.mjs`) to the agent directory, so every session loads a Go and a Node extension. It needs Node on `PATH` and the Go toolchain. A one-session warm-up run builds the Go extension before any arm is measured.
-- `--turns T` runs the first T of the five prompts; `--arms listen rpc` selects the arms.
+- `--turns T` runs the first T of the five prompts; `--arms listen listen-shared rpc` selects the arms. Every run also records the time until the server's socket exists (`listen` arms) and until every session has answered `get_state`; `sessions_ready_s` counts from the connections for the `listen` arms, whose builds run one at a time, and from the first process start for `rpc`, whose processes start in parallel.
 - Every process gets its own scratch `PIG_CODING_AGENT_DIR`, `PI_CODING_AGENT_DIR`, `PIG_HOME` and `PI_HOME`, and runs with `--no-session`.
 - Memory is `phys_footprint` (`footprint`) on macOS and PSS (`/proc/<pid>/smaps_rollup`) on Linux, as `private`, beside RSS. The extension process count is the number of descendants of the `pig` processes. The slope is the change of the last point between the smallest and the largest N, per additional session.
 - The script exits 1 if any run has an error: a refused prompt, an errored assistant turn, a closed stream, a timeout, a model request count other than 2 per turn per session, or with `--extensions` a request that did not declare both fixture tools (the self-check; run `--sessions 1 --turns 1` for the minimal case).
@@ -26,23 +26,35 @@ The five prompts of jcode's `scripts/bench_headless_memory.py`, verbatim:
 
 The model is `scripted_model.py`, served through `bench/compare/fake_server.py`. `bench/compare/fake_model_ctx.py` answers each prompt with four tool turns, so it could not meet the two-request check; `scripted_model.py` answers every prompt with one `read` call on `README.md` and then the text `done`, whatever the prompt says. The prompts therefore fix the request sizes, not the work.
 
-## Result (2026-11-01, Apple M3 Max, macOS 27.2, `phys_footprint` after turn 5, 0 errors)
+## Result (2026-11-06, Linux, Intel Xeon Platinum 8468 host xd6702, `tern-ci:v7` container, `pss` after turn 5, 0 errors)
 
-| Sessions | `listen` | `rpc` |
-|---|---|---|
-| 1 | 20.8 MB | 28.3 MB |
-| 10 | 52.4 MB | 284.7 MB |
-| 50 | 166.5 MB | 1430.0 MB |
-| 100 | 315.0 MB | 2853.4 MB |
-| slope per additional session (N 1 to 100) | 2.97 MB | 28.5 MB |
+Memory, no extensions:
 
-With the two extensions (`--extensions`):
+| Sessions | `listen` (isolated) | `listen-shared` | `rpc` |
+|---|---|---|---|
+| 1 | 51.5 MB | 51.3 MB | 50.3 MB |
+| 10 | 61.2 MB | 64.7 MB | 148.2 MB |
+| 100 | 141.4 MB | 147.7 MB | 1109.2 MB |
+| slope per additional session (N 1 to 100) | 0.91 MB | 0.97 MB | 10.70 MB |
 
-| Sessions | `listen` | extension processes | `rpc` | extension processes |
-|---|---|---|---|---|
-| 1 | 87.6 MB | 2 | 103.8 MB | 2 |
-| 10 | 209.4 MB | 2 | 1047.4 MB | 20 |
-| 20 | 307.1 MB | 2 | 2132.9 MB | 40 |
-| slope per additional session (N 1 to 20) | 11.6 MB | | 106.8 MB | |
+With the two extensions (`--extensions`), memory and extension processes:
 
-The `listen` slope without extensions is above the 0.5 MB per session of the Go SDK spike in `docs/specs/multi-session-rpc-server.md`: the server builds each connection's own settings, resources, `ModelRuntime` and Session, and the spike shared them. The bench does not separate the `ModelRuntime` from the rest of the build. The extension slope is the memory of each session's extension instances inside the two shared processes.
+| Sessions | `listen` (isolated) | ext | `listen-shared` | ext | `rpc` | ext |
+|---|---|---|---|---|---|---|
+| 1 | 182.8 MB | 2 | 185.6 MB | 2 | 209.8 MB | 2 |
+| 10 | 727.4 MB | 20 | 310.1 MB | 2 | 1225.4 MB | 20 |
+| 100 | 5413.8 MB | 200 | 1298.0 MB | 2 | 10752.8 MB | 200 |
+| slope per additional session (N 1 to 100) | 52.8 MB | | 11.2 MB | | 106.5 MB | |
+
+Start-up. `server` is the time until the server's socket exists; `each` is the time from the connections until a session's first `get_state` answer, divided by N (the `listen` builds run one at a time); `all` is the time until the last of N sessions answered.
+
+| Arm | Extensions | N | server | each | all |
+|---|---|---|---|---|---|
+| `listen` | none | 1 / 10 / 100 | 73 / 46 / 45 ms | 5 / 6 / 6 ms | 0.01 / 0.06 / 0.61 s |
+| `listen-shared` | none | 1 / 10 / 100 | 38 / 34 / 35 ms | 4 / 5 / 5 ms | 0.00 / 0.05 / 0.49 s |
+| `rpc` | none | 1 / 10 / 100 | | 35 / 15 / 4 ms | 0.03 / 0.15 / 0.40 s |
+| `listen` | 2 | 1 / 10 / 100 | 279 / 299 / 300 ms | 189 / 239 / 239 ms | 0.19 / 2.39 / 23.9 s |
+| `listen-shared` | 2 | 1 / 10 / 100 | 310 / 302 / 268 ms | 211 / 96 / 98 ms | 0.21 / 0.96 / 9.84 s |
+| `rpc` | 2 | 1 / 10 / 100 | | 610 / 64 / 54 ms | 0.61 / 0.64 / 5.39 s |
+
+Reading it. The server removes the per-session Go runtime (about 10 MB of the `rpc` slope) in both modes. Only `--listen-share-extensions` removes the extension processes, and the price of that is shared module-level state (D232); the default halves the per-session cost with extensions loaded and shares nothing. The default brings 100 sessions that load two extensions up in 23.9 s against 5.4 s for 100 `rpc` processes, because the server builds one session at a time and `rpc` starts its processes in parallel. The `listen` slope without extensions is above the 0.5 MB per session of the Go SDK spike in `docs/specs/multi-session-rpc-server.md`: the server builds each connection's own settings, resources, `ModelRuntime` and Session, and the spike shared them. The bench does not separate the `ModelRuntime` from the rest of the build. The numbers of the 2026-11-01 run on an Apple M3 Max (`phys_footprint`) were 315.0 MB against 2853.4 MB for 100 sessions without extensions.
