@@ -96,7 +96,7 @@ func TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore(t *testing
 	source.putIn("artifacts", "report", "three")
 
 	copyFacet, copyNotes := notesFacet(t)
-	copied := filesOf(t, fixtureOptions{Dir: filepath.Join(base, "copy"), Extra: []host.HostFacet{copyFacet}})
+	copied := filesOf(t, fixtureOptions{Dir: filepath.Join(base, "copy"), Store: kitStore, Extra: []host.HostFacet{copyFacet}})
 	versions := copied.must("versions", "space", "artifacts", "path", "report").(*delta.JsonObject)
 	var ids []string
 	for _, item := range versions.Value("items").([]any) {
