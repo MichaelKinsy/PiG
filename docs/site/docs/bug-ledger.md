@@ -971,6 +971,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-69297a1](#bf-69297a1) | fix(chord/nextnode/http): a response is flushed before its request finishes | PiG's own defect | All platforms | Unreleased |
 | [BF-692bdf7](#bf-692bdf7) | Durable with telemetry off (no telemetry or the no-op span) no longer builds span attributes, events or… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-69899c5](#bf-69899c5) | A session entry whose write to the session file fails (a full disk, a busy or timed-out network drive) is no… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-698d040](#bf-698d040) | A Node extension no longer sees PiG's own loader in `process.execArgv` | PiG's own defect | All platforms | Unreleased |
 | [BF-6992ffb](#bf-6992ffb) | A Go, Python or Rust extension that calls `appendEntry` in a handler that already read the session log now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-6996de6](#bf-6996de6) | fix(durable/core): keep the reservation decision in a scheduler field, not two closure variables (TinyGo heap… | PiG's own defect | All platforms | Unreleased |
 | [BF-69b9811](#bf-69b9811) | Two PiG builds that share a config root (two installed versions, or stock PiG beside a Piglet Binary) no… | PiG's own defect | All platforms | 0.5.0 |
@@ -15511,6 +15512,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `69899c5212` (2026-10-27)
 - **Tests:** `coding/session_custom_entries_test.go::TestAppendExtensionEntryPropagatesNativeStorageFailure`, `internal/codingagent/session_file_operations_upstream_test.go::TestSessionFileCreationUpstream`
 - **Release note:** A session entry whose write to the session file fails (a full disk, a busy or timed-out network drive) is no longer kept in memory: the error is returned, the session keeps its last written entry as the leaf, and the next entry is written as that entry's child. Before, the next entry pointed to the lost one, and resuming the session dropped the history before the gap, including the first system message that declares the tools.
+
+### BF-698d040
+
+**A Node extension no longer sees PiG's own loader in `process.execArgv`**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension no longer sees PiG's own loader in `process.execArgv`.
+- **Root cause:** Node started an extension as , so process.execArgv in the extension held PiG's loader path. A child forked with the default execArgv, or with [...process.execArgv, ...], started with that loader too, and under --permission with only the child directory readable it died with ERR_ACCESS_DENIED before running.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `698d040146` (2026-11-16, #517)
+- **Tests:** `coding/extension/host/subprocess/node_launch_test.go::TestNodeBootstrapStartsInADirectoryWithURLSpecials`, `coding/extension/host/subprocess/node_launch_test.go::TestNodeLauncherSpawnsNodeDirectlyWithLauncherArguments`, `coding/extension/host/subprocess/packed_node_platform_test.go::TestPackedNodeLauncherUsesDirectNodeOnEveryPlatform`, `coding/extension/host/subprocess/ts_runtime_test.go::TestTypeScriptRuntimeCommandShapes`, `coding/extension/host/subprocess/ts_runtime_verified_linux_test.go::TestTypeScriptRuntimeLaunchNamesTheProcessAfterTheExecutable`, `coding/extension/host/subprocess/ts_runtime_verified_linux_test.go::TestTypeScriptRuntimeLaunchRunsTheVerifiedFileAfterTheSwap`
+- **Release note:** A Node extension no longer sees PiG's own loader in `process.execArgv`. It held `["--import", "file:///…/runtime/register-loader.mjs"]`, where Pi's is the empty list Node was started with, so a child the extension forked with the default `execArgv` or with `[...process.execArgv, …]` started with PiG's loader too. Under Node's restricted-access mode (`--allow-fs-read` with only the child's own directory readable) that child died before it ran with `ERR_ACCESS_DENIED`, which is how every workflow of pi-extensible-workflows failed with `Workflow child exited with code 1`. PiG now starts the extension's process with a small bootstrap file (`node-cli.mjs`, `node-cell.mjs`) that registers the loader inside the process and then loads the runtime, so `process.execArgv` stays empty in an isolated extension and in a packed cell, and a forked child, a spawned `process.execPath` and a worker thread start as they do under Pi; none of them gets PiG's module hooks (the `@earendil-works/pi-*` specifiers resolve in the extension's process only, as they do under Pi). What the extension itself loads, and every other property it reads from `process` (`argv`, `execPath`, `title`, `NODE_OPTIONS`, `cwd()`), are unchanged. The cache of built Node launchers and cells is rebuilt once after the update.
 
 ### BF-6992ffb
 
