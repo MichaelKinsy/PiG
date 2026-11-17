@@ -26,13 +26,8 @@ func TestHelperResolvingPiAiFromTheHarnessSeesPisExports(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The api/* modules: the root, compat and lazy entries are served by the same peer from the compat entry point and are not what D74's stand-ins decide.
-	var specifiers []string
-	for _, spec := range piAiSubpathSpecifiers(t, aiRoot) {
-		if strings.HasPrefix(spec, "@earendil-works/pi-ai/api/") {
-			specifiers = append(specifiers, spec)
-		}
-	}
+	// Every subpath of the pinned package's exports, in both package scopes.
+	specifiers := piAiSubpathSpecifiers(t, aiRoot)
 	list, _ := json.Marshal(specifiers)
 	script := `const out = {};
 for (const spec of ` + string(list) + `) {
@@ -71,6 +66,7 @@ process.stdout.write(JSON.stringify(out));`
 	pi, pig := run(piDir), run(filepath.Join(runtime, "harness"))
 	for _, spec := range specifiers {
 		want, got := pi[spec], pig[spec]
+		t.Logf("TABLE %-72s | Pi links: %-3s | PiG harness peer links: %-3s | names equal: %s", spec, yesNo(want.Error == ""), yesNo(got.Error == ""), yesNo(want.Error == "" && got.Error == "" && maps.Equal(want.Names, got.Names)))
 		switch {
 		case want.Error != "" && got.Error != "":
 		case want.Error != "":
@@ -83,11 +79,21 @@ process.stdout.write(JSON.stringify(out));`
 					t.Errorf("%s: Pi exports %s (%s); the harness peer has %q", spec, name, kind, got.Names[name])
 				}
 			}
+			// The root and ./compat entries are served by one module, the extension runtime's pi-ai, which also exports the names of pi-ai's retired root API (streamSimple, getEnvApiKey, Type, ...):
+			// a superset Pi's own entries do not have. It is recorded in the table, not an error of this test, which asks that nothing Pi exports is missing.
+			superset := strings.HasSuffix(spec, "/pi-ai") || strings.HasSuffix(spec, "/pi-ai/compat")
 			for name := range got.Names {
-				if _, ok := want.Names[name]; !ok {
+				if _, ok := want.Names[name]; !ok && !superset {
 					t.Errorf("%s: the harness peer exports %s, which Pi does not", spec, name)
 				}
 			}
 		}
 	}
+}
+
+func yesNo(ok bool) string {
+	if ok {
+		return "yes"
+	}
+	return "no"
 }

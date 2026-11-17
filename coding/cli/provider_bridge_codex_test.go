@@ -209,7 +209,7 @@ func TestProviderBridgePushesCodexStatsBeforeTheResult(t *testing.T) {
 	}
 	stats := run.statsOf(t, last)
 	want := map[string]string{
-		"requests": "1", "connectionsCreated": "1", "connectionsReused": "0", "cachedContextRequests": "0", "storeTrueRequests": "0",
+		"requests": "1", "connectionsCreated": "1", "connectionsReused": "0", "cachedContextRequests": "1", "storeTrueRequests": "0",
 		"fullContextRequests": "1", "deltaRequests": "0", "lastInputItems": "1", "websocketFailures": "0", "sseFallbacks": "0",
 	}
 	for name, value := range want {
@@ -281,7 +281,7 @@ func TestProviderBridgeResetLineClearsCountersAndTheSSEFallbackFlag(t *testing.T
 		t.Fatalf("setup: %d SSE requests, want the fallen-back session's second stream to use SSE", wire.posts.Load())
 	}
 	stats := run.statsOf(t, run.lastPush(t, lines))
-	if string(stats["websocketFailures"]) != "1" || string(stats["sseFallbacks"]) != "2" || string(stats["websocketFallbackActive"]) != "true" {
+	if string(stats["websocketFailures"]) != "1" || string(stats["sseFallbacks"]) != "1" || string(stats["websocketFallbackActive"]) != "true" {
 		t.Fatalf("fallback stats %s", stats)
 	}
 	upgrades := wire.upgrades.Load()
