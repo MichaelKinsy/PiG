@@ -243,7 +243,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/package-manager.js",
-      "sha256": "b6c00a451ded0a45f9f5f00109ae0ad945f2dc63c6030a9ca5580af53ad6fa90"
+      "sha256": "bb0fcd33261bf542f706fc613e54d4c830a51354562feb87416807df29221781"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/pi-ai-schemas.js",
@@ -291,7 +291,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/resource-loader.js",
-      "sha256": "f7c1c3152be922103757c5857d91509cd9778867f49f06fd49ef43081ad1b42c"
+      "sha256": "f2ec5175e416c57f78d692559e0beb84a873d82608fa80cbe4bf50e2177b0c0f"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/runtime-credentials.js",
@@ -555,7 +555,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/main.js",
-      "sha256": "905f5f64fff3d42de801ec9db7ee2da1c57c8668ec51f62d2bb2a9227478eec9"
+      "sha256": "04e9790d5703b6d965d4567e3baf0323f8102318a5e825b74d98b2ea3e19030c"
     },
     {
       "path": "pi-dist/pi-coding-agent/migrations.js",

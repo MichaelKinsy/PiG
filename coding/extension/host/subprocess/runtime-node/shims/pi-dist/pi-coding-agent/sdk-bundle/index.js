@@ -123,7 +123,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-DA2MUGCZ.js";
+} from "./chunk-SXPUKCSG.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
@@ -22865,6 +22865,13 @@ async function main(args, options) {
   const resolvedSkillPaths = resolveCliPaths(cwd, parsed.skills);
   const resolvedPromptTemplatePaths = resolveCliPaths(cwd, parsed.promptTemplates);
   const resolvedThemePaths = resolveCliPaths(cwd, parsed.themes);
+  const packageCommandOutput = appMode === "interactive" ? "capture" : "inherit";
+  let announcePackageInstalls = packageCommandOutput === "capture";
+  const onPackageProgress = /* @__PURE__ */ __name((event) => {
+    if (announcePackageInstalls && event.type === "start" && event.message) {
+      console.error(chalk8.dim(event.message));
+    }
+  }, "onPackageProgress");
   const createRuntime = /* @__PURE__ */ __name(async ({ cwd: cwd2, agentDir: agentDir2, sessionManager: sessionManager2, sessionStartEvent, projectTrustContext }) => {
     const isInitialRuntime = sessionStartEvent === void 0;
     const projectTrustDiagnostics = [];
@@ -22900,6 +22907,8 @@ async function main(args, options) {
         }, "resolveProjectTrust")
       } : void 0,
       resourceLoaderOptions: {
+        packageCommandOutput,
+        onPackageProgress,
         additionalExtensionPaths: resolvedExtensionPaths,
         additionalSkillPaths: resolvedSkillPaths,
         additionalPromptTemplatePaths: resolvedPromptTemplatePaths,
@@ -23045,6 +23054,7 @@ async function main(args, options) {
     printTimings();
     await runRpcMode(runtime);
   } else if (appMode === "interactive") {
+    announcePackageInstalls = false;
     const interactiveMode = new InteractiveMode(runtime, {
       migratedProviders,
       startupDiagnostics,
