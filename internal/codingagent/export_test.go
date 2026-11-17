@@ -374,3 +374,18 @@ func (m *InteractiveMode) HoldStartupInput(data string) {
 
 // HeldStartupInputUnread reports whether the chunk HoldStartupInput made ready still waits for the owner loop.
 func (m *InteractiveMode) HeldStartupInputUnread() bool { return len(m.inputReadCh) == 1 }
+
+// EditorAutocompleteOffers reports whether the editor has an autocomplete provider and the values that provider offers for line (a slash-command prefix), asked on the caller's goroutine.
+func (m *InteractiveMode) EditorAutocompleteOffers(line string) (installed bool, values []string) {
+	provider := m.editor.AutocompleteProvider()
+	if provider == nil {
+		return false, nil
+	}
+	suggestions := provider.GetSuggestions(context.Background(), []string{line}, 0, len(line), tui.AutocompleteSuggestionOptions{})
+	if suggestions != nil {
+		for _, item := range suggestions.Items {
+			values = append(values, item.Value)
+		}
+	}
+	return true, values
+}

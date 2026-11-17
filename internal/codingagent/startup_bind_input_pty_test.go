@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"syscall"
 	"testing"
 	"time"
@@ -57,10 +58,42 @@ func TestInitReadsATypedAheadKeyWhileASessionStartHandlerPends(t *testing.T) {
 	}
 }
 
+// Pi's editor has no autocomplete provider until setupAutocompleteProvider runs, and that runs only after `await this.session.bindExtensions(...)` returns
+// (interactive-mode.ts:2167; the editor's autocompleteProvider is unset until then, editor.ts:328, and every completion entry point returns on it: handleTabCompletion
+// :2277, the slash and @ triggers :2298, :2382). Text a user types while a session_start handler pends therefore opens no menu. Init builds the editor and
+// binds the Session; the provider is on the editor after the bind and not before it, whether or not a handler pends.
+func TestInitInstallsTheAutocompleteProviderWhenTheBindEnds(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		handler bool
+	}{{"no handler pends", false}, {"a session_start handler pends", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			report := runStartupBindChild(t, tc.handler)
+			if report.BeforeBind == nil || report.AfterBind == nil {
+				t.Fatalf("the child did not report both ends of the bind: %+v", report)
+			}
+			if report.BeforeBind.Installed {
+				t.Fatalf("the editor had an autocomplete provider offering %q for /fo before the Session was bound; Pi's has none until bindExtensions returns", report.BeforeBind.Offers)
+			}
+			if !report.AfterBind.Installed || !slices.Contains(report.AfterBind.Offers, "fork") {
+				t.Fatalf("after the bind the editor's provider offers %q for /fo (installed %v); want the built-in commands, fork among them", report.AfterBind.Offers, report.AfterBind.Installed)
+			}
+		})
+	}
+}
+
+// startupBindProvider is what the editor's autocomplete provider answered at one end of the bind.
+type startupBindProvider struct {
+	Installed bool
+	Offers    []string
+}
+
 type startupBindReport struct {
 	Failure         string
 	InitErr         string
 	UnreadAfterBind *bool
+	BeforeBind      *startupBindProvider
+	AfterBind       *startupBindProvider
 }
 
 func runStartupBindChild(t *testing.T, handler bool) startupBindReport {
@@ -185,9 +218,13 @@ func TestInitStartupBindChild(t *testing.T) {
 			switch label {
 			case "pre-emit-session-start":
 				mode.HoldStartupInput("k")
+				installed, offers := mode.EditorAutocompleteOffers("/fo")
+				report.BeforeBind = &startupBindProvider{Installed: installed, Offers: offers}
 			case "post-emit-session-start":
 				unread := mode.HeldStartupInputUnread()
 				report.UnreadAfterBind = &unread
+				installed, offers := mode.EditorAutocompleteOffers("/fo")
+				report.AfterBind = &startupBindProvider{Installed: installed, Offers: offers}
 			}
 		},
 	})
