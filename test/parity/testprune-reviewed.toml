@@ -2283,3 +2283,10 @@ commit = "c96c624b894a86e4d29fde72dc050cc6f42703b1"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Row 185 (a Piglet Binary with a fused extension left pig-ext-fused-N.log in the temporary directory). Pi writes no extension log file at all: Pi runs an extension in its own process and its console reaches the terminal, so the file is PiG's own transport for SDK diagnostics (docs/extension-api-parity.md, row `SDK-owned diagnostics`, which has no Pi counterpart) and no Pi line governs the test. The two changed expected values are PiG's own rule of the commit: TestFusedExtLogIsExportedAndRemoved now requires that export names the path and creates no file (the Go SDK creates it with the first diagnostic, tested by TestFusedExtLogIsCreatedByTheFirstDiagnostic) where it required the file to exist, and that remove unsets PIG_EXT_LOG_CREATE with PIG_EXT_LOG. A session with no handler failure leaves the temporary directory as Pi's does, which TestFusedExtensionLogInTempDirectory pins in a real Piglet Binary."
+
+[[entry]]
+path = "test/parity/cmd/portmapcheck/replaycache_test.go"
+commit = "403d92f5ed5875e9cd3e1505efca4c841d5155ce"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "A tool-internal expectation of PiG's portmapcheck, not Pi behavior: the cache server now hands a shared-cache hit out as a copy in the run's private cache (the review thread at replaycacheserver.go:226 asked for it: a go cache trim could delete the shared file mid-replay), so TestCacheServerAnswersOnlyWhatItCanVerify expects the DiskPath of the hit under the store, not under the shared cache, and TestServerReadsTheLayoutOfGo compares that path relative to the store with go's own path relative to its cache. The expected value moves from the shared file's path to the copy's; the bytes, size and output id are unchanged."
