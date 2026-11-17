@@ -15,7 +15,15 @@ Every active divergence must have:
 - id `D<N>`
 - `// pig divergence (D<N>): ...` at each call site
 - parity coverage or an explicit parity allowance
-- `SCRUTINIZED:approved`
+- `SCRUTINIZED:approved <YYYY-MM-DD> text-sha256:<16 hex>`
+
+## The approval binds the text
+
+The `text-sha256` on the approval line is a hash of the record's normative text: its title and every field except the evidence ones (`Locked by`, `Evidence`, `Tests`, `Call-site markers`, `Parity coverage` and the like). Link targets, inline paths into the repository or Pi's sources, Go test names, Pi pin versions (`Pi 1.4.0`, outside `Remove when`), whitespace and line wrapping are not in it; numbers, durations, limits, flag, setting, provider and model names, and every field the gate does not know are. `make divergence-quality` (part of `make check` and of the bookkeeping CI group) fails when the text changed and the hash did not, naming the record, the bound hash and the current hash. `python3 automation/ci/check-divergence-quality.py --print-hash D<N> --text` prints exactly what is hashed.
+
+Only the owner approves: `make divergence-approve ID=D<N>` writes the date and the new hash on the approval line (a visible diff line) and drops the record from the pending list. An agent or a lane never runs it. A lane that changes a record's normative text, or adds a record, lists it in `automation/ci/divergence-reapproval-pending.txt` as `D<N> <class> <reason>` (class: `behaviour`, `scope`, `remove-when`, `owner-field`, `editorial`, `new`; the file is sorted by class) and says so in its pull request. The gate passes a listed record and prints it on every run; a listed record whose approval binds its current text, or that does not exist, fails as stale.
+
+The 16 hex digits detect a change. They are not a signature and prove nobody approved anything: the approval is the owner's commit of the line. Before this rule the marker was a bare `SCRUTINIZED:approved`, copied into each record, naming no approver and no date; the first stamp bound the records whose text had not changed since that marker from their text of that day, and records no past approval.
 
 ## Retired divergences
 
@@ -153,7 +161,7 @@ TestExtractZip_PathTraversalRejected, TestExtractTarGz_PathTraversalRejected)
 that exercise the full extract pipeline against synthetic fd/rg archives.
 
 PORT_MAP path: `packages/coding-agent/src/utils/tools-manager.ts`
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:639d4256ccf1986c
 
 ## D26 PiG never identifies itself as Pi to a service
 
@@ -284,7 +292,7 @@ Remove when: upstream pi gains equivalent stale-thinking-signature recovery, or
 removes thinking-block signatures from the provider contract.
 PORT_MAP path: `ai/anthropic.go` (downstream provider resilience; no upstream
 equivalent).
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:06534e66d1089f01
 
 ## D39 Standalone-binary self-update
 
@@ -665,7 +673,7 @@ Upstream state: upstream pi 0.84.0 stores logical rows and rewrites per row,
 so it would show the same artifact; upstream-first says record this rather
 than claim parity, and the fallback is observationally identical except the
 residue is cleared.
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:0aa8fa4e15c80e2b
 
 Remove when: upstream changes the per-row clear semantics so a differential
 rewrite is byte-safe under width changes, or the terminal pipeline otherwise
@@ -708,7 +716,7 @@ registration, and `addKeyPressListener` which applies the filter.
 Regression: `internal/codingagent/debug_hotkey_release_test.go`
 (`TestDebugHotkeyFiresOncePerPress`), which fails when the registration is moved
 back to `addTerminalInputListener`.
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:43367edcb042559c
 
 Remove when: upstream tests the debug hotkey after its key-release filter, or
 `matchesKey` stops matching a release, at which point the raw registration
@@ -832,7 +840,7 @@ Parity allowance: no paired scenario drives the library path, which no Stock PiG
 
 Remove when: the in-place `Session` replacement methods are deleted or routed through `Runtime`, so no caller can replace a Session without rebuilding Services, Resources and tools for the destination cwd.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:9deac5b43f7eb45c
 
 ## D62 /bug exports locally and links to a PiG issue
 
@@ -850,7 +858,7 @@ Locked by: `internal/codingagent/bug_report_test.go` mirrors upstream `test/bug-
 
 Remove when: never, unless PiG gains its own report service that the owner approves.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:6bd33c34b784faf6
 
 ## D63 `--version` prints PiG's composite version
 
@@ -969,7 +977,7 @@ Parity allowance: none of these files has an upstream counterpart; the unit test
 
 Remove when: never, unless Windows gains POSIX permission bits or these files stop requiring owner-only access.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:86b5cd04884030c5
 
 ## D70 Session replacement re-evaluates every extension module, not only its factory
 
@@ -1081,7 +1089,7 @@ Parity allowance: record the named unavailable native SDK members and foreign co
 
 Remove when: all SDKs expose the complete raw Provider surface and a specified, race-free cross-process reference mechanism preserves Pi's author/reader aliases, captured children/functions, descriptors, receivers and lifetimes, with isolated/packed/fused caller, cancellation, replacement, cleanup and resource evidence. Re-review the record at each upstream leap and remove closed subscopes independently.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:e1dc8abfa2ad15ab
 
 ## D79 User-package metadata ignores the invoking project's npm configuration
 
@@ -1150,7 +1158,7 @@ Parity allowance: none needed for the hermetic scenarios; `rpc/33-rpc-real-provi
 
 Remove when: an owned cross-process reference mechanism lets extension-process listeners and providers share Pi's live partial object and report their handler's microtask boundary, with isolated/packed conformance tests, or upstream adopts the snapshot contract.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:0267a2885c3685ee
 
 ## D83 Cross-process event-bus scheduling boundaries
 
@@ -1187,7 +1195,7 @@ Parity allowance: no paired scenario runs two extension processes; the unit test
 
 Remove when: cross-realm scheduling is serialized into one task and microtask order, distributed cycle collection releases cross-realm cycles, and foreign objects pass internal-slot brand checks, or upstream restricts its event bus to a process-local contract.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:9768ac39ac11571e
 
 ## D84 Direct Go provider registration refreshes availability on the next awaited call
 
@@ -1209,7 +1217,7 @@ Parity allowance: no paired scenario exercises a direct Go registration because 
 
 Remove when: Go gains a turn boundary that can run the refresh after the registering caller's synchronous work without running Provider callbacks inside its request sequence, or upstream awaits the registration refresh.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:58a6e71ca5cefae0
 
 ## D85 RPC stdin end: a suspended extension command's continuation can run before its runtime stops, and one runtime's suspended session_shutdown does not keep another runtime's command alive
 
@@ -1255,7 +1263,7 @@ Parity allowance: the Pi comparison rows cover Node handlers only. No test compa
 
 Remove when: the Go, Rust and Python SDK runtimes report a settle-tail handler's suspension to the host, as the Node runtime does with a command's window, so the gate opens during their waits.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:de90be1c91aeb5f9
 
 ## D87 PiG's versions of Pi's easter eggs
 
@@ -1320,7 +1328,7 @@ Parity allowance: Pi's own resolvers run in its single process; no paired scenar
 
 Remove when: PiG can run an extension's resolver synchronously without IPC on the UI loop and pass renderer functions across processes.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:92890ede7b8bfe77
 
 ## D90 llama.cpp reasoning models offer every budgeted thinking level
 
@@ -1336,7 +1344,7 @@ Parity allowance: no paired scenario runs a llama.cpp server; Pi's own test `pac
 
 Remove when: Pi offers more than off and medium for a llama.cpp reasoning model, then follow Pi.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:435b35a06121c6bc
 
 ## D93 /reload evaluates an edited ES module extension again
 
@@ -1426,7 +1434,7 @@ Parity allowance: the protocol, `hello` fields (`os`, `arch` spelled as Rust's `
 
 Remove when: never, unless the owner decides to ship Pi's Rust binaries.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:b7617e4f895eb6f3
 
 ## D98 The eval harness hands the agent process an OAuth credential file
 
@@ -1444,7 +1452,7 @@ Evidence: `TestRunPiCodingAgentKeepsTheAPIKeyOutOfTheAgentsFiles` and `TestAPIKe
 
 Parity allowance: the eval tooling is a developer tool outside Pi's user-visible surface; documentation evals run only in the container sandbox with the six documentation tools.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:87ba5801cd11bdb6
 
 ## D99 The Windows npm self-update quarantine waits out a held image
 
@@ -1482,7 +1490,7 @@ Evidence: `TestExtractDiagnosticErrorOmitsTheStack` in `ai/diagnostics_upstream_
 
 Parity allowance: a diagnostic differs from Pi's only in the missing `stack` text, which no PiG or Pi code reads back.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:08f623ed4fbc39b1
 
 ## D105 The interactive driver owns terminal input; extension input listeners run asynchronously
 
@@ -1502,7 +1510,7 @@ Evidence: `tui/tui_input_pipeline_test.go`, `tui/main_screen_oracle_test.go`, th
 
 Parity allowance: the observable key order and the listener verdicts match Pi; only the thread that runs an extension's listener differs.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:330b5519acbdbb09
 
 ## D110 Git sources: `#subdirectory=` selects a subdirectory; `git://` and upper-case schemes yield usable repositories
 
@@ -1524,7 +1532,7 @@ Parity allowance: none beyond the four spellings above.
 
 Remove when: Pi accepts a `#subdirectory=` spelling or PiG stops installing Piglets from repository subdirectories (1); Pi fixes the `git://` and upper-case scheme repositories (2, 3) or parses `git:file://` sources (4).
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:3ef7266621580d74
 
 ## D111 Abort abandons a non-cooperative extension tool after a grace period
 
@@ -1546,7 +1554,7 @@ Parity allowance: no paired scenario runs a tool that ignores its signal, becaus
 
 Remove when: Pi stops awaiting aborted tool calls.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:b1bdc034cdf01952
 
 ## D113 A Session has no `extensionRunnerRef` cell
 
@@ -1566,7 +1574,7 @@ Parity allowance: no paired scenario builds an Agent through the public Pi const
 
 Remove when: PiG's SDK needs a caller-owned runner cell.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:bf36ae6a736099e2
 
 ## D114 `StdinBuffer` has no `getMaxListeners`, `setMaxListeners` or `MaxListenersExceededWarning`
 
@@ -1586,7 +1594,7 @@ Parity allowance: no paired scenario adds an eleventh listener to a `StdinBuffer
 
 Remove when: PiG's `StdinBuffer` gets Node's listener limit and warning (design-out audit Q3 option B).
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:3ae945e1881d72a6
 
 ## D115 Gemini 2.x tool-result images follow the whole run of function responses
 
@@ -1608,7 +1616,7 @@ Parity allowance: the paired scenarios send no Gemini 2.x image tool results.
 
 Remove when: Pi keeps the function responses of one model turn in one user turn (Pi's routing test changes), at which point delete the deferral and the two rewrites.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:8fb823b23c03c57b
 
 ## D116 Bedrock Converse messages of one role are merged
 
@@ -1630,7 +1638,7 @@ Parity allowance: `test/parity/scenarios/providers-faux-streaming/29-bedrock-ecm
 
 Remove when: Pi merges or otherwise alternates adjacent same-role messages in its Converse converter.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:947b4384ecb3d97d
 
 ## D117 `DiscoverAndLoadExtensions` takes no event bus
 
@@ -1650,7 +1658,7 @@ Parity allowance: no paired scenario passes an event bus to `discoverAndLoadExte
 
 Remove when: the Extension Host accepts a caller-owned event bus.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:45e7400d4b93c8d6
 
 ## D118 A durable commit with an unknown task or submission status fails with "Unknown task status"
 
@@ -1670,7 +1678,7 @@ Parity allowance: no paired scenario commits durable records with an out-of-type
 
 Remove when: Pi validates task and submission statuses before apply, at which point use its message.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:c81e3dd421fbacd7
 
 ## D120 A streamed tool call without an id or name no longer wedges the session (pi-mono #10299)
 
@@ -1690,7 +1698,7 @@ Parity allowance: Pi 1.4.0 reproduces the 400, so no paired scenario can assert 
 
 Remove when: Pi fills the id at stream end and omits unreplayable calls on replay.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:3c00972de63d5aba
 
 ## D121 The Anthropic SSE reader holds back a carriage return that ends a chunk (pi-mono #10390)
 
@@ -1710,7 +1718,7 @@ Parity allowance: Pi 1.4.0 aborts on this input (reproduced on the previous pin 
 
 Remove when: Pi holds back a trailing `\r` in `consumeLine`.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:24385b985637ffb1
 
 ## D122 OpenAI Completions keeps a signature-only `reasoning.text` delta (pi-mono #9534)
 
@@ -1730,7 +1738,7 @@ Parity allowance: Pi 1.4.0 drops the delta, so no paired scenario asserts the fi
 
 Remove when: Pi keeps signature-only `reasoning.text` deltas.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:86583d1e7a5e00a1
 
 ## D128 OpenRouter image models that need the Images API are retried through `/images` (pi-mono #10652)
 
@@ -1752,7 +1760,7 @@ Remove when: Pi sends these models to the Images API.
 
 Pin re-check: owner HOLD 2026-10-10. The code stays. At every pin move, re-check Pi main for a fix of #10652 (OpenRouter image models refused by `chat/completions`): if Pi ships one, port it exactly and delete this record; if Pi picks a different approach (catalog flag, endpoint field), align PiG to it and reclassify.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:1f5f0daa9e23efac
 
 ## D129 A Responses function call streamed with an empty call_id no longer wedges the session (pi-mono #10299)
 
@@ -1772,7 +1780,7 @@ Parity allowance: Pi 1.4.0 replays the empty `call_id`, so no paired scenario ca
 
 Remove when: Pi fills the id at stream end and omits unreplayable calls on replay, for the Responses id form too.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:1e8ba706aee023dc
 
 ## D130 A managed-effort Anthropic request sends each managed field only with its beta (Pi #10759)
 
@@ -1792,7 +1800,7 @@ Parity allowance: Pi 1.4.0 sends the managed fields regardless, and only the liv
 
 Remove when: Pi derives `block_binding` and the mid-conversation markers from the betas it sends.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:aeddd7ea5c3c3ee0
 
 ## D131 A stalled SSE stream that still sends keepalives ends after the HTTP idle timeout (pi-mono #10761, #10762)
 
@@ -1812,7 +1820,7 @@ Parity allowance: Pi 1.4.0 has no event-level timeout; no paired scenario can ho
 
 Remove when: Pi ends a stream that sends no event for `httpIdleTimeoutMs`.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:9b641ac4fb1eeb5f
 
 ## D132 Session directories are created with mode 0700 (pi-mono #10770)
 
@@ -1832,7 +1840,7 @@ Parity allowance: no paired scenario inspects directory modes.
 
 Remove when: Pi creates session directories with mode 0700.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:c16a7d174dd1fcae
 
 ## D134 One SSE line is bounded at Node's maximum string length
 
@@ -1852,7 +1860,7 @@ Parity allowance: no paired scenario streams a 512 MiB line.
 
 Remove when: Pi bounds an SSE line itself, or divergence-guard accepts Node runtime constants as upstream references so that `sseLineLimit` can cite `MAX_STRING_LENGTH` directly.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:5567d38ee10096d8
 
 ## D135 clearQueue keeps queued extension custom messages (Pi #9886)
 
@@ -1872,7 +1880,7 @@ Parity allowance: none; no paired scenario clears a queue that holds a custom me
 
 Remove when: Pi's `clearQueue` stops destroying custom messages it does not return.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:d2932a36c0ccf36c
 
 ## D136 A context edit after the usage anchor keeps the anchor (Pi #10287)
 
@@ -1892,7 +1900,7 @@ Parity allowance: `prep.tokensBefore` in `compaction_oracle_test.go` for session
 
 Remove when: Pi keeps the usage anchor across an edit that only touches later entries.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:0b9db4bafa4f02aa
 
 ## D137 A request carries at most the model's maxPerRequest images (Pi #10162)
 
@@ -1912,7 +1920,7 @@ Parity allowance: none; no paired scenario sets `maxPerRequest`.
 
 Remove when: Pi enforces `inputLimits.images.maxPerRequest` on provider requests.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:3416434428618a25
 
 ## D138 session_compact custom messages reach the overflow retry (Pi #9051)
 
@@ -1932,7 +1940,7 @@ Parity allowance: none.
 
 Remove when: Pi flushes deferred custom messages before an overflow retry.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:68ff451569dd11a6
 
 ## D142 Settlement keeps idle waiters pending and abort discards deferred prompts (Pi #10704, #10705)
 
@@ -1952,7 +1960,7 @@ Parity allowance: none.
 
 Remove when: Pi keeps registered waiters pending through settlement and discards deferred prompts on abort.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:152a56f0507ff204
 
 ## D143 A device-attributes reply split across slow reads is not forwarded as input (Pi #10657)
 
@@ -1972,7 +1980,7 @@ Parity allowance: none.
 
 Remove when: Pi keeps a split private CSI reply buffered until its final byte.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:6190f3a25f5d172f
 
 ## D144 A dropped response stream keeps its cause in the error message (Pi #10697)
 
@@ -1992,7 +2000,7 @@ Parity allowance: none.
 
 Remove when: Pi includes `error.cause` in the message of a transport failure.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:201ea33bffce6a02
 
 ## D145 Nested Errors keep their name and message in codemode output (Pi #10650)
 
@@ -2012,7 +2020,7 @@ Parity allowance: none.
 
 Remove when: Pi's codemode serializes nested Errors with their name and message.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:a51e50b6b794c2c9
 
 ## D146 RPC stdin end answers a Session-replacing command that Pi leaves unanswered
 
@@ -2032,7 +2040,7 @@ Parity allowance: none.
 
 Remove when: Pi answers a replacement command that is in flight when stdin ends.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:b96329edb13145e6
 
 ## D147 Compactions requested in one input batch run one after another
 
@@ -2052,7 +2060,7 @@ Parity allowance: none.
 
 Remove when: Pi serializes the compactions of one Session.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:1abb156d14f6e5e7
 
 ## D148 An aborted compaction answers one error; two Pi defects of overlapping compacts are not reproduced
 
@@ -2072,7 +2080,7 @@ Parity allowance: none.
 
 Remove when: Pi no longer shares one abort controller between concurrent compactions and reports an aborted compaction with one text.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:e53f21f9cd8c53fa
 
 ## D150 `--no-stdin` skips the startup read of piped stdin (Pi #10415)
 
@@ -2090,7 +2098,7 @@ Parity allowance: none. No Pi scenario passes the flag.
 
 Remove when: Pi accepts `--no-stdin` or otherwise lets a caller start with an open stdin pipe, or fixes #10415.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:301efba687331ecb
 
 ## D151 `grep` with context reads a window of each matched file (Pi #9276)
 
@@ -2108,7 +2116,7 @@ Parity allowance: none needed; the tools family compares `grep` output with Pi's
 
 Remove when: Pi stops loading whole files for grep context.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:59182349e8d86ad9
 
 ## D153 The bash truncation notice names the size of the last line, not the bytes after the final newline (Pi #10015)
 
@@ -2126,7 +2134,7 @@ Parity allowance: none. No paired scenario runs a command whose last line exceed
 
 Remove when: Pi reports the size of the last counted line.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:7ca5e5524bfcefd8
 
 ## D156 MCP server `url` expands environment references (Pi #10654)
 
@@ -2144,7 +2152,7 @@ Parity allowance: none. No paired scenario uses a reference in a `url`.
 
 Remove when: Pi expands the `url` of an MCP server.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:b9db2af7fdfb73a6
 
 ## D157 PiG's startup additions stay quiet when the config root cannot be written
 
@@ -2162,7 +2170,7 @@ Parity allowance: none. No Pi scenario has a read-only config root.
 
 Remove when: Pi stops warning on every start of a read-only config root, or PiG writes neither the staged extension SDK nor the Piglet Binary verification cache at startup.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:6e814c19d3853c8d
 
 ## D158 A setting of the wrong JSON type is ignored (Pi 1.4.0 throws)
 
@@ -2180,7 +2188,7 @@ Parity allowance: the Pi settings-diagnostics oracle test (`TestSettingsFileDiag
 
 Remove when: Pi validates the type of each setting, or the owner chooses to match Pi's crash.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:1069593c3e964b70
 
 ## D159 A single grapheme wider than the editor's wrap width stays one chunk instead of exhausting the stack
 
@@ -2200,7 +2208,7 @@ Parity allowance: Pi 1.4.0's exported `wordWrapLine` throws `RangeError: Maximum
 
 Remove when: Pi stops re-wrapping a one-grapheme segment.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:22548648dfccd167
 
 ## D167 A history longer than the model's context window is summarized in chunks
 
@@ -2238,7 +2246,7 @@ Evidence: `TestToolRound` "runs a round in parallel by default and sequentially 
 
 Remove when: never, unless Pi specifies the start order of the calls of a parallel round.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:8cf74b65f86e8cd2
 
 ## D178 Facet modules load in an isolated Node child, not in the host process
 
@@ -2256,7 +2264,7 @@ Evidence: `TestNodeLoaderLoadsFacetModulesAndReloadsThemWithFreshCopiesOfTheirRe
 
 Remove when: a Go host gains an in-process JavaScript module loader, or Pi moves `nodeLoader` out of process.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:732a23bd80aae6c7
 
 ## D180 A provider transport failure records its Go cause as a provider_transport_failure diagnostic
 
@@ -2276,7 +2284,7 @@ Parity allowance: none.
 
 Remove when: Pi records a transport diagnostic for SDK request failures.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:a11e50e6138dbc33
 
 ## D181 The commits of an unawaited durable job are ordered by goroutine scheduling, not by Pi's microtask hops
 
@@ -2298,7 +2306,7 @@ Parity allowance: the commit sequence numbers (`entries.commit_seq`, `document_r
 
 Remove when: the core engine is the default Durable engine and the order sweep (the interop scenarios with the job unawaited, compared with Pi's store) shows 0 mismatches in 2,000 runs at GOMAXPROCS 1, 2 and 8, which needs a production `Settle` for the core and the contract trace rows E24 and I to match Pi; delete `TestUnawaitedJobCommittedAfterTheAnswerChangesOnlyOrder` then.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:211b2ec1af358ef4
 
 ## D182 A proxy start event with an unusable content index ends the stream with an error
 
@@ -2318,7 +2326,7 @@ Parity allowance: none.
 
 Remove when: `ai.AssistantMessage` content can hold an absent block, or Pi rejects an unusable content index.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:56d0a460a18df3dd
 
 ## D183 A message delivered at the terminal proxy event is not changed by later events
 
@@ -2338,7 +2346,7 @@ Parity allowance: none.
 
 Remove when: the delivered message is an immutable snapshot, or Pi stops mutating the delivered message.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:932ac3ddfadf971f
 
 ## D184 A script's unawaited tool call can be aborted before its tool starts, where Pi always starts it first
 
@@ -2360,7 +2368,7 @@ Parity allowance: `holds.runs` of the Pi subtest `aborts a call still running wh
 
 Remove when: the core engine is the default Durable engine and orders the steps of a script's calls as Pi's single thread does, or the nested task runtime links a task to its earlier sibling so the `entered` gate before `execute` can ship; then `holds.runs` of the subtest must be 1 in 12,000 runs at 8 CPUs and 9,000 at 3 CPUs (GOMAXPROCS 2, 6 processes), and the allowance goes.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:43dd0c3e43ad9f90
 
 ## D185 A Kitty CSI-u Shift+letter with no shifted alternate decodes as the uppercase letter, where Pi keeps the base letter
 
@@ -2382,7 +2390,7 @@ Parity allowance: `TestDecodePrintableKeyMatchesPi` accepts an uppercase letter 
 
 Remove when: Pi decodes a base-only Shift+letter as the uppercase letter, or the owner reverses the decision; then the branch, the allowance and the D185 test cases go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:dc57dfc1e8844b89
 
 ## D186 A hung-up terminal under a session whose event loop holds nothing: Pi exits 0 or 129, PiG exits 129
 
@@ -2402,7 +2410,7 @@ Parity allowance: none.
 
 Remove when: Pi exits 129 for a hung-up terminal regardless of event-loop state.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:df8eae7330bda320
 
 ## D187 A native SDK holds a batch's first host calls and responses in call and answer order, where Pi's single thread lets a call that awaits work the SDK cannot see be overtaken
 
@@ -2424,7 +2432,7 @@ Parity allowance: none: no Pi scenario asserts the moment a later call's dialog 
 
 Remove when: a native SDK's handlers run where a blocked handler yields to the next one (an async handler model with the SDK's scheduler), or the SDK is told when a handler blocks, so a later call's dialog or response is released at the point Pi's thread would release it; then the gates in the three SDKs and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:68c08bffce798332
 
 ## D190 The built-in file mutation queue also orders mutations of one existing file reached through a hard link or a case alias Pi's realpath key keeps apart
 
@@ -2446,7 +2454,7 @@ Parity allowance: `TestHardLinkAliasesDifferFromPi` runs the pinned Pi's queue a
 
 Remove when: Pi orders hard-link aliases (and, on a case-insensitive filesystem where its `realpath` keeps case, case aliases) by file identity, or an owner decision reverses this one; then the identity check, its marker, the allowance test and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:21aa0f4d5ebde765
 
 ## D195 An empty AWS_BEARER_TOKEN_BEDROCK is no token, where Pi's AWS SDK treats the variable as set and the request fails before it is sent
 
@@ -2470,7 +2478,7 @@ Parity allowance: none needed beyond that test. The paired Bedrock oracles (`Tes
 
 Remove when: Pi or its AWS SDK treats an empty `AWS_BEARER_TOKEN_BEDROCK` as unset (Pi passes `authSchemePreference` itself, or the SDK tests for a non-empty value), or an owner decision reverses this one; then the marker, the D195 cases of the test and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:7d47af3511db1d57
 
 ## D196 Under skip-auth a bearer token from the process environment is not sent over an http:// endpoint, where Pi's AWS SDK sends it
 
@@ -2494,7 +2502,7 @@ Parity allowance: none needed beyond that test. The paired Bedrock oracles scrub
 
 Remove when: Pi refuses to send a bearer token over HTTP (its SDK adds an HTTPS check, or Pi installs a signer that does), or PiG installs `bedrockBearerSigner` under skip-auth and the owner approves sending the token over HTTP there; then the markers, the D196 case of the test and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:19e7e5a0c65a6cdc
 
 ## D197 The env daemon's limit of open files is the hard limit, where Pi's daemon keeps the soft limit it inherited
 
@@ -2518,7 +2526,7 @@ Parity allowance: the wire tests that open thousands of handles (`TestDaemonHand
 
 Remove when: the Go runtime lets a program keep its inherited soft limit, or Pi's daemon raises its own soft limit to the hard limit at start, or an owner decision reverses this one; then the marker, the two tests and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:866cc87d371341c6
 
 ## D198 The Go, Rust and Python `Type` has no Codec family (`Codec`, `Decode`, `Encode`, `DecodeBuilder`, `EncodeBuilder`, `IsCodec`)
 
@@ -2582,7 +2590,7 @@ Parity allowance: `TestNoHomeDirectoryPiCrashesAtImportWherePiGRunsResourceFreeC
 
 Remove when: Pi stops resolving the home directory at import (so `--version` and `list` run there without one), or an owner decision reverses this one; then PiG's startup fails at the same point as Pi's, the markers, the allowance test and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:b71c7bd53225888d
 
 ## D203 registerProvider with an empty `apiKey` leaves the provider unconfigured where Pi treats the empty string as a configured key
 
@@ -2604,7 +2612,7 @@ Parity allowance: no parity scenario registers a provider with an empty `apiKey`
 
 Remove when: Pi treats `""` as missing in `configuredApiKey`, or the SDK API gains explicit presence for `apiKey` (a pointer or an option) and an owner decision asks for Pi's behaviour; then the three markers, the test and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:79d224216e8eeb63
 
 ## D205 Fullscreen frames scroll the rows that only moved
 
@@ -2646,7 +2654,7 @@ Parity allowance: the measured row above is the allowance; no other row changes.
 
 Remove when: the core can read the settings by a host call at each use without a measurable cost (the count budgets of `make durable-counts`), or Pi resolves the settings once per step. Then the snapshot, `syncSettings` and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:c963e8de1771a1ca
 
 ## D207 TuiAltScreen.children is a copy in the Go, Rust, Python and Lisp SDKs, where Pi's is a live array
 
@@ -2712,7 +2720,7 @@ Parity allowance: `TestLlamaClientRequestsMatchPi` compares load and unload agai
 
 Remove when: Pi's `/llama` names llama-swap itself, or can manage llama-swap models; or the owner withdraws the decision. Then the call-site marker, the `GET /running` probe, the docs section and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:18fa63d09534ac3d
 
 ## D213 A crashed or exited extension runtime releases the read the host holds for an autocomplete provider chain
 
@@ -2734,7 +2742,7 @@ Parity allowance: none needed for the journey: a provider that needs no I/O matc
 
 Remove when: Pi's extensions run outside the editor's process, or the owner withdraws the decision. Then the release on runtime exit, the call-site marker and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:4af21a4ac9d7c40a
 
 ## D215 A local Package typed by absolute path is stored as typed
 
@@ -2776,7 +2784,7 @@ Parity allowance: none needed; the Pi side has no oracle that sends these reques
 
 Remove when: Pi's listener stops being Node's `http` module, or Go's net/http lets a handler see a request it now refuses.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:850ad5d044c3a55d
 
 ## D219 pi-schema regular expressions differ from V8 in four contrived cases
 
@@ -2827,7 +2835,7 @@ Parity allowance: `schema/internal/ecmaregex/golden_test.go` (`TestKnownGaps`) s
 
 Remove when: regexp2 gains Canonicalize-based case-insensitive backreference comparison, or PiG gets its own backtracking engine for the ECMAScript grammar. Then the markers, the rows of `knownGaps` and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:ccc131b88c9e0fd4
 
 ## D220 Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier identical block
 
@@ -2894,7 +2902,7 @@ Parity allowance: the harness tests that port Pi's waits and listeners (`durable
 
 Remove when: Go can observe a listener's first suspension (a blocked goroutine reports what it waits for to the host without a call of the listener's), or Pi's drain stops running a listener's synchronous part ahead of the code that awaits the commit.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:c33de77b5cc03370
 
 ## D225 A thread-based SDK's wait for the run it started needs the SDK's yield helper
 
@@ -2995,7 +3003,7 @@ Scope: RPC mode only. Where PiG's wire output follows from the ordering above, t
 
 Owner decision: 2026-11-03, owner approved by relay via Claude.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:195cc904983b9630
 
 Remove when: the pin reaches a Pi release containing 1708b4788.
 
@@ -3018,7 +3026,7 @@ Scope: `StreamableHTTPTransport.Send` for `application/json` replies and `checkR
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-03 for 0.7.0 (port of Pi main 4a8b60bc3 ahead of the pin).
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:01b18095e4574423
 
 Remove when: the pinned Pi release contains 4a8b60bc3. Then the two call-site markers and this record go.
 
@@ -3040,7 +3048,7 @@ Scope: `Runtime.Close` and the interactive quit only; session replacement alread
 
 Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row S5).
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:0ba27c5f9987df68
 
 Remove when: the pin reaches a Pi release containing 7a53c310a.
 
@@ -3062,7 +3070,7 @@ Scope: the Go, Python, Lisp and Rust SDKs: `ModelEventStream.Push`/`End` (Go), `
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-09 (copy at push in the Go, Python and Lisp SDKs; keep Node as Pi does; record the burst-case difference).
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:4c36aed34c2ba46a
 
 Remove when: Pi's provider stream consumer captures each event at its push (or the Go, Python and Lisp SDKs gain a synchronization point that makes the forwarder see the provider's state at the consumer's turn). Then the three call-site markers and this record go.
 
@@ -3102,7 +3110,7 @@ Scope: pig's writes of the credential store `auth.json` and of the MCP credentia
 
 Owner decision: approved 2026-11-14T14:10:39Z ("proceed", handoffs/0.8.0/OWNER-DECISIONS.md, entry `## 2026-11-14T14:10:39Z owner: "proceed" (on Claude's recommendations of 13:2xZ)`); the line, verbatim: "D651 APPROVED, both parts: (1) auth.json, settings, trust, keybindings and the MCP config replaced through a private temp file + rename where that changes nothing but the inode; Pi's in-place write kept for hard links, uncarriable ACL/xattrs, bind-mounted single files and unwritable directories; (2) a 5 s refresh of the async lock so a live refresher is never taken over (single-use refresh token spent once)."
 
-SCRUTINIZED:approved 2026-11-14
+SCRUTINIZED:approved 2026-11-14 text-sha256:89d92280c5d70019
 
 Remove when: Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them.
 

@@ -15,4 +15,12 @@ Every active divergence must have:
 - id `D<N>`
 - `// pig divergence (D<N>): ...` at each call site
 - parity coverage or an explicit parity allowance
-- `SCRUTINIZED:approved`
+- `SCRUTINIZED:approved <YYYY-MM-DD> text-sha256:<16 hex>`
+
+## The approval binds the text
+
+The `text-sha256` on the approval line is a hash of the record's normative text: its title and every field except the evidence ones (`Locked by`, `Evidence`, `Tests`, `Call-site markers`, `Parity coverage` and the like). Link targets, inline paths into the repository or Pi's sources, Go test names, Pi pin versions (`Pi 1.4.0`, outside `Remove when`), whitespace and line wrapping are not in it; numbers, durations, limits, flag, setting, provider and model names, and every field the gate does not know are. `make divergence-quality` (part of `make check` and of the bookkeeping CI group) fails when the text changed and the hash did not, naming the record, the bound hash and the current hash. `python3 automation/ci/check-divergence-quality.py --print-hash D<N> --text` prints exactly what is hashed.
+
+Only the owner approves: `make divergence-approve ID=D<N>` writes the date and the new hash on the approval line (a visible diff line) and drops the record from the pending list. An agent or a lane never runs it. A lane that changes a record's normative text, or adds a record, lists it in `automation/ci/divergence-reapproval-pending.txt` as `D<N> <class> <reason>` (class: `behaviour`, `scope`, `remove-when`, `owner-field`, `editorial`, `new`; the file is sorted by class) and says so in its pull request. The gate passes a listed record and prints it on every run; a listed record whose approval binds its current text, or that does not exist, fails as stale.
+
+The 16 hex digits detect a change. They are not a signature and prove nobody approved anything: the approval is the owner's commit of the line. Before this rule the marker was a bare `SCRUTINIZED:approved`, copied into each record, naming no approver and no date; the first stamp bound the records whose text had not changed since that marker from their text of that day, and records no past approval.

@@ -144,7 +144,7 @@ A pull request must:
 - include both a DCO `Signed-off-by` line and a GitHub-verified signature on every commit;
 - contain no credentials or private data;
 - include tests or explain why the existing tests prove the change;
-- update `docs/parity/DIVERGENCES.md` for an approved observable difference;
+- update `docs/parity/DIVERGENCES.md` for an approved observable difference (the record's `SCRUTINIZED:approved` line binds a hash of its text and only the owner approves a changed text with `make divergence-approve`; a contributor lists the record in `automation/ci/divergence-reapproval-pending.txt` instead, see `docs/parity/divergences/head.md`);
 - update extension conformance coverage for an SDK contract change;
 - update SBOM, notice, or provenance inputs when dependencies or copied material change;
 - update `vendorHash` in `nix/package.nix` when Go modules change (the `Nix vendor hash` check prints the value; `nix/vendor-hash.sh update` computes it where Nix is installed); and
