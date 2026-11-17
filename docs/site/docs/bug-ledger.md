@@ -23,6 +23,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-003f6f0](#bf-003f6f0) | Ctrl+U, Ctrl+K and the word-delete keys leave an open autocomplete list open, as Pi's editor does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-006a496](#bf-006a496) | The faux provider no longer counts newly cached prompt tokens as input as well as cache writes: with a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-007c91d](#bf-007c91d) | Go, Python and Rust extensions: in a `before_agent_start` handler, the event's `systemPrompt` and the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-008b787](#bf-008b787) | Column slicing of printable ASCII text is faster, as in Pi… | PiG's own defect | All platforms | Unreleased |
 | [BF-00933e5](#bf-00933e5) | `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load… | PiG's own defect | Windows | 0.5.2 |
 | [BF-00d9a1f](#bf-00d9a1f) | fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an… | PiG's own defect | All platforms | Unreleased |
 | [BF-016a19a](#bf-016a19a) | A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the… | PiG's own defect | All platforms | 0.7.0 |
@@ -103,6 +104,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0ae286c](#bf-0ae286c) | fix: blank-assign the encodeState.WriteByte results in the SDK json copy that go fix touched | PiG's own defect | All platforms | Unreleased |
 | [BF-0ae3fcf](#bf-0ae3fcf) | The login provider list selects with Enter when `tui.select.confirm` is rebound, as Pi's search input submits… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0ae4683](#bf-0ae4683) | PiG, the extension SDKs and the sprite selection use one configuration root: `PIG_HOME`, else… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0aecafc](#bf-0aecafc) | A `pi.events` listener's failure is reported before the command that emitted answers, as in Pi: an RPC client… | PiG's own defect | All platforms | Unreleased |
 | [BF-0b13d8b](#bf-0b13d8b) | `pig auth --help` names `pig auth ...` instead of `pi auth ...` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b13d8b-2](#bf-0b13d8b-2) | `pig extension --help` lists `pig extension init --login` | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b13d8b-3](#bf-0b13d8b-3) | `pig --help` lists `pig login`, `pig logout`, `pig package`, `pig extension upgrade`, `pig reload`, and `pig… | PiG's own defect | All platforms | 0.5.0 |
@@ -121,6 +123,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0cced6a](#bf-0cced6a) | RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-0cd1934](#bf-0cd1934) | fix(env): a native watch ignores the nameless event kqueue sends after a watched directory is removed | PiG's own defect | All platforms | Unreleased |
 | [BF-0ce459e](#bf-0ce459e) | `/login` offers a provider object's own login methods (Pi's `registerNativeProvider`, the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0d09de8](#bf-0d09de8) | Fullscreen scrolling in long sessions no longer re-renders the whole transcript on every wheel event and key… | PiG's own defect | All platforms | Unreleased |
 | [BF-0d0a3ef](#bf-0d0a3ef) | A turn through OpenRouter (Chat Completions or Anthropic Messages) now reports the cost OpenRouter billed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d13b01](#bf-0d13b01) | `SettingsManager.getTransport` and fifteen sibling getters (settings-manager.ts: getSteeringMode… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d13d8e](#bf-0d13d8e) | Windows: a missing Anthropic identity token file reports Pi's message, "Failed to read identity token file at… | PiG's own defect | Windows | Unreleased |
@@ -1419,6 +1422,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-959646e](#bf-959646e) | Kitty and iTerm2 images no longer cover an overlay drawn over them | PiG's own defect | All platforms | Unreleased |
 | [BF-959a66e](#bf-959a66e) | fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no… | PiG's own defect | All platforms | Unreleased |
 | [BF-95a5f79](#bf-95a5f79) | RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does | PiG's own defect | All platforms | 0.5.0 |
+| [BF-95a798f](#bf-95a798f) | fix: a refused report_error tag is reported through the runner's error listeners, not to stderr | PiG's own defect | All platforms | Unreleased |
 | [BF-95db124](#bf-95db124) | A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of… | PiG's own defect | All platforms | Unreleased |
 | [BF-95de1de](#bf-95de1de) | An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-95eefe2](#bf-95eefe2) | openai-completions thinking formats now match Pi (`ai/openai.go`, openai-completions.ts:885-985 and… | PiG's own defect | All platforms | 0.5.0 |
@@ -2227,6 +2231,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f3ea39b](#bf-f3ea39b) | fix(chord/nextnode/plugins): the driver ends its socket after the frames it wrote are out | PiG's own defect | All platforms | Unreleased |
 | [BF-f40cd6b](#bf-f40cd6b) | LaTeX math treats two surrogate halves that end up side by side in a fraction, a root or next to a named… | PiG's own defect | All platforms | Unreleased |
 | [BF-f43fb00](#bf-f43fb00) | A collapsed paste in the editor draft keeps its content when an extension installs or removes an editor, when… | PiG's own defect | All platforms | Unreleased |
+| [BF-f470046](#bf-f470046) | Containers no longer copy every rendered line of every nesting level on every frame… | PiG's own defect | All platforms | Unreleased |
 | [BF-f474c30](#bf-f474c30) | fix(evals): drop an unused import from the prompt-template eval | PiG's own defect | All platforms | Unreleased |
 | [BF-f4a8f71](#bf-f4a8f71) | A program that embeds PiG and never reads session events no longer hangs | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f4cc20b](#bf-f4cc20b) | The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read… | PiG's own defect | macOS | Unreleased |
@@ -2402,6 +2407,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `007c91dcbb` (2026-10-13), `2a055a7a3a` (2026-10-13)
 - **Tests:** `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `extensions/sdk-py/tests/test_system_prompt_render.py`, `extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRenderErrorIsTheReadersError`, `extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRendersTheCurrentOptions`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult` and 9 more in docs/bug-ledger.json
 - **Release note:** Go, Python and Rust extensions: in a `before_agent_start` handler, the event's `systemPrompt` and the context's system prompt getter now return the prompt the shared options render when read, as Pi and Node do. A handler sees its own edit to `systemPromptOptions` at once, a later handler sees it, and after a handler returns `systemPrompt` later handlers read exactly that prompt; before, they read the prompt rendered before the handler ran, and the context getter returned the Session's prompt.
+
+### BF-008b787
+
+**Column slicing of printable ASCII text is faster, as in Pi…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Column slicing of printable ASCII text is faster, as in Pi ([#9549](https://github.com/earendil-works/pi/issues/9549)).
+- **Root cause:** On the 104k-line transcript SliceByColumn and SliceWithWidth were 35 % of the CPU of a fullscreen wheel frame (profile of BenchmarkScrollFrame, cumulative: paintScrollbar -> replaceScrollbarCell cuts every viewport row at the scrollbar column; the grapheme iterator was 11 %, ExtractAnsiCode 8 %). Printable ASCII (0x20 to 0x7e) always forms one cell of one column per character, so a stretch of it is placed by arithmetic and only the rest of the run goes through the grapheme iterator. The last ASCII character before a non-ASCII byte stays with the iterator, because a combining mark, a joiner or a variation selector after it joins its cluster (Pi's sliceWithWidth skips Intl.Segmenter on the…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `008b787556` (2026-11-17)
+- **Tests:** `tui/widthx/slice_fastpath_test.go::TestSliceWithWidthFastPathEdges`, `tui/widthx/slice_fastpath_test.go::TestSliceWithWidthFastPathEqualsTheGraphemeIterator`
+- **Release note:** Column slicing of printable ASCII text is faster, as in Pi ([#9549](https://github.com/earendil-works/pi/issues/9549)).
 
 ### BF-00933e5
 
@@ -3508,6 +3527,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** PiG, the extension SDKs and the sprite selection use one configuration root: `PIG_HOME`, else `$XDG_CONFIG_HOME/pig`, else `~/.pig`. The Python SDK's `config_home` ignored `XDG_CONFIG_HOME`, the Rust SDK's `config_home` still read the retired `GOPI_HOME`, and the Go SDK, the sprite selection and several host paths each had their own copy of the rule, so an extension could read or write a different directory than the CLI. An empty `PIG_HOME` or `XDG_CONFIG_HOME` now falls through to the next choice, a leading `~` or `~/` expands to your home directory everywhere, and any other value is used as written. If the configuration root needs your home directory and PiG cannot find it, PiG reports an error and exits (`pig --version` and other commands that need no root still run) instead of writing under a path relative to the working directory. Pi-sharing mode (`PIG_USE_PI_DIRS=1`) still moves only the agent and project directories, so a fresh `pig` in that mode writes its documentation and stages the extension SDKs under `$XDG_CONFIG_HOME/pig`. Reported by @baggiiiie (#200).
 
+### BF-0aecafc
+
+**A `pi.events` listener's failure is reported before the command that emitted answers, as in Pi: an RPC client…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `pi.events` listener's failure is reported before the command that emitted answers, as in Pi: an RPC client reads every `extension_error` line before the command's response (`E E E E R`, and `E R` for a listener that rejects after an await), and print and JSON mode write the error to stderr before the command's own output, whether the extensions share a Node process or each run in their own.
+- **Root cause:** the read loop handed a response to its waiter itself while a report_error notification written before it on the same socket went through the host loop, and a shared Node realm sent the listener report on the listener connection and the emitter answer on another, so the answer could be read first
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0aecafce0a` (2026-11-17), `447a4edc21` (2026-11-17), `6390f27ae9` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/report_error_extension_tag_test.go::TestReportErrorNotifyNamingAnExtensionOutsideTheConnectionsProcessIsTheConnectionsOwnAndTheNameIsRefused`, `coding/extension/host/subprocess/report_error_extension_tag_test.go::TestReportErrorNotifyNamingAnotherExtensionIsThatExtensionsErrorInItsProcessOnly`, `coding/extension/host/subprocess/report_order_test.go::TestErrorListenerThatCallsTheExtensionIsAnsweredWhileItsReportIsPending`, `coding/extension/host/subprocess/report_order_test.go::TestQuiesceHeldBehindAReportIsReleasedWhenTheConnectionEnds`, `coding/extension/host/subprocess/report_order_test.go::TestQuiesceOfAnEmissionTheErrorListenerStartedIsNotHeld`, `coding/extension/host/subprocess/report_order_test.go::TestQuiesceWaitsForTheReportWrittenBeforeIt`, `coding/extension/host/subprocess/report_order_test.go::TestResponseWaitsForTheReportWrittenBeforeIt`, `coding/extension/host/subprocess/report_order_test.go::TestSettleWaitingForAHeldQuiesceReturnsWhenTheRunIsCancelled` and 4 more in docs/bug-ledger.json
+- **Release note:** A `pi.events` listener's failure is reported before the command that emitted answers, as in Pi: an RPC client reads every `extension_error` line before the command's response (`E E E E R`, and `E R` for a listener that rejects after an await), and print and JSON mode write the error to stderr before the command's own output, whether the extensions share a Node process or each run in their own. Cause: a Node runtime writes the failing listener's `report_error` notification before the response, but the connection's read loop routed the response straight to its waiter while the notification went through the Host's loop; a shared Node realm sent the listener's report on the listener's connection and the emitter's response on another; and the quiesce that releases the emitter of a listener that rejects after an await was counted on the read loop before the Host's loop applied the report. The read loop now queues the response and the quiesce behind the unapplied report, and a shared realm sends the report on the emitter's connection, naming the listening extension (the Host takes the name only for an extension of the connection's own process and applies any other name's report as the connection's own). No released PiG has this: the `report_error` notification arrives with the same release.
+
 ### BF-0b13d8b
 
 **`pig auth --help` names `pig auth ...` instead of `pi auth ...`**
@@ -3755,6 +3788,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `0ce459e879` (2026-10-11)
 - **Tests:** `internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods`
 - **Release note:** `/login` offers a provider object's own login methods (Pi's `registerNativeProvider`, the `registerProvider(provider)` overload). A provider whose `auth` declares an OAuth method now offers its account login under the flow's own `loginLabel` (the generic "Sign in with an account" label is replaced), and it stays offered after the provider's catalog refresh. Reported and diagnosed by @balcsida, whose branch the login carrier started from (#201).
+
+### BF-0d09de8
+
+**Fullscreen scrolling in long sessions no longer re-renders the whole transcript on every wheel event and key…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fullscreen scrolling in long sessions no longer re-renders the whole transcript on every wheel event and key press ([#9549](https://github.com/earendil-works/pi/issues/9549)).
+- **Root cause:** Mirror Pi: requestViewRender (RequestViewRender path) is called by the wheel, page and line keys, top and bottom, prompt jumps, scrollbar drag and selection auto-scroll; the frame then hands the previous frame render cache to the layout, so no component renders. RequestRender, input to the focused component, resize and focus changes still render everything. An in-frame overlay geometry update no longer counts as a content change. Pi stated limit is mirrored and tested: a component that changes without requesting a render stays stale while scrolling. Pi tui-alt-screen and layout test additions ported (red to green).
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0d09de822e` (2026-11-16)
+- **Tests:** `tui/alt_screen_view_frames_upstream_test.go::TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents`, `tui/alt_screen_view_frames_upstream_test.go::TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale`, `tui/alt_screen_view_frames_upstream_test.go::TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges`, `tui/alt_screen_view_frames_upstream_test.go::TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges`, `tui/layout_upstream_test.go::TestRenderLayoutFrameReusesEarlierOutputWithoutAccumulatingWidths`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows`
+- **Release note:** Fullscreen scrolling in long sessions no longer re-renders the whole transcript on every wheel event and key press ([#9549](https://github.com/earendil-works/pi/issues/9549)).
 
 ### BF-0d0a3ef
 
@@ -21741,6 +21788,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/cli/tools_flag_order_test.go::TestReloadKeepsTheToolsFlagOrder`, `coding/cli/tools_flag_order_test.go::TestToolsFlagOrderReachesTheProviderInEveryMode`, `coding/cli/tools_flag_order_test.go::TestToolsFlagSelectsToolsInItsOrder`, `coding/session_tool_registry_port_test.go::TestAllowedToolsStartActiveInTheirOrder`, `coding/session_tool_registry_port_test.go::TestReloadKeepsTheActiveToolOrder`, `test/parity/scenarios/rpc/45-rpc-tools-flag-order.toml`
 - **Release note:** RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does. `--tools grep,my_tool,read` declares `grep`, `my_tool`, `read` to the model and lists them in that order in the system prompt; RPC mode listed the built-in tools first and appended the extension tools.
 
+### BF-95a798f
+
+**fix: a refused report_error tag is reported through the runner's error listeners, not to stderr**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: a refused report_error tag is reported through the runner's error listeners, not to stderr
+- **Root cause:** the refusal of a report_error tag reused the bus's raw stderr line, a writer that is not mode-aware
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `95a798f82a` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/report_error_extension_tag_test.go::TestReportErrorNotifyNamingAnExtensionOutsideTheConnectionsProcessIsTheConnectionsOwnAndTheNameIsRefused`
+
 ### BF-95db124
 
 **A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of…**
@@ -32972,6 +33032,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f43fb00cfc` (2026-11-05)
 - **Tests:** `internal/codingagent/ext_ui_custom_test.go::TestExtUIContextCustomKeepsCollapsedPasteContent`, `internal/codingagent/ext_ui_custom_test.go::TestRestoreQueuedMessagesKeepsCollapsedPasteContent`, `internal/codingagent/ext_ui_custom_test.go::TestSetRemoteEditorKeepsCollapsedPasteContent`
 - **Release note:** A collapsed paste in the editor draft keeps its content when an extension installs or removes an editor, when an editor-slot custom UI closes, and when queued messages are restored above it, instead of coming back as the literal `[paste #N ...]` marker (Pi #9809, D251).
+
+### BF-f470046
+
+**Containers no longer copy every rendered line of every nesting level on every frame…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Containers no longer copy every rendered line of every nesting level on every frame ([#9549](https://github.com/earendil-works/pi/issues/9549)).
+- **Root cause:** As Pi's shared renderChildLines: Container.Render keeps the slice it returned and returns it again while the children are unchanged (structure generation), the width is the same and the lines are equal; a child added, removed or replaced, a changed line or another width gives a new slice, and the slice it replaced is never written into. Box.Render compares its children's lines child by child (the same array is unchanged, as box.ts sameLines) and returns its cached lines again. Both slices are capacity-clipped, so an append by a caller copies and cannot write into the cache.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f4700463a2` (2026-11-16)
+- **Tests:** `tui/borrow_check_test.go::TestBorrowCheckCatchesAWriteIntoBoxRender`, `tui/borrow_check_test.go::TestBorrowCheckCatchesAWriteIntoContainerRender`, `tui/box_cache_test.go::TestBoxRenderCacheSeesAChildsNewLines`, `tui/box_cache_test.go::TestBoxRenderCacheTakesTheSameArrayForUnchanged`, `tui/container_render_cache_test.go::TestContainerRenderReturnsABorrowedSliceThatAnAppendCannotCorrupt`
+- **Release note:** Containers no longer copy every rendered line of every nesting level on every frame ([#9549](https://github.com/earendil-works/pi/issues/9549)).
 
 ### BF-f474c30
 
