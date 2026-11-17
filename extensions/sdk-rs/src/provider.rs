@@ -81,6 +81,11 @@ impl Drop for ProviderSignalSubscription {
     }
 }
 impl ProviderSignal {
+    /// How many handles share this signal, for the tests that show a holder keeps it alive.
+    #[cfg(test)]
+    pub(crate) fn holders(&self) -> usize {
+        Arc::strong_count(&self.inner)
+    }
     pub fn new() -> Self {
         Self::default()
     }
