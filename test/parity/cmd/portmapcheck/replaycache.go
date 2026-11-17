@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -98,12 +99,17 @@ func reapable(dir string, now time.Time) bool {
 }
 
 // sweepDirs removes the directories of parent whose name starts with prefix and which are reapable, and returns them. Symbolic links
-// are never followed.
-func sweepDirs(parent, prefix string, now time.Time) (removed []string) {
-	entries, err := os.ReadDir(parent)
-	if err != nil {
-		return nil
+// are never followed. What it cannot read or remove it names in the error (a parent that does not exist has nothing to sweep); it goes on
+// to the next directory either way.
+func sweepDirs(parent, prefix string, now time.Time) (removed []string, err error) {
+	entries, rerr := os.ReadDir(parent)
+	if rerr != nil {
+		if errors.Is(rerr, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("cannot read %s: %w", parent, rerr)
 	}
+	var errs []error
 	for _, e := range entries {
 		if !e.IsDir() || !strings.HasPrefix(e.Name(), prefix) {
 			continue
@@ -113,42 +119,48 @@ func sweepDirs(parent, prefix string, now time.Time) (removed []string) {
 			continue
 		}
 		_ = os.WriteFile(filepath.Join(dir, doomedFile), nil, 0o600)
-		if os.RemoveAll(dir) == nil {
-			removed = append(removed, dir)
+		if rerr := os.RemoveAll(dir); rerr != nil {
+			errs = append(errs, fmt.Errorf("cannot remove %s: %w", dir, rerr))
+			continue
 		}
+		removed = append(removed, dir)
 	}
-	return removed
+	return removed, errors.Join(errs...)
 }
 
 // sweepReplayDirs removes the replay directories in tmp whose owner is gone (killed, or its pid reused), and every one older than
 // replayStaleAfter. A directory of a live owner, and a directory with the name but no marker that is younger than the bound, stay.
-func sweepReplayDirs(tmp string, now time.Time) []string { return sweepDirs(tmp, replayDirPrefix, now) }
+func sweepReplayDirs(tmp string, now time.Time) ([]string, error) {
+	return sweepDirs(tmp, replayDirPrefix, now)
+}
 
 // sweepLegacyClones removes the clones the version that hard-linked the build cache left beside it (parent is the directory that holds
 // the cache) once they are older than replayStaleAfter: they carry no marker, so age is all there is to go by. Each pins every file of
 // the cache of its moment, which is why they are removed.
-func sweepLegacyClones(parent string, now time.Time) []string {
+func sweepLegacyClones(parent string, now time.Time) ([]string, error) {
 	return sweepDirs(parent, legacyClonePrefix, now)
 }
 
-// cleanReplayLeftovers is `portmapcheck -clean-replays`: both sweeps, run to the end.
+// cleanReplayLeftovers is `portmapcheck -clean-replays`: both sweeps, run to the end. It reports what it removed, and returns every
+// directory it could not read or remove, so the command exits non-zero when a leftover is still there.
 func cleanReplayLeftovers(w io.Writer) error {
 	cache, err := buildCacheDir()
 	if err != nil {
 		return err
 	}
 	now := time.Now()
-	removed := sweepReplayDirs(os.TempDir(), now)
+	removed, errs := sweepReplayDirs(os.TempDir(), now)
 	if cache != "" && cache != "off" {
-		removed = append(removed, sweepLegacyClones(filepath.Dir(cache), now)...)
+		legacy, lerr := sweepLegacyClones(filepath.Dir(cache), now)
+		removed, errs = append(removed, legacy...), errors.Join(errs, lerr)
 	}
 	for _, d := range removed {
 		if _, err := fmt.Fprintln(w, "removed", d); err != nil {
-			return err
+			return errors.Join(err, errs)
 		}
 	}
 	_, err = fmt.Fprintf(w, "portmap-check: %d leftover replay directories removed\n", len(removed))
-	return err
+	return errors.Join(err, errs)
 }
 
 // buildCacheDir is the user's build cache: GOCACHE, else what `go env GOCACHE` says.
@@ -193,9 +205,9 @@ func quoteProgram(path string) (string, error) {
 func (c *replayCaches) newReplayDir(userCache string) error {
 	now := time.Now()
 	tmp := os.TempDir()
-	sweepReplayDirs(tmp, now)
+	_, _ = sweepReplayDirs(tmp, now)
 	// A legacy clone can be terabytes of links: remove it beside the replays, never before them.
-	go sweepLegacyClones(filepath.Dir(userCache), now)
+	go func() { _, _ = sweepLegacyClones(filepath.Dir(userCache), now) }()
 	dir, err := os.MkdirTemp(tmp, replayDirPrefix)
 	if err != nil {
 		return err
