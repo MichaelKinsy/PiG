@@ -1,5 +1,7 @@
 # Upstream evidence: Pi 1.0.0 main.ts:469-474 reports "--provider requires --model (for example: --provider <name> --model <pattern>)" as an error diagnostic when --provider is given without --model (#10236); Pi 0.99.2 ignored --provider and ran the default model of another provider.
 # Probe: pi --offline --no-extensions --provider anthropic --no-session -p exits 1, prints nothing on stdout, and prints the diagnostic below on stderr.
+# Pi c8c456c85c6e (main.ts:917-918): with no model available the runtime also lists the no-models guidance as a warning after the session option error (main.ts:508-513), so stderr continues with "Warning: No models available." and the two documentation paths.
+# normalize-rationale: the documentation root of the two guidance paths differs by distribution (D2/D22). Masking it keeps the guidance text, the file names, the line order and the rest of the output, so drift in the error, the warning or the exit still fails.
 name = "22-cli-provider-requires-model"
 description = "--provider without --model fails with an error"
 covers = ["packages/coding-agent/src/main.ts"]
@@ -13,5 +15,8 @@ timeout_seconds = 10
 [assert]
 exit_code = 1
 output_equal = true
-both_contain = ["Error: --provider requires --model (for example: --provider anthropic --model <pattern>)"]
+both_contain = ["Error: --provider requires --model (for example: --provider anthropic --model <pattern>)", "Warning: No models available."]
+normalize_replace = [
+  { pattern = '/[^ \n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\.md', with = '<DOCS>/$1.md', reason = "D2/D22: the documentation root is distribution-specific (PiG's docs live in a bundle directory); the replacement cuts the root and keeps the file names and the guidance text. Pi c8c456c85c6e (main.ts:917-918) makes the no-models guidance a warning in the diagnostics every mode lists, so this output meets the root." },
+]
 runs = 3

@@ -78,8 +78,9 @@ func TestPrintModeGivesTheProviderIDOllamaNoBaseURLOfItsOwn(t *testing.T) {
 				return
 			}
 			var exit *exec.ExitError
-			want := `Error: Model "` + tc.provider + `/m1" not found. Use --list-models to see available models.` + "\n"
-			if !errors.As(runErr, &exit) || exit.ExitCode() != 1 || stdout.String() != "" || !strings.HasSuffix(stderr.String(), want) || len(paths) != 0 {
+			// Pi c8c456c85c6e (main.ts:917-918): the models.json provider does not load, so no model is available and the error is followed by the no-models warning (probed on Pi).
+			want := `Error: Model "` + tc.provider + `/m1" not found. Use --list-models to see available models.` + "\n" + noModelsWarningCut
+			if !errors.As(runErr, &exit) || exit.ExitCode() != 1 || stdout.String() != "" || !strings.HasSuffix(cutDocsRoot(stderr.String()), want) || len(paths) != 0 {
 				t.Fatalf("err=%v stdout=%q stderr=%q requests=%q, want exit 1 with %q and no request", runErr, stdout.String(), stderr.String(), paths, want)
 			}
 		})

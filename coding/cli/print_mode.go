@@ -88,9 +88,9 @@ type printModeRuntime struct {
 	Session     coding.SessionStartOptions
 	ResumePath  string
 	SessionName string
-	// Diagnostics are the build's diagnostics (cliBuild.runtimeDiagnostics): the Runtime holds them for the mode to report once.
+	// Diagnostics are the build's diagnostics (cliBuild.runtimeDiagnostics), the model fallback message included as a warning: the Runtime holds them for the mode to report once.
 	Diagnostics []codingagent.AgentSessionRuntimeDiagnostic
-	// ModelFallbackMessage is the build model fallback message (cliBuild.ModelFallbackMessage); the factory adds it to the diagnostics when a fallback model was chosen.
+	// ModelFallbackMessage is the build model fallback message (cliBuild.ModelFallbackMessage); the Runtime reports it as ModelFallbackMessage().
 	ModelFallbackMessage string
 	// ToolRegistryAllowed and ToolRegistryExcluded bound the tool registry
 	// pi.getAllTools() reports (see toolRegistryFilters).

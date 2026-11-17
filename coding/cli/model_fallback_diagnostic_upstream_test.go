@@ -2,10 +2,12 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -13,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -54,6 +57,8 @@ type fallbackShape struct {
 	savedModel       string
 	// using is the provider/model the fallback chooses.
 	using string
+	// auth is the contents of the agent directory's auth.json.
+	auth string
 	// network says the chosen model's endpoint is the closed loopback port of models.json, so print and JSON mode, which must send a prompt, stay local.
 	network bool
 }
@@ -108,6 +113,11 @@ func (s fallbackShape) env(t *testing.T) []string {
 	}
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(s.settings), 0o600); err != nil {
 		t.Fatal(err)
+	}
+	if s.auth != "" {
+		if err := os.WriteFile(filepath.Join(agentDir, "auth.json"), []byte(s.auth), 0o600); err != nil {
+			t.Fatal(err)
+		}
 	}
 	for _, provider := range s.keys {
 		env = append(env, builtinProviderKeys[provider]+"=test-key")
@@ -263,7 +273,7 @@ func TestNoModelsAvailableIsReportedOnceAsAWarning(t *testing.T) {
 			}
 		})
 	}
-	t.Run("rpc/start-switch-fork", func(t *testing.T) {
+	t.Run("rpc/start-switch-fork-new", func(t *testing.T) {
 		t.Parallel()
 		f := newFallbackFixture(t, shape)
 		p := startRPCProcessAt(t, f.projectDir, shape.env(t), "--no-session")
@@ -271,6 +281,7 @@ func TestNoModelsAvailableIsReportedOnceAsAWarning(t *testing.T) {
 		for _, command := range []map[string]any{
 			{"id": "1", "type": "switch_session", "sessionPath": f.sessionFile},
 			{"id": "2", "type": "fork", "entryId": f.lastUser},
+			{"id": "3", "type": "new_session"},
 		} {
 			p.sendJSON(command)
 			p.await("the "+fmt.Sprint(command["type"])+" response", func(record rpcRecord) bool {
@@ -278,7 +289,163 @@ func TestNoModelsAvailableIsReportedOnceAsAWarning(t *testing.T) {
 				return record["type"] == "response" && record["id"] == command["id"]
 			})
 		}
-		p.closeAndWait("after fork")
+		p.closeAndWait("after new_session")
 		requireOnce(t, p.stderr.String(), stdout.String())
 	})
+}
+
+// docsRootRE matches a documentation path line of the guidance; the root differs by distribution (D2/D22), the file names do not.
+var docsRootRE = regexp.MustCompile(`(?m)^  \S*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\.md$`)
+
+// cutDocsRoot replaces the root of the two documentation paths of the guidance and nothing else.
+func cutDocsRoot(s string) string { return docsRootRE.ReplaceAllString(s, "  <DOCS>/$1.md") }
+
+// noModelsWarningCut is the whole warning of a start without a model, with its documentation roots cut.
+const noModelsWarningCut = noModelsGuidanceFirstLine + "\n  <DOCS>/providers.md\n  <DOCS>/models.md\n"
+
+// noModelsGuidanceFirstLine is the first line of the warning of a start without a model; two documentation paths follow, whose root differs by distribution.
+const noModelsGuidanceFirstLine = "Warning: No models available. Use /login to log into a provider via OAuth or API key. See:"
+
+// requireNoModelsWarning checks stderr lines from index at: the guidance and its two documentation paths, and nothing after.
+func requireNoModelsWarning(t *testing.T, lines []string, at int, stderr string) {
+	t.Helper()
+	if len(lines) != at+3 || lines[at] != noModelsGuidanceFirstLine ||
+		!strings.HasPrefix(lines[at+1], "  ") || !strings.HasSuffix(lines[at+1], "providers.md") || !strings.HasPrefix(lines[at+2], "  ") || !strings.HasSuffix(lines[at+2], "models.md") {
+		t.Fatalf("stderr must hold the no-models warning with its two documentation paths from line %d, and nothing after:\n%s", at+1, stderr)
+	}
+}
+
+// Every place that lists the runtime's diagnostics lists the no-models warning, in the stream and order Pi does (main.ts:508-513 and 917-918 build the list, 948, 957, 985 and 995
+// write it). Rows are probed on Pi with this backport applied, with no model at all: the argument errors print their Error line and then the warning on stderr, exit 1 and write nothing
+// on stdout (cli-utils scenario 22); --help and --list-models write the warning on stderr and their own output on stdout and exit 0. With a model available there is no warning.
+func TestEveryEntryPointListsTheNoModelsWarningAsPiDoes(t *testing.T) {
+	binary := buildPigBinaryForSignalTest(t)
+	rows := []struct {
+		name       string
+		args       []string
+		wantError  string // the first stderr line of an argument error
+		wantStdout string // a prefix of stdout; empty means stdout stays empty
+		exit       int
+		// modelShapes says the row also runs with a model available, where the error line stands alone.
+		modelShapes bool
+	}{
+		{name: "provider-without-model", args: []string{"--provider", "anthropic", "--no-session", "-p"}, wantError: "Error: --provider requires --model (for example: --provider anthropic --model <pattern>)", exit: 1, modelShapes: true},
+		{name: "unknown-model-name", args: []string{"--model", "zzz", "--no-session", "-p", "hi"}, wantError: `Error: Model "zzz" not found. Use --list-models to see available models.`, exit: 1},
+		{name: "unknown-provider-model", args: []string{"--model", "nosuch/zzz", "--no-session", "-p", "hi"}, wantError: `Error: Model "nosuch/zzz" not found. Use --list-models to see available models.`, exit: 1},
+		{name: "api-key-without-model", args: []string{"--api-key", "k", "--no-session", "-p", "hi"}, wantError: "Error: --api-key requires a model to be specified via --model, --provider/--model, or --models", exit: 1},
+		{name: "help", args: []string{"--help"}, wantStdout: "pig - AI coding assistant", exit: 0},
+		{name: "list-models", args: []string{"--list-models"}, wantStdout: "No models available. Use /login", exit: 0},
+	}
+	for _, row := range rows {
+		for _, shape := range append([]fallbackShape{{name: "no-models", settings: `{}`}}, fallbackShapes(t)...) {
+			if shape.name != "no-models" && !row.modelShapes {
+				continue
+			}
+			t.Run(row.name+"/"+shape.name, func(t *testing.T) {
+				t.Parallel()
+				cmd := exec.Command(binary, append([]string{"--offline", "--no-extensions"}, row.args...)...)
+				cmd.Dir = t.TempDir()
+				cmd.Env = append(os.Environ(), shape.env(t)...)
+				var stdout, stderr bytes.Buffer
+				cmd.Stdout, cmd.Stderr = &stdout, &stderr
+				cmd.WaitDelay = 10 * time.Second
+				err := cmd.Run()
+				code := 0
+				if exit, ok := err.(*exec.ExitError); ok {
+					code = exit.ExitCode()
+				} else if err != nil {
+					t.Fatal(err)
+				}
+				if code != row.exit {
+					t.Fatalf("exit = %d, want %d\nstderr:\n%s", code, row.exit, stderr.String())
+				}
+				lines := strings.Split(strings.TrimRight(stderr.String(), "\n"), "\n")
+				if shape.name != "no-models" {
+					// A model is available: the argument error stands alone.
+					if len(lines) != 1 || lines[0] != row.wantError {
+						t.Fatalf("with a model the error stands alone, stderr:\n%s", stderr.String())
+					}
+					return
+				}
+				at := 0
+				if row.wantError != "" {
+					if lines[0] != row.wantError {
+						t.Fatalf("first stderr line = %q, want %q\n%s", lines[0], row.wantError, stderr.String())
+					}
+					at = 1
+				}
+				requireNoModelsWarning(t, lines, at, stderr.String())
+				if row.wantStdout == "" && stdout.Len() != 0 {
+					t.Fatalf("stdout = %q, want empty", stdout.String())
+				}
+				if row.wantStdout != "" && !strings.HasPrefix(stdout.String(), row.wantStdout) {
+					t.Fatalf("stdout starts %q, want prefix %q", stdout.String()[:min(60, stdout.Len())], row.wantStdout)
+				}
+			})
+		}
+	}
+}
+
+// The warning is one entry of the diagnostics of the construction, after the model errors and last, for the provider shapes that reach the function. Pi pushes it when its
+// createAgentSession result carries a modelFallbackMessage (main.ts:917-918), which is set when no model can be chosen (sdk.ts:247, the guidance), and a saved model that cannot be
+// restored sets "Could not restore" (sdk.ts:230, covered with exact text by the process tests above). A session with no saved model and a usable model has no message. Expectations
+// are Pi's, probed: no models, a provider whose models have no credential, and an expired OAuth login (not usable as a login of this agent directory) all end without a model.
+func TestRuntimeDiagnosticsEndWithTheNoModelsWarningForTheShapesPiGivesNoModel(t *testing.T) {
+	const noKeyModels = `{"providers":{"fake":{"baseUrl":"http://127.0.0.1:9/v1","api":"openai-completions","models":[{"id":"zzz-model"}]}}}`
+	shapes := []struct {
+		fallbackShape
+		warns bool
+	}{
+		{fallbackShape{name: "no-models-at-all", settings: `{}`}, true},
+		{fallbackShape{name: "models-without-credentials", models: noKeyModels, settings: `{}`}, true},
+		{fallbackShape{name: "oauth-expired", settings: `{}`, auth: `{"anthropic":{"type":"oauth","access":"x","refresh":"y","expires":1}}`}, false},
+		{fallbackShape{name: "api-key-custom-base-url", models: fakeProviderModels, settings: `{"defaultProvider":"fake","defaultModel":"zzz-model"}`}, false},
+		{fallbackShape{name: "no-default-model", models: fakeProviderModels, settings: `{}`}, false},
+		{fallbackShape{name: "two-built-in-keys-groq-mistral", settings: `{}`, keys: []string{"mistral", "groq"}}, false},
+	}
+	for _, shape := range shapes {
+		t.Run(shape.name, func(t *testing.T) {
+			for _, entry := range shape.env(t) {
+				key, value, _ := strings.Cut(entry, "=")
+				t.Setenv(key, value)
+			}
+			agentDir := os.Getenv("PIG_CODING_AGENT_DIR")
+			cwd := t.TempDir()
+			flags := parseArgs([]string{"--print", "--no-extensions"})
+			settings := codingagent.NewSettingsManager(cwd, agentDir)
+			builder := &cliRuntimeBuilder{
+				mode: processAppMode(flags), flags: flags, agentDir: agentDir, launchCWD: cwd,
+				settingsManager: settings, settingsDiagnostics: codingagent.CollectSettingsDiagnostics(settings),
+				startupUIOptions: startupUIOptions(flags, false, cwd, agentDir, settings),
+				trustStore:       codingagent.NewProjectTrustStore(agentDir), trustByCWD: map[string]bool{},
+				stageExtensionSDKs: func() error { return nil },
+			}
+			ctx := context.Background()
+			build, err := builder.buildResources(ctx, cliBuildInput{CWD: cwd})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer build.Services.Close()
+			manager, err := coding.NewInMemorySessionManager(cwd)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := builder.buildSession(ctx, build, cliBuildInput{CWD: cwd, Manager: manager}); err != nil {
+				t.Fatal(err)
+			}
+			warnings := 0
+			diagnostics := build.runtimeDiagnostics()
+			for i, diagnostic := range diagnostics {
+				if diagnostic.Type == "warning" && strings.HasPrefix(diagnostic.Message, "No models available.") {
+					warnings++
+					if i != len(diagnostics)-1 {
+						t.Fatalf("the warning is not the last diagnostic: %v", diagnostics)
+					}
+				}
+			}
+			if want := map[bool]int{true: 1, false: 0}[shape.warns]; warnings != want {
+				t.Fatalf("no-models warnings = %d, want %d: %v", warnings, want, diagnostics)
+			}
+		})
+	}
 }

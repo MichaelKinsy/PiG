@@ -31,21 +31,27 @@ func TestStartupDiagnosticOrderMatchesPi(t *testing.T) {
 			name  string
 			args  []string
 			after string
+			// noModels says no model could be chosen, so the runtime's diagnostics end with the no-models warning (main.ts:917-918); a model chosen with a warning leaves none.
+			noModels bool
 		}{
-			{"extension only", nil, ""},
-			{"model error", []string{"--model", "missing-model-rv-rpc"}, modelError},
-			{"model warning", []string{"--model", "openai/unknown-rv-rpc"}, modelWarning},
-			{"api key error", []string{"--model", "missing-model-rv-rpc", "--api-key", "fixture"}, modelError + apiError},
-			{"scope and model", []string{"--models", "missing-scope-rv-rpc", "--model", "missing-model-rv-rpc"}, scopeWarning + modelError},
-			{"scope and model warning", []string{"--models", "missing-scope-rv-rpc", "--model", "openai/unknown-rv-rpc"}, scopeWarning + modelWarning},
-			{"repeated scope pattern", []string{"--models", "missing-scope-rv-rpc,missing-scope-rv-rpc"}, scopeWarning},
+			{"extension only", nil, "", true},
+			{"model error", []string{"--model", "missing-model-rv-rpc"}, modelError, true},
+			{"model warning", []string{"--model", "openai/unknown-rv-rpc"}, modelWarning, false},
+			{"api key error", []string{"--model", "missing-model-rv-rpc", "--api-key", "fixture"}, modelError + apiError, true},
+			{"scope and model", []string{"--models", "missing-scope-rv-rpc", "--model", "missing-model-rv-rpc"}, scopeWarning + modelError, true},
+			{"scope and model warning", []string{"--models", "missing-scope-rv-rpc", "--model", "openai/unknown-rv-rpc"}, scopeWarning + modelWarning, false},
+			{"repeated scope pattern", []string{"--models", "missing-scope-rv-rpc,missing-scope-rv-rpc"}, scopeWarning, true},
 		} {
 			t.Run(mode+"/"+tc.name, func(t *testing.T) {
 				args := append([]string{"--mode", mode, "-e", missing}, tc.args...)
 				run := runStartupDiagnosticProcess(t, binary, root, agentDir, args...)
-				want := settingsWarning + extensionError + tc.after + "Hint: Start without extensions using \"pig -ne\".\n"
+				want := settingsWarning + extensionError + tc.after
+				if tc.noModels {
+					want += noModelsWarningCut
+				}
+				want += "Hint: Start without extensions using \"pig -ne\".\n"
 				var exit *exec.ExitError
-				if !errors.As(run.err, &exit) || exit.ExitCode() != 1 || run.stdout != "" || run.stderr != want {
+				if !errors.As(run.err, &exit) || exit.ExitCode() != 1 || run.stdout != "" || cutDocsRoot(run.stderr) != want {
 					t.Fatalf("exit=%v stdout=%q\nstderr=%q\nwant=%q", run.err, run.stdout, run.stderr, want)
 				}
 			})
@@ -63,8 +69,8 @@ func TestStartupDiagnosticOrderMatchesPi(t *testing.T) {
 	for _, metadata := range []string{"--help", "--list-models"} {
 		t.Run(metadata, func(t *testing.T) {
 			run := runStartupDiagnosticProcess(t, binary, root, agentDir, metadata, "--models", "missing-scope-rv-rpc", "--model", "missing-model-rv-rpc", "-e", missing)
-			// Pi 6dfb54678 main.ts reports startupDiagnostics, runtime diagnostics included, before the help text and the model listing.
-			if run.err != nil || run.stderr != settingsWarning+extensionError+scopeWarning+modelError || run.stdout == "" {
+			// Pi 6dfb54678 main.ts reports startupDiagnostics, runtime diagnostics included, before the help text and the model listing; c8c456c85c6e ends them with the no-models warning (main.ts:917-918, probed on Pi: --help and --list-models, exit 0).
+			if run.err != nil || cutDocsRoot(run.stderr) != settingsWarning+extensionError+scopeWarning+modelError+noModelsWarningCut || run.stdout == "" {
 				t.Fatalf("exit=%v stdout=%q stderr=%q", run.err, run.stdout, run.stderr)
 			}
 		})

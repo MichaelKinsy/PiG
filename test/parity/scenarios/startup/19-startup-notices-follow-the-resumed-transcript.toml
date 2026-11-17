@@ -5,7 +5,9 @@
 # only then shows the startup diagnostics, migrated credentials, the models.json error, the model fallback message and the crash notice (run(), after init()).
 # With `-c` on a staged session and an unparsable models.json, the resumed turns are therefore painted first and "models.json error:" follows them. The crop runs
 # from the first resumed message to the start of the error line; the error text itself differs between the JSON parsers and is outside the crop.
+# The notices before it include the no-models guidance with its two documentation paths (Pi c8c456c85c6e, main.ts:917-918); the paths differ only in the documentation root, which normalize_replace cuts.
 
+# normalize-rationale: the documentation root of the two guidance paths differs by distribution (D2/D22). Masking it keeps the guidance text, the file names, the line order and the rest of the output, so drift in the error, the warning or the exit still fails.
 name = "19-startup-notices-follow-the-resumed-transcript"
 description = "The resumed transcript is painted before the startup notices, as pi orders init() and run()."
 covers = [
@@ -36,4 +38,7 @@ both_reach_ready = true
 both_contain = ["remember zulu-3120", "noted zulu-3120", "models.json error:"]
 both_not_contain = ["panic:", "goroutine "]
 escaped_output_equal = true
+normalize_replace = [
+  { pattern = '/[^ \n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\.md', with = '<DOCS>/$1.md', reason = "D2/D22: the documentation root is distribution-specific (PiG's docs live in a bundle directory); the replacement cuts the root and keeps the file names and the guidance text. Pi c8c456c85c6e (main.ts:917-918) makes the no-models guidance a warning in the diagnostics every mode lists, so this output meets the root." },
+]
 runs = 3

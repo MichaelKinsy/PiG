@@ -470,6 +470,17 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/cli-utils/22-cli-provider-requires-model.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "/[^ \\n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\\.md",
+          "with": "<DOCS>/$1.md",
+          "reason": "D2/D22: the documentation root is distribution-specific (PiG's docs live in a bundle directory); the replacement cuts the root and keeps the file names and the guidance text. Pi c8c456c85c6e (main.ts:917-918) makes the no-models guidance a warning in the diagnostics every mode lists, so this output meets the root."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/cli-utils/26-export-cli-missing-file.toml",
       "transforms": [
         {
@@ -12272,6 +12283,12 @@
     {
       "scenario": "test/parity/scenarios/startup/19-startup-notices-follow-the-resumed-transcript.toml",
       "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "/[^ \\n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\\.md",
+          "with": "<DOCS>/$1.md",
+          "reason": "D2/D22: the documentation root is distribution-specific (PiG's docs live in a bundle directory); the replacement cuts the root and keeps the file names and the guidance text. Pi c8c456c85c6e (main.ts:917-918) makes the no-models guidance a warning in the diagnostics every mode lists, so this output meets the root."
+        },
         {
           "kind": "terminal_crop",
           "configuration": {

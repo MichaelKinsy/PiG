@@ -587,7 +587,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	return build, nil
 }
 
-// runtimeDiagnostics are the diagnostics of the construction this build serves, as Pi's createRuntime returns them (main.ts, #11973): the settings and extension diagnostics, then the model scope warnings, then the session option warnings and errors. The startup build and every replacement's build return them through the Runtime, which reports each once (TakeUnreportedDiagnostics). Call it after buildSession.
+// runtimeDiagnostics are the diagnostics of the construction this build serves, as Pi's createRuntime returns them (main.ts, #11973, c8c456c85c6e): the settings and extension diagnostics, then the model scope warnings, then the session option warnings and errors, then the model fallback message as one more warning (main.ts:917-918: it is the login guidance when no model is available and "Could not restore model x/y. Using a/b" otherwise; Pi's `session.model` condition always holds because the agent holds a placeholder model). The startup build and every replacement's build return them through the Runtime, which reports each once (TakeUnreportedDiagnostics); the error exit of startup and --help / --list-models list the same diagnostics. Call it after buildSession.
 func (build *cliBuild) runtimeDiagnostics() []codingagent.AgentSessionRuntimeDiagnostic {
 	diagnostics := slices.Concat(build.StartupDiagnostics, build.ExtensionDiagnostics)
 	for _, warning := range build.Selected.ScopeWarnings {
@@ -598,6 +598,9 @@ func (build *cliBuild) runtimeDiagnostics() []codingagent.AgentSessionRuntimeDia
 	}
 	for _, diagnosticErr := range build.Selected.Errors {
 		diagnostics = append(diagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "error", Message: diagnosticErr.Error()})
+	}
+	if build.ModelFallbackMessage != "" {
+		diagnostics = append(diagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: build.ModelFallbackMessage})
 	}
 	return codingagent.DeduplicateDiagnostics(diagnostics)
 }
