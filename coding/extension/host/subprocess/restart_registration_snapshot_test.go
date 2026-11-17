@@ -9,21 +9,36 @@ import (
 	"reflect"
 	"runtime"
 	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // registrationServe is the process half of a fused extension: each connection the host opens to it registers the next payload of regs (the last one
-// again once they ran out), then answers pings until the host closes the connection.
-func registrationServe(regs ...*RegisterPayload) func(net.Conn) error {
+// again once they ran out), then answers pings until the host closes the connection. The first connection ends when crash is closed, as a process
+// that crashed.
+func registrationServe(crash <-chan struct{}, regs ...*RegisterPayload) func(net.Conn) error {
 	var starts atomic.Int32
 	return func(conn net.Conn) error {
-		reg := regs[min(int(starts.Add(1))-1, len(regs)-1)]
-		if err := writeEnvelopeTo(conn, &Envelope{Type: MsgRegister, Register: reg}); err != nil {
+		n := int(starts.Add(1)) - 1
+		if err := writeEnvelopeTo(conn, &Envelope{Type: MsgRegister, Register: regs[min(n, len(regs)-1)]}); err != nil {
 			return err
+		}
+		served := make(chan struct{})
+		defer close(served)
+		if n == 0 {
+			go func() {
+				select {
+				case <-crash:
+					_ = conn.Close()
+				case <-served:
+				}
+			}()
 		}
 		for {
 			env, err := readEnvelopeFrom(conn)
@@ -37,11 +52,35 @@ func registrationServe(regs ...*RegisterPayload) func(net.Conn) error {
 	}
 }
 
+// waitCrashNotice waits for the host to report a crash notice that contains text.
+func waitCrashNotice(t *testing.T, h *Host, text string) {
+	t.Helper()
+	log, _ := crashNoticeLogs.Load(h)
+	notices, _ := log.(*crashNotices)
+	if notices == nil {
+		t.Fatal("the host's crash notices are not recorded")
+	}
+	deadline := time.Now().Add(testbudget.Wait(t))
+	for sleep := time.Millisecond; ; sleep = min(sleep*2, 100*time.Millisecond) {
+		notices.mu.Lock()
+		found := slices.ContainsFunc(notices.notices, func(notice string) bool { return strings.Contains(notice, text) })
+		notices.mu.Unlock()
+		if found {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("no crash notice contains %q", text)
+		}
+		time.Sleep(sleep)
+	}
+}
+
 // A restart whose registration fails validation replaces nothing: the host goes on serving the registration of the generation that was running, every
-// field of it, not the flags names and requests of the one that was refused.
+// field of it, not the flag names and requests of the one that was refused.
 func TestFailedRegistrationKeepsTheOldRegistration(t *testing.T) {
 	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 	t.Cleanup(func() { h.Shutdown("test done") })
+	recordCrashNotices(t, h)
 	first := &RegisterPayload{
 		Name:               "restarter",
 		Flags:              []FlagDecl{{Name: "mode", Type: "string", Default: json.RawMessage(`"first"`)}},
@@ -54,7 +93,9 @@ func TestFailedRegistrationKeepsTheOldRegistration(t *testing.T) {
 		// A tool's parameters must be an object schema: the registration is refused after its flags were read.
 		Tools: []ToolDecl{{Name: "bad", Parameters: json.RawMessage(`"not a schema"`)}},
 	}
-	if _, err := h.LoadInProcess(t.Context(), ExtConfig{Name: "restarter", Enabled: true}, registrationServe(first, refused)); err != nil {
+	crash := make(chan struct{})
+	cfg := ExtConfig{Name: "restarter", Enabled: true, SupervisorConfig: restartSupervisor}
+	if _, err := h.LoadInProcess(t.Context(), cfg, registrationServe(crash, first, refused)); err != nil {
 		t.Fatal(err)
 	}
 	h.mu.Lock()
@@ -64,9 +105,9 @@ func TestFailedRegistrationKeepsTheOldRegistration(t *testing.T) {
 	if !slices.Equal(before.flagNames, []string{"mode"}) || !before.wantsSessionLog || !before.wantsModelRegistry {
 		t.Fatalf("the first generation registered %+v", before)
 	}
-	if _, err := h.startExt(t.Context(), me, true); err == nil {
-		t.Fatal("the host accepted a registration whose tool has no object schema")
-	}
+	// The process crashes; its supervisor restarts it, and the host refuses the registration of the restart.
+	close(crash)
+	waitCrashNotice(t, h, "restart failed")
 	after := registrationOf(me)
 	if !reflect.DeepEqual(before, after) {
 		t.Errorf("a refused registration changed the registration the host serves:\nbefore %+v\nafter  %+v", before, after)

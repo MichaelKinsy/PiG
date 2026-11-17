@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -86,7 +88,6 @@ var restartReaders = []restartReader{
 	}},
 }
 
-
 // restartRig is a published extension whose process crashes on demand and is restarted by its supervisor. The generation it registers is
 // in its "probe" command and its "probe-flag" default ("gen 1", "gen 2", ...), so a reader can tell which registration it was served.
 type restartRig struct {
@@ -158,6 +159,64 @@ export default function(pi) {
 	})
 }
 
+// generationServe is the process half of a fused extension that registers the generation it is on ("gen 1", "gen 2", ...) in its "probe" command, its
+// "probe-flag" default and its "greet" tool, as the other rigs do, and answers every request. crash ends its connection as a process crash does.
+func generationServe(name string) (serve func(net.Conn) error, crash func()) {
+	var starts atomic.Int32
+	var current atomic.Pointer[net.Conn]
+	serve = func(conn net.Conn) error {
+		label := fmt.Sprintf("gen %d", starts.Add(1))
+		current.Store(&conn)
+		reg := &RegisterPayload{
+			Name:     name,
+			Commands: []CommandDecl{{Name: "probe", Description: label}},
+			Flags:    []FlagDecl{{Name: "probe-flag", Type: "string", Description: label, Default: json.RawMessage(strconv.Quote(label))}},
+			Tools:    []ToolDecl{{Name: "greet", Description: label, Parameters: json.RawMessage(`{"type":"object"}`)}},
+			Handlers: []HandlerDecl{{Event: "session_start", HandlerID: 1}},
+		}
+		if err := writeEnvelopeTo(conn, &Envelope{Type: MsgRegister, Register: reg}); err != nil {
+			return err
+		}
+		for {
+			env, err := readEnvelopeFrom(conn)
+			if err != nil {
+				return nil
+			}
+			switch env.Type {
+			case MsgPing:
+				if env.Ping != nil {
+					_ = writeEnvelopeTo(conn, &Envelope{Type: MsgPong, Pong: &PongPayload{Nonce: env.Ping.Nonce}})
+				}
+			case MsgRequest:
+				_ = writeEnvelopeTo(conn, &Envelope{Type: MsgResponse, ID: env.ID, Response: &ResponsePayload{}})
+			}
+		}
+	}
+	crash = func() {
+		if conn := current.Load(); conn != nil {
+			_ = (*conn).Close()
+		}
+	}
+	return serve, crash
+}
+
+// newFusedRestartRig is a fused extension: its factory runs in this process over an in-memory connection, and the same adoption restarts it.
+func newFusedRestartRig(t *testing.T) *restartRig {
+	t.Helper()
+	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+	h.SetUIBridge(newTestBridge(&mockUIContext{}))
+	t.Cleanup(func() { h.Shutdown("test done") })
+	recordCrashNotices(t, h)
+	serve, crash := generationServe("fused")
+	cfg := ExtConfig{Name: "fused", Enabled: true, SupervisorConfig: restartSupervisor}
+	if _, err := h.LoadInProcess(t.Context(), cfg, serve); err != nil {
+		t.Fatal(err)
+	}
+	return newRestartRig(t, h, "fused", func(*extension.Extension) func(context.Context) {
+		return func(context.Context) { crash() }
+	})
+}
+
 func newRestartRig(t *testing.T, h *Host, name string, crashOf func(*extension.Extension) func(context.Context)) *restartRig {
 	t.Helper()
 	h.mu.Lock()
@@ -177,7 +236,7 @@ func TestRestartReplacesRegistrationBesideEveryReader(t *testing.T) {
 	for _, mode := range []struct {
 		name string
 		rig  func(*testing.T) *restartRig
-	}{{"go isolated", newGoRestartRig}, {"node isolated", newNodeRestartRig}} {
+	}{{"go isolated", newGoRestartRig}, {"node isolated", newNodeRestartRig}, {"fused", newFusedRestartRig}} {
 		t.Run(mode.name, func(t *testing.T) {
 			for _, kind := range restartReaders {
 				t.Run(kind.name, func(t *testing.T) { driveRestartsBesideReader(t, mode.rig(t), kind) })
