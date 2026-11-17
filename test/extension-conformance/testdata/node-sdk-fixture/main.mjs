@@ -1009,6 +1009,29 @@ export default function (pi) {
     description: "Make the session_info_changed handler wait on a socket read",
     handler: async (args) => { nameWaitAddr = String(args); },
   });
+  // io_wait_input and io_wait_start subscribe an input / before_agent_start handler that waits on a socket read first and then notifies "<event>:<text or prompt>".
+  const ioWaitOnce = (addr) => new Promise((resolve, reject) => {
+    const [host, port] = addr.split(":");
+    const socket = ioWaitConnect({ host, port: Number(port) });
+    socket.setEncoding("utf8");
+    socket.on("connect", () => socket.write("waiting\n"));
+    socket.on("data", () => { socket.destroy(); resolve(); });
+    socket.on("error", reject);
+  });
+  pi.registerCommand("io_wait_input", {
+    description: "Make an input handler wait on a socket read",
+    handler: async (args) => {
+      const addr = String(args);
+      pi.on("input", async (event, ctx) => { await ioWaitOnce(addr); ctx.ui.notify(`input:${event.text}`, "info"); });
+    },
+  });
+  pi.registerCommand("io_wait_start", {
+    description: "Make a before_agent_start handler wait on a socket read",
+    handler: async (args) => {
+      const addr = String(args);
+      pi.on("before_agent_start", async (event, ctx) => { await ioWaitOnce(addr); ctx.ui.notify(`before_agent_start:${event.prompt}`, "info"); });
+    },
+  });
   pi.registerCommand("command_error", { description: "Return a command error", handler: async () => { throw new Error("command exploded"); } });
   pi.registerCommand("command_awaited_error", {
     description: "Return an error after awaited work",

@@ -429,6 +429,13 @@
                  (pig:on ext "agent_settled" (lambda (hctx data) (declare (ignore hctx data)) (core-io-wait args) nil))))
   (pig:command ext "io_wait_name" "Make the session_info_changed handler wait on a socket read"
                (lambda (ctx args) (declare (ignore ctx)) (setf *core-name-wait-addr* args)))
+  ;; io_wait_input and io_wait_start subscribe an input / before_agent_start handler that waits on a socket read first and then notifies "<event>:<text or prompt>".
+  (pig:command ext "io_wait_input" "Make an input handler wait on a socket read"
+               (lambda (ctx args) (declare (ignore ctx))
+                 (pig:on ext "input" (lambda (hctx data) (core-io-wait args) (core-info hctx (concatenate 'string "input:" (core-key-str data "text" ""))) nil))))
+  (pig:command ext "io_wait_start" "Make a before_agent_start handler wait on a socket read"
+               (lambda (ctx args) (declare (ignore ctx))
+                 (pig:on ext "before_agent_start" (lambda (hctx data) (core-io-wait args) (core-info hctx (concatenate 'string "before_agent_start:" (core-key-str data "prompt" ""))) nil))))
   (pig:command ext "usage-probe" "Report context usage" (lambda (ctx args) (declare (ignore args)) (core-info ctx (pig:to-json (or (pig:ctx-get-context-usage ctx) :null)))))
   (pig:command ext "replica-probe" "Report the replicated model, session id, name, file and context usage"
                (lambda (ctx args)

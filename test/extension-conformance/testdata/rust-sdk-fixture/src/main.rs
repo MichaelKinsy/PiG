@@ -3858,6 +3858,31 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // io_wait_input and io_wait_start subscribe an input / before_agent_start handler that waits on a socket read first and then notifies "<event>:<text or prompt>".
+    for (command, event, member) in [
+        ("io_wait_input", "input", "text"),
+        ("io_wait_start", "before_agent_start", "prompt"),
+    ] {
+        let subscriber = ext.event_subscriber();
+        ext.command(
+            command,
+            "Make an input or before_agent_start handler wait on a socket read",
+            move |_ctx, args| {
+                let addr = args.to_string();
+                let subscription = subscribe(&subscriber, event, move |ctx, data| {
+                    io_wait(&addr).map_err(|err| err.to_string())?;
+                    ctx.notify(
+                        &format!("{event}:{}", data.get(member).and_then(Value::as_str).unwrap_or("")),
+                        "info",
+                    );
+                    Ok(None)
+                });
+                // The handler stays subscribed for the life of the extension.
+                std::mem::forget(subscription);
+                CommandResult::Ok
+            },
+        );
+    }
     let io_wait_subscriber = ext.event_subscriber();
     let io_wait_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));

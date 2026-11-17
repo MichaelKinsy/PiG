@@ -1151,6 +1151,27 @@ func Extension() *sdk.Extension {
 		nameWaitAddr.Store(addr)
 		return nil
 	})
+	// io_wait_input and io_wait_start subscribe an input / before_agent_start handler that waits on a socket read first and then notifies "<event>:<text or prompt>" (TestConformance_InputAndBeforeAgentStartDoNotHoldTheCallerWhileTheyWait).
+	ext.Command("io_wait_input", "Make an input handler wait on a socket read", func(_ sdk.Context, addr string) error {
+		ext.OnEvent("input", func(hctx sdk.Context, data map[string]any) (any, error) {
+			if err := ioWait(addr); err != nil {
+				return nil, err
+			}
+			hctx.Notify("input:"+fmt.Sprint(data["text"]), "info")
+			return nil, nil
+		})
+		return nil
+	})
+	ext.Command("io_wait_start", "Make a before_agent_start handler wait on a socket read", func(_ sdk.Context, addr string) error {
+		ext.OnEvent("before_agent_start", func(hctx sdk.Context, data map[string]any) (any, error) {
+			if err := ioWait(addr); err != nil {
+				return nil, err
+			}
+			hctx.Notify("before_agent_start:"+fmt.Sprint(data["prompt"]), "info")
+			return nil, nil
+		})
+		return nil
+	})
 
 	ext.Command("command_error", "Return a command error", func(ctx sdk.Context, args string) error {
 		return fmt.Errorf("command exploded")

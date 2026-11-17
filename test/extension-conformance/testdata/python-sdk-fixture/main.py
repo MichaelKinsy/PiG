@@ -2387,6 +2387,20 @@ def new_extension() -> pig_sdk.Extension:
     name_wait_addr: list[str] = []
     ext.command("io_wait_name", "Make the session_info_changed handler wait on a socket read", lambda ctx, args: name_wait_addr.append(args))
 
+    # io_wait_input and io_wait_start subscribe an input / before_agent_start handler that waits on a socket read first and then notifies "<event>:<text or prompt>".
+    def io_wait_event(event: str, member: str):
+        def arm(ctx: pig_sdk.Context, args: str) -> None:
+            def handler(hctx, data):
+                io_wait(args)
+                hctx.notify("%s:%s" % (event, data.get(member, "")), "info")
+
+            ext.on_event(event, handler)
+
+        return arm
+
+    ext.command("io_wait_input", "Make an input handler wait on a socket read", io_wait_event("input", "text"))
+    ext.command("io_wait_start", "Make a before_agent_start handler wait on a socket read", io_wait_event("before_agent_start", "prompt"))
+
     ext.command("command_error", "Return a command error", command_error)
 
     def command_awaited_error(ctx: pig_sdk.Context, args: str) -> None:
