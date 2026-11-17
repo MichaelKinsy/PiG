@@ -593,14 +593,16 @@ func Extension() *sdk.Extension {
 	})
 	// wait_idle_with_session waits for the run from a withSession callback, whose context is the command context of the replacement Session.
 	ext.Command("wait_idle_with_session", "Wait for the run from a withSession callback", func(ctx sdk.Context, _ string) error {
+		// The callback runs while this command's switchSession call is in flight, so the notice is sent once the call returned.
+		text := "never ran"
 		_, err := ctx.SwitchSession("/s.jsonl", map[string]any{"withSession": sdk.WithSessionFunc(func(replaced sdk.ReplacedSessionContext) error {
-			text := "done"
+			text = "done"
 			if err := replaced.WaitForIdle(); err != nil {
 				text = "error:" + err.Error()
 			}
-			ctx.Notify("with_session_wait:"+text, "info")
 			return nil
 		})})
+		ctx.Notify("with_session_wait:"+text, "info")
 		return err
 	})
 	ext.Command("active_tools_get", "Report the active tools", func(ctx sdk.Context, _ string) error {

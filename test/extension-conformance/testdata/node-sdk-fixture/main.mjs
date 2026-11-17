@@ -243,11 +243,13 @@ export default function (pi) {
     ctx.ui.notify(`wait_idle:${text}`, "info");
   }});
   pi.registerCommand("wait_idle_with_session", { description: "Wait for the run from a withSession callback", handler: async (_args, ctx) => {
+    // The callback runs while this command's switchSession call is in flight, so the notice is sent once the call returned.
+    let text = "never ran";
     await ctx.switchSession("/s.jsonl", { withSession: async (replaced) => {
-      let text = "done";
+      text = "done";
       try { await replaced.waitForIdle(); } catch (error) { text = `error:${error.message}`; }
-      ctx.ui.notify(`with_session_wait:${text}`, "info");
     } });
+    ctx.ui.notify(`with_session_wait:${text}`, "info");
   }});
   pi.registerCommand("active_tools_get", { description: "Report the active tools", handler: async (_args, ctx) => ctx.ui.notify(`active_tools:${pi.getActiveTools().join(",")}`, "info") });
   // mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).

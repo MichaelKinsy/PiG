@@ -1940,28 +1940,28 @@ class RuntimeContext {
     this.runtime.extensionRuntime.assertActive();
     return this.runtime.promptWritten ? this.runtime.callSync("getSystemPromptOptions") ?? {} : this.runtime.state.systemPromptOptions ?? {};
   }
-  // runner.ts:993-1016: the command context's methods throw synchronously when stale, so none is async.
-  waitForIdle() {
-    this.runtime.extensionRuntime.assertActive();
-    const operation = this.runtime.call("waitForIdle", {});
-    // The command's acknowledgment waits for the call like any other host call of the handler, so a handler that goes on in microtasks once it returned is not taken for suspended (acknowledgeInvocation).
-    const owner = this.runtime.activeRequest();
-    if (owner) {
-      const tracked = operation.then(() => {}, () => {});
-      owner.pendingHostCalls.add(tracked);
-      void tracked.then(() => owner.pendingHostCalls.delete(tracked));
-    }
-    return operation;
-  }
 }
 
 // COMMAND_ONLY_CALLS are the host calls of the members addCommandContextMembers adds. Only a command context sends them, so the call frame says so (the host refuses them without it).
-const COMMAND_ONLY_CALLS = new Set(["newSession", "fork", "navigateTree", "switchSession", "reload"]);
+const COMMAND_ONLY_CALLS = new Set(["waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload"]);
 
-// addCommandContextMembers gives target the members only Pi's command context has (runner.ts createCommandContext:1004-1038): newSession, fork, navigateTree, switchSession and reload. Pi's createContext() object, which every event, tool and shortcut handler receives, has none of them, so a call through it throws the TypeError of a missing function, and `typeof` says "undefined", whenever it is made. A request's context is a command context only for a command handler and a withSession callback (startRequest, createReplacedSessionContext); the other contexts never get the members, so a context an event handler kept cannot gain them later.
+// addCommandContextMembers gives target the members only Pi's command context has (runner.ts createCommandContext:1004-1038): waitForIdle, newSession, fork, navigateTree, switchSession and reload. Pi's createContext() object, which every event, tool and shortcut handler receives, has none of them, so a call through it throws the TypeError of a missing function, and `typeof` says "undefined", whenever it is made. A request's context is a command context only for a command handler and a withSession callback (startRequest, createReplacedSessionContext); the other contexts never get the members, so a context an event handler kept cannot gain them later.
 // pig divergence (D617): the Go, Python, Rust and Lisp SDKs have one static Context type with these methods on it and answer a call from another context with a not_a_command_context error; this runtime has Pi's dynamic shape and never sends one.
 function addCommandContextMembers(target, context) {
   const members = {
+    // runner.ts:993-1016: the command context's methods throw synchronously when stale, so none is async.
+    waitForIdle() {
+      this.runtime.extensionRuntime.assertActive();
+      const operation = this.runtime.call("waitForIdle", {});
+      // The command's acknowledgment waits for the call like any other host call of the handler, so a handler that goes on in microtasks once it returned is not taken for suspended (acknowledgeInvocation).
+      const owner = this.runtime.activeRequest();
+      if (owner) {
+        const tracked = operation.then(() => {}, () => {});
+        owner.pendingHostCalls.add(tracked);
+        void tracked.then(() => owner.pendingHostCalls.delete(tracked));
+      }
+      return operation;
+    },
     newSession(options = {}) {
       this.runtime.extensionRuntime.assertActive();
       const { withSession, setup, ...rest } = options ?? {};

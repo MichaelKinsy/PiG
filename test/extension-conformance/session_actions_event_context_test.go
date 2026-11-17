@@ -193,8 +193,8 @@ func TestConformance_CommandOnlySessionActionsRefusedFromEventContext(t *testing
 			go func() { commandDone <- cmd.Handler(context.Background(), "") }()
 			select {
 			case <-entered:
-			case <-t.Context().Done():
-				t.Fatal("a command's waitForIdle never reached the host")
+			case err := <-commandDone:
+				t.Fatalf("wait_idle_command returned (%v) without its waitForIdle reaching the host; notice %q", err, noticeWith("wait_idle:"))
 			}
 			if got := noticeWith("wait_idle:"); got != "" {
 				t.Fatalf("the command reported %q before the host's wait returned", got)

@@ -2524,15 +2524,18 @@ fn main() {
         "wait_idle_with_session",
         "Wait for the run from a withSession callback",
         |ctx, _| {
-            let outer = ctx.clone();
+            // The callback runs while this command's switch_session call is in flight, so the notice is sent once the call returned.
+            let text = Arc::new(Mutex::new("never ran".to_string()));
+            let callback_text = text.clone();
             let _ = ctx.switch_session_with("/s.jsonl", serde_json::json!({}), move |replaced| {
-                let text = match replaced.wait_for_idle() {
+                *callback_text.lock().unwrap() = match replaced.wait_for_idle() {
                     Ok(()) => "done".to_string(),
                     Err(err) => format!("error:{err}"),
                 };
-                outer.notify(&format!("with_session_wait:{text}"), "info");
                 Ok(())
             });
+            let text = text.lock().unwrap().clone();
+            ctx.notify(&format!("with_session_wait:{text}"), "info");
             CommandResult::Ok
         },
     );

@@ -81,12 +81,14 @@
   (pig:command ext "wait_idle_with_session" "Wait for the run from a withSession callback"
                (lambda (ctx args)
                  (declare (ignore args))
-                 (pig:ctx-switch-session
-                  ctx "/s.jsonl"
-                  :with-session (lambda (replaced)
-                                  (pig:ctx-notify ctx (format nil "with_session_wait:~A" (handler-case (progn (pig:ctx-wait-for-idle replaced) "done")
-                                                                                             (error (e) (format nil "error:~A" e))))
-                                                  "info"))))))
+                 ;; The callback runs while this command's switchSession call is in flight, so the notice is sent once the call returned.
+                 (let ((text "never ran"))
+                   (pig:ctx-switch-session
+                    ctx "/s.jsonl"
+                    :with-session (lambda (replaced)
+                                    (setf text (handler-case (progn (pig:ctx-wait-for-idle replaced) "done")
+                                                 (error (e) (format nil "error:~A" e))))))
+                   (pig:ctx-notify ctx (format nil "with_session_wait:~A" text) "info")))))
 
 (def-fixture "session_actions_bound" (ext)
   (pig:command ext "session_actions_bound" "Report what the host's bound session actions answer"

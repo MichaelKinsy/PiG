@@ -1773,15 +1773,18 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify("wait_idle:" + text, "info")
 
     def wait_idle_with_session(ctx, _args):
+        # The callback runs while this command's switch_session call is in flight, so the notice is sent once the call returned.
+        text = ["never ran"]
+
         def with_session(replaced):
-            text = "done"
+            text[0] = "done"
             try:
                 replaced.wait_for_idle()
             except Exception as error:
-                text = "error:%s" % error
-            ctx.notify("with_session_wait:" + text, "info")
+                text[0] = "error:%s" % error
 
         ctx.switch_session("/s.jsonl", {"withSession": with_session})
+        ctx.notify("with_session_wait:" + text[0], "info")
 
     ext.command("wait_idle_command", "Wait for the run from a command", wait_idle_command)
     ext.command("wait_idle_with_session", "Wait for the run from a withSession callback", wait_idle_with_session)
