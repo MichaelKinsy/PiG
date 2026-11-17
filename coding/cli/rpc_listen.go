@@ -187,6 +187,34 @@ func (h *listenHosts) terminate() {
 	}
 }
 
+// netErrorCause is the cause inside a *net.OpError, whose address is the private bind path of listenPrivateUnixSocket, a directory that no longer exists once the socket is linked into place. pig additive (D232).
+func netErrorCause(err error) error {
+	if opErr, ok := errors.AsType[*net.OpError](err); ok && opErr.Err != nil {
+		return opErr.Err
+	}
+	return err
+}
+
+// lstatPinned is os.Lstat whose result keeps naming the file it saw. On Windows the file ID of an os.Lstat result loads lazily by path name inside os.SameFile, so an unpinned result matches whatever the path names at comparison time; SameFile(info, info) loads the ID now. It returns nil when the file cannot be read or has no ID. pig additive (D232).
+func lstatPinned(path string) os.FileInfo {
+	info, err := os.Lstat(path) //perf:ok cold: one stat per server start
+	if err != nil || !os.SameFile(info, info) {
+		return nil
+	}
+	return info
+}
+
+// removeOwnSocket removes path when it still names the socket the server created (created, from lstatPinned after the bind), and leaves a path another server or a user put there meanwhile alone: the server's exit does not remove a path it did not create. With no record of the socket it leaves the path alone. pig additive (D232).
+func removeOwnSocket(path string, created os.FileInfo) {
+	if created == nil {
+		return
+	}
+	if now, err := os.Lstat(path); err != nil || !os.SameFile(created, now) { //perf:ok cold: one stat per server exit
+		return
+	}
+	_ = os.Remove(path)
+}
+
 // runRPCListen serves one RPC session per connection accepted on the Unix socket at flags.Listen until a termination signal, and returns the process exit code. pig additive (D232).
 func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, resources rpcModeResources) (exitCode int) {
 	path := flags.Listen
@@ -196,14 +224,12 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	}
 	listener, err := listenPrivateUnixSocket(path)
 	if err != nil {
-		var opErr *net.OpError
-		if errors.As(err, &opErr) && opErr.Err != nil {
-			err = opErr.Err
-		}
-		fmt.Fprintf(os.Stderr, "pig --listen: listen %s: %v\n", path, err)
+		fmt.Fprintf(os.Stderr, "pig --listen: listen %s: %v\n", path, netErrorCause(err))
 		return 1
 	}
-	defer func() { _ = os.Remove(path) }()
+	// The socket this server created: it removes the path at exit only while the path still names it (pig additive (D232)).
+	created := lstatPinned(path)
+	defer removeOwnSocket(path, created)
 
 	builder := resources.Builder
 	ctx, stop := context.WithCancel(ctx)
@@ -256,13 +282,13 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 	conns.Go(func() {
 		for {
 			conn, err := acceptWithBackoff(ctx, listener, func(err error, delay time.Duration) {
-				fmt.Fprintf(os.Stderr, "pig --listen: accept: %v; retrying in %v\n", err, delay)
+				fmt.Fprintf(os.Stderr, "pig --listen: accept %s: %v; retrying in %v\n", path, netErrorCause(err), delay)
 			})
 			if err != nil {
 				if ctx.Err() == nil && !errors.Is(err, net.ErrClosed) {
 					acceptFailed = err
 					// pig additive (D232): a failed accept ends the server, and its sessions shut down first.
-					fmt.Fprintf(os.Stderr, "pig --listen: accept: %v\n", err)
+					fmt.Fprintf(os.Stderr, "pig --listen: accept %s: %v\n", path, netErrorCause(err))
 					controls.each(true, func(c rpcSessionControls) { c.shutdown(syscall.SIGTERM) })
 					stop()
 				}
