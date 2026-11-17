@@ -190,6 +190,10 @@ func resolveStartupSessionSelectionIn(flags Args, launchCWD, sessionDir string) 
 		path = selection.forkPath
 	}
 	if path == "" {
+		// Pi's createSessionManager gives a new session its manager here (main.ts:744, SessionManager.create or continueRecent with nothing to continue), whose directory, the default one when none is given, is made before the project trust store, the model or any auth check.
+		if err := codingagent.MkdirSessionDir(manager.SessionDir()); err != nil {
+			return selection, err
+		}
 		err := selection.checkNewSessionCWD(flags, manager, launchCWD)
 		return selection, err
 	}

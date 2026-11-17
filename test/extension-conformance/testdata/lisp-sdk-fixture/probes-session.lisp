@@ -1,6 +1,16 @@
 (in-package "lisp-sdk-fixture")
 ;;; the probe commands, tools and event handlers of this file (see def-fixture in fixture.lisp)
 
+(def-fixture "host_error_probe" (ext)
+  (pig:command ext "host_error_probe" "Report what a host error on navigateTree looks like to the extension"
+               (lambda (ctx args)
+                 (declare (ignore args))
+                 (pig:ctx-notify
+                  ctx (handler-case (progn (pig:ctx-navigate-tree ctx "entry") "host_error:no error|-")
+                        (pig:host-call-error (e)
+                          (format nil "host_error:~A|~A" (princ-to-string e) (or (pig:host-call-error-code e) "-"))))
+                  "info"))))
+
 (def-fixture "session_actions_unbound" (ext)
   (pig:command ext "session_actions_unbound" "Report what unbound session actions answer"
                (lambda (ctx args)

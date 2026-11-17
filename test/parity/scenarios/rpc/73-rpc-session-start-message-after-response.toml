@@ -35,7 +35,7 @@ pi_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
 
 [assert]
 exit_code = 0
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 both_contain = ['"type":"message_start"', '"customType":"session-start-now"', '"message":"session-start-later"']
 both_not_contain = ['"success":false']

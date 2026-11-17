@@ -3,6 +3,7 @@ package codingagent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"testing/synctest"
 )
@@ -172,4 +173,35 @@ func TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult(t *testing.T) {
 			t.Fatalf("err=%v ran=%v tornDown=%v", err, ran, m.tuiTornDown)
 		}
 	})
+}
+
+// A SIGTERM or SIGHUP that arrives while startup runs ends the session as Pi's shutdown({ fromSignal }) does: dispose, stop, process.exit(0)
+// (interactive-mode.ts:4483-4494). The signal's dispose ran before the root context was cancelled, so the cancellation that the interrupted startup step
+// reports is the end of a session that shut down, not a startup failure: PiG printed "Error: context canceled" and exited 1 (found by a signal that reached
+// a terminal that had stopped taking output while the bind ran, about 4 runs in 30). A cancellation that no shutdown caused, and any other error, still fail.
+func TestStartupEndedByASignalShutdownIsNotAnError(t *testing.T) {
+	cancelled, cancel := context.WithCancel(context.Background())
+	cancel()
+	other := errors.New("bind failed")
+	for _, tc := range []struct {
+		name     string
+		ctx      context.Context
+		shutDown bool
+		err      error
+		want     error
+	}{
+		{"cancelled after the signal's dispose", cancelled, true, context.Canceled, nil},
+		{"wrapped cancellation after the signal's dispose", cancelled, true, fmt.Errorf("interactive: bind: %w", context.Canceled), nil},
+		{"cancelled with no shutdown", cancelled, false, context.Canceled, context.Canceled},
+		{"another error after the signal's dispose", cancelled, true, other, other},
+		{"cancellation reported by a context that lives", context.Background(), true, context.Canceled, context.Canceled},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := &InteractiveMode{}
+			m.signalShutdownDone.Store(tc.shutDown)
+			if got := m.startupEndError(tc.ctx, tc.err); !errors.Is(got, tc.want) || tc.want == nil && got != nil {
+				t.Fatalf("startupEndError = %v, want %v", got, tc.want)
+			}
+		})
+	}
 }

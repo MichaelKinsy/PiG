@@ -5,7 +5,6 @@ package coding
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -32,22 +31,5 @@ func TestCreateAgentSessionSelectsItsModelFromTheRuntimeItCreated(t *testing.T) 
 	t.Cleanup(func() { _ = result.Session.Close() })
 	if model := result.Session.Model(); model == nil || model.ID != "own-model" || result.ModelFallbackMessage != "" {
 		t.Fatalf("model = %+v, fallback message %q; want own-model of the agent directory's models.json and no fallback", model, result.ModelFallbackMessage)
-	}
-}
-
-// The error of the awaited step is the error of the call (sdk.ts:198): when the model runtime cannot be created, CreateAgentSession returns that error and builds no Session. Pi 1.5.2 has no input that makes ModelRuntime.create reject (AuthStorage.reload swallows a read error, ModelConfig.load records it); PiG's creation fails when the agent directory cannot be made, which is the case here.
-func TestCreateAgentSessionReturnsTheErrorOfAModelRuntimeItCannotCreate(t *testing.T) {
-	root := t.TempDir()
-	t.Setenv("PIG_HOME", root)
-	file := filepath.Join(root, "file")
-	if err := os.WriteFile(file, nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	result, err := CreateAgentSession(CreateAgentSessionOptions{CWD: t.TempDir(), AgentDir: filepath.Join(file, "agent")})
-	if result.Session != nil {
-		_ = result.Session.Close()
-	}
-	if err == nil || !strings.Contains(err.Error(), "open auth storage") || result.Session != nil {
-		t.Fatalf("CreateAgentSession under a regular file = session %v, error %v; want the auth storage error and no session", result.Session != nil, err)
 	}
 }

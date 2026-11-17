@@ -342,7 +342,7 @@ func (h *Host) queueLoadedProvider(me *managedExt, conn *Conn, provider Provider
 		releaseClaim()
 		// A later claim may have inherited the login this registration made; with the login gone, no extension owns one.
 		if _, ok := ai.GetOAuthProvider(provider.Name); !ok {
-			for _, other := range h.exts {
+			for other := range h.generationsLocked() {
 				other.oauthProviderNames = slices.DeleteFunc(other.oauthProviderNames, func(name string) bool { return name == provider.Name })
 			}
 		}

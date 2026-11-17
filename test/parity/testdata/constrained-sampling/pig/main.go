@@ -29,7 +29,7 @@ func run() error {
 	}))
 	defer server.Close()
 	provider := ai.NewOpenAIResponsesProvider(ai.OpenAIResponsesConfig{APIKey: "test", Model: "gpt-test", ProviderID: "openai", BaseURL: server.URL, Compat: &ai.OpenAIResponsesCompat{SupportsOpenAIGrammarTools: new(true)}})
-	tools := []ai.ToolSchema{{Name: "sample_tool", Description: "Sample tool", Parameters: map[string]any{"type": "object", "properties": map[string]any{"payload": map[string]any{"type": "string"}}, "required": []string{"payload"}, "additionalProperties": false}, ConstrainedSampling: &ai.ConstrainedSamplingConfig{Type: "grammar", Variants: map[string]string{"openai_lark": "start: /[a-z]+/"}}}}
+	tools := []ai.ToolSchema{toolFromJSON(`{"name":"sample_tool","description":"Sample tool","parameters":{"type":"object","properties":{"payload":{"type":"string"}},"required":["payload"],"additionalProperties":false},"constrainedSampling":{"type":"grammar","variants":{"openai_lark":"start: /[a-z]+/"}}}`)}
 	request := ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hi")}}, Tools: tools})
 	starts, partials := []ai.JsonObject{}, []ai.JsonObject{}
 	deltas := ""
@@ -129,4 +129,13 @@ func run() error {
 		return fmt.Errorf("strict capture: %w", err)
 	}
 	return json.NewEncoder(os.Stdout).Encode(map[string]any{"strictRequired": required, "starts": starts, "partials": partials, "deltaArguments": deltaArgs, "finalArguments": call.Arguments, "reason": result.StopReason, "replay": native, "foreignReplay": foreignInput})
+}
+
+// toolFromJSON declares a tool as JSON text, the way an extension or an MCP server hands pig its schema: ai.ToolSchema keeps that member order, where a Go map carries none and is sent sorted. Pi's probe holds the same members in a literal.
+func toolFromJSON(text string) ai.ToolSchema {
+	var tool ai.ToolSchema
+	if err := json.Unmarshal([]byte(text), &tool); err != nil {
+		panic(err)
+	}
+	return tool
 }

@@ -206,7 +206,7 @@ type AuthStorage struct {
 	read *authReadState
 }
 
-// NewAuthStorage opens the credential store and materializes a missing auth.json as {} with mode 0600. The parent directory uses mode 0700. Existing bytes and permissions remain unchanged; a failed initial load preserves the last valid snapshot. Instances of the first auth path share that snapshot.
+// NewAuthStorage opens the credential store and materializes a missing auth.json as {} with mode 0600. The parent directory uses mode 0700. Existing bytes and permissions remain unchanged; a failed initial load preserves the last valid snapshot. Instances of the first auth path share that snapshot. A directory that cannot be made is not an error here: AuthStorage.create's constructor ends in reload(), which keeps the last snapshot for every error of the lock that makes the directory (auth-storage.ts:68,99,379-392), so the store opens empty and the first write, which makes the directory again, returns Node's mkdir error.
 func NewAuthStorage(path string) (*AuthStorage, error) {
 	if path == "" {
 		return nil, errors.New("auth: empty path")
@@ -214,10 +214,6 @@ func NewAuthStorage(path string) (*AuthStorage, error) {
 	// AuthStorage.create (auth-storage.ts:348) opens normalizePath(authPath): `~` and `~/x` expand to the home directory and a file:// URL becomes its path.
 	path, err := resolvepath.Normalize(path)
 	if err != nil {
-		return nil, err
-	}
-	dir := nodepath.Dirname(path)
-	if err := nodeerrno.MkdirAll(dir, 0o700); err != nil {
 		return nil, err
 	}
 	store := &AuthStorage{path: path, read: authReadStateForPath(path)}

@@ -2747,7 +2747,11 @@ export class Runtime {
       }),
       sendUserMessage: action((content, options = {}) => {
         this.reportCommandYield();
-        this.fireAndForget("sendUserMessage", { content, options });
+        // Pi reports a refused pi.sendUserMessage from a catch callback, after the run of the code that sent it (agent-session.ts:3552-3555). Only a message that names no delivery can be refused (:2240-2244), so only that send carries the token whose yield tells the host the run ended (Host.syncReports).
+        if (options?.deliverAs) return this.fireAndForget("sendUserMessage", { content, options });
+        const token = uuid("y");
+        this.fireAndForget("sendUserMessage", { content, options, yield_token: token });
+        this.reportHandlerYield(token);
       }),
       // Upstream appends to the in-process log at once (agent-session.ts:3406-3411), so a read in the same handler sees the entry.
       appendEntry: action((customType, data) => { this.contextValues.sessionManager.appendCustomEntry(customType, data, true); }),
@@ -5704,11 +5708,70 @@ export class Runtime {
             await this.respond(id, { ...(edited ? { _pigMessageEndMessage: message } : {}), _pigMessageEndResult: result }, error);
             return;
           }
+          // Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the event, so the reply names the members the handler left different from the ones it received, with their new values, and, of those, the ones it edited in the very object it received instead of replacing; the reply carries them also when the handler threw.
+          if (request.event === "tool_result") {
+            const names = ["content", "details", "isError", "structuredContent", "usage"];
+            const received = names.map((name) => event[name]);
+            const before = received.map((value) => JSON.stringify(value));
+            let result;
+            let error;
+            try {
+              const pending = selected.handler(event, ctx);
+              // As above: a shutdown the handler asked for in its synchronous prefix closes its window in print, JSON and RPC mode.
+              const shutdownOwner = this.requestContext.getStore();
+              if (shutdownOwner?.id === id && shutdownOwner.quit && (this.contextValues.mode === "rpc" || PROMPT_END_MODES.has(this.contextValues.mode))) armRequestWindow(shutdownOwner);
+              result = await pending;
+            } catch (err) {
+              error = err instanceof Error ? err : new Error(String(err));
+            }
+            const changed = names.filter((name, i) => JSON.stringify(event[name]) !== before[i]);
+            const edits = changed.length === 0 ? undefined : {
+              members: Object.fromEntries(changed.filter((name) => event[name] !== undefined).map((name) => [name, event[name]])),
+              changed,
+              shared: changed.filter((name) => event[name] === received[names.indexOf(name)] && typeof event[name] === "object" && event[name] !== null),
+            };
+            await this.respond(id, { ...(edits ? { _pigToolResultEdits: edits } : {}), _pigToolResultResult: result }, error);
+            return;
+          }
+          // Pi hands every before_provider_request handler the one payload and sends what the runner returns, so a handler's in-place edit of event.payload is in the request when it returns nothing (runner.ts emitBeforeProviderRequest returns currentPayload), even when it throws afterwards. The host cannot share the object, so a handler that returned undefined sends the payload it left when its JSON text differs from the one it received. A handler that returns a value replaces the payload with it and the edit of the old object is dropped; assigning event.payload changes nothing (the event is made for each handler). before_provider_headers is the same without a result: its handlers mutate event.headers in place and the return value is ignored (runner.ts emitBeforeProviderHeaders), so the reply is the headers object the handler left.
+          if (request.event === "before_provider_request" || request.event === "before_provider_headers") {
+            const headers = request.event === "before_provider_headers";
+            const shared = headers ? event.headers : event.payload;
+            const before = !headers && shared && typeof shared === "object" ? JSON.stringify(shared) : undefined;
+            let result;
+            let error;
+            try {
+              const pending = selected.handler(event, ctx);
+              // As below: a shutdown the handler asked for in its synchronous prefix closes its window in print, JSON and RPC mode.
+              const shutdownOwner = this.requestContext.getStore();
+              if (shutdownOwner?.id === id && shutdownOwner.quit && (this.contextValues.mode === "rpc" || PROMPT_END_MODES.has(this.contextValues.mode))) armRequestWindow(shutdownOwner);
+              result = await pending;
+            } catch (err) {
+              error = err instanceof Error ? err : new Error(String(err));
+            }
+            if (headers) result = shared ?? {};
+            else if (result === undefined && before !== undefined) {
+              try {
+                if (JSON.stringify(shared) !== before) result = shared;
+              } catch (err) {
+                error ??= err instanceof Error ? err : new Error(String(err));
+              }
+            }
+            await this.respond(id, result, error);
+            return;
+          }
           const messages = event.messages;
           const snapshot = Array.isArray(messages) ? messages.slice() : undefined;
           // A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
           const encodedBefore = snapshot && (request.event === "context" || request.event === "context_with_system") ? contextMessagesEncoding(messages) : undefined;
-          const pending = selected.handler(event, ctx);
+          let pending;
+          try {
+            pending = selected.handler(event, ctx);
+          } catch (err) {
+            // A context handler that throws before its first await fails as one that rejects: its edit of a message is kept.
+            if (request.event !== "context" || !snapshot) throw err;
+            pending = Promise.reject(err);
+          }
           const shutdownOwner = this.requestContext.getStore();
           // The host also hears in print and JSON mode when the handler's window closes: Pi's run, held still while a signal's disposal runs synchronously, goes on from that turn of its loop.
           if (shutdownOwner?.id === id && shutdownOwner.quit && (this.contextValues.mode === "rpc" || PROMPT_END_MODES.has(this.contextValues.mode))) armRequestWindow(shutdownOwner);
@@ -5721,18 +5784,19 @@ export class Runtime {
             if (shutdownOwner?.id === id) shutdownOwner.suspensionReported = true;
           }
           if (request.event === "session_shutdown" && this.contextValues.mode === "rpc") await this.acknowledgeInvocation(id, pending);
-          let result = await pending;
+          let result;
+          try {
+            result = await pending;
+          } catch (err) {
+            if (request.event !== "context" || !snapshot) throw err;
+            // Pi hands a context handler a filtered copy of the list over the one set of message objects (runner.ts emitContext): an edit to a message stays after a throw and a change to the list does not, so the reply of a failed handler carries the messages it was handed, as it left them.
+            await this.respond(id, { messages: snapshot, _pigContextUnchanged: true }, err instanceof Error ? err : new Error(String(err)));
+            return;
+          }
           if ((request.event === "context" || request.event === "context_with_system") && snapshot) {
             const returned = result?.messages ?? messages;
             const unchanged = returned.length === snapshot.length && returned.every((message, i) => message === snapshot[i]);
             result = unchanged && encodedBefore !== undefined && contextMessagesEncoding(returned) === encodedBefore ? { _pigContextUnchanged: true } : { messages: returned, _pigContextUnchanged: unchanged };
-          }
-          // before_provider_headers handlers mutate event.headers in place and
-          // their return value is ignored (runner.ts emitBeforeProviderHeaders);
-          // the host cannot share the object, so send the mutated headers back.
-          if (request.event === "before_provider_headers") {
-            await this.respond(id, event.headers ?? {});
-            return;
           }
           if (request.event === "user_bash" && result !== undefined) {
             if (result === null) throw new Error('Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object');

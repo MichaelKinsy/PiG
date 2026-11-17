@@ -117,6 +117,16 @@ type geminiRequest struct {
 	GenerationConfig  *geminiGenerationConfig `json:"generationConfig,omitempty"`
 }
 
+// geminiParametersOrder is the member order of the object buildParams returns, the one onPayload receives: model, contents, config (google-generative-ai.ts:429-432,
+// google-vertex.ts:518-522), and the config's members in the order its literal creates them: the generation fields, systemInstruction, tools, toolConfig,
+// automaticContinuation (:381-398), then thinkingConfig (:407, :410) assigned after it.
+var geminiParametersOrder = &HookObjectOrder{
+	Keys: []string{"model", "contents", "config"},
+	Nested: map[string]*HookObjectOrder{"config": {Keys: []string{
+		"temperature", "maxOutputTokens", "systemInstruction", "tools", "toolConfig", "automaticContinuation", "thinkingConfig",
+	}}},
+}
+
 // parameters exposes the native Google SDK request before its configuration is lowered into REST fields.
 func (request geminiRequest) parameters(model string) map[string]any {
 	config := map[string]any{}
@@ -223,14 +233,16 @@ func isThinkingPart(part geminiPart) bool {
 	return part.Thought != nil && *part.Thought
 }
 
+// geminiPart is one part in the order Pi's convertMessages writes its members (google-shared.ts:243-277): a thinking part is thought, text, thoughtSignature; a
+// text part is text, thoughtSignature; a function call is the call, then thoughtSignature. A part has one of text, functionCall, functionResponse and inlineData.
 type geminiPart struct {
+	Thought *bool `json:"thought,omitempty"`
 	// Text distinguishes an empty text part from a part with no text field.
 	Text             *string             `json:"text,omitempty"`
-	Thought          *bool               `json:"thought,omitempty"`
-	ThoughtSignature string              `json:"thoughtSignature,omitempty"`
 	FunctionCall     *geminiFunctionCall `json:"functionCall,omitempty"`
 	FunctionResponse *geminiFuncResponse `json:"functionResponse,omitempty"`
 	InlineData       *geminiInlineData   `json:"inlineData,omitempty"`
+	ThoughtSignature string              `json:"thoughtSignature,omitempty"`
 }
 
 type geminiFunctionCall struct {
@@ -1052,7 +1064,7 @@ func (p *googleProvider) Stream(ctx context.Context, transcript TranscriptContex
 	noContents := len(req.Contents) == 0
 	if opts.OnPayload != nil {
 		payload := req.parameters(requestModel)
-		next, payloadErr := opts.OnPayload(payload, providerEventModel(p.cfg.ModelMetadata, cmp.Or(p.cfg.api, APIGoogleGenerativeAI), p.cfg.ProviderID, p.cfg.Model))
+		next, payloadErr := callPayloadHook(opts.OnPayload, payload, geminiParametersOrder, providerEventModel(p.cfg.ModelMetadata, cmp.Or(p.cfg.api, APIGoogleGenerativeAI), p.cfg.ProviderID, p.cfg.Model))
 		if payloadErr != nil {
 			return nil, fmt.Errorf("google: onPayload: %w", payloadErr)
 		}

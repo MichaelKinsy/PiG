@@ -61,11 +61,13 @@ func (instance *runtimeInstance) retireResources(reason string) {
 }
 
 type runtimeReplacement struct {
-	current       atomic.Pointer[runtimeInstance]
-	closed        atomic.Bool
-	quitEmitted   atomic.Bool
-	createRuntime CreateAgentSessionRuntimeFactory
-	rebindSession func(context.Context, *Session) error
+	current     atomic.Pointer[runtimeInstance]
+	closed      atomic.Bool
+	quitEmitted atomic.Bool
+	// quitInvalidated is set once the quit's dispose ran the mode's beforeSessionInvalidate hook, which then does not run again at Close.
+	quitInvalidated atomic.Bool
+	createRuntime   CreateAgentSessionRuntimeFactory
+	rebindSession   func(context.Context, *Session) error
 	// reload is the mode's session.reload() for the current Session (agent-session.ts:3575-3625); nil until the mode installs it.
 	reload func(context.Context, *Session) error
 	// drain settles mode-owned work of the outgoing Session after cancellable before hooks approved the replacement and before the Session aborts and shuts down.
@@ -195,6 +197,16 @@ func (rt *Runtime) EmitQuitShutdown() {
 		//portlint:allow ctxbackground Pi's dispose awaits session.abort() with no signal and no timeout (agent-session-runtime.ts dispose); the mode's quit has no caller context
 		_ = session.Abort(context.Background())
 		session.EmitSessionShutdown("quit")
+	}
+	// Pi's dispose() runs beforeSessionInvalidate right after session_shutdown (agent-session-runtime.ts:415-424), where the mode's quit calls it: the
+	// session title the hook writes comes before the resume hint of a quit and before the terminal restore of a signal's exit.
+	rt.runQuitInvalidate()
+}
+
+// runQuitInvalidate runs the mode's beforeSessionInvalidate hook for the quit, once: at the quit's dispose, or at Close for a mode that emits the event through EmitQuitShutdownContext.
+func (rt *Runtime) runQuitInvalidate() {
+	if hook := rt.beforeSessionInvalidate; hook != nil && rt.replacement.quitInvalidated.CompareAndSwap(false, true) {
+		hook()
 	}
 }
 

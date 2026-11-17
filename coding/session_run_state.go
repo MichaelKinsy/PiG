@@ -469,6 +469,18 @@ func (s *Session) reportRuntimeError(event string, err error) {
 	}
 }
 
+// reportRuntimeErrorAfter is reportRuntimeError for a send whose caller asked to make the report when the sending code's run ends (extension.SendUserMessageOptions.AfterRun).
+func (s *Session) reportRuntimeErrorAfter(after func(report func()), event string, err error) {
+	if err == nil {
+		return
+	}
+	if after == nil {
+		s.reportRuntimeError(event, err)
+		return
+	}
+	after(func() { s.reportRuntimeError(event, err) })
+}
+
 func ignoreCancellation(err error) error {
 	if errors.Is(err, context.Canceled) {
 		return nil

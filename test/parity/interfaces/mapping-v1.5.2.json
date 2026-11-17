@@ -9750,12 +9750,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -27690,12 +27690,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -28683,12 +28683,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -30556,8 +30556,8 @@
       ],
       "evidence": [
         "test:ai/github_copilot_filter_test.go#TestGitHubCopilotProviderFiltersModelsByTheAccountsAvailableModelIDs",
-        "test:coding/model_availability_native_test.go#TestAvailabilityUsesNativeAuthAndAccountFilters",
-        "test:coding/model_registration_snapshot_test.go#TestProviderRegistrationWidensOtherProvidersUntilTheQueuedRefresh"
+        "test:coding/cli/startup_restore_availability_test.go#TestStartupRestoreFallbackAppliesANativeProvidersFilter",
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -54340,12 +54340,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -73442,12 +73442,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -74479,12 +74479,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -76396,8 +76396,8 @@
       ],
       "evidence": [
         "test:ai/github_copilot_filter_test.go#TestGitHubCopilotProviderFiltersModelsByTheAccountsAvailableModelIDs",
-        "test:coding/model_availability_native_test.go#TestAvailabilityUsesNativeAuthAndAccountFilters",
-        "test:coding/model_registration_snapshot_test.go#TestProviderRegistrationWidensOtherProvidersUntilTheQueuedRefresh"
+        "test:coding/cli/startup_restore_availability_test.go#TestStartupRestoreFallbackAppliesANativeProvidersFilter",
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -86910,8 +86910,8 @@
       ],
       "evidence": [
         "test:ai/github_copilot_filter_test.go#TestGitHubCopilotProviderFiltersModelsByTheAccountsAvailableModelIDs",
-        "test:coding/model_availability_native_test.go#TestAvailabilityUsesNativeAuthAndAccountFilters",
-        "test:coding/model_registration_snapshot_test.go#TestProviderRegistrationWidensOtherProvidersUntilTheQueuedRefresh"
+        "test:coding/cli/startup_restore_availability_test.go#TestStartupRestoreFallbackAppliesANativeProvidersFilter",
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -90236,12 +90236,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -90908,12 +90908,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -91346,12 +91346,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:ai/openai.go#openAIProvider.convertTools"
+        "call:ai/mistral.go#mistralProvider.Stream"
       ],
       "evidence": [
         "test:ai/azure_upstream_test.go#TestAzureUpstreamPayload",
         "test:ai/cache_retention_upstream_test.go#TestCacheRetentionCompletionsUpstream",
-        "test:ai/openai_responses_compat_upstream_test.go#TestOpenAIResponsesCompatDefaultsUpstream"
+        "test:ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
       ]
     },
     {
@@ -124890,7 +124890,7 @@
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextDerivedAbortContextsPrintAsPiPrintsThem",
         "test:chord/context/chordctx_upstream_test.go#TestContextInheritsParentCancellationAndIsolatesChildCancellation",
-        "test:chord/context/abort_listener_leak_test.go#TestOnAbortLeavesNothingHeldByALongLivedContext"
+        "test:chord/context/abort_detached_order_test.go#TestAbortOrderStopsAtADetachedAncestor"
       ]
     },
     {
@@ -124912,7 +124912,7 @@
       "evidence": [
         "test:chord/context/chordctx_upstream_test.go#TestContextDerivedAbortContextsPrintAsPiPrintsThem",
         "test:chord/context/chordctx_upstream_test.go#TestContextInheritsParentCancellationAndIsolatesChildCancellation",
-        "test:chord/context/abort_listener_leak_test.go#TestOnAbortLeavesNothingHeldByALongLivedContext"
+        "test:chord/context/abort_detached_order_test.go#TestAbortOrderStopsAtADetachedAncestor"
       ]
     },
     {
@@ -155060,7 +155060,8 @@
       ],
       "evidence": [
         "test:coding/session_queue_upstream_test.go#TestUpstreamSessionQueue",
-        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
+        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi",
+        "test:test/extension-conformance/send_user_message_delivery_test.go#TestSendUserMessageDeliveryAcrossSDKs"
       ]
     },
     {
@@ -155081,7 +155082,8 @@
       ],
       "evidence": [
         "test:coding/session_queue_upstream_test.go#TestUpstreamSessionQueue",
-        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi"
+        "test:coding/agent_session_oracle_test.go#TestAgentSessionMatchesPi",
+        "test:test/extension-conformance/send_user_message_delivery_test.go#TestSendUserMessageDeliveryAcrossSDKs"
       ]
     },
     {
@@ -156542,9 +156544,9 @@
         "call:coding/session.go#Session.SettingsManager"
       ],
       "evidence": [
+        "test:coding/sdk_unmakeable_agent_dir_test.go#TestCreateAgentSessionWithASuppliedSessionManagerOpensWhereTheAgentDirCannotBeMade",
         "test:coding/session_replicated_state_test.go#TestSessionReplicatedStateObserversStopAndCostNothingWhenIdle",
-        "test:coding/session_replicated_state_test.go#TestSessionReportsEveryChangeOfTheStateExtensionsReplicate",
-        "test:coding/session_resource_accessors_test.go#TestSessionSettingsManagerIsTheManagerItPersistsThrough"
+        "test:coding/session_replicated_state_test.go#TestSessionReportsEveryChangeOfTheStateExtensionsReplicate"
       ]
     },
     {
@@ -157661,7 +157663,7 @@
       "evidence": [
         "test:coding/runtime_before_invalidate_upstream_test.go#TestBeforeSessionInvalidateRunsBetweenShutdownAndRebind",
         "test:coding/cli/print_mode_exit_code_test.go#TestRunPrintModeReturnsExitCodeZeroOnSuccessAndOneOnFailureAndDisposesTheRuntime",
-        "test:coding/runtime_result_test.go#TestRuntimeBeforeSessionInvalidateRunsBetweenShutdownAndInvalidation"
+        "test:coding/runtime_quit_invalidate_test.go#TestQuitContextEmitLeavesTheInvalidateHookToClose"
       ]
     },
     {
@@ -157683,7 +157685,7 @@
       "evidence": [
         "test:coding/runtime_before_invalidate_upstream_test.go#TestBeforeSessionInvalidateRunsBetweenShutdownAndRebind",
         "test:coding/cli/print_mode_exit_code_test.go#TestRunPrintModeReturnsExitCodeZeroOnSuccessAndOneOnFailureAndDisposesTheRuntime",
-        "test:coding/runtime_result_test.go#TestRuntimeBeforeSessionInvalidateRunsBetweenShutdownAndInvalidation"
+        "test:coding/runtime_quit_invalidate_test.go#TestQuitContextEmitLeavesTheInvalidateHookToClose"
       ]
     },
     {
@@ -166645,7 +166647,8 @@
         "call:internal/codingagent/clipboard_copy.go#CopyToClipboard"
       ],
       "evidence": [
-        "test:internal/codingagent/clipboard_copy_oracle_test.go#TestCopyToClipboardMatchesPi"
+        "test:internal/codingagent/clipboard_copy_oracle_test.go#TestCopyToClipboardMatchesPi",
+        "test:internal/codingagent/interactive_exit_bytes_pty_test.go#TestExitBytesChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -166666,7 +166669,8 @@
         "call:internal/codingagent/clipboard_copy.go#CopyToClipboard"
       ],
       "evidence": [
-        "test:internal/codingagent/clipboard_copy_oracle_test.go#TestCopyToClipboardMatchesPi"
+        "test:internal/codingagent/clipboard_copy_oracle_test.go#TestCopyToClipboardMatchesPi",
+        "test:internal/codingagent/interactive_exit_bytes_pty_test.go#TestExitBytesChild"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -166735,7 +166739,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -166758,7 +166762,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -166781,7 +166785,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -166909,7 +166913,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -166930,8 +166934,8 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesRestoresTheSavedModelOrFallsBackToTheDefault"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter",
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackSelectsFromThePublishedAvailability"
       ]
     },
     {
@@ -167317,7 +167321,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -167358,9 +167362,9 @@
         "call:coding/cli/child_sessions.go#createChildSession"
       ],
       "evidence": [
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackSelectsFromThePublishedAvailability",
         "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesReportsASavedModelChangeThatNamesNoCatalogModel",
-        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesRestoresTheSavedModelOrFallsBackToTheDefault",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionFromServicesSelectsTheInitialModelOrReportsNone"
+        "test:coding/create_agent_session_model_test.go#TestCreateAgentSessionFromServicesRestoresTheSavedModelOrFallsBackToTheDefault"
       ]
     },
     {
@@ -167382,7 +167386,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:coding/summary_oauth_auth_11520_upstream_test.go#TestSDKSummaryLetsTheRuntimeResolveStoredOAuthUpstream",
-        "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions"
+        "test:coding/create_agent_session_available_test.go#TestCreateAgentSessionFromServicesRestoreFallbackAppliesANativeProvidersFilter"
       ]
     },
     {
@@ -187817,9 +187821,9 @@
         "call:coding/extension/host/subprocess/ui_bridge.go#UIBridge.SetWidgetRequestFunc"
       ],
       "evidence": [
+        "test:test/extension-conformance/handler_effect_order_test.go#TestConformance_HandlerEffectsPrecedeTheReleaseOfItsCaller",
         "test:test/extension-conformance/rpc_widget_frames_test.go#TestConformance_RPCModeDropsFrameWidgetsInEverySDK",
-        "test:coding/cli/rpc_ui_set_widget_factory_test.go#TestRPCUIContextSetWidgetFactoryRemovesOnNilAndIgnoresAFactory",
-        "test:coding/extension/host/subprocess/integration_test.go#TestHost_Integration_TSWidgetFactoryIsNotRunOutsideTheTUI"
+        "test:coding/cli/rpc_ui_set_widget_factory_test.go#TestRPCUIContextSetWidgetFactoryRemovesOnNilAndIgnoresAFactory"
       ]
     },
     {
@@ -198919,6 +198923,7 @@
       ],
       "evidence": [
         "test:coding/model_runtime_members_upstream_test.go#TestModelRuntimeRuntimeApiKeyUpstream",
+        "test:coding/sdk_unmakeable_agent_dir_test.go#TestCreateAgentSessionWithASuppliedSessionManagerOpensWhereTheAgentDirCannotBeMade",
         "test:coding/model_registry_oracle_test.go#TestModelRegistryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -198941,6 +198946,7 @@
       ],
       "evidence": [
         "test:coding/model_runtime_members_upstream_test.go#TestModelRuntimeRuntimeApiKeyUpstream",
+        "test:coding/sdk_unmakeable_agent_dir_test.go#TestCreateAgentSessionWithASuppliedSessionManagerOpensWhereTheAgentDirCannotBeMade",
         "test:coding/model_registry_oracle_test.go#TestModelRegistryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -204442,7 +204448,7 @@
       "evidence": [
         "test:coding/stored_credential_oracle_test.go#TestReadStoredCredentialMatchesPi",
         "test:coding/stored_credential_prototype_names_oracle_test.go#TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
-        "test:coding/auth_storage_test.go#TestReadStoredCredentialReadsOneProviderWithoutAStore"
+        "test:coding/auth_storage_test.go#TestReadStoredCredentialKeepsFileMemberOrder"
       ]
     },
     {
@@ -204464,7 +204470,7 @@
       "evidence": [
         "test:coding/stored_credential_oracle_test.go#TestReadStoredCredentialMatchesPi",
         "test:coding/stored_credential_prototype_names_oracle_test.go#TestAProviderNamedLikeAnObjectPrototypeMemberHasNoStoredCredential",
-        "test:coding/auth_storage_test.go#TestReadStoredCredentialReadsOneProviderWithoutAStore"
+        "test:coding/auth_storage_test.go#TestReadStoredCredentialKeepsFileMemberOrder"
       ]
     },
     {
@@ -275825,6 +275831,7 @@
         "call:mcp/input_schema.go#NormalizeMcpInputSchema"
       ],
       "evidence": [
+        "test:coding/tool_schema_arrival_wire_test.go#TestToolSchemaKeepsAuthoredOrderOnTheBedrockWireFromEveryArrival",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaAddsTypeObjectAndEmptyPropertiesWhenMissing",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaKeepsTheSchemasOwnKeywords"
       ]
@@ -275846,6 +275853,7 @@
         "call:mcp/input_schema.go#NormalizeMcpInputSchema"
       ],
       "evidence": [
+        "test:coding/tool_schema_arrival_wire_test.go#TestToolSchemaKeepsAuthoredOrderOnTheBedrockWireFromEveryArrival",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaAddsTypeObjectAndEmptyPropertiesWhenMissing",
         "test:mcp/input_schema_pi_test.go#TestNormalizeMcpInputSchemaKeepsTheSchemasOwnKeywords"
       ]
@@ -305305,6 +305313,7 @@
         "call:tui/terminal.go#ProcessTerminal.ModifyOtherKeysActive"
       ],
       "evidence": [
+        "test:tui/terminal_negotiation_upstream_test.go#TestUpstreamTerminalNegotiation",
         "test:tui/raw_mode_test.go#TestProcessTerminalModifyOtherKeysActiveFollowsNegotiation",
         "test:tui/terminal_negotiation_contract_test.go#TestKeyboardProtocolNegotiationConsumesOnlyWholeReplies"
       ]
@@ -305366,9 +305375,9 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/stop_transaction_test.go#TestRestoreOnExitSealsTheTerminalAgainstForeignWrites",
         "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
-        "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
-        "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
+        "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates"
       ]
     },
     {
@@ -305388,9 +305397,9 @@
         "call:tui/terminal_exit_restore.go#ProcessTerminal.RestoreOnExit"
       ],
       "evidence": [
+        "test:tui/stop_transaction_test.go#TestRestoreOnExitSealsTheTerminalAgainstForeignWrites",
         "test:tui/terminal_screen_writer_test.go#TestScreenWriterExit",
-        "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates",
-        "test:tui/terminal_exit_restore_test.go#TestTerminalInterfaceRestoreOnExitWritesBeforeOwnResetsAfter"
+        "test:tui/terminal_write_encode_test.go#TestProcessTerminalWritesEncodeLoneSurrogates"
       ]
     },
     {
@@ -305477,7 +305486,7 @@
       "evidence": [
         "test:tui/terminal_upstream_test.go#TestUpstreamTerminalProgressClear",
         "test:internal/codingagent/terminal_writer_test.go#TestProgressIsWrittenOnTheTerminalOption",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode"
+        "test:tui/stop_transaction_test.go#TestForeignWriteStormHoldsNoByteInsideAStop"
       ]
     },
     {
@@ -305499,7 +305508,7 @@
       "evidence": [
         "test:tui/terminal_upstream_test.go#TestUpstreamTerminalProgressClear",
         "test:internal/codingagent/terminal_writer_test.go#TestProgressIsWrittenOnTheTerminalOption",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitMainScreenWritesOnceAndRestoresCookedMode"
+        "test:tui/stop_transaction_test.go#TestForeignWriteStormHoldsNoByteInsideAStop"
       ]
     },
     {
@@ -305519,9 +305528,9 @@
         "call:tui/terminal.go#ProcessTerminal.SetTitle"
       ],
       "evidence": [
-        "test:tui/terminal_test.go#TestProcessTerminalSetTitleReplacesControlCharacters",
-        "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences",
-        "test:tui/terminal_write_log_test.go#TestProcessTerminalControlMethodsAreNotLogged"
+        "test:tui/stop_transaction_test.go#TestForeignWriteMadeDuringAStopRunsAfterItInTheOrderItWasMade",
+        "test:tui/stop_transaction_test.go#TestForeignWriteStormHoldsNoByteInsideAStop",
+        "test:tui/stop_transaction_test.go#TestRestoreOnExitSealsTheTerminalAgainstForeignWrites"
       ]
     },
     {
@@ -305541,9 +305550,9 @@
         "call:tui/terminal.go#ProcessTerminal.SetTitle"
       ],
       "evidence": [
-        "test:tui/terminal_test.go#TestProcessTerminalSetTitleReplacesControlCharacters",
-        "test:tui/terminal_test.go#TestProcessTerminal_ControlSequences",
-        "test:tui/terminal_write_log_test.go#TestProcessTerminalControlMethodsAreNotLogged"
+        "test:tui/stop_transaction_test.go#TestForeignWriteMadeDuringAStopRunsAfterItInTheOrderItWasMade",
+        "test:tui/stop_transaction_test.go#TestForeignWriteStormHoldsNoByteInsideAStop",
+        "test:tui/stop_transaction_test.go#TestRestoreOnExitSealsTheTerminalAgainstForeignWrites"
       ]
     },
     {
@@ -311677,6 +311686,7 @@
         "call:internal/codingagent/interactive_chat.go#InteractiveMode.setTerminalTitle"
       ],
       "evidence": [
+        "test:internal/codingagent/terminal_stop_transaction_test.go#TestHeldStopOrdersAWriteAndOpensAgain",
         "test:tui/terminal_interface_test.go#TestTerminalInterfaceOutputMatchesUpstreamSequences"
       ]
     },
@@ -311697,6 +311707,7 @@
         "call:internal/codingagent/interactive_chat.go#InteractiveMode.setTerminalTitle"
       ],
       "evidence": [
+        "test:internal/codingagent/terminal_stop_transaction_test.go#TestHeldStopOrdersAWriteAndOpensAgain",
         "test:tui/terminal_interface_test.go#TestTerminalInterfaceOutputMatchesUpstreamSequences"
       ]
     },
@@ -313948,7 +313959,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
         "test:internal/codingagent/custom_focus_upstream_test.go#TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream",
@@ -313970,7 +313981,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
         "test:internal/codingagent/custom_focus_upstream_test.go#TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream",
@@ -315901,9 +315912,9 @@
         "call:tui/tui_alt_screen.go#newTuiAltScreen"
       ],
       "evidence": [
+        "test:tui/stop_terminal_modes_test.go#TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen",
         "test:tui/terminal_exit_restore_test.go#TestExitRestoreFixture",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys",
-        "test:tui/terminal_screen_writer_autowrap_test.go#TestScreenWriterTranslatesOnlyUnderTheRenderersAutowrap"
+        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
       ]
     },
     {
@@ -317380,7 +317391,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
         "test:internal/codingagent/custom_focus_upstream_test.go#TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream",
@@ -317402,7 +317413,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/interactive_tui.go#InteractiveMode.switchTuiMode"
+        "call:internal/codingagent/interactive_editor.go#InteractiveMode.openExternalEditorBuffer"
       ],
       "evidence": [
         "test:internal/codingagent/custom_focus_upstream_test.go#TestRemoteOverlayReclaimsInputAfterEditorReplacementUpstream",

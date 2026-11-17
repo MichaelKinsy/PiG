@@ -759,6 +759,14 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 	case <-ctx.Done():
 		return nil, false
 	}
+	// The call's own end and a retire of the overlay (Retire) both take the component off the screen; whichever comes first does, once.
+	cleanup = sync.OnceFunc(cleanup)
+	overlay.setRetire(func() {
+		runOnOwner(ctx, func() {
+			cleanup()
+			u.m.tuiInst.Render()
+		})
+	})
 	defer func() {
 		done := make(chan struct{})
 		runOnOwner(ctx, func() {

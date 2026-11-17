@@ -394,25 +394,49 @@ func (t *TuiAltScreen) getPrimaryScrollView() *ScrollView {
 	return t.implicitScrollView
 }
 
-// Start enters the alternate screen and paints at once, as a live switch into
-// fullscreen needs. Mirrors upstream beforeTerminalStart + the enter write.
+// Start paints at once, as a live switch into fullscreen needs: the steps of Pi's TUI.start() after the terminal's own start. The caller starts
+// the terminal between BeforeTerminalStart and Start; a renderer that is not on the alternate screen yet enters it first (the start of a terminal
+// that writes nothing at its start). Like the main-screen renderer's Start it hides the cursor again, as tui.ts start() does once
+// terminal.start() returns.
 func (t *TuiAltScreen) Start() {
-	t.enterAltScreen()
+	t.beforeTerminalStartIfNeeded()
+	t.HideCursor()
+	t.afterTerminalStart()
 	t.Render()
 }
 
-// StartRequestingRender enters the alternate screen as Start does but requests
-// the first frame instead of painting it, as Pi's TUI.start does
-// (tui.ts start(): requestRender()). The first frame has no earlier frame to
-// throttle against, so the request goes to the render dispatcher's loop at once,
-// which runs it on its next turn.
+// StartRequestingRender is Start with the first frame requested instead of painted, as Pi's TUI.start does (tui.ts start(): requestRender()), and
+// without the cursor hide: the caller hides it right after its terminal start. The first frame has no earlier frame to throttle against, so the
+// request goes to the render dispatcher's loop at once, which runs it on its next turn.
 func (t *TuiAltScreen) StartRequestingRender() {
-	t.enterAltScreen()
+	t.beforeTerminalStartIfNeeded()
+	t.afterTerminalStart()
 	t.RequestImmediateRender()
 }
 
-// enterAltScreen is the part of start before the first frame.
-func (t *TuiAltScreen) enterAltScreen() {
+// beforeTerminalStartIfNeeded enters the alternate screen unless BeforeTerminalStart did already.
+func (t *TuiAltScreen) beforeTerminalStartIfNeeded() {
+	t.mu.Lock()
+	entered := t.altScreenActive
+	t.mu.Unlock()
+	if !entered {
+		t.BeforeTerminalStart()
+	}
+}
+
+// afterTerminalStart is tui.ts start() after terminal.start() and hideCursor(): the colour-scheme reports, then the cell-size query.
+func (t *TuiAltScreen) afterTerminalStart() {
+	if t.colorSchemeNotificationsEnabled() {
+		t.writeColorSchemeNotificationsOwned(true)
+	}
+	t.QueryCellSize()
+}
+
+// BeforeTerminalStart is Pi's TuiAltScreen.beforeTerminalStart (tui-alt-screen.ts:347): it resets the renderer's state and enters the alternate
+// screen, which tui.ts start() (:956) does before terminal.start(). The terminal's start follows it: it pushes the Kitty keyboard flags, and the
+// main and alternate screens keep independent stacks, so the push lands on the alternate screen's stack and stays there until terminal.stop()
+// pops it (before the screen is left). Start or StartRequestingRender follows the terminal's start.
+func (t *TuiAltScreen) BeforeTerminalStart() {
 	t.mu.Lock()
 	// Upstream start() sets stopped=false first, then beforeTerminalStart resets
 	// the selection/scrollbar input state so a start->stop->start cycle resumes
@@ -444,15 +468,7 @@ func (t *TuiAltScreen) enterAltScreen() {
 		mouse = altMouseEnableSequence()
 	}
 	// The enter sequence is written under mu, so a frame (which needs mu) comes after it, as in Pi, where start() writes it before the first frame.
-	// The colour-scheme reports follow it, then the cell-size query.
-	enter := altEnterAltScreen + altDisableAutowrap + mouse + "\x1b[2J\x1b[H\x1b[?25l"
-	if keyboardProtocolPushed.Load() {
-		enter = keyboardProtocolPop + altEnterAltScreen + kittyKeyboardProtocolPush + altDisableAutowrap + mouse + "\x1b[2J\x1b[H\x1b[?25l"
-	}
-	t.writeOwned(t.out, enter)
-	if t.colorSchemeNotificationsEnabled() {
-		t.writeColorSchemeNotificationsOwned(true)
-	}
+	t.writeOwned(t.out, altEnterAltScreen+altDisableAutowrap+mouse+"\x1b[2J\x1b[H\x1b[?25l")
 	t.unlockAndApplyHover()
 	t.clearComponentMouseGesture()
 	t.lastComponentClick = nil
@@ -462,17 +478,7 @@ func (t *TuiAltScreen) enterAltScreen() {
 		SetCapabilities(suppressed)
 		t.Invalidate() // tui-alt-screen.ts:360: the mounted roots and the overlays' components
 	}
-	// The main and alternate screens keep independent Kitty keyboard-protocol
-	// stacks. Pi enters the alternate screen before Terminal.start pushes, so its
-	// single push lives on the active screen (tui.ts start, terminal.ts
-	// queryAndEnableKittyProtocol). The driver pushes on the main screen before
-	// this renderer starts, so when that push is outstanding, move it: pop the
-	// main stack, enter the alternate screen, push there. The pop and push write
-	// no query because the driver's negotiation already ran and its replies are
-	// screen independent. Without this, fullscreen terminals report legacy keys
-	// (ctrl+digit and shift+enter lose their modifiers).
 	registerExitRestoreAltScreen(t)
-	t.QueryCellSize()
 }
 
 // getMountedRoots returns the layout root when set, else the base children.
@@ -492,6 +498,11 @@ type StopOptions struct {
 	// PreserveScreen leaves the alternate screen contents visible on exit
 	// instead of re-emitting the final frame into the main screen scrollback.
 	PreserveScreen bool
+	// ExitTerminal makes the stop also write what Pi's terminal.stop() writes between the cursor show and the screen exit (tui.ts:1012
+	// stop(): beforeTerminalStop, showCursor, terminal.stop(), afterTerminalStop): bracketed paste off and the Kitty keyboard pop, on the screen the
+	// flags were pushed on. Every stop of a renderer that draws on the process terminal sets it: the process exit, a renderer swap, a suspend and an
+	// external editor, each of which Pi's stop() covers; a renderer that does not own the terminal's modes leaves it false.
+	ExitTerminal bool
 }
 
 // Stop tears down the alternate screen and reflows the transcript into the
@@ -525,6 +536,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	t.implicitScrollView.Dispose()
 	if !t.altScreenActive {
 		t.unlockAndApplyHover()
+		t.writeExitTerminalStop(options)
 		return
 	}
 	mouse := ""
@@ -532,6 +544,8 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 		mouse = altDisableMouse
 	}
 	t.writeOwned(t.out, altBeginSynchronizedOutput+t.deleteKittyImages()+mouse+altEnableAutowrap+altEndSynchronizedOutput)
+	// Pi's stop(): showCursor() and terminal.stop() come between beforeTerminalStop and afterTerminalStop, so before the screen is left.
+	t.writeExitTerminalStop(options)
 	clear(t.uploadedKittyImages)
 	t.uploadedKittyImagesOrder = nil
 	t.altScreenActive = false
@@ -542,17 +556,9 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	}
 	columns, _ := t.size()
 	width := max(1, columns)
-	// Pi pops in terminal.stop() before afterTerminalStop leaves the alternate
-	// screen. An outstanding push belongs to the alternate screen; return it to
-	// the main screen so the driver's DrainInput or restore pops the active
-	// stack. When DrainInput already popped, nothing is outstanding and the
-	// exit writes neither.
-	exit := altExitAltScreen
-	if keyboardProtocolPushed.Load() {
-		exit = keyboardProtocolPop + altExitAltScreen + kittyKeyboardProtocolPush
-	}
+	// Pi pops the Kitty flags in terminal.stop() (ExitTerminal), before afterTerminalStop leaves the alternate screen: the flags were pushed on its stack.
 	if options.PreserveScreen {
-		t.writeOwned(t.out, altBeginSynchronizedOutput+exit+"\x1b[?25h"+altEndSynchronizedOutput)
+		t.writeOwned(t.out, altBeginSynchronizedOutput+altExitAltScreen+"\x1b[?25h"+altEndSynchronizedOutput)
 		t.unlockAndApplyHover()
 		if restore != nil {
 			SetCapabilities(*restore)
@@ -565,7 +571,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	document := t.renderDocument(width)
 	t.leaveFrame()
 	var buf strings.Builder
-	buf.WriteString(altBeginSynchronizedOutput + exit + altDisableAutowrap)
+	buf.WriteString(altBeginSynchronizedOutput + altExitAltScreen + altDisableAutowrap)
 	for row := range document {
 		if row > 0 {
 			buf.WriteString("\r\n")

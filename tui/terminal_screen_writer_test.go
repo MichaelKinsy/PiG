@@ -411,6 +411,10 @@ func TestScreenWriterSlowPTY(t *testing.T) {
 	}
 }
 
+// swPtyLineBreak is what the pty hands its reader for a written CR LF: the terminal is in libuv's raw mode, which Pi's terminal is in and keeps the kernel's
+// ONLCR, so the line feed returns the carriage a second time.
+const swPtyLineBreak = "\r\r\n"
+
 // Leaving the alternate screen: the bytes outside it are the renderers' bytes, the screen of each session is the same, and nothing is
 // written after the screen was left, whatever the settle timer had pending.
 func TestScreenWriterAlternateScreenEnterAndLeave(t *testing.T) {
@@ -428,17 +432,17 @@ func TestScreenWriterAlternateScreenEnterAndLeave(t *testing.T) {
 	}
 	reference, writer := swBoth(t, 40, 10, script)
 	r, w := reference.transcript(), writer.transcript()
-	if got, want := afterLast(w, swLeave), afterLast(r, swLeave); got != want || want != "after\r\n" {
+	if got, want := afterLast(w, swLeave), afterLast(r, swLeave); got != want || want != "after"+swPtyLineBreak {
 		t.Errorf("after the last screen the writer wrote %q, the renderers %q", got, want)
 	}
-	for _, marker := range []string{"main screen one\r\n", "main screen two\r\n"} {
+	for _, marker := range []string{"main screen one" + swPtyLineBreak, "main screen two" + swPtyLineBreak} {
 		if strings.Count(w, marker) != 1 {
 			t.Errorf("%q written %d times", marker, strings.Count(w, marker))
 		}
 	}
 	between := func(s string) string {
-		a := strings.Index(s, "main screen one\r\n")
-		return s[a : a+len("main screen one\r\n")]
+		a := strings.Index(s, "main screen one"+swPtyLineBreak)
+		return s[a : a+len("main screen one"+swPtyLineBreak)]
 	}
 	if between(w) != between(r) {
 		t.Errorf("the text before the screen differs")

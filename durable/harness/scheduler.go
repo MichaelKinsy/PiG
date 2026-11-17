@@ -61,7 +61,7 @@ type invocation struct {
 	mode           invocationMode
 	// ctx is passed to handlers; cancel ends it with a cause.
 	ctx    context.Context
-	cancel context.CancelCauseFunc
+	cancel func(cause error)
 	// watches acquired through the runtime stop at invocation end.
 	watchMu sync.Mutex
 	watches map[durable.WatchHandle[durable.JsonObject]]struct{}
@@ -359,7 +359,7 @@ type TaskScheduler struct {
 	gateWakes map[durable.TaskId]struct{}
 	// closed is cancelled at the seal: it cancels the cleanups an abort must not cancel (closeSignal); closeCancel cancels it.
 	closed      context.Context
-	closeCancel context.CancelCauseFunc
+	closeCancel func(cause error)
 	// pins holds the nodes chain loads installed for jobs whose commits are not published yet, with how many such jobs: the
 	// sweep keeps them, as work a pending commit creates below them needs them.
 	pins map[treeNode]int
@@ -450,7 +450,7 @@ func NewTaskScheduler(options TaskSchedulerOptions) *TaskScheduler {
 	root := rootTelemetry(options.Telemetry)
 	rootMetrics := metricsOf(root)
 	metrics := telemetry.CreateTypedMetrics(rootMetrics, DurableTelemetrySchema)
-	closed, closeCancel := newLinkedSignal(context.Background())
+	closed, closeCancel := chordctx.WithCancel(context.Background())
 	return &TaskScheduler{
 		options:             options,
 		providerSessionIds:  newProviderSessionIds(),
@@ -2452,7 +2452,7 @@ func (s *TaskScheduler) inspectTaskLocked(record anyTaskRecord, snapshot durable
 }
 
 func (s *TaskScheduler) createInvocationLocked(record anyTaskRecord, mode invocationMode, extension string) *invocation {
-	ctx, cancel := newLinkedSignal(withCloseSignal(withProviderSessions(s.options.Context, s.providerSessionIds), s.closed))
+	ctx, cancel := chordctx.WithCancel(withCloseSignal(withProviderSessions(s.options.Context, s.providerSessionIds), s.closed))
 	created := &invocation{
 		taskId:         record.Id,
 		kind:           record.Kind,
@@ -3454,8 +3454,8 @@ func (runtime *taskRuntime) WaitForTask(ctx context.Context, id durable.TaskId) 
 	if err := runtime.check(); err != nil {
 		return anyTaskRecord{}, err
 	}
-	bound, stop := linkSignal(ctx, runtime.invocation.ctx)
-	defer stop()
+	bound, stop := chordctx.WithAbortSignalCancel(ctx, runtime.invocation.ctx)
+	defer stop(nil)
 	return runtime.scheduler.WaitForTask(bound, id)
 }
 
@@ -3465,8 +3465,8 @@ func (runtime *taskRuntime) AbortOwned(ctx context.Context, id durable.TaskId) e
 	if err := runtime.check(); err != nil {
 		return err
 	}
-	bound, stop := linkSignal(ctx, runtime.invocation.ctx)
-	defer stop()
+	bound, stop := chordctx.WithAbortSignalCancel(ctx, runtime.invocation.ctx)
+	defer stop(nil)
 	record, err := readOnLine(ctx, runtime.scheduler.options.Session, func(storage durable.Storage) (*anyTaskRecord, error) {
 		return storage.Task(bound, id)
 	})
@@ -3492,8 +3492,8 @@ func (runtime *taskRuntime) OwnedTasks(ctx context.Context) ([]anyTaskRecord, er
 	if err := runtime.check(); err != nil {
 		return nil, err
 	}
-	bound, stop := linkSignal(ctx, runtime.invocation.ctx)
-	defer stop()
+	bound, stop := chordctx.WithAbortSignalCancel(ctx, runtime.invocation.ctx)
+	defer stop(nil)
 	return readOnLine(ctx, runtime.scheduler.options.Session, func(durable.Storage) ([]anyTaskRecord, error) {
 		// The step that ends the invocation may have run on the line before this.
 		if err := runtime.check(); err != nil {
@@ -3859,11 +3859,6 @@ func gated[T any](ctx context.Context, runtime *taskRuntime, change func(tx *ses
 		}
 		return change(tx, found)
 	}, options...)
-}
-
-// linkSignal returns ctx also cancelled by signal; stop releases the link.
-func linkSignal(ctx, signal context.Context) (context.Context, func()) {
-	return linkedChild(ctx, signal)
 }
 
 // cancellationIntent reports a live owner's durable cancellation intent: its abort mark, or a held outcome other than

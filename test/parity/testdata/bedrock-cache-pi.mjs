@@ -8,7 +8,6 @@ if(JSON.parse(readFileSync(join(root,"package.json"),"utf8")).version!==PI_PACKA
 const aiRoot=join(root,"node_modules/@earendil-works/pi-ai/dist");
 const {getModel,normalizeContext}=await import(pathToFileURL(join(aiRoot,"compat.js")));
 const {stream}=await import(pathToFileURL(join(aiRoot,"api/bedrock-converse-stream.js")));
-const canonical=value=>Array.isArray(value)?value.map(canonical):value&&typeof value==="object"?Object.fromEntries(Object.keys(value).sort().map(key=>[key,canonical(value[key])])):value;
 let payload;
 const server=createServer(async(req,res)=>{const chunks=[];for await(const chunk of req)chunks.push(chunk);payload=JSON.parse(Buffer.concat(chunks).toString());res.writeHead(200,{"content-type":"application/vnd.amazon.eventstream"});res.end();});
 await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
@@ -19,6 +18,6 @@ try{
   const model={...baseModel,id:row.model,name:"",baseUrl:`http://127.0.0.1:${server.address().port}`};
   payload=undefined;
   await stream(model,normalizeContext({systemPrompt:"system",messages:[{role:"user",content:"hello",timestamp:1}]}),{cacheRetention:row.option||undefined,env:{PI_CACHE_RETENTION:row.env,AWS_BEDROCK_FORCE_CACHE:row.force,AWS_BEDROCK_FORCE_HTTP1:"1",AWS_BEDROCK_SKIP_AUTH:"1",AWS_REGION:"us-east-1"}}).result();
-  if(!payload)throw new Error("missing request");console.log(JSON.stringify(canonical([row.name,payload.system,payload.messages])));
+  if(!payload)throw new Error("missing request");console.log(JSON.stringify([row.name,payload.system,payload.messages]));
  }
 }finally{await new Promise(resolve=>server.close(resolve));}

@@ -267,8 +267,10 @@ type InteractiveMode struct {
 	shutdownRequested atomic.Bool
 	// entriesRenderedByBoundaryCompaction holds the ids of entries after a boundary compaction that its rebuild of the transcript already drew.
 	entriesRenderedByBoundaryCompaction map[string]struct{}
-	requestExit                         atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
-	fatalRuntime                        atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
+	// exitingTui marks the renderer stops of the process exit (stopInteractiveTui), which write terminal.stop()'s mode resets; a renderer swap does not.
+	exitingTui   bool
+	requestExit  atomic.Bool // /quit / /exit sets this; input loop notices and returns. Atomic: extension shutdown may set it off the owner loop.
+	fatalRuntime atomic.Bool // fatal session replacement errors exit 1 after the input loop restores the terminal.
 
 	// suspended is true while the session is parked by SIGTSTP. SIGINT is
 	// ignored then, mirroring upstream's ignoreSigint listener.
@@ -277,6 +279,12 @@ type InteractiveMode struct {
 	// Shutdown paths share an emission guard and join in-flight cleanup before owner-loop terminal teardown.
 	signalShutdownDone atomic.Bool
 	shutdownMu         sync.Mutex
+	// quitEntered closes when the owner loop enters finishInteractiveShutdown, before it takes shutdownMu: from then on it serves no posted task while it waits for that lock, which a signal's dispose may hold while it waits for the loop (resetExtensionUIForReplacement).
+	quitEntered          chan struct{}
+	quitEnteredOnce      sync.Once
+	quitEnteredCloseOnce sync.Once
+	// signalDisposing is set while a signal's shutdown emits and disposes; the hook's wait for the owner loop is then bounded.
+	signalDisposing atomic.Bool
 	// reloadIssues collects extension/tool reload failures from the most recent
 	// /reload so ReloadDiagnostics can surface them in-session as "Extension
 	// issues" instead of dropping them to a TUI-clobbered stderr. Reset at the
@@ -593,6 +601,11 @@ type InteractiveMode struct {
 	remoteEditorEvents remoteEventQueue
 	// tuiStopped is set once the TUI stopped, for writers off the owner loop.
 	tuiStopped atomic.Bool
+	// terminalWrites keeps the terminal writes of goroutines other than the owner loop in the order they were made, for the loop to run between frames; the exit's stop writes what the loop never took before its own bytes and closes it (owner_loop.go).
+	terminalWrites terminalWriteQueue
+	// drawTerminal is the terminal the renderer draws on and terminalGate its stop gate, kept by createInteractiveTui for writers that run on goroutines other than the owner loop; terminalGate is unset when that terminal has none.
+	drawTerminal atomic.Pointer[tui.Terminal]
+	terminalGate atomic.Pointer[tui.StopGate]
 	// interruptExiting is set once a SIGINT's exit has begun to end the extension processes (handleInterruptSignal): a quit that the owner loop still serves prints no resume hint beside that exit.
 	interruptExiting atomic.Bool
 	// quitDisposing is set once a quit by keys hands the terminal back (stopInteractiveTui) or has stopped the TUI and begun its dispose (finishInteractiveShutdown), which holds shutdownMu until it returns. A SIGINT, SIGTERM or SIGHUP that arrives then has no shutdown event left to give: interruptShutdown does not wait for that lock, and ExitIfQuitting ends the process.
@@ -648,7 +661,10 @@ type InteractiveMode struct {
 
 	// rawDrain consumes late protocol input before renderer teardown and reports a failed read; temporary handoffs restore
 	// without draining.
-	rawDrain             func() error
+	rawDrain func() error
+	// inputHold keeps the terminal reader from reading until Init's synchronous start has written its last bytes; nil reads at once.
+	inputHold            chan struct{}
+	inputHoldOnce        sync.Once
 	rawRestore           func()
 	inputReader          *interactiveTerminalReader
 	externalEditorActive bool
@@ -1678,9 +1694,20 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	defer func() { err = errors.Join(err, m.stopRun()) }()
 	defer m.closeViewEndpoint()
 	if err := m.Init(ctx); err != nil {
-		return err
+		return m.startupEndError(ctx, err)
 	}
 	return m.run(ctx)
+}
+
+// startupEndError is the result of a Run whose startup failed with err. A SIGTERM or SIGHUP that arrives while startup runs is disposed by the signal's
+// goroutine (ShutdownFromSignal) before main cancels the root context, and the startup step it interrupts (the terminal colors, an awaited handler, an
+// owner-loop step of the bind) then reports the cancellation. That is the end of a session that shut down, which Pi's shutdown({ fromSignal }) ends with
+// process.exit(0) whatever init() is awaiting (interactive-mode.ts:4483-4494); main reports an error from Run as "Error: ..." with status 1.
+func (m *InteractiveMode) startupEndError(ctx context.Context, err error) error {
+	if errors.Is(err, context.Canceled) && ctx.Err() != nil && m.signalShutdownDone.Load() {
+		return nil
+	}
+	return err
 }
 
 // startupMark is the optional startup timing hook, a no-op when unset.
@@ -1725,6 +1752,8 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 
 	removeWriteErrorHandler := m.exitOnDeadTerminalWrite()
 	m.onStop(func() error { removeWriteErrorHandler(); return nil })
+	removeClipboardOrder := m.orderClipboardWrites()
+	m.onStop(func() error { removeClipboardOrder(); return nil })
 	m.backgroundCtx, m.backgroundCancel = context.WithCancel(ctx)
 	m.onStop(func() error {
 		m.backgroundCancel()
@@ -1768,7 +1797,8 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	})
 	mark("pre-raw-mode")
 	m.holdProgramStatusForFrontend()
-	restore, drain, err := tui.EnterRawModeWithDrain()
+	// A frontend may draw instead of the fullscreen renderer, on its own terminal: the alternate screen is entered once it declined (below).
+	restore, drain, err := m.startTerminal(m.altScreen != nil && m.opts.Frontend == nil)
 	if err != nil {
 		// Entering raw mode on a terminal that went away (setRawMode EIO or ENOTTY) is not a crash.
 		m.exitIfDeadTerminal(err)
@@ -1784,9 +1814,13 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.rawRestore = restore
 	m.rawDrain = drain
 	m.openFrontend()
+	if m.opts.Frontend != nil && m.surface == nil && m.altScreen != nil {
+		// The frontend declined: the fullscreen renderer draws, and the terminal starts again on its screen.
+		if err := m.restartTerminal(); err != nil {
+			return fmt.Errorf("interactive: raw mode: %w", err)
+		}
+	}
 	m.tuiInst.HideCursor()
-	cursorTUI := m.tuiInst
-	m.onStop(func() error { cursorTUI.ShowCursor(); return nil })
 	// Centralized, idempotent renderer teardown runs before the deferred cursor and cooked-mode restoration on normal quit or graceful signal shutdown. A dead-terminal emergency exits without unwinding these terminal writes.
 	m.onStop(func() error { m.stopInteractiveTui(); return nil })
 
@@ -1821,6 +1855,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.editorContainer = tui.NewContainer()
 	m.editorContainer.Add(m.editor)
 	m.tuiInst.SetFocus(m.editor)
+	m.inputHold = make(chan struct{})
 	m.startTerminalInput(ctx, os.Stdin)
 	m.programStatusReporter().Report()
 	m.onStop(m.stopTerminalInput)
@@ -1865,6 +1900,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	m.programStatusReporter().Report()
 	// Pi's ui.start() only requests the first frame, and init() writes the terminal color query (applyFromSettings()) before the deferred frame runs at `await waitForTerminalColors()`. The header, which bakes theme colors into its text, is built once the query completed or timed out (interactive-mode.ts init(): ui.start(), applyFromSettings(), waitForTerminalColors(), header). The color wait serves the owner loop, so it paints the requested frame: a terminal that answers nothing shows the editor and footer at once and the header after the timeout.
 	m.applyThemeFromSettings(ctx)
+	m.inputHoldOnce.Do(func() { close(m.inputHold) })
 	if err := m.waitForTerminalColors(ctx); err != nil {
 		return err
 	}

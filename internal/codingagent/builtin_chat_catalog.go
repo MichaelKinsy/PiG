@@ -10,14 +10,23 @@ import (
 )
 
 // builtinChatCatalogs holds the offered bundled chat models of each provider read so far, for the stripped APIs they were listed under. The bundled catalog never changes, so callers share one list per provider until the stripped APIs change, as Pi's getBuiltinModels shares its catalog objects (providers/all.ts:104).
+// It is the model-catalog snapshot of the registry's metadata readers: the generation (this value) is replaced as a whole when the stripped APIs change, so a reader that loads it once reads the lists and the converted models of one set of stripped APIs, never a mix.
 type builtinChatCatalogs struct {
 	stripped   []string
 	mu         sync.RWMutex
 	byProvider map[string][]ai.GeneratedModel
+	// converted is the chat models of each provider's listed catalog as GeneratedModel.ToModel builds them, built once per provider and generation on first read (convertedModels).
+	converted map[string]*convertedChatModels
 	// openRouterListed is the OpenRouter list builtinChatCatalogListed derives, built on first use.
 	openRouterListed []ai.GeneratedModel
 	// openRouterIdentified is the OpenRouter catalog and its listing by identity (builtinChatCatalogListing), identified on first use.
 	openRouterIdentified *builtinChatCatalogIdentity
+}
+
+// convertedChatModels is the converted chat models of one provider of one generation: built once, then read-only.
+type convertedChatModels struct {
+	once   sync.Once
+	models []*ai.Model
 }
 
 // builtinChatCatalogIdentity is a bundled catalog and the listing by identity that names its entries.
@@ -28,18 +37,28 @@ type builtinChatCatalogIdentity struct {
 
 var currentBuiltinChatCatalogs atomic.Pointer[builtinChatCatalogs]
 
-// builtinChatCatalog returns the models of Pi's bundled catalog that ai.ListModels(id) lists, without the OpenRouter routing variants it derives (D199; builtinChatCatalogListed lists them), in the same order, copying them at most once rather than on every call. The list is shared, and may be a window of ai.GeneratedModels itself, so callers read it and never write an element; its capacity is clipped, so an append copies it.
-func builtinChatCatalog(id string) []ai.GeneratedModel {
+// currentBuiltinChatCatalogsNow is the generation for the stripped APIs in force now, replacing an older one.
+func currentBuiltinChatCatalogsNow() *builtinChatCatalogs {
 	stripped := pigstrip.IDs(pigstrip.ListAPIs)
 	catalogs := currentBuiltinChatCatalogs.Load()
 	for catalogs == nil || !slices.Equal(catalogs.stripped, stripped) {
-		fresh := &builtinChatCatalogs{stripped: stripped, byProvider: map[string][]ai.GeneratedModel{}}
+		fresh := &builtinChatCatalogs{stripped: stripped, byProvider: map[string][]ai.GeneratedModel{}, converted: map[string]*convertedChatModels{}}
 		if currentBuiltinChatCatalogs.CompareAndSwap(catalogs, fresh) {
-			catalogs = fresh
-			break
+			return fresh
 		}
 		catalogs = currentBuiltinChatCatalogs.Load()
 	}
+	return catalogs
+}
+
+// builtinChatCatalog returns the models of Pi's bundled catalog that ai.ListModels(id) lists, without the OpenRouter routing variants it derives (D199; builtinChatCatalogListed lists them), in the same order, copying them at most once rather than on every call. The list is shared, and may be a window of ai.GeneratedModels itself, so callers read it and never write an element; its capacity is clipped, so an append copies it.
+func builtinChatCatalog(id string) []ai.GeneratedModel {
+	return currentBuiltinChatCatalogsNow().catalog(id)
+}
+
+// catalog is builtinChatCatalog(id) in this generation.
+func (catalogs *builtinChatCatalogs) catalog(id string) []ai.GeneratedModel {
+	stripped := catalogs.stripped
 	catalogs.mu.RLock()
 	models, listed := catalogs.byProvider[id]
 	catalogs.mu.RUnlock()
@@ -84,6 +103,47 @@ func builtinChatCatalog(id string) []ai.GeneratedModel {
 	return models
 }
 
+// builtinChatModels is the chat models builtinChatCatalogListed(id) lists, as GeneratedModel.ToModel builds them, in that order: nil when it lists none.
+// The conversion runs once per provider and generation of the catalog (the stripped APIs), where each reader converted the list itself before: the composer's
+// models and all-models reads and the provider model data of a registration read this one snapshot (the metadata readers of one refresh).
+// Each call returns its own slice of its own top-level models, so a reader may replace a model's field or an element as it could a converted model; the
+// slices, maps and pointers inside a model are the snapshot's, as Pi's readers share the models of the runtime's snapshot (model-registry.ts getAll, find),
+// so a reader copies one before it changes it.
+func builtinChatModels(id string) []*ai.Model {
+	snapshot := currentBuiltinChatCatalogsNow().convertedModels(id)
+	if len(snapshot) == 0 {
+		return nil
+	}
+	models := make([]*ai.Model, len(snapshot))
+	for i, model := range snapshot {
+		models[i] = new(*model)
+	}
+	return models
+}
+
+// convertedModels is the converted chat models of provider id in this generation, built on first use: the list and the models come from this one generation.
+func (catalogs *builtinChatCatalogs) convertedModels(id string) []*ai.Model {
+	listed := catalogs.listed(id)
+	if len(listed) == 0 {
+		return nil
+	}
+	catalogs.mu.Lock()
+	entry := catalogs.converted[id]
+	if entry == nil {
+		entry = &convertedChatModels{}
+		catalogs.converted[id] = entry
+	}
+	catalogs.mu.Unlock()
+	entry.once.Do(func() {
+		models := make([]*ai.Model, len(listed))
+		for i := range listed {
+			models[i] = listed[i].ToModel()
+		}
+		entry.models = models
+	})
+	return entry.models
+}
+
 // builtinChatCatalogListed is builtinChatCatalog for a caller that lists the catalog's models: the bundled catalog of OpenRouter also holds each
 // model's routing variants, derived once from the bundled models (ai.SharedOpenRouterRoutingVariants) the first time the list is read, so a caller that
 // only resolves a model or counts the catalog (builtinChatCatalog) builds none. The list is shared, and read-only like builtinChatCatalog's: when no
@@ -91,11 +151,15 @@ func builtinChatCatalog(id string) []ai.GeneratedModel {
 //
 // pig divergence (D199): Pi lists no OpenRouter routing variant; PiG derives them from the bundled models instead of storing them.
 func builtinChatCatalogListed(id string) []ai.GeneratedModel {
-	catalog := builtinChatCatalog(id)
+	return currentBuiltinChatCatalogsNow().listed(id)
+}
+
+// listed is builtinChatCatalogListed(id) in this generation.
+func (catalogs *builtinChatCatalogs) listed(id string) []ai.GeneratedModel {
+	catalog := catalogs.catalog(id)
 	if id != "openrouter" || len(catalog) == 0 { //portlint:allow providerliteral the variants are OpenRouter's own routing suffixes
 		return catalog
 	}
-	catalogs := currentBuiltinChatCatalogs.Load()
 	catalogs.mu.RLock()
 	listed := catalogs.openRouterListed
 	catalogs.mu.RUnlock()

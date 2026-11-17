@@ -38,7 +38,7 @@ pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/session-r
 [assert]
 exit_code = 0
 runs = 3
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 both_contain = ['replacement-trace:', '[\"result\",\"cancel\",true]', '[\"result\",\"new\",false]']
 both_not_contain = ["unsupported", '"success":false']

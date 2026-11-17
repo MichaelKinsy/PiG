@@ -266,6 +266,14 @@ func TestStrictToolSchemaLoneSurrogatesReachTheWireAsPi(t *testing.T) {
 	for _, shape := range toolSurrogateShapes() {
 		shape.Name += ": a tool that prefers strict sampling"
 		shape.Context = json.RawMessage(`{"systemPrompt":"s","tools":[{"name":"N","description":"d","parameters":{"type":"object","properties":{"p":{"type":"string","description":"P[` + highUnit + `]","enum":["E[` + highUnit + `]"]}},"required":["p"],"additionalProperties":false},"constrainedSampling":{"type":"json_schema","strict":"prefer"}}],"messages":[{"role":"user","content":"go","timestamp":1}]}`)
+		if shape.API == "mistral-conversations" {
+			// Pi 2c2a77f9f3ab: Mistral sends the tool strict only when the model's compat sets supportsStrictMode, so the row that asks for strict
+			// sampling carries the flag, and the same tool without it is a row of its own (sent non-strict, with the schema as authored).
+			plain := shape
+			plain.Name += " (no supportsStrictMode)"
+			rows = append(rows, plain)
+			shape.Compat = json.RawMessage(`{"supportsStrictMode":true}`)
+		}
 		rows = append(rows, shape)
 	}
 	want := piPayloads(t, "testdata/tool_surrogate_wire_body.mjs", rows)

@@ -1118,6 +1118,28 @@ type ToolResultEventBase struct {
 	// Usage is the usage of the tool execution itself, if available
 	// (upstream `usage?: Usage`).
 	Usage any `json:"usage,omitempty"`
+	// Edits is where an extension process's handler reports the members of the event it edited in place (see [ToolResultEdits]); the Runner sets it for each handler it calls.
+	Edits *ToolResultEdits `json:"-"`
+}
+
+// ToolResultEdits is what a tool_result handler in an extension process left in the event it was handed. Pi hands every handler of the chain the one currentEvent, so a member a handler assigns on it is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is also in the caller's result; a member assigned another value reaches the caller only through a result a handler returned (runner.ts emitToolResult). An extension process cannot share the event, so its reply names the members it left different from the ones it received and, of those, the ones it edited in the object it received instead of replacing.
+type ToolResultEdits struct {
+	// Members holds the new value of each member Changed names.
+	Members ToolResultEventResult
+	// Changed names the members the handler left different from the ones it received: "content", "details", "isError", "structuredContent" or "usage".
+	Changed []string
+	// Shared names the members of Changed the handler edited in the object it received (a deep edit), which Pi's caller holds too.
+	Shared []string
+}
+
+func (b ToolResultEventBase) editsSink() *ToolResultEdits { return b.Edits }
+
+// ToolResultEditsSink is where the handler of event reports its in-place edits, or nil when the event has none.
+func ToolResultEditsSink(event any) *ToolResultEdits {
+	if sink, ok := event.(interface{ editsSink() *ToolResultEdits }); ok {
+		return sink.editsSink()
+	}
+	return nil
 }
 
 // ToolDetailsConverter is implemented by a built-in tool's internal result

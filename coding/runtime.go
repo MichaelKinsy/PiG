@@ -253,9 +253,7 @@ func (rt *Runtime) Close() error {
 			return nil
 		}
 		rt.EmitQuitShutdown()
-		if rt.beforeSessionInvalidate != nil {
-			rt.beforeSessionInvalidate()
-		}
+		rt.runQuitInvalidate()
 		if runner := current.Session.currentRunner(); runner != nil {
 			runner.Invalidate("")
 		}

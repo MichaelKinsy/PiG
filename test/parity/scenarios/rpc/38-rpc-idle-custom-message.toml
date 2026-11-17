@@ -27,7 +27,7 @@ pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions"]
 [assert]
 exit_code = 0
 runs = 3
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 both_contain = ['"type":"message_start"', '"type":"message_end"', '"customType":"probe"', '"text":"idle-message"', '"display":false', '"marker":42']
 both_not_contain = ['"type":"agent_start"', '"success":false', 'not_ready', 'extension_error']

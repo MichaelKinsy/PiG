@@ -12,8 +12,14 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
-// wireEventPayload projects the Go-native models an event carries onto Pi's extension-facing Model shape. Upstream hands extensions the Session's Model objects (agent-session.ts:2457-2469 _emitModelSelect).
+// wireEventPayload projects the Go-native models an event carries onto Pi's extension-facing Model shape. Upstream hands extensions the Session's Model objects (agent-session.ts:2457-2469 _emitModelSelect). A before_provider_request payload that a provider holds as a map (Google, Vertex, pi-messages) is written in the member order Pi's object has, which a Go map cannot give.
 func wireEventPayload(event any) any {
+	if request, ok := event.(extension.BeforeProviderRequestEvent); ok {
+		if encoded, held, err := ai.MarshalHookPayload(request.Payload); err == nil && held {
+			request.Payload = json.RawMessage(encoded)
+		}
+		return request
+	}
 	selected, ok := event.(extension.ModelSelectEvent)
 	if !ok {
 		return event

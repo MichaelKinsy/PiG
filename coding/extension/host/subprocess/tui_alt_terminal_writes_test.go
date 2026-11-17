@@ -2,7 +2,6 @@ package subprocess
 
 import (
 	"net"
-	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -94,31 +93,6 @@ func (p *terminalWritePeer) answer(env *Envelope) {
 	_ = writeEnvelopeTo(p.conn, &Envelope{Type: MsgResponse, ID: env.ID, Response: &ResponsePayload{Result: json.RawMessage(result)}})
 }
 
-// goroutineWaitsForALock reports whether a goroutine whose stack holds frame is parked on a lock of package sync (waits), and whether any goroutine holds frame
-// at all (present): a frame that is on no goroutine is a stale name, not an ordering.
-func goroutineWaitsForALock(frame string) (waits, present bool) {
-	buf := make([]byte, 1<<16)
-	for {
-		n := runtime.Stack(buf, true)
-		if n < len(buf) {
-			buf = buf[:n]
-			break
-		}
-		buf = make([]byte, 2*len(buf))
-	}
-	for goroutine := range strings.SplitSeq(string(buf), "\n\n") {
-		if !strings.Contains(goroutine, frame) {
-			continue
-		}
-		present = true
-		header, _, _ := strings.Cut(goroutine, "\n")
-		if strings.Contains(header, "[sync.") || strings.Contains(header, "[semacquire") {
-			waits = true
-		}
-	}
-	return waits, present
-}
-
 // anExtensionScreen is a started tui.alt screen with no copySelection, as the extension host builds it, and the extension end it talks to.
 func anExtensionScreen(t *testing.T) (call func(body string), peer *terminalWritePeer) {
 	t.Helper()
@@ -129,6 +103,7 @@ func anExtensionScreen(t *testing.T) (call func(body string), peer *terminalWrit
 	peer = newTerminalWritePeer(peerEnd)
 	go peer.serve()
 	b := &UIBridge{}
+	t.Cleanup(func() { b.disposeTuiAlt(conn, false) })
 	call = func(body string) {
 		t.Helper()
 		if _, err := b.handleTuiAlt(conn, "", json.RawMessage(body)); err != nil {
@@ -142,40 +117,9 @@ func anExtensionScreen(t *testing.T) (call func(body string), peer *terminalWrit
 	return call, peer
 }
 
-// secondWaitsOrWrites waits until the extension has seen a second output while one is unanswered (it reports true) or the goroutine that made the second call
-// is parked on a lock of the screen, holding frame in its stack (false). It reads goroutine states, not a clock. frame names the function that performs the
-// terminal write of a frame; if no goroutine ever holds it, the test fails as stale (the function was renamed), which is not the ordering failure.
-func secondWaitsOrWrites(t *testing.T, peer *terminalWritePeer, frame string) bool {
-	t.Helper()
-	deadline := time.Now().Add(time.Minute)
-	seen := false
-	for waits := 0; time.Now().Before(deadline); runtime.Gosched() {
-		select {
-		case <-peer.overlap:
-			return true
-		default:
-		}
-		// Two looks in a row: a lock that is only passed through is not the one the goroutine waits for.
-		waiting, present := goroutineWaitsForALock(frame)
-		seen = seen || present
-		if waiting {
-			if waits++; waits == 2 {
-				return false
-			}
-		} else {
-			waits = 0
-		}
-	}
-	if !seen {
-		t.Fatalf("the frame function %s was not found on any goroutine: the probe is stale", frame)
-	}
-	t.Fatal("the second goroutine neither wrote nor waited for a lock within a minute")
-	return false
-}
-
 // An extension's alternate screen that supplies no copySelection copies a selection with OSC 52 through the screen's terminal, as Pi's copyTextToClipboard does
-// with terminal.write (tui-alt-screen.ts:1497). The copy runs on the goroutine of the extension's input call, the frames on the screen's timer goroutine; the
-// extension's Terminal must see one output at a time, each acknowledged before the next, so a frame that comes while the copy is being written waits for it.
+// with terminal.write (tui-alt-screen.ts:1497). The extension's Terminal must see one output at a time, each acknowledged before the next, so a frame that
+// comes while the copy is being written waits for it: the owner of the screen sends the copy and the frame, one after the other.
 func TestAnExtensionScreenWithoutCopySelectionWritesTheClipboardBeforeTheNextFrame(t *testing.T) {
 	call, peer := anExtensionScreen(t)
 	call(`{"op":"input","id":"s","data":"\u001b[<0;1;1M"}`)
@@ -191,12 +135,17 @@ func TestAnExtensionScreenWithoutCopySelectionWritesTheClipboardBeforeTheNextFra
 	case <-time.After(time.Minute):
 		t.Fatalf("the release of the drag did not copy: writes %q", peer.written())
 	}
-	call(`{"op":"requestRender","id":"s","force":true}`)
-	if secondWaitsOrWrites(t, peer, "tui.(*TuiAltScreen).drawFrame") {
+	requested := make(chan struct{})
+	go secondCall(func() {
+		defer close(requested)
+		call(`{"op":"requestRender","id":"s","force":true}`)
+	})
+	if secondOverlapsOrIsHeld(t, peer.overlap) {
 		t.Errorf("the extension's Terminal got a frame while the clipboard write was unanswered; writes %q", peer.written())
 	}
 	close(peer.release)
 	<-copied
+	<-requested
 	call(`{"op":"stop","id":"s"}`)
 	want := "\u001b]52;c;aGVsbG8=\a"
 	if !slices.Contains(peer.written(), want) {
@@ -204,8 +153,8 @@ func TestAnExtensionScreenWithoutCopySelectionWritesTheClipboardBeforeTheNextFra
 	}
 }
 
-// The stop of a screen shows the cursor before it leaves the alternate screen; the call runs on the extension's goroutine while a frame of the screen's timer
-// may be writing, so the cursor write waits for the frame, as every write of the screen does.
+// The stop of a screen shows the cursor before it leaves the alternate screen; a frame of the screen may be writing when the call comes, so the cursor write
+// waits for the frame, as every write of the screen does.
 func TestAnExtensionScreenShowsTheCursorAtStopAfterTheFrameThatIsWriting(t *testing.T) {
 	call, peer := anExtensionScreen(t)
 	peer.parkAt("\u001b[?2026h")
@@ -216,11 +165,11 @@ func TestAnExtensionScreenShowsTheCursorAtStopAfterTheFrameThatIsWriting(t *test
 		t.Fatalf("no frame was written: writes %q", peer.written())
 	}
 	stopped := make(chan struct{})
-	go func() {
+	go secondCall(func() {
 		defer close(stopped)
 		call(`{"op":"stop","id":"s"}`)
-	}()
-	if secondWaitsOrWrites(t, peer, "subprocess.(*tuiAltScreenState).run") {
+	})
+	if secondOverlapsOrIsHeld(t, peer.overlap) {
 		t.Errorf("the extension's Terminal got the cursor write while a frame was unanswered; writes %q", peer.written())
 	}
 	close(peer.release)

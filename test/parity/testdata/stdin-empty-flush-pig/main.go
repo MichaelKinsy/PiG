@@ -22,7 +22,12 @@ func main() {
 			buffer.Clear()
 		}
 		after := append([]string{}, buffer.ProcessString("@")...)
-		if err := json.NewEncoder(os.Stdout).Encode(map[string]any{"operation": operation, "before": before, "flushed": flushed, "after": after}); err != nil {
+		if err := json.NewEncoder(os.Stdout).Encode(struct {
+			Operation string   `json:"operation"`
+			Before    []string `json:"before"`
+			Flushed   []string `json:"flushed"`
+			After     []string `json:"after"`
+		}{operation, before, flushed, after}); err != nil {
 			panic(err)
 		}
 	}

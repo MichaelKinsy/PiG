@@ -1,0 +1,46 @@
+# Behavior family: providers-registry
+# Surface: the tools of a Mistral chat request (mistral-conversations) as each binary sends them: a tool that prefers strict sampling goes out non-strict
+# unless the model's compat sets supportsStrictMode.
+#
+# Upstream evidence (Pi 2c2a77f9f3ab, #12148; packages/ai/src/api/mistral-conversations.ts buildChatPayload and toFunctionTools): Mistral Large 4 goes silent for
+# minutes before a tool call when the tools carry strict true, so toFunctionTools passes model.compat?.supportsStrictMode ?? false to
+# resolveJsonSchemaStrictSampling where it passed true. A "prefer" tool then goes out with strict false and its schema as authored (no additionalProperties
+# false, no every-property-required conversion). Pi v1.5.2 as published sends strict true. 26-print-mistral-tools-strict-with-compat is the same request with
+# the flag set.
+# The oracle is the pinned Pi plus the post-release backports (automation/gen/pi-post-release-backports.mjs), 2c2a77f9f3ab among them; `pi` runs the
+# package's bundle, which the oracle build makes again from the patched compiled output.
+#
+# How the request is seen: both binaries talk to the runner's local provider fixture (provider_fixture, test/parity/README.md). The prompt
+# `ECHO_REQUEST /tools` makes the fixture answer with that part of the request body it received, members in the order received, so each
+# binary prints what it sent and output_equal compares the whole tools array: which tools, their order, each schema member and each strict flag. No
+# normalization: the two requests must be the same bytes after the fixture's uniform spelling of white space and string escapes.
+# `--tools typed_tool,closed_tool,read`: typed_tool and read (built in) ask for strict sampling with "prefer" (testdata/request-echo-tools.mjs); closed_tool
+# asks for none and is authored out of the usual member order, so its bytes show the schema is sent as written.
+# Mutation: with the flag argument of convertTools (ai/mistral.go) forced to true, pig sends typed_tool and read with strict true and a converted schema, and
+# output_equal fails.
+name = "25-print-mistral-tools-non-strict-by-default"
+description = "A Mistral model without supportsStrictMode receives its tools non-strict, as pi sends them"
+covers = ["packages/ai/src/api/mistral-conversations.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+provider_fixture = "mistral-conversations"
+model = "strict-wire/strict"
+
+[print]
+prompt = "ECHO_REQUEST /tools"
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent"]
+pig_extensions = ["testdata/request-echo-tools.mjs"]
+pi_extensions = ["testdata/request-echo-tools.mjs"]
+pig_args = ["--offline", "--no-extensions", "--tools", "typed_tool,closed_tool,read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_args = ["--offline", "--no-extensions", "--tools", "typed_tool,closed_tool,read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 0
+both_contain = ['"name":"typed_tool"', '"strict":false']
+output_equal = true
+stderr_equal = true
+runs = 3

@@ -163,6 +163,8 @@ type Conn struct {
 	loopTurnsClosed bool
 	// onClosed runs once when the read loop ends.
 	onClosed func()
+	// onRequestDone runs on a request's goroutine once the request left requestStates, whether its response arrived or it was cancelled or timed out: the reports of the sends its handler made are due (sync_run_report.go).
+	onRequestDone func(requestID string)
 	// fileMutations holds the file mutation queue tickets this connection was admitted to and has not exited; sharedTurns replaces it for a connection of a process several extensions run in. turnsLeft is guarded by the registry's mutex (host_file_mutation.go).
 	fileMutations fileMutationTurns
 	sharedTurns   *fileMutationTurns
@@ -260,7 +262,9 @@ type Conn struct {
 	suspending        map[string]int
 	suspendedRequests map[string]bool
 	// provisionalBlocks holds the requests whose runtime reported blocked on a host call that the read loop has not yet seen: the suspension is reported once the call frame names the call, because a waitForIdle that finds the Session idle suspends nothing (settleBlockedCall).
-	provisionalBlocks  map[string]struct{}
+	provisionalBlocks map[string]struct{}
+	// ackHolds counts the in-flight requests that hold an invocation acknowledgment (ackHold), so the read loop looks up a call's request only while one exists.
+	ackHolds           atomic.Int32
 	suspensionsSettled chan struct{}
 	// callerSettlements holds, by request, the work a call's handler left for the settlement of the request that awaits the call (afterCallerSettles).
 	callerSettlements map[string][]func()
@@ -889,6 +893,7 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	}
 	if invocation.Bound(ctx) {
 		ctx = withAckHold(ctx)
+		c.ackHolds.Add(1)
 	}
 	sink := requestStateSink{ch: stateCh, ctx: ctx}
 	if env.Request != nil {
@@ -929,8 +934,12 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		delete(c.suspendedRequests, env.ID)
 		c.stateMu.Unlock()
 		c.settleCallers(env.ID)
+		if c.onRequestDone != nil {
+			c.onRequestDone(env.ID)
+		}
 		if hold := ackHoldOf(ctx); hold != nil {
 			hold.release()
+			c.ackHolds.Add(-1)
 		}
 		c.hostCallMu.Lock()
 		delete(c.cancelledParent, env.ID)
@@ -1177,6 +1186,9 @@ func (c *Conn) Close(reason string) error {
 
 	// Wait for goroutines to exit.
 	<-c.done
+	// The peer is gone, so no call it made can be answered: a host call still running on it, a dialog the extension awaited, ends. A transport failure does this when it
+	// ends the read loop (fail); a close the host asked for ends the loop without a failure, and its calls waited on a context nothing cancelled.
+	c.cancelAllHostCalls()
 
 	// Fail any pending requests without erasing a terminal error's identity.
 	failureCode := ""
@@ -1387,9 +1399,13 @@ func (c *Conn) readLoop(ctx context.Context) {
 				c.stateMu.Unlock()
 			}
 			if state := env.RequestState.State; state == "progress" || state == "completed" {
-				// The handler went on past the calls its blocked reports announced.
+				// The handler went on past the calls its blocked reports announced. A completed handler's calls applied before it answered; a progress report says nothing of the calls the read loop counted after the first.
 				if hold := c.requestAckHold(env.RequestState.RequestID); hold != nil {
-					hold.release()
+					if state == "completed" {
+						hold.release()
+					} else {
+						hold.wentOn()
+					}
 				}
 			}
 			if env.RequestState.State == "suspended" {
@@ -1479,6 +1495,10 @@ func (c *Conn) readLoop(ctx context.Context) {
 		}
 		if env.Type == MsgCall {
 			c.clearLoopDrained()
+			if env.Call != nil {
+				// The handler's frames are read in the order it wrote them: a call counted here was sent before any report read after it.
+				c.holdAckForCall(env.Call.ParentRequestID)
+			}
 		}
 		// A call frame owns its parent-scoped context from the moment it is read, while the frames before a response are still ahead of it.
 		if env.Type == MsgCall && env.Call != nil && env.ID != "" {

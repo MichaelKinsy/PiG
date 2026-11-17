@@ -1,0 +1,53 @@
+# Behavior family: extensions-runtime
+# Scenario: an RPC extension command that removes one extension's file, adds another's and awaits ctx.reload() leaves the caller loaded, the removed extension gone
+# and the added extension loaded: a reload loads the extensions that are on disk.
+#
+# Pi's reload runs the resource loader again (agent-session.ts:3815-3855 reload; resource-loader.ts DefaultResourceLoader.reload), which discovers the extension
+# files of the agent directory anew, in RPC mode as in the others (rpc-mode.ts:341-346 gives the command context the same session.reload()). Probed on Pi 1.5.2
+# with two user extensions in the agent directory: the command removed sibling.js, wrote zz-added.js and awaited ctx.reload(); the next /loaded reported the
+# caller's commands and the added extension's, and not the sibling's.
+#
+# PiG's RPC mode reloaded the extension set it started with: the removed sibling stayed configured, its missing file failed the Node cell the two extensions
+# shared, and the caller was not loaded after the reload (neither was the added extension, which it never discovered).
+
+name = "108-rpc-reload-loads-the-extensions-on-disk"
+description = "An RPC command that removes one extension file, adds another and awaits ctx.reload() leaves the caller and the added extension loaded"
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 40
+settle_seconds = 1
+steps = [
+  {line = '{"id":"before","type":"prompt","message":"/loaded"}', wait_contains = ['"message":"loaded: '], wait_timeout_seconds = 20},
+  {line = '{"id":"change","type":"prompt","message":"/change-and-reload"}', wait_contains = ['"id":"change","type":"response"'], wait_timeout_seconds = 20},
+  {line = '{"id":"after","type":"prompt","message":"/loaded"}', wait_contains = ['"message":"loaded: added-hello'], wait_timeout_seconds = 20},
+]
+
+[env]
+# The base arguments pass --no-extensions, which drops the agent directory's extensions.
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/rpc-reload-discovery/pig-agent"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/rpc-reload-discovery/pi-agent"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+both_match_regex = ['(?s)"message":"loaded: change-and-reload,loaded,sibling-hello".*"message":"loaded: added-hello,change-and-reload,loaded"']
+both_not_contain = ["Failed to load extension", "panic:", "goroutine "]
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Notifications have generated UUIDs; retain distinct identities, event order, payloads and all command responses."

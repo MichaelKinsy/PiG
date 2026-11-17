@@ -3237,9 +3237,11 @@ class Context:
             message["details"] = details
         self._call("sendMessage", {"message": message, "options": options})
 
-    def send_user_message(self, content: str | list[dict[str, Any]], deliver_as: str = "followUp", expand_prompt_templates: bool | None = None) -> None:
-        """Send text or a list of text/image content blocks as a user message. ``expand_prompt_templates=True`` dispatches an extension command and expands a skill command or prompt template in the text as typed input would (types.ts:1792); None is Pi's default, False."""
-        options: dict[str, Any] = {"deliverAs": deliver_as}
+    def send_user_message(self, content: str | list[dict[str, Any]], deliver_as: str | None = None, expand_prompt_templates: bool | None = None) -> None:
+        """Send text or a list of text/image content blocks as a user message. ``deliver_as`` is ``"steer"`` or ``"followUp"``; None sends no ``deliverAs``, as ``pi.sendUserMessage(content)`` does: an idle agent runs the message at once and a streaming agent refuses it with Pi's error (``Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.``, an extension error event ``send_user_message``; the call itself returns), so pass ``deliver_as="followUp"`` to queue it behind a run. ``expand_prompt_templates=True`` dispatches an extension command and expands a skill command or prompt template in the text as typed input would (types.ts:1792); None is Pi's default, False."""
+        options: dict[str, Any] = {}
+        if deliver_as is not None:
+            options["deliverAs"] = deliver_as
         if expand_prompt_templates is not None:
             options["expandPromptTemplates"] = bool(expand_prompt_templates)
         self._call("sendUserMessage", {"content": content, "options": options})
@@ -6610,6 +6612,85 @@ class Extension:
                         reply["_pigToolCallInput"] = tool_input
                     self._respond(req_id, reply, error)
                     return
+                # Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, turn_end, agent_end, the entry and the next request hold, even when it fails afterwards. The host cannot share the dict, so the reply carries the message the handler left when its JSON text differs from the one it received (member order included). Assigning a new dict to data["message"] changes nothing, as assigning event.message changes nothing in Pi.
+                if req.get("event") == "message_end":
+                    end_message = data.get("message")
+                    before = _json_text(end_message) if isinstance(end_message, dict) else None
+                    result = None
+                    error = None
+                    try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
+                        result = handler(ctx, data)
+                    except Exception as exc:  # noqa: BLE001 - Preserve message edits before reporting the handler error.
+                        error = {"message": str(exc)}
+                    reply = {"_pigMessageEndResult": result}
+                    if before is not None:
+                        try:
+                            if _json_text(end_message) != before:
+                                reply["_pigMessageEndMessage"] = end_message
+                        except Exception as exc:  # noqa: BLE001 - A message that cannot be written is the handler's error.
+                            error = error or {"message": str(exc)}
+                    self._respond(req_id, reply, error)
+                    return
+                # Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the dict, so the reply names the members the handler left different from the ones it received (JSON text, member order included), with their new values, and, of those, the ones it edited in the very object it received instead of replacing; the reply carries them also when the handler failed.
+                if req.get("event") == "tool_result":
+                    names = ("content", "details", "isError", "structuredContent", "usage")
+                    received = {name: data[name] for name in names if name in data}
+                    before = {name: _json_text(value) for name, value in received.items()}
+                    result = None
+                    error = None
+                    try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
+                        result = handler(ctx, data)
+                    except Exception as exc:  # noqa: BLE001 - Preserve member edits before reporting the handler error.
+                        error = {"message": str(exc)}
+                    reply = {"_pigToolResultResult": result}
+                    try:
+                        changed = [name for name in names if (name in data) != (name in received) or (name in data and _json_text(data[name]) != before[name])]
+                        if changed:
+                            reply["_pigToolResultEdits"] = {
+                                "members": {name: data[name] for name in changed if name in data},
+                                "changed": changed,
+                                "shared": [name for name in changed if name in data and name in received and data[name] is received[name] and isinstance(data[name], (dict, list))],
+                            }
+                    except Exception as exc:  # noqa: BLE001 - A member that cannot be written is the handler's error.
+                        error = error or {"message": str(exc)}
+                    self._respond(req_id, reply, error)
+                    return
+                # Pi hands every before_provider_request handler the one payload and sends what the runner returns: a handler that edits it in place and returns nothing changes the request (runner.ts emitBeforeProviderRequest returns currentPayload), even when it fails afterwards. The host cannot share the dict, so a handler that returned no result sends the payload it left when its JSON text differs from the one it received (member order included). Assigning a new dict to data["payload"] changes nothing, as assigning event.payload changes nothing in Pi.
+                if req.get("event") == "before_provider_request":
+                    provider_payload = data.get("payload")
+                    before = _json_text(provider_payload) if isinstance(provider_payload, (dict, list)) else None
+                    result = None
+                    error = None
+                    try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
+                        result = handler(ctx, data)
+                    except Exception as exc:  # noqa: BLE001 - Preserve payload edits before reporting the handler error.
+                        error = {"message": str(exc)}
+                    if result is None and before is not None:
+                        try:
+                            if _json_text(provider_payload) != before:
+                                result = provider_payload
+                        except Exception as exc:  # noqa: BLE001 - A payload that cannot be written is the handler's error.
+                            error = error or {"message": str(exc)}
+                    self._respond(req_id, result, error)
+                    return
+                # Pi's before_provider_headers handlers mutate event.headers in place and the return value is ignored (runner.ts emitBeforeProviderHeaders): the reply is the headers object the handler left, even when it failed.
+                if req.get("event") == "before_provider_headers":
+                    provider_headers = data.get("headers")
+                    error = None
+                    try:
+                        if ctx._request_start is not None:
+                            ctx._request_start.begin()
+                        handler(ctx, data)
+                    except Exception as exc:  # noqa: BLE001 - Preserve header edits before reporting the handler error.
+                        error = {"message": str(exc)}
+                    self._respond(req_id, provider_headers if provider_headers is not None else {}, error)
+                    return
                 if req.get("event") == "before_agent_start":
                     options = data["systemPromptOptions"]
                     # Pi's normalized options always carry every collection; the host omits an empty one.
@@ -6642,7 +6723,14 @@ class Extension:
                 encoded_before = _context_messages_encoding(messages) if snapshot is not None and req.get("event") in {"context", "context_with_system"} else None
                 if ctx._request_start is not None:
                     ctx._request_start.begin()
-                result = handler(ctx, data)
+                try:
+                    result = handler(ctx, data)
+                except Exception as exc:  # noqa: BLE001 - A context handler's edit of a message is kept when it throws, as in Pi.
+                    if req.get("event") != "context" or snapshot is None:
+                        raise
+                    # Pi hands a context handler a filtered copy of the list over the one set of message objects (runner.ts emitContext): an edit to a message stays after a throw and a change to the list does not, so the reply carries the messages the handler was handed, as it left them.
+                    self._respond(req_id, {"messages": snapshot, "_pigContextUnchanged": True}, {"message": str(exc)})
+                    return
                 if req.get("event") == "user_bash":
                     result = _user_bash_operations_reply(self._bash_operations, result) or _user_bash_event_result(result)
                 if req.get("event") in {"context", "context_with_system"} and snapshot is not None:

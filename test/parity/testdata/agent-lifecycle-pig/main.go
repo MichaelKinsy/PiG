@@ -25,7 +25,13 @@ type probeTool struct{ name string }
 func (t probeTool) Name() string  { return t.name }
 func (t probeTool) Label() string { return t.name }
 func (t probeTool) Schema() ai.ToolSchema {
-	return ai.ToolSchema{Name: t.name, Parameters: map[string]any{"type": "object", "properties": map[string]any{}}}
+	// Declared as JSON text, the way an extension declares its tool: a Go map would carry no member order (Pi's literal is { type, properties }).
+	var schema ai.ToolSchema
+	if err := json.Unmarshal([]byte(`{"parameters":{"type":"object","properties":{}}}`), &schema); err != nil {
+		panic(err)
+	}
+	schema.Name = t.name
+	return schema
 }
 func (probeTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeParallel }
 func (probeTool) Execute(context.Context, string, json.RawMessage, agent.ToolUpdateCallback) (agent.AgentToolResult, error) {

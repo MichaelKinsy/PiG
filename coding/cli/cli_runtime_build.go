@@ -470,7 +470,11 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	if b.mode == appModeRPC {
 		// get_commands reports the provenance of extension commands, so each config carries its resolved source before the load.
 		build.RPCSourceInfo = maps.Clone(build.SourceInfo)
-		finalExtConfigs, reloadFinalExtConfigs = rpcExtensionConfigs(extraExtConfigs, cwd, b.agentDir, build.RPCSourceInfo), nil
+		finalExtConfigs = rpcExtensionConfigs(extraExtConfigs, cwd, b.agentDir, build.RPCSourceInfo)
+		// A reload rediscovers the extensions as Pi's resource loader does, and stamps what it found from the source info the reload's resource pass recorded just before.
+		reloadFinalExtConfigs = func() []subprocess.ExtConfig {
+			return rpcExtensionConfigs(build.ReloadExtensionConfigs(), cwd, b.agentDir, build.RPCSourceInfo)
+		}
 	}
 	var extensionLoadErrs []error
 	// pig divergence (D70): every build, including a session replacement's, starts its own extension host and processes.

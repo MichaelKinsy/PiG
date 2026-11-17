@@ -244,11 +244,11 @@ func BindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 	if stage != nil {
 		// The staged sendMessage replaces the Session's own binding for subprocess extensions as the runner's does for in-process ones.
 		bridge.SetHostAction("sendMessage", func(message extension.CustomMessageRef, opts subprocess.SendMessageOptions) error {
-			return actions.SendMessage(message, &extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs)})
+			return actions.SendMessage(message, &extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs), AfterRun: opts.AfterRun})
 		})
 	}
 	bridge.SetHostAction("sendUserMessage", func(content any, opts subprocess.SendUserMessageOptions) error {
-		return actions.SendUserMessage(content, &extension.SendUserMessageOptions{DeliverAs: extension.DeliverAs(opts.DeliverAs), ExpandPromptTemplates: opts.ExpandPromptTemplates})
+		return actions.SendUserMessage(content, &extension.SendUserMessageOptions{DeliverAs: extension.DeliverAs(opts.DeliverAs), ExpandPromptTemplates: opts.ExpandPromptTemplates, AfterRun: opts.AfterRun})
 	})
 	bridge.SetHostAction("refreshTools", func() error {
 		if sess := current(); sess != nil {

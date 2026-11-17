@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/ai/providers/bedrock"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 func main() {
@@ -32,14 +34,19 @@ func run() error {
 	if err := json.Unmarshal(raw, &cases); err != nil {
 		return err
 	}
-	requests := make(chan map[string]any, 1)
+	requests := make(chan *orderedjson.Object, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var payload map[string]any
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		body, err := io.ReadAll(r.Body)
+		if err == nil {
+			var payload *orderedjson.Object
+			if payload, err = orderedjson.Parse(body); err == nil {
+				requests <- payload
+			}
+		}
+		if err != nil {
 			http.Error(w, err.Error(), 400)
 			return
 		}
-		requests <- payload
 		w.Header().Set("Content-Type", "application/vnd.amazon.eventstream")
 	}))
 	defer server.Close()
@@ -47,8 +54,12 @@ func run() error {
 	defer func() { _ = provider.Close() }()
 	for _, row := range cases {
 		var tools []ai.ToolSchema
+		var tool ai.ToolSchema // decoded from text as an extension's declaration is: a Go map would carry no member order
 		if row.Tools {
-			tools = []ai.ToolSchema{{Name: "read", Description: "Read a file", Parameters: map[string]any{"type": "object", "properties": map[string]any{"path": map[string]any{"type": "string"}}, "required": []string{"path"}}}}
+			if err := json.Unmarshal([]byte(`{"name":"read","description":"Read a file","parameters":{"type":"object","properties":{"path":{"type":"string","description":"File path"},"offset":{"type":"number"}},"required":["path"]}}`), &tool); err != nil {
+				return err
+			}
+			tools = []ai.ToolSchema{tool}
 		}
 		stream, err := provider.Stream(context.Background(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Summarize this"), Timestamp: 1}}, Tools: tools}), ai.StreamOptions{ToolChoice: row.Choice, CacheRetention: ai.CacheRetentionNone, Env: ai.ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1"}})
 		if err != nil {
@@ -57,7 +68,11 @@ func run() error {
 		stream.Result()
 		select {
 		case payload := <-requests:
-			if err := json.NewEncoder(os.Stdout).Encode([]any{row.Name, payload["toolConfig"]}); err != nil {
+			toolConfig, ok := payload.Get("toolConfig")
+			if !ok {
+				toolConfig = json.RawMessage("null")
+			}
+			if err := json.NewEncoder(os.Stdout).Encode([]any{row.Name, toolConfig}); err != nil {
 				return err
 			}
 		default:

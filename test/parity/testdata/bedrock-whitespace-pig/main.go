@@ -37,7 +37,11 @@ func main() {
 	for _, model := range []string{"anthropic.claude-sonnet-4-5-20250929-v1:0", "amazon.nova-lite-v1:0"} {
 		for _, tc := range cases {
 			messages := probe(model, tc.Text)
-			if err := json.NewEncoder(os.Stdout).Encode(map[string]any{"model": model, "case": tc.Name, "messages": messages}); err != nil {
+			if err := json.NewEncoder(os.Stdout).Encode(struct {
+				Model    string          `json:"model"`
+				Case     string          `json:"case"`
+				Messages json.RawMessage `json:"messages"`
+			}{model, tc.Name, messages}); err != nil {
 				panic(err)
 			}
 		}

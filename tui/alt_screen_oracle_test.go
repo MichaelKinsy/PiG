@@ -54,12 +54,13 @@ func setOracleEnv(t *testing.T, name string, set bool, value string) {
 	_ = os.Unsetenv(name)
 }
 
-// altScreenOracleStartMarker is what the oracle terminal writes from Terminal.start; Pig's Start never calls a Terminal (the driver owns it), so
-// the marker and the cursor hide Pi's start() issues right after it are the only bytes left out of the comparison.
+// altScreenOracleTerminalStart is what the oracle terminal writes from Terminal.start: the test writes it where the driver starts the terminal,
+// between BeforeTerminalStart and Start, so the whole of Pi's start() bytes (the alternate screen's enter first, the cursor hide after the
+// terminal's start) is compared, in Pi's order.
 // altScreenOracleStopMarker is what Pi's stop() writes between the renderer's own two writes: the terminal's showCursor and stop.
 const altScreenOracleStopMarker = "\x1b[?25h<terminal.stop>"
 
-const altScreenOracleStartMarker = "<terminal.start>\x1b[?25l"
+const altScreenOracleTerminalStart = "<terminal.start>"
 
 // The fixture is the pinned Pi's TuiAltScreen run over seeded component trees (flat and nested containers, kitty and iTerm2 image lines),
 // terminal sizes (including 1-row and 3-row terminals), and frame sequences with growth, shrink, in-place edits, resizes, forced renders, scrolling
@@ -260,8 +261,11 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 				host(part)
 			}
 		}
+		// Pi's start(): beforeTerminalStart, terminal.start() (the marker), then the cursor hide and the rest.
+		ui.BeforeTerminalStart()
+		out.WriteString(altScreenOracleTerminalStart)
 		ui.Start()
-		if got, want := out.String(), strings.ReplaceAll(sc.StartOut, altScreenOracleStartMarker, ""); got != want {
+		if got, want := out.String(), sc.StartOut; got != want {
 			report("scenario %d (%dx%d, images %q) start\n got %q\nwant %q", index, sc.Cols, sc.Rows, sc.Images, got, want)
 			continue
 		}
@@ -269,12 +273,12 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 			report("scenario %d: images %q after start, Pi %q", index, got, sc.ImagesAfterStart)
 		}
 		if tap != nil {
-			tap.start(index, sc.Cols, sc.Rows, sc.Images, out.String())
+			tap.start(index, sc.Cols, sc.Rows, sc.Images, strings.ReplaceAll(out.String(), altScreenOracleTerminalStart, ""))
 		}
 		cols := sc.Cols
 		pigVT, piVT := newRowsVT(max(1, sc.Rows)), newRowsVT(max(1, sc.Rows))
-		pigVT.apply(out.String())
-		piVT.apply(strings.ReplaceAll(sc.StartOut, altScreenOracleStartMarker, ""))
+		pigVT.apply(strings.ReplaceAll(out.String(), altScreenOracleTerminalStart, ""))
+		piVT.apply(strings.ReplaceAll(sc.StartOut, altScreenOracleTerminalStart, ""))
 		pending = nil
 		var overlays []*oracleLines
 		var handles []*OverlayHandle

@@ -3,13 +3,10 @@
 package subprocess
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime/pprof"
 	"slices"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -194,26 +191,12 @@ func (w *waiterHost) oneProcess(t *testing.T) (pid int, logPath string) {
 	return 0, ""
 }
 
-// processWaiters counts the goroutines that stand in a connection's incoming loop and in a packed process's watcher. A host has one loop
-// for each connection it holds and one watcher for each packed process.
-func processWaiters(t *testing.T) (loops, watchers int) {
-	t.Helper()
-	var profile bytes.Buffer
-	if err := pprof.Lookup("goroutine").WriteTo(&profile, 1); err != nil {
-		t.Fatal(err)
-	}
-	_, stacks, _ := strings.Cut(profile.String(), "\n")
-	for block := range strings.SplitSeq(stacks, "\n\n") {
-		head, _, _ := strings.Cut(block, "\n")
-		count, _ := strconv.Atoi(strings.TrimSpace(strings.SplitN(head, "@", 2)[0]))
-		if strings.Contains(block, "subprocess.(*Host).handleIncoming") {
-			loops += count
-		}
-		if strings.Contains(block, "subprocess.(*Host).watchPackedProcess") {
-			watchers += count
-		}
-	}
-	return loops, watchers
+// waiters counts what the host owns that waits for its processes: the read loops of its connections and the watchers of its packed processes
+// (Host.incomingLoops, Host.runningWatchers). A host has one loop for each connection it holds and one watcher for each packed process. The
+// goroutines of the process's profile are not counted: they take in the tails of the goroutines of every host a test ended before, which leave
+// the profile after the signals of their end.
+func (w *waiterHost) waiters() (loops, watchers int) {
+	return int(w.host.incomingLoops.Load()), int(w.host.runningWatchers.Load())
 }
 
 func waiterEventually(t *testing.T, what string, ok func() bool) {
@@ -236,16 +219,16 @@ func waiterFileExists(path string) bool {
 
 // requireOneWaiterPerProcess requires the loops of the host's connections and the watcher of its process and no more, however many
 // generations ran before.
-func requireOneWaiterPerProcess(t *testing.T, fixture waiterFixture, w *waiterHost, baseLoops, baseWatchers int) {
+func requireOneWaiterPerProcess(t *testing.T, fixture waiterFixture, w *waiterHost) {
 	t.Helper()
-	wantLoops, wantWatchers := baseLoops+len(w.configs), baseWatchers
+	wantLoops, wantWatchers := len(w.configs), 0
 	if fixture.packed {
-		wantWatchers++
+		wantWatchers = 1
 	}
 	var loops, watchers int
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		loops, watchers = processWaiters(t)
+		loops, watchers = w.waiters()
 		if loops == wantLoops && watchers == wantWatchers || time.Now().After(deadline) {
 			break
 		}
@@ -264,7 +247,6 @@ const waiterReloads = 5
 // nil, is the order the host sees them in.
 func processDeathReports(t *testing.T, fixture waiterFixture, reloads int, order *deathOrder) (reports, want []string) {
 	t.Helper()
-	baseLoops, baseWatchers := processWaiters(t)
 	w := newWaiterHost(t, fixture, nil)
 	observers := newDeathObservers(t, w, order)
 	w.load(t)
@@ -275,7 +257,7 @@ func processDeathReports(t *testing.T, fixture waiterFixture, reloads int, order
 	if now, _ := w.oneProcess(t); now != pid {
 		t.Fatalf("a reload of an unchanged source replaced process %d with %d", pid, now)
 	}
-	requireOneWaiterPerProcess(t, fixture, w, baseLoops, baseWatchers)
+	requireOneWaiterPerProcess(t, fixture, w)
 	if !waiterFileExists(logPath) {
 		t.Fatalf("the stderr log %s is gone while its process runs", logPath)
 	}
@@ -324,7 +306,6 @@ func TestProcessExitAfterUnchangedReloadsIsReportedOnce(t *testing.T) {
 func TestParkedProcessExitRemovesItsLogOnce(t *testing.T) {
 	for _, fixture := range waiterFixtures() {
 		t.Run(fixture.name, func(t *testing.T) {
-			baseLoops, baseWatchers := processWaiters(t)
 			retention := NewRuntimeRetention()
 			t.Cleanup(retention.Close)
 			w := newWaiterHost(t, fixture, retention)
@@ -337,8 +318,8 @@ func TestParkedProcessExitRemovesItsLogOnce(t *testing.T) {
 			w.host.Shutdown("replaced")
 			// The retired Host holds no connection, so it has no loop and no watcher left, while the process it parked runs on.
 			waiterEventually(t, "the retired Host's loops and watchers end", func() bool {
-				loops, watchers := processWaiters(t)
-				return loops == baseLoops && watchers == baseWatchers
+				loops, watchers := w.waiters()
+				return loops == 0 && watchers == 0
 			})
 			time.Sleep(300 * time.Millisecond)
 			if !waiterProcessAlive(pid) {
@@ -384,7 +365,6 @@ func TestSourceEditEndsTheReplacedProcessWaiter(t *testing.T) {
 			continue
 		}
 		t.Run(fixture.name, func(t *testing.T) {
-			baseLoops, baseWatchers := processWaiters(t)
 			w := newWaiterHost(t, fixture, nil)
 			w.load(t)
 			pid, logPath := w.oneProcess(t)
@@ -399,7 +379,7 @@ func TestSourceEditEndsTheReplacedProcessWaiter(t *testing.T) {
 				_, old := processes[pid]
 				return len(processes) == 1 && !old
 			})
-			requireOneWaiterPerProcess(t, fixture, w, baseLoops, baseWatchers)
+			requireOneWaiterPerProcess(t, fixture, w)
 			waiterEventually(t, "the log of the replaced process is removed", func() bool { return !waiterFileExists(logPath) })
 			if reports := w.crashReports(); len(reports) != 0 {
 				t.Errorf("a process a reload replaced was reported as a crash: %q", reports)

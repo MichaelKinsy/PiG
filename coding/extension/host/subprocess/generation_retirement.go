@@ -44,6 +44,13 @@ func (g *commandGate) afterIdle(fn func()) bool {
 	return true
 }
 
+// busy reports whether a command request is running on the generation.
+func (g *commandGate) busy() bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.running > 0
+}
+
 // generationRetirement is the stop of a replaced generation that a running command deferred. Whichever of the command's return and Shutdown comes first runs it, once.
 type generationRetirement struct {
 	once sync.Once
@@ -74,8 +81,28 @@ func (h *Host) retireGeneration(old *managedExt, stop func()) (deferred bool) {
 	h.retirementMu.Unlock()
 	if !deferred {
 		stop()
+		return false
 	}
-	return deferred
+	// Pi's reload removes the extension overlays before it reloads and leaves what awaits them pending (interactive-mode.ts:2592-2598 resetExtensionUI, from handleReloadCommand 6628); the
+	// generation's process lives on, so its overlays go now, and the ui.custom call of the command that awaits one stays pending, as in Pi, until its component ends it or the stop does.
+	if conn := old.connection(); h.uiBridge != nil && conn != nil {
+		h.uiBridge.RetireExtensionConn(old.config.Name, conn)
+	}
+	return true
+}
+
+// holdProcessForRunningCommand keeps the process of a packed cell until the retirement of me, a generation with a command still running, stops it. The members of
+// one cell share one process, and a reload stops every member it replaces or removes: the stop of a member with no command running, a removed one or one replaced
+// first, would end the process under the command that awaits the reload, though Pi's old instance outlives that reload. commitStaged takes the hold before any
+// member of the cell stops, when no new command can start on the generation, so a generation busy now is busy or idle when its own retirement looks, and then
+// stops at once and gives the hold back (stopManagedSkippingProviders).
+func (me *managedExt) holdProcessForRunningCommand() {
+	if me.packedProcess == nil || !me.commands.busy() {
+		return
+	}
+	if me.lingerHold.CompareAndSwap(false, true) && !me.packedProcess.holdForLinger() {
+		me.lingerHold.Store(false)
+	}
 }
 
 // goRetirement runs a deferred stop as a task Shutdown joins. Once Shutdown has run the pending stops, nothing is left to do.

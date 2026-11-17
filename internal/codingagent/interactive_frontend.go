@@ -489,6 +489,12 @@ func (m *InteractiveMode) leaveFrontend(reason string) {
 	m.teardownCurrentTui()
 	m.createInteractiveTui(m.runCtx)
 	m.rewireRenderer()
+	if m.altScreen != nil {
+		// The surface drew on the main screen's keyboard stack; the fullscreen renderer starts the terminal on its own screen.
+		if err := m.restartTerminal(); err != nil {
+			m.failInputLoop(err)
+		}
+	}
 	m.mountInteractiveTui(true)
 	m.tuiInst.Invalidate()
 	m.tuiInst.Render()

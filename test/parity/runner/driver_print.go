@@ -80,7 +80,7 @@ func (printModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc 
 	}
 
 	env = configureProviderFixture(t, sc, env, cwd, "")
-	if sc.Assert.StderrEqual || sc.Assert.JSONOutputEqual {
+	if sc.Assert.StderrEqual || sc.Assert.jsonCompared() {
 		tc := newTokenContext(t, "print-"+sc.Name+"-"+bin.Label)
 		stdout, err := os.CreateTemp(tc.tempRoot, "stdout-*")
 		if err != nil {

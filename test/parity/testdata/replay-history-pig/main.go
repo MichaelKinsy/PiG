@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
 func main() {
@@ -68,9 +70,13 @@ func decodeHistoryMessage(raw json.RawMessage) (ai.Message, error) {
 	return nil, fmt.Errorf("unsupported history message")
 }
 func probe(api ai.API, name, id string, messages []ai.Message) error {
-	var body map[string]any
+	var body *orderedjson.Object
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		raw, err := io.ReadAll(r.Body)
+		if err == nil {
+			body, err = orderedjson.Parse(raw)
+		}
+		if err != nil {
 			http.Error(w, err.Error(), 400)
 			return
 		}
@@ -98,13 +104,14 @@ func probe(api ai.API, name, id string, messages []ai.Message) error {
 	if result := stream.Result(); result.StopReason != ai.StopReasonStop {
 		return fmt.Errorf("response=%#v", result)
 	}
-	input := body["input"]
+	member := "input"
 	if api == ai.APIOpenAICompletions {
-		input = body["messages"]
+		member = "messages"
 	}
+	input, _ := body.Get(member)
 	return json.NewEncoder(os.Stdout).Encode(struct {
-		API   ai.API `json:"api"`
-		Case  string `json:"case"`
-		Input any    `json:"input"`
+		API   ai.API          `json:"api"`
+		Case  string          `json:"case"`
+		Input json.RawMessage `json:"input"`
 	}{api, name, input})
 }
