@@ -28,11 +28,14 @@ import (
 // detection (or to capture if no ready pattern is set). This isolates
 // binary+runtime startup from shell init overhead since tmux exec's the
 // binary directly.
-type tmuxDriver struct{}
+type tmuxDriver struct {
+	// teardownClock paces the wait for the transcript reader when a run ends. The zero value is the wall clock; a test drives it.
+	teardownClock captureClock
+}
 
 func (tmuxDriver) Name() string { return "interactive-tmux" }
 
-func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenario) (result Result) {
+func (d tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenario) (result Result) {
 	t.Helper()
 	cfg := sc.Tmux
 
@@ -64,19 +67,23 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 
 	session := fmt.Sprintf("parity-%s-%s-%s-%s", parityRunID(), sc.Name, bin.Label, uniqueID())
 	registerSession(session)
-	started := false
+	started, readerStarted := false, false
+	transcriptPath := filepath.Join(tc.tempRoot, "terminal-transcript.log")
 	defer func() {
 		// Cleanup must remain observable after the scenario context is cancelled.
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), processExitTimeout(t))
+		budget := processExitTimeout(t)
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), budget)
 		defer cancel()
-		var owned map[int]bool
-		var err error
-		if started {
-			owned, err = tmuxSessionProcesses(cleanupCtx, session)
+		clock := d.teardownClock
+		if clock.now == nil {
+			clock = wallClock
 		}
-		killSession(session)
-		if started && err == nil {
-			err = awaitOwnedProcesses(cleanupCtx, owned)
+		err := tmuxTeardown{
+			session: session, transcriptPath: transcriptPath, scenario: sc.Name, side: bin.Label,
+			started: started, readerStarted: readerStarted, clock: clock, budget: budget,
+		}.end(cleanupCtx)
+		if errors.Is(err, errTranscriptReaderLive) {
+			tc.keep("the transcript reader may still be writing into it")
 		}
 		result.Err = errors.Join(result.Err, err)
 	}()
@@ -190,9 +197,9 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	}
 	cmdStr = "cd " + shellQuote(snap) + " && " + cmdStr
 
-	transcriptPath := filepath.Join(tc.tempRoot, "terminal-transcript.log")
 	t0, created, err := startTmuxSession(ctx, session, cmdStr, transcriptPath, cfg)
 	started = created
+	readerStarted = created && transcriptReaderAttached(session, err)
 	if err != nil {
 		return Result{Err: err}
 	}
