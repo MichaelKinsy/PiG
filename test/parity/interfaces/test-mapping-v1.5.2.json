@@ -4865,7 +4865,9 @@
         "coding/cli/rpc_mode_test.go#SessionBeforeSwitchEvent",
         "coding/cli/rpc_mode_test.go#SessionBeforeForkEvent",
         "coding/runtime_test.go#TestRuntimeBeforeSessionInvalidateHook",
-        "coding/session_reload_bound_empty_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsEmitsSessionStart"
+        "coding/session_reload_bound_empty_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsEmitsSessionStart",
+        "coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
+        "coding/session_bind_extensions_upstream_test.go#TestReloadReplaysSessionStartForEveryBoundSession"
       ],
       "rationale": "all four upstream lifecycle contracts have direct Go equivalents: session_before_switch dispatch+cancel and session_before_fork dispatch+cancel are RPC-layer event tests in rpc_mode_test.go, and beforeSessionInvalidate-after-shutdown-before-rebind ordering is TestRuntimeBeforeSessionInvalidateHook. Pi e03dca7a3843 (#12231; past the pin, the hash is the pinned file's) adds 'emits session_start after reload when extensions were bound without bindings' (bindExtensions({}), reload(): session_shutdown then session_start, both reload); its twin is TestSessionReloadAfterBindExtensionsWithEmptyBindingsEmitsSessionStart (Session.BindExtensions with ExtensionBindings{} then Session.Reload, the same events in the same order; it failed before the change with the session_shutdown only), with the agent_session_runtime conformance row's reload step in every SDK."
     },

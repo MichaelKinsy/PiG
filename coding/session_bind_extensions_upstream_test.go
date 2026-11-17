@@ -95,8 +95,8 @@ func TestBindExtensionsOnErrorReplacesTheEarlierListener(t *testing.T) {
 	}
 }
 
-// upstream: agent-session.ts:3688-3698 reload replays session_start only when a UI context, command actions, a shutdown handler or an error listener is bound (agent-session-runtime tests bind `{ shutdownHandler: () => {} }`); a mode alone or an abort handler alone is not a binding.
-func TestReloadReplaysSessionStartOnlyForRealBindings(t *testing.T) {
+// upstream: agent-session.ts:3865-3870 (Pi e03dca7a3843) reload replays session_start for every session whose host called bindExtensions, whatever the bindings hold: `_extensionsBound` replaces the earlier test of a UI context, command actions, a shutdown handler or an error listener, so a mode alone or an abort handler alone is bound too.
+func TestReloadReplaysSessionStartForEveryBoundSession(t *testing.T) {
 	cases := []struct {
 		name     string
 		bindings ExtensionBindings
@@ -104,8 +104,8 @@ func TestReloadReplaysSessionStartOnlyForRealBindings(t *testing.T) {
 	}{
 		{"shutdown handler", ExtensionBindings{ShutdownHandler: func() {}}, 1},
 		{"error listener", ExtensionBindings{OnError: func(*extension.ExtensionError) {}}, 1},
-		{"mode only", ExtensionBindings{Mode: extension.ModeRPC}, 0},
-		{"abort handler only", ExtensionBindings{AbortHandler: func() {}}, 0},
+		{"mode only", ExtensionBindings{Mode: extension.ModeRPC}, 1},
+		{"abort handler only", ExtensionBindings{AbortHandler: func() {}}, 1},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
