@@ -153,7 +153,7 @@ export default function (pi: any) {
 			}
 			h.SetConfigLoader(func() ([]subprocess.ExtConfig, error) { return configs, nil })
 			s := newSyncLoadoutSession(t, ctx, h, bridge, loaded)
-			os.Remove(marker)
+			_ = os.Remove(marker)
 			s.faux.SetResponses([]ai.FauxResponseStep{
 				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxToolCall("register_now", map[string]any{}, &ai.FauxToolCallOptions{ID: "call-1"})}, StopReason: "toolUse"}),
 				ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}, StopReason: "stop"}),
