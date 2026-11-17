@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class CoverageRecipeTest(unittest.TestCase):
     def test_drift_ignores_only_the_generated_last_run_column(self):
         strip = runpy.run_path(str(ROOT / "automation/ci/check-coverage-drift.py"))["strip_run_column"]
-        report = (ROOT / "test/parity/coverage.md").read_text()
+        report = (ROOT / "test/parity/generated/coverage.md").read_text()
         lines = report.splitlines()
         header = next(line for line in lines if line.startswith("| upstream |"))
         columns = [cell.strip() for cell in header.split("|")]
@@ -36,7 +36,7 @@ class CoverageRecipeTest(unittest.TestCase):
             shutil.copytree(ROOT / "automation" / "make", root / "automation" / "make")
             (root / "coding").mkdir()
             shutil.copy(ROOT / "coding" / "upstream.go", root / "coding" / "upstream.go")
-            reports = ["test/parity/coverage.md", "AGENTS.md", ".github/badges/parity-coverage.svg"]
+            reports = ["test/parity/generated/coverage.md", "AGENTS.md", ".github/badges/parity-coverage.svg"]
             for name in reports:
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)

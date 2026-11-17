@@ -14,7 +14,7 @@ import (
 // Reviewed Pig-owned denominators that no generated ledger records.
 const (
 	reviewedPortMapRows      = 462 // docs/parity/PORT_MAP.md rows; every row carries a status and is provisional.
-	reviewedFixedSourceFiles = 4   // families.toml, docs/parity/PORT_MAP.md, test/parity/coverage.md, docs/parity/DIVERGENCES.md.
+	reviewedFixedSourceFiles = 4   // families.toml, docs/parity/PORT_MAP.md, test/parity/generated/coverage.md, docs/parity/DIVERGENCES.md.
 )
 
 type denominatorExpectation struct {
@@ -74,7 +74,7 @@ func fileDenominators(t *testing.T, root string) (map[string]denominatorExpectat
 	}
 	want["scenario"] = denominatorExpectation{items: scenarios}
 	want["port-map"] = markdownRows(t, root, "docs/parity/PORT_MAP.md")
-	want["coverage-row"] = denominatorExpectation{items: markdownRows(t, root, "test/parity/coverage.md").items}
+	want["coverage-row"] = denominatorExpectation{items: markdownRows(t, root, "test/parity/generated/coverage.md").items}
 	divergences := activeDivergenceCount(t)
 	want["divergence"] = denominatorExpectation{items: divergences, provisional: divergences}
 	sourceFiles := len(jsonSources) + len(tomlSources) + scenarios + reviewedFixedSourceFiles

@@ -29,7 +29,7 @@ reviews:
     - "!**/Cargo.lock"
     - "!**/packages.lock"
     - "!test/parity/interfaces/**"
-    - "!test/parity/coverage.md"
+    - "!test/parity/generated/coverage.md"
     - "!.github/badges/**"
 chat:
   auto_reply: true

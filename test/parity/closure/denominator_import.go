@@ -55,7 +55,7 @@ func ImportCurrentDenominators(root string, snapshot *Snapshot) ([]Record, Denom
 	if err := importer.importMarkdownTable("port-map", "docs/parity/PORT_MAP.md", 3, true); err != nil {
 		return nil, DenominatorImportReport{}, err
 	}
-	if err := importer.importMarkdownTable("coverage-row", "test/parity/coverage.md", 5, false); err != nil {
+	if err := importer.importMarkdownTable("coverage-row", "test/parity/generated/coverage.md", 5, false); err != nil {
 		return nil, DenominatorImportReport{}, err
 	}
 	if err := importer.importDivergences("docs/parity/DIVERGENCES.md"); err != nil {
