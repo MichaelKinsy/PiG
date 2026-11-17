@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -171,7 +172,7 @@ func TestCacheServerAnswersOnlyWhatItCanVerify(t *testing.T) {
 
 	c := startServer(t, shared, store, stats)
 	res := c.get(good)
-	if res.Miss || res.DiskPath != fileName(shared, goodOut[:], "d") || res.Size != int64(len("compiled package")) || string(res.OutputID) != string(goodOut[:]) {
+	if res.Miss || res.DiskPath != fileName(shared, goodOut[:], "d") || res.Size != int64(len("compiled package")) || !bytes.Equal(res.OutputID, goodOut[:]) {
 		t.Fatalf("a good entry of the user's cache is a hit served from where it lies: %+v", res)
 	}
 	for name, action := range map[string][sha256.Size]byte{
