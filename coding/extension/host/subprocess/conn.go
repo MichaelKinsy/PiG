@@ -185,6 +185,9 @@ type Conn struct {
 	terminating  atomic.Bool // Host.TerminateProcesses killed the extension's process: its end fails no pending request
 	// modelRegistry records RegisterPayload.WantsModelRegistry. UIBridge.RegisterExtConn sets it and PublishModelCatalog reads it, both under the bridge's mutex.
 	modelRegistry bool
+	// autocompletePending is set when the host answered this connection's ui.autocomplete.current with {} (no provider yet): the editor its process builds
+	// from that answer was handed none. A sync that reaches the connection's editor clears it. The UIBridge sets and reads it.
+	autocompletePending atomic.Bool
 	// modelCatalogMu orders the catalog frames queued for this connection and guards the record of the last one: modelCatalogSent is the digest
 	// of the last frame a publication queued, when modelCatalogSentSet. modelCatalogAlways is set once the replica applied a registry state
 	// that was not a catalog frame (the result of its own refresh call): it is then sent every publication.

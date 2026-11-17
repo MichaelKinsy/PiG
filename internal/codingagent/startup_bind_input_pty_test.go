@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -82,6 +83,16 @@ func TestInitInstallsTheAutocompleteProviderWhenTheBindEnds(t *testing.T) {
 	}
 }
 
+// Pi's addAutocompleteProvider runs setupAutocompleteProvider, which builds the base provider itself (interactive-mode.ts:2800-2801, :854), so a provider an
+// extension adds from session_start gives the editor the built-in commands plus its own entries before the bind ends. Text typed then opens a popup of
+// both; with the editor holding no provider until the bind's setup, the chain must not stand on nothing.
+func TestAProviderAddedFromSessionStartStandsOnTheBuiltInCommandsBeforeTheBindEnds(t *testing.T) {
+	report := runStartupBindChildMode(t, "2")
+	if !strings.Contains(report.Popup, "fork") || !strings.Contains(report.Popup, "focus-added") {
+		t.Fatalf("the popup for /fo typed while session_start pends shows:\n%s\nwant the built-in fork and the extension's focus-added", report.Popup)
+	}
+}
+
 // startupBindProvider is what the editor's autocomplete provider answered at one end of the bind.
 type startupBindProvider struct {
 	Installed bool
@@ -94,9 +105,19 @@ type startupBindReport struct {
 	UnreadAfterBind *bool
 	BeforeBind      *startupBindProvider
 	AfterBind       *startupBindProvider
+	Popup           string
 }
 
 func runStartupBindChild(t *testing.T, handler bool) startupBindReport {
+	t.Helper()
+	if handler {
+		return runStartupBindChildMode(t, "1")
+	}
+	return runStartupBindChildMode(t, "0")
+}
+
+// runStartupBindChildMode runs the child with its session_start handler absent ("0"), pending until the held key is read ("1"), or adding an autocomplete provider and typing "/fo" ("2").
+func runStartupBindChildMode(t *testing.T, mode string) startupBindReport {
 	t.Helper()
 	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR|syscall.O_NOCTTY|syscall.O_CLOEXEC, 0)
 	if err != nil {
@@ -126,11 +147,7 @@ func runStartupBindChild(t *testing.T, handler bool) startupBindReport {
 	}
 	reportPath := filepath.Join(t.TempDir(), "report.json")
 	cmd := exec.CommandContext(ctx, executable, "-test.run=^TestInitStartupBindChild$", "-test.count=1", "-test.v")
-	handlerFlag := "0"
-	if handler {
-		handlerFlag = "1"
-	}
-	cmd.Env = append(os.Environ(), startupBindChildEnv+"="+reportPath, startupBindHandlerEnv+"="+handlerFlag, "TERM=xterm-256color", "PIG_HOME="+t.TempDir())
+	cmd.Env = append(os.Environ(), startupBindChildEnv+"="+reportPath, startupBindHandlerEnv+"="+mode, "TERM=xterm-256color", "PIG_HOME="+t.TempDir())
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
 	if err := cmd.Start(); err != nil {
@@ -204,6 +221,36 @@ func TestInitStartupBindChild(t *testing.T) {
 			return nil, nil
 		}}
 	}
+	if os.Getenv(startupBindHandlerEnv) == "2" {
+		handlers["session_start"] = []extension.HandlerFn{func(args ...any) (any, error) {
+			ui, err := extension.FromContext(args[1].(context.Context)).UI()
+			if err != nil {
+				return nil, err
+			}
+			err = ui.AddAutocompleteProvider(func(_ context.Context, current *extension.AutocompleteProvider) (*extension.AutocompleteProvider, error) {
+				wrapped := *current
+				wrapped.GetSuggestions = func(ctx context.Context, lines []string, line, col int, force bool) (*extension.AutocompleteSuggestions, error) {
+					result, err := current.GetSuggestions(ctx, lines, line, col, force)
+					if err != nil {
+						return nil, err
+					}
+					if result == nil {
+						result = &extension.AutocompleteSuggestions{Prefix: lines[line]}
+					}
+					result.Items = append(result.Items, extension.AutocompleteItem{Value: "focus-added", Label: "focus-added"})
+					return result, nil
+				}
+				return &wrapped, nil
+			})
+			if err != nil {
+				return nil, err
+			}
+			waitCtx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
+			defer cancel()
+			report.Popup = mode.EditorPopupAfterTyping(waitCtx, "/fo")
+			return nil, nil
+		}}
+	}
 	runner := inproc.NewRunner([]extension.Extension{{Path: "/startup-bind", Handlers: handlers}}, cwd)
 	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
 	session, err := coding.NewSession(services, coding.SessionOptions{Model: model, SessionManager: manager, Runner: runner})
@@ -217,7 +264,9 @@ func TestInitStartupBindChild(t *testing.T) {
 		StartupMark: func(label string) {
 			switch label {
 			case "pre-emit-session-start":
-				mode.HoldStartupInput("k")
+				if os.Getenv(startupBindHandlerEnv) != "2" {
+					mode.HoldStartupInput("k")
+				}
 				installed, offers := mode.EditorAutocompleteOffers("/fo")
 				report.BeforeBind = &startupBindProvider{Installed: installed, Offers: offers}
 			case "post-emit-session-start":

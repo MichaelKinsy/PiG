@@ -80,8 +80,28 @@ func (m *InteractiveMode) setRemoteEditor(editor extension.RemoteEditor) {
 	if editor != nil {
 		editor.Configure(m.remoteEditorConfig())
 		editor.SetText(text)
+		m.handPendingAutocompleteToRemoteEditor()
 	}
 	m.requestRender()
+}
+
+// handPendingAutocompleteToRemoteEditor is the provider hand-over of Pi's setCustomEditorComponent (`newEditor.setAutocompleteProvider(this.autocompleteProvider)`,
+// interactive-mode.ts:3015-3017) for an editor whose process was told there was no provider yet (ui.autocomplete.current answered {}) and which this install
+// finds a provider for: the provider was built after the process asked and before the change callback this install sets, so nothing else reaches it. An
+// editor that was handed the provider when it was built, and one installed before any provider exists (the setup that follows syncs it), get no call here:
+// Pi calls the setter once per install. It goes through the bridge call a rebuild uses, off the owner loop, and a refusal comes back as that call's
+// [extension.EditorSyncError].
+func (m *InteractiveMode) handPendingAutocompleteToRemoteEditor() {
+	provider := m.currentAutocompleteProvider()
+	bridge, ok := m.opts.SubprocessUIBridge.(interface {
+		SyncPendingAutocomplete(context.Context, *extension.AutocompleteProvider) error
+	})
+	if provider == nil || !ok {
+		return
+	}
+	m.startAutocompleteWork(func(context.Context) (func(), error) { return nil, nil }, nil, func(ctx context.Context) error {
+		return bridge.SyncPendingAutocomplete(ctx, provider)
+	})
 }
 
 // placeActiveStatusIndicator puts the active status in the editor's border or the status container, whichever the installed editor opted into.

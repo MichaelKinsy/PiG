@@ -18,9 +18,11 @@ import (
 type refusingEditorBridge struct {
 	*captureUIBridge
 	refusing atomic.Bool
-	syncs    atomic.Int32
-	awaits   atomic.Int32
-	err      error
+	// pending is the real bridge's per-connection fact: the editor's process was answered {} and no sync has reached it since.
+	pending atomic.Bool
+	syncs   atomic.Int32
+	awaits  atomic.Int32
+	err     error
 }
 
 func newRefusingEditorBridge(path, message string) *refusingEditorBridge {
@@ -29,10 +31,18 @@ func newRefusingEditorBridge(path, message string) *refusingEditorBridge {
 
 func (b *refusingEditorBridge) SyncAutocomplete(context.Context, *extension.AutocompleteProvider) error {
 	b.syncs.Add(1)
+	b.pending.Store(false)
 	if b.refusing.Load() {
 		return b.err
 	}
 	return nil
+}
+
+func (b *refusingEditorBridge) SyncPendingAutocomplete(ctx context.Context, provider *extension.AutocompleteProvider) error {
+	if !b.pending.CompareAndSwap(true, false) {
+		return nil
+	}
+	return b.SyncAutocomplete(ctx, provider)
 }
 
 // AwaitEditorInstalled counts the waits the mode made for the editor session_start installed; the real bridge's answer is tested in its own package.
@@ -102,8 +112,9 @@ func shownChat(m *InteractiveMode) string {
 
 // Pi's setupAutocompleteProvider ends with `this.editor.setAutocompleteProvider?.(provider)` (interactive-mode.ts), and an extension's editor may throw
 // there. Callers that have no throw path of their own to carry it (the rebuild after an extension's connection ended, the editor's own provider
-// change) show it as the extension's error through showExtensionError and go on: the default editor holds the rebuilt provider, the extension's
-// editor keeps the one it had, and one failed sync is one report however many keys follow.
+// change, the install of an editor whose process was built without the provider that exists by then) show it as the extension's error through
+// showExtensionError and go on: the default editor holds the rebuilt provider, the extension's editor keeps the one it had, and one failed sync is
+// one report however many keys follow.
 func TestRefusedProviderIsAnExtensionErrorWhereNoCallerCarriesIt(t *testing.T) {
 	const path, message = "/ext/editor.ts", "EDITOR_REFUSED"
 	t.Run("provider change", func(t *testing.T) {
@@ -170,6 +181,27 @@ func TestRefusedProviderIsAnExtensionErrorWhereNoCallerCarriesIt(t *testing.T) {
 		}
 		if got := extensionErrorTexts(m); len(got) != 0 {
 			t.Fatalf("the add reported %q as well as returning it", got)
+		}
+	})
+	t.Run("handed at the install", func(t *testing.T) {
+		m := autocompleteModeProbe(t)
+		bridge := newRefusingEditorBridge(path, message)
+		bridge.refusing.Store(true)
+		bridge.pending.Store(true)
+		m.opts.SubprocessUIBridge = bridge
+		m.autocompleteSetUp = true
+		m.setRemoteEditor(&fakeDelegatedEditor{})
+		drainAutocompleteWork(t, m)
+		if got := extensionErrorTexts(m); len(got) != 1 || got[0] != path+": "+message {
+			t.Fatalf("extension errors = %q, want one from %s", got, path)
+		}
+		if bridge.syncs.Load() != 1 {
+			t.Fatalf("the install synced the editor %d times, want the one hand-over", bridge.syncs.Load())
+		}
+		m.setRemoteEditor(&fakeDelegatedEditor{})
+		drainAutocompleteWork(t, m)
+		if bridge.syncs.Load() != 1 {
+			t.Fatalf("a second install of an editor that a sync had reached synced it again: %d syncs", bridge.syncs.Load())
 		}
 	})
 }

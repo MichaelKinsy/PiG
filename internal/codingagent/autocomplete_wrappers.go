@@ -420,18 +420,25 @@ func (m *InteractiveMode) resetAutocompleteWrappers() {
 	m.editor.SetAutocompleteTaskOwner(m.autocompleteContext(), m.backgroundTasks.Go, m.reportAutocompleteError)
 }
 
+// currentAutocompleteProvider is Pi's `this.autocompleteProvider`: the provider chain the editors share, or nil until the first setupAutocompleteProvider has
+// run. A caller that is on the owner loop gets the rebuilt chain, or the base of the editor's provider when the chain is not built yet. Owner loop only.
+func (m *InteractiveMode) currentAutocompleteProvider() *extension.AutocompleteProvider {
+	if !m.autocompleteSetUp {
+		return nil
+	}
+	if m.autocompleteProvider != nil {
+		return m.autocompleteProvider
+	}
+	if base := m.editor.AutocompleteProvider(); base != nil {
+		return m.baseAutocompleteProvider(base)
+	}
+	return nil
+}
+
 // AutocompleteProvider captures the active chain for a subprocess editor. Both editors use that same provider instance.
 func (u *ExtUIContext) AutocompleteProvider(ctx context.Context) (*extension.AutocompleteProvider, error) {
 	var provider *extension.AutocompleteProvider
-	err := u.m.autocompleteOnMain(ctx, func() {
-		if !u.m.autocompleteSetUp {
-			return
-		}
-		provider = u.m.autocompleteProvider
-		if provider == nil && u.m.editor.AutocompleteProvider() != nil {
-			provider = u.m.baseAutocompleteProvider(u.m.editor.AutocompleteProvider())
-		}
-	})
+	err := u.m.autocompleteOnMain(ctx, func() { provider = u.m.currentAutocompleteProvider() })
 	return provider, err
 }
 
@@ -458,6 +465,7 @@ func (u *ExtUIContext) AddAutocompleteProviderWithLifetime(lifetime context.Cont
 		return errors.New("autocomplete factory is missing")
 	}
 	result := make(chan error, 1)
+	done := (<-chan error)(result)
 	ctx := u.m.autocompleteContext()
 	if err := u.m.autocompleteOnMain(ctx, func() {
 		if lifetime == nil {
@@ -478,12 +486,19 @@ func (u *ExtUIContext) AddAutocompleteProviderWithLifetime(lifetime context.Cont
 		})
 		u.m.autocompleteFactories = append(u.m.autocompleteFactories, autocompleteRegistration{factory: factory, lifetime: lifetime, stop: stop})
 		u.m.editor.SetAutocompleteChanged(u.m.autocompleteChangedCallback())
+		if u.m.editor.AutocompleteProvider() == nil {
+			// Pi's addAutocompleteProvider runs setupAutocompleteProvider, which builds the base provider itself (interactive-mode.ts:2800-2801, :854). Before the
+			// bind's first setup the editor holds none, and the chain must not stand on nil: the editor takes the base that setup would install, and the change it
+			// reports rebuilds the chain over it.
+			done = u.m.setAutocompleteAwaiting(u.m.buildAutocompleteProvider())
+			return
+		}
 		u.m.rebuildAutocompleteWrappers(u.m.editor.AutocompleteProvider(), result)
 	}); err != nil {
 		return err
 	}
 	select {
-	case err := <-result:
+	case err := <-done:
 		return err
 	case <-ctx.Done():
 		return ctx.Err()

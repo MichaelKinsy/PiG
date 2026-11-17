@@ -389,3 +389,33 @@ func (m *InteractiveMode) EditorAutocompleteOffers(line string) (installed bool,
 	}
 	return true, values
 }
+
+// EditorPopupAfterTyping types text into the editor on the owner loop, a key at a time as the terminal delivers it, waits for the completion work the typing
+// started (none when the editor has no provider), and returns the editor's rendered lines, the autocomplete popup among them. ctx bounds the wait.
+func (m *InteractiveMode) EditorPopupAfterTyping(ctx context.Context, text string) string {
+	var done <-chan struct{}
+	_ = m.runOnMainAndWait(ctx, func() error {
+		for _, key := range text {
+			m.editor.HandleInput(string(key))
+			// The owner's read loop starts the request the read's keys made once the read is handled (dispatchTerminalRead).
+			m.editor.FlushAutocomplete()
+		}
+		done = m.autocompletePending
+		return nil
+	})
+	if done != nil {
+		select {
+		case <-done:
+		case <-ctx.Done():
+		}
+	}
+	var lines []string
+	_ = m.runOnMainAndWait(ctx, func() error {
+		lines = m.editor.Render(100)
+		return nil
+	})
+	for i := range lines {
+		lines[i] = widthx.StripAnsi(lines[i])
+	}
+	return strings.Join(lines, "\n")
+}

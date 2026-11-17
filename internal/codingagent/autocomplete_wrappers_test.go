@@ -47,13 +47,26 @@ type autocompleteBridgeProbe struct {
 	*captureUIBridge
 	mu        sync.Mutex
 	providers []*extension.AutocompleteProvider
+	// pending is the real bridge's per-connection fact: the installed editor's process was answered {} and no sync has reached it since.
+	pending bool
 }
 
 func (p *autocompleteBridgeProbe) SyncAutocomplete(_ context.Context, provider *extension.AutocompleteProvider) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	p.pending = false
 	p.providers = append(p.providers, provider)
 	return nil
+}
+
+func (p *autocompleteBridgeProbe) SyncPendingAutocomplete(ctx context.Context, provider *extension.AutocompleteProvider) error {
+	p.mu.Lock()
+	pending := p.pending
+	p.mu.Unlock()
+	if !pending {
+		return nil
+	}
+	return p.SyncAutocomplete(ctx, provider)
 }
 
 func autocompleteModeProbe(t *testing.T) *InteractiveMode {
