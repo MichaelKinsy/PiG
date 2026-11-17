@@ -5043,6 +5043,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				}
 				resp.Response.Result = result
 			}
+			// pig divergence (D541): a message_update handler's in-place edit of the partial's content is not looked for (a snapshot and a compare per delta cost 11 to 24 % per delta); only an assigned member of the event is read.
 			// The reply of a message_update, turn_start or agent_start handler is read only when it carries edits of members: another reply of these events is a result nobody reads. An edit from a handler on the delta stream leaves the extension's copy of the stream as the handler saw it, so its next delta is a keyframe.
 			if (event == "message_update" || event == "turn_start" || event == "agent_start") && len(args) > 0 && len(resp.Response.Result) > 0 && bytes.Contains(resp.Response.Result, eventEditsMember) {
 				result, err := unwrapEventReply(parent, event, args[0], resp.Response.Result)

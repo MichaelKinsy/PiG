@@ -3710,6 +3710,7 @@ impl Extension {
                     }
                     value = Some(reply);
                 }
+                // pig divergence (D541): a handler owns its event as a value, so replacing event.message or event.messages is the same change as editing inside it, and the reply carries it as an edit where Pi keeps the original.
                 // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it failed. The reply carries the messages the handler left when the JSON text differs from the one it received (member order is an edit), and the handler's result.
                 if matches!(
                     req.event.as_deref(),
@@ -3774,6 +3775,7 @@ impl Extension {
                     }
                     value = Some(reply);
                 }
+                // pig divergence (D541): a message_update handler's edit of the partial's content, and a replacement of event.assistantMessageEvent, is not sent back: nothing compares the handler's copy of the stream's partial with what the host sent (a full compare per delta is the measured cost).
                 // message_update, turn_start and agent_start (message_start and agent_end replied above): a member a handler assigns, reassigns or deletes is what the later handlers of the dispatch see (runner.ts emit), also from a handler that failed.
                 if matches!(
                     req.event.as_deref(),

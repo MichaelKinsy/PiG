@@ -484,9 +484,24 @@ var curePending = map[string]string{
 // match Pi there, and must still differ in the others. message_update/deep is another cure and has no SDK yet.
 var curedSDKs = []string{"node", "go", "python", "rust", "lisp"}
 
-// noIdentity are the rows a Rust handler cannot carry: it owns its event as a value, so replacing an object member (the message, the messages, the partial's event) is the same
-// value change as editing inside it, and the reply cannot tell the two apart as Pi's caller does.
-var noIdentity = map[string]bool{"message_start/reassign": true, "agent_end/reassign": true, "message_update/reassign": true}
+// rustRecorded are the rows a Rust handler cannot carry as Pi does, and what the Rust SDK does instead (D541, the owner's decision of 2026-11-17, option (a)): a Rust handler owns its
+// event as a value, so replacing an object member (the message, the messages, the partial's event) is the same value change as editing inside it, and the reply cannot tell the two
+// apart as Pi's caller does. message_start/reassign and agent_end/reassign: the later handlers see the replacement and the session saves it as an edit inside the message (Pi keeps the
+// original); message_update/reassign: the later handlers do not see it and the session does not hold it (Pi: later handlers see it). A Rust harness must produce exactly these
+// observations, so a Rust SDK that starts doing something else fails here until the record is amended.
+var rustRecorded = map[string]messageEventObservation{
+	"message_start/reassign":  {A: []string{":top"}, B: []string{":top"}, Entries: []string{"user"}, Requests: [2]bool{true, true}, Events: []string{"agent_end:user", "message_end:user", "message_start:user"}},
+	"agent_end/reassign":      {A: []string{":top"}, B: []string{":top"}, Entries: []string{"user"}, Events: []string{"agent_end:user"}},
+	"message_update/reassign": {A: []string{}, B: []string{}, Entries: []string{}, Events: []string{}},
+}
+
+// wantObservation is what the row must read for the harness: Pi's table, except the recorded behaviour of the Rust SDK.
+func wantObservation(pi map[string]messageEventObservation, harness, row string) messageEventObservation {
+	if recorded, ok := rustRecorded[row]; ok && slices.Contains(strings.Split(harness, "-"), "rust") {
+		return recorded
+	}
+	return pi[row]
+}
 
 // curedBy lists, for a row of curePending, the SDKs whose build already cures it.
 var curedBy = map[string][]string{}
@@ -503,9 +518,7 @@ func init() {
 			continue
 		}
 		for _, sdk := range curedSDKs {
-			if sdk != "rust" || !noIdentity[name] {
-				curedBy[name] = append(curedBy[name], sdk)
-			}
+			curedBy[name] = append(curedBy[name], sdk)
 		}
 	}
 }
@@ -543,7 +556,7 @@ func TestInPlaceMessageEventEditsMatchPi(t *testing.T) {
 			for _, row := range messageEventRows() {
 				t.Run(row.name(), func(t *testing.T) {
 					got := observePiG(t, tc, row)
-					want := pi[row.name()]
+					want := wantObservation(pi, tc.name, row.name())
 					t.Logf("pig %-22s A=%v B=%v entries=%v requests=%v events=%v stale=%v", row.name(), got.A, got.B, got.Entries, got.Requests, got.Events, got.Stale)
 					if reason, pending := pendingFor(tc.name, row.name()); pending {
 						if reflect.DeepEqual(got, want) {
