@@ -488,8 +488,9 @@ type Host struct {
 	// stops a replaced process without waiting for it, so Shutdown drains
 	// these as well as the processes of the extensions still registered.
 	watchedPacked map[*packedProcessState]struct{}
-	// incomingLoops is the number of this Host's running connection read loops: raised before the loop's goroutine starts, lowered before the loop's end is signalled.
-	incomingLoops atomic.Int32
+	// loops holds the read loops the Host runs, keyed by their connection, whether or not an extension holds the connection as its current one: goHandleIncoming registers a loop before its goroutine starts, and the goroutine's last acts remove it and then close its end signal, which Shutdown waits for. loopsMu guards it.
+	loopsMu sync.Mutex
+	loops   map[*Conn]incomingLoop
 	// runningWatchers is the number of this Host's running packed-process watchers: raised before the watcher's goroutine starts, lowered before watcherDone closes.
 	runningWatchers atomic.Int32
 
@@ -2797,7 +2798,11 @@ func (h *Host) processWaitDelay() time.Duration {
 }
 
 // Shutdown detaches all extension consumers before removing providers, then stops and reaps every managed process. When it returns, each extension it stopped has withdrawn its ownership of thinking runs and told the observers (D214). Session owners emit and await session_shutdown before calling it.
+//
+// When Shutdown returns nothing more is reported and no goroutine of the Host that acts on an extension's connection runs. Pi's AgentSessionRuntime.dispose awaits the session_shutdown handlers and then disposes the session, which invalidates the extension runner, so nothing an extension does afterwards reaches the session (agent-session-runtime.ts:415-424, agent-session.ts:1477-1488, extensions/runner.ts:729-735); Pi's extensions run in its own process and have no connections to end. Here every connection has a goroutine of the Host that acts on what the extension sends and on the end of the connection, its crash notice among it. Shutdown detaches the crash handler first, so no crash or disable notice begins after it does; it then closes every connection the Host reads, whether an extension holds it as its current one or not, and waits for every one of those goroutines to end, the whole goroutine and not only its sight of the end. A notice that began before Shutdown did is waited for with its goroutine, so a crash handler that waits for the goroutine that called Shutdown holds it for the bound of a process's stop (processWaitDelay), after which Shutdown names the loops still running on stderr and returns.
 func (h *Host) Shutdown(reason string) {
+	// No crash or disable notice begins once Shutdown has: every report reads the handler at the moment it reports, and reads none from here on. A report that read it before this is in flight, and awaitIncomingLoops waits for its loop.
+	h.onCrash.Store(nil)
 	h.shuttingDown.Store(true)
 	h.mu.Lock()
 	stopMcpServersObserver := h.stopMcpServersObserver
@@ -2845,13 +2850,11 @@ func (h *Host) Shutdown(reason string) {
 	for _, process := range watched {
 		process.stopAndReap()
 	}
+	// The current connection of each extension was closed above; this takes in every other connection a loop of the Host reads. It runs under transitionMu, which every start of an extension but a facet's holds, so no other loop is registered after it.
+	h.closeIncomingLoops("shutdown")
 	h.transitionMu.Unlock()
-	// pig additive (D214): each stopped connection's read loop schedules the drop of its extension's ownership of thinking runs once it has seen the connection end. Wait for that, or the loop could reach it after the drain tasks closed, and the drop would run after Shutdown returned.
-	for _, me := range exts {
-		if conn := me.connection(); conn != nil {
-			conn.awaitIncomingEnded()
-		}
-	}
+	// pig additive (D214): each stopped connection's read loop schedules the drop of its extension's ownership of thinking runs once it has seen the connection end, and goes on to the extension's crash report, its restart and its own exit. Wait for the goroutine, not for the sight of the end: a loop that outlived Shutdown could reach the drop after the drain tasks closed, and a report after Shutdown returned.
+	h.awaitIncomingLoops()
 	h.drainTasksMu.Lock()
 	h.drainTasksClosed = true
 	h.drainTasksMu.Unlock()
@@ -5106,17 +5109,94 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 	}
 }
 
-// goHandleIncoming starts handleIncoming for conn on its own goroutine and records the loop on the connection before it runs, so Shutdown can wait for it (Conn.awaitIncomingEnded).
+// incomingLoop is the Host's record of one running read loop. ended closes once its goroutine has done everything it does for the connection, the crash report, the restart and the exit included. shut is set once Shutdown has closed the connection; loopsMu guards it.
+type incomingLoop struct {
+	ended chan struct{}
+	shut  bool
+}
+
+// goHandleIncoming starts handleIncoming for conn on its own goroutine and registers the loop with the Host before it runs, so Shutdown closes the connection and waits for the loop whether or not an extension holds the connection as its current one (closeIncomingLoops, awaitIncomingLoops).
 func (h *Host) goHandleIncoming(me *managedExt, conn *Conn) {
-	conn.incoming.Store(&incomingLoop{ended: make(chan struct{})})
-	h.incomingLoops.Add(1)
-	//portlint:allow golifetime the loop ends with its connection, which the host closes before it stops the extension, and Shutdown waits for the loop through Conn.awaitIncomingEnded
-	go func() { //portlint:allow asyncorder the loop is recorded on the connection before it runs (conn.incoming) and Shutdown joins it through Conn.awaitIncomingEnded
-		defer conn.endIncoming()
-		// Counted out before the end is signalled.
-		defer h.incomingLoops.Add(-1)
+	ended := make(chan struct{})
+	h.loopsMu.Lock()
+	if h.loops == nil {
+		h.loops = make(map[*Conn]incomingLoop)
+	}
+	h.loops[conn] = incomingLoop{ended: ended}
+	h.loopsMu.Unlock()
+	//portlint:allow golifetime the loop ends with its connection, which Shutdown closes (closeIncomingLoops) and whose loop it waits for (awaitIncomingLoops)
+	go func() { //portlint:allow asyncorder the loop is registered before it runs, and Shutdown joins it through the registry
+		// The goroutine's last acts, in this order: the loop leaves the registry, then its end is announced.
+		defer close(ended)
+		defer h.forgetIncomingLoop(conn)
 		h.handleIncoming(me, conn)
 	}()
+}
+
+// forgetIncomingLoop removes the loop of conn from the registry.
+func (h *Host) forgetIncomingLoop(conn *Conn) {
+	h.loopsMu.Lock()
+	delete(h.loops, conn)
+	h.loopsMu.Unlock()
+}
+
+// closeIncomingLoops closes the connection of every read loop the Host runs and marks each loop as closed by Shutdown, which awaitIncomingLoops then waits for. A loop registered after this call is not one of them. Close returns at once for a connection that is closing already.
+func (h *Host) closeIncomingLoops(reason string) {
+	for {
+		conn := h.takeLoopToClose()
+		if conn == nil {
+			return
+		}
+		// Outside loopsMu: a loop's last acts take it.
+		_ = conn.Close(reason)
+	}
+}
+
+// takeLoopToClose marks one read loop that Shutdown has not closed yet as closed and returns its connection; it returns nil when there is none.
+func (h *Host) takeLoopToClose() *Conn {
+	h.loopsMu.Lock()
+	defer h.loopsMu.Unlock()
+	for conn, loop := range h.loops {
+		if !loop.shut {
+			loop.shut = true
+			h.loops[conn] = loop
+			return conn
+		}
+	}
+	return nil
+}
+
+// closedLoop returns the end signal of one read loop that Shutdown closed and that still runs, and how many such loops run. The signal is nil when none does.
+func (h *Host) closedLoop() (ended chan struct{}, running int) {
+	h.loopsMu.Lock()
+	defer h.loopsMu.Unlock()
+	for _, loop := range h.loops {
+		if loop.shut {
+			ended = loop.ended
+			running++
+		}
+	}
+	return ended, running
+}
+
+// awaitIncomingLoops waits until every read loop that closeIncomingLoops closed has ended, for at most the bound of a process's stop, and says on stderr when the bound ended the wait with loops still running.
+func (h *Host) awaitIncomingLoops() {
+	ended, running := h.closedLoop()
+	if ended == nil {
+		return
+	}
+	bound := h.processWaitDelay()
+	timer := time.NewTimer(bound)
+	defer timer.Stop()
+	for ended != nil {
+		select { //portlint:allow golifetime the wait is bounded by the timer, and each loop it waits for ends with its closed connection
+		case <-ended:
+		case <-timer.C:
+			fmt.Fprintf(os.Stderr, "pig: %d extension connection loop(s) did not end within %s\n", running, bound)
+			return
+		}
+		ended, running = h.closedLoop()
+	}
 }
 
 // handleIncoming processes extension→host messages (calls, widget pushes) from conn, one connection of me.
@@ -5345,7 +5425,6 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	}) {
 		h.dropOwnedThinkingRuns(me, conn)
 	}
-	conn.endIncoming()
 
 	// A process that ended holds nothing: a quit that waited for it is evaluated again.
 	if h.loopDrainPending.Load() {

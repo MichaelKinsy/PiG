@@ -5,6 +5,7 @@ package codingagent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -66,6 +67,12 @@ func (m *InteractiveMode) runOnMainAndWaitUnless(ctx context.Context, abandon <-
 	case <-giveUp:
 		if claimed.CompareAndSwap(false, true) {
 			return errOwnerLoopBlocked
+		}
+		return <-result
+	case <-m.runEnded.endedCh():
+		// The loop ended with the task queued or running: a task it never started is abandoned, one it started has its result.
+		if claimed.CompareAndSwap(false, true) {
+			return fmt.Errorf("%w: the owner loop ended", errOwnerLoopUnavailable)
 		}
 		return <-result
 	}

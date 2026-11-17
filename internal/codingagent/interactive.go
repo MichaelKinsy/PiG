@@ -139,8 +139,8 @@ type InteractiveMode struct {
 	newRunner     *inproc.Runner
 	// detachModelRegistry detaches the model operations wired to the current build's bridge.
 	detachModelRegistry func()
-	// runEnded is set once Stop finished and the owner loop no longer runs.
-	runEnded atomic.Bool
+	// runEnded records that Stop finished and the owner loop no longer runs, and releases a post that waits for the loop to take it (see postToMain).
+	runEnded loopLife
 	// isInitialized is upstream's isInitialized: Init completed and Stop has not run since.
 	isInitialized bool
 	// teardowns are the releases Stop runs, last registered first; stopMu guards them.
@@ -939,7 +939,7 @@ var errOwnerLoopUnavailable = errors.New("interactive mode is not accepting work
 
 // postToMain is runOnMain for callers that must report a task the loop never
 // accepted, such as an extension's sendUserMessage: it never drops fn, and
-// returns an error only when ctx ends first. The owner loop posting to itself
+// returns an error only when ctx ends or the owner loop ends first. The owner loop posting to itself
 // never blocks and never runs fn inline: see postFromOwner.
 func (m *InteractiveMode) postToMain(ctx context.Context, fn func()) error {
 	if fn == nil {
@@ -967,6 +967,9 @@ func (m *InteractiveMode) postToMain(ctx context.Context, fn func()) error {
 		return nil
 	case <-ctx.Done():
 		return fmt.Errorf("%w: %w", errOwnerLoopUnavailable, context.Cause(ctx))
+	case <-m.runEnded.endedCh():
+		// The loop that would take the task ended while the queue was full, and nothing drains it again until a later Run: ctx may outlive the loop for the whole process, as when a quit by keys ends the loop and the host shutdown waits for this post.
+		return fmt.Errorf("%w: the owner loop ended", errOwnerLoopUnavailable)
 	}
 }
 
@@ -1673,7 +1676,7 @@ func (m *InteractiveMode) printResumeHint() {
 // Run renders the initial editor and footer even with quiet startup, then blocks in the interactive loop until the user exits.
 func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	// After Run returns nothing services owner tasks, so a runtime closed later resets the UI in place.
-	defer m.runEnded.Store(true)
+	defer m.runEnded.end()
 	// pig additive (D102): Pi leaves no trace when input ends or fails. Registered before the crash handler below so it
 	// sees the error that handler returns; a crash has its own record.
 	defer func() {
@@ -1724,7 +1727,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	if m.isInitialized {
 		return nil
 	}
-	m.runEnded.Store(false)
+	m.runEnded.begin()
 	m.runCtx = ctx
 	// SIGINT is taken before anything draws, as Pi's init() registers its signal handlers first (interactive-mode.ts:974-977): a screen on the
 	// terminal means the handler is in place. Installed after the first render, a SIGINT sent to a session that had already drawn got Go's

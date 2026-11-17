@@ -135070,17 +135070,6 @@
       "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.awaitIncomingEnded",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "Conn.awaitIncomingEnded",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.awaitReady",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.awaitReady",
@@ -135277,17 +135266,6 @@
         "type": "func(env *Envelope) (*encodedFrame, error)"
       },
       "shapeHash": "sha256:ba998effd5443e501806c7ab5cd51f5d1f5a06ee8b1a6c61c95fd70434b74ece"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.endIncoming",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "Conn.endIncoming",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.endReadOnPeerExit",
@@ -137985,6 +137963,17 @@
       "shapeHash": "sha256:5ad95d1ce6578a2ccbbdb520cdd4fc885599e78cfe96a9ae280430aea244ed7f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.awaitIncomingLoops",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.awaitIncomingLoops",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.awaitParkAck",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.awaitParkAck",
@@ -138161,6 +138150,17 @@
       "shapeHash": "sha256:80e73a0482023402eb943957dc57b21735261a107e4f575d0d927266684a7e93"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.closeIncomingLoops",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.closeIncomingLoops",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(reason string)"
+      },
+      "shapeHash": "sha256:a91f5da78c7cf287305fc5d2791b56e167e37b6e8b76f09a87a1ea1d53f3ad45"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.closeToolRendererResolutions",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.closeToolRendererResolutions",
@@ -138170,6 +138170,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.closedLoop",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.closedLoop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (ended chan struct{}, running int)"
+      },
+      "shapeHash": "sha256:caeb4b9fee430286286de387b86083918b1e94fa75aa9c5ee187de69b19942de"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.collectProviderObjectLocked",
@@ -138522,6 +138533,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.forgetIncomingLoop",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.forgetIncomingLoop",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(conn *Conn)"
+      },
+      "shapeHash": "sha256:1975adf195a0bdbd37b358df1bc08362c40943a518fc4b1e3aa304a5d285cfc5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.forgetLocalRealm",
@@ -141019,6 +141041,17 @@
         "type": "func(f *tailFlight) bool"
       },
       "shapeHash": "sha256:f33ec07646cc2a7268fe9d89948a22dcb06dc18d0234699f5c408883bcfd6b55"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.takeLoopToClose",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.takeLoopToClose",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *Conn"
+      },
+      "shapeHash": "sha256:e873501ad6fe75207c132876b888db4e06491591546787174c74e35c3c623937"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.terminalHeight",
@@ -309418,6 +309451,61 @@
         "type": "func(path string) string"
       },
       "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loopLife",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loopLife",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "loopLife"
+      },
+      "shapeHash": "sha256:bf2b4533cc61363053db2f354d12cabb2c0f8f5687efcd301adc4b4062c5715d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loopLife.begin",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loopLife.begin",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loopLife.end",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loopLife.end",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loopLife.ended",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loopLife.ended",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loopLife.endedCh",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loopLife.endedCh",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() \u003c-chan struct{}"
+      },
+      "shapeHash": "sha256:abf75cdd06446e4f2096decc25f9a3b8a701a6dd8afd11fe16223fb0b76991c3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#lsRenderCall",
