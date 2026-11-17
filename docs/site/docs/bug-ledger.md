@@ -774,6 +774,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-776b600](#bf-776b600) | fix(durable/core): the scheduler's reconcile and drain microtasks run behind the host listeners' dispatch of… | PiG's own defect | All platforms | Unreleased |
 | [BF-776d60b](#bf-776d60b) | An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-776d60b-2](#bf-776d60b-2) | A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-77778f9](#bf-77778f9) | An extension editor that fails to take the autocomplete provider no longer ends the session | PiG's own defect | All platforms | Unreleased |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-78c4c6c](#bf-78c4c6c) | `pig piglet add` now names the offending bundled path and where it came from (for example `Package herdr… | PiG's own defect | All platforms | 0.5.0 |
@@ -12103,6 +12104,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `776d60b196` (2026-11-02)
 - **Tests:** `internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond`, `internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64`, `tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil`
 - **Release note:** A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.
+
+### BF-77778f9
+
+**An extension editor that fails to take the autocomplete provider no longer ends the session**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension editor that fails to take the autocomplete provider no longer ends the session.
+- **Root cause:** - add-provider, setEditorComponent and /reload report an extension error; /new fails with Failed to create session; settings change and startup raise as in Pi - awaitReloadStep runs the queued UI tasks before it returns
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `302d225a92` (2026-11-17), `77778f9ac0` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor`, `internal/codingagent/autocomplete_sync_error_caller_test.go::TestRebindWhoseInstalledEditorRefusesTheProviderFailsTheBind`, `internal/codingagent/autocomplete_sync_error_caller_test.go::TestReloadWhoseInstalledEditorRefusesTheProviderIsReloadFailed`, `internal/codingagent/autocomplete_sync_error_test.go::TestRefusedProviderAfterASettingsChangeEndsTheSession`, `internal/codingagent/autocomplete_sync_error_test.go::TestRefusedProviderIsAnExtensionErrorWhereNoCallerCarriesIt`, `internal/codingagent/crash_log_test.go::TestHandleFatalRuntimeErrorNotesSitUnderTheErrorAtTheOutputPadding`, `internal/codingagent/reload_step_runs_queued_ui_test.go::TestReloadStepRunsTheUITasksItsHandlersQueued`
+- **Release note:** An extension editor that fails to take the autocomplete provider no longer ends the session. When the editor installed with `setEditorComponent` throws from `setAutocompleteProvider`, pig now does what Pi does on each path: adding a provider, installing an editor and `/reload` show an extension error (`/reload` shows `Error: Reload failed: <message>` and hands the input back to the previous editor) and the session continues, a settings change raises the uncaught exception, `/new` reports `Error: Failed to create session: <message>` and exits with status 1, and the startup raises the uncaught exception; a bind or a reload now also waits until the editor a `session_start` handler installed is in place, so that editor hears the provider exactly as often as in Pi. Present since 0.3.0, the release in which the host first sent the provider to an installed editor.
 
 ### BF-779318a
 
