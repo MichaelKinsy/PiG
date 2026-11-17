@@ -73,7 +73,7 @@ func TestEnsureConfiguredNpmVersionMatchesUpstream(t *testing.T) {
 			}
 			t.Run(scope+tc.name, func(t *testing.T) {
 				cwd, settings, log := installedVersionFixture(t, tc.source, tc.manifest, local)
-				reinstalled, missing := packagemanager.EnsureConfiguredPackagesInstalled(cwd, settings.AgentDir(), settings)
+				reinstalled, missing := ensureConfiguredPackagesInstalled(cwd, settings.AgentDir(), settings)
 				var want []string
 				if tc.install {
 					want = []string{tc.source}
@@ -129,7 +129,7 @@ func TestEnsureConfiguredNpmMismatchOfflineAndFailure(t *testing.T) {
 			} else {
 				t.Setenv("PIG_NPM_TEST_FAIL", "1")
 			}
-			reinstalled, missing := packagemanager.EnsureConfiguredPackagesInstalled(cwd, settings.AgentDir(), settings)
+			reinstalled, missing := ensureConfiguredPackagesInstalled(cwd, settings.AgentDir(), settings)
 			if len(reinstalled) != 0 || !slices.Equal(missing, []string{source}) {
 				t.Fatalf("reinstalled=%v missing=%v", reinstalled, missing)
 			}

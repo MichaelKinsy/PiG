@@ -117,8 +117,36 @@ type DefaultResourceLoaderOptions struct {
 	Runtime *extension.ExtensionRuntime
 	// DisabledBuiltinExtensions names the built-in extensions whose `builtin:<name>` paths are left out of the extension set (resource-loader.ts disabledBuiltinExtensions).
 	DisabledBuiltinExtensions []string
+	// PackageCommandOutput is where git and npm output goes when Packages are installed or refreshed (resource-loader.ts packageCommandOutput). The zero value is PackageCommandOutputInherit, the terminal; a host that draws on the terminal passes PackageCommandOutputCapture.
+	PackageCommandOutput PackageCommandOutput
+	// OnPackageProgress is called when Packages are installed or refreshed, e.g. to show `Installing npm:foo...` (resource-loader.ts onPackageProgress).
+	OnPackageProgress ProgressCallback
 	// LoadExtensions loads the extension set of a reload; nil loads the extension files of the resolved Packages and settings and of AdditionalExtensionPaths through a subprocess Extension Host (resource-loader.ts:513-600). A reload with ResolveProjectTrust calls it first for the bootstrap pass, then once for the final set.
 	LoadExtensions func(ctx context.Context, request ExtensionLoadRequest) (LoadExtensionsResult, error)
+}
+
+// PackageCommandOutput is where git and npm output goes while Packages are installed, updated or refreshed (package-manager.ts PackageCommandOutput).
+type PackageCommandOutput = packagemanager.CommandOutput
+
+const (
+	// PackageCommandOutputInherit writes the output to the terminal, live. It is the default.
+	PackageCommandOutputInherit = packagemanager.CommandOutputInherit
+	// PackageCommandOutputCapture writes nothing to the terminal and keeps git and ssh from prompting, for hosts that draw on it. A failure carries the end of the output.
+	PackageCommandOutputCapture = packagemanager.CommandOutputCapture
+)
+
+// ProgressEvent describes one Package operation: Type is "start", "progress", "complete" or "error", Action "install", "remove", "update" or "pull". Completion omits Message (package-manager.ts ProgressEvent).
+type ProgressEvent = packagemanager.ProgressEvent
+
+// ProgressCallback receives the progress events of Package operations (package-manager.ts ProgressCallback).
+type ProgressCallback = packagemanager.ProgressCallback
+
+// newPackageManager is the loader's package manager over its options, as the resource-loader.ts constructor makes one.
+func (l *DefaultResourceLoader) newPackageManager() *packagemanager.PackageManager {
+	manager := packagemanager.NewPackageManager(packagemanager.PackageManagerOptions{CWD: l.cwd, SettingsManager: l.settings, CommandOutput: l.options.PackageCommandOutput})
+	manager.AgentDir = l.agentDir
+	manager.SetProgressCallback(l.options.OnPackageProgress)
+	return manager
 }
 
 // DefaultResourceLoader resolves skills, prompt templates, context files and system prompt files from the default user and project resource locations, the settings-configured paths, the configured Packages and the additional paths, applying project trust as Pi's does, and installs a missing npm or git Package as Pi's package manager does. It loads themes, and extensions through the LoadExtensions hook the Extension Host supplies. A new loader is empty until Reload runs, as Pi's DefaultResourceLoader is.
@@ -230,8 +258,7 @@ func (l *DefaultResourceLoader) ReloadWith(ctx context.Context, options ...Resou
 // discover rediscovers every resource from the settings as they currently are.
 func (l *DefaultResourceLoader) discover(ctx context.Context, preTrust *LoadExtensionsResult) error {
 	trusted := l.settings.IsProjectTrusted()
-	manager := packagemanager.NewPackageManager(packagemanager.PackageManagerOptions{CWD: l.cwd, SettingsManager: l.settings})
-	manager.AgentDir = l.agentDir
+	manager := l.newPackageManager()
 	resolved, err := manager.Resolve(nil)
 	if err != nil {
 		return fmt.Errorf("coding: %w", err)

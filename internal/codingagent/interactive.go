@@ -681,6 +681,8 @@ type InteractiveMode struct {
 	themeDiagnostics []extension.ResourceDiagnostic
 	// extensionConflicts are the tool and flag conflicts the last reload found; Pi lists them with the extension load errors.
 	extensionConflicts []ExtensionConflict
+	// extensionWarnings are the install failures and package warnings of the last load; Pi lists them after the extension load errors.
+	extensionWarnings []ExtensionWarning
 	// slashCatalog is the resource side of pi.getCommands() (templates,
 	// skills, provenance), republished whole whenever the owner loop changes
 	// one, because extension host calls read it off the owner loop.
@@ -1337,6 +1339,9 @@ type InteractiveModeOptions struct {
 	// context-file inputs on /reload so the interactive session mirrors
 	// upstream resourceLoader.reload() instead of reusing startup snapshots.
 	ReloadResourceProvider func() ReloadResourceSnapshot
+	// ExtensionWarnings are the install failures and package warnings of the startup load, which the loaded-resources listing shows under [Extension issues]
+	// (resource-loader.ts getExtensions().warnings).
+	ExtensionWarnings []ExtensionWarning
 
 	// Verbose forces verbose startup output (overrides quietStartup).
 	// Mirrors upstream InteractiveModeOptions.verbose (interactive-mode.ts:184).
@@ -1558,6 +1563,7 @@ func NewInteractiveMode(runtimeHost InteractiveRuntime, options InteractiveModeO
 		opts:                 opts,
 		isIdle:               true,
 		resourceSourceInfo:   map[string]ResourceSourceInfo{},
+		extensionWarnings:    opts.ExtensionWarnings,
 		toolByID:             make(map[string]*tui.ToolExecutionComponent),
 		toolStarts:           make(map[string]time.Time),
 		uiTaskCh:             make(chan func(), 64),

@@ -26,8 +26,7 @@ import (
 // the path gets the Binary's member that its parent has. A Pi built-in of the same name wins. A Package whose package.json lists host-provided packages under dependencies adds a warning (:581, :66-93). A local additional
 // path that does not exist is an error of the result (resource-loader.ts:545-551). The loader keeps the Extension Host of the load until the next load or Close.
 func (l *DefaultResourceLoader) loadExtensionFiles(ctx context.Context, request ExtensionLoadRequest) (LoadExtensionsResult, error) {
-	manager := packagemanager.NewPackageManager(packagemanager.PackageManagerOptions{CWD: l.cwd, SettingsManager: l.settings})
-	manager.AgentDir = l.agentDir
+	manager := l.newPackageManager()
 	cli, err := manager.ResolveExtensionSources(l.options.AdditionalExtensionPaths, false, true)
 	if err != nil {
 		return LoadExtensionsResult{}, fmt.Errorf("coding: %w", err)

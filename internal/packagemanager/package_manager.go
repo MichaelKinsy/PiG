@@ -26,6 +26,7 @@ type PackageManager struct {
 	// BuiltinExtensions are the names of built-in extensions that Resolve reports as `builtin:<name>` extension resources (upstream's builtinExtensions option).
 	BuiltinExtensions []string
 	progress          ProgressCallback
+	commandOutput     CommandOutput
 }
 
 // PackageManagerOptions is upstream's PackageManagerOptions (package-manager.ts:132-138).
@@ -35,15 +36,22 @@ type PackageManagerOptions struct {
 	SettingsManager *codingagent.SettingsManager
 	// BuiltinExtensions are the names of built-in extensions, resolved as `builtin:<name>` extension resources.
 	BuiltinExtensions []string
+	// CommandOutput is where git and npm output goes while packages are installed, updated, removed or refreshed. The zero value is [CommandOutputInherit] (upstream's commandOutput option, default "inherit").
+	CommandOutput CommandOutput
 }
 
 // NewPackageManager is upstream's `new DefaultPackageManager(options)` (package-manager.ts:821).
 func NewPackageManager(options PackageManagerOptions) *PackageManager {
-	return &PackageManager{CWD: options.CWD, AgentDir: options.AgentDir, SettingsManager: options.SettingsManager, BuiltinExtensions: slices.Clone(options.BuiltinExtensions)}
+	return &PackageManager{CWD: options.CWD, AgentDir: options.AgentDir, SettingsManager: options.SettingsManager, BuiltinExtensions: slices.Clone(options.BuiltinExtensions), commandOutput: options.CommandOutput}
 }
 
 // SetProgressCallback is upstream's setProgressCallback: the callback every later install, remove and update reports to.
 func (m *PackageManager) SetProgressCallback(callback ProgressCallback) { m.progress = callback }
+
+// installOptions are the options of every install this manager runs.
+func (m *PackageManager) installOptions() []InstallOption {
+	return []InstallOption{WithCommandOutput(m.commandOutput)}
+}
 
 func (m *PackageManager) agentDir() string {
 	if m.AgentDir != "" {
@@ -85,7 +93,7 @@ func (m *PackageManager) GetInstalledPath(source, scope string) string {
 
 // Install is upstream's install: it places the package artifacts without recording the source in settings.
 func (m *PackageManager) Install(source string, local bool) error {
-	return InstallPackageArtifacts(m.CWD, m.agentDir(), m.SettingsManager, codingagent.PackageSource{Source: source}, local, m.progress)
+	return InstallPackageArtifacts(m.CWD, m.agentDir(), m.SettingsManager, codingagent.PackageSource{Source: source}, local, m.progress, m.installOptions()...)
 }
 
 // InstallAndPersist is upstream's installAndPersist: install, then record the source in settings.
@@ -341,16 +349,16 @@ func (m *PackageManager) uninstallManagedNPM(source string, local bool) error {
 	if ref.NPMRegistry != "" {
 		args = append(args, "--registry", ref.NPMRegistry)
 	}
-	return RunPackageProcess("", command[0], args...)
+	return RunPackageProcess(m.commandOutput, "", command[0], args...)
 }
 
 // Update is upstream's update: it refreshes every configured package that is not pinned, or the packages whose identity matches source.
 func (m *PackageManager) Update(source string) error {
-	cwd, sm, progress := m.CWD, m.SettingsManager, m.progress
+	cwd, sm, progress, output := m.CWD, m.SettingsManager, m.progress, m.commandOutput
 	// update reads configured sources, not installation paths; pinned entries must not run legacy-root lookups.
 	pkgs := m.configuredSources()
 	if source == "" {
-		return updateConfiguredSources(cwd, sm, pkgs, progress)
+		return updateConfiguredSources(cwd, sm, pkgs, progress, output)
 	}
 	// package-manager.ts:1062-1077 resolves the input identity before scanning settings; resolvePath throws for an invalid file: URL.
 	identity, err := PackageSourceIdentityChecked(cwd, source)
@@ -370,7 +378,7 @@ func (m *PackageManager) Update(source string) error {
 	if len(matched) == 0 {
 		return errors.New(noMatchingPackageMessage(source, pkgs))
 	}
-	return updateConfiguredSources(cwd, sm, matched, progress)
+	return updateConfiguredSources(cwd, sm, matched, progress, output)
 }
 
 // CheckForAvailableUpdates queries npm registry and git remotes for updates to installed, unpinned packages with at most four joined workers. It returns a non-nil slice, including when offline or no updates are available.

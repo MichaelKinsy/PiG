@@ -16,8 +16,11 @@ import (
 )
 
 // Ports packages/coding-agent/src/core/package-manager.ts (spawnCommand, runCommand).
-// RunPackageProcess inherits child output without retaining it. When the host owns stdout, both streams go to stderr and stdin is ignored. The caller waits for completion before reporting an error or persisting settings.
-func RunPackageProcess(dir, name string, args ...string) error {
+// RunPackageProcess runs a package command in dir. With [CommandOutputInherit] (and for the zero value) the child's output goes to the terminal without being retained; when the host owns stdout, both streams go to stderr and stdin is ignored. With [CommandOutputCapture] it goes nowhere and git and ssh cannot prompt (runPackageProcessCaptured). The caller waits for completion before reporting an error or persisting settings.
+func RunPackageProcess(output CommandOutput, dir, name string, args ...string) error {
+	if output == CommandOutputCapture {
+		return runPackageProcessCaptured(dir, name, args...)
+	}
 	cmd := packageCommand(context.Background(), dir, name, args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	if codingagent.IsStdoutTakenOver() {

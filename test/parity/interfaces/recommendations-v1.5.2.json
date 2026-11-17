@@ -175039,7 +175039,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "3 normalized-name Pig candidates are ambiguous."
+        "4 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -175049,6 +175049,7 @@
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding/cli#packageRun.progress",
         "go:github.com/MichaelKinsy/PiG/coding/cli#updateSummary.progress",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk/kit#Progress",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/llama#LlamaView.Progress"
@@ -266064,21 +266065,23 @@
     {
       "id": "pkg:coding-agent/.#ProgressCallback",
       "upstreamShapeHash": "sha256:d2b997417af1ee75fde62351264361b3334ae584952e36ebca4d5a77aaffee05",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding#ProgressCallback"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -266119,22 +266122,24 @@
     {
       "id": "pkg:coding-agent/.#ProgressEvent",
       "upstreamShapeHash": "sha256:f69afc7058f8b4d935f017b96ec01d5349f023c7a9077ae93e3f15d239992b9d",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/coding#ProgressEvent",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#ProgressEvent"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",

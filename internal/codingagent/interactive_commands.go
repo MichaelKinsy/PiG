@@ -770,6 +770,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			defer dismiss()
 			m.reloadIssues = nil
 			m.extensionConflicts = nil
+			m.extensionWarnings = nil
 			runner := m.newRunner
 			if err := m.awaitReloadStep(ctx, func(ctx context.Context) error {
 				if runner == nil {

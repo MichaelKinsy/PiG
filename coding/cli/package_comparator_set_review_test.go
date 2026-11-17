@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
 // Review GF03-REVIEW-002: Pi package-manager.ts:1446-1457,1473-1478 retains installed 1.0.0 for a matching comparator set. Offline mode proves source parsing cannot misclassify an installed package as missing and cannot invoke an installer.
@@ -36,7 +35,7 @@ func TestEnsureConfiguredNPMComparatorSetFindsInstalledPackage(t *testing.T) {
 				if err := os.WriteFile(filepath.Join(installed, "package.json"), []byte(`{"version":"1.0.0"}`), 0o600); err != nil {
 					t.Fatal(err)
 				}
-				reinstalled, missing := packagemanager.EnsureConfiguredPackagesInstalled(cwd, sm.AgentDir(), sm)
+				reinstalled, missing := ensureConfiguredPackagesInstalled(cwd, sm.AgentDir(), sm)
 				if len(reinstalled) != 0 || len(missing) != 0 {
 					t.Fatalf("matching installed package lost: reinstalled=%v missing=%v", reinstalled, missing)
 				}

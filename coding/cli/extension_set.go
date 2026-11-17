@@ -91,16 +91,17 @@ func fromCodingAgentWarnings(warnings []codingagent.ExtensionWarning) []extensio
 	return out
 }
 
+func toCodingAgentWarnings(warnings []extensionSetWarning) []codingagent.ExtensionWarning {
+	var out []codingagent.ExtensionWarning
+	for _, warning := range warnings {
+		out = append(out, codingagent.ExtensionWarning{Path: warning.Path, Warning: warning.Warning})
+	}
+	return out
+}
+
 // mergeExtensionWarnings keeps one warning per path: the last one, at the position of the first (resource-loader.ts mergeExtensionWarnings).
 func mergeExtensionWarnings(existing, added []extensionSetWarning) []extensionSetWarning {
-	toCodingAgent := func(warnings []extensionSetWarning) []codingagent.ExtensionWarning {
-		var out []codingagent.ExtensionWarning
-		for _, warning := range warnings {
-			out = append(out, codingagent.ExtensionWarning{Path: warning.Path, Warning: warning.Warning})
-		}
-		return out
-	}
-	return fromCodingAgentWarnings(codingagent.MergeExtensionWarnings(toCodingAgent(existing), toCodingAgent(added)))
+	return fromCodingAgentWarnings(codingagent.MergeExtensionWarnings(toCodingAgentWarnings(existing), toCodingAgentWarnings(added)))
 }
 
 // builtInExtensions are the built-in extensions of the CLI (extensions/index.ts builtInExtensions). Each Builtin entry supplies the

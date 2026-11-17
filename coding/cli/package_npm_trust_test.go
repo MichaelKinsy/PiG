@@ -35,7 +35,7 @@ func TestPackageNpmCommandUsesResolvedTrust(t *testing.T) {
 					if removeErr := os.RemoveAll(filepath.Join(agentDir, "npm", "node_modules")); removeErr != nil {
 						t.Fatal(removeErr)
 					}
-					_, missing := packagemanager.EnsureConfiguredPackagesInstalled(cwd, sm.AgentDir(), sm)
+					_, missing := ensureConfiguredPackagesInstalled(cwd, sm.AgentDir(), sm)
 					if len(missing) != 0 {
 						t.Fatalf("missing packages: %v", missing)
 					}

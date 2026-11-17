@@ -9,7 +9,6 @@ import (
 	"maps"
 	"os"
 	"slices"
-	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -63,7 +62,9 @@ func (b *cliRuntimeBuilder) ambientScopes(projectTrusted bool) (extensions, skil
 
 // cliRuntimeBuilder holds the process-fixed inputs of Pi's createRuntime closure and builds the cwd-bound state of one Session runtime: services, resources, extension host, model, tools and system prompt.
 type cliRuntimeBuilder struct {
-	mode              appMode
+	mode appMode
+	// packages is how this process's package installs run (main.ts packageCommandOutput, onPackageProgress); nil outside interactive mode.
+	packages          *packageRun
 	flags             Args
 	agentDir          string
 	launchCWD         string
@@ -122,6 +123,8 @@ type cliBuild struct {
 	StartupDiagnostics           []codingagent.AgentSessionRuntimeDiagnostic
 	PreTrustExtensionDiagnostics []codingagent.AgentSessionRuntimeDiagnostic
 	ExtensionDiagnostics         []codingagent.AgentSessionRuntimeDiagnostic
+	// ExtensionWarnings are the package and replacement warnings of the load, which the loaded-resources listing shows under [Extension issues] (resource-loader.ts getExtensions().warnings).
+	ExtensionWarnings []codingagent.ExtensionWarning
 
 	PromptPaths     []string
 	ThemePaths      []string
@@ -185,6 +188,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	flags := b.flags
 	cwd := in.CWD
 	resourceFlags, err := resolveCLIResourceFlags(flags, b.launchCWD)
+	resourceFlags.packages = b.packages
 	if err != nil {
 		return nil, cliCLIError("%v", err)
 	}
@@ -383,14 +387,10 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	}
 	// pig additive (D216): a configured local Package whose directory does not exist warns in the session with its resolved path; Pi skips it silently.
 	missingLocal := packagemanager.MissingLocalPackages(cwd, services.SettingsManager().AgentDir(), services.SettingsManager())
-	if reinstalled, missingPkgs := packagemanager.EnsureConfiguredPackagesInstalled(cwd, services.SettingsManager().AgentDir(), services.SettingsManager()); len(reinstalled)+len(missingPkgs) > 0 {
-		if len(reinstalled) > 0 {
-			fmt.Fprintf(os.Stderr, "[pig] Reinstalled missing packages: %s\n", strings.Join(reinstalled, ", "))
-		}
-		missingPkgs = slices.DeleteFunc(missingPkgs, func(source string) bool { return packagemanager.DetectSourceKind(source) == "local" })
-		if len(missingPkgs) > 0 {
-			fmt.Fprintf(os.Stderr, "[pig] Could not install: %s (run `pig update` when online)\n", strings.Join(missingPkgs, ", "))
-		}
+	// resource-loader.ts reload: resolve() installs each missing configured Package and the -e sources refresh, on every load: startup, /new, /resume and /fork. A Package that fails to install is skipped and warns below.
+	installFailures, err := installPackagesForLoad(b.packages, cwd, services.SettingsManager().AgentDir(), services.SettingsManager())
+	if err != nil {
+		return nil, cliCLIError("%v", err)
 	}
 	trace.Mark("packages-reinstall-done")
 
@@ -416,7 +416,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	skillScan := codingagent.NewAgentsSkillScan(cwd)
 	build.SkillInputs = collectSkillInputsIn(skillScan, cwd, b.agentDir, services.SettingsManager(), resourceFlags, skillScopes, resolver.Resolve)
 	trace.Mark("extension-discovery-start")
-	cliExtensions := collectCLIExtensionConfigs(cwd, b.agentDir, services.SettingsManager(), resourceFlags.Extensions, resolver.Resolve)
+	cliExtensions := collectCLIExtensionConfigs(cwd, b.agentDir, services.SettingsManager(), b.packages, resourceFlags.Extensions, resolver.Resolve)
 	extraExtConfigs := collectExtensionConfigsWith(cliExtensions, cwd, b.agentDir, services.SettingsManager(), resourceFlags, extensionScopes, resolver.Resolve)
 	trace.Mark("extension-discovery-done")
 	if err := cliPackageSourceError(extraExtConfigs); err != nil {
@@ -449,8 +449,8 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	if err != nil {
 		return nil, cliCLIError("%v", err)
 	}
-	// An -e source that could not be installed warns before the package warnings and the load goes on (resource-loader.ts [...installWarnings, ...packageWarnings], Pi 6dfb54678).
-	packageWarnings = mergeExtensionWarnings(fromCodingAgentWarnings(packagemanager.PackageInstallWarnings(cliExtensions.installFailures, missingLocal)), packageWarnings)
+	// A Package or -e source that could not be installed warns before the package warnings and the load goes on (resource-loader.ts [...installWarnings, ...packageWarnings], Pi 6dfb54678).
+	packageWarnings = mergeExtensionWarnings(fromCodingAgentWarnings(packagemanager.PackageInstallWarnings(installFailures, missingLocal, cliExtensions.installFailures)), packageWarnings)
 
 	var embeddedCells []subprocess.EmbeddedCell
 	if b.activePigletBaked {
@@ -576,7 +576,9 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	var flagDiagnostics []codingagent.AgentSessionRuntimeDiagnostic
 	build.ExtensionFlagValues, flagDiagnostics = services.ApplyExtensionFlagValues(build.Extensions)
 	conflicts := codingagent.DetectExtensionConflicts(build.Extensions)
-	build.ExtensionDiagnostics = slices.Concat(sdkDiagnostics, build.PreTrustExtensionDiagnostics, registrationDiagnostics, flagDiagnostics, extensionLoadDiagnostics(withUpgradeHints(extensionLoadErrs, build.SDKDrift)), extensionErrorDiagnostics(builtinErrs), extensionConflictDiagnostics(conflicts), staleCopyDiagnostics(codingagent.DetectToolConflicts(build.Extensions), finalExtConfigs), extensionWarningDiagnostics(mergeExtensionWarnings(packageWarnings, replacementWarnings)))
+	extensionWarnings := mergeExtensionWarnings(packageWarnings, replacementWarnings)
+	build.ExtensionWarnings = toCodingAgentWarnings(extensionWarnings)
+	build.ExtensionDiagnostics = slices.Concat(sdkDiagnostics, build.PreTrustExtensionDiagnostics, registrationDiagnostics, flagDiagnostics, extensionLoadDiagnostics(withUpgradeHints(extensionLoadErrs, build.SDKDrift)), extensionErrorDiagnostics(builtinErrs), extensionConflictDiagnostics(conflicts), staleCopyDiagnostics(codingagent.DetectToolConflicts(build.Extensions), finalExtConfigs), extensionWarningDiagnostics(extensionWarnings))
 	trace.Mark("extensions-loaded")
 
 	build.Flags = flags

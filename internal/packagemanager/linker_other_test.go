@@ -35,7 +35,7 @@ func TestPackageProcessesStartThroughTheLinker(t *testing.T) {
 	t.Setenv("PATH", bin)
 
 	for _, name := range []string{"npm", "git"} {
-		err := RunPackageProcess(dataDir, name, "--version")
+		err := RunPackageProcess(CommandOutputInherit, dataDir, name, "--version")
 		if err == nil || !strings.Contains(err.Error(), linker) {
 			t.Errorf("RunPackageProcess(%s) error = %v, want a start through %s", name, err, linker)
 		}
