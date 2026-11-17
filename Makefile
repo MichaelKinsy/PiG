@@ -620,6 +620,13 @@ race-coverage: ## Fail on a concurrency package that no nightly -race group runs
 alloc-baseline: ## Fail when a hot-path benchmark's allocs/op rises or falls from the committed baseline (slow; nightly)
 	@go run ./automation/ci/allocbase
 
+# alloc-baseline-changed is the pull request's form of alloc-baseline: the same tool, settings and verdict, for only the hot packages the change since TEST_BASE (default the branch's upstream, then main; the merge base with HEAD) makes the run measure: a package with a changed benchmark file, baseline row or non-test file, and the packages that import a changed one. A change that touches none of them measures nothing and passes at once. CI reads the commits only (-committed), as test-changed does.
+alloc-baseline-changed: ## Run alloc-baseline for the hot packages the change since TEST_BASE touches or imports (the pull request's form; a change that touches none exits 0 at once)
+	@base="$$TEST_BASE"; [ -n "$$base" ] || base='@{upstream}'; git rev-parse --verify --quiet "$$base^{commit}" >/dev/null || base=main; \
+	go run ./automation/ci/allocbase -changed-since "$$base" $${CI:+-committed}
+
+.PHONY: alloc-baseline-changed
+
 # docs-drift gates the shipped docs bundle against the code it describes: every
 # documented command must exist, every listable command must be documented, and
 # every page must be reachable from the index.
@@ -670,7 +677,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs lint-sdk-py test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard gui-import-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check model-data-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs lint-sdk-py test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard gui-import-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check model-data-check perf-scoreboard-check module-size alloc-baseline-changed ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo
