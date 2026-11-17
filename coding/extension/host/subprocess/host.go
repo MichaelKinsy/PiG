@@ -3602,6 +3602,10 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		}
 	}
 	me.supervisor.RecordSuccess()
+	if isRestart && h.uiBridge != nil {
+		// The ready frame of this restart carried the catalog of the previous generation (the live registry, which the adoption above replaced after the frame was built), and the adoption bumps neither hostStateEpoch nor runtimeStateGeneration: push the state again now that the registry is the new one.
+		_ = h.pushStateTo(ctx, me, conn)
+	}
 
 	return ext, nil
 }
