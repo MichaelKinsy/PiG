@@ -6593,7 +6593,6 @@ class Extension:
                 data = req.get("args") or {}
                 # pig additive (D19): preserve boundary mutations alongside handler errors.
                 if req.get("event") in ("agent_before_settle", "turn_end"):
-                    entries = data.get("entries", [])
                     result = None
                     error = None
                     try:
@@ -6602,7 +6601,8 @@ class Extension:
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve mutations and report the handler error.
                         error = {"message": str(exc)}
-                    self._respond(req_id, {"_pigBoundaryEntries": entries, "_pigBoundaryResult": result}, error)
+                    # The entries the handler left in data["entries"], assigned or edited in place, as the Go, Rust and Lisp SDKs carry them (v0.3.0, v0.7.0); the Node runtime follows Pi, which does not (runner.ts emitBoundary).
+                    self._respond(req_id, {"_pigBoundaryEntries": data.get("entries"), "_pigBoundaryResult": result}, error)
                     return
                 # Pi's handler edits event.input in place and the runner reads it back (runner.ts emitToolCall). The host cannot share the dict, so the reply carries the input the handler left when it differs from the one it received, member order included, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall), so assigning a new dict to data["input"] changes nothing the tool receives.
                 if req.get("event") == "tool_call":
@@ -6747,6 +6747,9 @@ class Extension:
                     result = _user_bash_operations_reply(self._bash_operations, result) or _user_bash_event_result(result)
                 if req.get("event") in {"context", "context_with_system"} and snapshot is not None:
                     returned = result.get("messages") if isinstance(result, dict) else None
+                    if returned is None:
+                        # The list the handler assigned to data["messages"] is carried, as the Go and Rust SDKs carry it (v0.2.0, v0.3.0); the Node runtime follows Pi, which does not (runner.ts emitContext).
+                        returned = data.get("messages")
                     if returned is None:
                         returned = messages
                     unchanged = len(returned) == len(snapshot) and all(a is b for a, b in zip(returned, snapshot))

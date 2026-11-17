@@ -378,7 +378,8 @@
                   (when (equal event "user_bash")
                     (setf result (or (user-bash-operations-reply result) (user-bash-event-result result))))
                   (when (and context-event snapshot)
-                    (let* ((returned (let ((r (and (hash-table-p result) (jget result "messages")))) (or r messages)))
+                    ;; the list the handler assigned to the event's messages is carried, as the Go and Rust SDKs carry it (v0.2.0, v0.3.0); the Node runtime follows Pi, which does not (runner.ts emitContext)
+                    (let* ((returned (let ((r (and (hash-table-p result) (jget result "messages")))) (or r (jget data "messages") messages)))
                            (unchanged (and (vectorp returned) (= (length returned) (length snapshot))
                                            (every #'eq (coerce returned 'list) snapshot))))
                       (setf result
