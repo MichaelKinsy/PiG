@@ -21,7 +21,9 @@ func TestAnRPCPigThatEndsNormallyLeavesNoSocketDirectory(t *testing.T) {
 		name string
 		end  func(t *testing.T, p *rpcProcess, wait time.Duration)
 	}{
-		{"stdin end", func(t *testing.T, p *rpcProcess, _ time.Duration) { p.closeAndWait("an RPC pig that ends with its stdin") }},
+		{"stdin end", func(t *testing.T, p *rpcProcess, _ time.Duration) {
+			p.closeAndWait("an RPC pig that ends with its stdin")
+		}},
 		{"SIGTERM", func(t *testing.T, p *rpcProcess, wait time.Duration) {
 			if runtime.GOOS == "windows" {
 				t.Skip("Windows has no SIGTERM to deliver")
