@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -300,6 +301,11 @@ func nonNil(list []string) []string {
 func (r *PluginRuntime) Load(options RuntimeLoad, ctx context.Context) (*NodeHost, host.LoadReport, error) {
 	if options.Peer == nil {
 		return nil, host.LoadReport{}, errors.New("plugins.load: a Peer is required")
+	}
+	for _, core := range options.Core {
+		if (core.Module == "") == (core.Export == "") {
+			return nil, host.LoadReport{}, fmt.Errorf("plugins.load: core facet %q needs a Module or an Export, not both or neither", core.Name)
+		}
 	}
 	packages, err := goPackagesWire(options.GoPackages, options.Modules)
 	if err != nil {

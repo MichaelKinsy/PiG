@@ -214,8 +214,8 @@ async function load(request, context) {
 	// The proxies of the Go host's own facets import it (bridge.mjs).
 	modules[GO_PACKAGE] = bridge.hostPackage;
 	const core = [];
-	for (const { name, module } of request.core) {
-		core.push({ name, facet: (await import(pathToFileURL(module).href)).default });
+	for (const { name, module, export: exported } of request.core) {
+		core.push({ name, facet: module !== undefined ? (await import(pathToFileURL(module).href)).default : chordNext[exported]() });
 	}
 	const store = request.store === undefined ? undefined : await openHostStore(request.store.path, context);
 	const host = createHost({
