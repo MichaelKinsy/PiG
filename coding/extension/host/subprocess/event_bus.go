@@ -700,3 +700,31 @@ func (h *Host) reportExtensionError(owner *managedExt, event, message, stack str
 	path, _ := extensionSourcePaths(owner.config)
 	h.providerRuntime.ReportRuntimeError(&extension.ExtensionError{ExtensionPath: path, Event: event, Error: message, Stack: stack})
 }
+
+// applyReportError applies the report_error notification the read loop counted (Conn.noteReportRead), then counts it applied, so the responses queued behind it go on. A generation the host no longer accepts reports nothing, as it serves no other frame.
+// A malformed report (arguments that are not the payload, or no event name) is dropped like a malformed argument of any other notification; its size is bounded by MaxFrameSize, the cap of the frame that carries it.
+func (h *Host) applyReportError(me *managedExt, conn *Conn, args json.RawMessage) {
+	defer conn.reportApplied()
+	if !h.acceptsNodeGeneration(me) {
+		return
+	}
+	var report ReportErrorPayload
+	if json.Unmarshal(args, &report) != nil || report.Event == "" {
+		return
+	}
+	h.reportExtensionError(h.reportOwner(me, report.Extension), report.Event, report.Error, report.Stack)
+}
+
+// reportOwner is the extension whose error a report_error notification on me's connection is: me, or the extension the report names (ReportErrorPayload.Extension) when it runs in me's own process. A name that is no loaded extension or runs in another process has no owner: nil.
+func (h *Host) reportOwner(me *managedExt, name string) *managedExt {
+	if name == "" || name == me.config.Name {
+		return me
+	}
+	h.mu.Lock()
+	member := h.exts[name]
+	h.mu.Unlock()
+	if member == nil || processIdentity(member) != processIdentity(me) {
+		return nil
+	}
+	return member
+}

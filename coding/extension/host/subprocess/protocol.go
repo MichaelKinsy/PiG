@@ -972,8 +972,17 @@ type HandlerYieldedPayload struct {
 
 // NotifyReportError (ext→host) is Pi's `runtime.reportError` (types.ts ExtensionRuntimeState.reportError, Pi 18e99051be24): an error the extension raised where no
 // host request is waiting to carry it, reported as one of that extension's errors like the error of a pi.on handler. The extension path comes from the
-// connection and the host fills in the rest of the ExtensionError. The notification is fire-and-forget (like NotifyEventsQuiesce), and the host reads one
-// connection's frames in order, so it is applied before any later frame of that connection and after the frames the extension wrote before it.
+// connection and the host fills in the rest of the ExtensionError. The notification is fire-and-forget (like NotifyEventsQuiesce).
+//
+// Order (pig additive; Pi's reportError is synchronous): Pi reports a handler's error inside the handler and answers the request whose handler it was after
+// the handler returned, so an error reaches the runner's error listeners before that request's response does (loader.ts:537-549, runner.ts:749-753,
+// agent-session.ts:2172-2178). The host's loop applies a notification off the read loop, which routes a response straight to its waiter, so the response
+// could overtake the report written before it on the same socket. The read loop therefore counts the reports it has passed to the host's loop and the loop
+// has not applied (reportOrder), and queues the response of a request that was in flight when it read the report behind it; the host's loop delivers the
+// response once it applied the report. A request the host sent after the report was read is never queued behind it: the error listener the report is
+// applied to may call the extension and wait for the answer, which would wait for the listener. Responses are ordered against the reports of their own
+// connection only; the report of a listener that runs in another extension's request travels on the connection of that request's extension
+// (ReportErrorPayload.Extension).
 //
 // The rule for an error is one: an error of a host-initiated call travels in that call's response, and one raised with no request to answer is reported
 // with this notification. Every handler of the Go, Python, Rust and Lisp SDKs runs inside the host's events.dispatch request, so its failure is that
@@ -988,6 +997,11 @@ type ReportErrorPayload struct {
 	Event string `json:"event"`
 	Error string `json:"error"`
 	Stack string `json:"stack,omitempty"`
+	// Extension names the extension whose listener failed when the report travels on the connection of another extension of the same process. The in-heap
+	// pi.events bus of a shared Node realm runs a listener inside the emit of the extension that emitted, and Pi reports its error before that emit returns, so
+	// the report must precede the emitter's response, which only the emitter's own connection orders. Empty means the connection's own extension. The host
+	// reports the error as that extension's when it runs in the connection's process and drops a name it does not know or one that runs in another process.
+	Extension string `json:"extension,omitempty"`
 }
 
 // Focused custom UI uses three current-wire message classes. Input is an

@@ -2481,7 +2481,7 @@ export class Runtime {
     this.loadState = "loading";
     this.loadingUnsubscribers = [];
     this.extensionRuntime = createExtensionRuntime();
-    this.extensionRuntime.reportError = (error) => this.reportError(error);
+    this.extensionRuntime.reportError = (error, emitter) => this.reportError(error, emitter);
     this.hostReady = false;
     // readyStateApplied is set once the ready frame's state is applied: a state the host pushed after it is newer, and one applied before it would be overwritten by it.
     this.readyStateApplied = false;
@@ -2816,7 +2816,10 @@ export class Runtime {
         }),
         on: active((channel, handler) => {
           // loader.ts:537-551: a throwing handler is reported like other extension errors. The event bus would print it with console.error, which draws over the interactive TUI (Pi #11264).
+          const bus = busFor(this.group);
           const reportingHandler = async (data) => {
+            // pig additive: on the in-heap bus this wrapper runs inside the emit of the runtime that emitted, and Pi reports its error there, before that emit and the command around it return. The emitter is read here, in the synchronous part, so a rejection that comes after an await reports through the same runtime (Runtime.reportError).
+            const emitter = bus.emitting;
             try {
               await handler(data);
             } catch (error) {
@@ -2825,10 +2828,10 @@ export class Runtime {
                 event: `events:${channel}`,
                 error: error instanceof Error ? error.message : String(error),
                 stack: error instanceof Error ? error.stack : undefined,
-              });
+              }, emitter);
             }
           };
-          const unsubscribe = this.extensionRuntime.trackEventBusSubscription(busFor(this.group).on(this, channel, reportingHandler));
+          const unsubscribe = this.extensionRuntime.trackEventBusSubscription(bus.on(this, channel, reportingHandler));
           if (this.loadState === "loading") this.loadingUnsubscribers.push(unsubscribe);
           return unsubscribe;
         }),
@@ -6421,13 +6424,19 @@ export class Runtime {
   }
 
   // Pi's runtime.reportError (types.ts ExtensionRuntimeState.reportError, loader.ts): the runner binds it, and the host's runner is the one that shows the error, so this process sends the error as a report_error notification. The host ignores a notification that arrives before the register frame (an error while extensions load is lost, as Pi's) and the runtime drops the report once it is invalidated (a handler that fails after its session was replaced, runner.ts:411-414). The extension path is the connection's.
-  reportError({ event, error, stack }) {
+  reportError({ event, error, stack }, emitter) {
     try {
       this.extensionRuntime.assertActive();
     } catch {
       return;
     }
-    this.notify("report_error", stack === undefined ? { event, error } : { event, error, stack });
+    const report = stack === undefined ? { event, error } : { event, error, stack };
+    // pig additive: Pi's reportError is synchronous, so a listener's error is reported before the emit that ran it returns and before the command around the emit is answered. The in-heap bus of a shared realm runs this runtime's listener inside another runtime's emit, and only that runtime's connection orders the report before its response, so the report rides it and names this extension (ReportErrorPayload.Extension). A closed emitter connection falls back to this runtime's own.
+    if (emitter !== undefined && emitter !== this && emitter.conn && !emitter.conn.closed) {
+      emitter.notify("report_error", { ...report, extension: this.name });
+      return;
+    }
+    this.notify("report_error", report);
   }
 }
 

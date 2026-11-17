@@ -10,6 +10,8 @@ export class SharedBus {
     this.handlers = new Map(); // handler id -> entry
     this.bySafe = new WeakMap(); // safeHandler -> entry
     this.nextId = 0;
+    // emitting is the runtime whose emit runs the in-heap listeners now, the outermost one when emits nest; undefined outside an emit and on the routed bus, where the Host dispatches.
+    this.emitting = undefined;
   }
 
   on(runtime, channel, handler) {
@@ -51,7 +53,13 @@ export class SharedBus {
 
   emit(runtime, channel, data) {
     if (!this.routed) {
-      this.emitter.emit(channel, data);
+      const outer = this.emitting;
+      if (outer === undefined) this.emitting = runtime;
+      try {
+        this.emitter.emit(channel, data);
+      } finally {
+        if (outer === undefined) this.emitting = undefined;
+      }
       return;
     }
     const result = runtime.busCall("events.emit", { channel, data: this.realm.encode(data) });

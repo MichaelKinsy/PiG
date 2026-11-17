@@ -3951,6 +3951,14 @@ func (h *Host) waitForRegister(ctx context.Context, me *managedExt, conn *Conn) 
 				env.barrier.release()
 				continue
 			}
+			if conn.deliverDeferredResponse(env) {
+				continue
+			}
+			if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyReportError {
+				// An error reported while the extension loads is lost, as Pi's is (loader.ts createExtensionRuntime's `reportError: () => {}`); it still counts as applied.
+				conn.reportApplied()
+				continue
+			}
 			if env.Type == MsgRegister && env.Register != nil {
 				return env.Register, nil
 			}
@@ -5135,6 +5143,14 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			env.barrier.release()
 			continue
 		}
+		// A response the read loop queued behind a report, or the report itself: the response is delivered after the report ahead of it was applied.
+		if conn.deliverDeferredResponse(env) {
+			continue
+		}
+		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyReportError {
+			h.applyReportError(me, conn, env.Notify.Args)
+			continue
+		}
 		if !h.acceptsNodeGeneration(me) {
 			// A generation a reload replaces still runs its command, and until the commit every handler that was in flight when the reload began; runCall answers each of its calls with Pi's stale error instead of leaving the handler that waits for the call blocked.
 			if env.Type == MsgCall && env.Call != nil && (me.replaced.Load() || h.supersedes(me)) {
@@ -5278,14 +5294,6 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 						applied()
 						h.syncReports.endToken(conn, payload.Token)
 					})
-				}
-				continue
-			}
-			if env.Notify.Method == NotifyReportError {
-				var report ReportErrorPayload
-				// A malformed report (arguments that are not the payload, or no event name) is dropped like a malformed argument of any other notification; its size is bounded by MaxFrameSize, the cap of the frame that carries it.
-				if json.Unmarshal(env.Notify.Args, &report) == nil && report.Event != "" {
-					h.reportExtensionError(me, report.Event, report.Error, report.Stack)
 				}
 				continue
 			}
