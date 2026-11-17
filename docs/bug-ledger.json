@@ -27222,6 +27222,38 @@
       ]
     },
     {
+      "id": "BF-6c3e63b",
+      "title": "A detached helper that resolves `@earendil-works/pi-ai` as plain Node does now finds the names Pi's modules…",
+      "symptom": "A detached helper that resolves `@earendil-works/pi-ai` as plain Node does now finds the names Pi's modules export: `convertMessages` of `api/openai-completions`, `PiMessagesResponseError` of `api/pi-messages`, `api/google-shared`, the Codex WebSocket helpers `closeOpenAICodexWebSocketSessions`, `getOpenAICodexWebSocketDebugStats` and `resetOpenAICodexWebSocketDebugStats` of `api/openai-codex-responses` (they act on the provider-bridge child that serves the helper's streams), and the `lazy-bedrock-provider` and `lazy-oauth` subpaths (D74).",
+      "rootCause": "the D74 stand-ins exported only stream and streamSimple and the harness peer's exports list had no entry for two subpaths of Pi's package.json, and no test compared the export names or the subpath list with Pi's",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A detached helper that resolves `@earendil-works/pi-ai` as plain Node does now finds the names Pi's modules export: `convertMessages` of `api/openai-completions`, `PiMessagesResponseError` of `api/pi-messages`, `api/google-shared`, the Codex WebSocket helpers `closeOpenAICodexWebSocketSessions`, `getOpenAICodexWebSocketDebugStats` and `resetOpenAICodexWebSocketDebugStats` of `api/openai-codex-responses` (they act on the provider-bridge child that serves the helper's streams), and the `lazy-bedrock-provider` and `lazy-oauth` subpaths (D74).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6c3e63b94d",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "7d26c9d83e",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/harness_pi_ai_api_values_test.go::TestRestoredAPIValuesBehaveAsUnderPi",
+        "coding/extension/host/subprocess/harness_pi_ai_subpaths_test.go::TestHelperResolvingPiAiFromTheHarnessSeesPisExports",
+        "coding/extension/host/subprocess/node_pi_ai_child_imports_test.go::TestChildAndWorkerImportsOfPiAiResolveAsUnderPi",
+        "coding/extension/host/subprocess/node_pi_ai_subpath_imports_test.go::TestExtensionImportsOfPiAiSubpathsResolveAsUnderPi",
+        "coding/extension/host/subprocess/runtime_node_stub_imports_test.go::TestUnresolvedRelativeImportsFindsWhatAStubLacks",
+        "coding/extension/host/subprocess/runtime_node_stub_imports_test.go::TestVendoredModulesImportOnlyWhatTheBridgeStubsExport",
+        "coding/extension/host/subprocess/runtime_node_vendored_test.go::TestVendoredPiDistMatchesThePinnedPackage"
+      ]
+    },
+    {
       "id": "BF-6c69d7b",
       "title": "Chord: a wait on a promise that a context's abort also ends (`awaitWithContext` in Pi) now delivers the abort…",
       "symptom": "The abort was delivered by `context.AfterFunc` on a goroutine of its own and could lose to a settlement that came a moment after it.",
@@ -31613,6 +31645,28 @@
       ],
       "tests": [
         "internal/codingagent/session_load_oracle_test.go::TestLoadEntriesFromFileMatchesPiOnCorruptedFiles"
+      ]
+    },
+    {
+      "id": "BF-801d08c",
+      "title": "A Codex WebSocket stream whose caller cancels its context right after reading the result no longer closes the…",
+      "symptom": "A Codex WebSocket stream whose caller cancels its context right after reading the result no longer closes the connection the provider keeps for the session, so the session's next request reuses it (one connection for sequential requests, as Pi) instead of failing on a closed connection and dialling a new one.",
+      "rootCause": "the abort-close registration of a WebSocket stream outlived its terminal frame, so a cancel after the result raced the release that keeps the connection and closed it",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Codex WebSocket stream whose caller cancels its context right after reading the result no longer closes the connection the provider keeps for the session, so the session's next request reuses it (one connection for sequential requests, as Pi) instead of failing on a closed connection and dialling a new one.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "801d08c8ba",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "ai/openai_codex_cancel_after_result_test.go::TestCodexCancelAfterTheTerminalEventKeepsTheSessionsConnection"
       ]
     },
     {
