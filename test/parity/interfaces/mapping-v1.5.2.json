@@ -203770,7 +203770,7 @@
       "evidence": [
         "test:test/extension-conformance/provider_oauth_refresh_test.go#TestProviderRefreshModelsAcrossSDKs",
         "test:test/extension-conformance/provider_refresh_context_node_test.go#TestRefreshModelsContextMembersNode",
-        "test:coding/custom_provider_stream_upstream_test.go#TestRegisteredProviderCallbackPanicIsRequestError"
+        "test:coding/extension/provider_insecure_test.go#TestProviderConfigInsecureKeepsThreeStatesOnTheWire"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

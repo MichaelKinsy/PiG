@@ -114808,6 +114808,17 @@
       "shapeHash": "sha256:513ffd285b107a800e5ff69951a796978225993a229fdd300f05c614dcc96a27"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ProviderConfig.InsecureSetting",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ProviderConfig.InsecureSetting",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *bool"
+      },
+      "shapeHash": "sha256:0e998004e67650f761cd7f3b14e398001e84be5d0245f8ec6d51cc6ada229115"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ProviderConfig.MarshalJSON",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "ProviderConfig.MarshalJSON",
@@ -114839,6 +114850,28 @@
         "type": "ProviderConfigInput"
       },
       "shapeHash": "sha256:a8889a6df118ca134e8b5d653a0d117d88067010e7dd8321941d61aa4b784bed"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ProviderConfigInput.InsecureSetting",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ProviderConfigInput.InsecureSetting",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *bool"
+      },
+      "shapeHash": "sha256:0e998004e67650f761cd7f3b14e398001e84be5d0245f8ec6d51cc6ada229115"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ProviderConfigInput.SetInsecureSetting",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ProviderConfigInput.SetInsecureSetting",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(setting *bool)"
+      },
+      "shapeHash": "sha256:99b97c84357a7170f1e3439a9612bd093e8cacb93a9b6a0464ab5b4eeacbde88"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ProviderHeaders",
@@ -119725,6 +119758,17 @@
       "shapeHash": "sha256:85b86b4f399cb63dbaeec503813e9d5c876c11b411c7b13c49413d1459eb04c2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#insecureSetting",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "insecureSetting",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(on bool, off bool) *bool"
+      },
+      "shapeHash": "sha256:1f66baa0500fa083adb7d2875856c77d878357489bbafbfd24ba0113968b8111"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#isExposure",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "isExposure",
@@ -120559,6 +120603,17 @@
         "type": "func(*os/exec.Cmd)"
       },
       "shapeHash": "sha256:6ad5ffe8863c14a2f0668522f4329e058fd69f82429cd46202f03ff8b733eb2c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#providerConfigFields",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "providerConfigFields",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "providerConfigFields"
+      },
+      "shapeHash": "sha256:68526e083c568ad67b9db817f5c65ecfb725ba36d9db807c3b3f7a539c4a4462"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#providerConfigJSON",
@@ -313301,6 +313356,17 @@
         "type": "func(value string) any"
       },
       "shapeHash": "sha256:f741557a01c91b0bd9051968ab585193c9ea095b0f315010ef4e3b7aa65f9a73"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#optedIn",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "optedIn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(setting *bool) bool"
+      },
+      "shapeHash": "sha256:0f8d1ef14f9240310f11c746266afa8042c75f93e1add56a0f5076cc447cf50b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#optionalEnv",
