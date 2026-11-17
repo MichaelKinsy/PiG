@@ -708,16 +708,25 @@ func (r *ModelRegistry) ResolveFallbackModel(model *ai.Model) ModelEntry {
 
 // ResolveRemoteCatalogModel is ResolveGeneratedModel for a model the remote catalog overlay carries: a model the bundled catalog lacks, or one whose bundled record the overlay replaces.
 // The entry holds the overlay's window, limits and prices, so a model built from it matches the one ModelRuntime.getModel returns. It reports false for a model the overlay does not carry
-// and for one an explicit models list defines.
+// and for one an explicit models list defines. An OpenRouter routing variant (D199) of a model the overlay carries is carried too, with the base record's window, limits and prices.
 // upstream: model-runtime.ts getModel reads the catalog with the remote overlay applied; sdk.ts:224-229 and agent-session.ts:647 build every session model from it.
 func (r *ModelRegistry) ResolveRemoteCatalogModel(providerID, modelID string) (ModelEntry, bool) {
 	if r.GetProvider(providerID) != nil || r.HasModelDefinition(providerID, modelID) {
 		return ModelEntry{}, false
 	}
-	carried := slices.ContainsFunc(r.remoteOverlayModels(providerID), func(model ai.AnyModel) bool {
-		chat, ok := model.(*ai.Model)
-		return ok && chat.ID == modelID
-	})
+	carriedID := func(id string) bool {
+		return slices.ContainsFunc(r.remoteOverlayModels(providerID), func(model ai.AnyModel) bool {
+			chat, ok := model.(*ai.Model)
+			return ok && chat.ID == id
+		})
+	}
+	carried := carriedID(modelID)
+	if !carried {
+		// pig divergence (D199): an OpenRouter routing variant reads every property from its base model, so the overlay's record of the base is the variant's record; GetProviderModelDataByID derives it.
+		if base, _, variant := ai.OpenRouterRoutingVariant(providerID, modelID); variant {
+			carried = carriedID(base)
+		}
+	}
 	if !carried {
 		return ModelEntry{}, false
 	}
