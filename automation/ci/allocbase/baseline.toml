@@ -3661,17 +3661,32 @@ allocs = 46
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenStreamingFrameLongTranscript/entries-0"
-allocs = 53
+allocs = 28
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenStreamingFrameLongTranscript/entries-1000"
-allocs = 55
+allocs = 28
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAltScreenStreamingFrameLongTranscript/entries-4000"
-allocs = 55
+allocs = 28
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkAltScreenWheelScroll/lines-104k"
+allocs = 572
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkAltScreenWheelScroll/lines-1k"
+allocs = 565
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkAltScreenWheelScroll/lines-26k"
+allocs = 571
 
 [[benchmark]]
 package = "./tui"
@@ -3696,7 +3711,7 @@ allocs = 381
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkAssistantThinkingClick"
-allocs = 9
+allocs = 5
 
 [[benchmark]]
 package = "./tui"
@@ -4671,7 +4686,7 @@ allocs = 4046
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkToolDefinitionRender"
-allocs = 8
+allocs = 3
 
 [[benchmark]]
 package = "./tui"
@@ -4686,12 +4701,12 @@ allocs = 1
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTranscriptClickRedraw/messages=100"
-allocs = 13
+allocs = 9
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTranscriptClickRedraw/messages=1000"
-allocs = 14
+allocs = 10
 
 [[benchmark]]
 package = "./tui"
