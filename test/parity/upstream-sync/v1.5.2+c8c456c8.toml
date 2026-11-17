@@ -1,0 +1,30 @@
+from = "1.5.2+c47ad043"
+to = "1.5.2+c8c456c8"
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/model_fallback_diagnostic_upstream_test.go#TestRPCSwitchSessionReportsTheModelFallbackOnStderr", "test:coding/cli/model_fallback_diagnostic_upstream_test.go#TestRPCStartAndForkReportTheModelFallbackOnStderr", "test:coding/cli/model_fallback_diagnostic_upstream_test.go#TestPrintAndJSONReportTheModelFallbackOnStderr", "test:coding/cli/model_fallback_diagnostic_upstream_test.go#TestNoModelsAvailableIsReportedOnceAsAWarning"]
+rationale = "c8c456c85c6e (#12234): the runtime factory adds modelFallbackMessage to the runtime's diagnostics as a warning when created.session.model is set (cliSessionFactory.create in coding/cli/cli_session_factory.go), so the reporting of c47ad0432bb8 shows it in every mode at startup and after each replacement; the InteractiveMode option is passed only when the session has no model (noModelFallbackMessage in coding/cli/main.go). Both tests are `session.model` truthiness, which PiG's Session.Model() mirrors including the agent's placeholder model (agent/agent.go). That placeholder makes the branch `appMode !== \"interactive\" && !session.model` (the no-model exit) unreachable in Pi, and the option's `session.model ? undefined : modelFallbackMessage` always undefined: with no models Pi (measured on Pi main) pushes the login guidance as a warning in every mode, once (print and JSON before the missing-key error, RPC once at startup and not again after switch_session or fork), contrary to the commit message's 'unchanged'; PiG has no counterpart of the dead branch and mirrors the measured behavior. The fallback model rule is the shared findInitialModel (defaultModelPerProvider order; no default: the provider's first model in models.json order), measured for an OpenAI-compatible provider with a custom base URL, an OAuth provider without login, no default model, and keys of two built-in providers."
+
+[[files]]
+path = "packages/coding-agent/test/model-fallback-diagnostic.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:coding/cli/model_fallback_diagnostic_upstream_test.go#TestRPCSwitchSessionReportsTheModelFallbackOnStderr"]
+rationale = "c8c456c85c6e: a saved two-turn session whose model is gone/missing-model; an RPC process started without a session runs switch_session into it; stderr holds 'Warning: Could not restore model gone/missing-model. Using fake/fake-model' (here the fake provider of a models.json with an OpenAI-compatible base URL, the same shape) and stdout does not. The test also runs the OAuth, no-default-model and two-built-in-keys shapes, RPC startup and fork, and print and JSON mode."
+
+[[files]]
+path = "packages/coding-agent/src/utils/deprecation.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "c8c456c85c6e deletes warnDeprecation, which had no caller and is not exported. PiG never ported it (no Go counterpart; the PORT_MAP and coverage rows say not run)."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "c8c456c85c6e: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment."

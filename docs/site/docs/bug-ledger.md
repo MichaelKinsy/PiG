@@ -1265,6 +1265,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8eb1202](#bf-8eb1202) | An OpenAI Chat Completions chunk with a member of an unexpected type (a number for `delta.content`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8ed6366](#bf-8ed6366) | A key received after a /reload had completed could be dropped by the input loop; the editor now receives it… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f241ca](#bf-8f241ca) | A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on… | PiG's own defect | All platforms | Unreleased |
+| [BF-8f2ed99](#bf-8f2ed99) | Follows Pi c8c456c85c6e (#12234, same class as #12115): when the saved model of a session you resume, fork or… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f45099](#bf-8f45099) | Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f81668](#bf-8f81668) | The upstream mirror's provider data (`.upstream/current/packages/ai/src/providers/data`) is the snapshot the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8f88d43](#bf-8f88d43) | On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is… | PiG's own defect | Windows | 0.7.0 |
@@ -19546,6 +19547,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `8f241ca2fd` (2026-11-08)
 - **Tests:** `ai/connection_cause_oracle_test.go::TestConnectionErrorKeepsCauseThroughSDKsMatchesPi`, `ai/openai_sdk_transport_error_test.go::TestOpenAISDKTransportErrorConnectionReset`, `ai/transport_diagnostic_test.go::TestProviderTransportResetRecordsDiagnosticAndKeepsMessage`
 - **Release note:** A response stream dropped mid-run reports `terminated: other side closed (UND_ERR_SOCKET)` on `openai-completions`, `openai-responses`, `google` and `anthropic-messages`, as Pi does, instead of `terminated (cause: ...)`.
+
+### BF-8f2ed99
+
+**Follows Pi c8c456c85c6e (#12234, same class as #12115): when the saved model of a session you resume, fork or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Follows Pi c8c456c85c6e (#12234, same class as #12115): when the saved model of a session you resume, fork or continue no longer exists or has no login, the model Pi falls back to is now reported in every mode and after every replacement.
+- **Root cause:** the fallback message was read only by interactive startup through the modelFallbackMessage option; the runtime recomputed it on each replacement and nothing reported it, and the print and RPC runtime inputs never carried it; present since v0.3.0 (the startup model's ModelFallbackMessage)
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8f2ed99753` (2026-11-16)
+- **Tests:** `coding/cli/model_fallback_diagnostic_upstream_test.go::TestNoModelsAvailableIsReportedOnceAsAWarning`, `coding/cli/model_fallback_diagnostic_upstream_test.go::TestPrintAndJSONReportTheModelFallbackOnStderr`, `coding/cli/model_fallback_diagnostic_upstream_test.go::TestRPCStartAndForkReportTheModelFallbackOnStderr`, `coding/cli/model_fallback_diagnostic_upstream_test.go::TestRPCSwitchSessionReportsTheModelFallbackOnStderr`
+- **Release note:** Follows Pi c8c456c85c6e (#12234, same class as #12115): when the saved model of a session you resume, fork or continue no longer exists or has no login, the model Pi falls back to is now reported in every mode and after every replacement. The warning `Could not restore model <provider>/<id>. Using <provider>/<id>` was shown only at interactive startup; `/resume` and `/fork` into such a session, and RPC `switch_session` and `fork`, changed models without a word, and print, JSON and RPC mode never showed it even at startup. Interactive mode now shows it in the chat, above `Resumed session` after `/resume`, and print, JSON and RPC mode write `Warning: <message>` to stderr (RPC never writes it to stdout); a message already reported is not repeated (a second `/resume` into the same session shows nothing, a fallback to a different model shows its own line). The fallback model rule is unchanged (the saved model if it has a login, else the default model, else the first available model of the shared provider order).
 
 ### BF-8f45099
 

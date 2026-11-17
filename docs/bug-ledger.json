@@ -34493,6 +34493,31 @@
       ]
     },
     {
+      "id": "BF-8f2ed99",
+      "title": "Follows Pi c8c456c85c6e (#12234, same class as #12115): when the saved model of a session you resume, fork or…",
+      "symptom": "Follows Pi c8c456c85c6e (#12234, same class as #12115): when the saved model of a session you resume, fork or continue no longer exists or has no login, the model Pi falls back to is now reported in every mode and after every replacement.",
+      "rootCause": "the fallback message was read only by interactive startup through the modelFallbackMessage option; the runtime recomputed it on each replacement and nothing reported it, and the print and RPC runtime inputs never carried it; present since v0.3.0 (the startup model's ModelFallbackMessage)",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Follows Pi c8c456c85c6e (#12234, same class as #12115): when the saved model of a session you resume, fork or continue no longer exists or has no login, the model Pi falls back to is now reported in every mode and after every replacement. The warning `Could not restore model \u003cprovider\u003e/\u003cid\u003e. Using \u003cprovider\u003e/\u003cid\u003e` was shown only at interactive startup; `/resume` and `/fork` into such a session, and RPC `switch_session` and `fork`, changed models without a word, and print, JSON and RPC mode never showed it even at startup. Interactive mode now shows it in the chat, above `Resumed session` after `/resume`, and print, JSON and RPC mode write `Warning: \u003cmessage\u003e` to stderr (RPC never writes it to stdout); a message already reported is not repeated (a second `/resume` into the same session shows nothing, a fallback to a different model shows its own line). The fallback model rule is unchanged (the saved model if it has a login, else the default model, else the first available model of the shared provider order).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8f2ed99753",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/model_fallback_diagnostic_upstream_test.go::TestNoModelsAvailableIsReportedOnceAsAWarning",
+        "coding/cli/model_fallback_diagnostic_upstream_test.go::TestPrintAndJSONReportTheModelFallbackOnStderr",
+        "coding/cli/model_fallback_diagnostic_upstream_test.go::TestRPCStartAndForkReportTheModelFallbackOnStderr",
+        "coding/cli/model_fallback_diagnostic_upstream_test.go::TestRPCSwitchSessionReportsTheModelFallbackOnStderr"
+      ]
+    },
+    {
       "id": "BF-8f45099",
       "title": "Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed…",
       "symptom": "Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed thinking is often not in the live context, so including it could make the summarization request larger than the context it summarizes and compaction fail on every attempt.",
