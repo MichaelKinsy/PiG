@@ -33207,6 +33207,27 @@
       ]
     },
     {
+      "id": "BF-8695cad",
+      "title": "fix(cli): the no-models warning is listed wherever a start ends without a model",
+      "symptom": "fix(cli): the no-models warning is listed wherever a start ends without a model",
+      "rootCause": "Pi (main.ts:917-918) ends the runtime diagnostics with the model fallback message as a warning, and every place that lists the diagnostics shows it: the startup error exit, --help, --list-models and the modes. PiG added it in the session factory only, so the error exit of `--provider x` without `--model` (or an unknown --model, or --api-key without a model), --help and --list-models never listed it. cliBuild.runtimeDiagnostics is now the one function that builds the list, the warning included.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8695cad688",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/cli/session_replacement_bench_test.go::TestSessionFactoryCarriesDiagnosticsAndModelFallbackToTheRuntime"
+      ]
+    },
+    {
       "id": "BF-869cef8",
       "title": "A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of…",
       "symptom": "A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of unknown type, instead of ending the reply with a JSON decode error.",

@@ -1229,6 +1229,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-86376a7](#bf-86376a7) | Draining a model collection while it refreshes no longer starts provider work after the drain began, and a… | PiG's own defect | All platforms | Unreleased |
 | [BF-86376a7-2](#bf-86376a7-2) | fix: Drain admits no work once it begins, and a stream's auth callback is not owned work | PiG's own defect | All platforms | Unreleased |
 | [BF-866c7f9](#bf-866c7f9) | fix(rpc): two prompts of one batch answer in request order | PiG's own defect | All platforms | Unreleased |
+| [BF-8695cad](#bf-8695cad) | fix(cli): the no-models warning is listed wherever a start ends without a model | PiG's own defect | All platforms | Unreleased |
 | [BF-869cef8](#bf-869cef8) | A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
 | [BF-873f87d](#bf-873f87d) | Chord: a context linked from two abort sources now reports the reason of the source that aborted first when… | PiG's own defect | All platforms | Unreleased |
@@ -19090,6 +19091,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `866c7f9fb3` (2026-10-10)
 - **Tests:** `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsOfOneBatchAnswerInRequestOrder`, `coding/session_prompt_compaction_check_test.go::TestBeginPromptCompactionCheckReturnsOnlyADueCompaction`
+
+### BF-8695cad
+
+**fix(cli): the no-models warning is listed wherever a start ends without a model**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(cli): the no-models warning is listed wherever a start ends without a model
+- **Root cause:** Pi (main.ts:917-918) ends the runtime diagnostics with the model fallback message as a warning, and every place that lists the diagnostics shows it: the startup error exit, --help, --list-models and the modes. PiG added it in the session factory only, so the error exit of `--provider x` without `--model` (or an unknown --model, or --api-key without a model), --help and --list-models never listed it. cliBuild.runtimeDiagnostics is now the one function that builds the list, the warning included.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8695cad688` (2026-11-17)
+- **Tests:** `coding/cli/session_replacement_bench_test.go::TestSessionFactoryCarriesDiagnosticsAndModelFallbackToTheRuntime`
 
 ### BF-869cef8
 
