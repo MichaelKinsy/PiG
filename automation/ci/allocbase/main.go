@@ -7,7 +7,7 @@
 //
 // Allocation counts of a benchmark that starts goroutines or servers vary by a few allocations from run to run, so the tolerance is the larger of 2 allocations and 6% (BenchmarkNativeProviderStream varies 827 to 864 between runs).
 //
-// Run it with `make alloc-baseline`. -update rewrites the baseline from a run, -packages limits the run.
+// Run it with `make alloc-baseline`. -update rewrites the baseline from a run, -packages limits the run, and -changed-since <ref> limits it to the packages a change since <ref> touches or imports (`make alloc-baseline-changed`, the pull request's form of the nightly: same settings, same verdict, only for those packages; nothing selected is nothing to measure and exit 0).
 package main
 
 import (
@@ -129,6 +129,8 @@ func main() {
 	update := flag.Bool("update", false, "rewrite the baseline from this run")
 	only := flag.String("packages", "", "comma-separated packages to run instead of the default set")
 	benchtime := flag.String("benchtime", "5x", "go test -benchtime")
+	changedSince := flag.String("changed-since", "", "git ref: run only the hot packages a change since the merge base of HEAD and the ref makes the run measure (a changed benchmark file, baseline row or non-test file, and the packages importing one); exclusive with -packages")
+	committed := flag.Bool("committed", false, "with -changed-since, read the commits since the merge base only, not the index, the working tree or untracked files")
 	flag.Parse()
 	abs, err := filepath.Abs(*root)
 	if err != nil {
@@ -138,17 +140,36 @@ func main() {
 	if *baselinePath == "" {
 		*baselinePath = filepath.Join(abs, "automation", "ci", "allocbase", "baseline.toml")
 	}
-	pkgs := packages
-	if *only != "" {
-		pkgs = strings.Split(*only, ",")
-	}
-	found, err := run(abs, pkgs, *benchtime)
-	if err != nil {
+	var baseline baselineFile
+	if _, err := toml.DecodeFile(*baselinePath, &baseline); err != nil && !os.IsNotExist(err) {
 		fmt.Fprintln(os.Stderr, "alloc-baseline:", err)
 		os.Exit(2)
 	}
-	var baseline baselineFile
-	if _, err := toml.DecodeFile(*baselinePath, &baseline); err != nil && !os.IsNotExist(err) {
+	pkgs := packages
+	switch {
+	case *only != "" && *changedSince != "":
+		fmt.Fprintln(os.Stderr, "alloc-baseline: -packages and -changed-since are exclusive")
+		os.Exit(2)
+	case *only != "":
+		pkgs = strings.Split(*only, ",")
+	case *changedSince != "":
+		selection, files, err := changedPackages(abs, *changedSince, *committed, packages, baseline.Benchmark)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "alloc-baseline:", err)
+			os.Exit(2)
+		}
+		if len(selection) == 0 {
+			fmt.Printf("alloc-baseline-changed: no hot package changed or imports a changed package (%d changed files); nothing to measure\n", files)
+			return
+		}
+		pkgs = nil
+		for _, chosen := range selection {
+			fmt.Println("alloc-baseline-changed: measuring", chosen.describe())
+			pkgs = append(pkgs, chosen.Package)
+		}
+	}
+	found, err := run(abs, pkgs, *benchtime)
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "alloc-baseline:", err)
 		os.Exit(2)
 	}
