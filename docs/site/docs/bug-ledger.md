@@ -537,6 +537,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-633152d](#bf-633152d) | Starting a Go extension no longer fails with `hash <dir> after its build: open …/release/deps/rmeta…: no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-63b4fc8](#bf-63b4fc8) | `NodeExecutionEnv.Watch` gives a directory replaced at the same path a new watcher, reports changes to the… | A fix Pi shipped that PiG ported | macOS | 0.5.0 |
 | [BF-63bb0b7](#bf-63bb0b7) | `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-642d4fc](#bf-642d4fc) | An extension that is restarted automatically after a crash could lose a registration its new process made… | PiG's own defect | All platforms | Unreleased |
 | [BF-6445df7](#bf-6445df7) | PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-644a9f2](#bf-644a9f2) | Changelog link rewriting and `git` source parsing match a URL scheme case-insensitively as Pi's regex with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-644a9f2-2](#bf-644a9f2-2) | A Node extension's `ctx.ui.custom` factory can call `tui.showOverlay`, `tui.hideOverlay` and `tui.setFocus`… | PiG's own defect | All platforms | 0.5.0 |
@@ -1196,8 +1197,10 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b684b81](#bf-b684b81) | RPC and session JSON write an assistant message's members in the order Pi's providers assign them… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b6c65b3](#bf-b6c65b3) | `!` command and RPC `bash` output no longer keeps fragments of color codes, such as a stray `m`, when an… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-b6d8ab0](#bf-b6d8ab0) | Fix changelog fragment and bug ledger naming the pre-squash commit of #307 (#317) | PiG's own defect | All platforms | Unreleased |
+| [BF-b6f71d4](#bf-b6f71d4) | A restarted extension kept the Markdown transformer its first process registered | PiG's own defect | All platforms | Unreleased |
 | [BF-b730205](#bf-b730205) | OpenRouter image models that only the Images API serves (for example `openai/gpt-image-2.5-flare`) now… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-b751326](#bf-b751326) | When an extension in a shared Go, Rust or Python process crashes, the error for each stopped extension now… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-b786804](#bf-b786804) | An extension that is restarted automatically after a crash could keep a stale list of the host's commands… | PiG's own defect | All platforms | Unreleased |
 | [BF-b78cdae](#bf-b78cdae) | A YAML parse error on a block scalar used as an implicit key (`name: x` followed by `\|description: ...`)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b7d9b2b](#bf-b7d9b2b) | `pig install` and `pig remove` no longer add ever deeper nested entries to the npm `package-lock.json` when… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-b84facb](#bf-b84facb) | fix(codingagent,tui): extension editor follows the terminal rows; title and image fallback close only the… | PiG's own defect | All platforms | Unreleased |
@@ -1429,6 +1432,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-dc003a9-3](#bf-dc003a9-3) | Sign in with ChatGPT: a ChatGPT Business workspace usage-limit error… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-dc53412](#bf-dc53412) | A `pig_strip_bedrock_converse_stream` Piglet Binary no longer links the AWS SDK through the Bedrock retry… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-dca5763](#bf-dca5763) | A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a… | PiG's own defect | All platforms | 0.5.2 |
+| [BF-dcd255a](#bf-dcd255a) | An extension that is restarted automatically after a crash could be read half replaced: the host adopts the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ddd4772](#bf-ddd4772) | fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse | PiG's own defect | All platforms | Unreleased |
 | [BF-dde6aa6](#bf-dde6aa6) | Cache warming no longer refreshes at once when a model's promptCache lifetime is far larger than the one-hour… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-dde6aa6-10](#bf-dde6aa6-10) | On Windows, path normalization and joining follow Node 24's reserved device name handling: a path such as… | PiG's own defect | Windows | 0.5.0 |
@@ -8822,6 +8826,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `63bb0b7eac` (2026-10-12), `974050757c` (2026-10-12), `d305b76bda` (2026-10-12)
 - **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK`, `extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild` and 3 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call, such as `fmt.Println(ctx.ConfigHome())`. That call still compiles against the current SDK because the value and the error both become arguments, so the error was printed or passed on instead of handled and the upgrade reported nothing. It is now rewritten like the other uses: the function returns the error, or, for `ConfigHome` in a function that does not return an error, the line is listed for you to change.
+
+### BF-642d4fc
+
+**An extension that is restarted automatically after a crash could lose a registration its new process made…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that is restarted automatically after a crash could lose a registration its new process made right after it was ready.
+- **Root cause:** The call was answered with success and the registration was not served: the command did not run, the tool or the handler was never called, for as long as that process ran.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `642d4fc629` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** An extension that is restarted automatically after a crash could lose a registration its new process made right after it was ready. The host started the loop that serves the new process's calls before it adopted the new registration into the extension its runner holds, so a command, shortcut, flag or renderer registered late (`registerDeclaration`), a tool registered late (`registerTool`), an event handler subscribed late (`event.subscribe`) or the claim to own thinking runs (`ownThinkingRuns`) was written into the held extension and then replaced by the registration the new process had sent before its ready. The call was answered with success and the registration was not served: the command did not run, the tool or the handler was never called, for as long as that process ran. The restart now adopts the registration before the loop starts, so every call the new process makes after its ready is applied on top of it. The first load of an extension is not changed. No report of this was received; a test holds the adoption and shows each of the four calls lost. The restart adoption that rewrites the held extension dates from v0.7.0 (`6af0806f7a`). <!-- cause: adoptConn started the loop that serves the connection's calls before it adopted the restarted registration into the held extension, so a call made after the ready was written into the registries the adoption then replaced, and no test made a registration between the ready and the adoption --> <!-- tests: TestRestartKeepsWhatTheNewProcessRegistersAfterItsReady -->
 
 ### BF-6445df7
 
@@ -17987,6 +18005,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `b6d8ab0bfa` (2026-10-24, #317)
 - **Tests:** `ai/socket_read_monitor_linux_norace_test.go::TestSocketWriterHelper`, `ai/socket_read_monitor_linux_norace_test.go::TestStreamingTransportReadDoesNotWakeTheRuntimeMonitor`, `coding/extension/host/subprocess/conn_close_test.go::TestCloseAfterThePeerClosedSucceeds`, `coding/extension/host/subprocess/conn_close_test.go::TestCloseReturnsARealTransportCloseFailure`, `coding/extension/host/subprocess/conn_close_test.go::TestTransportAlreadyClosedClasses`, `tui/config_selector_oracle_test.go::TestConfigSelectorMatchesPi`, `tui/terminal_negotiation_stop_test.go::TestTerminalInputCarriesOnlyWhatIsSent`, `tui/terminal_split_reply_test.go::TestForwardTerminalConsumesAnOwedReplySplitAcrossSlowReads`
 
+### BF-b6f71d4
+
+**A restarted extension kept the Markdown transformer its first process registered**
+
+- **Source:** PiG's own defect
+- **Symptom:** A restarted extension kept the Markdown transformer its first process registered.
+- **Root cause:** adoptRestartedExtension replaced handlers, tools and declarations but kept the first registration's Markdown transformer, so a restarted process that registered one the first did not had no transform and one that dropped it kept being asked. ReplaceDeclarations now swaps it under the declaration registry lock and the runner reads it through RegisteredMarkdownTransformer. Tool renderers need no change: the resolver asks the managedExt the supervisor restarted, whose resolution state each registration resets.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b6f71d46a7` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** A restarted extension kept the Markdown transformer its first process registered. After an automatic restart a transformer that only the new process registered did nothing, one the new process no longer registered went on being asked, and the surfaces the new process listed were ignored in favour of the old list. The restart now replaces the transformer with the new registration, as it does for commands and renderers. Tool renderers were already correct: a restarted extension resolves them from its new process. The restart adoption that left the transformer behind dates from v0.7.0 (`6af0806f7a`). <!-- cause: adoptRestartedExtension did not adopt Extension.MarkdownTransformer, so the first registration stayed --> <!-- tests: TestRestartedExtensionTakesItsNewMarkdownTransformer, TestRestartedExtensionResolvesToolRenderersFromItsNewProcess -->
+
 ### BF-b730205
 
 **OpenRouter image models that only the Images API serves (for example `openai/gpt-image-2.5-flare`) now…**
@@ -18016,6 +18048,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `311609427b` (2026-10-07), `66bb7180b3` (2026-10-07), `b751326e80` (2026-10-09)
 - **Tests:** `coding/extension/host/subprocess/liveness_test.go::TestPackedMemberTransportClosureDoesNotProveProcessDeath`, `coding/extension/host/subprocess/packed_go_test.go::TestHost_KillingPackedProcessNeverClaimsItRemainedAlive`, `coding/resource_loader_extend_test.go::TestResourceLoaderInterfaceExtendsAndReloads`, `coding/session_extend_resources_test.go::TestSessionExtendsItsLoaderAfterExtensionReplacement`, `coding/session_extend_resources_test.go::TestSessionExtendsItsLoaderFromResourcesDiscover`, `coding/session_extend_resources_test.go::TestSessionWithNoResourcesDoesNotEmitResourcesDiscover`
 - **Release note:** When an extension in a shared Go, Rust or Python process crashes, the error for each stopped extension now says that `/reload` restarts it. Before, the message could only say "packed member connection closed".
+
+### BF-b786804
+
+**An extension that is restarted automatically after a crash could keep a stale list of the host's commands…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that is restarted automatically after a crash could keep a stale list of the host's commands until its next call.
+- **Root cause:** The ready frame of an automatic restart is built before adoptRestartedExtension replaces the registry, so its command catalog is the previous generation's while its flags are the new one's. The adoption bumps neither hostStateEpoch nor runtimeStateGeneration, so no push followed it and a Node SDK's synchronous getCommands() kept the previous catalog until the next dispatch. A restart now pushes the state once the registration is adopted.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b7868046ed` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** An extension that is restarted automatically after a crash could keep a stale list of the host's commands until its next call. The restart's ready frame is built before the host adopts the new process's registration, so it carried the command catalog of the process that crashed beside the new process's flags, and nothing pushed the state again after the adoption. The host now pushes the state on the new connection once the adoption is done. A packed cell's member is started again as a new extension and was never affected. The ready frame and the automatic restart date from v0.2.0. <!-- cause: the restart adopted the new registration after its ready frame was built and bumped neither state counter, so no push followed the adoption, and no test read the state an extension holds after its restart --> <!-- tests: TestRestartPushesTheStateOnceItIsAdopted -->
 
 ### BF-b78cdae
 
@@ -21216,6 +21262,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `38901751db` (2026-10-21), `dca5763ac5` (2026-10-21)
 - **Tests:** `coding/extension/host/subprocess/callpayload_shape_test.go::TestCallPayloadKeepsUnkeyedLiteralShape`
 - **Release note:** A notification, status or message that an extension queues on `setImmediate` or `setTimeout(0)` from inside a tool now reaches an RPC client after `agent_settled`, as Pi's loop does, instead of before `tool_execution_end`. Pi runs those callbacks when its event loop turns, which a run's chain of microtasks never gives it. The Node runtime ran them as soon as the tool answered, because it is another process, and its host calls arrived mid-run. The host now holds such calls while the RPC run chains microtasks and runs them in arrival order at the next real wait: a model response's I/O, a built-in tool's run, a dialog, a compaction or an auto-retry delay, or the end of `agent_settled`. A `process.nextTick` callback's notification follows the `tool_execution_end` of the tool that queued it, as in Pi, and the callbacks of a tool that returns while a sibling tool of its batch still runs reach the client right after its `tool_execution_end`.
+
+### BF-dcd255a
+
+**An extension that is restarted automatically after a crash could be read half replaced: the host adopts the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that is restarted automatically after a crash could be read half replaced: the host adopts the restarted process's registration while a state push, a flag lookup, a command, tool or event call or a status reader runs on another goroutine.
+- **Root cause:** An automatic restart of a published extension adopts the new process's registration on the supervisor's goroutine. It wrote the flag names, the flag defaults, the session-log and model-registry requests, the runtime kind, the process share and its spawner, and the Extension pointer in place with no lock, while the owner loop's state pushes, the host's flag resolution, the runners' calls and the status readers read them from goroutines of their own. Names were written before the registration was validated, so a refused registration also left the new names beside the old defaults.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `dcd255af69` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/state_push_test.go::TestPushStateToSkipsIdenticalAndOmitsUnchangedCatalogs`
+- **Release note:** An extension that is restarted automatically after a crash could be read half replaced: the host adopts the restarted process's registration while a state push, a flag lookup, a command, tool or event call or a status reader runs on another goroutine. The adoption wrote the flag names and defaults, the session-log and model-registry requests, the runtime kind, the process it runs in and the held extension in place with no lock, so a reader could take the new flag names beside the old defaults, or the process of one generation with the link of another, and a registration that failed validation left its flag names behind. The race detector reported each of them in a gate run; no crash was reproduced. The flag names and defaults and the two requests are now one value that the adoption replaces whole once the registration validates, so a reader sees the registration that was running until the new one is adopted and a refused registration replaces nothing; the process fields join the lock that already guards the process handle. The unlocked writes date from v0.2.0 (flag names, the session-log request, the held extension), v0.3.0 (flag defaults, the runtime kind, the process share) and v0.7.0 (the model-registry request). <!-- cause: the restart adopted the new registration field by field with no lock on the supervisor's goroutine, although the readers of those fields run on other goroutines, and no test restarted an extension beside each kind of reader --> <!-- tests: TestRestartReplacesRegistrationBesideEveryReader, TestFailedRegistrationKeepsTheOldRegistration, TestStatePushReadsOneRegistration, TestProcessLinkChangesWithItsHandle -->
 
 ### BF-ddd4772
 

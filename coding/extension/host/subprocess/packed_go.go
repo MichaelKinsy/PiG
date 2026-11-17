@@ -485,7 +485,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 	}
 	if nodeRuntime {
 		for _, pending := range pendingExts {
-			pending.me.nodeRealm = true
+			pending.me.setNodeRealm()
 		}
 		h.noteNodeRealm(pendingExts[0].me, busRouted)
 	}
@@ -898,19 +898,14 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
 	}
-	me.flagNames = make([]string, 0, len(reg.Flags))
-	me.wantsSessionLog = reg.WantsSessionLog
-	me.wantsModelRegistry = reg.WantsModelRegistry
-	for _, f := range reg.Flags {
-		me.flagNames = append(me.flagNames, f.Name)
-	}
 	if err := validateRegisterPayload(me.config.Name, reg); err != nil {
 		_ = conn.Close("invalid registration")
 		loadErr := newLoadError(me.config.Name, "register", "invalid_registration", err)
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
 	}
-	me.flagDefaults = reg.flagDefaults
+	registered := newRegisteredState(reg)
+	me.setRegistration(registered)
 	h.joinRoutedBus(ctx, me)
 	// sendReady, or activateNode for a deferred Node payload, fills the geometry.
 	readyPayload := &ReadyPayload{Cwd: h.cwd, Mode: h.mode, SourceInfo: h.readySourceInfo(me)}
@@ -919,7 +914,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		// whole log once, then only what is new.
 		me.entryCursorMu.Lock()
 		me.entryCursor = 0
-		readyPayload.State = h.uiBridge.Snapshot(me.flagNames, 0, h.subscribedToSessionLog(me.config.Name))
+		readyPayload.State = h.uiBridge.Snapshot(registered.flagNames, 0, h.subscribedToSessionLog(me.config.Name))
 		if readyPayload.State.Session != nil {
 			me.entryCursor = readyPayload.State.Session.EntryCount
 		}
