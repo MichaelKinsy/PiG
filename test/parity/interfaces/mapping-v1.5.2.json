@@ -121416,7 +121416,7 @@
       "evidence": [
         "test:chord/next/surfaces/surfaces_translations_test.go#TestComposeKeysCatalogsByCanonicalLocaleLeavesInvalidOnesOutAndListsTheLocalesOffered",
         "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/next/surfaces/surfaces_translations_test.go#TestComposeKeepsTheFirstByPluginNameReportingTheOther"
+        "test:chord/nextnode/app/registries_plugins_test.go#TestAppGoFacetsAndPluginsEachReadOnlyTheirOwnHostsTranslations"
       ]
     },
     {
@@ -121437,8 +121437,8 @@
       ],
       "evidence": [
         "test:chord/next/surfaces/surfaces_translations_test.go#TestTranslationsFacetServesTheRegistryComposingItsPluginsContributions",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted",
-        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsTheDevicesLanguagesThePrincipalsPickAndTheCatalogsKeptAsThePageState"
+        "test:chord/nextnode/app/registries_plugins_test.go#TestAppGoFacetsAndPluginsEachReadOnlyTheirOwnHostsTranslations",
+        "test:chord/next/surfaces/surfaces_active_language_test.go#TestFollowsAPickThePrincipalStoredBeforeTheFollowerStarted"
       ]
     },
     {
@@ -123742,7 +123742,9 @@
         "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
-        "test:chord/nextnode/app/reload_restart_test.go#TestAReloadRestartingAnObjectWithNativesCutsARunningCallOffAtTheReloadDrainBoundThenRunsTheWaitingCallOnTheNewCode"
+        "test:chord/nextnode/app/reload_restart_test.go#TestAReloadRestartingAnObjectWithNativesCutsARunningCallOffAtTheReloadDrainBoundThenRunsTheWaitingCallOnTheNewCode",
+        "test:chord/nextnode/app/registries_plugins_test.go#TestAppGoFacetsAndPluginsEachReadOnlyTheirOwnHostsTranslations",
+        "test:chord/nextnode/app/registries_plugins_test.go#TestAppReloadingThePluginsKeepsTheReadersTranslationsTrue"
       ]
     },
     {
