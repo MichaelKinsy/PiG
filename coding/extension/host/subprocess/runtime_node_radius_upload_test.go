@@ -152,8 +152,7 @@ func TestVendoredRadiusUploadsRefuseAndMakeNoRequest(t *testing.T) {
 	cmd.Env = append(os.Environ(), "PI_RADIUS_GATEWAY="+gateway.URL, "PI_OFFLINE=")
 	output, err := cmd.Output()
 	if err != nil {
-		var exit *exec.ExitError
-		if errors.As(err, &exit) {
+		if exit, ok := errors.AsType[*exec.ExitError](err); ok {
 			t.Fatalf("node: %v\n%s\n%s", err, output, exit.Stderr)
 		}
 		t.Fatalf("node: %v\n%s", err, output)
