@@ -83,6 +83,9 @@ type cliRuntimeBuilder struct {
 	stageSDKs          sync.Once
 	// extensionFactories are MainOptions.ExtensionFactories, the compiled-in extensions the program's main adds after the built-in ones (main.ts:575).
 	extensionFactories []extension.InlineExtension
+	// buildMu is set only by a --listen server, and cellRegistry only by one started with --listen-share-extensions (pig additive (D232)): the mutex that serializes its builds, and the registry its Hosts share cell processes through.
+	cellRegistry *subprocess.CellRegistry
+	buildMu      *sync.Mutex
 }
 
 // cliBuildInput selects one build.
@@ -256,6 +259,8 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	if startupExtensions == nil {
 		startupExtensions = &startupExtensionSet{}
 	}
+	// pig additive (D232): with --listen-share-extensions every build of a --listen server creates its extension Host on the server's cell registry; without it the registry is nil and the Host keeps its own processes.
+	startupExtensions.cells = b.cellRegistry
 	build.SourceResolver = newStartupExtensionSourceResolver(nil)
 	resolver := build.SourceResolver
 	failed := true
@@ -302,7 +307,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 		if extensionset.HasInline(b.extensionFactories) {
 			if startupExtensions.host == nil {
 				// The inline extensions register against the runtime of the host the final pass adopts.
-				startupExtensions.host, startupExtensions.bridge = newSubprocessExtensionHost(cwd, b.mode.extensionMode(), services.Registry().ModelRegistry)
+				startupExtensions.host, startupExtensions.bridge = newSubprocessExtensionHost(cwd, b.mode.extensionMode(), services.Registry().ModelRegistry, startupExtensions.cells)
 			}
 			preTrustInline, inlineErrs = (&extensionSetLoader{CWD: cwd, Settings: services.SettingsManager(), Flags: resourceFlags, Inline: b.extensionFactories, Runtime: startupExtensions.host.Runtime(), EventBus: inlineBus}).loadInlineExtensions()
 			// Non-nil even when every factory failed: the final pass runs no factory again (resource-loader.ts:772-773).

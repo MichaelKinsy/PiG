@@ -982,3 +982,17 @@ commit = "3090be6e3aef3fe0ea59cf69ae7afc53cd7ccc82"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The one value the pre-flight counts as changed is a string the test itself prints and waits for, not an expectation of behavior: the probe call that Close has to wait for printed `slow call running` and now prints `held call running`, and the test's OnOutput watches for that line to know the call has started. The call itself changed from a 2 s setTimeout to a wait on a file the test creates, which is why it is named `held`. The 200 ms stop grace is the same in the old and the new test, and no duration is an expected value. The production change of the commit is a test seam only: NodeHost.startAfter, which Close calls where it called time.NewTimer, defaults to afterTimer, the same wall-time timer (a Reset of the single timer became stopping it and starting a timer for closeTimeout plus the grace, with the same lengths and the same kill), so Close behaves as before outside a test that replaces the seam. Pi has no such host or test (its workers stop a child with one GRACE kill, workers.ts #shutdown), and no Pi line is behind the sentinel, so no Pi-derived expectation moved."
+
+[[entry]]
+path = "coding/cli/rpc_listen_test.go"
+commit = "edae8e70d714f24858560b47c9b12f1ca889e7f3"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The --listen server tests are PiG-original (D232): Pi serves one RPC session per process and has no counterpart, so no Pi line governs them. The commit's review round made the concurrency test count agent_end per connection across its whole traffic and prove overlap with an RPC bash sleep, and narrowed the cross-session text check to the message text; the behavior it tests is the D232 server's own."
+
+[[entry]]
+path = "coding/extension/host/subprocess/node_cell_shared_test.go"
+commit = "f34cb22f47198d92a4f67c2b89301045cadeb067"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The shared-cell Node tests are PiG-original (D232): Pi runs one extension process per session and has no counterpart, so no Pi line governs them. The commit's review round replaced the sleep-based drain observation with the runtime-level drain test and asserted equal non-zero pids for the two Hosts' members; the behavior it tests is the D232 cell registry's own."

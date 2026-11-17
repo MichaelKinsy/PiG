@@ -93,6 +93,20 @@
                                            (pig:obj "type" "image" "data" "aW1n" "mimeType" "image/png")
                                            (pig:obj "type" "text" "text" (format nil "tail~%")))
                          "terminate" t)))
+    ;; per-instance state for TestConformance_SharedCellsIsolatePerHostInstances: a call counter and what this instance heard on shared-cells
+    (let ((calls 0) (heard (quote ())) (shared-lock (sb-thread:make-mutex :name "shared cells")))
+      (pig:events-on (pig:extension-events ext) "shared-cells"
+                     (lambda (ctx data) (declare (ignore ctx)) (sb-thread:with-mutex (shared-lock) (setf heard (append heard (list (pig:jget data "from")))))))
+      (pig:tool ext "counter" "This instance's call count" (core-schema "properties" (pig:obj))
+                (lambda (ctx params) (declare (ignore ctx params))
+                  (pig:obj "content" (princ-to-string (sb-thread:with-mutex (shared-lock) (incf calls))))))
+      (pig:tool ext "ping" "Emit on the shared-cells channel" (core-schema "required" (vector "name") "properties" (pig:obj "name" (pig:obj "type" "string")))
+                (lambda (ctx params)
+                  (pig:events-emit (pig:ctx-events ctx) "shared-cells" (pig:obj "from" (pig:jget params "name")))
+                  (pig:obj "content" "pinged")))
+      (pig:tool ext "received" "What this instance heard on shared-cells" (core-schema "properties" (pig:obj))
+                (lambda (ctx params) (declare (ignore ctx params))
+                  (pig:obj "content" (concatenate (quote string) "received=" (core-join (sb-thread:with-mutex (shared-lock) (copy-list heard))))))))
     (pig:tool ext "prepared_tool" "Transform legacy arguments before execution"
               (core-json "{\"type\":\"object\",\"required\":[\"text\"],\"properties\":{\"text\":{\"type\":\"string\"}}}")
               (lambda (ctx params) (declare (ignore ctx)) (pig:obj "content" (concatenate 'string "prepared:" (core-str (pig:jget params "text")))))

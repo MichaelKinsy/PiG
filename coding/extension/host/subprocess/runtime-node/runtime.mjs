@@ -58,9 +58,10 @@ setHandlersRunning(() => {
 // payloads cross to other realms by reference (xref.mjs).
 const liveRuntimes = new Set();
 
-// siblingToolPending reports whether a tool call is still running in this process: its handler has not returned, so it may await real work, and Pi's loop turns while it does.
-function siblingToolPending() {
+// siblingToolPending reports whether a tool call of group is still running in this process: its handler has not returned, so it may await real work, and Pi's loop turns while it does. pig additive (D232): a member with a group counts only its own Host's tools, because another session's tool is no sibling of its session; a group-less member counts the whole process, as before.
+function siblingToolPending(group) {
   for (const runtime of liveRuntimes) {
+    if (group && runtime.group !== group) continue;
     for (const request of runtime.requestRecords.values()) {
       if (request.toolCall && !request.settled) return true;
     }
@@ -69,8 +70,19 @@ function siblingToolPending() {
 }
 const xrefRealm = new Realm(() => {
   const preferred = currentRuntime();
-  for (const runtime of preferred ? [preferred, ...liveRuntimes] : liveRuntimes) {
-    const connection = runtime?.connection();
+  // pig additive (D232): a payload crosses to a connection of the requesting runtime's group before any other, and never to another group's when the requester has a group; a group-less process keeps the unfiltered order.
+  if (preferred && preferred.group !== "") {
+    for (const runtime of [preferred, ...liveRuntimes]) {
+      if (runtime.group !== preferred.group) continue;
+      const connection = runtime.connection();
+      if (connection && !connection.closed) return runtime.xrefTransport;
+    }
+    return undefined;
+  }
+  const first = preferred?.connection();
+  if (first && !first.closed) return preferred.xrefTransport;
+  for (const runtime of liveRuntimes) {
+    const connection = runtime.connection();
     if (connection && !connection.closed) return runtime.xrefTransport;
   }
   return undefined;
@@ -78,6 +90,17 @@ const xrefRealm = new Realm(() => {
 installCloneHooks(xrefRealm);
 installTestCollect(xrefRealm);
 const sharedBus = new SharedBus(xrefRealm, process.env.PIG_EVENT_BUS === "routed");
+// pig additive (D232): a runtime that belongs to a group keeps that group's own bus, so pi.events of one Host's session never reach another's instance in this process; the group-less runtime keeps the process-wide bus.
+const groupBuses = new Map();
+function busFor(group) {
+  if (!group) return sharedBus;
+  let bus = groupBuses.get(group);
+  if (!bus) {
+    bus = new SharedBus(xrefRealm, process.env.PIG_EVENT_BUS === "routed");
+    groupBuses.set(group, bus);
+  }
+  return bus;
+}
 const XREF_REQUESTS = new Set(["xref.op", "events.dispatch", "events.migrate"]);
 // Emissions whose foreign listener prefix ran while this process was idle. Pi runs such a listener's continuations only after the emitter's synchronous run, so this process waits for the emitter's first microtask (events.proceed) before its own microtasks run.
 const lockstep = new Set();
@@ -942,14 +965,42 @@ export class ThemeShim {
 }
 
 // pig additive (D19): after RPC stdin ends, the transport must not keep an otherwise drained Node event loop alive. Report the drain to the process owner without resolving any pending extension Promise. A process reports when its loop drained with a pending quit session_shutdown handler (runtime_drained: Pi's exit when its loop empties), and, when it has none, with an unanswered command it has not reported yet (runtime_commands_drained: the host then knows the process cannot answer the commands it had started, as Pi's single loop would not either). A command that arrives after a report makes the loop reportable again.
-const quitDrain = { active: false, inputEnded: false, reported: false, listening: false, tailCheck: false, runtimes: new Set() };
+const quitDrain = newQuitDrain();
+// pig additive (D232): a connection end drains only its own group; the group-less runtime keeps the process-wide drain.
+const groupDrains = new Map();
+function newQuitDrain() {
+  return { active: false, inputEnded: false, reported: false, listening: false, tailCheck: false, runtimes: new Set() };
+}
+function drainFor(group) {
+  if (!group) return quitDrain;
+  let drain = groupDrains.get(group);
+  if (!drain) {
+    drain = newQuitDrain();
+    groupDrains.set(group, drain);
+  }
+  return drain;
+}
+// releaseGroup drops the bus and the drain of a group whose last runtime left. pig additive (D232): a long-lived shared process serves many Hosts one after another, so their per-group state must not accumulate. A bus that still holds a listener, or a drain that still holds a runtime, stays until it empties.
+function releaseGroup(group) {
+  if (!group) return;
+  for (const runtime of liveRuntimes) if (runtime.group === group) return;
+  const drain = groupDrains.get(group);
+  if (drain && drain.runtimes.size === 0) groupDrains.delete(group);
+  const bus = groupBuses.get(group);
+  if (bus && bus.stats().handlers === 0) groupBuses.delete(group);
+}
 
-function quitDrainState() {
+// drainOf is the drain of the group a request's connection serves.
+function drainOf(request) {
+  return drainFor(request.connection?.owner?.group);
+}
+
+function quitDrainState(drain) {
   let outstanding = false;
   let commands = false;
   let tail = false;
   let hostWaits = false;
-  for (const runtime of quitDrain.runtimes) {
+  for (const runtime of drain.runtimes) {
     for (const request of runtime.requestRecords.values()) {
       if (request.responded) continue;
       outstanding ||= request.quit;
@@ -963,18 +1014,19 @@ function quitDrainState() {
   return { outstanding, commands, tail, hostWaits };
 }
 
-function refreshQuitDrain() {
-  if (!quitDrain.inputEnded) return;
-  const { outstanding, commands, tail, hostWaits } = quitDrainState();
-  const quitWaits = quitDrain.active && !quitDrain.reported && outstanding;
-  setProviderSocketsRef(!(quitWaits || commands) || hostWaits);
+function refreshQuitDrain(drain) {
+  if (!drain.inputEnded) return;
+  const { outstanding, commands, tail, hostWaits } = quitDrainState(drain);
+  const quitWaits = drain.active && !drain.reported && outstanding;
+  // pig additive (D232): a group still serving keeps the provider sockets referenced.
+  setProviderSocketsRef(!(quitWaits || commands) || hostWaits || otherGroupServing(drain));
   // Pi flushRawStdout lets immediately fulfilled Promise continuations run, but does not await a post-disposal handler's future timer or I/O. IPC must not turn that suspension into a Session join.
-  if (quitDrain.active && !quitDrain.reported && tail && !outstanding && !hostWaits && !quitDrain.tailCheck) {
-    quitDrain.tailCheck = true;
+  if (drain.active && !drain.reported && tail && !outstanding && !hostWaits && !drain.tailCheck) {
+    drain.tailCheck = true;
     setImmediate(() => {
-      quitDrain.tailCheck = false;
-      const current = quitDrainState();
-      if (current.tail && !current.outstanding && !current.hostWaits) reportQuitExit("runtime_quit_yield");
+      drain.tailCheck = false;
+      const current = quitDrainState(drain);
+      if (current.tail && !current.outstanding && !current.hostWaits) reportQuitExit("runtime_quit_yield", drain);
     });
   }
 }
@@ -995,6 +1047,7 @@ function windowPending(owner) {
 // armRequestWindow closes the window of a command or of a quit session_shutdown handler at the next check phase after its handler's synchronous prefix, or once its pending short host calls settle. A command arms it before its handler runs with early set: its immediate is then queued ahead of every immediate the handler and its microtask continuations queue in this iteration, and it closes a MessagePort, whose close callback runs in this iteration's closing phase, after the check phase and before the next poll phase. A threadpool completion, a nested immediate and a timer therefore land after the window closes.
 // pig divergence (D85): a continuation that runs after this window closes can still execute in this runtime process until the host stops it, and the window cannot see a suspended session_shutdown handler of another runtime process; Pi runs everything on one event loop and exits.
 function armRequestWindow(owner, early = false) {
+  const drain = drainOf(owner);
   const close = () => {
     if (owner.responded || owner.turned) return;
     if (windowPending(owner)) {
@@ -1003,7 +1056,7 @@ function armRequestWindow(owner, early = false) {
     }
     owner.turned = true;
     // A command's suspension decides only what stdin's end makes of it. Reporting it before then would latch a continuation that Pi runs before it reads stdin's end, so the report waits for runtime_input_end (releaseCommandSuspensions).
-    if (owner.command && !owner.quit && !quitDrain.inputEnded) {
+    if (owner.command && !owner.quit && !drain.inputEnded) {
       owner.unreportedAt = hostCallEpoch(owner);
       return;
     }
@@ -1021,8 +1074,8 @@ function hostCallEpoch(owner) {
 
 // pig additive (D19): Pi's commands share one event loop with stdin, so it has no report to defer; this runtime is a separate process and must tell the host what Pi's loop would have done at stdin's end.
 // releaseCommandSuspensions applies runtime_input_end to the commands whose window closed unresponded earlier. Pi reads stdin's end in the iteration after the line that starts a command only when the client closes stdin at once; a client that closes it later (on seeing the handler's notification, say) finds every continuation that ran in between answered. A command that started or finished a host call since its window closed ran meanwhile, so it gets a fresh window from here: it is suspended again only if it still waits when that window closes. A command that did nothing since is suspended now.
-function releaseCommandSuspensions() {
-  for (const runtime of quitDrain.runtimes) {
+function releaseCommandSuspensions(drain) {
+  for (const runtime of drain.runtimes) {
     for (const request of runtime.requestRecords.values()) {
       if (request.unreportedAt === undefined || request.responded) continue;
       const at = request.unreportedAt;
@@ -1058,8 +1111,8 @@ export function closeInCloseCallbacks(fn, factory = () => new MessageChannel()) 
 }
 
 // resumeRequestWindows rearms the windows that waited for short host calls, and the turn window of a request whose handler started or finished a host call since it last turned the event loop.
-function resumeRequestWindows() {
-  for (const runtime of quitDrain.runtimes) {
+function resumeRequestWindows(drain) {
+  for (const runtime of drain.runtimes) {
     for (const request of runtime.requestRecords.values()) {
       if (request.windowWait && !windowPending(request)) {
         request.windowWait = false;
@@ -1073,23 +1126,23 @@ function resumeRequestWindows() {
   }
 }
 
-function drainQuitRequests() {
-  if (!quitDrain.inputEnded) return;
-  const { outstanding, commands, hostWaits } = quitDrainState();
+function drainQuitRequests(drain) {
+  if (!drain.inputEnded) return;
+  const { outstanding, commands, hostWaits } = quitDrainState(drain);
   if (hostWaits) return;
-  if (outstanding && quitDrain.active && !quitDrain.reported) reportQuitExit("runtime_drained");
-  else if (commands) reportQuitExit("runtime_commands_drained");
+  if (outstanding && drain.active && !drain.reported) reportQuitExit("runtime_drained", drain);
+  else if (commands) reportQuitExit("runtime_commands_drained", drain);
 }
 
-function reportQuitExit(method) {
-  if (!quitDrain.inputEnded) return;
+function reportQuitExit(method, drain) {
+  if (!drain.inputEnded) return;
   if (method !== "runtime_commands_drained") {
-    if (!quitDrain.active || quitDrain.reported) return;
-    quitDrain.reported = true;
+    if (!drain.active || drain.reported) return;
+    drain.reported = true;
   }
   // The report covers the commands the process started before it: the host marks those whose started state precedes the report on their connection. A drained loop with a pending quit handler cannot answer its commands either.
   if (method !== "runtime_quit_yield") {
-    for (const runtime of quitDrain.runtimes) {
+    for (const runtime of drain.runtimes) {
       for (const request of runtime.requestRecords.values()) {
         if (request.command && !request.responded) request.drainReported = true;
       }
@@ -1097,20 +1150,34 @@ function reportQuitExit(method) {
   }
   setProviderSocketsRef(true);
   // Every hosted connection reports, so the host has read each connection's earlier frames, such as a command's response, before it acts on the drain.
-  for (const runtime of quitDrain.runtimes) {
+  for (const runtime of drain.runtimes) {
     if (runtime.conn && !runtime.conn.closed) runtime.conn.notify(method);
   }
 }
 
-function listenForQuitDrain() {
-  if (quitDrain.listening) return;
-  quitDrain.listening = true;
-  process.on("beforeExit", drainQuitRequests);
+let beforeExitInstalled = false;
+function listenForQuitDrain(drain) {
+  if (drain.listening) return;
+  drain.listening = true;
+  // pig additive (D232): one process-wide listener serves every group's drain, so a long-lived shared process adds no listener per Host.
+  if (beforeExitInstalled) return;
+  beforeExitInstalled = true;
+  process.on("beforeExit", () => {
+    for (const live of [quitDrain, ...groupDrains.values()]) if (live.listening) drainQuitRequests(live);
+  });
 }
 
-function enterQuitDrain() {
-  quitDrain.active = true;
-  listenForQuitDrain();
+function enterQuitDrain(drain) {
+  drain.active = true;
+  listenForQuitDrain(drain);
+}
+
+// otherGroupServing is whether a group other than drain's still has runtimes whose input has not ended.
+function otherGroupServing(drain) {
+  for (const other of [quitDrain, ...groupDrains.values()]) {
+    if (other !== drain && other.runtimes.size > 0 && !other.inputEnded) return true;
+  }
+  return false;
 }
 
 // Pi's print and JSON modes await each prompt and go on in the same continuation: to the next prompt, or to disposing the runtime, which runs session_shutdown and then invalidates the runner (print-mode.ts:131-166, agent-session-runtime.ts:404-410, agent-session.ts:1393-1406). A prompt ends with its command, its handled input or agent_settled, so a timer, immediate or I/O callback an extension queued runs only once the next prompt reaches the agent's I/O, or after the ctx went stale. This process answers the host over IPC, which would give the event loop such a callback before the host's next step arrives: pi-goal-x's agent_settled continuation timer then started a run during disposal, which failed with the stale message. So in those modes, after answering a call that can end a prompt, or session_shutdown, while no run is in progress, the process stays in that call until the host's next step reaches it: a request, a run beginning, invalidate, reload_started, loop_turned, shutdown or a closed connection. Every Node generation of the process waits together, packed or isolated alike. State the host replicates meanwhile is applied in order after the wait.
@@ -1294,7 +1361,7 @@ export class Connection {
     if (env.type === "notify" && ["xref.unpin", "events.release", "events.proceed"].includes(env.notify?.method)) {
       if (env.notify.method === "xref.unpin") xrefRealm.unpin(env.notify.args ?? {});
       else if (env.notify.method === "events.proceed") lockstep.delete(env.notify.args?.emission);
-      else sharedBus.release(env.notify.args ?? {});
+      else busFor(this.owner?.group).release(env.notify.args ?? {});
       return;
     }
     if (env.type === "notify" && env.notify?.method === "loop_turn_taken") {
@@ -1365,8 +1432,8 @@ export class Connection {
     if (!pending) return;
     this.pending.delete(env.id);
     this.touchRequest(pending.parentRequestId);
-    resumeRequestWindows();
-    refreshQuitDrain();
+    resumeRequestWindows(drainFor(this.owner?.group));
+    refreshQuitDrain(drainFor(this.owner?.group));
     if (env.call_result?.error) {
       const info = env.call_result.error;
       const error = new Error(info.code ? `${info.code}: ${info.message}` : info.message);
@@ -1404,13 +1471,13 @@ export class Connection {
     const kind = parentRequestId ? undefined : originKind();
     // Pi's loop turns while a sibling tool awaits real work, so a timer callback runs right after the tool that queued it ends, with its process.nextTick callbacks; the host releases a "tick" call there.
     const timer = kind !== undefined;
-    const tick = kind === "tick" || (timer && siblingToolPending());
+    const tick = kind === "tick" || (timer && siblingToolPending(this.owner?.group));
     // The host runs a tick call after the tool_execution_end of the tool call whose handler queued the callback, which this process cannot order against the call: it says which tool call that was.
     const originTool = tick ? originToolCallId() : undefined;
     return new Promise((resolve, reject) => {
       this.touchRequest(parentRequestId);
       this.pending.set(id, { resolve, reject, parentRequestId, method });
-      refreshQuitDrain();
+      refreshQuitDrain(drainFor(this.owner?.group));
       try {
         this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}), ...(timer ? { timer: true } : {}), ...(tick ? { tick: true } : {}), ...(originTool !== undefined ? { origin_tool_call_id: originTool } : {}) } });
       } catch (error) {
@@ -2104,13 +2171,15 @@ class FooterDataProvider {
 }
 
 export class Runtime {
-  constructor(entry, nativeProviderObjects = new Map(), providerConfigObjects = new Map(), { name, socket } = {}) {
+  constructor(entry, nativeProviderObjects = new Map(), providerConfigObjects = new Map(), { name, socket, group = "" } = {}) {
     seedHostTerminalCapabilities();
     // Pi initializes the process theme before loading extension factories.
     if (!globalThis[Symbol.for("@earendil-works/pi-coding-agent:theme")]) initTheme();
     this.entry = entry;
     this.name = name || process.env.PIG_EXT_NAME || basename(entry).replace(/\.[^.]+$/, "");
     this.socketPath = socket || process.env.PIG_EXT_SOCKET;
+    // pig additive (D232): the group of the Host that admitted this generation, set before its factory runs and never changed by ready, so a factory-time listener stays on the bus it emits on; "" for a process one Host owns.
+    this.group = group;
     this.version = "0.0.0";
     // Pi's per-extension API state (loader.ts createExtensionAPI): event-bus
     // subscriptions made while the factory runs are dropped if it throws.
@@ -2407,10 +2476,10 @@ export class Runtime {
       events: {
         emit: active((channel, data) => {
           // pig divergence (D83): listeners in other realms reach the original payload through xref proxies; independent tasks across realms are ordered by timing.
-          sharedBus.emit(this, channel, data);
+          busFor(this.group).emit(this, channel, data);
         }),
         on: active((channel, handler) => {
-          const unsubscribe = this.extensionRuntime.trackEventBusSubscription(sharedBus.on(this, channel, handler));
+          const unsubscribe = this.extensionRuntime.trackEventBusSubscription(busFor(this.group).on(this, channel, handler));
           if (this.loadState === "loading") this.loadingUnsubscribers.push(unsubscribe);
           return unsubscribe;
         }),
@@ -2896,10 +2965,10 @@ export class Runtime {
           const args = env.request.args ?? {};
           if (env.request.method === "xref.op") result = xrefRealm.serve(args);
           else if (env.request.method === "events.dispatch") {
-            sharedBus.dispatch(args);
+            busFor(this.group).dispatch(args);
             emission = args.emission;
           }
-          else result = { realm: xrefRealm.id, listeners: sharedBus.migrate().map(({ channel, handlerId, runtime }) => ({ channel, handlerId, extension: runtime.name })) };
+          else result = { realm: xrefRealm.id, listeners: busFor(this.group).migrate().map(({ channel, handlerId, runtime }) => ({ channel, handlerId, extension: runtime.name })) };
         } catch (error) {
           failure = error;
         }
@@ -2931,9 +3000,10 @@ export class Runtime {
     const closed = new Promise(resolve => conn.socket.once("close", resolve));
     conn.notify("load_failed", failure);
     await closed;
-    quitDrain.runtimes.delete(this);
-    sharedBus.disposeRuntime(this);
+    drainFor(this.group).runtimes.delete(this);
+    busFor(this.group).disposeRuntime(this);
     liveRuntimes.delete(this);
+    releaseGroup(this.group);
   }
 
   attachConnection(socket) {
@@ -2961,7 +3031,8 @@ export class Runtime {
     };
     conn.xrefHandler = env => this.serveXref(conn, env);
     conn.loadingStreamEvent = notify => this.handleNotify(notify);
-    quitDrain.runtimes.add(this);
+    drainFor(this.group).runtimes.add(this);
+    conn.owner = this;
     conn.syncHandler = request => request.method === "facet_sync" ? dispatchFacetSync(this, request) : request.method === "autocomplete.sync" ? this.autocomplete.sync(request.args) : request.method === "tool_reaches_tools" ? this.toolReachesTools(request) : dispatchProviderObjectSync(this, request);
     this.removeDrainListener = conn.onDrain(() => {
       for (const [key, widget] of this.widgets) {
@@ -3058,12 +3129,12 @@ export class Runtime {
     // serialize its response back through the connection on its
     // own when it resolves.
     const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
-    const quitTail = quitDrain.active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
+    const quitTail = drainFor(this.group).active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
     const request = { id: env.id, toolCall: env.request?.method === "tool_call", toolCallId: env.request?.method === "tool_call" ? env.request.tool_call_id : undefined, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", event: env.request?.method === "event" ? env.request.event : undefined };
     this.requestRecords.set(env.id, request);
     this.conn?.callEpochs?.set(env.id, 0);
-    if (quitting) enterQuitDrain();
-    refreshQuitDrain();
+    if (quitting) enterQuitDrain(drainFor(this.group));
+    refreshQuitDrain(drainFor(this.group));
     if (PROMPT_END_MODES.has(this.ready?.mode) && this.runSignal === undefined) armTurnWindow(request);
     const task = this.requestContext.run(request, outsideTimer(async () => {
       try {
@@ -3076,7 +3147,7 @@ export class Runtime {
         this.activeRequests.delete(env.id);
         this.requestRecords.delete(env.id);
         request.connection?.callEpochs?.delete(env.id);
-        refreshQuitDrain();
+        refreshQuitDrain(drainFor(this.group));
       }
       if (request.responded && endsPrompt(env.request, this.ready?.mode, this.runSignal !== undefined)) awaitHostStep(request.connection);
     }));
@@ -3140,12 +3211,13 @@ export class Runtime {
         if (env.type === "request") this.startRequest(env);
       }
     } finally {
-      quitDrain.runtimes.delete(this);
+      drainFor(this.group).runtimes.delete(this);
       // The connection is gone, so its shared-bus listeners leave the Host registry before invalidation unsubscribes them.
-      sharedBus.disposeRuntime(this);
+      busFor(this.group).disposeRuntime(this);
       this.extensionRuntime.invalidate();
       this.hostReady = false;
       liveRuntimes.delete(this);
+      releaseGroup(this.group);
       this.providerTransport.abort(new Error("Provider connection closed"));
       this.autocomplete.dispose();
       for (const [id, entry] of this.nativeProviderObjects) {
@@ -4117,7 +4189,8 @@ export class Runtime {
 
   // Pi's registerProvider and unregisterProvider recompose the provider and rewrite the model snapshot before they return, so the next read of ctx.modelRegistry holds the write (model-runtime.ts:928-957, model-registry.ts:64-74). The Host's registry reaches this process later, and a publication that predates the write would undo it, so the view keeps the write over the snapshot until the Host answers it. The Host publishes the registry with the write, ahead of its answer on the connection's one ordered stream: by the answer the snapshot holds the write, and it stands alone again. Every member of a packed process holds the write, as every extension holds one registry. answered is the Host call's settled operation, or undefined when no call was made, which no answer ends.
   holdRegistryWrite(name, answered) {
-    const members = new Set([this, ...liveRuntimes]);
+    // pig additive (D232): only the runtimes of this group hold the registry write.
+    const members = new Set([this, ...[...liveRuntimes].filter((member) => member.group === this.group)]);
     for (const runtime of members) {
       runtime.registryHolds.set(name, (runtime.registryHolds.get(name) ?? 0) + 1);
       runtime.overlayProvider(name);
@@ -4144,7 +4217,8 @@ export class Runtime {
   // holdVirtualWrite records a virtual-model registration (model) or removal (undefined) this process made, and rewrites the provider's view from it. Pi's registerVirtualModel and unregisterVirtualModel update the model snapshot before they return (model-runtime.ts:964-992). The Host registers the model before it answers, but publishes the registry later, from its refresh, so the write stays on the view until a Host snapshot shows it (hostShowsVirtualWrite): a publication that predates the write cannot undo it. Every member of a packed process holds the write, as every extension holds one registry.
   holdVirtualWrite(provider, id, model) {
     const written = model === undefined ? undefined : normalizeModel(piVirtualModels().createVirtualModel(model));
-    for (const runtime of new Set([this, ...liveRuntimes])) {
+    // pig additive (D232): only the runtimes of the emitting group hold the write.
+    for (const runtime of new Set([this, ...[...liveRuntimes].filter((member) => member.group === this.group)])) {
       runtime.virtualWrites.set(modelRegistryKey(provider, id), { provider, id, model: written });
       runtime.overlayProvider(provider);
     }
@@ -4333,7 +4407,8 @@ export class Runtime {
   // ctx.abort(). Pi's abort is synchronous up to agent.abort(), which aborts the active run's controller before it returns (agent-session.ts:2464-2474, 3472-3478; agent.ts:340-342), so a handler that aborts and reads ctx.signal, or the signal its tool received, in the same turn sees it aborted. The host's abort and its run_signal frame follow; the frame finds the controller aborted. Every member of a packed process holds the same run, as every extension holds one agent.
   abortRun() {
     this.runSignal?.controller.abort();
-    for (const runtime of liveRuntimes) runtime.runSignal?.controller.abort();
+    // pig additive (D232): ctx.abort() aborts only the runs of this group.
+    for (const runtime of liveRuntimes) if (runtime.group === this.group) runtime.runSignal?.controller.abort();
     this.fireAndForget("abort", {});
   }
 
@@ -4403,10 +4478,10 @@ export class Runtime {
         return;
       }
       case "runtime_input_end":
-        quitDrain.inputEnded = true;
-        releaseCommandSuspensions();
-        listenForQuitDrain();
-        refreshQuitDrain();
+        drainFor(this.group).inputEnded = true;
+        releaseCommandSuspensions(drainFor(this.group));
+        listenForQuitDrain(drainFor(this.group));
+        refreshQuitDrain(drainFor(this.group));
         return;
       case "tool_render_release": {
         let args = notify.args;
@@ -5718,3 +5793,6 @@ export function reportLoadFailure(sockPath, failure) {
     socket.on("close", () => resolve());
   });
 }
+
+// pig additive (D232): the per-group state the shared-process tests read.
+export { busFor, drainFor, xrefRealm, liveRuntimes, groupBuses, groupDrains, releaseGroup, siblingToolPending };

@@ -26,7 +26,9 @@ func TestRunSshTimeoutTerminatesTheChildAndFailsWithoutWaitingForItsOutputToClos
 	script := "#!/bin/sh\necho partial >&2\ntrap 'echo TERM > " + marker + "; exit 143' TERM\nsleep 8 &\nwait\n"
 	writeProgram(t, program, script)
 	target := SshTarget{Host: "h", Ssh: &program}
-	timeout := 300 * time.Millisecond
+	// The timer runs from the spawn, and the script's echo must land before it fires: starting a shell on a loaded macOS
+	// took over 300 ms, which left the diagnostics empty.
+	timeout := 2 * time.Second
 	started := time.Now()
 	_, err := runSsh(context.Background(), target, "true", sshRun{args: []string{}, timeout: timeout})
 	took := time.Since(started)
@@ -34,7 +36,7 @@ func TestRunSshTimeoutTerminatesTheChildAndFailsWithoutWaitingForItsOutputToClos
 	if !errors.As(err, &sshErr) {
 		t.Fatalf("err = %v, want *SshError", err)
 	}
-	if sshErr.Message != "ssh h did not finish within 0.3 s: partial" || sshErr.ExitCode != nil || sshErr.Stderr != "partial\n" {
+	if sshErr.Message != "ssh h did not finish within 2 s: partial" || sshErr.ExitCode != nil || sshErr.Stderr != "partial\n" {
 		t.Fatalf("SshError = %+v", sshErr)
 	}
 	if took > timeout+2*time.Second {

@@ -59,7 +59,8 @@ func makeSubprocessLispHarness(t *testing.T) *harness {
 	bridge.SetNotifyFunc(ui.RecordNotify)
 	bridge.SetActions(conformanceActions(actions))
 
-	h := subprocess.NewHost(t.TempDir())
+	h := subprocess.NewHost(harnessHostCwd(t))
+	h.ShareCells(conformanceCellRegistry)
 	h.SetMode(harnessHostMode())
 	h.SetHostInfo(conformanceHostInfo)
 	h.SetUIBridge(bridge)

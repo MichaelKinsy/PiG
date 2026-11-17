@@ -20,6 +20,7 @@ fixed 70.6
 serial-factor 0.979
 parallel-factor 0.149
 default 5.11
+serial 80.96 TestConformance_SharedCellsIsolatePerHostInstances
 serial 63.55 TestPackedSessionGraphAgentSessionRuntimeAcrossSDKs
 serial 58.94 TestExecLimitsAcrossSDKs
 serial 58.61 TestCancelReasonReachesEveryNativeSDK
@@ -146,6 +147,7 @@ serial 4.58 TestRustSDKMcpServerRegistration
 serial 4.58 TestRustSDKStructuredContentAndIsError
 parallel 30.01 TestRenderCurrentSystemPromptAcrossSDKs
 parallel 29.30 TestModelTypesClassifyAcrossSDKs
+serial 4.52 TestConformance_SharedCellsShareModuleLevelState
 serial 4.33 TestKeybindingHintsAcrossSDKs
 parallel 27.50 TestSessionGraphChildHandlesAcrossSDKs
 serial 4.08 TestEarlyDispatchBeforeReadyAnswersEachRequestOnceUnderItsOwnID

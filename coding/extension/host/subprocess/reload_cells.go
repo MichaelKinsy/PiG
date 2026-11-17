@@ -125,6 +125,10 @@ func (h *Host) isolateCellFailure(ctx context.Context, cell CellSpec, oldByName 
 func (h *Host) stageCell(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt) (stageOutcome, error) {
 	ctx = context.WithValue(ctx, packedConfigsKey{}, cell.Extensions)
 	ctx = context.WithValue(ctx, retentionGroupKey{}, cell.Group)
+	if strings.HasPrefix(cell.Isolation, "quarantined:") {
+		// pig additive (D232): a quarantined cell starts isolated and is never shared.
+		ctx = context.WithValue(ctx, unsharedCellKey{}, true)
+	}
 	ctx, closeLine := h.withBuildLine(ctx, []CellSpec{cell})
 	defer closeLine()
 	ctx, cellDone := observeBuildLine(ctx, cell)
@@ -201,7 +205,19 @@ func (h *Host) stageIsolated(ctx context.Context, cfg ExtConfig, oldByName map[s
 	old := oldByName[resolved.Name]
 	var retained *processShare
 	if entry, ok := nodeLauncherEntry(resolved.Path); ok {
-		retained = h.dropStaleTier(ctx, h.retention().claim("node-extension:"+resolved.Name+"\x00"+entry), resolved.Path, resolved.Name)
+		isolatedKey := "node-extension:" + resolved.Name + "\x00" + entry
+		share := h.retention().claim(isolatedKey)
+		if share == nil && h.sharesCells(ctx) {
+			// pig additive (D232): without a parked process of its own, a Host that joined a CellRegistry admits into the live process another Host runs for this extension; it holds the key's start lock until the process it spawns is registered.
+			// pig additive (D232): the key lock is taken after the start turn, as the packed path does, so Hosts that start the same cells in opposite order never wait on each other's locks.
+			if err := waitStartTurn(ctx); err != nil {
+				return nil, fmt.Errorf("reload %q: %w", resolved.Name, err)
+			}
+			key := h.cellRegistryKey(isolatedKey)
+			defer h.cells.startLock(key)()
+			share = h.cells.lookup(key)
+		}
+		retained = h.dropStaleTier(ctx, share, resolved.Path, resolved.Name)
 	}
 	me, _, err := h.startManagedIn(ctx, resolved, retained)
 	if err != nil {
