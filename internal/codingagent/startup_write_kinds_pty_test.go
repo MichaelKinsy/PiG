@@ -133,7 +133,7 @@ func TestStartupWriteKindsChild(t *testing.T) {
 		LoginVisible: true,
 		// A plain first start has no model: Pi's run() shows this warning after init() returns (interactive-mode.ts:1257), and the frame that paints it is the third.
 		ModelFallbackMessage: "No models available. Use /login to log into a provider via OAuth or API key.",
-		SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(),
+		SettingsManager:      services.SettingsManager(), Settings: services.SettingsManager().Get(),
 	})
 	if err := mode.Init(t.Context()); err != nil {
 		fail("Init: %v", err)
