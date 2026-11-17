@@ -36875,6 +36875,32 @@
       ]
     },
     {
+      "id": "BF-d1be20b",
+      "title": "Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package…",
+      "symptom": "Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package extension back under Pi's (the Startup latency check had it at 1.157 of Pi against a budget of 1.15).",
+      "rootCause": "The extension host's first model catalog frame encoded every model of the catalog (about 2,500 with the D199 routing variants) by encoding its typed record, decoding its catalog record and encoding that too, only to learn that the model was unchanged and its encoding is the record. Since (first tagged in v0.7.0) this was about 42 ms of the median package-warm start (50 interleaved runs).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package extension back under Pi's (the Startup latency check had it at 1.157 of Pi against a budget of 1.15). Since v0.7.0 each start encoded the whole model catalog for the extension host (about 2,500 models with the OpenRouter routing variants) by decoding every model's catalog record and encoding it twice just to learn that the model was unchanged; an unchanged built-in model is now recognized by comparing it with its catalog entry, and what the extension receives is unchanged. \u003c!-- cause: the D199 routing variants added about a thousand models whose derived records were never in the baseline cache, and the check that a built-in model is unchanged encoded the model and decoded and encoded its record for each model at each start --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d1be20b36a",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/catalog_record_cache_test.go::TestCatalogRecordShapeCacheHoldsOnlyBuiltinRecords",
+        "ai/catalog_unchanged_cost_test.go::TestRecognizedCatalogModelCostsTwoAllocations",
+        "ai/catalog_unchanged_entry_test.go::TestCatalogModelDeepEqualErrsTowardTheEncodingPath",
+        "ai/catalog_unchanged_entry_test.go::TestEveryListedCatalogEntryIsRecognizedAndEncodesAsItsRecord",
+        "ai/catalog_unchanged_entry_test.go::TestModelOfNoEntryTakesTheEncodingPath"
+      ]
+    },
+    {
       "id": "BF-d1cbde3",
       "title": "The pi-messages, Cloudflare Workers AI and TypeSafe System One, and OpenAI decisions request URLs are built…",
       "symptom": "The pi-messages, Cloudflare Workers AI and TypeSafe System One, and OpenAI decisions request URLs are built with the WHATWG URL parser, as Pi's `new URL` does: hosts are normalized, a base URL with a query or fragment resolves against its path, and `debug=1` is added to an existing query in order and in form encoding instead of with sorted keys.",

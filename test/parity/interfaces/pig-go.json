@@ -32528,9 +32528,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "func() map[string]struct{}"
+        "type": "func() map[string]*GeneratedModel"
       },
-      "shapeHash": "sha256:994c479e95f100279eccb653c095f87d5caf593dece87d69d3492ac09348d743"
+      "shapeHash": "sha256:eb52b384241a2e5051ae243072f79c6f93a8977bb3c8f307ac56b41256be66c0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#builtinClassifiers",
@@ -32696,6 +32696,17 @@
         "type": "reflect.Type"
       },
       "shapeHash": "sha256:dba07026e73ec4d94bad9fb9a7088d80fa221e81e079fc9238ee150247c3234d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#catalogEntryOf",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "catalogEntryOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(record string) *GeneratedModel"
+      },
+      "shapeHash": "sha256:40a92cab76935c43e03860805dc0a7b612222a73ff75d0901887cc71b17ee37b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#catalogPair",
@@ -38908,9 +38919,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "struct{sync.RWMutex; byKey map[derivedVariantKey]*derivedVariant}"
+        "type": "struct{sync.RWMutex; byKey map[derivedVariantKey]*derivedVariant; byRecord map[string]*GeneratedModel}"
       },
-      "shapeHash": "sha256:d8f3be20e40b284004b54f6cdaac108f78b964cdf26737e985bf2e7636a554b1"
+      "shapeHash": "sha256:b4ddb13b96f5135dd84fab421fad426eed5252b75059d744b8e5841b917e4735"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#detectOpenAICompletionsCompat",
@@ -46924,6 +46935,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/ai#marshalCatalogModel",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "marshalCatalogModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model AnyModel) (encoding/json.RawMessage, error)"
+      },
+      "shapeHash": "sha256:7b1d0aa5f52915725d9583f1faddc1d1c14bea49ba99db10367e223e4773ede6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#marshalCatalogModelByEncoding",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "marshalCatalogModelByEncoding",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -62748,6 +62770,17 @@
         "type": "SystemOneTransport"
       },
       "shapeHash": "sha256:b46f3d2d5b7d74134522f800d6416b3507956d24a000b6f2dca475abdb29b8f7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#unchangedBundledRecord",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "unchangedBundledRecord",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model AnyModel) (string, bool)"
+      },
+      "shapeHash": "sha256:0c4412a95dfd3a80c341a4c7824d67cddf9f5467c48dc46805b33b5e97eb653e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#unfinishedToolCallError",

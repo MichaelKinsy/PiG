@@ -2401,12 +2401,12 @@ allocs = 1
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionCatalogEncoding/cached"
-allocs = 50335
+allocs = 41960
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionCatalogEncoding/uncached"
-allocs = 98837
+allocs = 58341
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2951,12 +2951,12 @@ allocs = 110
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWireModelCatalogBinding/encoded"
-allocs = 142940
+allocs = 102226
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWireModelCatalogBinding/legacy"
-allocs = 156479
+allocs = 103670
 
 [[benchmark]]
 package = "./internal/codingagent"
