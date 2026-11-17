@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -802,9 +803,7 @@ func TestMemoAnswersLoadsAtOnceAndFollowsAReplacedTree(t *testing.T) {
 		loads.Wait()
 		replacement := root + ".new"
 		files := map[string]string{}
-		for name, content := range sdkFixtureFiles {
-			files[name] = content
-		}
+		maps.Copy(files, sdkFixtureFiles)
 		files["sdk.go"] = "package sdk\n\nconst Protocol = " + strings.Repeat("9", round+2) + "\n"
 		writeTree(t, replacement, files)
 		if round%2 == 0 {
