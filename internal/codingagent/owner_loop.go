@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"sync"
 
 	"github.com/MichaelKinsy/PiG/internal/goroutineid"
 )
@@ -94,3 +95,55 @@ func (m *InteractiveMode) runOnOwner(ctx context.Context, fn func()) {
 
 // OnOwnerLoop reports whether the caller is the goroutine running the owner loop. The extension Runner asks before it waits, on the caller's goroutine, for a handler that runs on another goroutine and may need the loop (inproc Runner.onMcpServersChange).
 func (c *ExtUIContext) OnOwnerLoop() bool { return c.m.onOwnerLoop() }
+
+// loopLife records whether the owner loop of one Run still runs, and lets a caller that waits for the loop to take its task learn that the loop ended. The zero value is a loop that has not ended.
+type loopLife struct {
+	mu   sync.Mutex
+	done bool
+	// ch is closed once the loop ended; it is made on first use, so a mode that never runs allocates none.
+	ch chan struct{}
+}
+
+// begin starts a new life: a Run entered again on the same mode after Stop gets a channel of its own.
+func (l *loopLife) begin() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.done {
+		l.done = false
+		l.ch = nil
+	}
+}
+
+// end marks the loop ended and releases every waiter; it does nothing when the loop already ended.
+func (l *loopLife) end() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.done {
+		return
+	}
+	l.done = true
+	if l.ch == nil {
+		l.ch = make(chan struct{})
+	}
+	close(l.ch)
+}
+
+// ended reports whether the loop ended.
+func (l *loopLife) ended() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.done
+}
+
+// endedCh is closed when the loop ends. A channel that was asked for before begin restarted the life belongs to the earlier life.
+func (l *loopLife) endedCh() <-chan struct{} {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.ch == nil {
+		l.ch = make(chan struct{})
+		if l.done {
+			close(l.ch)
+		}
+	}
+	return l.ch
+}

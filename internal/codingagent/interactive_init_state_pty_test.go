@@ -34,7 +34,7 @@ func TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild(t *testing.T) {
 	cwd := t.TempDir()
 	on, off := true, false
 	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: cwd, AgentDir: t.TempDir(), NoThemes: true, Settings: Settings{ShowHardwareCursor: &on, ClearOnShrink: &on, Compaction: &CompactionSettingsJSON{Enabled: &off}}})
-	m.runEnded.Store(true)
+	m.runEnded.end()
 	var marks []string
 	var headerPendingAtTuiStart bool
 	var textAtTuiStart string
@@ -60,7 +60,7 @@ func TestInitBuildsTheInteractiveStateBeforeTheSessionBindChild(t *testing.T) {
 	if !m.isInitialized || m.runCtx != ctx || m.backgroundCtx == nil || m.backgroundCtx.Err() != nil {
 		childFatalf(t, "run state: initialized %v, runCtx is ctx %v, backgroundCtx %v", m.isInitialized, m.runCtx == ctx, m.backgroundCtx)
 	}
-	if m.runEnded.Load() {
+	if m.runEnded.ended() {
 		childFatalf(t, "Init left runEnded set from the previous run")
 	}
 	if m.tuiInst == nil || m.rawRestore == nil || m.rawDrain == nil || m.keybindings == nil {

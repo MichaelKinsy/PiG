@@ -5,6 +5,7 @@ package codingagent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -50,6 +51,12 @@ func (m *InteractiveMode) runOnMainAndWait(ctx context.Context, work func() erro
 		return <-result
 	case <-stopped:
 		return context.Cause(m.runCtx)
+	case <-m.runEnded.endedCh():
+		// The loop ended with the task queued or running: a task it never started is abandoned, one it started has its result.
+		if claimed.CompareAndSwap(false, true) {
+			return fmt.Errorf("%w: the owner loop ended", errOwnerLoopUnavailable)
+		}
+		return <-result
 	}
 }
 
