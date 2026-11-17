@@ -153900,7 +153900,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_graph_extension_runner_emit.go#withEmitMessageSequences"
+        "call:coding/extension/host/subprocess/event_payload.go#eventMessage"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_subscriptions_test.go#TestUpstreamRunnerEventSubscriptions",
@@ -195486,7 +195486,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_graph_extension_runner_emit.go#withEmitMessageSequences"
+        "call:coding/extension/host/subprocess/event_payload.go#eventMessage"
       ],
       "evidence": [
         "test:coding/session_retry_events_upstream_test.go#TestUpstreamSessionRetryEvents",
@@ -195508,7 +195508,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/event_bridge.go#emitMessageStart"
+        "call:coding/extension/host/subprocess/event_payload.go#eventTypeOf"
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_events_test.go#TestConformanceAPIOnVoidEventsReachTheTypedHandlers",
@@ -195596,7 +195596,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/message_update_delta.go#messageUpdateKeyOf"
+        "call:coding/extension/host/subprocess/event_payload.go#eventTypeOf"
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_events_test.go#TestConformanceAPIOnVoidEventsReachTheTypedHandlers",
@@ -230825,7 +230825,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/event_bridge.go#emitTurnStart"
+        "call:coding/extension/host/subprocess/event_payload.go#eventTypeOf"
       ],
       "evidence": [
         "test:coding/session_extension_events_upstream_test.go#TestSessionEmitsTurnStartWithThePerRunTurnIndexAndATimestamp",
