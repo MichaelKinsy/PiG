@@ -5,7 +5,6 @@ package cli
 import (
 	"bytes"
 	"cmp"
-	"context"
 	"encoding/json"
 	"io"
 	"io/fs"
@@ -158,7 +157,7 @@ func expectModelSelected(t *testing.T, p *interactivePig, shape modelAfterReplac
 	}
 	// The footer reads "0.0%/777k (auto)": the used share, then the window.
 	window := "/" + strconv.Itoa(want.ContextWindow/1000) + "k"
-	p.output.waitQuiet(mark, []byte(window), 300*time.Millisecond, 2*time.Second)
+	p.output.waitQuiet(mark, []byte(window), 300*time.Millisecond, testbudget.Wait(t))
 	if !bytes.Contains(p.output.since(mark), []byte(window)) {
 		t.Errorf("the footer never showed the window %s after selecting %s; screen tail: %q", window, spec, tail(p.output.since(mark), 800))
 	}
@@ -292,8 +291,7 @@ func buildModelAfterNewRust(t *testing.T) string {
 		t.Fatalf("cargo is required for the Rust SDK realization: %v", err)
 	}
 	target := t.TempDir()
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Minute)
-	defer cancel()
+	ctx := testbudget.DeadlineContext(t)
 	cargo := exec.CommandContext(ctx, "cargo", "build", "--release", "--quiet")
 	cargo.Dir = filepath.Join("testdata", "model-after-new-rs")
 	cargo.Env = append(os.Environ(), "CARGO_TARGET_DIR="+target)
