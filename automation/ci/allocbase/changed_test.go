@@ -23,7 +23,12 @@ func testGraph() goGraph {
 			testModule + "/ai":               {testModule + "/ai/internal/data", testModule + "/ai/cold"},
 			testModule + "/ai/internal/data": nil,
 		},
-		Embeds: map[string][]string{"ai/internal/data/models.json": {testModule + "/ai/internal/data"}},
+		Embeds: map[string][]string{
+			"ai/internal/data/models.json": {testModule + "/ai/internal/data"},
+			"ai/assets/models.json":        {testModule + "/ai"},
+			"ai/assets/sub/extra.json":     {testModule + "/ai"},
+		},
+		TestEmbeds: map[string][]string{"tui/golden/case.txt": {testModule + "/tui"}},
 	}
 }
 
@@ -39,7 +44,8 @@ func selection(t *testing.T, files []string, benchmarks []string, mutate func(*s
 		HoldsBenchmark: func(file string) bool {
 			return slices.Contains(benchmarks, file)
 		},
-		Graph: func() (goGraph, error) { return testGraph(), nil },
+		Workspace: func() ([]string, error) { return []string{".", "nested"}, nil },
+		Graph:     func() (goGraph, error) { return testGraph(), nil },
 	}
 	if mutate != nil {
 		mutate(&in)
@@ -101,6 +107,25 @@ func TestSelectionOfAnEmbeddedFileFollowsTheEmbeddingPackage(t *testing.T) {
 	}
 }
 
+// A file a hot package embeds below its directory is part of that package's binary: the package is measured, not only what imports it.
+func TestSelectionOfAnEmbeddedFileBelowAHotPackageSelectsTheEmbeddingPackage(t *testing.T) {
+	for _, file := range []string{"ai/assets/models.json", "ai/assets/sub/extra.json"} {
+		got := selection(t, []string{file}, nil, nil)
+		want := []string{"./agent: imports changed package ai", "./ai: embedded file " + file, "./coding/cli: imports changed package ai"}
+		if !slices.Equal(got, want) {
+			t.Fatalf("%s: selected %q, want %q", file, got, want)
+		}
+	}
+}
+
+// A file only a package's tests embed changes that package's tests and benchmarks, and nothing that imports it.
+func TestSelectionOfATestEmbeddedFileIsItsPackageOnly(t *testing.T) {
+	got := selection(t, []string{"tui/golden/case.txt"}, nil, nil)
+	if want := []string{"./tui: embedded file tui/golden/case.txt"}; !slices.Equal(got, want) {
+		t.Fatalf("selected %q, want %q", got, want)
+	}
+}
+
 func TestSelectionOfADataFileOfAHotPackage(t *testing.T) {
 	got := selection(t, []string{"tui/theme.json"}, nil, nil)
 	if want := []string{"./tui: data file tui/theme.json"}; !slices.Equal(got, want) {
@@ -152,6 +177,23 @@ func TestSelectionOfModuleFilesIsEveryHotPackage(t *testing.T) {
 	})
 	if len(got) != len(testHot) {
 		t.Fatalf("selected %q, want every hot package", got)
+	}
+}
+
+// go.work resolves one build list for every member, so a member's manifest selects every hot package; a go.mod of a module that is no member (a fixture, or a nested directory outside go.work) does not.
+func TestSelectionOfAWorkspaceMemberManifestIsEveryHotPackage(t *testing.T) {
+	for _, file := range []string{"nested/go.mod", "nested/go.sum"} {
+		got := selection(t, []string{file}, nil, nil)
+		if len(got) != len(testHot) || got[0] != "./agent: "+file+" changed" {
+			t.Fatalf("%s: selected %q, want every hot package", file, got)
+		}
+	}
+	if got := selection(t, []string{"tools/other/go.mod"}, nil, nil); len(got) != 0 {
+		t.Fatalf("the go.mod of a module outside go.work selected %q", got)
+	}
+	got := selection(t, []string{"ai/testdata/mod/go.mod"}, nil, nil)
+	if want := []string{"./ai: data file ai/testdata/mod/go.mod"}; !slices.Equal(got, want) {
+		t.Fatalf("a fixture module's go.mod selected %q, want %q", got, want)
 	}
 }
 
@@ -228,11 +270,13 @@ func TestChangedPackagesOnARepository(t *testing.T) {
 		"go.work":                               "go 1.24\n\nuse (\n\t.\n\t./nested\n)\n",
 		"nested/go.mod":                         "module example.test/m/nested\n\ngo 1.24\n",
 		"nested/n/n.go":                         "package n\n",
-		"a/a.go":                                "package a\n\nimport (\n\t_ \"example.test/m/b\"\n\t_ \"example.test/m/nested/n\"\n)\n",
+		"a/a.go":                                "package a\n\nimport (\n\t_ \"embed\"\n\t_ \"example.test/m/b\"\n\t_ \"example.test/m/nested/n\"\n)\n\n//go:embed assets/m.json\nvar models string\n",
+		"a/assets/m.json":                       "{}\n",
+		"c/data/fixture.txt":                    "one\n",
 		"a/a_test.go":                           "package a\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {}\n",
 		"b/b.go":                                "package b\n",
 		"c/c.go":                                "package c\n",
-		"c/c_test.go":                           "package c\n\nimport \"testing\"\n\nfunc BenchmarkC(b *testing.B) {}\n",
+		"c/c_test.go":                           "package c\n\nimport (\n\t_ \"embed\"\n\t\"testing\"\n)\n\n//go:embed data/fixture.txt\nvar fixture string\n\nfunc BenchmarkC(b *testing.B) {}\n",
 		"README.md":                             "docs\n",
 		"automation/ci/allocbase/main.go":       "package main\n\nvar packages = []string{\"./a\", \"./c\"}\n",
 		"automation/ci/allocbase/baseline.toml": "[[benchmark]]\npackage = \"./c\"\nbenchmark = \"BenchmarkC\"\nallocs = 3\n",
@@ -283,6 +327,33 @@ func TestChangedPackagesOnARepository(t *testing.T) {
 	}
 	if got, _ := run(false); got != "./a: imports changed package b | ./c: benchmark file c/d_test.go" {
 		t.Fatalf("the working tree selected %q", got)
+	}
+	// A file a hot package embeds below its directory selects that package; a file only its tests embed selects it too.
+	writeTree(t, root, map[string]string{"a/assets/m.json": "{\"a\":1}\n"})
+	git(t, root, "commit", "-q", "-am", "embedded asset")
+	if got, want := func() string { g, _ := run(true); return g }(), "./a: embedded file a/assets/m.json"; got != want {
+		t.Fatalf("a changed embedded file selected %q, want %q", got, want)
+	}
+	writeTree(t, root, map[string]string{"c/data/fixture.txt": "two\n"})
+	git(t, root, "commit", "-q", "-am", "test embedded file")
+	if got, want := func() string { g, _ := run(true); return g }(), "./a: embedded file a/assets/m.json | ./c: embedded file c/data/fixture.txt"; got != want {
+		t.Fatalf("a changed test-embedded file selected %q, want %q", got, want)
+	}
+	// A go.work member's manifest changes every package; a go.mod outside go.work changes none.
+	writeTree(t, root, map[string]string{"nested/go.mod": "module example.test/m/nested\n\ngo 1.24\n\n// edit\n", "fixture/go.mod": "module example.test/fixture\n\ngo 1.24\n"})
+	git(t, root, "add", "nested/go.mod", "fixture/go.mod")
+	git(t, root, "commit", "-q", "-m", "manifests")
+	chosen, _, err := changedPackages(root, "main", true, hot, rows)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, c := range chosen {
+		if !slices.Contains(c.Reasons, "nested/go.mod changed") {
+			t.Errorf("%s: reasons %q lack the nested member's go.mod", c.Package, c.Reasons)
+		}
+		if slices.Contains(c.Reasons, "fixture/go.mod changed") {
+			t.Errorf("%s: selected by the go.mod of a module outside go.work", c.Package)
+		}
 	}
 	if _, _, err := changedPackages(root, "no-such-ref", false, hot, rows); err == nil {
 		t.Fatal("a ref that names no commit selected without an error")
