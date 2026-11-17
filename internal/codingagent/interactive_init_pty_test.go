@@ -132,8 +132,8 @@ func TestInitFailingAfterTheTuiStartsChild(t *testing.T) {
 	if err := m.Stop(); err != nil {
 		childFatalf(t, "%v", err)
 	}
-	if m.isInitialized || !m.runEnded.Load() {
-		childFatalf(t, "Stop left isInitialized=%v runEnded=%v", m.isInitialized, m.runEnded.Load())
+	if m.isInitialized || !m.runEnded.ended() {
+		childFatalf(t, "Stop left isInitialized=%v runEnded=%v", m.isInitialized, m.runEnded.ended())
 	}
 }
 

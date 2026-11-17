@@ -130,6 +130,8 @@ func (m *InteractiveMode) inputLoopUntil(ctx context.Context, source io.Reader, 
 	defer m.enterOwnerLoop()()
 	m.startTerminalInput(ctx, source)
 	if until == nil {
+		// The outer loop is the last that drains uiTaskCh: a post that waits for the loop to take it is released from here on, before Stop and before Run returns (the quit by keys starts the hosts' shutdown from inside this loop's exit, and that shutdown may wait for such a post).
+		defer m.runEnded.end()
 		defer func() {
 			if err := m.stopTerminalInput(); err != nil {
 				resultErr = errors.Join(resultErr, err)
