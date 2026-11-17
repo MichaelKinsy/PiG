@@ -4306,6 +4306,33 @@
       ]
     },
     {
+      "id": "BF-21a89d2",
+      "title": "After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with…",
+      "symptom": "After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with `/model` (or switching to it from the extension) no longer gives a model without its metadata: the footer showed `0.0%/0 (auto)`, Shift+Tab said \"Current model does not support thinking\", and the Session recorded a thinking level change to off with the model change.",
+      "rootCause": "coding/cli/interactive_model_after_replacement_pty_test.go starts the real pig on a pseudo-terminal with an extension provider whose models carry a window, an output limit, costs, an image input and reasoning that no default produces, replaces the Session, selects each of its models with /model (and with the extension's setModel) and expects the extension to see the registered model, the footer to show its window, the thinking level to stay at medium, and no compaction or thinking_level_change to off. Rows: startup, /new, /resume, /clone, /fork, /reload; an OAuth provider and a provider the Session did not start on; the Go, Rust, Python and Lisp SDKs registering the provider.…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with `/model` (or switching to it from the extension) no longer gives a model without its metadata: the footer showed `0.0%/0 (auto)`, Shift+Tab said \"Current model does not support thinking\", and the Session recorded a thinking level change to off with the model change. The mode built the model from the services of the Session it was started with, which do not hold a provider that the replacement Session's extension registers. It now builds from the running Session's services, as Pi selects from the Session's model runtime.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "21a89d274c",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveExtensionSetModelAfterNewKeepsRegisteredMetadata",
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterNewAcrossSDKs",
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementKeepsRegisteredMetadata",
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementProviderShapes",
+        "coding/cli/rpc_model_after_new_test.go::TestRPCSetModelAfterNewSessionKeepsRegisteredMetadata",
+        "test/parity/scenarios/extensions-runtime/108-model-after-new-extension-provider.toml"
+      ]
+    },
+    {
       "id": "BF-21c27bf",
       "title": "A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog…",
       "symptom": "A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog, the `/hotkeys` block, the text a slash command appends and an extension's Markdown view no longer keep the memos a streamed Markdown holds for its next delta.",

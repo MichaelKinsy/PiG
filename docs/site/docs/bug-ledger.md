@@ -163,6 +163,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-20aee29](#bf-20aee29) | The crash notice prints the year of a crash time the way Node's toLocaleString does: unpadded, and counted… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-211af49](#bf-211af49) | `/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2165463](#bf-2165463) | On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once… | PiG's own defect | Windows | 0.5.0 |
+| [BF-21a89d2](#bf-21a89d2) | After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with… | PiG's own defect | All platforms | Unreleased |
 | [BF-21c27bf](#bf-21c27bf) | A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-224dbd9](#bf-224dbd9) | On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a… | PiG's own defect | macOS, Linux | 0.7.0 |
 | [BF-227a4c1](#bf-227a4c1) | A Piglet's tool scope now bounds the Session's tool registry, not only its active tools | PiG's own defect | All platforms | 0.7.0 |
@@ -3650,6 +3651,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `21654635e7` (2026-10-13)
 - **Tests:** `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptCustomCompatibilitySettingsAndRejectMalformedKnownFields`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptSchemaInKeybindingsJSONWithoutTreatingItAsAnAction`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptSchemaInSettingsJSON`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasValidateSchemaInModelsJSONAtRuntime`, `internal/pilock/delete_pending_windows_test.go::TestAcquireRetriesLockBeingRemovedAtMkdirThenSurfacesIt`, `internal/pilock/delete_pending_windows_test.go::TestAcquireSurfacesLockBeingRemovedAtStatThatIsStaleOrALink`, `internal/pilock/delete_pending_windows_test.go::TestAuthAcquireRetriesLockBeingRemovedAtStatThatIsStaleOrALink`, `internal/pilock/delete_pending_windows_test.go::TestAuthAcquireWaitsOutLockBeingRemovedAtMkdir` and 4 more in docs/bug-ledger.json
 - **Release note:** On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once with `EPERM: operation not permitted, mkdir '….lock'` when another process has just released the lock and Windows still holds the directory pending deletion. As in Pi 1.2.0, the lock is retried: the synchronous path within its ten attempts, the cancellable path up to five times. Settings and trust locks still fail on the first `EPERM`, as in Pi.
+
+### BF-21a89d2
+
+**After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with `/model` (or switching to it from the extension) no longer gives a model without its metadata: the footer showed `0.0%/0 (auto)`, Shift+Tab said "Current model does not support thinking", and the Session recorded a thinking level change to off with the model change.
+- **Root cause:** coding/cli/interactive_model_after_replacement_pty_test.go starts the real pig on a pseudo-terminal with an extension provider whose models carry a window, an output limit, costs, an image input and reasoning that no default produces, replaces the Session, selects each of its models with /model (and with the extension's setModel) and expects the extension to see the registered model, the footer to show its window, the thinking level to stay at medium, and no compaction or thinking_level_change to off. Rows: startup, /new, /resume, /clone, /fork, /reload; an OAuth provider and a provider the Session did not start on; the Go, Rust, Python and Lisp SDKs registering the provider.…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `21a89d274c` (2026-11-16)
+- **Tests:** `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveExtensionSetModelAfterNewKeepsRegisteredMetadata`, `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterNewAcrossSDKs`, `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementKeepsRegisteredMetadata`, `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementProviderShapes`, `coding/cli/rpc_model_after_new_test.go::TestRPCSetModelAfterNewSessionKeepsRegisteredMetadata`, `test/parity/scenarios/extensions-runtime/108-model-after-new-extension-provider.toml`
+- **Release note:** After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with `/model` (or switching to it from the extension) no longer gives a model without its metadata: the footer showed `0.0%/0 (auto)`, Shift+Tab said "Current model does not support thinking", and the Session recorded a thinking level change to off with the model change. The mode built the model from the services of the Session it was started with, which do not hold a provider that the replacement Session's extension registers. It now builds from the running Session's services, as Pi selects from the Session's model runtime.
 
 ### BF-21c27bf
 
