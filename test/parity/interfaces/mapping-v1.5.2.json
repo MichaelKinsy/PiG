@@ -172468,9 +172468,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/captured_output_test.go#TestResolveAnnouncesAPackageItInstalls",
         "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
-        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
       ]
     },
     {
@@ -172490,9 +172490,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/captured_output_test.go#TestResolveAnnouncesAPackageItInstalls",
         "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
-        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
       ]
     },
     {
@@ -201039,8 +201039,8 @@
       ],
       "evidence": [
         "test:coding/cli/package_temporary_upstream_test.go#TestTemporaryGitInstallAndCleanup",
-        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory",
-        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall"
+        "test:coding/cli/package_run_test.go#TestInteractivePackageRunReportsTheEndOfAFailingInstallsOutput",
+        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory"
       ]
     },
     {
@@ -201060,6 +201060,7 @@
         "call:internal/packagemanager/install_failure_warning.go#DescribePackageInstallFailure"
       ],
       "evidence": [
+        "test:coding/cli/package_run_test.go#TestInteractivePackageRunReportsTheEndOfAFailingInstallsOutput",
         "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory",
         "test:internal/packagemanager/resolve_gaps_test.go#TestResolveSkipsAPackageSourceThatFailsToInstallAndReportsIt"
       ]
@@ -201598,9 +201599,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/captured_output_test.go#TestResolveAnnouncesAPackageItInstalls",
         "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
-        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
       ]
     },
     {
@@ -201620,9 +201621,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/captured_output_test.go#TestResolveAnnouncesAPackageItInstalls",
         "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
-        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
       ]
     },
     {
@@ -202659,9 +202660,9 @@
       "id": "pkg:coding-agent/.#ProgressEvent",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f69afc7058f8b4d935f017b96ec01d5349f023c7a9077ae93e3f15d239992b9d",
-      "rationale": "Derived by the interface gap detector: ProgressEvent is Go internal/packagemanager/progress.go#ProgressEvent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ProgressEvent is Go coding/resource_loader.go#ProgressEvent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/packagemanager/progress.go#ProgressEvent"
+        "coding/resource_loader.go#ProgressEvent"
       ],
       "layers": {
         "behavior": "complete",
@@ -202669,7 +202670,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/packagemanager/git.go#CleanAndInstallGitDependencies"
+        "call:coding/cli/package_progress.go#packageProgressPrinter"
       ],
       "evidence": [
         "test:coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream",
@@ -203171,9 +203172,9 @@
         "call:internal/codingagent/extension_trust_graph.go#GraphProjectTrustStore.Call"
       ],
       "evidence": [
+        "test:coding/cli/model_fallback_diagnostic_upstream_test.go#TestRuntimeDiagnosticsEndWithTheNoModelsWarningForTheShapesPiGivesNoModel",
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
-        "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
+        "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi"
       ]
     },
     {
@@ -203193,9 +203194,9 @@
         "call:internal/codingagent/trust_manager.go#NewProjectTrustStore"
       ],
       "evidence": [
+        "test:coding/cli/model_fallback_diagnostic_upstream_test.go#TestRuntimeDiagnosticsEndWithTheNoModelsWarningForTheShapesPiGivesNoModel",
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
-        "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
+        "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi"
       ]
     },
     {

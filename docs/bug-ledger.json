@@ -116,6 +116,29 @@
       ]
     },
     {
+      "id": "BF-008b787",
+      "title": "Column slicing of printable ASCII text is faster, as in Pi…",
+      "symptom": "Column slicing of printable ASCII text is faster, as in Pi ([#9549](https://github.com/earendil-works/pi/issues/9549)).",
+      "rootCause": "On the 104k-line transcript SliceByColumn and SliceWithWidth were 35 % of the CPU of a fullscreen wheel frame (profile of BenchmarkScrollFrame, cumulative: paintScrollbar -\u003e replaceScrollbarCell cuts every viewport row at the scrollbar column; the grapheme iterator was 11 %, ExtractAnsiCode 8 %). Printable ASCII (0x20 to 0x7e) always forms one cell of one column per character, so a stretch of it is placed by arithmetic and only the rest of the run goes through the grapheme iterator. The last ASCII character before a non-ASCII byte stays with the iterator, because a combining mark, a joiner or a variation selector after it joins its cluster (Pi's sliceWithWidth skips Intl.Segmenter on the…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Column slicing of printable ASCII text is faster, as in Pi ([#9549](https://github.com/earendil-works/pi/issues/9549)).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "008b787556",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "tui/widthx/slice_fastpath_test.go::TestSliceWithWidthFastPathEdges",
+        "tui/widthx/slice_fastpath_test.go::TestSliceWithWidthFastPathEqualsTheGraphemeIterator"
+      ]
+    },
+    {
       "id": "BF-00933e5",
       "title": "`mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load…",
       "symptom": "`mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load their MCP servers again, and `pig mcp add` and `pig mcp remove` work on them (Pi bdd9f039, #11191).",
@@ -2717,6 +2740,33 @@
       "commitsFrom": "release note",
       "tests": [
         "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods"
+      ]
+    },
+    {
+      "id": "BF-0d09de8",
+      "title": "Fullscreen scrolling in long sessions no longer re-renders the whole transcript on every wheel event and key…",
+      "symptom": "Fullscreen scrolling in long sessions no longer re-renders the whole transcript on every wheel event and key press ([#9549](https://github.com/earendil-works/pi/issues/9549)).",
+      "rootCause": "Mirror Pi: requestViewRender (RequestViewRender path) is called by the wheel, page and line keys, top and bottom, prompt jumps, scrollbar drag and selection auto-scroll; the frame then hands the previous frame render cache to the layout, so no component renders. RequestRender, input to the focused component, resize and focus changes still render everything. An in-frame overlay geometry update no longer counts as a content change. Pi stated limit is mirrored and tested: a component that changes without requesting a render stays stale while scrolling. Pi tui-alt-screen and layout test additions ported (red to green).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Fullscreen scrolling in long sessions no longer re-renders the whole transcript on every wheel event and key press ([#9549](https://github.com/earendil-works/pi/issues/9549)).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0d09de822e",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "tui/alt_screen_view_frames_upstream_test.go::TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "tui/alt_screen_view_frames_upstream_test.go::TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "tui/alt_screen_view_frames_upstream_test.go::TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "tui/alt_screen_view_frames_upstream_test.go::TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "tui/layout_upstream_test.go::TestRenderLayoutFrameReusesEarlierOutputWithoutAccumulatingWidths",
+        "tui/tui_alt_screen_kitty_order_test.go::TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows"
       ]
     },
     {
@@ -62278,6 +62328,32 @@
         "internal/codingagent/ext_ui_custom_test.go::TestExtUIContextCustomKeepsCollapsedPasteContent",
         "internal/codingagent/ext_ui_custom_test.go::TestRestoreQueuedMessagesKeepsCollapsedPasteContent",
         "internal/codingagent/ext_ui_custom_test.go::TestSetRemoteEditorKeepsCollapsedPasteContent"
+      ]
+    },
+    {
+      "id": "BF-f470046",
+      "title": "Containers no longer copy every rendered line of every nesting level on every frame…",
+      "symptom": "Containers no longer copy every rendered line of every nesting level on every frame ([#9549](https://github.com/earendil-works/pi/issues/9549)).",
+      "rootCause": "As Pi's shared renderChildLines: Container.Render keeps the slice it returned and returns it again while the children are unchanged (structure generation), the width is the same and the lines are equal; a child added, removed or replaced, a changed line or another width gives a new slice, and the slice it replaced is never written into. Box.Render compares its children's lines child by child (the same array is unchanged, as box.ts sameLines) and returns its cached lines again. Both slices are capacity-clipped, so an append by a caller copies and cannot write into the cache.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Containers no longer copy every rendered line of every nesting level on every frame ([#9549](https://github.com/earendil-works/pi/issues/9549)).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f4700463a2",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "tui/borrow_check_test.go::TestBorrowCheckCatchesAWriteIntoBoxRender",
+        "tui/borrow_check_test.go::TestBorrowCheckCatchesAWriteIntoContainerRender",
+        "tui/box_cache_test.go::TestBoxRenderCacheSeesAChildsNewLines",
+        "tui/box_cache_test.go::TestBoxRenderCacheTakesTheSameArrayForUnchanged",
+        "tui/container_render_cache_test.go::TestContainerRenderReturnsABorrowedSliceThatAnAppendCannotCorrupt"
       ]
     },
     {

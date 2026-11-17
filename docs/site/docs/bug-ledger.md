@@ -23,6 +23,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-003f6f0](#bf-003f6f0) | Ctrl+U, Ctrl+K and the word-delete keys leave an open autocomplete list open, as Pi's editor does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-006a496](#bf-006a496) | The faux provider no longer counts newly cached prompt tokens as input as well as cache writes: with a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-007c91d](#bf-007c91d) | Go, Python and Rust extensions: in a `before_agent_start` handler, the event's `systemPrompt` and the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-008b787](#bf-008b787) | Column slicing of printable ASCII text is faster, as in Pi… | PiG's own defect | All platforms | Unreleased |
 | [BF-00933e5](#bf-00933e5) | `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load… | PiG's own defect | Windows | 0.5.2 |
 | [BF-00d9a1f](#bf-00d9a1f) | fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an… | PiG's own defect | All platforms | Unreleased |
 | [BF-016a19a](#bf-016a19a) | A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the… | PiG's own defect | All platforms | 0.7.0 |
@@ -121,6 +122,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0cced6a](#bf-0cced6a) | RPC mode now acts on an extension's `ctx.shutdown()` while idle, for example from a timer, instead of waiting… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-0cd1934](#bf-0cd1934) | fix(env): a native watch ignores the nameless event kqueue sends after a watched directory is removed | PiG's own defect | All platforms | Unreleased |
 | [BF-0ce459e](#bf-0ce459e) | `/login` offers a provider object's own login methods (Pi's `registerNativeProvider`, the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0d09de8](#bf-0d09de8) | Fullscreen scrolling in long sessions no longer re-renders the whole transcript on every wheel event and key… | PiG's own defect | All platforms | Unreleased |
 | [BF-0d0a3ef](#bf-0d0a3ef) | A turn through OpenRouter (Chat Completions or Anthropic Messages) now reports the cost OpenRouter billed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d13b01](#bf-0d13b01) | `SettingsManager.getTransport` and fifteen sibling getters (settings-manager.ts: getSteeringMode… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0d13d8e](#bf-0d13d8e) | Windows: a missing Anthropic identity token file reports Pi's message, "Failed to read identity token file at… | PiG's own defect | Windows | Unreleased |
@@ -2227,6 +2229,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f3ea39b](#bf-f3ea39b) | fix(chord/nextnode/plugins): the driver ends its socket after the frames it wrote are out | PiG's own defect | All platforms | Unreleased |
 | [BF-f40cd6b](#bf-f40cd6b) | LaTeX math treats two surrogate halves that end up side by side in a fraction, a root or next to a named… | PiG's own defect | All platforms | Unreleased |
 | [BF-f43fb00](#bf-f43fb00) | A collapsed paste in the editor draft keeps its content when an extension installs or removes an editor, when… | PiG's own defect | All platforms | Unreleased |
+| [BF-f470046](#bf-f470046) | Containers no longer copy every rendered line of every nesting level on every frame… | PiG's own defect | All platforms | Unreleased |
 | [BF-f474c30](#bf-f474c30) | fix(evals): drop an unused import from the prompt-template eval | PiG's own defect | All platforms | Unreleased |
 | [BF-f4a8f71](#bf-f4a8f71) | A program that embeds PiG and never reads session events no longer hangs | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f4cc20b](#bf-f4cc20b) | The pi-env daemon ended by SIGTERM, SIGINT or SIGHUP could end with status 1 and a stray `pi-env: read… | PiG's own defect | macOS | Unreleased |
@@ -2402,6 +2405,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11), `007c91dcbb` (2026-10-13), `2a055a7a3a` (2026-10-13)
 - **Tests:** `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay`, `coding/extension/host/subprocess/ui_prompt_test.go::TestUIBridgePromptScopeDialogOverCustomAndNoUI`, `extensions/sdk-py/tests/test_system_prompt_render.py`, `extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRenderErrorIsTheReadersError`, `extensions/sdk/system_prompt_render_test.go::TestBeforeAgentStartSystemPromptRendersTheCurrentOptions`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesFocusFromFocusedCustomOverlay`, `internal/codingagent/ext_ui_dialog_focus_test.go::TestExtensionDialogTakesTerminalFromFocusedRemoteOverlay`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult` and 9 more in docs/bug-ledger.json
 - **Release note:** Go, Python and Rust extensions: in a `before_agent_start` handler, the event's `systemPrompt` and the context's system prompt getter now return the prompt the shared options render when read, as Pi and Node do. A handler sees its own edit to `systemPromptOptions` at once, a later handler sees it, and after a handler returns `systemPrompt` later handlers read exactly that prompt; before, they read the prompt rendered before the handler ran, and the context getter returned the Session's prompt.
+
+### BF-008b787
+
+**Column slicing of printable ASCII text is faster, as in Pi…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Column slicing of printable ASCII text is faster, as in Pi ([#9549](https://github.com/earendil-works/pi/issues/9549)).
+- **Root cause:** On the 104k-line transcript SliceByColumn and SliceWithWidth were 35 % of the CPU of a fullscreen wheel frame (profile of BenchmarkScrollFrame, cumulative: paintScrollbar -> replaceScrollbarCell cuts every viewport row at the scrollbar column; the grapheme iterator was 11 %, ExtractAnsiCode 8 %). Printable ASCII (0x20 to 0x7e) always forms one cell of one column per character, so a stretch of it is placed by arithmetic and only the rest of the run goes through the grapheme iterator. The last ASCII character before a non-ASCII byte stays with the iterator, because a combining mark, a joiner or a variation selector after it joins its cluster (Pi's sliceWithWidth skips Intl.Segmenter on the…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `008b787556` (2026-11-17)
+- **Tests:** `tui/widthx/slice_fastpath_test.go::TestSliceWithWidthFastPathEdges`, `tui/widthx/slice_fastpath_test.go::TestSliceWithWidthFastPathEqualsTheGraphemeIterator`
+- **Release note:** Column slicing of printable ASCII text is faster, as in Pi ([#9549](https://github.com/earendil-works/pi/issues/9549)).
 
 ### BF-00933e5
 
@@ -3755,6 +3772,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `0ce459e879` (2026-10-11)
 - **Tests:** `internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods`
 - **Release note:** `/login` offers a provider object's own login methods (Pi's `registerNativeProvider`, the `registerProvider(provider)` overload). A provider whose `auth` declares an OAuth method now offers its account login under the flow's own `loginLabel` (the generic "Sign in with an account" label is replaced), and it stays offered after the provider's catalog refresh. Reported and diagnosed by @balcsida, whose branch the login carrier started from (#201).
+
+### BF-0d09de8
+
+**Fullscreen scrolling in long sessions no longer re-renders the whole transcript on every wheel event and key…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Fullscreen scrolling in long sessions no longer re-renders the whole transcript on every wheel event and key press ([#9549](https://github.com/earendil-works/pi/issues/9549)).
+- **Root cause:** Mirror Pi: requestViewRender (RequestViewRender path) is called by the wheel, page and line keys, top and bottom, prompt jumps, scrollbar drag and selection auto-scroll; the frame then hands the previous frame render cache to the layout, so no component renders. RequestRender, input to the focused component, resize and focus changes still render everything. An in-frame overlay geometry update no longer counts as a content change. Pi stated limit is mirrored and tested: a component that changes without requesting a render stays stale while scrolling. Pi tui-alt-screen and layout test additions ported (red to green).
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0d09de822e` (2026-11-16)
+- **Tests:** `tui/alt_screen_view_frames_upstream_test.go::TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents`, `tui/alt_screen_view_frames_upstream_test.go::TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale`, `tui/alt_screen_view_frames_upstream_test.go::TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges`, `tui/alt_screen_view_frames_upstream_test.go::TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges`, `tui/layout_upstream_test.go::TestRenderLayoutFrameReusesEarlierOutputWithoutAccumulatingWidths`, `tui/tui_alt_screen_kitty_order_test.go::TestAltScreenRedrawsKittyImagesAfterWritesToCoveredRows`
+- **Release note:** Fullscreen scrolling in long sessions no longer re-renders the whole transcript on every wheel event and key press ([#9549](https://github.com/earendil-works/pi/issues/9549)).
 
 ### BF-0d0a3ef
 
@@ -32972,6 +33003,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f43fb00cfc` (2026-11-05)
 - **Tests:** `internal/codingagent/ext_ui_custom_test.go::TestExtUIContextCustomKeepsCollapsedPasteContent`, `internal/codingagent/ext_ui_custom_test.go::TestRestoreQueuedMessagesKeepsCollapsedPasteContent`, `internal/codingagent/ext_ui_custom_test.go::TestSetRemoteEditorKeepsCollapsedPasteContent`
 - **Release note:** A collapsed paste in the editor draft keeps its content when an extension installs or removes an editor, when an editor-slot custom UI closes, and when queued messages are restored above it, instead of coming back as the literal `[paste #N ...]` marker (Pi #9809, D251).
+
+### BF-f470046
+
+**Containers no longer copy every rendered line of every nesting level on every frame…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Containers no longer copy every rendered line of every nesting level on every frame ([#9549](https://github.com/earendil-works/pi/issues/9549)).
+- **Root cause:** As Pi's shared renderChildLines: Container.Render keeps the slice it returned and returns it again while the children are unchanged (structure generation), the width is the same and the lines are equal; a child added, removed or replaced, a changed line or another width gives a new slice, and the slice it replaced is never written into. Box.Render compares its children's lines child by child (the same array is unchanged, as box.ts sameLines) and returns its cached lines again. Both slices are capacity-clipped, so an append by a caller copies and cannot write into the cache.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f4700463a2` (2026-11-16)
+- **Tests:** `tui/borrow_check_test.go::TestBorrowCheckCatchesAWriteIntoBoxRender`, `tui/borrow_check_test.go::TestBorrowCheckCatchesAWriteIntoContainerRender`, `tui/box_cache_test.go::TestBoxRenderCacheSeesAChildsNewLines`, `tui/box_cache_test.go::TestBoxRenderCacheTakesTheSameArrayForUnchanged`, `tui/container_render_cache_test.go::TestContainerRenderReturnsABorrowedSliceThatAnAppendCannotCorrupt`
+- **Release note:** Containers no longer copy every rendered line of every nesting level on every frame ([#9549](https://github.com/earendil-works/pi/issues/9549)).
 
 ### BF-f474c30
 
