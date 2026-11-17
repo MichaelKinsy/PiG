@@ -19967,6 +19967,17 @@ async function runRpcMode(runtimeHost) {
   });
   const rebindSession = /* @__PURE__ */ __name(async () => {
     session = runtimeHost.session;
+    unsubscribe?.();
+    unsubscribeBackpressure?.();
+    unsubscribe = session.subscribe((event) => {
+      output(toJsonEvent(event));
+      if (event.type === "agent_settled") {
+        checkShutdownRequested();
+      }
+    });
+    unsubscribeBackpressure = session.agent.subscribe(async () => {
+      await waitForRawStdoutBackpressure();
+    });
     await session.bindExtensions({
       uiContext: createExtensionUIContext(),
       mode: "rpc",
@@ -20000,17 +20011,6 @@ async function runRpcMode(runtimeHost) {
       onError: /* @__PURE__ */ __name((err) => {
         output({ type: "extension_error", extensionPath: err.extensionPath, event: err.event, error: err.error });
       }, "onError")
-    });
-    unsubscribe?.();
-    unsubscribeBackpressure?.();
-    unsubscribe = session.subscribe((event) => {
-      output(toJsonEvent(event));
-      if (event.type === "agent_settled") {
-        checkShutdownRequested();
-      }
-    });
-    unsubscribeBackpressure = session.agent.subscribe(async () => {
-      await waitForRawStdoutBackpressure();
     });
   }, "rebindSession");
   const registerSignalHandlers = /* @__PURE__ */ __name(() => {
@@ -20078,9 +20078,6 @@ async function runRpcMode(runtimeHost) {
       case "new_session": {
         const options = command.parentSession ? { parentSession: command.parentSession } : void 0;
         const result = await runtimeHost.newSession(options);
-        if (!result.cancelled) {
-          await rebindSession();
-        }
         return success(id, "new_session", result);
       }
       // =================================================================
@@ -20217,16 +20214,10 @@ async function runRpcMode(runtimeHost) {
       }
       case "switch_session": {
         const result = await runtimeHost.switchSession(command.sessionPath);
-        if (!result.cancelled) {
-          await rebindSession();
-        }
         return success(id, "switch_session", result);
       }
       case "fork": {
         const result = await runtimeHost.fork(command.entryId);
-        if (!result.cancelled) {
-          await rebindSession();
-        }
         return success(id, "fork", { text: result.selectedText, cancelled: result.cancelled });
       }
       case "clone": {
@@ -20235,9 +20226,6 @@ async function runRpcMode(runtimeHost) {
           return error(id, "clone", "Cannot clone session: no current entry selected");
         }
         const result = await runtimeHost.fork(leafId, { position: "at" });
-        if (!result.cancelled) {
-          await rebindSession();
-        }
         return success(id, "clone", { cancelled: result.cancelled });
       }
       case "get_fork_messages": {

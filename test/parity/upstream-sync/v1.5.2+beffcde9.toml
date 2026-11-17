@@ -1,0 +1,39 @@
+from = "1.5.2+c47ad043"
+to = "1.5.2+beffcde9"
+
+# The range c47ad0432bb8..beffcde92dea: one product commit, beffcde92dea (2026-11-16, #12230, issue #10470): fix(coding-agent): emit session_start once on RPC session replacement.
+# It starts where v1.5.2+c47ad043.toml (ac78a6068b38..c47ad0432bb8) ends: no gap, no overlap. It changes three paths, all accounted here.
+# What PiG did before this commit: PiG had BOTH faults, in every extension SDK, since v0.3.0 (the first tag with the handler-side rebind; v0.2.0 has neither).
+# 1. PiG's RPC command handlers new_session, switch_session, fork and clone called rpcHost.rebindAgain after the Runtime's own rebind callback (SetRebindSession), as Pi's rpc-mode.ts did: session_start (and
+#    resources_discover) ran twice for the new Session, with no session_shutdown between, and an entry appended in session_start was written twice. Measured on the code before the change (red run, out/red.log):
+#    new_session ran session_start ["new:1" "new:2"], switch_session ["resume:3" "resume:4"], fork and clone ["fork:1" "fork:2"], for a Go-embedded extension and, in TestRPCWritesSessionStartEmissionsOnceInEverySDK,
+#    two session_start calls for the Node, Go, Python, Rust and Lisp realizations alike.
+# 2. PiG's RPC mode held the entry_appended writer and the name listener back until the first session_start returned (the `writing` flag rpcHost.bind set after the first announce), as Pi subscribed after
+#    bindExtensions: the events a startup session_start handler emitted (entry_appended, session_info_changed, a message it sent) never reached the client, and a replacement's first bind wrote nothing.
+#    Both are fixed together: rebindAgain is deleted, the flag is deleted, rpcHost.bind subscribes (forward and the name listener) before the first announce. Pi's change is the same two moves.
+# Scenarios that moved with it, each to what Pi with the backport produces: rpc/70-rpc-session-start-writer-order (startup and first-bind events are written), rpc/73-rpc-session-start-message-after-response
+# (the message a session_start listener sends at once is written ahead of the response); new: rpc/83-rpc-replacement-session-start-once, rpc/84-rpc-startup-session-start-events.
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "beffcde92dea: Pi's package changelog entry (one Fixed line, #10470). PiG's user-visible change is its own changelog.d fragment (followmain44rpcstartonce-4da149a979.md)."
+oracle = "not carried: Pi's changelog entry is not part of the installed package's behaviour."
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCStreamsEntriesAppendedByTheStartupSessionStartUpstream", "test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCNewSessionRunsSessionStartOnceUpstream", "test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCSwitchSessionRunsSessionStartOnceUpstream", "test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCForkRunsSessionStartOnceUpstream", "test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCCloneRunsSessionStartOnceUpstream", "test:coding/cli/rpc_writer_after_session_start_test.go#TestRPCWritesSessionStartEmissionsOnceInEverySDK", "test:coding/cli/writer_after_session_start_structure_test.go#TestRPCWritersSubscribeBeforeSessionStart", "test:test/extension-conformance/rpc_session_start_once_test.go#TestRPCSessionReplacementRunsSessionStartOnceInEverySDK", "scenario:test/parity/scenarios/rpc/70-rpc-session-start-writer-order.toml", "scenario:test/parity/scenarios/rpc/73-rpc-session-start-message-after-response.toml", "scenario:test/parity/scenarios/rpc/83-rpc-replacement-session-start-once.toml", "scenario:test/parity/scenarios/rpc/84-rpc-startup-session-start-events.toml"]
+rationale = "beffcde92dea: rebindSession subscribes to the Session's events before bindExtensions (the unsubscribe/subscribe block moves ahead of the bind), and the four handlers new_session, switch_session, fork and clone no longer call rebindSession after the Runtime call, so the Runtime's rebind callback is the only rebind. PiG ported both moves: rpcHost.bind subscribes (forward, the name listener) before the first announce, the `writing` flag is gone, rpcHost.rebindAgain is deleted and awaitReplacement no longer rebinds a second time; the async order is recorded in the async-contracts rationale for modes/rpc/rpc-mode.ts. Not a pin: PiG had both faults (a red run on the code before the change: two session_start calls per replacement, no startup entry_appended)."
+oracle = "carried: beffcde92dea (pi-coding-agent/modes/rpc/rpc-mode.js: the subscription moves before bindExtensions and the four rebindSession calls are removed; automation/gen/pi-post-release-backports.mjs, block beffcde92dea; the vendored runtime carries it)."
+
+[[files]]
+path = "packages/coding-agent/test/suite/regressions/10470-rpc-session-replacement-start-once.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCStreamsEntriesAppendedByTheStartupSessionStartUpstream", "test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCNewSessionRunsSessionStartOnceUpstream", "test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCSwitchSessionRunsSessionStartOnceUpstream", "test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCForkRunsSessionStartOnceUpstream", "test:coding/cli/rpc_session_start_once_upstream_test.go#TestRPCCloneRunsSessionStartOnceUpstream"]
+rationale = "beffcde92dea: five tests (startup event delivery, new_session, switch_session, fork, clone) on a real AgentSessionRuntime with an extension whose session_start handler appends a start-marker entry; each replacement test asserts one session_start and one streamed entry_appended. Ported with the same inputs and expectations on PiG's Runtime; all five are red on the code before the change (startup: no entry_appended; each replacement: two session_start calls)."
+oracle = "not carried: a test of the TypeScript source; the package ships no tests."

@@ -144,9 +144,10 @@ func TestRPCNestedEventsCompleteInEverySDK(t *testing.T) {
 				t.Fatalf("%s: /nested-send-wait records %q: want the response before agent_start", label, send)
 			}
 
-			// A command that starts a new Session answers with the Session's own output after it: rpc-mode.ts rebindSession
-			// subscribes its stdout writer after `await session.bindExtensions()`, which runs the session_start handlers, so the
-			// message the handler sends is written nowhere, and the response is the command's only record.
+			// A command that starts a new Session answers with the Session's own output ahead of it: rpc-mode.ts rebindSession
+			// (Pi 1.5.2 + beffcde92dea) subscribes its stdout writer before `await session.bindExtensions()`, which runs the
+			// session_start handlers, so the old Session's shutdown notice, the entry the handler appends and the message it sends
+			// are written in that order, and the command's response follows them.
 			p.send(`{"id":"fresh","type":"prompt","message":"/nested-fresh"}`)
 			var fresh []string
 			p.await("/nested-fresh to answer", testbudget.Wait(t), func(record map[string]any) bool {
@@ -164,7 +165,7 @@ func TestRPCNestedEventsCompleteInEverySDK(t *testing.T) {
 				p.progress = fresh
 				return record["type"] == "response" && record["id"] == "barrier"
 			})
-			if want := []string{"response:handled", "response:<nil>"}; !slices.Equal(fresh, want) {
+			if want := []string{"ui:notify:shutdown:new", "entry_appended:nested-start", "message_start:custom", "message_end:custom", "response:handled", "response:<nil>"}; !slices.Equal(fresh, want) {
 				t.Fatalf("%s: /nested-fresh records\n got: %q\nwant: %q", label, fresh, want)
 			}
 			p.closeAndWait()
@@ -290,9 +291,13 @@ const nestedEventsNode = `export default function (pi) {
     await ctx.waitForIdle();
     ctx.ui.notify("idle", "info");
   } });
+  let starts = 0;
   pi.on("session_start", async (event) => {
+    starts++;
+    pi.appendEntry("nested-start", { reason: event.reason, starts });
     if (event.reason === "new") pi.sendMessage({ customType: "nested", content: "started", display: true });
   });
+  pi.on("session_shutdown", (event, ctx) => { ctx.ui.notify("shutdown:" + event.reason, "info"); });
   pi.registerCommand("nested-send-wait", { description: "Send a user message, then wait for idle", handler: async (_args, ctx) => {
     pi.sendUserMessage("Say hello");
     await ctx.waitForIdle();
@@ -335,10 +340,21 @@ const nestedEventsGoBody = `	ext.OnEvent("before_agent_start", func(ctx sdk.Cont
 		ctx.Notify("idle", "info")
 		return nil
 	})
+	starts := 0
 	ext.OnEvent("session_start", func(ctx sdk.Context, data map[string]any) (any, error) {
-		if reason, _ := data["reason"].(string); reason == "new" {
+		starts++
+		reason, _ := data["reason"].(string)
+		if err := ctx.AppendEntry("nested-start", map[string]any{"reason": reason, "starts": starts}); err != nil {
+			return nil, err
+		}
+		if reason == "new" {
 			return nil, ctx.SendMessage("nested", "started", true, sdk.SendMessageOptions{})
 		}
+		return nil, nil
+	})
+	ext.OnEvent("session_shutdown", func(ctx sdk.Context, data map[string]any) (any, error) {
+		reason, _ := data["reason"].(string)
+		ctx.Notify("shutdown:"+reason, "info")
 		return nil, nil
 	})
 	ext.Command("nested-send-wait", "Send a user message, then wait for idle", func(ctx sdk.Context, _ string) error {
@@ -382,9 +398,16 @@ func nestedEventsPythonBody(name string) string {
         ctx.wait_for_idle()
         ctx.notify("idle", "info")
 
+    starts = [0]
+
     def session_start(ctx, data):
+        starts[0] += 1
+        ctx.append_entry("nested-start", {"reason": data.get("reason"), "starts": starts[0]})
         if data.get("reason") == "new":
             ctx.send_message("nested", "started", True)
+
+    def session_shutdown(ctx, data):
+        ctx.notify("shutdown:" + str(data.get("reason")), "info")
 
     def send_wait(ctx, _args):
         ctx.send_user_message("Say hello")
@@ -394,6 +417,7 @@ func nestedEventsPythonBody(name string) string {
         ctx.new_session()
 
     ext.on_event("session_start", session_start)
+    ext.on_event("session_shutdown", session_shutdown)
     ext.command("nested-send-wait", "Send a user message, then wait for idle", send_wait)
     ext.command("nested-fresh", "Start a new Session", fresh)
     ext.on_event("before_agent_start", before_agent_start)
@@ -437,10 +461,17 @@ func nestedEventsRustBody(name string) string {
         ctx.notify("idle", "info");
         CommandResult::Ok
     });
+    static STARTS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
     ext.on_event("session_start", |ctx, data| {
+        let starts = STARTS.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+        let _ = ctx.append_entry("nested-start", serde_json::json!({"reason": data["reason"], "starts": starts}));
         if data["reason"].as_str() == Some("new") {
             let _ = ctx.send_message("nested", "started", true, None, None);
         }
+        None
+    });
+    ext.on_event("session_shutdown", |ctx, data| {
+        ctx.notify(&format!("shutdown:{}", data["reason"].as_str().unwrap_or("")), "info");
         None
     });
     ext.command("nested-send-wait", "Send a user message, then wait for idle", |ctx, _args| {

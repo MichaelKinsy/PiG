@@ -1,0 +1,48 @@
+# Behavior family: rpc
+# Surface: the events a session_start handler emits during startup (an appended entry, a session name, a notification), against what RPC mode writes.
+#
+# Upstream evidence (Pi 1.5.2 + beffcde92dea, #12230, #10470): rpc-mode.ts rebindSession subscribes to the session's events BEFORE `await session.bindExtensions(...)`, so the
+# entry_appended and session_info_changed events the startup session_start handler emits reach the client, ahead of the first command's response; the handler's notify goes through the UI
+# context as before. Before the commit (Pi 1.5.2) the subscription followed the bind, and RPC wrote neither event at startup.
+# PiG held its writer back until session_start returned (rpcModeSession.writing) and wrote neither.
+# Entry IDs and clocks are masked as bijections/timestamps; the member order and every other byte compare.
+name = "84-rpc-startup-session-start-events"
+description = "RPC writes the entry_appended and session_info_changed events the startup session_start handler emits, once"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"state","type":"get_state"}'
+wait_event = '{"id":"state","type":"response","command":"get_state","success":true}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/session-start-count.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/session-start-count.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 3
+both_contain = ['"customType":"probe-start","data":{"phase":"startup","starts":1}', '"name":"start-name-startup-1"', '"message":"start-notify-startup-1"']
+both_not_contain = ['"success":false', 'extension_error', '"starts":2']
+
+[[assert.json_aliases]]
+paths = ["/**/id", "/**/parentId", "/**/sessionId"]
+kind = "id"
+group = "runtime"
+pattern = '^[0-9a-f-]{8,36}$'
+reason = "Entry, session and UI request IDs vary per run. A bijection preserves distinct identities and every parent reference; the literal command ID (state) does not match the pattern and stays unchanged."
+
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent entry wall clocks vary; retain presence, type and valid syntax."

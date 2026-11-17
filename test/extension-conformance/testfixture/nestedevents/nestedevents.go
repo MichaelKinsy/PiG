@@ -40,10 +40,21 @@ func Extension(name string) *sdk.Extension {
 		ctx.Notify("idle", "info")
 		return nil
 	})
+	starts := 0
 	ext.OnEvent("session_start", func(ctx sdk.Context, data map[string]any) (any, error) {
-		if reason, _ := data["reason"].(string); reason == "new" {
+		starts++
+		reason, _ := data["reason"].(string)
+		if err := ctx.AppendEntry("nested-start", map[string]any{"reason": reason, "starts": starts}); err != nil {
+			return nil, err
+		}
+		if reason == "new" {
 			return nil, ctx.SendMessage("nested", "started", true, sdk.SendMessageOptions{})
 		}
+		return nil, nil
+	})
+	ext.OnEvent("session_shutdown", func(ctx sdk.Context, data map[string]any) (any, error) {
+		reason, _ := data["reason"].(string)
+		ctx.Notify("shutdown:"+reason, "info")
 		return nil, nil
 	})
 	ext.Command("nested-send-wait", "Send a user message, then wait for idle", func(ctx sdk.Context, _ string) error {

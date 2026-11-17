@@ -1553,6 +1553,75 @@ patch("c47ad0432bb8", "pi-coding-agent/modes/interactive/interactive-mode.js", [
 ]);
 // END backport c47ad0432bb8
 
+// BEGIN backport beffcde92dea
+// beffcde92dea (#12230, #10470): RPC mode rebinds a replacement Session once, through the callback the runtime calls (setRebindSession), and subscribes to the Session's events
+// before bindExtensions, so the events session_start handlers emit (an appended entry's entry_appended) reach the client, at startup and on every replacement.
+// not carried: packages/coding-agent/test/suite/regressions/10470-rpc-session-replacement-start-once.test.ts (a test of the TypeScript source) and packages/coding-agent/CHANGELOG.md (Pi's changelog entry): the package ships neither.
+// not carried: packages/coding-agent/src/modes/rpc/rpc-mode.ts (the TypeScript source): the compiled output below carries the change.
+patch("beffcde92dea", "pi-coding-agent/modes/rpc/rpc-mode.js", [
+    [`        });
+        unsubscribe?.();
+        unsubscribeBackpressure?.();
+        unsubscribe = session.subscribe((event) => {
+            output(toJsonEvent(event));
+            if (event.type === "agent_settled") {
+                checkShutdownRequested();
+            }
+        });
+        unsubscribeBackpressure = session.agent.subscribe(async () => {
+            await waitForRawStdoutBackpressure();
+        });
+    };
+`, `        });
+    };
+`],
+    [`    const rebindSession = async () => {
+        session = runtimeHost.session;
+        await session.bindExtensions({
+`, `    const rebindSession = async () => {
+        session = runtimeHost.session;
+        ${note("beffcde92dea").trim()}
+        // Subscribe before binding so events emitted by session_start handlers (e.g. appended entries) reach the client.
+        unsubscribe?.();
+        unsubscribeBackpressure?.();
+        unsubscribe = session.subscribe((event) => {
+            output(toJsonEvent(event));
+            if (event.type === "agent_settled") {
+                checkShutdownRequested();
+            }
+        });
+        unsubscribeBackpressure = session.agent.subscribe(async () => {
+            await waitForRawStdoutBackpressure();
+        });
+        await session.bindExtensions({
+`],
+    [`                const result = await runtimeHost.newSession(options);
+                if (!result.cancelled) {
+                    await rebindSession();
+                }
+`, `                const result = await runtimeHost.newSession(options);
+`],
+    [`                const result = await runtimeHost.switchSession(command.sessionPath);
+                if (!result.cancelled) {
+                    await rebindSession();
+                }
+`, `                const result = await runtimeHost.switchSession(command.sessionPath);
+`],
+    [`                const result = await runtimeHost.fork(command.entryId);
+                if (!result.cancelled) {
+                    await rebindSession();
+                }
+`, `                const result = await runtimeHost.fork(command.entryId);
+`],
+    [`                const result = await runtimeHost.fork(leafId, { position: "at" });
+                if (!result.cancelled) {
+                    await rebindSession();
+                }
+`, `                const result = await runtimeHost.fork(leafId, { position: "at" });
+`],
+]);
+// END backport beffcde92dea
+
 // BEGIN backport 6aab551a79ba
 // 6aab551a79ba (#12232): print mode (text and --mode json) subscribes the event writer and the stdout backpressure before bindExtensions(), so the events session_start handlers emit
 // (entry_appended for pi.appendEntry, session_info_changed, a custom message's message_start/message_end) reach the JSON output at startup and after an extension replaces the session.

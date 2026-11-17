@@ -625,6 +625,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4d357dd](#bf-4d357dd) | fix(coding): grep reports the match limit when the match past it falls in the trailing context | PiG's own defect | All platforms | Unreleased |
 | [BF-4d731f2](#bf-4d731f2) | Typing `@` in the editor, the `find` and `grep` tools and the tools status no longer treat a program that is… | PiG's own defect | Windows | Unreleased |
 | [BF-4d965e3](#bf-4d965e3) | The `/tree` label of a custom tool call shows its arguments in the order the model sent them, with `<`, `>`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4da149a](#bf-4da149a) | Follows Pi beffcde92dea (#12230, #10470): in RPC mode `new_session`, `switch_session`, `fork` and `clone` run… | PiG's own defect | All platforms | Unreleased |
 | [BF-4db62b6](#bf-4db62b6) | Quitting during startup (Ctrl-D, or Ctrl-C twice, while the tools download or the terminal colours are… | PiG's own defect | All platforms | Unreleased |
 | [BF-4de6fba](#bf-4de6fba) | A Mistral request that names a function as its tool choice writes the object `type, function`, as Pi does… | PiG's own defect | All platforms | Unreleased |
 | [BF-4e204f4](#bf-4e204f4) | fix(sdk-py): clear bandit's findings in the 0.5.2 Python SDK code | PiG's own defect | All platforms | Unreleased |
@@ -10669,6 +10670,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4d965e37c0` (2026-10-06)
 - **Tests:** `internal/codingagent/tree_row_format_test.go::TestFormatToolCall_CustomToolMatchesJSONStringify`, `internal/codingagent/tree_row_format_test.go::TestFormatToolCall_PerToolFormatters`, `internal/codingagent/tree_row_format_test.go::TestFormatTreeRow_AllEntryTypes`
 - **Release note:** The `/tree` label of a custom tool call shows its arguments in the order the model sent them, with `<`, `>` and `&` literal, and truncates at 40 UTF-16 units as Pi does. It used to sort the members and could cut a multi-byte character.
+
+### BF-4da149a
+
+**Follows Pi beffcde92dea (#12230, #10470): in RPC mode `new_session`, `switch_session`, `fork` and `clone` run…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Follows Pi beffcde92dea (#12230, #10470): in RPC mode `new_session`, `switch_session`, `fork` and `clone` run an extension's `session_start` handlers once for the new session, with the old session's `session_shutdown` before it, as Pi's RPC mode does since this commit; before they ran twice (the runtime's rebind callback, then the command handler's own rebind), so an extension that started a timer in `session_start` and cleared it in `session_shutdown` leaked one timer per replacement and `appendEntry` in `session_start` wrote its entry twice.
+- **Root cause:** PiG ported Pi's rpc-mode (as of v1.5.2), whose command handlers called the rebind a second time after the runtime's rebind callback had already run it (rpcHost.rebindAgain), and which subscribed to the session events only after the extensions were bound, so the second bind ran session_start again and the first bind's events had no listener
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4da149a979` (2026-11-16)
+- **Tests:** `coding/cli/rpc_session_start_once_upstream_test.go::TestRPCCloneRunsSessionStartOnceUpstream`, `coding/cli/rpc_session_start_once_upstream_test.go::TestRPCForkRunsSessionStartOnceUpstream`, `coding/cli/rpc_session_start_once_upstream_test.go::TestRPCNewSessionRunsSessionStartOnceUpstream`, `coding/cli/rpc_session_start_once_upstream_test.go::TestRPCStreamsEntriesAppendedByTheStartupSessionStartUpstream`, `coding/cli/rpc_session_start_once_upstream_test.go::TestRPCSwitchSessionRunsSessionStartOnceUpstream`, `coding/cli/rpc_writer_after_session_start_test.go::TestRPCWritesSessionStartEmissionsOnceInEverySDK`, `test/extension-conformance/rpc_session_start_once_test.go::TestRPCSessionReplacementRunsSessionStartOnceInEverySDK`
+- **Release note:** Follows Pi beffcde92dea (#12230, #10470): in RPC mode `new_session`, `switch_session`, `fork` and `clone` run an extension's `session_start` handlers once for the new session, with the old session's `session_shutdown` before it, as Pi's RPC mode does since this commit; before they ran twice (the runtime's rebind callback, then the command handler's own rebind), so an extension that started a timer in `session_start` and cleared it in `session_shutdown` leaked one timer per replacement and `appendEntry` in `session_start` wrote its entry twice. The RPC mode also subscribes to the session's events before the extensions are bound, at startup and on replacement: the events a `session_start` handler emits (`entry_appended`, `session_info_changed`, a message it sends) now reach the client, in the order they happen and ahead of the command's response; before the client received none of them at startup and a replacement's first bind wrote nothing. The same for every extension SDK (Node, Go, Python, Rust and Lisp, isolated, packed and fused). Pi's CHANGELOG line: "Fixed RPC `new_session`, `switch_session`, `fork` and `clone` running extension `session_start` and `resources_discover` handlers twice for the new session. RPC clients now also receive events emitted by `session_start` handlers, such as `entry_appended` for entries they append (#10470)". The bug has been in PiG since v0.3.0.
 
 ### BF-4db62b6
 
