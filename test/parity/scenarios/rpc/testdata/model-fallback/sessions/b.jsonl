@@ -1,0 +1,5 @@
+{"type":"session","version":3,"id":"bbbbbbbb-0000-4000-8000-000000000002","timestamp":"2099-01-01T00:00:00.000Z","cwd":"."}
+{"type":"model_change","id":"m1","parentId":null,"timestamp":"2099-01-01T00:00:01.000Z","provider":"other","modelId":"also-gone"}
+{"type":"message","id":"u1","parentId":"m1","timestamp":"2099-01-01T00:00:02.000Z","message":{"role":"user","content":[{"type":"text","text":"hello bbbbbbbb-0000-4000-8000-000000000002"}],"timestamp":4070908802000}}
+{"type":"message","id":"a1","parentId":"u1","timestamp":"2099-01-01T00:00:03.000Z","message":{"role":"assistant","content":[{"type":"text","text":"hi bbbbbbbb-0000-4000-8000-000000000002"}],"api":"openai-completions","provider":"other","model":"also-gone","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":4070908803000}}
+{"type":"thinking_level_change","id":"b951e5b5","parentId":"a1","timestamp":"2026-11-17T02:33:17.901Z","thinkingLevel":"off"}

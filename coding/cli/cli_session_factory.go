@@ -5,6 +5,7 @@ package cli
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding"
@@ -147,11 +148,16 @@ func (f *cliSessionFactory[S]) create(ctx context.Context, options coding.Create
 	f.mu.Lock()
 	f.states[session] = state
 	f.mu.Unlock()
+	diagnostics := inputs.Diagnostics
+	// "Could not restore model x/y. Using a/b." is set again on /resume and /fork. As a diagnostic, every mode reports it at startup and after each replacement. Without any model, the message is login guidance instead: interactive mode shows it at startup, the other modes exit with it (main.ts:914-919).
+	if inputs.ModelFallbackMessage != "" && session.Model() != nil {
+		diagnostics = append(slices.Clone(diagnostics), codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: inputs.ModelFallbackMessage})
+	}
 	return coding.CreateAgentSessionRuntimeResult{
 		Session:              session,
 		Services:             inputs.Services,
 		ExtensionsResult:     session.ResourceLoader().GetExtensions(),
-		Diagnostics:          inputs.Diagnostics,
+		Diagnostics:          diagnostics,
 		ModelFallbackMessage: inputs.ModelFallbackMessage,
 		Dispose: func(reason string) {
 			_ = low.Close()

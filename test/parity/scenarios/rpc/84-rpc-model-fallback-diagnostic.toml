@@ -1,0 +1,59 @@
+# Behavior family: rpc
+# Surface: switch_session into a session whose saved model is gone reports "Could not restore model ..." on stderr, once per distinct message, never on stdout.
+#
+# Upstream evidence (Pi c8c456c85c6e, #12234, on top of c47ad0432bb8, #12115): main.ts's runtime factory pushes created.modelFallbackMessage onto the runtime diagnostics as a
+# warning when a fallback model was chosen, and rpc-mode.ts's rebind callback writes takeUnreportedDiagnostics() to stderr. Before the commit RPC mode never showed the message
+# (nothing read modelFallbackMessage), so the client switched models without notice. The trace: start without a session, switch_session into a.jsonl (saved model
+# gone/missing-model), then b.jsonl (saved model other/also-gone), then a.jsonl again: stderr carries the first warning once, the second warning once, and nothing for the
+# third switch (the diagnostic equals one already reported: reportedDiagnosticKeys keys type and message). The fallback is the settings default, fixture/model-two. stderr_equal
+# compares the whole stream; no response or event carries the message.
+name = "84-rpc-model-fallback-diagnostic"
+description = "RPC: switch_session into sessions whose model is gone reports each distinct fallback on stderr once and stdout carries frames only"
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "testdata/model-fallback"
+timeout_seconds = 30
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"sw-a","type":"switch_session","sessionPath":"sessions/a.jsonl"}'
+wait_event = '{"id":"sw-a","type":"response","command":"switch_session","success":true,"data":{"cancelled":false}}'
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"sw-b","type":"switch_session","sessionPath":"sessions/b.jsonl"}'
+wait_event = '{"id":"sw-b","type":"response","command":"switch_session","success":true,"data":{"cancelled":false}}'
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"sw-a2","type":"switch_session","sessionPath":"sessions/a.jsonl"}'
+wait_event = '{"id":"sw-a2","type":"response","command":"switch_session","success":true,"data":{"cancelled":false}}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-fallback/agent"]
+pig_args = ["--offline", "--no-session", "--no-extensions", "--no-skills"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-fallback/agent"]
+pi_args = ["--offline", "--no-session", "--no-extensions", "--no-skills"]
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = [
+  '"id":"sw-a","type":"response","command":"switch_session","success":true',
+  '"id":"sw-b","type":"response","command":"switch_session","success":true',
+  '"id":"sw-a2","type":"response","command":"switch_session","success":true',
+]
+both_not_contain = [
+  '"success":false',
+  'Could not restore model',
+]

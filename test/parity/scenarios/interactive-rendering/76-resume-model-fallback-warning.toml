@@ -1,0 +1,52 @@
+# Behavior family: interactive-rendering
+# Surface: /resume into a session whose saved model is gone shows "Warning: Could not restore model ..." in the chat, above "Resumed session".
+#
+# Upstream evidence (Pi c8c456c85c6e, #12234, on top of c47ad0432bb8, #12115): main.ts's runtime factory pushes created.modelFallbackMessage onto the runtime diagnostics as a
+# warning when a fallback model was chosen; interactive-mode.ts's rebind callback shows takeUnreportedDiagnostics() with showRuntimeDiagnostics (showWarning). Before the commit
+# /resume recomputed the message and nothing read it, so the model switched without notice. The staged session's saved model is gone/missing-model; the fallback is the settings
+# default, fixture/model-two. The crop is the warning through "Resumed session".
+name = "76-resume-model-fallback-warning"
+description = "/resume into a session whose model is gone shows the fallback warning above Resumed session, as pi does."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/model-fallback/cwd"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 30
+capture_start = "Warning: Could not restore model"
+capture_end = "Resumed session"
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/resume", "Enter"]
+wait_visible_contains = ["Resume Session (Current Folder)", "hello aaaaaaaa"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Resumed session"]
+wait_not_contains = ["Resume Session (Current Folder)"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-fallback/pig-agent-regular"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-fallback/pi-agent-regular", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--no-skills", "--offline", "--session-dir", "sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--offline", "--session-dir", "sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Warning: Could not restore model gone/missing-model. Using fixture/model-two", "Resumed session"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

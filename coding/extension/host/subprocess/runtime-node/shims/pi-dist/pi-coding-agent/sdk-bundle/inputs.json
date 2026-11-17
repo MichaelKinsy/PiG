@@ -555,7 +555,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/main.js",
-      "sha256": "e600a839412e3ef9ec7416f0ddabe84387308b73006ec40a50534443e97e6591"
+      "sha256": "905f5f64fff3d42de801ec9db7ee2da1c57c8668ec51f62d2bb2a9227478eec9"
     },
     {
       "path": "pi-dist/pi-coding-agent/migrations.js",

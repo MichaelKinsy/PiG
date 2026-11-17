@@ -90,6 +90,8 @@ type printModeRuntime struct {
 	SessionName string
 	// Diagnostics are the build's diagnostics (cliBuild.runtimeDiagnostics): the Runtime holds them for the mode to report once.
 	Diagnostics []codingagent.AgentSessionRuntimeDiagnostic
+	// ModelFallbackMessage is the build model fallback message (cliBuild.ModelFallbackMessage); the factory adds it to the diagnostics when a fallback model was chosen.
+	ModelFallbackMessage string
 	// ToolRegistryAllowed and ToolRegistryExcluded bound the tool registry
 	// pi.getAllTools() reports (see toolRegistryFilters).
 	ToolRegistryAllowed  map[string]struct{}
@@ -112,7 +114,7 @@ func (h printModeRuntime) startOptions() coding.SessionStartOptions {
 }
 
 func (h printModeRuntime) inputs() cliSessionInputs {
-	return cliSessionInputs{Services: h.Services, Extensions: h.Extensions, Start: h.Session, Host: h.Host, Bridge: h.Bridge, Runtime: h.Runtime, Diagnostics: h.Diagnostics, Invalidate: h.Invalidate, Release: h.Release}
+	return cliSessionInputs{Services: h.Services, Extensions: h.Extensions, Start: h.Session, Host: h.Host, Bridge: h.Bridge, Runtime: h.Runtime, Diagnostics: h.Diagnostics, ModelFallbackMessage: h.ModelFallbackMessage, Invalidate: h.Invalidate, Release: h.Release}
 }
 
 // printModeOptions mirrors upstream PrintModeOptions (print-mode.ts).

@@ -98594,6 +98594,17 @@
       "shapeHash": "sha256:54f412376319e834f0c3a46220bc34813ca4efb3c75809f044c33e567c9bb528"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#noModelFallbackMessage",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "noModelFallbackMessage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(session *github.com/MichaelKinsy/PiG/coding.Session, message string) string"
+      },
+      "shapeHash": "sha256:c94d93d0bf281b71eadb5c8adfff2221a95cb3083b523a6d881f7c99e6b66140"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#nodeBufferFromMessage",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "nodeBufferFromMessage",
