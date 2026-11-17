@@ -1127,7 +1127,8 @@ Locked by: `coding/pigletbuild` `TestContainerUserArgsOnWindowsLookUpNoIdentity`
 
 Remove when: PiG maps a Windows identity into the build container, or container builds stop bind-mounting host output.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 1 re-approval (editorial Summary/Audience only), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:e8ccfa56670bb510
 
 ## D69 Windows Piglet scripts are cmd.exe launchers
 
@@ -1147,7 +1148,8 @@ Locked by: `coding/pigletbuild` `TestSourceScriptPerPlatform`, `TestAC2AC7Source
 
 Remove when: never, unless Windows runs POSIX shell scripts natively.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 1 re-approval (editorial Summary/Audience only), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:4e4df01f4b1bbd81
 
 ## D81 Same-manager helper download coalescing
 
@@ -1408,7 +1410,8 @@ Locked by: `env/packaged_daemon_test.go` (`TestPackagedDaemonLocation`) fails wh
 Remove when: never; the location follows the distribution form.
 
 Approval: approved by owner Michael Kinsy 2026-10-06.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 1 re-approval (editorial Summary/Audience only), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:d9ef667dfca3df5a
 
 ## D100 Crash attribution reads Go panic traces
 
@@ -1429,7 +1432,8 @@ Locked by: `internal/codingagent/crash_log_test.go` (`TestStackFrameFormsAreJava
 Remove when: never; the trace format follows the implementation language.
 
 Approval: required substrate recorded by the 0.5.0 integration; approved by owner Michael Kinsy 2026-10-06.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 1 re-approval (editorial Summary/Audience only), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:187b64b162e293c7
 
 ---
 
@@ -1454,7 +1458,8 @@ Locked by: `coding/cli/rpc_mode_test.go` (`TestRPCGetExtensionsResponseShape`) a
 Remove when: Pi adds an RPC command that lists loaded extensions (adopt its name and shape), or PiG's evaluation harness runs an in-process Session.
 
 Approval: the lead requested the command under the owner's instruction of 2026-10-05 to port and account for packages/telemetry and packages/evals; approved by owner Michael Kinsy 2026-10-06.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 1 re-approval (editorial Summary/Audience only), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:f9c9d96c6d165eee
 
 ---
 
@@ -1665,7 +1670,8 @@ Locked by: `TestExtensionAPIToolResultPreviewGo`, `TestRustSDKToolResultPreview`
 Remove when: Pi lets a subprocess extension return a collapsed view for a tool result.
 
 Approval: comb-audit row 17 (2026-10-10).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 1 re-approval (editorial Summary/Audience only), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:4db9002cdc41591a
 
 ## D170 Piglet tree, lineage and provenance diagnostics
 
@@ -1796,7 +1802,8 @@ Locked by: `TestBashExecutionStreamingRetainsTheTailNotTheWholeOutput` (red at e
 Remove when: Pi bounds what its bash block keeps, or adds a caller of `getOutput`.
 
 Approval: owner, 2026-10-14, TERN-CLAUDE-CHANNEL 2026-10-14T09:34:28Z (owner decisions: D176 approved). Earlier: tui squad lead, 2026-10-13 (TO-T2: replace `GetOutput`, record the retention change).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 1 re-approval (editorial Summary/Audience only), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:79b18da252030bbc
 
 ## D189 Host calls made by deferred work carry a timer mark, and the host holds them for Pi's loop turn
 
@@ -1819,7 +1826,8 @@ Locked by: `TestDeferredHostCallsCarryTheTimerMarkAcrossSDKs`, `TestNodeTimerCal
 Remove when: Pi runs extensions in a separate process, or the Node runtime shares the agent's event loop.
 
 Approval: owner, ordering design decision D5 (2026-10-20): add the wire field that tags timer-originated host calls, in the host and every runtime at once, with no negotiation. Owner sign-off of the record, 2026-10-22 (0.5.2 release).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 1 re-approval (editorial Summary/Audience only), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:1a5ad4ca9c1d2490
 
 ## D191 Outbound TLS refuses chains through the compromised eMudhra intermediates and the roots NSS removed after them
 
@@ -1869,7 +1877,8 @@ Locked by: `TestPigletCommandsInstallNPMPackagesWithoutRunningScripts` (validate
 Remove when: Pi installs Packages with lifecycle scripts disabled, or Pi gives its Package installs an explicit script opt-in that Piglet resolution can share.
 
 Approval: owner, Piglet builder port decision D8 (`PIGLETS-BUILDER-PORT-REQUESTS.md`, section 5.3, approved as recommended 2026-10-22).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 1 re-approval (editorial Summary/Audience only), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:5aaeed05e52f8274
 
 ## D201 The SDK resource loader takes the runtime its extensions register against
 
