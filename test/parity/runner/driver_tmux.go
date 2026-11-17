@@ -218,6 +218,8 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		readyOK = waitForPaneOrCapture(ctx, session, ready, earlyCapture, timeout)
 		if !readyOK {
 			operationErr = fmt.Errorf("ready pattern %q not reached within %s", ready, timeout)
+			// A wait that timed out leaves the process in an unknown state. Every wait failure defers the probe, which runs after the final capture and before the session teardown deferred at the top; a run whose waits pass defers nothing.
+			defer hangProbe{session, transcriptPath, bin}.record(&result)
 		}
 	}
 	elapsed := time.Since(t0).Milliseconds()
@@ -255,6 +257,9 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 					err = fmt.Errorf("[[tmux.steps]] step %d: %w", index+1, err)
 				}
 				operationErr = err
+				if errors.As(err, new(waitTimeoutError)) {
+					defer hangProbe{session, transcriptPath, bin}.record(&result)
+				}
 				break
 			}
 			if step.FinalFrame != nil {
@@ -421,18 +426,18 @@ func runTmuxStep(ctx context.Context, session, transcriptPath, label string, ste
 	}
 	if len(step.WaitContains) > 0 {
 		if !waitForPaneAllSince(ctx, session, transcriptPath, step.WaitContains, baseline, true, timeout) {
-			return watched, fmt.Errorf("step output %q not reached within %s", step.WaitContains, timeout)
+			return watched, waitTimeoutError{fmt.Errorf("step output %q not reached within %s", step.WaitContains, timeout)}
 		}
 	}
 	if len(visible) > 0 || len(step.WaitNotContains) > 0 {
 		if !waitForPaneState(ctx, session, visible, step.WaitNotContains, timeout) {
-			return watched, fmt.Errorf("visible step state includes=%q excludes=%q not reached within %s", visible, step.WaitNotContains, timeout)
+			return watched, waitTimeoutError{fmt.Errorf("visible step state includes=%q excludes=%q not reached within %s", visible, step.WaitNotContains, timeout)}
 		}
 	}
 	if step.WaitStableMilliseconds > 0 {
 		window := time.Duration(step.WaitStableMilliseconds) * time.Millisecond
 		if !waitForPaneQuiescent(ctx, func() string { return capturePaneVisible(ctx, session) }, window, tmuxQuiescencePoll, timeout) {
-			return watched, fmt.Errorf("visible pane did not stay unchanged for %s within %s", window, timeout)
+			return watched, waitTimeoutError{fmt.Errorf("visible pane did not stay unchanged for %s within %s", window, timeout)}
 		}
 	}
 	if step.SettleSeconds > 0 {

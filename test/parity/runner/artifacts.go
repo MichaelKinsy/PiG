@@ -75,6 +75,7 @@ func WriteFailureArtifacts(t *testing.T, root string, o *ScenarioOutcome, pig, p
 		}
 		_ = write("pig.raw.stdout", o.Pig.Runs[pigRun].RawOutput)
 		_ = write("pig.stderr", o.Pig.Runs[pigRun].Stderr)
+		writeHangDump(write, "pig.hang-dump.txt", o.Pig.Runs[pigRun].HangDump)
 		_ = write("pig.artifact", o.Pig.Runs[pigRun].Artifact)
 		_ = write(captureArtifactName("pig.stdout", o.Pig.Runs[pigRun].PlainUncropped), o.Pig.Runs[pigRun].Output)
 		_ = write(captureArtifactName("pig.escaped", o.Pig.Runs[pigRun].EscapedUncropped), o.Pig.Runs[pigRun].Escaped)
@@ -87,6 +88,7 @@ func WriteFailureArtifacts(t *testing.T, root string, o *ScenarioOutcome, pig, p
 		}
 		_ = write("pi.raw.stdout", o.Pi.Runs[piRun].RawOutput)
 		_ = write("pi.stderr", o.Pi.Runs[piRun].Stderr)
+		writeHangDump(write, "pi.hang-dump.txt", o.Pi.Runs[piRun].HangDump)
 		_ = write("pi.artifact", o.Pi.Runs[piRun].Artifact)
 		_ = write(captureArtifactName("pi.stdout", o.Pi.Runs[piRun].PlainUncropped), o.Pi.Runs[piRun].Output)
 		_ = write(captureArtifactName("pi.escaped", o.Pi.Runs[piRun].EscapedUncropped), o.Pi.Runs[piRun].Escaped)
