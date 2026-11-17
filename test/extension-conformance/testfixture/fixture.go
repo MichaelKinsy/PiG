@@ -2253,9 +2253,7 @@ func Extension() *sdk.Extension {
 				for key := range headers {
 					delete(headers, key)
 				}
-				for key, value := range replacement {
-					headers[key] = value
-				}
+				maps.Copy(headers, replacement)
 				return nil, nil
 			}
 			return queued[0], nil
