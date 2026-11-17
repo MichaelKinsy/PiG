@@ -973,6 +973,7 @@ func (h *Host) SetUIBridge(bridge *UIBridge) {
 		bridge.OnHostStateChanging = h.hostStateChanging
 		bridge.OnHostStateSettled = h.hostStateSettled
 		bridge.resolveFlag = h.resolveFlagValue
+		bridge.extensionPath = h.extensionPathOf
 		bridge.withSession = h.withSessionCallback
 		bridge.setup = h.setupCallback
 		bridge.mu.Lock()
@@ -2023,6 +2024,17 @@ func (h *Host) OAuthProviderNames(extName string) []string {
 		return nil
 	}
 	return append([]string(nil), me.oauthProviderNames...)
+}
+
+// extensionPathOf is the path the named extension was selected from, which ExtensionError shows; an unknown name is its own path.
+func (h *Host) extensionPathOf(name string) string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if me := h.exts[name]; me != nil {
+		path, _ := extensionSourcePaths(me.config)
+		return path
+	}
+	return name
 }
 
 // FlagDefault returns the first committed default for a flag registered by the named extension.
@@ -4954,6 +4966,8 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 
 		var resp *Envelope
 		var err error
+		// dispatched closes once the host dispatched the frames the handler sent before its reply (see the session_start case below).
+		var dispatched <-chan struct{}
 		request := func() error {
 			payload := &RequestPayload{
 				Method:      "event",
@@ -4988,6 +5002,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 						requestCtx = withRequestSignal(requestCtx, signal)
 					}
 				}
+				if event == "session_start" {
+					// Pi's emit returns once the handler has run, and what it did synchronously (an editor it installed with setEditorComponent) is in place. The editor's
+					// install is a notice, which the read loop passes to the dispatcher in order but the reply does not wait for: the reply holds until the notices
+					// the handler sent before it are dispatched, so the bind that follows the emit finds the editor installed.
+					requestCtx = withRequestArrived(requestCtx, func() { dispatched = conn.dispatchBarrier(parent) })
+				}
 				resp, err = conn.Request(requestCtx, envelope)
 			}
 			return nil
@@ -4998,6 +5018,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		} else {
 			_ = request()
 		}
+		awaitReplyDispatch(conn, dispatched)
 		// The reply's frame is reused once the handler holds nothing of it: what leaves is a copy of its result.
 		defer releaseResponse(resp)
 		if streamed && (err != nil || resp.Response == nil || resp.Response.Error != nil) {

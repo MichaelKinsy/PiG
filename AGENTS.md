@@ -307,7 +307,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 |---|---:|---:|---:|---:|---:|---:|---|
 | `_top` | 1 | 1 | 0 | 0 | 0 | 1 | not run |
 | `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 90 | not run |
-| `autocomplete` | 15 | 15 | 0 | 0 | 0 | 5 | not run |
+| `autocomplete` | 20 | 20 | 0 | 0 | 0 | 5 | not run |
 | `cli-utils` | 38 | 38 | 0 | 0 | 0 | 17 | not run |
 | `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
 | `compaction` | 21 | 21 | 0 | 0 | 0 | 11 | not run |

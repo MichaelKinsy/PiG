@@ -91,6 +91,72 @@ func (m *InteractiveMode) reportAutocompleteError(err error) {
 	}
 }
 
+// reportAutocompleteRebuildError reports the failure of a provider rebuild nobody awaits. An installed editor that refused the provider
+// (Pi: the throw of `this.editor.setAutocompleteProvider?.(provider)`, which the extension runner shows) is an extension error and the session
+// goes on: the default editor holds the rebuilt provider, and the extension's editor keeps the one it had. Any other failure is a provider that
+// failed, which Pi does not catch either. It runs on the owner loop, once per rebuild, so one failed sync shows one error.
+func (m *InteractiveMode) reportAutocompleteRebuildError(err error) {
+	if refused, ok := errors.AsType[*extension.EditorSyncError](err); ok {
+		m.queueExtensionError(&extension.ExtensionError{ExtensionPath: refused.ExtensionPath, Event: "setAutocompleteProvider", Error: refused.Error(), Stack: extension.ErrorStack(err)})
+		return
+	}
+	m.reportAutocompleteError(err)
+}
+
+// autocompleteChangedCallback is the provider rebuild the editor runs when its provider is replaced. The rebuild answers on the channel
+// setAutocompleteAwaiting left, when one was left.
+func (m *InteractiveMode) autocompleteChangedCallback() func(tui.AutocompleteProvider) {
+	return func(base tui.AutocompleteProvider) {
+		result := m.autocompleteRebuildResult
+		m.autocompleteRebuildResult = nil
+		m.rebuildAutocompleteWrappers(base, result)
+	}
+}
+
+// setAutocompleteAwaiting is editor.SetAutocomplete for a caller that Pi lets see the failure of setupAutocompleteProvider (a throw of its own call
+// stack): the rebuild's outcome comes back on the returned channel, which is nil when no rebuild ran. It runs on the owner loop and never waits.
+func (m *InteractiveMode) setAutocompleteAwaiting(provider tui.AutocompleteProvider) <-chan error {
+	result := make(chan error, 1)
+	m.autocompleteRebuildResult = result
+	m.editor.SetAutocomplete(provider)
+	if m.autocompleteRebuildResult == nil {
+		return result
+	}
+	m.autocompleteRebuildResult = nil
+	return nil
+}
+
+// setAutocompleteUncaught is editor.SetAutocomplete for a caller whose throw Pi leaves uncaught (the settings selector's change handler, which runs
+// inside the terminal's input handler): a rebuild failure ends the session as an uncaught exception, as the same throw ends Pi's.
+func (m *InteractiveMode) setAutocompleteUncaught(provider tui.AutocompleteProvider) {
+	result := m.setAutocompleteAwaiting(provider)
+	if result == nil {
+		return
+	}
+	ctx := m.autocompleteContext()
+	m.backgroundTasks.Go(func() {
+		if err := awaitAutocompleteRebuild(ctx, result); err != nil {
+			_ = m.postToMain(ctx, func() { m.reportAutocompleteError(err) })
+		}
+	})
+}
+
+// awaitAutocompleteRebuild is the wait of a caller whose own failure the rebuild is. A cancelled rebuild is no failure.
+func awaitAutocompleteRebuild(ctx context.Context, result <-chan error) error {
+	if result == nil {
+		return nil
+	}
+	select {
+	case err := <-result:
+		if errors.Is(err, context.Canceled) {
+			return nil
+		}
+		return err
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
+}
+
 func (m *InteractiveMode) autocompleteContext() context.Context {
 	if m.backgroundCtx != nil {
 		return m.backgroundCtx
@@ -263,7 +329,7 @@ func (m *InteractiveMode) startAutocompleteWork(work tui.AutocompleteWork, resul
 					m.autocompletePending = nil
 				}
 				if err != nil && result == nil {
-					m.reportAutocompleteError(err)
+					m.reportAutocompleteRebuildError(err)
 				}
 			}); clearErr != nil {
 				err = clearErr
@@ -276,6 +342,7 @@ func (m *InteractiveMode) startAutocompleteWork(work tui.AutocompleteWork, resul
 }
 
 func (m *InteractiveMode) rebuildAutocompleteWrappers(base tui.AutocompleteProvider, result chan<- error) {
+	m.autocompleteSetUp = true
 	m.pruneAutocompleteFactories()
 	factories := make([]extension.AutocompleteProviderFactory, len(m.autocompleteFactories))
 	for i, reg := range m.autocompleteFactories {
@@ -320,6 +387,19 @@ func (m *InteractiveMode) rebuildAutocompleteWrappers(base tui.AutocompleteProvi
 	})
 }
 
+// awaitInstalledEditor returns once the editor a session_start handler installed is in place. Pi's emit is an awaited call in one process, so the editor
+// is installed when the bind goes on to setupAutocompleteProvider; here the install is a notice that the owner loop applies after the emit returned, and a
+// provider rebuilt before it ran would never reach that editor. It runs off the owner loop, which serves the install meanwhile.
+func (m *InteractiveMode) awaitInstalledEditor(ctx context.Context) error {
+	if m.onOwnerLoop() {
+		return nil
+	}
+	if bridge, ok := m.opts.SubprocessUIBridge.(interface{ AwaitEditorInstalled(context.Context) error }); ok {
+		return bridge.AwaitEditorInstalled(ctx)
+	}
+	return nil
+}
+
 // resetAutocompleteWrappers releases the old generation before resource reload and restores the local provider.
 func (m *InteractiveMode) resetAutocompleteWrappers() {
 	if m.autocompleteEpochCancel != nil {
@@ -344,12 +424,22 @@ func (m *InteractiveMode) resetAutocompleteWrappers() {
 func (u *ExtUIContext) AutocompleteProvider(ctx context.Context) (*extension.AutocompleteProvider, error) {
 	var provider *extension.AutocompleteProvider
 	err := u.m.autocompleteOnMain(ctx, func() {
+		if !u.m.autocompleteSetUp {
+			return
+		}
 		provider = u.m.autocompleteProvider
 		if provider == nil && u.m.editor.AutocompleteProvider() != nil {
 			provider = u.m.baseAutocompleteProvider(u.m.editor.AutocompleteProvider())
 		}
 	})
 	return provider, err
+}
+
+// AutocompletePending reports that the first setupAutocompleteProvider has not run, so that Pi has no provider to hand an editor installed now.
+func (u *ExtUIContext) AutocompletePending(ctx context.Context) (bool, error) {
+	pending := false
+	err := u.m.autocompleteOnMain(ctx, func() { pending = !u.m.autocompleteSetUp })
+	return pending, err
 }
 
 func (u *ExtUIContext) AddAutocompleteProvider(factory extension.AutocompleteProviderFactory) error {
@@ -387,7 +477,7 @@ func (u *ExtUIContext) AddAutocompleteProviderWithLifetime(lifetime context.Cont
 			})
 		})
 		u.m.autocompleteFactories = append(u.m.autocompleteFactories, autocompleteRegistration{factory: factory, lifetime: lifetime, stop: stop})
-		u.m.editor.SetAutocompleteChanged(func(base tui.AutocompleteProvider) { u.m.rebuildAutocompleteWrappers(base, nil) })
+		u.m.editor.SetAutocompleteChanged(u.m.autocompleteChangedCallback())
 		u.m.rebuildAutocompleteWrappers(u.m.editor.AutocompleteProvider(), result)
 	}); err != nil {
 		return err
