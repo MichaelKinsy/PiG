@@ -3181,7 +3181,7 @@ allocs = 3177
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelPickerScopedReopen"
-allocs = 5394
+allocs = 5613
 
 [[benchmark]]
 package = "./internal/codingagent"
