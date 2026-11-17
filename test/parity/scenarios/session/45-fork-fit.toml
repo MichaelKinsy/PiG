@@ -9,6 +9,7 @@
 # retained history and the screen, from its first line to its last, is compared as it stands: escaped_output_equal over the whole capture, no crop, no normalization. A command that erased the
 # scrollback, or left a row of the old transcript below the new one, differs from Pi's capture.
 # PiG's replacement of the transcript was a forced full redraw (ESC[2J ESC[H ESC[3J) that erased the scrollback; it is now the differential repaint of Pi.
+# Both programs start from the resumed transcript (the ready pattern is its last row) and the command is typed and seen before Enter, so the echo that opens the raw-stream window is in both streams.
 
 name = "45-fork-fit"
 description = "After /fork of a session of 4 pairs that fits the pane, forked from its last message the capture of the scrollback and the screen equals Pi's."
@@ -30,12 +31,17 @@ height = 35
 cwd = "testdata/scrollback-fork-fit"
 pre_tui_lines = 5
 capture_history = true
-ready_pattern_pig = "(auto)"
-ready_pattern_pi = "(auto)"
+ready_pattern_pig = "CUR-R4 answer 4"
+ready_pattern_pi = "CUR-R4 answer 4"
 ready_timeout_seconds = 30
 
 [[tmux.steps]]
-keys = ["/fork", "Enter"]
+keys = ["/fork"]
+wait_visible_contains = ["/fork"]
+wait_timeout_seconds = 25
+
+[[tmux.steps]]
+keys = ["Enter"]
 wait_visible_contains = ["› CUR-Q"]
 wait_timeout_seconds = 8
 settle_seconds = 1
@@ -47,6 +53,7 @@ wait_timeout_seconds = 8
 settle_seconds = 2
 
 [assert]
+runs = 3
 both_reach_ready = true
 both_contain = ["PRE-TUI-LINE-1", "PRE-TUI-LINE-5", "Forked to new session"]
 both_not_contain = ["unknown command", "panic:", "goroutine "]
@@ -57,4 +64,3 @@ escaped_output_equal = true
 [[assert.transcript_sequences_equal]]
 from = "/fork"
 erasures_only = true
-runs = 3

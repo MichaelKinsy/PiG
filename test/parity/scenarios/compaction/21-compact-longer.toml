@@ -9,6 +9,7 @@
 # retained history and the screen, from its first line to its last, is compared as it stands: escaped_output_equal over the whole capture, no crop, no normalization. A command that erased the
 # scrollback, or left a row of the old transcript below the new one, differs from Pi's capture.
 # PiG's replacement of the transcript was a forced full redraw (ESC[2J ESC[H ESC[3J) that erased the scrollback; it is now the differential repaint of Pi.
+# Both programs start from the resumed transcript (the ready pattern is its last row) and the command is typed and seen before Enter, so the echo that opens the raw-stream window is in both streams.
 
 name = "21-compact-longer"
 description = "After /compact of a transcript of 2 pairs: the summary and the kept pair against the pair that is summarized the capture of the scrollback and the screen equals Pi's."
@@ -30,8 +31,8 @@ height = 35
 cwd = "testdata/scrollback-compact-longer"
 pre_tui_lines = 5
 capture_history = true
-ready_pattern_pig = "(auto)"
-ready_pattern_pi = "(auto)"
+ready_pattern_pig = "CUR-R2 answer 2"
+ready_pattern_pi = "CUR-R2 answer 2"
 ready_timeout_seconds = 30
 
 [[tmux.steps]]
@@ -46,6 +47,7 @@ wait_timeout_seconds = 25
 settle_seconds = 3
 
 [assert]
+runs = 3
 both_reach_ready = true
 both_contain = ["PRE-TUI-LINE-1", "PRE-TUI-LINE-5", "[compaction]"]
 both_not_contain = ["unknown command", "panic:", "goroutine "]
@@ -56,4 +58,3 @@ escaped_output_equal = true
 [[assert.transcript_sequences_equal]]
 from = "/compact"
 erasures_only = true
-runs = 3

@@ -58,6 +58,7 @@ wait_timeout_seconds = 25
 settle_seconds = 2
 
 [assert]
+runs = 3
 both_reach_ready = true
 both_contain = ["Forked to new session"]
 both_not_contain = ["unknown command", "panic:", "goroutine ", "PRE-TUI-LINE-1"]
@@ -68,4 +69,3 @@ escaped_output_equal = true
 [[assert.transcript_sequences_equal]]
 from = "/fork"
 erasures_only = true
-runs = 3
