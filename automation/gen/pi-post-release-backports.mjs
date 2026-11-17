@@ -2751,6 +2751,16 @@ patch("e56d35ce5ece", "pi-coding-agent/core/model-resolver.js", [
     "openai-codex": "gpt-6.2-sol",
 `],
 ]);
+// The same change to Pi's TypeScript source of the table, which the pinned-table test of coding/cli reads from the source mirror.
+mirrorSource("e56d35ce5ece", "packages/coding-agent/src/core/model-resolver.ts", [
+    [`	openai: "gpt-6.1-sol",
+	azure: "gpt-6.1-sol",
+	"openai-codex": "gpt-6.1-sol",
+`, `	openai: "gpt-6.2-sol",
+	azure: "gpt-6.2-sol",
+	"openai-codex": "gpt-6.2-sol",
+`],
+]);
 // END backport e56d35ce5ece
 
 // BEGIN backport cead615b48b8
