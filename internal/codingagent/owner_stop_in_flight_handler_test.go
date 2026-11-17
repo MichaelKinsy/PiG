@@ -78,11 +78,7 @@ func (r swapRuntime) ExtensionCommandActions(session icodingagent.InteractiveSes
 	return r.rt.ExtensionCommandActions(current)
 }
 
-func (r swapRuntime) EmitQuitShutdown()          { r.rt.EmitQuitShutdown() }
-func (r swapRuntime) EmitQuitShutdownAfterStop() { r.rt.EmitQuitShutdown() }
-func (r swapRuntime) SetBeforeQuitDispose(settle func()) {
-	r.rt.SetBeforeQuitDispose(settle)
-}
+func (r swapRuntime) EmitQuitShutdown() { r.rt.EmitQuitShutdown() }
 func (r swapRuntime) SetBeforeSessionReplacement(drain func(context.Context) error) {
 	r.rt.SetBeforeSessionReplacement(drain)
 }
