@@ -8,7 +8,9 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -193,4 +195,82 @@ func TestAwaitEditorInstalledWaitsForTheEditorThatReplacedTheOne(t *testing.T) {
 			t.Fatalf("the replacing editor is bound: %v", err)
 		}
 	})
+}
+
+// gatedEditorUI holds the host's dispatcher inside the application of the editor install, as an owner loop that is busy does.
+type gatedEditorUI struct {
+	*testUIContext
+	entered chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+// open lets the application of the install go on; a test that fails opens it too, so the host's shutdown does not wait for it.
+func (u *gatedEditorUI) open() { u.once.Do(func() { close(u.release) }) }
+
+func (u *gatedEditorUI) SetEditorComponent(factory extension.EditorFactory) {
+	close(u.entered)
+	<-u.release
+	u.testUIContext.SetEditorComponent(factory)
+}
+
+// parkedIn reports whether a goroutine waits in a function whose name contains fn.
+func parkedIn(fn string) bool {
+	buf := make([]byte, 1<<20)
+	for g := range strings.SplitSeq(string(buf[:runtime.Stack(buf, true)]), "\n\n") {
+		header, _, _ := strings.Cut(g, "\n")
+		if strings.Contains(header, "[select") && strings.Contains(g, fn) {
+			return true
+		}
+	}
+	return false
+}
+
+// Pi's emit of session_start returns once the handler has run, and an editor the handler installed is in place. The install is a notice the host dispatches in
+// order after the frames before it; the handler's reply is accepted only once that dispatch is done, whatever the dispatcher is busy with.
+func TestSessionStartReplyWaitsForTheEditorInstallNotice(t *testing.T) {
+	shortSockDir(t)
+	source := filepath.Join(t.TempDir(), "installing-editor.mjs")
+	script := `export default function(pi){pi.on("session_start",(_,ctx)=>{ctx.ui.setEditorComponent(()=>({render(){return ["editor"]},handleInput(){},getText(){return ""},setText(){}}))})}`
+	if err := os.WriteFile(source, []byte(script), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	bridge := NewUIBridge(func() {})
+	ui := &gatedEditorUI{testUIContext: newTestUIContext(), entered: make(chan struct{}), release: make(chan struct{})}
+	bridge.SetUIContext(ui)
+	host := newTestHost(t)
+	host.SetUIBridge(bridge)
+	defer host.Shutdown("test done")
+	defer ui.open()
+	extensions, errs := host.LoadAll(t.Context(), []ExtConfig{{Name: "installing", Source: source, Enabled: true}})
+	if len(errs) > 0 {
+		t.Fatal(errs)
+	}
+	returned := make(chan error, 1)
+	go func() {
+		_, err := extensions[0].Handlers["session_start"][0](map[string]any{"type": "session_start"}, t.Context())
+		returned <- err
+	}()
+	select {
+	case <-ui.entered:
+	case <-t.Context().Done():
+		t.Fatal("the editor install did not reach the UI")
+	}
+	// The dispatcher is inside the install; the reply of the handler, which the runtime sent after it, waits for the dispatcher.
+	for !parkedIn("awaitReplyDispatch") {
+		select {
+		case err := <-returned:
+			t.Fatalf("the session_start reply was accepted (%v) before the host dispatched the editor install", err)
+		case <-t.Context().Done():
+			t.Fatal("the session_start reply neither arrived nor waited for the dispatcher")
+		case <-time.After(time.Millisecond):
+		}
+	}
+	ui.open()
+	if err := <-returned; err != nil {
+		t.Fatalf("session_start: %v", err)
+	}
+	if currentEditor(bridge) == nil {
+		t.Fatal("the handler returned before its editor was installed")
+	}
 }
