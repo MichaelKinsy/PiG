@@ -68,8 +68,8 @@ if (task.startsWith("record-argv:")) {
 } else if (task.startsWith("large")) {
 	emitMessage(assistant(`${"x".repeat(60 * 1024)}\n${"line\n".repeat(2100)}`));
 } else if (task.startsWith("ignore-sigterm:")) {
-	fs.writeFileSync(task.slice("ignore-sigterm:".length), String(process.pid));
 	process.on("SIGTERM", () => {});
+	fs.writeFileSync(task.slice("ignore-sigterm:".length), String(process.pid));
 	emitMessage(assistant("partial", { stopReason: "toolUse" }));
 	setInterval(() => {}, 1000);
 } else if (task.startsWith("hold:")) {

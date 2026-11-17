@@ -25,7 +25,7 @@ func harnessChildAlive(pid int) bool {
 	return stat != "" && !strings.HasPrefix(stat, "Z")
 }
 
-func startHarnessEntry(t *testing.T, body string) (*exec.Cmd, string) {
+func startHarnessEntry(t *testing.T, ignoreTerm bool, body string) (*exec.Cmd, string) {
 	t.Helper()
 	node, err := exec.LookPath("node")
 	if err != nil {
@@ -34,7 +34,12 @@ func startHarnessEntry(t *testing.T, body string) (*exec.Cmd, string) {
 	root := t.TempDir()
 	pidFile := filepath.Join(root, "pid")
 	binary := filepath.Join(root, "pig")
-	script := "#!/bin/sh\necho $$ > '" + pidFile + ".tmp' && mv '" + pidFile + ".tmp' '" + pidFile + "'\n" + body
+	// A binary that ignores TERM installs the trap before it publishes its pid: the tests send TERM as soon as the pid file exists.
+	script := "#!/bin/sh\n"
+	if ignoreTerm {
+		script += "trap '' TERM\n"
+	}
+	script += "echo $$ > '" + pidFile + ".tmp' && mv '" + pidFile + ".tmp' '" + pidFile + "'\n" + body
 	if err := os.WriteFile(binary, []byte(script), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +72,7 @@ func waitHarnessChildPID(t *testing.T, pidFile string) int {
 
 // Pi's subagent example ends a spawned child with TERM and then KILL; in Pi the child is pi, so KILL ends it. Here the child is the entry's own child, which cannot be sent the KILL the entry receives.
 func TestHarnessEntryKillEndsItsBinary(t *testing.T) {
-	cmd, pidFile := startHarnessEntry(t, "trap '' TERM\nwhile :; do sleep 0.1; done\n")
+	cmd, pidFile := startHarnessEntry(t, true, "while :; do sleep 0.1; done\n")
 	pid := waitHarnessChildPID(t, pidFile)
 	t.Cleanup(func() { _ = syscall.Kill(pid, syscall.SIGKILL) })
 	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
@@ -91,7 +96,7 @@ func TestHarnessEntryKillEndsItsBinary(t *testing.T) {
 }
 
 func TestHarnessEntryKeepsBinaryExitStatus(t *testing.T) {
-	cmd, pidFile := startHarnessEntry(t, "exit 7\n")
+	cmd, pidFile := startHarnessEntry(t, false, "exit 7\n")
 	waitHarnessChildPID(t, pidFile)
 	err := cmd.Wait()
 	var exit *exec.ExitError
