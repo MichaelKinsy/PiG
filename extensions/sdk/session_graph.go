@@ -50,20 +50,31 @@ func newGraphObject(c Context, kind, op string, args ...any) (*graphObject, erro
 func adoptGraphObject(c Context, handle string) *graphObject {
 	object := &graphObject{context: c, handle: handle}
 	// Pi frees an object when it is unreachable; the host keeps its reference until the extension's connection closes or the object is released.
+	// The handle is a string on the wire, so the host's object lives only while this value does: whatever names the handle (a call in flight, a
+	// LoadedExtension) must keep the value reachable until the host has used the name (keepAlive, and the object a data value holds).
 	runtime.AddCleanup(object, func(release graphRelease) {
 		go func() { _, _ = release.context.callHost(graphReleaseCall, map[string]any{"handle": release.handle}) }()
 	}, graphRelease{context: c, handle: handle})
 	return object
 }
 
-// Handle is the host's name for the object, which an option that takes the object (createAgentSession) puts on the wire.
+// keepAlive keeps values reachable until the function that deferred it returns. A call that puts an object's handle on the wire defers it, so that the object is not collected, and its handle released, before the host has read the name.
+func keepAlive(values ...any) {
+	for _, value := range values {
+		runtime.KeepAlive(value)
+	}
+}
+
+// Handle is the host's name for the object, which an option that takes the object (createAgentSession) puts on the wire. The name is valid while the object is reachable: a caller that holds only the string keeps the object alive (runtime.KeepAlive) until the host has used it.
 func (o *graphObject) Handle() string { return o.handle }
 
 func graphMethodCall[T any](o *graphObject, method string, args ...any) (T, error) {
+	defer runtime.KeepAlive(o)
 	return hostDecoded[T](o.context, graphCall, map[string]any{"handle": o.handle, "method": method, "args": args})
 }
 
 func graphMethodAsync[T any](o *graphObject, method string, args ...any) (T, error) {
+	defer runtime.KeepAlive(o)
 	return hostDecoded[T](o.context, graphAsync, map[string]any{"handle": o.handle, "method": method, "args": args})
 }
 

@@ -13,7 +13,8 @@ _UNSUPPORTED = (("extensions_override", "it returns live extension objects, whic
 class LoadedExtension(dict):
     """One extension of a load: its ``path``, ``resolvedPath``, ``sourceInfo`` and ``tools`` as data (the extension object holds functions that live in the host), and the loader it was read from. It reads as that data; ``ExtensionRunner`` takes it."""
 
-    _loader: str = ""
+    # The loader object, not its handle: the loader is released when nothing refers to it, and these extensions are what still names it.
+    _loader: Any = None
 
 
 class LoadExtensionsResult(dict):
@@ -91,7 +92,7 @@ class DefaultResourceLoader(_GraphObject):
         extensions = []
         for extension in data.get("extensions") or []:
             loaded = LoadedExtension(extension)
-            loaded._loader = self.handle
+            loaded._loader = self
             extensions.append(loaded)
         result["extensions"] = extensions
         result.runtime = ExtensionRuntime._of_loader(self._context, self.handle)

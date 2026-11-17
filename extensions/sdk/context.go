@@ -1712,11 +1712,11 @@ func (r ModelRegistry) Stream(model, request, options map[string]any) *ModelEven
 }
 
 func (r ModelRegistry) stream(model, request, options map[string]any, simple bool) *ModelEventStream {
-	return r.streamOn("", model, request, options, simple)
+	return r.streamOn(nil, model, request, options, simple)
 }
 
-// streamOn runs the stream on the session graph ModelRuntime runtime names; empty is the Session's runtime.
-func (r ModelRegistry) streamOn(runtime string, model, request, options map[string]any, simple bool) *ModelEventStream {
+// streamOn runs the stream on the session graph ModelRuntime object owner; nil is the Session's runtime.
+func (r ModelRegistry) streamOn(owner *graphObject, model, request, options map[string]any, simple bool) *ModelEventStream {
 	stream := newModelEventStream()
 	streamID := fmt.Sprintf("model-stream-%d", r.context.ext.modelStreamSeq.Add(1))
 	r.context.ext.modelStreamsMu.Lock()
@@ -1736,9 +1736,11 @@ func (r ModelRegistry) streamOn(runtime string, model, request, options map[stri
 		r.context.ext.modelStreamsMu.Unlock()
 	}
 	go func() {
+		// The host runs the stream on the runtime's object by handle: it stays reachable until the stream's call is answered.
+		defer keepAlive(owner)
 		call := map[string]any{"streamId": streamID, "model": model, "request": merged, "simple": simple}
-		if runtime != "" {
-			call["runtime"] = runtime
+		if owner != nil {
+			call["runtime"] = owner.handle
 		}
 		if callbacks != nil {
 			callbacks.flags(call)

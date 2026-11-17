@@ -242,6 +242,13 @@ type Workers struct {
 	routing   bool
 	idleTimer host.Timer
 	tasks     taskGroup
+	// lingering are the processes of workers that exited whose output or channel is still read: a process outside such a
+	// worker's tree holds it (WorkerProcess.Exited). One whose streams ended goes at the next exit; Close releases the rest.
+	// Guarded by the loop.
+	lingering []*WorkerProcess
+	// released are the processes of workers that exited whose streams the component released as it closed (those that were
+	// lingering, and those that exited while it closed): Close waits for their readers. Guarded by the loop.
+	released []*WorkerProcess
 }
 
 func newWorkers(options WorkersOptions, ctx context.Context) *Workers {
@@ -363,10 +370,13 @@ func (c *Workers) Close(ctx context.Context) error {
 func (c *Workers) close(ctx context.Context) error {
 	var stops []*outcome[struct{}]
 	var records []*routed
+	var lingering []*WorkerProcess
 	c.loop.Run(func() {
 		if !c.isClosing() {
 			c.closing(closed())
 		}
+		lingering, c.lingering = c.lingering, nil
+		c.released = append(c.released, lingering...)
 		if c.idleTimer != nil {
 			c.idleTimer.Stop()
 			c.idleTimer = nil
@@ -377,6 +387,10 @@ func (c *Workers) close(ctx context.Context) error {
 			stops = append(stops, c.enqueue(record, func() (struct{}, error) { return struct{}{}, c.stop(record) }))
 		}
 	})
+	// What is still read of workers that exited before ends here; a worker that exits from now on is released at its exit.
+	for _, process := range lingering {
+		process.release()
+	}
 	// Each stop, then what its exit queued (the clear of a killed child's lock file).
 	for index, stop := range stops {
 		if _, err := stop.await(ctx); err != nil {
@@ -388,6 +402,16 @@ func (c *Workers) close(ctx context.Context) error {
 		case <-queue:
 		case <-ctx.Done():
 			return context.Cause(ctx)
+		}
+	}
+	// What was released is read no more: a reader may be in the app's OnOutput or in a listener of a link with what it read
+	// before, which Close does not leave running. The streams are closed, so only such a call holds a reader, and ctx ends the
+	// wait of one that does not return.
+	var released []*WorkerProcess
+	c.loop.Run(func() { released = slices.Clone(c.released) })
+	for _, process := range released {
+		if err := process.awaitReaders(ctx); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -598,7 +622,18 @@ func (c *Workers) fork(record *routed) (*child, error) {
 		Control:    func(message FromWorker) { c.loop.Run(func() { c.control(record, spawned, message) }) },
 		LinkLost:   func() { c.loop.Run(func() { c.linkLost(spawned) }) },
 		LinkClosed: func() { c.loop.Run(func() { c.linkClosed(spawned) }) },
-		Exited:     func(exit Exit) { c.loop.Run(func() { c.exited(record, spawned, exit) }) },
+		Exited: func(exit Exit) {
+			var release *WorkerProcess
+			c.loop.Run(func() {
+				c.exited(record, spawned, exit)
+				if c.linger(spawned.process) {
+					release = spawned.process
+				}
+			})
+			if release != nil {
+				release.release()
+			}
+		},
 	})
 	if err != nil {
 		return nil, err
@@ -618,7 +653,26 @@ func (c *Workers) fork(record *routed) (*child, error) {
 	return spawned, nil
 }
 
-// control is a control message of child.
+// linger keeps process, whose exit was just told, while its output or its channel is still read (a process outside its tree
+// holds it), for Close to release; those whose streams ended since are dropped. Pi has no such list: Node's handles of a
+// child end with the server's process. A component that is closing keeps it only for Close to wait for its readers: the
+// caller releases process (true), out of the section, as release tells the link's listener.
+func (c *Workers) linger(process *WorkerProcess) (release bool) {
+	c.lingering = slices.DeleteFunc(c.lingering, func(each *WorkerProcess) bool { return !each.stillRead() })
+	if !process.stillRead() {
+		return false
+	}
+	if c.isClosing() {
+		c.released = append(c.released, process)
+		return true
+	}
+	c.lingering = append(c.lingering, process)
+	return false
+}
+
+// control is a control message of child. One that comes after child's exit (a process outside its tree holds its channel)
+// is recorded on child like any other, as Pi's listener is the same closure before and after `exit`: it reaches neither the
+// address's record, which no longer has child, nor a worker started after it.
 func (c *Workers) control(record *routed, child *child, message FromWorker) {
 	switch message.Kind {
 	case FromWorkerStarted:

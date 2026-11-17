@@ -70593,6 +70593,17 @@
       "shapeHash": "sha256:a67130324ae67db0155010bd80b6c33a59d94f85edfbc16cbeb966d065c3612e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.ResolveRemoteCatalogModel",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.ResolveRemoteCatalogModel",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(providerID string, modelID string) (github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry, bool)"
+      },
+      "shapeHash": "sha256:2543308454181182cd5197a2264cd20d21e1061522337f6d25225046f002135b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.RuntimeAPIKey",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRegistry.RuntimeAPIKey",
@@ -71229,6 +71240,17 @@
         "type": "func(ctx context.Context, respectHold bool) \u003c-chan struct{}"
       },
       "shapeHash": "sha256:aaacf95faa2dc84f757a58d4bca10d9c39f61ef6f68f62e5bf643a8f1c708617"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.layerCatalogEntry",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.layerCatalogEntry",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, modelID string, entry github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry) github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry"
+      },
+      "shapeHash": "sha256:1e6a98b5557cfb2aef315955d8c19ce1e9a2937f118693d706d47bd1c56c72be"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.load",
@@ -196054,9 +196076,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(runtime string, model map[string]any, request map[string]any, options map[string]any, simple bool) *ModelEventStream"
+        "type": "func(owner *graphObject, model map[string]any, request map[string]any, options map[string]any, simple bool) *ModelEventStream"
       },
-      "shapeHash": "sha256:ddd5d42432a880f1f0a4ec2113f96f7fbf1cdfd0c3b5c3ce91243e40cd9aa84d"
+      "shapeHash": "sha256:b78870f9552097d5fddfcc82db380dceb72da8adf84a69c709d15b82932fdfe6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#ModelRoute",
@@ -211820,6 +211842,17 @@
         "type": "func(value any, standIns map[rune]bool) int"
       },
       "shapeHash": "sha256:e57dddc57e293a3abe337450426438d17eb2b7efadac9c6f26930165f54d1b52"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#keepAlive",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "keepAlive",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(values ...any)"
+      },
+      "shapeHash": "sha256:7d526fab27625b2f6ab3d3ad764c916cafa1f573230a0f14c89fc40f91d6eabb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#keyHintGOOS",
@@ -254040,6 +254073,17 @@
       "shapeHash": "sha256:a67130324ae67db0155010bd80b6c33a59d94f85edfbc16cbeb966d065c3612e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.ResolveRemoteCatalogModel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.ResolveRemoteCatalogModel",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(providerID string, modelID string) (ModelEntry, bool)"
+      },
+      "shapeHash": "sha256:e726218592bab1b51603aea18ea1a13a561d7281f0e1758f9acc12d92e43e86d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.RuntimeAPIKey",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ModelRegistry.RuntimeAPIKey",
@@ -254643,6 +254687,17 @@
         "type": "func(ctx context.Context, respectHold bool) \u003c-chan struct{}"
       },
       "shapeHash": "sha256:aaacf95faa2dc84f757a58d4bca10d9c39f61ef6f68f62e5bf643a8f1c708617"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.layerCatalogEntry",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.layerCatalogEntry",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, modelID string, entry ModelEntry) ModelEntry"
+      },
+      "shapeHash": "sha256:d8b21b0e2a966daf88a8e891e17ba1a9d35684632cf4fb9b19e00b9ea3269c09"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.load",
@@ -348794,6 +348849,17 @@
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.writeOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.writeOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out io.Writer, data string)"
+      },
+      "shapeHash": "sha256:a291e1e4aa75f521f2c82b837ab8e05fbb62a8a2f44a18ab113fd88691d1a83c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreenOptions",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreenOptions",
@@ -350585,6 +350651,17 @@
         "type": "func(kept int, recycle bool) []string"
       },
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.writeOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.writeOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out io.Writer, data string)"
+      },
+      "shapeHash": "sha256:a291e1e4aa75f521f2c82b837ab8e05fbb62a8a2f44a18ab113fd88691d1a83c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreenRenderState",
@@ -352840,6 +352917,17 @@
         "type": "func(kept int, recycle bool) []string"
       },
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.writeOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.writeOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out io.Writer, data string)"
+      },
+      "shapeHash": "sha256:a291e1e4aa75f521f2c82b837ab8e05fbb62a8a2f44a18ab113fd88691d1a83c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#UndoStack",
@@ -375192,6 +375280,17 @@
         "type": "func(kept int, recycle bool) []string"
       },
       "shapeHash": "sha256:a4dd400166ee079676020e2e775b00a79d947a1a693505ab7716ac793e6631ee"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.writeOwned",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.writeOwned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(out io.Writer, data string)"
+      },
+      "shapeHash": "sha256:a291e1e4aa75f521f2c82b837ab8e05fbb62a8a2f44a18ab113fd88691d1a83c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiKeyIDInputs",

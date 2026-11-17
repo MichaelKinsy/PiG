@@ -403,6 +403,7 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 	t.Run("aborts a subagent run with its parent's conversation, rejecting the waiting tool", func(t *testing.T) {
 		setup := chatSetup(t)
 		child := &syncValue[durable.ConversationId]{}
+		childSubmission := &syncValue[durable.SubmissionId]{}
 		toolWait := make(chan string, 1)
 		addTool(t, setup.Registry, ownTool("delegate", "Delegates", emptyObjectSchema(), func(ctx context.Context, _ any, api durable.ToolExecutionApi) (durable.ToolExecutionResult, error) {
 			created, err := ownCreateChild(ctx, api)
@@ -418,6 +419,7 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 			if err != nil {
 				return durable.ToolExecutionResult{}, err
 			}
+			childSubmission.put(submitted.Id())
 			settled, err := submitted.Wait(ctx)
 			if err != nil {
 				toolWait <- err.Error()
@@ -432,6 +434,15 @@ func TestOwnedConversationsFromTools(t *testing.T) {
 		if err := childRun.reached.wait(testContext); err != nil {
 			t.Fatal(err)
 		}
+		// The abort rejects the tool's wait. The tool goes on to wait on its own goroutine, where upstream's continues before the
+		// child's run makes progress, so abort once the wait is registered.
+		waitFor(t, func() bool {
+			id, ok := childSubmission.get()
+			waiters := &harness.(*harnessImpl).submissions.waiters
+			waiters.mu.Lock()
+			defer waiters.mu.Unlock()
+			return ok && len(waiters.sets[id]) > 0
+		})
 		if err := root.Abort(testContext, nil); err != nil {
 			t.Fatal(err)
 		}

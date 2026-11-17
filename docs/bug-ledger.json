@@ -469,6 +469,32 @@
       ]
     },
     {
+      "id": "BF-041a5d6",
+      "title": "A Chord host's link no longer drops the messages its transport delivered before closing when the close…",
+      "symptom": "A Chord host's link no longer drops the messages its transport delivered before closing when the close arrives while the link's listener is still being handed the messages queued for it: a host that set its listener with messages already waiting (a worker's IPC link queues until its start message) lost the rest of that queue and was told of the close first.",
+      "rootCause": "While the goroutine that set a link end's listener was still handing the queue over, the transport's goroutine could deliver another message (queued behind the hand-over) and then end: ended() closed the end at once and cleared the queue, so that message, and whatever else of the queue the listener had not reached, was dropped, and the close was told ahead of it. Pi's one thread finishes the hand-over inside onMessage before it hears of a close, so there the listener gets every message the transport delivered before it ended. The form with the messages queued before the listener was set is as old as the link layer (v0.7.0); the form with a message arriving during the hand-over came with.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord host's link no longer drops the messages its transport delivered before closing when the close arrives while the link's listener is still being handed the messages queued for it: a host that set its listener with messages already waiting (a worker's IPC link queues until its start message) lost the rest of that queue and was told of the close first. The listener now gets them in order and the close after them, as in Pi, where the hand-over is finished before a close is heard; a link closed from its own side still drops what it has not delivered.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "041a5d6b71",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/next/link/link_end_test.go::TestALinkEndHandsOverWhatArrivedBeforeItsTransportEndedThenEnds",
+        "chord/next/link/link_end_test.go::TestALinkEndWhoseListenerPanicsDuringTheHandOver",
+        "chord/next/link/link_end_transports_test.go::TestALinkClosedByThisSideWhileItsQueueIsHandedOverClosesAtOnce",
+        "chord/next/link/link_end_transports_test.go::TestALinkHandsOverWhatArrivedBeforeItsTransportEndedThenCloses",
+        "chord/next/link/link_end_transports_test.go::TestALinkToldOfItsCloseHasLeftItsTransport"
+      ]
+    },
+    {
       "id": "BF-051a79d",
       "title": "A Provider object registered by an extension (`pi.registerProvider(provider)`) now receives the session's…",
       "symptom": "A Provider object registered by an extension (`pi.registerProvider(provider)`) now receives the session's `onResponse` and `onProviderStreamEvent` callbacks in its stream options, as in Pi, so `after_provider_response` and `provider_stream_event` fire for its requests.",
@@ -3431,6 +3457,30 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-1a89bc2",
+      "title": "Chord: a context linked from two abort sources now reports the reason of the source that aborted first when…",
+      "symptom": "The abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first.",
+      "rootCause": "What was wrong. OnAbort picks, among the sources of a context that were aborted already, the one whose abort came first (AbortOrder), because a Go context derived from two sources is cancelled by listeners on goroutines of their own, in any order. abortSources leaves a WithoutAbortSignal ancestor out of the sources, but AbortOrder walked through it into the ancestor's own parents.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a context linked from two abort sources now reports the reason of the source that aborted first when one of the sources is derived from a `chordctx.WithoutAbortSignal` context: the host's linked abort signals do, and so does `chordctx.OnAbort` on a context derived by `WithAbortSignal`. Before, the abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first. As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context. Released in: v0.7.0, and every release since (the walk came with 0b76ae5e5, which `git tag --contains` places in v0.7.0; a probe at the v0.7.0 tag ranks `WithCancel(WithoutAbortSignal(x))` before an independent source that aborted earlier). \u003c!-- cause: abortSources and AbortOrder each walked a context's parents on their own, and only abortSources stopped at a WithoutAbortSignal context, so the two functions disagreed about which aborts reach a context. --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1a89bc25f7",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "chord/context/abort_cause_oracle_test.go::TestAbortCauseMatchesPi",
+        "chord/context/abort_detached_order_test.go::TestAbortOrderStopsAtADetachedAncestor",
+        "chord/context/abort_detached_order_test.go::TestLateListenerHearsTheFirstSourceThatAbortedNotADetachedAncestorsParent"
+      ]
     },
     {
       "id": "BF-1a9093e",
@@ -8411,6 +8461,28 @@
       ]
     },
     {
+      "id": "BF-3d7124f",
+      "title": "chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended",
+      "symptom": "chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended.",
+      "rootCause": "The channel's writer finished the channel when a write failed: a send to a worker that had just ended (EPIPE) closed the connection and dropped the listeners while the reader had not yet told what the worker wrote before it ended, its `fatal` among it.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a message sent to a worker that had just ended no longer discards what the worker wrote before it ended. The failed write closed the connection under its reader, so messages not yet told (a `fatal` report with the worker's reason) were dropped. As Node's `send`, a failed write now only tells its sender; the reader ends the channel after it told what the worker wrote. Present in v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3d7124f3c6",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_channel_write_unix_test.go::TestAChannelTellsWhatTheOtherEndWroteBeforeItClosedWhenASendFailedMeanwhile"
+      ]
+    },
+    {
       "id": "BF-3d98081",
       "title": "Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no…",
       "symptom": "Validating arguments against a recursive schema whose object alternatives all reject a deeply nested value no longer takes exponential time: the call is rejected with its errors at once.",
@@ -10629,6 +10701,31 @@
         "internal/codingagent/output_pad_blocks_test.go::TestResumedBranchSummaryHasPiSpacingAboveItsLabel",
         "internal/sessionentry/entry_test.go::TestBashExecutionEntryKeepsExcludeFromContextFalseAndOmitsUnset",
         "internal/sessionentry/entry_test.go::TestBranchSummaryEntryWritesFromHookFalseInPiMemberOrder"
+      ]
+    },
+    {
+      "id": "BF-49f1228",
+      "title": "tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an…",
+      "symptom": "tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an extension, a program that embeds the package) wrote a frame from the timer goroutine while `ShowOverlay`, `HideCursor`, `ShowCursor`, `WriteRaw` or a stop wrote from the caller: two goroutines were in the terminal writer at once, and a cursor or raw sequence could land among the bytes of a frame, between its rows and its cursor placement.",
+      "rootCause": "A frame holds the render lock for all of its writes, so two frames never ran together. HideCursor, ShowCursor, WriteRaw and QueryCellSize held nothing, and through them ShowOverlay, the hide of the last overlay, SetShowHardwareCursor and Start: on a renderer that keeps its own frame timer the caller wrote while a frame of the timer goroutine was in the writer. Pi writes from one event loop (tui.ts showOverlay: terminal.hideCursor(), then requestRender()): a cursor write is before a frame or after it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an extension, a program that embeds the package) wrote a frame from the timer goroutine while `ShowOverlay`, `HideCursor`, `ShowCursor`, `WriteRaw` or a stop wrote from the caller: two goroutines were in the terminal writer at once, and a cursor or raw sequence could land among the bytes of a frame, between its rows and its cursor placement. Every write of a renderer now holds its writer lock and a frame keeps it from its first write to its last, so such a write is before the frame or after it, as on the one event loop of Pi; a write a component makes from its `Render` still goes before the bytes of its frame. The interactive mode of pig draws and calls from one loop and showed no fault.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "49f12281f3",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "tui/terminal_writer_ownership_test.go::TestAFrameRequestedDuringAFrameIsDrawnOnceAfterIt",
+        "tui/terminal_writer_ownership_test.go::TestASecondFrameStartsWhenTheFrameThatIsWritingHasReturned",
+        "tui/terminal_writer_ownership_test.go::TestOneGoroutineAtATimeIsInTheTerminalWriter",
+        "tui/terminal_writer_ownership_test.go::TestWritesFromARenderGoBeforeTheBytesOfTheFrame"
       ]
     },
     {
@@ -21739,6 +21836,29 @@
       "tests": []
     },
     {
+      "id": "BF-7a8d14f",
+      "title": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled…",
+      "symptom": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before its result settled it now fails with the cancellation, as it does in Pi, not with the result.",
+      "rootCause": "Waiters.Settle (durable/harness/util.go) gave a wait the settled value even when the wait's context had already been cancelled. Pi's Waiters.add runs the abort listener at the abort itself (packages/durable/src/harness/util.ts: 22-28), so a wait whose signal was aborted is gone from the set when a later resolve looks (:38-42): it was rejected, and resolve never reaches it. Go has no listener inside the cancel: context.AfterFunc runs the callback on its own goroutine, so a Settle that came between the cancel and that goroutine resolved a wait that Pi had rejected.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before its result settled it now fails with the cancellation, as it does in Pi, not with the result. Pi rejects a wait at the abort itself (`Waiters.add` runs the abort listener there), so a later resolve never reaches it; PiG's cancellation reaches the wait on its own goroutine (`context.AfterFunc`), and a result that settled the wait in between was returned instead. A tool that waits for a subagent's submission, aborted with its parent's conversation, could get the child's `unanswered: aborted` record as an ordinary result, not the abort error; the harness's own test for it hung once in 2041 passes on a loaded runner. The durable library's embedders can see it (stock `pig` does not link `durable/harness`); `git tag --contains` names v0.7.0 as the first tag with the code.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7a8d14f423",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_ownership_tools_test.go::TestOwnedConversationsFromTools",
+        "durable/harness/waiter_cancel_test.go::TestAWaitSettledAfterItsContextWasCancelledFailsWithTheCancellation"
+      ]
+    },
+    {
       "id": "BF-7b0f5d7",
       "title": "A native extension provider's `filterAllModels` receives the models its `getAllModels` (or `getModels`)…",
       "symptom": "A native extension provider's `filterAllModels` receives the models its `getAllModels` (or `getModels`) returned, with their members in the order the provider wrote them, instead of copies with members sorted by name.",
@@ -23657,6 +23777,34 @@
       "tests": [
         "internal/minimatch/minimatch_oracle_test.go::TestMatchAgainstNodeMinimatch"
       ]
+    },
+    {
+      "id": "BF-8644cfc",
+      "title": "A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded…",
+      "symptom": "A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded extensions, a `ModelRuntime`) in a later call could get \"Unknown or released session graph object\" from the host, at random and more often under memory pressure.",
+      "rootCause": "A Go extension that built session graph objects failed at random under allocation pressure with Unknown or released session graph object: the SDK released an object when its Go value was collected, but a call that put the handle on the wire, a model stream, and a LoadedExtension (which named its loader by string) did not keep the value. Every call that names an object now keeps it until the host has answered (graphMethodCall, the constructors that take objects, the runtime of a loader, createAgentSession, the model stream goroutine), and a LoadedExtension holds its loader object.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Python or Rust extension that used a session graph object (a `DefaultResourceLoader`, its loaded extensions, a `ModelRuntime`) in a later call could get \"Unknown or released session graph object\" from the host, at random and more often under memory pressure. The SDK released the host's object when its wrapper was collected or dropped, but the later call named the object by a handle string that nothing kept the wrapper alive for: `ExtensionRunner` built from the extensions a loader returned, a method call on the object's last use, and a model stream on a `ModelRuntime` the program had already let go of. An object now stays valid while anything that names its handle is still in use or in flight. Affects 0.5.2 through 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "662910ee29",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "7772dd4849",
+          "date": "2026-11-14"
+        },
+        {
+          "hash": "8644cfc552",
+          "date": "2026-11-14"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-866c7f9",
@@ -36335,6 +36483,34 @@
       ]
     },
     {
+      "id": "BF-ce73c62",
+      "title": "chord: a worker's exit is no longer held by a process that outlives it",
+      "symptom": "chord: a worker's exit is no longer held by a process that outlives it.",
+      "rootCause": "A process the worker started in a session of its own survives the kill of the worker's process group; when it held the worker's stdout or stderr, the server waited for the stream's end and told the worker's exit only when that process ended, so the worker's session never learned that its worker had died (and since the fix of a worker's last messages, a holder of the worker's channel did the same).",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "Windows, macOS",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a worker's exit is no longer held by a process that outlives it. A process the worker started in a session of its own survives the kill of the worker's process group; when it held the worker's stdout or stderr, the server waited for the stream's end and told the worker's exit only when that process ended, so the worker's session never learned that its worker had died (and since the fix of a worker's last messages, a holder of the worker's channel did the same). As Node, which emits `exit` when the process ended, after what it wrote, and `close` when its streams did, the exit is now told once everything the worker wrote before it ended was read and told, and waits for no stream's end. What such a process writes later is still told (output, the stderr tail, control messages, link frames) and is recorded on the worker that exited, never on a worker started after it. The server reads those streams on, three descriptors and goroutines per exited worker at most, until they end or the workers component closes, which now ends them. Present in v0.7.0. Limits: on Windows the exit is still told when the worker's streams ended (its pipes have no read that does not wait, and the worker's job object ends them with it): built and vetted, not run; not run on macOS.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ce73c62179",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_drain_unix_test.go::TestADrainSettlesWhenItsProcessEndsBetweenItsReadersLookAtItsStreamAndItsWaitForIt",
+        "chord/nextnode/workers/workers_fixture_test.go::TestMain",
+        "chord/nextnode/workers/workers_lingering_unix_test.go::TestCloseEndsWhatIsStillReadOfAnExitedWorkerWhoseStreamsAProcessOutsideItsTreeHolds",
+        "chord/nextnode/workers/workers_lingering_unix_test.go::TestWhatAnExitedWorkersStreamsTellLaterIsToldOfItNotOfTheWorkerThatFollowedIt",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsChannel",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsOutput",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsWhatAProcessOutsideItsTreeWritesToItsOutputAfterItsExit"
+      ]
+    },
+    {
       "id": "BF-ce8587e",
       "title": "On macOS, reading an image or file paths from the clipboard and writing text to it no longer risk passing…",
       "symptom": "On macOS, reading an image or file paths from the clipboard and writing text to it no longer risk passing AppKit an address in freed memory.",
@@ -43735,6 +43911,36 @@
       ]
     },
     {
+      "id": "BF-ee1e6f2",
+      "title": "The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has…",
+      "symptom": "The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has stopped for its own work.",
+      "rootCause": "entered.Parked read the state of the goroutine it is asked about from a goroutine dump and took every state but \"running\", \"runnable\", \"syscall\", \"copystack\" and \"preempted\" for a wait, except the sync.Mutex, sync.RWMutex and semaphore waits, which are locks (parked only for AwaitBlocked, whose caller may hold the lock). A goroutine that allocates while a collection starts waits on the world lock, which the dump shows as \"semacquire\", and one that allocates while a collection marks waits for assist credit, \"GC assist wait\". The runtime ends both on its own, so the goroutine is still on its way to the wait the program gave it; Parked took \"GC assist wait\" for parked, and \"semacquire\" for…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has stopped for its own work. `entered.Await`, `entered.Go` and `entered.AwaitUnless` took a goroutine that allocates while a collection marks (it waits for assist credit) or scans its stack, or that a trace or a heap dump stops, for one parked in a wait of the program's, and `entered.AwaitBlocked` also took the world lock of a collection that is starting for one. What a caller could see: `chord/output.AwaitCaller` (`SettleInOrder`, `SettleAndAwait`) went on to settle the next `details()` waiter of a commit before the caller of the one before had run to its next await, so the continuations ran out of Pi's order; `durable/codemode` `spawnEntered` returned before the tool call it started was running, so the call that followed it, or the end of the script that aborts it, could come first; and the chord host's `goEntered` closed its channel before the handler had run to its first wait. It needed a collection or a trace at that instant, so it was rare. The first release with it is 0.5.0: `git log --diff-filter=A v0.5.0 -- internal/entered/entered.go` names 9080668e4ab, `git tag --contains` that commit lists v0.5.0 first, and v0.4.1 has no such package. `entered.Classify` is now the one place that reads a goroutine dump entry, and the durable harness's test barrier uses it too, which also ends the intermittent failure of `TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork`. \u003c!-- cause: entered.Parked took every state of a goroutine dump except running, runnable, syscall, copystack and preempted for a wait of the program's, so a goroutine the runtime itself had stopped (assist credit, a stack scan, a trace or heap dump stop; for AwaitBlocked also the world lock of a collection) read as parked --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "67a0052e69",
+          "date": "2026-11-09"
+        },
+        {
+          "hash": "ee1e6f2f55",
+          "date": "2026-11-09"
+        }
+      ],
+      "tests": [
+        "durable/harness/harness_idle_scopes_test.go::TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork",
+        "durable/harness/quiescence_test.go::TestAwaitQuiescentReturnsWithGoroutinesParkedInTheProgramsWaits",
+        "internal/entered/entered_test.go::TestClassifySeparatesTheRuntimesWaitsFromTheProgramsOwn",
+        "internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock",
+        "internal/entered/entered_test.go::TestParkedNeverReportsAGoroutineThatAllocatesWithoutPause"
+      ]
+    },
+    {
       "id": "BF-ee5045c",
       "title": "Reading an extended attribute that is set between the size query and the read no longer panics, and on…",
       "symptom": "Reading an extended attribute that is set between the size query and the read no longer panics, and on Windows a replacement that Windows stops half way no longer deletes the only copy of a credential file: the file is moved into place or the original put back.",
@@ -43787,6 +43993,38 @@
       "tests": [
         "coding/cli/status_command_test.go::TestStatusStillFailsOnDuplicateNonExtensionResourceIdentity",
         "coding/cli/status_command_test.go::TestStatusWarnsOnDuplicatePackageExtensionIdentity"
+      ]
+    },
+    {
+      "id": "BF-ee72731",
+      "title": "Chord: a wait on a promise that a context's abort also ends (`awaitWithContext` in Pi) now delivers the abort…",
+      "symptom": "The abort was delivered by `context.AfterFunc` on a goroutine of its own and could lose to a settlement that came a moment after it.",
+      "rootCause": "Pi's awaitWithContext adds an abort listener that abort() runs synchronously and that rejects the wait at once; a settlement reaches the wait through a reaction, a microtask. So an abort in the section of a settlement wins, and a reaction that ran before the abort leaves the value. Go delivered the abort through context.AfterFunc, on a goroutine of its own: it could lose to a settlement that came a moment after the cancel, and attempt.activate then ran the factory of an attempt that was sealed while it waited for the old attempt's drain.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a wait on a promise that a context's abort also ends (`awaitWithContext` in Pi) now delivers the abort in the section that made it, ordered with the promise's own settlement, as Pi does (the abort listener runs inside `abort()`, the settlement's continuation is a microtask). Before, the abort was delivered by `context.AfterFunc` on a goroutine of its own and could lose to a settlement that came a moment after it. The visible case: an attempt sealed while it waited for the previous attempt's drain (a decision change, or a reload, that sealed the successor as the old drain ended) could still run its factory once the drain ended, so a plugin saw the factory of an attempt that had been abandoned run (`[a:write a:write]` where Pi has `[a:write]`). `chord/context` gains `OnAbort`, the listener that runs inside the cancel function, in the cancelling section; an abort made from another goroutine is queued on the host's loop as an event when it is observed. Affects 0.7.0. \u003c!-- cause: thenWithContext delivered a context's abort through context.AfterFunc on a goroutine of its own, where Pi's awaitWithContext runs the abort listener synchronously inside abort(), so an abort made before a settlement in the same section could lose to the settlement's continuation --\u003e \u003c!-- tests: TestThenWithContextOrdersAbortAgainstSettlement, TestThenWithContextLeavesNoListenerBehindWhenTheResultComesFirst, TestReloadAnAttemptSealedWhileItWaitsForTheOldDrainNeverRunsItsFactoryWhenTheDrainEndsInTheSameSection, TestOnAbortRunsInsideTheCancelFunctionOnce, TestOnAbortOnAnAbortedContextRunsAtOnce, TestOnAbortOnAContextWithoutAbortSignalNeverHearsItsParent --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee72731368",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "chord/context/abort_listener_test.go::TestOnAbortLeavesNoRegistrationBehind",
+        "chord/context/abort_listener_test.go::TestOnAbortListensToEverySourceOfADerivedContext",
+        "chord/context/abort_listener_test.go::TestOnAbortOnAContextWithoutAbortSignalNeverHearsItsParent",
+        "chord/context/abort_listener_test.go::TestOnAbortOnAContextWithoutAbortSignalOfAnAbortedParentDoesNotRun",
+        "chord/context/abort_listener_test.go::TestOnAbortOnAnAbortedContextRunsAtOnce",
+        "chord/context/abort_listener_test.go::TestOnAbortRunsInsideTheCancelFunctionOnce",
+        "chord/context/abort_listener_test.go::TestOnAbortRunsListenersInTheOrderTheyWereAdded",
+        "chord/context/abort_listener_test.go::TestOnAbortSaysWhatItCannotListenTo",
+        "chord/context/abort_listener_test.go::TestOnAbortStopKeepsTheListenerFromRunning",
+        "chord/next/host/host_promise_order_test.go::TestThenWithContextLeavesNoListenerBehindWhenTheResultComesFirst",
+        "chord/next/host/host_promise_order_test.go::TestThenWithContextOrdersAbortAgainstSettlement"
       ]
     },
     {
@@ -44350,6 +44588,33 @@
         "coding/piglet/active_source_test.go::TestActiveSourceIsPath",
         "coding/piglet/active_source_test.go::TestActiveSourceValue",
         "coding/piglet/active_source_test.go::TestShowWithoutAnArgumentUsesTheActivePigletSource"
+      ]
+    },
+    {
+      "id": "BF-f240105",
+      "title": "chord: a worker that fails right after it started now reports its reason",
+      "symptom": "chord: a worker that fails right after it started now reports its reason.",
+      "rootCause": "WorkerProcess.ended closed the worker's channel and told Exited without waiting for the channel's reader. What the worker wrote before it ended and the reader had not taken yet, or had taken and not yet handed to its listeners, was dropped: its last link frames (the answer to a holder) and its `fatal`. A worker that failed right after `started` was then recorded with the fixed 'worker failed to start' instead of its reason.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "chord: a worker that fails right after it started now reports its reason. The server could handle a worker's exit before it had read, or before it had handed over, the last messages the worker wrote (its answer to a waiting holder and its `fatal` report); it then closed the connection and recorded the fixed `worker failed to start` (in p2, under load: a session whose worker dies at its start showed that text where Pi shows why, for example `Unknown model`). As in Node, which emits a child's messages before its `exit` event, the exit is now told after the channel's reader took and told everything the worker wrote. Present in v0.7.0 (the one release with the workers component). Limits: not run on Windows, where a worker that ends before the server accepted its pipe connection can still lose its last messages.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f240105461",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_fixture_test.go::TestMain",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatItStartedAfterItOpenedItsChannel",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessLinkClosedByThisSideWhileItsChannelsReaderIsHeldDoesNotWaitForIt",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsChannelsReaderTookWhatItsChildWrote",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterItsOutputWhenItsChannelsReaderEndedFirst",
+        "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsItsExitAfterWhatItsChannelsReaderTookIsTold"
       ]
     },
     {
@@ -45211,6 +45476,29 @@
       "tests": [
         "ai/assistant_published_clone_test.go::TestCellObservationsCopyPublishedArgumentsUnread",
         "ai/assistant_published_clone_test.go::TestObserveOfAnUnpublishedMessageStillChecksArgumentStrings"
+      ]
+    },
+    {
+      "id": "BF-f5634a4",
+      "title": "fix(chord): a link end keeps nothing of the queue it handed over",
+      "symptom": "fix(chord): a link end keeps nothing of the queue it handed over",
+      "rootCause": "LinkEnd.OnMessage hands the queue over one message at a time () and moved on with `end.queued = end.queued[1:]`, so every message it had handed over stayed in the queue's array, and the drained queue, empty, still pointed into that array. An end whose listener is set does not queue again, so nothing replaced the array before the close: a link that queued ahead of its listener (a child's link queues until its start message) kept those messages for as long as it lived.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f5634a4975",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNoMessageItHandedOverWhileALaterOneIsWithTheListener",
+        "chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNoQueuedMessageAfterItsEnd",
+        "chord/next/link/link_end_retention_test.go::TestALinkEndKeepsNothingOfTheQueueItHandedOver"
       ]
     },
     {
@@ -47409,6 +47697,31 @@
       "tests": []
     },
     {
+      "id": "BF-fb8ef57",
+      "title": "The footer no longer shows `0.0%/0 (auto)` for a model the remote model catalog carries and the bundled…",
+      "symptom": "The footer no longer shows `0.0%/0 (auto)` for a model the remote model catalog carries and the bundled catalog lacks (for example `github-copilot/claude-fable-5.2`).",
+      "rootCause": "BuildModel built every model from the bundled catalog or a blank entry, so a resumed session, a /model switch and an extension setModel handed the Session a model with window 0 and no prices; the context estimate was unknown and the footer printed Pi's window-0 form. The startup path rebuilt such a model from the provider's default model, with that model's window and prices.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The footer no longer shows `0.0%/0 (auto)` for a model the remote model catalog carries and the bundled catalog lacks (for example `github-copilot/claude-fable-5.2`). A resumed session, a `/model` switch and an extension's `setModel` built such a model without its context window and prices, so the context estimate was unknown and automatic compaction had no window to compare against; the startup model took the window and prices of the provider's default model. Every path now builds the model from the catalog entry the model runtime returns, with the remote catalog's window, limits and prices.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "fb8ef576c9",
+          "date": "2026-11-11"
+        }
+      ],
+      "tests": [
+        "coding/cli/model_remote_catalog_test.go::TestResolveModel_RemoteOnlyCatalogModelKeepsItsLimits",
+        "coding/model_remote_catalog_test.go::TestBuildModelCarriesTheCatalogWindowAndPrices",
+        "coding/model_remote_catalog_test.go::TestResumedSessionKeepsTheWindowOfARemoteOnlyModel",
+        "internal/codingagent/footer_context_cache_read_test.go::TestFooterContextUsageOfACacheReadDominatedTurn"
+      ]
+    },
+    {
       "id": "BF-fba9b47",
       "title": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
       "symptom": "fix(extension): hold the theme colors map the wire palette memo is keyed on",
@@ -48547,9 +48860,9 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 1,
-    "Follow-up to unreleased work": 2,
+    "Follow-up to unreleased work": 5,
     "Repair of a merge between development branches": 9,
-    "Review follow-up to unreleased work": 3,
+    "Review follow-up to unreleased work": 4,
     "test-only": 1
   }
 }
