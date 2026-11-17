@@ -258,11 +258,27 @@ impl AgentSessionRuntime {
     /// `takeUnreportedDiagnostics()`: the current diagnostics that were not returned yet, marked as returned. A diagnostic whose type and message equal one returned before is left out, so an unchanged warning is not returned again after each replacement. The set belongs to the runtime, not to one construction.
     pub fn take_unreported_diagnostics(&self) -> Vec<Value> {
         let mut state = self.state.lock().unwrap();
-        let State { diagnostics, reported_diagnostic_keys, .. } = &mut *state;
-        let text = |diagnostic: &Value, member: &str| diagnostic.get(member).and_then(Value::as_str).unwrap_or_default().to_string();
+        let State {
+            diagnostics,
+            reported_diagnostic_keys,
+            ..
+        } = &mut *state;
+        let text = |diagnostic: &Value, member: &str| {
+            diagnostic
+                .get(member)
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string()
+        };
         diagnostics
             .iter()
-            .filter(|diagnostic| reported_diagnostic_keys.insert(format!("{}\0{}", text(diagnostic, "type"), text(diagnostic, "message"))))
+            .filter(|diagnostic| {
+                reported_diagnostic_keys.insert(format!(
+                    "{}\0{}",
+                    text(diagnostic, "type"),
+                    text(diagnostic, "message")
+                ))
+            })
             .cloned()
             .collect()
     }

@@ -508,14 +508,20 @@ fn node_socket_error_codes_are_retryable() {
 #[test]
 fn codex_websocket_connection_limit_is_retryable() {
     for (text, want) in [
-        ("Codex error: Responses websocket connection limit reached (60 minutes). Create a new websocket connection to continue.", true),
+        (
+            "Codex error: Responses websocket connection limit reached (60 minutes). Create a new websocket connection to continue.",
+            true,
+        ),
         ("Codex error: websocket_connection_limit_reached", true),
         ("WEBSOCKET CONNECTION LIMIT REACHED", true),
         ("websocket-connection-limit-reached", true),
         ("connection limit reached", false),
         ("websocket connection limit", false),
         ("connection limit reached on the websocket", false),
-        ("websocket connection limit reached: insufficient_quota", false),
+        (
+            "websocket connection limit reached: insufficient_quota",
+            false,
+        ),
     ] {
         let message = json!({"role": "assistant", "stopReason": "error", "errorMessage": text});
         assert_eq!(is_retryable_assistant_error(&message), want, "{text}");
