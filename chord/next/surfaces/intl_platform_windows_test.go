@@ -12,9 +12,10 @@ import (
 
 // The default locale of Pi's `Intl` on Windows is the user's (ICU's `uprv_getDefaultLocaleID`, Windows branch, putil.cpp:1796:
 // `GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME)`; no environment variable is read), so a format with no language
-// follows it. The user's culture is set to de-DE for the test (and put back), and a fresh Node and a fresh process of this test
+// follows it. On CI the user's culture is set to de-DE for the test (and put back); a fresh Node and a fresh process of this test
 // binary (the culture is read when a process starts) print a number and a time with the default locale; they must be the same.
-// It runs in the Windows CI job (Node of .node-version is on its PATH); there is no Windows host to run it on elsewhere.
+// On a developer's machine it compares under the user's current culture and changes nothing. It runs in the Windows CI job (Node of
+// .node-version is on its PATH).
 
 const windowsLocaleHelper = "PIG_INTL_WINDOWS_LOCALE_HELPER"
 
@@ -54,9 +55,15 @@ func TestWindowsDefaultLocaleIsTheUsersAsNodeTakesIt(t *testing.T) {
 		return
 	}
 	node := driftNode(t)
-	original := powershell(t, "(Get-Culture).Name")
-	t.Cleanup(func() { powershell(t, "Set-Culture "+original) })
-	powershell(t, "Set-Culture de-DE")
+	// A test does not change a developer's Windows account: only on a CI runner (a throwaway machine) is the culture set.
+	culture := powershell(t, "(Get-Culture).Name")
+	ci := os.Getenv("GITHUB_ACTIONS") == "true"
+	if ci {
+		t.Cleanup(func() { powershell(t, "Set-Culture "+culture) })
+		powershell(t, "Set-Culture de-DE")
+		culture = "de-DE"
+	}
+	t.Logf("comparing under the user culture %s (set by the test: %v)", culture, ci)
 
 	script := `const at = new Date(Date.UTC(2026, 5, 15, 14, 5, 7));
 process.stdout.write("RESULT " + new Intl.NumberFormat().format(1234567.891) + "|" + new Intl.DateTimeFormat(undefined, { timeStyle: "short", timeZone: "UTC" }).format(at) + "\n");`
@@ -67,7 +74,7 @@ process.stdout.write("RESULT " + new Intl.NumberFormat().format(1234567.891) + "
 		t.Fatalf("node: %v", err)
 	}
 	want := resultLine(t, string(nodeOut))
-	if !strings.HasPrefix(want, "1.234.567,891|") {
+	if ci && !strings.HasPrefix(want, "1.234.567,891|") {
 		t.Fatalf("Node printed %q after Set-Culture de-DE: this runner's processes do not take the user's culture change, so the test proves nothing", want)
 	}
 
