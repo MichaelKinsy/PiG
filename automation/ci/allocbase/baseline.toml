@@ -2131,17 +2131,17 @@ allocs = 12
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkReload_PackedCellWarmCache/fixed"
-allocs = 1505
+allocs = 1395
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkReload_PackedCellWarmCache/per-100-sdk-files"
-allocs = 1101
+allocs = 1103
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkReload_PackedCellWarmCache/per-10-sdk-dirs"
-allocs = 79
+allocs = 121
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
