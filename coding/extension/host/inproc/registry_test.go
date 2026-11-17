@@ -212,31 +212,32 @@ func TestHasHandlers_AcrossMultipleExtensions(t *testing.T) {
 	}
 }
 
-// HasHandlersOutsideBuiltinMCP leaves out the built-in MCP extension's handlers, whose session_start handler returns without awaiting (Pi extensions/mcp/index.ts:1115-1152),
-// and counts every other extension's, built in or not: a built-in extension of PiG's own is not Pi's.
-func TestHasHandlersOutsideBuiltinMCPLeavesOutOnlyTheBuiltinMCPExtension(t *testing.T) {
+// HasHandlersThatMayAwait counts the handlers that can pend: a handler registered as one that returns without awaiting does not, whatever the path of its extension, and
+// every other handler does, in this extension or another one.
+func TestHasHandlersThatMayAwaitLeavesOutTheHandlersThatReturnWithoutAwaiting(t *testing.T) {
+	returnsWithoutAwait := func(path string) extension.Extension {
+		ext := newFakeExtension(path)
+		ext.AddEventHandlerReturningWithoutAwait("session_start", 1, func(...any) (any, error) { return nil, nil })
+		return ext
+	}
 	for _, tc := range []struct {
-		name  string
-		paths []string
-		want  bool
+		name string
+		exts []extension.Extension
+		want bool
 	}{
 		{"no extension", nil, false},
-		{"only the built-in MCP extension", []string{"builtin:mcp"}, false},
-		{"a loaded extension", []string{"/ext/a"}, true},
-		{"the built-in MCP extension and a loaded one", []string{"builtin:mcp", "/ext/a"}, true},
-		{"another built-in extension", []string{"builtin:llama.cpp"}, true},
+		{"one handler that returns without awaiting", []extension.Extension{returnsWithoutAwait("builtin:mcp")}, false},
+		{"the same under another path", []extension.Extension{returnsWithoutAwait("/ext/a")}, false},
+		{"a handler that can pend", []extension.Extension{extWithHandler("builtin:mcp", "session_start")}, true},
+		{"a mixed set across extensions", []extension.Extension{returnsWithoutAwait("builtin:mcp"), extWithHandler("/ext/a", "session_start")}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			exts := make([]extension.Extension, len(tc.paths))
-			for i, path := range tc.paths {
-				exts[i] = extWithHandler(path, "session_start")
+			r := inproc.NewRunner(tc.exts, ".")
+			if got := r.HasHandlersThatMayAwait("session_start"); got != tc.want {
+				t.Errorf("HasHandlersThatMayAwait(session_start) = %v, want %v", got, tc.want)
 			}
-			r := inproc.NewRunner(exts, ".")
-			if got := r.HasHandlersOutsideBuiltinMCP("session_start"); got != tc.want {
-				t.Errorf("HasHandlersOutsideBuiltinMCP(session_start) = %v, want %v", got, tc.want)
-			}
-			if r.HasHandlersOutsideBuiltinMCP("tool_call") {
-				t.Error("HasHandlersOutsideBuiltinMCP(tool_call) = true with no tool_call handler")
+			if r.HasHandlersThatMayAwait("tool_call") {
+				t.Error("HasHandlersThatMayAwait(tool_call) = true with no tool_call handler")
 			}
 		})
 	}

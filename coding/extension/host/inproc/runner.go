@@ -1098,11 +1098,12 @@ func (r *Runner) HasHandlers(eventType string) bool {
 	return false
 }
 
-// HasHandlersOutsideBuiltinMCP is HasHandlers without the handlers of the built-in MCP extension (`builtin:mcp`). Its session_start handler returns without awaiting the
-// connections it starts (Pi extensions/mcp/index.ts:1115-1152), so an await of it settles in microtasks and lets the event loop take no turn.
-func (r *Runner) HasHandlersOutsideBuiltinMCP(eventType string) bool {
+// HasHandlersThatMayAwait is HasHandlers for the handlers that can pend: one registered with Extension.AddEventHandlerReturningWithoutAwait returns without awaiting, so the
+// runner's await of it settles in microtasks and the event loop takes no turn (Pi core/extensions/runner.ts:1103-1110); every other handler, a subprocess extension's among
+// them, can pend. A runner with only handlers of the first kind for an event answers false.
+func (r *Runner) HasHandlersThatMayAwait(eventType string) bool {
 	for i := range r.extensions {
-		if r.extensions[i].HasEventHandlers(eventType) && extensionPath(r.extensions[i]) != "builtin:mcp" {
+		if r.extensions[i].HasEventHandlersThatMayAwait(eventType) {
 			return true
 		}
 	}

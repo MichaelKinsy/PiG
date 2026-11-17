@@ -21,7 +21,10 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/coding/mcpext"
+	"github.com/MichaelKinsy/PiG/coding/mcpext/mcptui"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
@@ -110,11 +113,14 @@ func TestStartupWriteKindsChild(t *testing.T) {
 		fail("%v", err)
 	}
 	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
-	// A plain start loads the built-in MCP extension, which has a session_start handler that returns at once (Pi extensions/mcp/index.ts:1115-1152); the bind of the
-	// start is the one that runs it.
-	runner := inproc.NewRunner([]extension.Extension{{Path: "builtin:mcp", Handlers: map[string][]extension.HandlerFn{
-		"session_start": {func(...any) (any, error) { return nil, nil }},
-	}}}, cwd)
+	// A plain start loads the built-in MCP extension, the factory a plain pig loads, with no server configured. Its session_start handler returns without awaiting in Pi
+	// (extensions/mcp/index.ts:1115-1152), so the bind of the start is one that never pends.
+	runtime := extension.CreateExtensionRuntime()
+	mcp, err := factoryload.LoadExtensionFromFactory(mcpext.CreateMcpExtension(mcpext.Options{Terminal: mcptui.Terminal(), LoadConfig: func(context.Context) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{} }}), cwd, extension.CreateEventBus(), runtime, "builtin:mcp")
+	if err != nil {
+		fail("%v", err)
+	}
+	runner := inproc.NewRunner([]extension.Extension{mcp}, cwd, runtime)
 	session, err := coding.NewSession(services, coding.SessionOptions{Model: model, SessionManager: manager, Runner: runner})
 	if err != nil {
 		fail("%v", err)

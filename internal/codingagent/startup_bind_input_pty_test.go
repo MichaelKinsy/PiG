@@ -29,10 +29,11 @@ import (
 const (
 	startupBindChildEnv   = "PIG_TEST_STARTUP_BIND_CHILD"
 	startupBindHandlerEnv = "PIG_TEST_STARTUP_BIND_HANDLER"
-	// The values of startupBindHandlerEnv: no session_start handler, one that pends, the built-in MCP extension's that returns at once.
-	startupBindNone       = "none"
-	startupBindPending    = "pending"
-	startupBindBuiltinMCP = "builtin-mcp"
+	// The values of startupBindHandlerEnv: no session_start handler, one that pends, one that returns without awaiting, both of those.
+	startupBindNone                = "none"
+	startupBindPending             = "pending"
+	startupBindReturnsWithoutAwait = "returns-without-await"
+	startupBindMixed               = "mixed"
 )
 
 // Pi's init() awaits rebindCurrentSession() after setupEditorSubmitHandler (interactive-mode.ts:1127-1141) and run() shows the startup notices, among them
@@ -49,16 +50,27 @@ func TestInitReadsNoTypedAheadKeyBeforeTheStartupNoticesWhenNoHandlerPends(t *te
 	}
 }
 
-// A plain start loads the built-in MCP extension, whose session_start handler Pi awaits and which returns at once (extensions/mcp/index.ts:1115-1152): the await
-// still settles in microtasks, so a key typed ahead is not read before the notices and the event loop takes no turn that would paint the header's frame before
-// init() ends.
-func TestInitReadsNoTypedAheadKeyBeforeTheStartupNoticesWhenOnlyTheBuiltinMCPHandlerRuns(t *testing.T) {
-	report := runStartupBindChild(t, startupBindBuiltinMCP)
+// A session_start handler registered as one that returns without awaiting (Pi's built-in MCP extension has one: extensions/mcp/index.ts:1115-1152) still has its await settle
+// in microtasks, so a key typed ahead is not read before the notices and the event loop takes no turn that would paint the header's frame before init() ends. No path or name
+// of an extension decides it.
+func TestInitReadsNoTypedAheadKeyBeforeTheStartupNoticesWhenEveryHandlerReturnsWithoutAwaiting(t *testing.T) {
+	report := runStartupBindChild(t, startupBindReturnsWithoutAwait)
 	if report.UnreadAfterBind == nil {
 		t.Fatalf("the child never reached the end of the bind: %+v", report)
 	}
 	if !*report.UnreadAfterBind {
-		t.Fatal("Init served the terminal while it bound a session whose only session_start handler is the built-in MCP extension's, which returns at once")
+		t.Fatal("Init served the terminal while it bound a session whose only session_start handler returns without awaiting")
+	}
+}
+
+// One handler that can pend among handlers that return without awaiting makes the bind pend: Pi's event loop reads stdin while it awaits that one.
+func TestInitReadsATypedAheadKeyWhenOneSessionStartHandlerPendsAmongHandlersThatReturnWithoutAwaiting(t *testing.T) {
+	report := runStartupBindChild(t, startupBindMixed)
+	if report.UnreadAfterBind == nil {
+		t.Fatalf("the child never reached the end of the bind: %+v", report)
+	}
+	if *report.UnreadAfterBind {
+		t.Fatal("Init left a typed-ahead key unread while a session_start handler that can pend ran next to one that returns without awaiting")
 	}
 }
 
@@ -144,8 +156,8 @@ func runStartupBindChild(t *testing.T, handler string) startupBindReport {
 	return report
 }
 
-// TestInitStartupBindChild is the child half of the three tests above: the real Init on a pseudo-terminal with a real Session whose runner has no session_start
-// handler, the built-in MCP extension's handler that returns at once, or a handler that returns only once the held key has been read.
+// TestInitStartupBindChild is the child half of the four tests above: the real Init on a pseudo-terminal with a real Session whose runner has no session_start
+// handler, one that returns without awaiting, one that returns only once the held key has been read, or both of those.
 func TestInitStartupBindChild(t *testing.T) {
 	reportPath := os.Getenv(startupBindChildEnv)
 	if reportPath == "" {
@@ -174,23 +186,25 @@ func TestInitStartupBindChild(t *testing.T) {
 		fail("%v", err)
 	}
 	var mode *icodingagent.InteractiveMode
-	handlers := map[string][]extension.HandlerFn{"agent_start": {func(...any) (any, error) { return nil, nil }}}
-	path := "/startup-bind"
+	ext := extension.Extension{Path: "/startup-bind", Handlers: map[string][]extension.HandlerFn{"agent_start": {func(...any) (any, error) { return nil, nil }}}}
+	// The handler pends until the owner loop has read the held key, as a Node handler pends on I/O while stdin is read.
+	pends := func(...any) (any, error) {
+		for mode.HeldStartupInputUnread() && t.Context().Err() == nil {
+			runtime.Gosched()
+		}
+		return nil, nil
+	}
+	returnsAtOnce := func(...any) (any, error) { return nil, nil }
 	switch os.Getenv(startupBindHandlerEnv) {
 	case startupBindPending:
-		handlers["session_start"] = []extension.HandlerFn{func(...any) (any, error) {
-			// The handler pends until the owner loop has read the held key, as a Node handler pends on I/O while stdin is read.
-			for mode.HeldStartupInputUnread() && t.Context().Err() == nil {
-				runtime.Gosched()
-			}
-			return nil, nil
-		}}
-	case startupBindBuiltinMCP:
-		// The built-in MCP extension of a plain start: its handler returns at once, as Pi's does (extensions/mcp/index.ts:1115-1152).
-		path = "builtin:mcp"
-		handlers["session_start"] = []extension.HandlerFn{func(...any) (any, error) { return nil, nil }}
+		ext.AddEventHandler("session_start", 1, pends)
+	case startupBindReturnsWithoutAwait:
+		ext.AddEventHandlerReturningWithoutAwait("session_start", 1, returnsAtOnce)
+	case startupBindMixed:
+		ext.AddEventHandlerReturningWithoutAwait("session_start", 1, returnsAtOnce)
+		ext.AddEventHandler("session_start", 2, pends)
 	}
-	runner := inproc.NewRunner([]extension.Extension{{Path: path, Handlers: handlers}}, cwd)
+	runner := inproc.NewRunner([]extension.Extension{ext}, cwd)
 	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
 	session, err := coding.NewSession(services, coding.SessionOptions{Model: model, SessionManager: manager, Runner: runner})
 	if err != nil {

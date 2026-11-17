@@ -106,11 +106,12 @@ func (m *InteractiveMode) bindStartupSession(ctx context.Context) error {
 }
 
 // bindMayPend reports whether binding the runner's extensions runs a handler that can pend: session_start handlers and, when one is registered,
-// resources_discover handlers (agent-session.ts:3433-3436, 3439-3442). Nothing else of the bind waits. The built-in MCP extension's session_start handler does
-// not count: it returns without awaiting what it starts (extensions/mcp/index.ts:1115-1152), so in Pi a plain start, which loads it, binds in microtasks and
-// its event loop takes no turn between the colour wait and the end of init(), where the frame the header requested is painted by renderNow.
+// resources_discover handlers (agent-session.ts:3433-3436, 3439-3442). Nothing else of the bind waits. A handler registered as one that returns without awaiting
+// (extension.Extension.AddEventHandlerReturningWithoutAwait) does not count: Pi's await of it settles in microtasks, so a bind whose handlers are all of that kind,
+// as a plain start's is (the built-in MCP extension's session_start handler, extensions/mcp/index.ts:1115-1152), takes no turn of the event loop between the colour
+// wait and the end of init(), where the frame the header requested is painted by renderNow.
 func bindMayPend(runner *inproc.Runner) bool {
-	return runner != nil && (runner.HasHandlersOutsideBuiltinMCP(EventSessionStart) || runner.HasHandlers(EventResourcesDiscover) && !runner.IsStale())
+	return runner != nil && (runner.HasHandlersThatMayAwait(EventSessionStart) || runner.HasHandlersThatMayAwait(EventResourcesDiscover) && !runner.IsStale())
 }
 
 // rebindSession runs the steps of a rebind: the owner steps before and after the emit through runOnMainAndWait, and the emit of session_start and

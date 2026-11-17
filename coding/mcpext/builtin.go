@@ -25,8 +25,11 @@ func (a *piAdapter) track(ctx context.Context) {
 	}
 }
 
+// OnSessionStart registers the extension's session_start handler as one that returns without awaiting: Pi's is not async and starts what it needs without awaiting it
+// (extensions/mcp/index.ts:1115-1152), and so is this port's (Extension.SessionStart hands the connections to a background goroutine). The other handlers of the extension
+// await in Pi (:1179-1260) and are registered as any handler.
 func (a *piAdapter) OnSessionStart(handler func(ctx context.Context, evt extension.SessionStartEvent) error) {
-	a.pi.OnSessionStart(func(ctx context.Context, evt extension.SessionStartEvent) error {
+	extension.OnSessionStartReturningWithoutAwait(a.pi, func(ctx context.Context, evt extension.SessionStartEvent) error {
 		a.track(ctx)
 		return handler(ctx, evt)
 	})
