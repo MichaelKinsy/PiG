@@ -23,11 +23,11 @@ func TestPostLoginModelSelectionRules(t *testing.T) {
 		selected, problem string
 	}{
 		{"oauth default", "github-copilot", []string{"other", "gpt-6.1-sol"}, "gpt-6.1-sol", ""},
-		{"api key default", "openai", []string{"other", "gpt-6.1-sol"}, "gpt-6.1-sol", ""},
+		{"api key default", "openai", []string{"other", "gpt-6.2-sol"}, "gpt-6.2-sol", ""},
 		{"no default", "custom", []string{"first"}, "", `, but no default model is configured for provider "custom". Use /model to select a model.`},
 		{"empty no default", "custom", nil, "", `, but no default model is configured for provider "custom". Use /model to select a model.`},
 		{"empty catalog", "openai", nil, "", ", but no models are available for that provider. Use /model to select a model."},
-		{"missing default", "openai", []string{"other"}, "", `, but its default model "gpt-6.1-sol" is not available. Use /model to select a model.`},
+		{"missing default", "openai", []string{"other"}, "", `, but its default model "gpt-6.2-sol" is not available. Use /model to select a model.`},
 		{"radius default", "radius", []string{"fast", "balanced"}, "balanced", ""},
 		{"radius catalog order", "radius", []string{"powerful", "fast"}, "powerful", ""},
 		{"llama empty", "llama.cpp", nil, "", ". No llama.cpp models are loaded. Use /llama to load a model, then /model to select it."},
@@ -221,7 +221,7 @@ func TestPostLoginPreservesKnownModelAndReportsSelectionFailure(t *testing.T) {
 					t.Fatal(got)
 				}
 			case "unknown sentinel":
-				waitPostLoginStatus(t, m, "Selected gpt-6.1-sol.")
+				waitPostLoginStatus(t, m, "Selected gpt-6.2-sol.")
 			default:
 				reason := "cannot build"
 				if name == "persistence failure" {
@@ -244,7 +244,7 @@ func BenchmarkPostLoginModelSelection(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		selected, problem := postLoginModel("openai", "Saved API key for OpenAI", DefaultModelPerProvider()["openai"], models)
-		if selected != "gpt-6.1-sol" || problem != "" {
+		if selected != "gpt-6.2-sol" || problem != "" {
 			b.Fatalf("selection = %s, %s", selected, problem)
 		}
 	}
@@ -260,11 +260,11 @@ func TestPostLoginPersistsDefaultIntoNonEmptyScope(t *testing.T) {
 	if err := setPostLoginAPIKey(m, "openai", "test-key"); err != nil {
 		t.Fatal(err)
 	}
-	waitPostLoginStatus(t, m, "Selected gpt-6.1-sol.")
-	if got := strings.Join(m.scopedModelIDs, ","); got != "openai/other,openai/gpt-6.1-sol" {
+	waitPostLoginStatus(t, m, "Selected gpt-6.2-sol.")
+	if got := strings.Join(m.scopedModelIDs, ","); got != "openai/other,openai/gpt-6.2-sol" {
 		t.Fatalf("scope = %s", got)
 	}
-	if got := strings.Join(m.opts.SettingsManager.GetEnabledModels(), ","); got != "openai/other,openai/gpt-6.1-sol" {
+	if got := strings.Join(m.opts.SettingsManager.GetEnabledModels(), ","); got != "openai/other,openai/gpt-6.2-sol" {
 		t.Fatalf("saved scope = %s", got)
 	}
 }
