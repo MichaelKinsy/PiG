@@ -2442,6 +2442,30 @@
       ]
     },
     {
+      "id": "BF-0b5f9bd",
+      "title": "In the interactive mode, an extension's `pi.setModel` whose extension has `model_select` handlers could leave…",
+      "symptom": "In the interactive mode, an extension's `pi.setModel` whose extension has `model_select` handlers could leave the footer on the previous model's context window until the next keystroke.",
+      "rootCause": "the extension setModel path awaited the model_select handlers between the session's model change and the footer push, and the push only invalidated the footer without requesting a render, where /model and model cycling push it in the same owner-loop unit",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In the interactive mode, an extension's `pi.setModel` whose extension has `model_select` handlers could leave the footer on the previous model's context window until the next keystroke. The model changed at once, but the footer was pushed only after the handlers replied, so a frame drawn in between (a key press, a stream tick) came from the cached footer and no render followed. The footer now changes in the same owner-loop unit as the session's model, and the handlers are awaited after it, off the owner loop. This has been so since v0.7.0 (the first tag with the extension `setModel` path).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0b5f9bd080",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveExtensionSetModelAfterNewKeepsRegisteredMetadata",
+        "coding/session_extension_set_model_on_main_test.go::TestExtensionSetModelOnMainMutatesInsideTheDispatcherAndAwaitsTheHandlersAfterIt",
+        "internal/codingagent/interactive_extension_set_model_footer_test.go::TestInteractiveExtensionSetModelShowsTheNewWindowWhileItsHandlersAreStillReplying"
+      ]
+    },
+    {
       "id": "BF-0b674b3",
       "title": "Gemini model-id checks follow Pi's lowercasing: an id spelled with a dotted capital İ or a long ſ is no…",
       "symptom": "Gemini model-id checks follow Pi's lowercasing: an id spelled with a dotted capital İ or a long ſ is no longer treated as a Gemini 3 thinking-level or version-matched model, and a Gemini major version too long for an integer (such as `gemini-99999999999999999999`) counts as version 3 or later, as `Number.parseInt` does.",
