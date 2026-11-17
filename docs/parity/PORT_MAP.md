@@ -3,12 +3,12 @@
 Minimal upstream to pig file map.
 
 - `docs/parity/PORT_MAP.md` answers where code lives
-- `test/parity/coverage.md` answers what is verified and at what quality
+- `test/parity/generated/coverage.md` answers what is verified and at what quality
 - status here means code mapping only, not parity proof
 
 Status: `✅` ported, `🟡` partial, `⬜` not started, `⏸` deferred, `🔴` broken, `n/a` not applicable.
 
-Verification quality is tracked by the parity system, not by this status column. A row can be `✅` and still weak-only or untested in `test/parity/coverage.md`. Boot-only, smoke-only, and deferred scenarios do not count as behavioral verification. Registration-only scenarios count only for registry/catalog/auth-wiring paths. Provider implementation rows (for example `providers/openai-completions.ts`, `providers/openai-responses*.ts`, `providers/transform-messages.ts`) require stream/payload/history behavior tests; `--list-models` can only cover registry/catalog wiring.
+Verification quality is tracked by the parity system, not by this status column. A row can be `✅` and still weak-only or untested in `test/parity/generated/coverage.md`. Boot-only, smoke-only, and deferred scenarios do not count as behavioral verification. Registration-only scenarios count only for registry/catalog/auth-wiring paths. Provider implementation rows (for example `providers/openai-completions.ts`, `providers/openai-responses*.ts`, `providers/transform-messages.ts`) require stream/payload/history behavior tests; `--list-models` can only cover registry/catalog wiring.
 
 ## Version and gates
 
@@ -20,7 +20,7 @@ Release history and open work belong in the tracked sync plan and generated cove
 
 ## Package scope
 
-PORT_MAP maps every source file of every package in the upstream monorepo: the fifteen packages listed in `test/parity/upstreampackages/packages.json`, which a test requires to equal the package directories of the pinned mirror. A package that upstream adds fails `make port-map-drift` until it is listed and mapped. The coverage report counts each package and the sums in `test/parity/coverage.md`; PiG's experimental remote Session stack (`packages/client`, `packages/protocol` and `packages/server`) and the experimental parts of `packages/coding-agent` are reported separately as the part of the monorepo that Pi does not ship in its npm package.
+PORT_MAP maps every source file of every package in the upstream monorepo: the fifteen packages listed in `test/parity/upstreampackages/packages.json`, which a test requires to equal the package directories of the pinned mirror. A package that upstream adds fails `make port-map-drift` until it is listed and mapped. The coverage report counts each package and the sums in `test/parity/generated/coverage.md`; PiG's experimental remote Session stack (`packages/client`, `packages/protocol` and `packages/server`) and the experimental parts of `packages/coding-agent` are reported separately as the part of the monorepo that Pi does not ship in its npm package.
 
 Package scope, one line each:
 

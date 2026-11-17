@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail when test/parity/coverage.md or the coverage badge no longer matches
+"""Fail when test/parity/generated/coverage.md or the coverage badge no longer matches
 docs/parity/PORT_MAP.md and the scenarios.
 
 coverage.md is generated, so a scenario added without regenerating it silently
@@ -62,7 +62,7 @@ def generate(pig_root: pathlib.Path) -> tuple[str, str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--coverage", default="test/parity/coverage.md")
+    parser.add_argument("--coverage", default="test/parity/generated/coverage.md")
     parser.add_argument("--badge", default=".github/badges/parity-coverage.svg")
     args = parser.parse_args()
 

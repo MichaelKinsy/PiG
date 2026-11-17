@@ -419,7 +419,7 @@ func matchScenarios(upstream string, coverage map[string][]string) []string {
 }
 
 // statusStats is the single source of truth for the verification dashboard.
-// All headlines (test/parity/coverage.md and AGENTS.md COVERAGE block) render from
+// All headlines (test/parity/generated/coverage.md and AGENTS.md COVERAGE block) render from
 // the same computed numbers. This prevents drift between reports.
 type statusStats struct {
 	Total             int // every PORT_MAP row
@@ -779,6 +779,6 @@ func buildCoverageBlock(entries []portMapEntry, coverage, behavioralCoverage map
 			row.Family, row.Scenarios, row.Behavioral, row.BootOnly, row.Weak, row.Deferred, row.Covered, lastRun)
 	}
 	fmt.Fprintln(&b)
-	fmt.Fprintln(&b, "Full per-file detail: `test/parity/coverage.md`.")
+	fmt.Fprintln(&b, "Full per-file detail: `test/parity/generated/coverage.md`.")
 	return b.String()
 }

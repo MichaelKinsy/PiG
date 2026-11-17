@@ -6,9 +6,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-CUR=test/parity/coverage.md
+CUR=test/parity/generated/coverage.md
 if [[ ! -f "$CUR" ]]; then
-  echo "release-check: test/parity/coverage.md missing: run 'make coverage' first"
+  echo "release-check: test/parity/generated/coverage.md missing: run 'make coverage' first"
   exit 1
 fi
 
@@ -26,7 +26,7 @@ if [[ -z "$cur_covered" ]]; then
 fi
 previous=$(mktemp "${TMPDIR:-/tmp}/pig.XXXXXXXX")
 trap 'rm -f "$previous"' EXIT
-git show HEAD:test/parity/coverage.md >"$previous" 2>/dev/null || :
+git show HEAD:test/parity/generated/coverage.md >"$previous" 2>/dev/null || :
 prev_covered=$(behavioral_count "$previous")
 prev_covered=${prev_covered:-0}
 
@@ -37,7 +37,7 @@ fi
 
 # Any "fail" cell in the current report = release-blocker.
 if grep -q '\*\*[0-9]\+ fail\*\*' "$CUR"; then
-  echo "release-check: failing scenarios in test/parity/coverage.md"
+  echo "release-check: failing scenarios in test/parity/generated/coverage.md"
   grep '\*\*[0-9]\+ fail\*\*' "$CUR"
   exit 1
 fi

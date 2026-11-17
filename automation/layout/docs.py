@@ -87,7 +87,7 @@ def owned(path):
     parts = PurePosixPath(path).parts
     if "node_modules" in parts or path.startswith((".upstream/", "automation/")):
         return False
-    if "/runtime-node/shims/" in path or path in ("parity/coverage.md", "parity/normalization-inventory.json") or path in GRAPH_OUTPUTS:
+    if "/runtime-node/shims/" in path or path in ("parity/coverage.md", "parity/normalization-inventory.json", "parity/generated/coverage.md", "parity/generated/normalization-inventory.json") or path in GRAPH_OUTPUTS:
         return False
     if path == GRAPH_SOURCE or original_path(path) in MOVED_ORACLE_ROOTS:
         return True

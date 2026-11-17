@@ -4,7 +4,7 @@
 
 - `../../docs/project/CONTEXT.md`
 - `README.md`
-- `coverage.md`
+- `generated/coverage.md`
 - `../../docs/parity/PORT_MAP.md`
 - `../../docs/parity/DIVERGENCES.md`
 

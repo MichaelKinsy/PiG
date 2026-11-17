@@ -18,13 +18,13 @@ SPDX-License-Identifier: MIT
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/MichaelKinsy/PiG?sort=semver)](https://github.com/MichaelKinsy/PiG/releases)
 [![Pi pin 1.5.2](https://img.shields.io/badge/Pi%20pin-1.5.2-8A2BE2)](https://github.com/earendil-works/pi/releases/tag/v1.5.2)
-[![Pi port progress](.github/badges/parity-coverage.svg)](test/parity/coverage.md)
+[![Pi port progress](.github/badges/parity-coverage.svg)](test/parity/generated/coverage.md)
 [![Follow PiG on X](https://img.shields.io/badge/X-%40PiGCodingAgent-000000?logo=x&logoColor=white)](https://x.com/PiGCodingAgent)
 [![Join r/PiGCodingAgent](https://img.shields.io/badge/Reddit-r%2FPiGCodingAgent-FF4500?logo=reddit&logoColor=white)](https://www.reddit.com/r/PiGCodingAgent/)
 
 PiG is [Pi](https://github.com/earendil-works/pi), the minimal and extensible coding agent for the terminal, rebuilt in Go as one native binary. The binary needs no Node.js. Pi's TypeScript extensions run on your Node.js 22.13 or newer through PiG's compatible runtime modules, and [extension API parity](docs/extension-api-parity.md) lists the differences. You can also write extensions in Go, Rust, Python, or Common Lisp, and bundle extensions, skills, and prompts into a Piglet: one named agent you can share or build into its own executable.
 
-PiG is a pre-stable 0.x release. Core paths are ported and checked against Pi 1.5.2 with paired parity scenarios; edge cases are still hardening. See the [port status](test/parity/coverage.md) and [file map](docs/parity/PORT_MAP.md) for current scope and evidence.
+PiG is a pre-stable 0.x release. Core paths are ported and checked against Pi 1.5.2 with paired parity scenarios; edge cases are still hardening. See the [port status](test/parity/generated/coverage.md) and [file map](docs/parity/PORT_MAP.md) for current scope and evidence.
 
 If PiG behaves differently from Pi, that is either a bug or a documented divergence. Windows support is a preview.
 
@@ -117,7 +117,7 @@ PiG adds a Go implementation to the Pi ecosystem and follows the Pi reference im
 - Prefer changes that reduce the cost of the next upstream sync.
 - Share generally useful findings with the broader ecosystem when the contribution route permits it.
 
-The pinned Pi release is 1.5.2 at commit `b4afdddf44e059c67ccf5097e5317d913521b470`. The pin names the behavior oracle. It does not claim that every upstream change is already ported: [`test/parity/coverage.md`](test/parity/coverage.md) reports verified behavior, and the upgrade ledgers under [`test/parity/upstream-sync/`](test/parity/upstream-sync/) list each upstream change and its disposition.
+The pinned Pi release is 1.5.2 at commit `b4afdddf44e059c67ccf5097e5317d913521b470`. The pin names the behavior oracle. It does not claim that every upstream change is already ported: [`test/parity/generated/coverage.md`](test/parity/generated/coverage.md) reports verified behavior, and the upgrade ledgers under [`test/parity/upstream-sync/`](test/parity/upstream-sync/) list each upstream change and its disposition.
 
 PiG's current package scope covers Pi's agent, AI, coding-agent, and TUI
 packages. It does not implement Pi's experimental remote Session packages or
@@ -288,7 +288,7 @@ The `upstream-mirror` target installs the Pi comparator of the pin: the lockfile
 - Go code is the target implementation.
 - [`docs/parity/PORT_MAP.md`](docs/parity/PORT_MAP.md) maps tracked upstream files.
 - `test/parity/scenarios/` records observed behavior.
-- [`test/parity/coverage.md`](test/parity/coverage.md) reports generated verification status.
+- [`test/parity/generated/coverage.md`](test/parity/generated/coverage.md) reports generated verification status.
 - [`docs/parity/DIVERGENCES.md`](docs/parity/DIVERGENCES.md) records intentional differences.
 - [`AGENTS.md`](AGENTS.md) defines maintenance rules.
 - [`Makefile`](Makefile) defines build, test, parity, and release gates.

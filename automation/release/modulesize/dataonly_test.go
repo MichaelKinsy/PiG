@@ -196,3 +196,28 @@ func TestDataOnlyDirectoriesHoldNoGoFileAndNoEmbeddedFile(t *testing.T) {
 	}
 	t.Logf("%d data-only directories", marked)
 }
+
+// TestGeneratedParityLedgersLiveOutsideTheRootModule keeps the two generated parity ledgers where they were moved so they stay out of the root module zip: test/parity/generated/ has a data-only go.mod and holds them, and neither exists at its old path under test/parity, tracked or on disk (a generator that writes the old path again fails here once it has run).
+func TestGeneratedParityLedgersLiveOutsideTheRootModule(t *testing.T) {
+	root := filepath.Join("..", "..", "..")
+	files, err := modulehash.TrackedFiles(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mod, err := os.ReadFile(filepath.Join(root, "test", "parity", "generated", "go.mod"))
+	if err != nil || !strings.HasPrefix(string(mod), dataOnlyMark) {
+		t.Fatalf("test/parity/generated/go.mod must exist and open with %q (err %v): the generated ledgers leave the root module zip through it", dataOnlyMark, err)
+	}
+	for _, name := range []string{"coverage.md", "normalization-inventory.json"} {
+		old := "test/parity/" + name
+		if slices.Contains(files, old) {
+			t.Errorf("%s is tracked: the generated ledger belongs at test/parity/generated/%s", old, name)
+		}
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(old))); err == nil {
+			t.Errorf("%s exists: a generator wrote the old path; it writes test/parity/generated/%s", old, name)
+		}
+		if !slices.Contains(files, "test/parity/generated/"+name) {
+			t.Errorf("test/parity/generated/%s is not tracked", name)
+		}
+	}
+}
