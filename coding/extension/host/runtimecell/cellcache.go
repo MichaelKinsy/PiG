@@ -248,6 +248,7 @@ func reusePublishedArtifact(finalDir string, check entryCheck) (PublishedEntry, 
 	if !ok {
 		return PublishedEntry{}, false
 	}
+	//portlint:allow clock a use of an entry records the real time, as AcquireUsageLease does; the Now seam dates collections
 	_ = TouchUsage(finalDir, time.Now())
 	return PublishedEntry{Dir: finalDir, ArtifactPath: art, Reused: true}, true
 }
@@ -428,14 +429,19 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 	// Publish atomically. A leftover entry the check does not accept (legacy, no marker, or a ready entry whose content differs) is
 	// renamed aside, not deleted in place: a peer that reads the entry meanwhile finds it absent and waits for the lock, never a
 	// half-deleted tree. We hold the lock, so no peer is mid-publish here.
-	if replaced == nil && verify != nil {
-		replaced = existingEntryDifference(finalDir, verify)
+	// One Lstat tells whether an entry is there: verify, to say how it differs, and the rename aside both act on it only then.
+	_, statErr := os.Lstat(finalDir) //perf:ok once per publication, after a build: the lstat that replaces the os.Stat of this place; a start that reuses its entry never reaches it
+	if statErr != nil && !errors.Is(statErr, fs.ErrNotExist) {
+		return PublishedEntry{}, fmt.Errorf("replace stale cell entry: %w", statErr)
 	}
-	aside, err := moveEntryAside(ctx, finalDir)
-	if err != nil {
-		return PublishedEntry{}, fmt.Errorf("replace stale cell entry: %w", err)
-	}
-	if aside != "" {
+	if statErr == nil {
+		if replaced == nil && verify != nil {
+			replaced = verify(finalDir)
+		}
+		aside, err := moveEntryAside(ctx, finalDir)
+		if err != nil {
+			return PublishedEntry{}, fmt.Errorf("replace stale cell entry: %w", err)
+		}
 		defer func() { _ = os.RemoveAll(aside) }()
 	}
 	var peerArtifact string
@@ -462,21 +468,8 @@ const (
 	replacedTagLen      = 16
 )
 
-// existingEntryDifference is what verify finds in the directory at finalDir, or nil when there is none.
-func existingEntryDifference(finalDir string, verify func(entryDir string) error) error {
-	if _, err := os.Lstat(finalDir); err != nil {
-		return nil
-	}
-	return verify(finalDir)
-}
-
-// moveEntryAside renames the entry at finalDir (a folder or a link to one) to a name beside it and returns that name; "" when there is no entry.
+// moveEntryAside renames the entry at finalDir (a folder or a link to one) to a name beside it and returns that name.
 func moveEntryAside(ctx context.Context, finalDir string) (string, error) {
-	if _, err := os.Lstat(finalDir); errors.Is(err, fs.ErrNotExist) {
-		return "", nil
-	} else if err != nil {
-		return "", err
-	}
 	var tag [replacedTagLen / 2]byte
 	if _, err := rand.Read(tag[:]); err != nil {
 		return "", err

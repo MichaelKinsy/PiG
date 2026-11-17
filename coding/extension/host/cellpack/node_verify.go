@@ -31,7 +31,7 @@ func refuseModuleLookupNames(dirs ...string) error {
 	for _, dir := range dirs {
 		for _, name := range moduleLookupNames {
 			found := filepath.Join(dir, name)
-			_, err := os.Lstat(found)
+			_, err := os.Lstat(found) //perf:ok constant 8 per start (4 names in each of the 2 folders above the entry), part of the D18 re-check
 			switch {
 			case err == nil:
 				return fmt.Errorf("%s exists: Node looks for modules in every folder above an extension's sources, so it would load from it; remove it", found)
@@ -84,7 +84,7 @@ func verifyNodeEntry(data []byte, entryDir string) error {
 		return err
 	}
 	for _, name := range moduleLookupNames {
-		_, err := os.Lstat(filepath.Join(entryDir, name))
+		_, err := os.Lstat(filepath.Join(entryDir, name)) //perf:ok constant 4 per start (the module-lookup names in the entry folder), part of the D18 re-check
 		switch {
 		case err == nil:
 			return &nodeDifference{what: "added", name: name}
@@ -134,7 +134,7 @@ func shown(name string) string { return nodeSourcesName + "/" + name }
 
 // lstat reads the metadata of fullPath; shownName is how a difference names it.
 func lstat(fullPath, shownName string) (fs.FileInfo, error) {
-	info, err := os.Lstat(fullPath)
+	info, err := os.Lstat(fullPath) //perf:ok one per archive folder, file and link at every start: the D18 comparison of the extracted tree with the archive, bounded by the cell's entry count; DirEntry.Info is an lstat per entry too
 	switch {
 	case errors.Is(err, fs.ErrNotExist):
 		return nil, &nodeDifference{what: "missing", name: shownName}
@@ -166,6 +166,7 @@ func (v *nodeVerifier) folder(name string) error {
 	if _, ok := v.known[name]; ok {
 		return nil
 	}
+	//portlint:allow pathseparators name is a tar member name from archivepath.Member: a slash path on every OS, not a host path (v.full converts it to one)
 	if parent := path.Dir(name); parent != "." {
 		if err := v.folder(parent); err != nil {
 			return err
@@ -180,6 +181,7 @@ func (v *nodeVerifier) folder(name string) error {
 
 func (v *nodeVerifier) register(name string, isFolder bool) {
 	v.known[name] = struct{}{}
+	//portlint:allow pathseparators name is a tar member name from archivepath.Member: a slash path on every OS, not a host path
 	v.children[path.Dir(name)]++
 	if isFolder {
 		v.folders = append(v.folders, name)
@@ -188,6 +190,7 @@ func (v *nodeVerifier) register(name string, isFolder bool) {
 
 // entry verifies one archive entry, whose bytes (a file) are the reader's.
 func (v *nodeVerifier) entry(reader io.Reader, header *tar.Header, name string) error {
+	//portlint:allow pathseparators name is a tar member name from archivepath.Member: a slash path on every OS, not a host path (v.full converts it to one)
 	if parent := path.Dir(name); parent != "." {
 		if err := v.folder(parent); err != nil {
 			return err
@@ -283,8 +286,10 @@ func (v *nodeVerifier) listings() error {
 			continue
 		}
 		for _, name := range names {
-			if _, ok := v.known[path.Join(folder, name)]; !ok {
-				return &nodeDifference{what: "added", name: shown(path.Join(folder, name))}
+			//portlint:allow pathseparators folder is a tar member name (a slash path on every OS, "." for sources) and name one base name from its listing, which is never split: the key is the archive's slash form
+			member := path.Join(folder, name)
+			if _, ok := v.known[member]; !ok {
+				return &nodeDifference{what: "added", name: shown(member)}
 			}
 		}
 		return &nodeDifference{what: "changed", name: shown(folder)}

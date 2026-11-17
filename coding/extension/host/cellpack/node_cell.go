@@ -59,6 +59,7 @@ func extractNodeCell(data []byte, c CellEntry, dest string, warn io.Writer) erro
 		return err
 	}
 	entryDir := filepath.Dir(nodeSourcesDir(dest, digest))
+	//portlint:allow ctxbackground extraction runs in Register at startup, before any session or context exists (cli.Main has none until after it); the work is bounded by the verification and one extraction
 	entry, err := runtimecell.PublishVerifiedArtifact(context.Background(), entryDir, nodeArchiveMarker, digest, nodeLanguage, func(dir string) error {
 		return verifyNodeEntry(data, dir)
 	}, func(scratch string) (string, error) {
