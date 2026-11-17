@@ -517,9 +517,7 @@ func init() {
 		if name == "message_update/deep" {
 			continue
 		}
-		for _, sdk := range curedSDKs {
-			curedBy[name] = append(curedBy[name], sdk)
-		}
+		curedBy[name] = append(curedBy[name], curedSDKs...)
 	}
 }
 
