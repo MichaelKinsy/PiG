@@ -19,6 +19,7 @@ type refusingEditorBridge struct {
 	*captureUIBridge
 	refusing atomic.Bool
 	syncs    atomic.Int32
+	awaits   atomic.Int32
 	err      error
 }
 
@@ -31,6 +32,12 @@ func (b *refusingEditorBridge) SyncAutocomplete(context.Context, *extension.Auto
 	if b.refusing.Load() {
 		return b.err
 	}
+	return nil
+}
+
+// AwaitEditorInstalled counts the waits the mode made for the editor session_start installed; the real bridge's answer is tested in its own package.
+func (b *refusingEditorBridge) AwaitEditorInstalled(context.Context) error {
+	b.awaits.Add(1)
 	return nil
 }
 
@@ -51,6 +58,13 @@ func (h *TestHarness) RemoteEditorInstalled() bool {
 	installed := false
 	h.Do(func() { installed = h.m.remoteEditor != nil })
 	return installed
+}
+
+// EditorAwaits is the number of times the bind (startup, /new, /reload) waited for the editor session_start installed.
+func (h *TestHarness) EditorAwaits() int {
+	awaits := 0
+	h.Do(func() { awaits = int(h.m.opts.SubprocessUIBridge.(*refusingEditorBridge).awaits.Load()) })
+	return awaits
 }
 
 func extensionErrorTexts(m *InteractiveMode) []string {
