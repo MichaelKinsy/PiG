@@ -2035,24 +2035,25 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	}
 	mark("post-emit-session-start")
 
-	// rebindCurrentSession showed the loaded resources after the built-in or extension-supplied header. Quiet startup suppresses help and resource
-	// listings, not the initial editor and footer.
-	m.tuiInst.Render()
-	mark("first-render-done")
+	// Pi's init() has no render between the bind and renderInitialMessages (interactive-mode.ts:1141-1162): everything the bind changed is asked for with
+	// requestRender and painted by the one renderNow at the end of init(). A render here wrote a frame and, with nothing changed since, a bare cursor
+	// placement after the next one.
 	// Upstream's rebindCurrentSession shows the startup changelog notice after the loaded resources (showStartupNoticesIfNeeded, interactive-mode.ts
 	// bindCurrentSessionExtensions), before init() renders the initial messages.
 	m.showStartupChangelog(m.changelogEntries, m.extensionChangelogUpdates)
 
 	m.renderInitialMessages()
+	// Pi's init() ends with `this.ui.renderNow()` (interactive-mode.ts:1162) after renderInitialMessages and the provider count: the one frame of the
+	// startup state. renderNow clears a render a request asked for before it (tui.ts:1025-1031), so the requests the bind made fall into it.
+	m.tuiInst.RenderNow()
+	m.loadRemainingHighlightLanguages()
 	// upstream: interactive-mode.ts run() shows the startup diagnostics, migrated credentials, the models.json error, the model fallback message and the
-	// crash notice once init() has rendered the initial messages.
+	// crash notice once init() has returned (:1230-1262): each asks for a render, and the frame that follows is a second one after the startup frame.
 	m.showInitNotices()
 	m.showCrashNotice()
 	if m.frontendStartupWarning != "" {
 		m.showWarning(m.frontendStartupWarning)
 	}
-	m.tuiInst.Render()
-	m.loadRemainingHighlightLanguages()
 
 	return nil
 }

@@ -471,7 +471,7 @@ func (m *InteractiveMode) appendBorderedNotice(blocks ...tui.Component) {
 		m.chatContainer.Add(b)
 	}
 	m.chatContainer.Add(tui.NewDynamicBorderToken("warning"))
-	m.tuiInst.Render()
+	m.tuiInst.RequestRender()
 }
 
 // lastAssistantMessageText is session.getLastAssistantText(), which /copy reads (interactive-mode.ts handleCopyCommand): empty when the Session has no assistant text.
@@ -576,7 +576,7 @@ func (m *InteractiveMode) showManagedToolStatus(status tools.ToolStatus) {
 	m.lastStatusSpacer = nil
 	m.lastStatusText = nil
 	if m.tuiInst != nil {
-		m.tuiInst.Render()
+		m.tuiInst.RequestRender()
 	}
 }
 
@@ -597,13 +597,9 @@ func (m *InteractiveMode) showStatus(msg string) {
 		m.lastStatusSpacer = spacer
 		m.lastStatusText = text
 	}
-	// Mirror upstream's `this.ui.requestRender()` (interactive-mode.ts:2918,2927).
-	// Without this, status messages added inside synchronous handlers
-	// (e.g. /tree empty-session, /branch-summarize cancelled) never make
-	// it to the screen because nothing else triggers a render before the
-	// The handler requests a render before it returns.
+	// Mirror upstream's `this.ui.requestRender()` (interactive-mode.ts:3972,3983): a request, painted by the next frame, never a render of its own.
 	if m.tuiInst != nil {
-		m.tuiInst.Render()
+		m.tuiInst.RequestRender()
 	}
 }
 
