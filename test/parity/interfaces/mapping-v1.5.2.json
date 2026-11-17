@@ -109265,7 +109265,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/app.go#App.DeleteData"
+        "call:chord/nextnode/app/import_intent.go#App.completeDelete"
       ],
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
@@ -123280,7 +123280,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_export_host_test.go#TestAppCarriesTheServersRecordsAndRowsOfTheAddressCopiedRefusedReplacedAndDeletedWithIt",
-        "test:chord/nextnode/app/app_export_host_test.go#TestAppOrdersAnImportAndADeleteAroundTheServersCommitUndoneBeforeItKeptAfterAnUnknownOutcome"
+        "test:chord/nextnode/app/app_export_host_test.go#TestAppOrdersAnImportAndADeleteAroundTheServersCommitUndoneBeforeItKeptAfterAnUnknownOutcome",
+        "test:chord/nextnode/app/app_import_kill_test.go#TestAnIntentThatCannotBeUsedBlocksItsAddressOnly"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123302,7 +123303,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_export_host_test.go#TestAppCarriesTheServersRecordsAndRowsOfTheAddressCopiedRefusedReplacedAndDeletedWithIt",
-        "test:chord/nextnode/app/app_export_host_test.go#TestAppOrdersAnImportAndADeleteAroundTheServersCommitUndoneBeforeItKeptAfterAnUnknownOutcome"
+        "test:chord/nextnode/app/app_export_host_test.go#TestAppOrdersAnImportAndADeleteAroundTheServersCommitUndoneBeforeItKeptAfterAnUnknownOutcome",
+        "test:chord/nextnode/app/app_import_kill_test.go#TestAnIntentThatCannotBeUsedBlocksItsAddressOnly"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -123366,7 +123368,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/app.go#App.DeleteData"
+        "call:chord/nextnode/app/app.go#App.ExportData"
       ],
       "evidence": [
         "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientPairsWithTheServerTheCodeShownApprovedByTheOwnerThenTheClientRuns",
@@ -123634,8 +123636,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_bases_test.go#TestAppReportsABaseThatFailsAfterTheListenAndRunsOnThePageAnswers503TheKindsWorkersFailTheirStart",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientAnswersEightRequestsAtOnceRefusesMoreAndIgnoresSIGUSR1OpusE10E8",
-        "test:chord/nextnode/tui/tui_kit_upstream_test.go#TestATerminalClientDrawsItsPromptInItsOwnColoursAndIgnoresKeysTypedBeforeItAppearedOpusE4"
+        "test:chord/nextnode/app/app_import_kill_test.go#TestAStartReportsTheInterruptedImportItUndid",
+        "test:chord/nextnode/app/app_import_kill_test.go#TestAnIntentThatCannotBeUsedBlocksItsAddressOnly"
       ]
     },
     {
@@ -123742,6 +123744,8 @@
         "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
+        "test:chord/nextnode/app/app_import_kill_test.go#TestAnIntentThatCannotBeUsedBlocksItsAddressOnly",
+        "test:chord/nextnode/app/app_import_kill_test.go#TestOneAddressWhoseStoreFilesAreGarbageFailsItsOwnWorkerAndTheOthersServe",
         "test:chord/nextnode/app/reload_restart_test.go#TestAReloadRestartingAnObjectWithNativesCutsARunningCallOffAtTheReloadDrainBoundThenRunsTheWaitingCallOnTheNewCode"
       ]
     },
@@ -128087,8 +128091,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/app/app_bases_linux_test.go#TestAppRefusesRequestsAndLinksWith503WhileTheServersPluginsAreStillLoading",
-        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink",
-        "test:chord/nextnode/http/review_test.go#TestReviewCloseWritesTheAnswerOfASealedRequestBeforeTheListenerCloses"
+        "test:chord/nextnode/app/app_import_kill_test.go#TestNothingIsServedAndNoWorkerStartsUntilTheStartHasResolvedItsIntents",
+        "test:chord/nextnode/app/app_test.go#TestAppNamesTheAddressListenedOnInTheOwnerLink"
       ]
     },
     {
