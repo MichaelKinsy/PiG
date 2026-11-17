@@ -243,6 +243,7 @@ type tmuxBlock struct {
 	CaptureEndRegex     string          `toml:"capture_end_regex"`
 	CaptureStartLast    bool            `toml:"capture_start_last"`
 	CaptureHistory      bool            `toml:"capture_history"`
+	PreTuiLines         int             `toml:"pre_tui_lines"`
 	CaptureJoinWrapped  bool            `toml:"capture_join_wrapped"`
 	CWD                 string          `toml:"cwd"`
 	GitBranch           string          `toml:"git_branch"`
@@ -469,6 +470,9 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 
 	if sc.Tmux.CaptureHistory && sc.Driver != "interactive-tmux" {
 		out = append(out, violation{path, "history-driver", "capture_history requires interactive-tmux"})
+	}
+	if sc.Tmux.PreTuiLines < 0 || sc.Tmux.PreTuiLines > 0 && sc.Driver != "interactive-tmux" {
+		out = append(out, violation{path, "pre-tui-driver", "pre_tui_lines is a count of lines printed before an interactive-tmux binary starts"})
 	}
 	if sc.Assert.ChangelogHeadersComplete && (sc.Driver != "interactive-tmux" || !sc.Tmux.CaptureHistory) {
 		out = append(out, violation{path, "changelog-history", "changelog_headers_complete requires complete tmux history"})

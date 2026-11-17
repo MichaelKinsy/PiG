@@ -163,7 +163,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	// host HTTP_PROXY otherwise leaks into one binary.
 	envPrefix := tmuxEnvPrefix(os.Getenv("GOCOVERDIR"))
 	exitStatusPath := filepath.Join(tc.tempRoot, "process-exit-status")
-	cmdStr := envPrefix + strings.Join(quoted, " ") + "; exit_code=$?; printf '%s\\n' \"$exit_code\" > " + shellQuote(exitStatusPath+".tmp") + " && mv " + shellQuote(exitStatusPath+".tmp") + " " + shellQuote(exitStatusPath) + "; sleep 999"
+	cmdStr := envPrefix + preTuiLinesCommand(cfg.PreTuiLines) + strings.Join(quoted, " ") + "; exit_code=$?; printf '%s\\n' \"$exit_code\" > " + shellQuote(exitStatusPath+".tmp") + " && mv " + shellQuote(exitStatusPath+".tmp") + " " + shellQuote(exitStatusPath) + "; sleep 999"
 	// Working directory: prepend `cd <dir> && …` so the binary launches in
 	// the scenario cwd (resolved relative to the scenario source path) or
 	// the default cwd fixture. The directory is copied per binary under the
@@ -210,7 +210,12 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	var finalFrameSpecs []TmuxFinalFrame
 	if ready != "" {
 		timeout := time.Duration(cfg.ReadyTimeoutSeconds) * time.Second
-		readyOK = waitForPaneOrCapture(ctx, session, ready, cfg.CaptureStart, timeout)
+		// A capture_start that the launch shell itself prints (pre_tui_lines) is on screen before the TUI exists, so it cannot stand in for the ready pattern.
+		earlyCapture := cfg.CaptureStart
+		if cfg.PreTuiLines > 0 {
+			earlyCapture = ""
+		}
+		readyOK = waitForPaneOrCapture(ctx, session, ready, earlyCapture, timeout)
 		if !readyOK {
 			operationErr = fmt.Errorf("ready pattern %q not reached within %s", ready, timeout)
 		}
@@ -1208,4 +1213,12 @@ func tmuxProcessRunning(pid int) bool {
 	}
 	err = process.Signal(syscall.Signal(0))
 	return err == nil || errors.Is(err, syscall.EPERM)
+}
+
+// preTuiLinesCommand prints n numbered lines before the binary starts, as a package installer or a wrapper script would.
+func preTuiLinesCommand(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return "i=1; while [ $i -le " + strconv.Itoa(n) + " ]; do printf 'PRE-TUI-LINE-%d\\n' $i; i=$((i+1)); done; "
 }
