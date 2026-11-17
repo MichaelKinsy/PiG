@@ -78013,6 +78013,17 @@
       "shapeHash": "sha256:4e89d8d23a8a4a4b66575ba4cd852dd348841c4c6e9a410649f720b7254d5aad"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.ExtensionSetModelOnMain",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.ExtensionSetModelOnMain",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, model *github.com/MichaelKinsy/PiG/ai.Model, dispatch func(func() error) error) (bool, error)"
+      },
+      "shapeHash": "sha256:09ca48f1f55e4be7fa932fa1fac5ce7e7d9d3b0023493efcab08460ceb28dfc5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.ExtensionUserMessageRunPending",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Session.ExtensionUserMessageRunPending",
@@ -80552,6 +80563,17 @@
         "type": "func(ctx context.Context, entryID string, opts *github.com/MichaelKinsy/PiG/coding/extension.ForkOptions) (github.com/MichaelKinsy/PiG/coding/extension.CancelledResult, error)"
       },
       "shapeHash": "sha256:0c51d618f34ce183c311f2f760126cdde31a497fc5c5bd514213a6d3f3f9ded5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.extensionModelConfigured",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.extensionModelConfigured",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model) (bool, error)"
+      },
+      "shapeHash": "sha256:77a5088c60a84c1c9776ae6c462487ce21810508655483cef70b01120d21e30c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.extensionNewSession",
@@ -272898,6 +272920,17 @@
         "type": "func(status github.com/MichaelKinsy/PiG/internal/codingagent/tools.ToolStatus)"
       },
       "shapeHash": "sha256:491b43fe6bc4ddccdac5f025aee34cb4f87bfac172ae3cd8825afde098fb16a8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showModel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.showModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model)"
+      },
+      "shapeHash": "sha256:8e3e0e408b42240994a8a618c8b672ab70f55d5bc08fcbc76ba5ac20b2b0d834"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showModelSelector",
