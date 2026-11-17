@@ -1,6 +1,6 @@
 ### Added
 
-- `PIG_TELEMETRY` overrides the `enableInstallTelemetry` setting, beside Pi's `PI_TELEMETRY`, which still works and wins when both are set. `pig` passes it on as `PI_TELEMETRY` to the Node extension runtime.
+- `PIG_TELEMETRY` overrides the `enableInstallTelemetry` setting, beside Pi's `PI_TELEMETRY`, which still works alone. When both are set, `PIG_TELEMETRY` decides. `pig` passes the decision on as `PI_TELEMETRY` to the Node extension runtime and to every process it starts.
 
 ### Changed
 
