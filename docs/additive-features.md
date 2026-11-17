@@ -2386,7 +2386,8 @@ With nothing selected, with only the screen writer, and with both, the five fami
 Remove when: Pi adopts an adaptive scheduler of its own, or the owner declines the policy. Then the policy, `synchronizedUpdatesTrustedIn`, the setting, the variable, the markers and this record go; the hook returns to Pi's constant.
 
 Approval: approved by owner Michael Kinsy on 2026-11-12 for 0.8.0 (14:42Z, with conditions; the conditions as recorded here at 15:47Z): a positive list of terminals known to implement synchronized updates; no multiplexers; an unknown terminal gets Pi's interval; active only in fullscreen mode while a reply streams and no compaction runs; never with extension UI mounted; default `adaptive`, the other value `pi`; never enable pacing for unknown terminals to win a benchmark row. Where each is enforced: the list, the multiplexers and the unknown terminal in `synchronizedUpdatesTrustedIn` (`tui/tui_alt_screen_scroll.go`); fullscreen in `frameIntervalLocked` (`tui/frame_pacing.go`), which asks the terminal's `ScreenWriterActive`; streaming, compaction and extension UI in `replyStreamsUndisturbed` and `extensionDrawsOnScreen` (`internal/codingagent/frame_pacing.go`), stored before every throttled frame by `allowFramePacing`; the setting in `installFramePacing`. Shipped default: `pi`, not the `adaptive` of the approval's list, by the release ruling of 2026-11-12 on the measurement above; `adaptive` stays selectable. Owner decision recorded 2026-11-12T23:22:43Z (owner: "proceed with recommendations"): "Adaptive pacing: form B ships OPT-IN; default stays 'pi'; D625 records the numbers." Form B is the rule for frames that send nothing together with the handler's skip of updates that change nothing, the form measured above.
-SCRUTINIZED:approved
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:747cf15f7efc69d4
 
 ## D627 Heap-profile sampling is off unless the process asks for a heap profile
 
@@ -2473,4 +2474,5 @@ Evidence: the allocation test fails when a failed request builds its failure res
 Remove when: Pi gives an extension a retry decision hook per failed request, or the Piglet needing it no longer exists.
 
 Approval: owner, 2026-11-15T06:56:17Z. Owner decision: approved 2026-11-15T06:56:17Z (handoffs/0.8.0/OWNER-DECISIONS.md, that line): D653 and the stacked retry-decider seam (D654) are approved for 0.8.0.
-SCRUTINIZED:approved 2026-11-15
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:9c370782755fa6ac

@@ -28,7 +28,6 @@ D107 behaviour large-insert; owner statement 2026-10-06, 2026-10-07, text last c
 D112 behaviour large-insert; owner statement 2026-10-09, 2026-10-10, text last changed 2026-11-13; +1513/-0 words in total, +362/-0 in the last change; Session storage +129/-0, Message entries +133/-0, Summary +17/-0, Audience +2/-0 ...; first marker 6af0806 (2026-10-19)
 D2 behaviour owner-statement-after [`pig`, never `pi`: `pig config` `pi ...]; owner statement 2026-09-27, 2026-10-01, 2026-11-13, text last changed 2026-11-13; +1515/-13 words in total, +596/-0 in the last change; (unlabelled) +1426/-13, Kept as Pi's. Credit and reference +89/-0; first marker f144ac8 (2026-09-29)
 D111 scope large-insert; owner statement 2026-10-09, text last changed 2026-11-14; +273/-0 words in total, +110/-0 in the last change; Scope +273/-0; first marker 6af0806 (2026-10-19)
-D230 new added on the release line by 825b4ab (Record the config selector's missing-member rows as D230 and match Pi'), first merge 5ea29a0c3 Merge fix/071-behavior into fix/071-markdown
 D232 new added on the release line by 53d6562 (docs(rpc): renumber the --listen record from D205 to D232), first merge fb6c252f4 Merge remote-tracking branch 'dp/fix/071-next' into fix/071-listen
 D235 new added on the release line by 81095f5 (Record that a session-graph client's two back-to-back runs share one c), first merge 25f797772 Merge fix/071-rpc into fix/071-next
 D263 new added on the release line by 0a6a1e8 (codemode: opt-in wazero interpreter for hosts that cannot run generate), first merge b6ab1a81e Merge fix/071-codemode into fix/071-next
@@ -64,7 +63,6 @@ D618 new added on the release line by e7a2839 (docs: D618 row in the bundle dive
 D619 new added on the release line by 1488c99 (generated: docs bundle and interface inventory for batch C), first merge f492051e0 Merge release/set-152-final (d591389546cd) into fix/next-go-1.27.4
 D621 new added on the release line by 92630fc (gcpolicy: an interactive run collects at GOGC 150 until 8 MiB are live), first merge f492051e0 Merge release/set-152-final (d591389546cd) into fix/next-go-1.27.4
 D624 new added on the release line by 0502bf8 (docs: draft additive record D624 (PIG_TUI_SCREEN_WRITER=1), scrutiny p), first merge 13ebc69db merge: the screen writer (perf/screen-parity-b 2b55d338f1d2) under adaptive fram
-D625 new added on the release line by a1b0f6f (docs: additive record D625 (terminal.framePacing "adaptive", PIG_FRAME), first merge 88a1f2eb0 merge: the screen writer's tip (perf/screen-parity-c-wip ac7d608b7daf, with the 
 D626 new added on the release line by e707cbe (generated: node runtime pack, SDK bundles, divergence ledger, interfac), first merge ddde76f2a Merge release/set-pimain abba7d7c3030 into fix/divergences-page-table
 D627 new added on the release line by 5c0a152 (perf: turn heap-profile sampling off unless the process asks for a hea), first merge b6a59afb9 Merge branch 'release/set-pimain' into perf/mem-profile-rate-approved
 D628 new added on the release line by b5c9e29 (models: one auth.json revision check per availability pass (D628)), first merge 2e1661b2a Merge perf/bloat-auth-pass (0742acceed30) into release/set-pimain
@@ -79,7 +77,5 @@ D647 new added on the release line by 7b193b6 (docs(parity): record D647, the pl
 D648 new added on the release line by c9ef406 (Record D648: a Rust extension holds U+FFFD for a lone UTF-16 surrogate), first merge d14989e90 Merge place 2 fix/lone-surrogate-kept-at-read-wire (1c74bffa594c) into fix/lone-
 D649 new added on the release line by e5d8c37 (docs: divergences D649 and D650, approved by the owner), first merge 0ac3b7a79 Merge fix/interactive-quit-every-runtime-on-line (a1f8f59ebd03) into batch/line-
 D650 new added on the release line by e5d8c37 (docs: divergences D649 and D650, approved by the owner), first merge 0ac3b7a79 Merge fix/interactive-quit-every-runtime-on-line (a1f8f59ebd03) into batch/line-
-D652 new added on the release line by 86e6905 (Record D652 (the compaction line shows elapsed time and streamed size)), first merge db07e98f6 Merge release/set-pimain (car 20 line) into feat/compaction-progress
 D653 new added on the release line by 549cbc9 (docs: record D653 (a fused member's CLI hook), author section and chan), first merge ce34ea27c car 23: feat/fused-retry-decider-seam-2 (cd2b13757fff)
-D654 new added on the release line by 2ba7d86 (retry decider: a failed request keeps its response only when a decider), first merge ce34ea27c car 23: feat/fused-retry-decider-seam-2 (cd2b13757fff)
 D657 new numbered by owner decision 28 of 2026-11-17 (the per-handler event copies of D31 become their own divergence; behaviour kept), added by lane RecordCorrections5 on docs/divergence-record-corrections

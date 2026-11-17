@@ -3134,8 +3134,9 @@ Pi bug: none; this is an addition to Pi's behaviour for a state Pi hides.
 Scope: the `pig config` selector (global and project scope) for Packages with declared members that are absent. Packages whose members all exist render exactly as Pi's.
 
 Owner decision: 2026-11-03, the owner approved keeping the missing-member rows.
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:8426216ea6fd5167
 
 Remove when: Pi lists declared-but-missing Package members in `pi config`, or the owner withdraws the feature.
 
@@ -4356,8 +4357,9 @@ Pi bug: none; Pi's bare label is correct, only silent.
 Scope: `internal/compactprogress` (the counter), `ProviderCompleter` (counts stream deltas only when the context carries a counter; returns what it returned before), `Session.compact` and `runAutoCompaction`, the interactive status tick (`tickCompactionMessage`, which sets the existing `Loader.SetMessage` only when the text changed). One additive exported accessor: `coding.Session.CompactionStreamedTokens() int64`, the streamed size in tokens of the compaction in flight (0 when none runs); no `tui` type gains a member.
 
 Owner decision: owner approved 2026-11-15 (OWNER-DECISIONS.md 2026-11-15T00:39:25Z); the narrow-terminal sentence, which narrows the difference toward Pi, approved as written at 2026-11-15T01:30:38Z.
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved 2026-11-15
+SCRUTINIZED:approved 2026-11-17 text-sha256:ef0bf15871fd2338
 
 Remove when: Pi shows progress for a compaction, or the owner withdraws the display.
 
