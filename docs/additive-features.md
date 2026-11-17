@@ -16,6 +16,8 @@ diagnostic commands), or `Audience: runtime` for performance, crash, security, a
 platform notes. `make additive-list` copies the author records into the agent
 docs page `additive-features.md`.
 
+The `SCRUTINIZED:approved` line of a record binds a hash of its text, as in `docs/parity/DIVERGENCES.md`: only the owner approves a changed text (`make divergence-approve ID=D<N>`), and a lane that changes a record lists it in `automation/ci/divergence-reapproval-pending.txt`.
+
 If an upstream behavior changes such that one of these additive features starts
 *conflicting* with upstream, promote it to `docs/parity/DIVERGENCES.md` with a numbered D
 entry and a SCRUTINIZED tag.
