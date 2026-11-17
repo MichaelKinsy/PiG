@@ -2074,4 +2074,5 @@ Locked by: `TestParseArgsListen`, `TestParseArgsListenShareExtensions`, `TestPig
 
 Remove when: Pi gains a multi-session RPC mode.
 
-Approval: awaiting the owner's sign-off of this record. The PiG Discord approval of 2026-11-03 covered a server whose sessions share extension processes by default; the maintainer branch of PR #404 makes isolation the default and sharing an opt-in, as on the release line, so the record carries no scrutiny line until the owner signs it.
+Approval: approved by owner Michael Kinsy on 2026-11-06. The PR's Discord approval of 2026-11-03 covered a server that shares extension processes; the owner's 2026-11-06 decision makes isolation the default and sharing an opt-in. Owner decision 13 of 2026-11-17 approved PR #404 for 0.8.0 on a maintainer branch that ships this default.
+SCRUTINIZED:approved
