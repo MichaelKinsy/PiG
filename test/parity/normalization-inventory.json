@@ -32,7 +32,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "34264ba0c58f10e5836e547bf95da52ee77f7aa964950602e90251f137a58d3f",
+      "sha256": "4c0db2a90295fa490c8c3ea6f6e7d781a2b0407cc2343dea18e1419cef208cce",
       "reason": "Terminal state capture is not a byte-stream assertion; the terminal transcript, held from the program's first byte, is read only by wait_contains, by final_frame and by a scenario's own transcript_sequences_equal window. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
@@ -57,7 +57,7 @@
     },
     {
       "source": "test/parity/runner/transcript_sequences.go",
-      "sha256": "70dd3ccb3528a23ba107a52b221e8053b8181613536705068cd33c7b66092c94",
+      "sha256": "e5bc979cf22b6b1d536574252721a0afb5b01f0bcd43c1e2431f1535ad0657a9",
       "reason": "transcript_sequences_equal compares the ordered escape sequences and text runs of one stretch of the terminal transcript token by token, byte for byte, with no normalisation. Its only exemption is a floating sequence a scenario declares: exactly one complete sequence or one OSC number, present in every run of both binaries, never written earlier than Pi's earliest recorded position, with Pi evidence of at least two distinct positions. It removes that sequence's place from the comparison and nothing else."
     },
     {
@@ -863,6 +863,91 @@
             "capture_start_last": true
           },
           "reason": "Owned visible surface: An empty extension compaction summary still renders the [compaction] block as a successful compaction.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/compaction/18-compact-fit.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /compact of a transcript of 3 pairs that fits the pane the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/compaction/19-compact-long.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /compact of a transcript of 16 pairs, longer than the pane the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/compaction/20-compact-shorter.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /compact of a transcript of 4 pairs that fits the pane with room for the slash popup: the summary and the kept pair are shorter and the rows below them must be erased the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/compaction/21-compact-longer.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /compact of a transcript of 2 pairs: the summary and the kept pair against the pair that is summarized the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/compaction/22-compact-popup-erases-scrollback.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /compact of a transcript that fills the pane exactly, the slash popup has scrolled the pre-TUI lines out and the repaint erases the scrollback: the capture equals Pi's.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -10686,6 +10771,193 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/session/40-resume-fit.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /resume of another session (both sessions fit the pane) the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/41-resume-long.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /resume of another session (both sessions are longer than the pane) the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/42-resume-shorter.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /resume of another session (the resumed session (1 pair) is shorter than the current one (3 pairs): the rows below it must be erased) the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/43-resume-longer.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /resume of another session (the resumed session (3 pairs) is longer than the current one (1 pair)) the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/44-resume-longer-tall-pane.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /resume of another session (the resumed session is longer than the current one, in a 140 by 50 pane) the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/45-fork-fit.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /fork of a session of 4 pairs that fits the pane, forked from its last message the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/46-fork-long.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /fork of a session of 16 pairs, longer than the pane, forked from its last message the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/47-fork-shorter.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /fork of a session of 4 pairs forked from its second message: the new transcript holds one pair, the rows below it must be erased the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/48-clone-fit.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /clone of a session of 3 pairs that fits the pane the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/49-clone-long.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /clone of a session of 16 pairs, longer than the pane the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/session/50-fork-long-slow-before-fork.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /fork of a long session whose session_before_fork handler awaits 400 ms the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/settings/02-settings-selector.toml",
       "transforms": [
         {
@@ -11496,6 +11768,76 @@
             "capture_end": "unhandled request"
           },
           "reason": "Owned visible surface: Both binaries send an unknown slash command to the selected model as a user message.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/31-new-keeps-pre-tui-scrollback.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true,
+            "capture_start": "PRE-TUI-LINE-1",
+            "capture_end": "PRE-TUI-LINE-5"
+          },
+          "reason": "Owned visible surface: After /new the lines printed before the TUI started are still in the scrollback, as in Pi.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/32-new-fit-keeps-pre-tui-scrollback.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /new over a transcript of 3 pairs that fits the pane the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/33-new-long-pre-tui-scrollback.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /new over a transcript of 16 pairs, longer than the pane the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/slash-commands/34-new-extension-status-widget.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /new with an extension status line and widget on screen the capture equals Pi's.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -12469,6 +12811,74 @@
             "capture_end": "Navigated to selected point"
           },
           "reason": "Owned visible surface: After /tree selection with no summary the first frame is the fork point, never the old transcript with the prompt closed.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tree/16-tree-branch-fit.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /tree to another branch (the other branch (2 pairs) and the current one (2 pairs) fit the pane) the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tree/17-tree-branch-long.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /tree to another branch (both branches (16 pairs each) are longer than the pane) the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tree/18-tree-branch-shorter.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /tree to another branch (the other branch (1 pair) is shorter than the current one (4 pairs): the rows below it must be erased) the capture of the scrollback and the screen equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/tree/19-tree-branch-longer.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_history": true
+          },
+          "reason": "Owned visible surface: After /tree to another branch (the other branch (4 pairs) is longer than the current one (1 pair)) the capture of the scrollback and the screen equals Pi's.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
