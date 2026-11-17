@@ -3,6 +3,7 @@ package subprocess
 import (
 	"context"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"testing"
 
@@ -122,10 +123,27 @@ func benchMessageStart(b *testing.B, source string) {
 	handler := loadNodeBenchExtension(b, "message_start", source)
 	message := agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserText("hello"), Timestamp: 1}}
 	ctx := extension.WithMessageSequences(context.Background(), func() []uint64 { return []uint64{9001} })
-	b.ReportAllocs()
-	for b.Loop() {
+	dispatch := func() {
 		if _, err := handler(extension.MessageStartEvent{Type: "message_start", Message: message}, ctx); err != nil {
 			b.Fatal(err)
 		}
 	}
+	steadyAllocs(b, dispatch)
+	b.ReportAllocs()
+	for b.Loop() {
+		dispatch()
+	}
+}
+
+// steadyAllocs makes allocs/op independent of b.N and of when a collection falls. The first dispatches allocate what the connection keeps afterwards (about 560 allocations
+// at 1x, so 600 allocs/op at b.N=1 and 47 at 100x against 42 at 1s), and the frame, response and write-result pools (sync.Pool) are emptied by every collection: one that lands
+// inside a 5x run refills them, 3 allocs/op more than a run it misses. So the benchmark dispatches a few times first, then keeps the collector off for the measured loop and
+// restores it at the end.
+func steadyAllocs(b *testing.B, dispatch func()) {
+	b.Helper()
+	for range 3 {
+		dispatch()
+	}
+	previous := debug.SetGCPercent(-1)
+	b.Cleanup(func() { debug.SetGCPercent(previous) })
 }
