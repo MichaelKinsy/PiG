@@ -624,6 +624,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4c45afa](#bf-4c45afa) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
 | [BF-4c70e73](#bf-4c70e73) | fix(chord): the app builds for Windows (no uid check there, as Pi), a required root's failed load stops the… | PiG's own defect | Windows | Unreleased |
 | [BF-4c7ccf2](#bf-4c7ccf2) | A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4cc22fb](#bf-4cc22fb) | An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from… | PiG's own defect | All platforms | Unreleased |
 | [BF-4cf6069](#bf-4cf6069) | The read, write, edit and ls cards draw their call fallback, as Pi does, for a path argument whose `file:`… | PiG's own defect | All platforms | Unreleased |
 | [BF-4cf6069-2](#bf-4cf6069-2) | The read card's truncation warning prints a count the result does not carry as `undefined` and keeps a stored… | PiG's own defect | All platforms | Unreleased |
 | [BF-4d04134](#bf-4d04134) | The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of… | PiG's own defect | All platforms | 0.5.0 |
@@ -10689,6 +10690,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4c7ccf231e` (2026-10-13)
 - **Tests:** `ai/classifier_shared_exports_test.go::TestParseClassifierUsagePricesTheModelCatalog`
 - **Release note:** A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count and its cost, as Pi does, instead of capping it.
+
+### BF-4cc22fb
+
+**An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from a half-replaced record.
+- **Root cause:** the restart wrote cancel and parentCtx of a published extension with no lock, although procMu already guarded the process handle beside them, and no test ran a call that reads the owner context while a restart replaces it
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4cc22fbce1` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/restart_context_race_test.go::TestRestartReplacesTheStartContextBesideItsReaders`
+- **Release note:** An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from a half-replaced record. The restart rewrote the context its new process runs under and the owner context whose end means the host stopped the extension, while a failed command, shortcut or event call read the owner context from its own goroutine; the race detector reported the pair once in a gate run. The two now change together under the lock that already guards the process handle, and every reader copies them under it. No failure a user could see was reproduced: the worst outcome of a read at the wrong moment was a failed call at the instant of a restart judged by the old owner.
 
 ### BF-4cf6069
 
