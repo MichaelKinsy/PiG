@@ -3872,7 +3872,10 @@ fn main() {
                 let subscription = subscribe(&subscriber, event, move |ctx, data| {
                     io_wait(&addr).map_err(|err| err.to_string())?;
                     ctx.notify(
-                        &format!("{event}:{}", data.get(member).and_then(Value::as_str).unwrap_or("")),
+                        &format!(
+                            "{event}:{}",
+                            data.get(member).and_then(Value::as_str).unwrap_or("")
+                        ),
                         "info",
                     );
                     Ok(None)
