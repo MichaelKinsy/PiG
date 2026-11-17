@@ -41,6 +41,8 @@ type InteractiveRuntime interface {
 	SetBeforeSessionInvalidate(hook func())
 	// SetRebindSession installs the awaited callback that runs once the replacement Session is installed.
 	SetRebindSession(rebind func(ctx context.Context, session InteractiveSessionHandle) error)
+	// TakeUnreportedDiagnostics returns the current construction's diagnostics that were not reported yet and marks them reported (AgentSessionRuntime.takeUnreportedDiagnostics).
+	TakeUnreportedDiagnostics() []AgentSessionRuntimeDiagnostic
 }
 
 // InteractiveReplacement carries the options of a replacement Session's cwd-bound build, as Pi reads them from the new Session's services. The mode applies it before it rebinds to the Session.
@@ -191,7 +193,18 @@ func (m *InteractiveMode) rebindFromRuntime(ctx context.Context, session Interac
 	}); err != nil {
 		return err
 	}
-	return m.rebindCurrentSession(ctx, true)
+	if err := m.rebindCurrentSession(ctx, true); err != nil {
+		return err
+	}
+	// interactive-mode.ts setRebindSession: the replacement's diagnostics follow the rebind and show in the chat before the command that replaced the Session reports its own result.
+	var diagnostics []AgentSessionRuntimeDiagnostic
+	if rt := m.runtimeHost; rt != nil {
+		diagnostics = rt.TakeUnreportedDiagnostics()
+	}
+	return m.runOnMainAndWait(ctx, func() error {
+		m.showRuntimeDiagnostics(diagnostics)
+		return nil
+	})
 }
 
 // applyReplacement moves the mode onto the replacement Session's build. It runs on the owner.

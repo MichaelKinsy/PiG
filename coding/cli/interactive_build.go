@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
@@ -80,6 +79,10 @@ func (r interactiveRuntime) SetRebindSession(rebind func(context.Context, coding
 	r.rt.SetRebindSession(func(ctx context.Context, session *coding.Session) error { return rebind(ctx, session) })
 }
 
+func (r interactiveRuntime) TakeUnreportedDiagnostics() []codingagent.AgentSessionRuntimeDiagnostic {
+	return r.rt.TakeUnreportedDiagnostics()
+}
+
 // interactiveStart is the Session start options of an interactive build.
 func interactiveStart(build *cliBuild) coding.SessionStartOptions {
 	return coding.SessionStartOptions{
@@ -112,7 +115,7 @@ func (b *cliRuntimeBuilder) interactiveInputs(build *cliBuild, startup coding.Se
 	start.CWDOverride = startup.CWDOverride
 	return cliSessionInputs{
 		Services: build.Services, Extensions: build.Extensions, Start: start, Host: build.Host, Bridge: build.Bridge, Runtime: build.Runtime,
-		Diagnostics:          codingagent.DeduplicateDiagnostics(slices.Concat(build.StartupDiagnostics, build.ExtensionDiagnostics)),
+		Diagnostics:          build.runtimeDiagnostics(),
 		ModelFallbackMessage: build.ModelFallbackMessage,
 		Invalidate: func(message string) {
 			if build.Host != nil {

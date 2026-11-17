@@ -77188,6 +77188,17 @@
       "shapeHash": "sha256:2335b818de188ec4ffe4a40e0a311151c28424de8c078071f8bf28459b986ead"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Runtime.TakeUnreportedDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Runtime.TakeUnreportedDiagnostics",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []AgentSessionRuntimeDiagnostic"
+      },
+      "shapeHash": "sha256:e7ba6e36c359642e4172ac70e6d6d14f78dd76078124a7cfe5b10914b3a15876"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Runtime.ValidateSwitchSession",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "Runtime.ValidateSwitchSession",
@@ -93094,6 +93105,17 @@
       "shapeHash": "sha256:af8be83f2bd2251e492c6b91ba388fd7356c2514002f8b192adb47dd271e0ba7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#cliBuild.runtimeDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "cliBuild.runtimeDiagnostics",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []github.com/MichaelKinsy/PiG/internal/codingagent.AgentSessionRuntimeDiagnostic"
+      },
+      "shapeHash": "sha256:3e4ce1362d4d122be03444ab5fdaf18a246201f699e842990d64d4ff3707f89a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#cliBuild.skills",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "cliBuild.skills",
@@ -96876,6 +96898,17 @@
         "type": "func(ctx context.Context, path string, cwdOverride string, projectTrustUI func(cwd string) github.com/MichaelKinsy/PiG/coding/extension.ProjectTrustContext, options *github.com/MichaelKinsy/PiG/coding/extension.SwitchSessionOptions) (github.com/MichaelKinsy/PiG/coding/extension.CancelledResult, error)"
       },
       "shapeHash": "sha256:38e81872bdd14d67d4e81b9c4e51716e5c5656460cad633753262082b963871c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#interactiveRuntime.TakeUnreportedDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "interactiveRuntime.TakeUnreportedDiagnostics",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []github.com/MichaelKinsy/PiG/internal/codingagent.AgentSessionRuntimeDiagnostic"
+      },
+      "shapeHash": "sha256:3e4ce1362d4d122be03444ab5fdaf18a246201f699e842990d64d4ff3707f89a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#interactiveStart",
@@ -202038,6 +202071,17 @@
       "shapeHash": "sha256:d3691c5cef1c3bd4cb13482b095877720d49fc896d5d792e38b53a06b85c68ce"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#AgentSessionRuntime.TakeUnreportedDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "AgentSessionRuntime.TakeUnreportedDiagnostics",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []AgentSessionRuntimeDiagnostic"
+      },
+      "shapeHash": "sha256:e7ba6e36c359642e4172ac70e6d6d14f78dd76078124a7cfe5b10914b3a15876"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#AgentSessionRuntime.apply",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "AgentSessionRuntime.apply",
@@ -272955,6 +272999,17 @@
       "shapeHash": "sha256:7533c105db885e8ba205b4a2ecea5e51f48e790a965001819c6f0e02e24ad6c2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showRuntimeDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.showRuntimeDiagnostics",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(diagnostics []AgentSessionRuntimeDiagnostic)"
+      },
+      "shapeHash": "sha256:f831f87921f107a2e6a016cc8d2692e2450dd4f8f637b4a8adc20853ff3c498d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showScopedModels",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.showScopedModels",
@@ -272986,17 +273041,6 @@
         "type": "func(newEntries []ChangelogEntry, extensionUpdates []extensionChangelogUpdate)"
       },
       "shapeHash": "sha256:d0f92246361a6bb40bc6b82b0dc54c405eff02c7dfe5d66f296f92269cefb4ba"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showStartupDiagnostics",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.showStartupDiagnostics",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showStatus",
@@ -279729,17 +279773,6 @@
         "type": "func(root *SessionTreeNode) string"
       },
       "shapeHash": "sha256:edd532d1d68ae95410a862b39c3ca888a36d010f4e3ac49b121f2927c2dff107"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ReportDiagnostics",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "ReportDiagnostics",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(diagnostics []AgentSessionRuntimeDiagnostic)"
-      },
-      "shapeHash": "sha256:f831f87921f107a2e6a016cc8d2692e2450dd4f8f637b4a8adc20853ff3c498d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#RequestAuthRuntime",
@@ -289816,6 +289849,17 @@
         "type": "func(bundle BugReportBundle, path string) (err error)"
       },
       "shapeHash": "sha256:e73fa5c3c64f2dca241f8bc36ec0339b81fa682d518a54417fc3055a3b55d770"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#WriteDiagnosticsToStderr",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "WriteDiagnosticsToStderr",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(diagnostics []AgentSessionRuntimeDiagnostic)"
+      },
+      "shapeHash": "sha256:f831f87921f107a2e6a016cc8d2692e2450dd4f8f637b4a8adc20853ff3c498d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#WriteRawStdout",

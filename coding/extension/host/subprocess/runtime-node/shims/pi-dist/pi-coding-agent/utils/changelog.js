@@ -131,8 +131,10 @@ export function parseChangelog(changelogPath) {
         }
         return entries;
     }
-    catch (error) {
-        console.error(`Warning: Could not parse changelog: ${error}`);
+    catch {
+        // Pi ac78a6068b38 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        // Shown in the TUI (startup notes, /changelog), where printing would draw over the screen. An unreadable
+        // changelog shows no notes instead.
         return [];
     }
 }

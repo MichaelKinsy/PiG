@@ -1,0 +1,54 @@
+# Behavior family: slash-commands
+# Surface: a second /new reports nothing again: each diagnostic is shown once.
+#
+# Upstream evidence (Pi c47ad0432bb8, #12115): AgentSessionRuntime.takeUnreportedDiagnostics marks the diagnostics it returns as reported (by type and message), and the
+# rebind callback of interactive mode shows only what it returns. The factory runs again on every /new and returns the same unmatched enabledModels pattern a second time:
+# the first /new showed it (scenario 31), the second shows nothing, so the chat after it holds the new session's status line and no warning. The chat is cleared by /new, so
+# a repeated warning would be on the screen the capture reads.
+name = "32-second-new-session-repeats-no-diagnostic"
+description = "A second /new does not show the model scope warning again, as pi does."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 30
+settle_seconds = 1
+capture_start = "✓ New session started"
+capture_end = "✓ New session started"
+
+[[tmux.steps]]
+keys = ["!printf '%s' '{\"enabledModels\":[\"fixture/model-one\",\"fixture/model-two\",\"github-copilot/nope\"]}' > \"${PIG_CODING_AGENT_DIR:-$PI_CODING_AGENT_DIR}/settings.json\"", "Enter"]
+wait_stable_milliseconds = 1500
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/new", "Enter"]
+wait_contains = ["Warning: No models match pattern"]
+wait_timeout_seconds = 10
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["/new", "Enter"]
+wait_stable_milliseconds = 2500
+settle_seconds = 2
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-replacement-diagnostics"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-replacement-diagnostics", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["✓ New session started"]
+both_not_contain = ["Warning: No models match pattern", "panic:", "goroutine "]
+output_normalized_equal = true
+runs = 3

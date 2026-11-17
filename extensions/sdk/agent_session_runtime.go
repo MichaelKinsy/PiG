@@ -108,6 +108,7 @@ type AgentSessionRuntime struct {
 	services                *AgentSessionServices
 	diagnostics             []AgentSessionRuntimeDiagnostic
 	modelFallbackMessage    string
+	reportedDiagnosticKeys  map[string]struct{}
 	rebindSession           func(*AgentSession) error
 	beforeSessionInvalidate func()
 }
@@ -154,6 +155,25 @@ func (r *AgentSessionRuntime) Diagnostics() []AgentSessionRuntimeDiagnostic {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.diagnostics
+}
+
+// TakeUnreportedDiagnostics is `takeUnreportedDiagnostics()`: the current diagnostics that were not returned yet, marked as returned. A diagnostic whose type and message equal one returned before is left out, so an unchanged warning is not returned again after each replacement. The set belongs to the runtime, not to one construction.
+func (r *AgentSessionRuntime) TakeUnreportedDiagnostics() []AgentSessionRuntimeDiagnostic {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	unreported := []AgentSessionRuntimeDiagnostic{}
+	for _, diagnostic := range r.diagnostics {
+		key := diagnostic.Type + "\x00" + diagnostic.Message
+		if _, reported := r.reportedDiagnosticKeys[key]; reported {
+			continue
+		}
+		if r.reportedDiagnosticKeys == nil {
+			r.reportedDiagnosticKeys = map[string]struct{}{}
+		}
+		r.reportedDiagnosticKeys[key] = struct{}{}
+		unreported = append(unreported, diagnostic)
+	}
+	return unreported
 }
 
 // ModelFallbackMessage is `runtime.modelFallbackMessage`; empty is Pi's undefined.

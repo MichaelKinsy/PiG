@@ -11840,7 +11840,6 @@ ${command}` : command;
 
 // pi-dist/pi-coding-agent/core/model-resolver.js
 import { modelsAreEqual as modelsAreEqual2 } from "../../pi-ai/sdk-bundle/index.js";
-import chalk2 from "../../../chalk/source/index.js";
 import { minimatch } from "../../../minimatch/dist/esm/index.js";
 var defaultModelPerProvider = {
   "amazon-bedrock": "us.anthropic.claude-opus-5-5",
@@ -14733,7 +14732,7 @@ var DefaultPackageManager = class {
 import { existsSync as existsSync10, readdirSync as readdirSync6, readFileSync as readFileSync9, statSync as statSync7 } from "node:fs";
 import { basename as basename7, dirname as dirname9, join as join10, resolve as resolve7, sep as sep4 } from "node:path";
 import { detectCapabilities, getTerminalColorMode } from "../../../pi-tui.mjs";
-import chalk3 from "../../../chalk/source/index.js";
+import chalk2 from "../../../chalk/source/index.js";
 
 // pi-dist/pi-coding-agent/core/footer-data-provider.js
 import { execFile, spawnSync } from "child_process";
@@ -15145,7 +15144,7 @@ function resolvePromptInput(input, description) {
     try {
       return stripBom(readFileSync9(input, "utf-8"));
     } catch (error) {
-      console.error(chalk3.yellow(`Warning: Could not read ${description} file ${input}: ${error}`));
+      console.error(chalk2.yellow(`Warning: Could not read ${description} file ${input}: ${error}`));
       return input;
     }
   }
@@ -15166,7 +15165,7 @@ function loadContextFileFromDir(dir) {
           content: stripBom(readFileSync9(filePath, "utf-8"))
         };
       } catch (error) {
-        console.error(chalk3.yellow(`Warning: Could not read ${filePath}: ${error}`));
+        console.error(chalk2.yellow(`Warning: Could not read ${filePath}: ${error}`));
       }
     }
   }
@@ -16190,6 +16189,9 @@ var AgentSessionRuntime = class {
   createRuntime;
   _diagnostics;
   _modelFallbackMessage;
+  // Pi c47ad0432bb8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+  /** `type\0message` of every diagnostic takeUnreportedDiagnostics() returned so far. */
+  reportedDiagnosticKeys = /* @__PURE__ */ new Set();
   constructor(_session, _services, createRuntime, _diagnostics = [], _modelFallbackMessage) {
     this._session = _session;
     this._services = _services;
@@ -16211,6 +16213,23 @@ var AgentSessionRuntime = class {
   }
   get modelFallbackMessage() {
     return this._modelFallbackMessage;
+  }
+  /**
+   * Return the current runtime's diagnostics that were not reported yet, and mark them reported.
+   *
+   * The host calls this at startup and after each session replacement (/new, /resume, /fork,
+   * import), whose runtime collects its diagnostics again. A diagnostic with the same type and
+   * message as one returned before is left out, so an unchanged settings warning is not repeated
+   * on every replacement.
+   */
+  takeUnreportedDiagnostics() {
+    return this._diagnostics.filter((diagnostic) => {
+      const key = `${diagnostic.type}\0${diagnostic.message}`;
+      if (this.reportedDiagnosticKeys.has(key))
+        return false;
+      this.reportedDiagnosticKeys.add(key);
+      return true;
+    });
   }
   setRebindSession(rebindSession) {
     this.rebindSession = rebindSession;

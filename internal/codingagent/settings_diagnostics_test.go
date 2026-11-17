@@ -54,7 +54,7 @@ func TestDeduplicateDiagnosticsByTypeAndMessage(t *testing.T) {
 	}
 }
 
-// Mirrors upstream main.ts reportDiagnostics prefixes and chalk colors.
+// Mirrors upstream modes/diagnostics-stderr.ts writeDiagnosticsToStderr prefixes and chalk colors.
 func TestFormatReportedDiagnostic(t *testing.T) {
 	cases := []struct {
 		diagnostic AgentSessionRuntimeDiagnostic
@@ -80,22 +80,22 @@ func TestInvalidSettingsWarningRendersStartupDiagnosticsInsideTranscript(t *test
 	t.Setenv("PI_OFFLINE", "1")
 	mode, _ := newExtensionDialogProbe(t)
 	mode.opts.StartupDiagnostics = []AgentSessionRuntimeDiagnostic{{Type: "warning", Message: "Invalid settings file /tmp/settings.json: malformed JSON"}}
-	mode.showStartupDiagnostics()
+	mode.showInitNotices()
 	transcript := stripANSITest(strings.Join(mode.chatContainer.Render(120), "\n"))
 	if !strings.Contains(transcript, "Warning: Invalid settings file /tmp/settings.json: malformed JSON") {
 		t.Fatalf("transcript missing warning: %q", transcript)
 	}
 }
 
-// Upstream InteractiveMode.init routes each startup diagnostic by type.
-func TestShowStartupDiagnosticsRendersEachType(t *testing.T) {
+// Upstream InteractiveMode.showRuntimeDiagnostics routes each diagnostic by type; init and the rebind callback share it.
+func TestShowRuntimeDiagnosticsRendersEachType(t *testing.T) {
 	m, _ := newExtensionDialogProbe(t)
 	m.opts.StartupDiagnostics = []AgentSessionRuntimeDiagnostic{
 		{Type: "warning", Message: "Invalid settings file /x/settings.json: bad"},
 		{Type: "error", Message: "broken"},
 		{Type: "info", Message: "fyi"},
 	}
-	m.showStartupDiagnostics()
+	m.showRuntimeDiagnostics(m.opts.StartupDiagnostics)
 	rendered := stripANSITest(strings.Join(m.chatContainer.Render(100), "\n"))
 	for _, want := range []string{"Invalid settings file /x/settings.json: bad", "Error: broken", "fyi"} {
 		if !strings.Contains(rendered, want) {

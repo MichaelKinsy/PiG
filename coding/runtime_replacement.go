@@ -72,6 +72,9 @@ type runtimeReplacement struct {
 	drain func(context.Context) error
 	// quitSettle is the mode's settle of its active run for the dispose of a quit whose input ended (SetBeforeQuitDispose).
 	quitSettle func()
+	// reportedDiagnosticKeys holds `type\x00message` of every diagnostic TakeUnreportedDiagnostics returned so far (agent-session-runtime.ts reportedDiagnosticKeys). It belongs to the Runtime, not to one construction, so a replacement's diagnostic that an earlier construction reported is not reported again.
+	reportedMu             sync.Mutex
+	reportedDiagnosticKeys map[string]struct{}
 }
 
 // NewAgentSessionRuntime is upstream's `new AgentSessionRuntime(session, services, createRuntime, diagnostics, modelFallbackMessage)` (agent-session-runtime.ts:81-93):

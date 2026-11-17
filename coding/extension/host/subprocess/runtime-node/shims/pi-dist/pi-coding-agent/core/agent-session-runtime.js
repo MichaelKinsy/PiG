@@ -39,6 +39,9 @@ export class AgentSessionRuntime {
     createRuntime;
     _diagnostics;
     _modelFallbackMessage;
+    // Pi c47ad0432bb8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    /** `type\0message` of every diagnostic takeUnreportedDiagnostics() returned so far. */
+    reportedDiagnosticKeys = new Set();
     constructor(_session, _services, createRuntime, _diagnostics = [], _modelFallbackMessage) {
         this._session = _session;
         this._services = _services;
@@ -60,6 +63,23 @@ export class AgentSessionRuntime {
     }
     get modelFallbackMessage() {
         return this._modelFallbackMessage;
+    }
+    /**
+     * Return the current runtime's diagnostics that were not reported yet, and mark them reported.
+     *
+     * The host calls this at startup and after each session replacement (/new, /resume, /fork,
+     * import), whose runtime collects its diagnostics again. A diagnostic with the same type and
+     * message as one returned before is left out, so an unchanged settings warning is not repeated
+     * on every replacement.
+     */
+    takeUnreportedDiagnostics() {
+        return this._diagnostics.filter((diagnostic) => {
+            const key = `${diagnostic.type}\0${diagnostic.message}`;
+            if (this.reportedDiagnosticKeys.has(key))
+                return false;
+            this.reportedDiagnosticKeys.add(key);
+            return true;
+        });
     }
     setRebindSession(rebindSession) {
         this.rebindSession = rebindSession;

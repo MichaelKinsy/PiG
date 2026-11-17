@@ -120,7 +120,11 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
                     custom_tools: vec![],
                 },
             )?;
-            let diagnostics = services.diagnostics.clone();
+            let mut diagnostics = services.diagnostics.clone();
+            diagnostics.push(json!({"type": "warning", "message": "runtime diagnostics: startup"}));
+            if calls.lock().unwrap().len() > 1 {
+                diagnostics.push(json!({"type": "error", "message": "runtime diagnostics: replaced"}));
+            }
             let fallback = session.model_fallback_message.clone();
             Ok(CreateAgentSessionRuntimeResult { session, services, diagnostics, model_fallback_message: fallback })
         })
@@ -221,6 +225,8 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
             "servicesCwd": runtime.services().cwd, "servicesAgentDir": runtime.services().agent_dir == agent_dir, "calls": calls.lock().unwrap().len(),
         }),
     );
+    r.insert("takenAtStartup".into(), json!(runtime.take_unreported_diagnostics()));
+    r.insert("takenAtStartupAgain".into(), json!(runtime.take_unreported_diagnostics()));
     runtime.session().prompt("one")?;
     r.insert(
         "prompted".into(),
@@ -253,6 +259,8 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
             "rebinds": rebinds.load(Ordering::SeqCst), "invalidations": invalidations.load(Ordering::SeqCst),
         }),
     );
+    r.insert("takenAfterNew".into(), json!(runtime.take_unreported_diagnostics()));
+    r.insert("takenAfterNewAgain".into(), json!(runtime.take_unreported_diagnostics()));
     runtime.session().prompt("two")?;
 
     // fork.
@@ -276,6 +284,7 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
             "calls": calls.lock().unwrap().len() as i64 - 2,
         }),
     );
+    r.insert("takenAfterFork".into(), json!(runtime.take_unreported_diagnostics()));
     runtime.session().prompt("three")?;
     let forked_at = runtime.fork(
         &assistant_id()?,

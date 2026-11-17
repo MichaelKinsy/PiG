@@ -83,7 +83,18 @@ which are the services' own; RESOURCE-LOADER-RELOAD-OPTIONS a plist of loader-re
 
 (defstruct (agent-session-runtime (:constructor rt-make (ctx create-runtime)))
   "The current agent session, its services and the factory that builds the next ones."
-  ctx create-runtime (rebind nil) (before-invalidate nil) session services (diagnostics (vector)) (model-fallback-message nil))
+  ctx create-runtime (rebind nil) (before-invalidate nil) session services (diagnostics (vector)) (model-fallback-message nil)
+  (reported-diagnostic-keys (make-hash-table :test 'equal)))
+
+(defun agent-session-runtime-take-unreported-diagnostics (runtime)
+  "takeUnreportedDiagnostics(): a vector of the current diagnostics that were not returned yet, marked as returned. A diagnostic whose type and message equal one returned before is left out, so an unchanged warning is not returned again after each replacement. The set belongs to the runtime, not to one construction."
+  (let ((reported (agent-session-runtime-reported-diagnostic-keys runtime)))
+    (coerce (loop for diagnostic across (agent-session-runtime-diagnostics runtime)
+                  for key = (format nil "~A~C~A" (jget diagnostic "type") (code-char 0) (jget diagnostic "message"))
+                  unless (gethash key reported)
+                    do (setf (gethash key reported) t)
+                    and collect diagnostic)
+            'vector)))
 
 (defun agent-session-runtime-cwd (runtime) (agent-session-services-cwd (agent-session-runtime-services runtime)))
 

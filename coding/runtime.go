@@ -197,6 +197,32 @@ func (rt *Runtime) Diagnostics() []AgentSessionRuntimeDiagnostic {
 	return nil
 }
 
+// TakeUnreportedDiagnostics returns the current construction's diagnostics that were not reported yet, and marks them reported.
+//
+// The host calls it at startup and after each session replacement (/new, /resume, /fork, import), whose construction collects its diagnostics again. A diagnostic with the same type and message as one returned before is left out, so an unchanged settings warning is not repeated on every replacement. A construction that a replacement replaced before anyone took its diagnostics keeps them unreported for good: only the current construction's are taken.
+// upstream: agent-session-runtime.ts takeUnreportedDiagnostics (c47ad0432bb8)
+func (rt *Runtime) TakeUnreportedDiagnostics() []AgentSessionRuntimeDiagnostic {
+	current := rt.replacement.current.Load()
+	if current == nil {
+		return nil
+	}
+	rt.replacement.reportedMu.Lock()
+	defer rt.replacement.reportedMu.Unlock()
+	var unreported []AgentSessionRuntimeDiagnostic
+	for _, diagnostic := range current.Diagnostics {
+		key := diagnostic.Type + "\x00" + diagnostic.Message
+		if _, reported := rt.replacement.reportedDiagnosticKeys[key]; reported {
+			continue
+		}
+		if rt.replacement.reportedDiagnosticKeys == nil {
+			rt.replacement.reportedDiagnosticKeys = make(map[string]struct{})
+		}
+		rt.replacement.reportedDiagnosticKeys[key] = struct{}{}
+		unreported = append(unreported, diagnostic)
+	}
+	return unreported
+}
+
 // ModelFallbackMessage returns the model fallback message of the current construction; a replacement's own replaces it.
 // upstream: agent-session-runtime.ts get modelFallbackMessage, apply
 func (rt *Runtime) ModelFallbackMessage() string {
