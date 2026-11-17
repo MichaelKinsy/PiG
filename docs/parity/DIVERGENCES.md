@@ -181,7 +181,7 @@ Locked by: `test/parity/scenarios/startup/00-startup-banner.toml` (the head's li
 `tui/terminal_test.go` (`TestBuildTerminalTitle_NoName`), and the command
 identity tests in `cmd/pig`.
 
-Product name in messages (addendum, release 0.8.0). Owner decision: 2026-11-13 (03:33:12Z), "Every USER-VISIBLE name, title, label, message, page and doc in PiG and its p2 says PiG / pig, never Pi (e.g. 'Ask PiG', sign-in, share, notices, help text). Pi's original text stays only inside ported upstream tests' expectations where the test is about behaviour, with a mapping, and in attribution/credits." The texts below name the product that prints them; the rest of each text is Pi's. A test that states Pi's text compares with PiG's through the named mapping beside it, so the assertion stays Pi's and the mapping is the whole difference.
+Product name in messages (addendum, release 0.8.0). Owner decision: 2026-11-13 (03:33:12Z), "We replace pi with pig everywhere bro and for anything you think we can make a meaningful improvement to the experience do it". Applied as recorded with the decision: every user-visible name, title, label, message, page and doc in PiG and its p2 says PiG / pig, never Pi (for example "Ask PiG", sign-in, share, notices, help text); Pi's original text stays only inside ported upstream tests' expectations where the test is about behaviour, with a mapping, and in attribution and credits. The texts below name the product that prints them; the rest of each text is Pi's. A test that states Pi's text compares with PiG's through the named mapping beside it, so the assertion stays Pi's and the mapping is the whole difference.
 
 | Pi's text | PiG's text | Where | Test or scenario | Mapping |
 |---|---|---|---|---|
