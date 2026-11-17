@@ -376,16 +376,21 @@ var (
 // without its copies: the row a reference names, or that row's routing variant (deriveCatalogRecord). It is nil for a record that is JSON (an
 // extension's or a models store record) and for a reference no row holds.
 func catalogEntryView(record string) *Model {
+	//portlint:allow utf16units a catalog record is an internal byte string (a NUL tag, a two byte row, the id and name), never a JS string: bytes are the unit on both sides
 	if len(record) < 3 || record[0] != 0 {
 		return nil
 	}
+	//portlint:allow utf16units a catalog record is an internal byte string (a NUL tag, a two byte row, the id and name), never a JS string: bytes are the unit on both sides
 	row := int(record[1])<<8 | int(record[2])
 	if row >= len(generatedRows) {
 		return nil
 	}
 	view := generatedRows[row].catalogView()
+	//portlint:allow utf16units a catalog record is an internal byte string (a NUL tag, a two byte row, the id and name), never a JS string: bytes are the unit on both sides
 	if len(record) > 3 {
+		//portlint:allow utf16units a catalog record is an internal byte string (a NUL tag, a two byte row, the id and name), never a JS string: bytes are the unit on both sides
 		id, name, ok := strings.Cut(record[4:], "\x00")
+		//portlint:allow utf16units a catalog record is an internal byte string (a NUL tag, a two byte row, the id and name), never a JS string: bytes are the unit on both sides
 		if record[3] != 0 || !ok {
 			return nil
 		}
