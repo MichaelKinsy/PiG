@@ -516,11 +516,10 @@ func pendingFor(harness, row string) (string, bool) {
 	if !pending {
 		return "", false
 	}
+	words := strings.Split(harness, "-")
 	for _, sdk := range curedBy[row] {
-		for _, word := range strings.Split(harness, "-") {
-			if word == sdk {
-				return "", false
-			}
+		if slices.Contains(words, sdk) {
+			return "", false
 		}
 	}
 	return reason, true
