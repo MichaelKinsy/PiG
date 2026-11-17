@@ -2138,6 +2138,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-ec1e0b6](#bf-ec1e0b6) | A Go extension's footer branch callback (`FooterData.OnBranchChange`) that made a host call, including the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ec2080a](#bf-ec2080a) | A subprocess extension's `ctx.ui.custom` component now learns when another component shown over it takes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ec409c7](#bf-ec409c7) | A chord client's watch callback returned at once and let a newer script set be delivered while an update ran… | PiG's own defect | All platforms | Unreleased |
+| [BF-ec8fbdc](#bf-ec8fbdc) | `/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's… | PiG's own defect | All platforms | Unreleased |
 | [BF-ec9984a](#bf-ec9984a) | A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) is now sent the… | PiG's own defect | All platforms | Unreleased |
 | [BF-ecc7b76](#bf-ecc7b76) | fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop | PiG's own defect | All platforms | Unreleased |
 | [BF-ecc923b](#bf-ecc923b) | A packed Rust cell whose two members both failed to build could report the second member's panic as the first… | PiG's own defect | All platforms | Unreleased |
@@ -31724,6 +31725,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `ec409c76ea` (2026-11-08)
 - **Tests:** `chord/next/surfaces/surfaces_client_test.go::TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet`
 - **Release note:** A chord client's watch callback returned at once and let a newer script set be delivered while an update ran, which left a stale retry armed and doubled the next retry pause; the callback now waits for its update, as Pi awaits it, so the newer set is delivered after the update ended.
+
+### BF-ec8fbdc
+
+**`/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback.
+- **Root cause:** rebuildChatFrom and renderCompactionResult called ForceFullRender, which writes ESC[2J ESC[H ESC[3J and replays the transcript from the top, where Pi's chatContainer.clear() plus renderInitialMessages() request an ordinary render that repaints only from the first changed row
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ec8fbdc5a9` (2026-11-17)
+- **Tests:** `internal/codingagent/session_swap_scrollback_test.go::TestReloadBoxForcesTheRedrawAsPiDoes`, `internal/codingagent/session_swap_scrollback_test.go::TestSessionReplacementRepaintsDifferentially`
+- **Release note:** `/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback. The text above the TUI (the `Installing ...` lines of a package install at startup, or what a wrapper script printed) and the older transcript rows that had scrolled above the frame stayed in Pi and were gone in PiG. The transcript repaint now clears the chat and renders normally, as Pi's does, and only the reload box forces the clearing redraw, as in Pi.
 
 ### BF-ec9984a
 
