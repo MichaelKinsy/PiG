@@ -138,6 +138,7 @@ func ReadRaw(entry FileEntry) (json.RawMessage, error) {
 
 // ReadRaws is the record of each entry, reading the records of LazyEntry values of one source together in source order.
 func ReadRaws(entries []SessionEntry) ([]json.RawMessage, error) {
+	//portlint:allow ctxbackground the entry point of the reads that have no caller context; ReadRawsContext takes one
 	return ReadRawsContext(context.Background(), entries)
 }
 
@@ -198,6 +199,7 @@ func Materialize(entry SessionEntry) (SessionEntry, error) {
 // MaterializeAll is Materialize of each entry, reading the records of LazyEntry values together and decoding a long run of them on several
 // goroutines, joined before it returns; the error is the one of the first entry that fails. It returns entries itself when none is lazy.
 func MaterializeAll(entries []SessionEntry) ([]SessionEntry, error) {
+	//portlint:allow ctxbackground the entry point of the reads that have no caller context; MaterializeAllContext takes one
 	return MaterializeAllContext(context.Background(), entries)
 }
 

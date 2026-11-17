@@ -195,7 +195,9 @@ func (s *Session) lazyAtLocked(i int) bool {
 
 // entryHandlesLocked returns the entries of the given slots for a whole-history read: a resident entry as it is, a message that is not
 // resident as a LazyEntry, and any other entry read from its record. The caller holds s.mu.
-func (s *Session) entryHandlesLocked(indexes []int32) []SessionEntry { return s.entryHandlesStaleLocked(indexes, nil) }
+func (s *Session) entryHandlesLocked(indexes []int32) []SessionEntry {
+	return s.entryHandlesStaleLocked(indexes, nil)
+}
 
 // entryHandlesStaleLocked is entryHandlesLocked that reports, as readSlotsStaleLocked does, an entry read from its record that the record no
 // longer holds.

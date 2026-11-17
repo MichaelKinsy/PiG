@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -268,7 +269,7 @@ func TestReadEntriesKeepsTheOrderAndReadsOnlyTheGivenEntries(t *testing.T) {
 		}
 		a, _ := json.Marshal(got[k])
 		b, _ := json.Marshal(want)
-		if got[k].Base().ID != id || string(a) != string(b) {
+		if got[k].Base().ID != id || !bytes.Equal(a, b) {
 			t.Fatalf("entry %d of the result is %s, want %s", k, a, b)
 		}
 		if _, ok := got[k].(*sessionentry.LazyEntry); ok {
@@ -442,7 +443,7 @@ func TestReadEntriesOfASessionWithoutASnapshot(t *testing.T) {
 		for k := range got {
 			a, _ := json.Marshal(got[k])
 			b, _ := json.Marshal(want[k])
-			if _, raw := got[k].(RawEntry); raw && got[k].Base().Type == "message" || string(a) != string(b) {
+			if _, raw := got[k].(RawEntry); raw && got[k].Base().Type == "message" || !bytes.Equal(a, b) {
 				t.Fatalf("entry %d is %s, want %s", k, a, b)
 			}
 		}

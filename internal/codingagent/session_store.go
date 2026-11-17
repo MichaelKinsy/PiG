@@ -482,7 +482,9 @@ func appendPlainJSONString(dst []byte, s string) ([]byte, bool) {
 // readSlotsLocked reads the lines of slots that are not resident and decodes them as the load did. A line that no longer holds its entry (the
 // file was rewritten under the Session) yields the entry's base members alone, and the failure is counted in staleReads. A large read decodes
 // its lines on several goroutines, each a contiguous run of the file, joined before it returns.
-func (s *Session) readSlotsLocked(indexes []int32) []SessionEntry { return s.readSlotsStaleLocked(indexes, nil) }
+func (s *Session) readSlotsLocked(indexes []int32) []SessionEntry {
+	return s.readSlotsStaleLocked(indexes, nil)
+}
 
 // readSlotsStaleLocked is readSlotsLocked that, when stale is not nil, stores in it the slot index plus one of a line that no longer holds
 // its entry (the first to be found, when several do not), for a read that returns an error for it.
