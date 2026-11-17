@@ -163587,7 +163587,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
         "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/lone_surrogate_passthrough_test.go#TestConformance_LoneSurrogatePassThroughAcrossSDKs"
+        "test:test/extension-conformance/input_wait_conformance_test.go#TestConformance_InputAndBeforeAgentStartDoNotHoldTheCallerWhileTheyWait"
       ]
     },
     {

@@ -29414,6 +29414,28 @@
       ]
     },
     {
+      "id": "BF-7506dc7",
+      "title": "An RPC prompt that runs a Node extension command which only chains microtasks (never yielding to the event…",
+      "symptom": "An RPC prompt that runs a Node extension command which only chains microtasks (never yielding to the event loop) no longer lets the next stdin line overtake the command's response: the runtime took any command whose Promise was unsettled one microtask after the call to be waiting, where Pi's loop reads no line during such a command.",
+      "rootCause": "acknowledgeInvocation treated \"the Promise is unsettled one microtask after the call\" as \"the handler waits\", which holds for a real wait but not for a handler that continues in microtasks; the event-loop window is the exact test and was already armed for commands.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An RPC prompt that runs a Node extension command which only chains microtasks (never yielding to the event loop) no longer lets the next stdin line overtake the command's response: the runtime took any command whose Promise was unsettled one microtask after the call to be waiting, where Pi's loop reads no line during such a command. The report has existed since v0.3.0 and the hold it releases since v0.5.1.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7506dc78b8",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_settle_wait_test.go::TestRPCNodeHandlerThatOnlyRunsMicrotasksHoldsStdin"
+      ]
+    },
+    {
       "id": "BF-752aef5",
       "title": "A throttled frame whose timer callback had already passed its generation check could still draw once more…",
       "symptom": "A throttled frame whose timer callback had already passed its generation check could still draw once more after a direct `Render()`, a forced render request or a `Stop()` had cancelled it: the check is made under the render lock and released before the frame takes it again.",
@@ -37501,6 +37523,30 @@
         "coding/extension/host/subprocess/model_catalog_change_test.go::TestPublishModelCatalogChangeSendsNothingAReplicaHolds",
         "coding/extension/host/subprocess/model_catalog_change_test.go::TestRefreshResultEndsTheCatalogRecord",
         "internal/codingagent/extension_catalog_refresh_publication_test.go::TestCatalogRefreshSendsAReplicaOnlyAChangedCatalog"
+      ]
+    },
+    {
+      "id": "BF-9394165",
+      "title": "An RPC prompt whose Node `input` handler awaits a timer, I/O or another real wait no longer holds the next…",
+      "symptom": "An RPC prompt whose Node `input` handler awaits a timer, I/O or another real wait no longer holds the next stdin line: `get_state` and every later command are answered while the handler waits, as in Pi, in an isolated and in a packed runtime alike.",
+      "rootCause": "the runtime's generic event branch had no call site for the event-loop window report that commands and settle-tail handlers carry, so the host never saw an input handler suspend.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An RPC prompt whose Node `input` handler awaits a timer, I/O or another real wait no longer holds the next stdin line: `get_state` and every later command are answered while the handler waits, as in Pi, in an isolated and in a packed runtime alike. The runtime reported a wait only for commands and the settle tail, so the host held the line until the handler returned. The hold has been there since v0.5.1.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "939416539e",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringInputHandlerNetworkWaitAnswersAcrossSDKs",
+        "coding/cli/rpc_settle_wait_test.go::TestRPCNodeInputEndDuringInputHandlerWaitComparedWithPi",
+        "coding/cli/rpc_settle_wait_test.go::TestRPCNodeInputHandlerWaitSemanticsComparedWithPi"
       ]
     },
     {
@@ -47225,6 +47271,28 @@
       ]
     },
     {
+      "id": "BF-bd00797",
+      "title": "The same for a Node `before_agent_start` handler: a `get_state` sent while it awaits I/O is answered at once…",
+      "symptom": "The same for a Node `before_agent_start` handler: a `get_state` sent while it awaits I/O is answered at once, before the run starts, as in Pi.",
+      "rootCause": "the before_agent_start branch of the runtime's event dispatch was written as its own case and never given the window report; D86 listed only the input handler as unreported.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The same for a Node `before_agent_start` handler: a `get_state` sent while it awaits I/O is answered at once, before the run starts, as in Pi. It has been held since v0.5.1.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "bd00797bde",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringBeforeAgentStartHandlerNetworkWaitAnswersAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-bd3e8ab",
       "title": "On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`…",
       "symptom": "The expiry could differ in the last digit and the minutes by one at a half-minute boundary.",
@@ -48578,6 +48646,28 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-c485b4e",
+      "title": "An RPC prompt whose `before_agent_start` handler, written with the Go, Rust, Python or Lisp SDK, awaits I/O…",
+      "symptom": "An RPC prompt whose `before_agent_start` handler, written with the Go, Rust, Python or Lisp SDK, awaits I/O no longer holds the next stdin line for the whole wait, for ever when the handler never returns: the line is admitted once the handler outlives the 250 ms quantum that already bounds those runtimes' command, input and settle handlers.",
+      "rootCause": "the quantum was written for the settle tail, commands and input handlers; before_agent_start, whose caller waits for the handler's first suspension too, was never listed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An RPC prompt whose `before_agent_start` handler, written with the Go, Rust, Python or Lisp SDK, awaits I/O no longer holds the next stdin line for the whole wait, for ever when the handler never returns: the line is admitted once the handler outlives the 250 ms quantum that already bounds those runtimes' command, input and settle handlers. The hold has been there since v0.5.1.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c485b4e675",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringBeforeAgentStartHandlerNetworkWaitAnswersAcrossSDKs"
+      ]
     },
     {
       "id": "BF-c4ad739",
