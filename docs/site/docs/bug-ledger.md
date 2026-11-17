@@ -10673,7 +10673,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** PiG's own defect
 - **Symptom:** Follows Pi beffcde92dea (#12230, #10470): in RPC mode `new_session`, `switch_session`, `fork` and `clone` run an extension's `session_start` handlers once for the new session, with the old session's `session_shutdown` before it, as Pi's RPC mode does since this commit; before they ran twice (the runtime's rebind callback, then the command handler's own rebind), so an extension that started a timer in `session_start` and cleared it in `session_shutdown` leaked one timer per replacement and `appendEntry` in `session_start` wrote its entry twice.
-- **Root cause:** PiG ported Pi 0.87.1's rpc-mode, whose command handlers called the rebind a second time after the runtime's rebind callback had already run it (rpcHost.rebindAgain), and which subscribed to the session events only after the extensions were bound, so the second bind ran session_start again and the first bind's events had no listener
+- **Root cause:** PiG ported Pi's rpc-mode (as of v1.5.2), whose command handlers called the rebind a second time after the runtime's rebind callback had already run it (rpcHost.rebindAgain), and which subscribed to the session events only after the extensions were bound, so the second bind ran session_start again and the first bind's events had no listener
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased

@@ -9251,6 +9251,13 @@
       "scenario": "test/parity/scenarios/rpc/73-rpc-session-start-message-after-response.toml",
       "transforms": [
         {
+          "kind": "timestamp",
+          "paths": [
+            "/*/message/timestamp"
+          ],
+          "reason": "The custom message's wall clock varies per run; retain presence, type and valid syntax."
+        },
+        {
           "kind": "id",
           "paths": [
             "/*/id"
@@ -9516,6 +9523,52 @@
             "/**/sections/cwd"
           ],
           "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/83-rpc-replacement-session-start-once.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/**/id",
+            "/**/parentId",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{8,36}$",
+          "reason": "Entry, session and UI request IDs vary per run. A bijection preserves distinct identities and every parent reference; the literal command IDs (switch, clone, fork) do not match the pattern and stay unchanged."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent entry wall clocks vary; retain presence, type and valid syntax."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/84-rpc-startup-session-start-events.toml",
+      "transforms": [
+        {
+          "kind": "id",
+          "paths": [
+            "/**/id",
+            "/**/parentId",
+            "/**/sessionId"
+          ],
+          "group": "runtime",
+          "pattern": "^[0-9a-f-]{8,36}$",
+          "reason": "Entry, session and UI request IDs vary per run. A bijection preserves distinct identities and every parent reference; the literal command ID (state) does not match the pattern and stays unchanged."
+        },
+        {
+          "kind": "timestamp",
+          "paths": [
+            "/**/timestamp"
+          ],
+          "reason": "Independent entry wall clocks vary; retain presence, type and valid syntax."
         }
       ]
     },
