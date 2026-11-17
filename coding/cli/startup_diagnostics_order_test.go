@@ -85,14 +85,16 @@ func TestHeadlessNoModelOutputMatchesPi(t *testing.T) {
 					args = append(args, prompt)
 				}
 				run := runStartupDiagnosticProcess(t, binary, root, agentDir, args...)
-				wantError := ""
+				// Each PiG build stages its docs in its own bundle directory under docs (D22): the messages name that directory. A session also leaves the lease file beside it (bundle-<hash>.lease), which is no bundle.
+				bundles, globErr := filepath.Glob(filepath.Join(root, "pig", "docs", "bundle-????????????????"))
+				if globErr != nil || len(bundles) != 1 {
+					t.Fatalf("docs bundle directories = %v (%v), want exactly one", bundles, globErr)
+				}
+				guidance := "Use /login to log into a provider via OAuth or API key. See:\n  " + filepath.Join(bundles[0], "providers.md") + "\n  " + filepath.Join(bundles[0], "models.md") + "\n"
+				// Pi c8c456c85c6e (#12234): with no model main.ts:917-918 adds the "No models available" guidance to the runtime diagnostics as a warning (the agent keeps its placeholder model, agent.ts:57-97, so session.model is set), so every mode writes it to stderr once (measured on the oracle carrying the commit); a prompt then fails the key check as before.
+				wantError := "Warning: No models available. " + guidance
 				if prompt != "" {
-					// Each PiG build stages its docs in its own bundle directory under docs (D22): the message names that directory. A session also leaves the lease file beside it (bundle-<hash>.lease), which is no bundle.
-					bundles, globErr := filepath.Glob(filepath.Join(root, "pig", "docs", "bundle-????????????????"))
-					if globErr != nil || len(bundles) != 1 {
-						t.Fatalf("docs bundle directories = %v (%v), want exactly one", bundles, globErr)
-					}
-					wantError = "No API key found for the selected model.\n\nUse /login to log into a provider via OAuth or API key. See:\n  " + filepath.Join(bundles[0], "providers.md") + "\n  " + filepath.Join(bundles[0], "models.md") + "\n"
+					wantError += "No API key found for the selected model.\n\n" + guidance
 					var exit *exec.ExitError
 					if !errors.As(run.err, &exit) || exit.ExitCode() != 1 {
 						t.Fatalf("exit=%v, want 1", run.err)

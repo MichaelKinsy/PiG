@@ -319,6 +319,8 @@ type AssertSpec struct {
 
 	// NormalizeReplace applies individually justified replacements to text comparators. JSON comparison never applies these rules.
 	NormalizeReplace []NormalizeReplaceRule `toml:"normalize_replace"`
+	// StderrNormalizeReplace applies individually justified replacements to the stderr_equal comparison only, so a scenario that compares JSON output exactly can still meet a distribution-specific path in a warning on stderr.
+	StderrNormalizeReplace []NormalizeReplaceRule `toml:"stderr_normalize_replace"`
 
 	// Extensions asserts structured output from the extension-host driver.
 	Extensions ExtensionAssertSpec `toml:"extensions"`

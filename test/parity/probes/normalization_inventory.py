@@ -39,7 +39,7 @@ def inventory(root):
         data = tomllib.loads(text)
         assertions = data.get("assert", {})
         transforms = []
-        for kind in ("normalize_replace", "json_aliases", "json_pig_only_records"):
+        for kind in ("normalize_replace", "stderr_normalize_replace", "json_aliases", "json_pig_only_records"):
             for rule in assertions.get(kind, []):
                 if not rule.get("reason", "").strip():
                     raise ValueError(f"{path}: {kind} requires a rule-level reason")

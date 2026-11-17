@@ -22,4 +22,7 @@ pi_args = ["--offline", "--no-extensions", "--no-session"]
 exit_code = 143
 output_equal = true
 stderr_equal = true
+stderr_normalize_replace = [
+  { pattern = '/[^ \n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\.md', with = '<DOCS>/$1.md', reason = "D2/D22: the documentation root is distribution-specific; keep the file names and the guidance text. Pi c8c456c85c6e (main.ts:917-918) makes the no-models guidance a warning on stderr in every mode, so the stderr comparison meets the root." },
+]
 runs = 3
