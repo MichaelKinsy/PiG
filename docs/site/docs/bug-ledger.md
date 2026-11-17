@@ -1493,6 +1493,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e7b494a](#bf-e7b494a) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-e8489d4](#bf-e8489d4) | A key hint for an app action the user unbound shows no key, as in Pi, instead of the action's default key | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e8a5d2e](#bf-e8a5d2e) | The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-e8b66a7](#bf-e8b66a7) | An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from… | PiG's own defect | All platforms | Unreleased |
 | [BF-e90ac19](#bf-e90ac19) | Very long streamed answers no longer slow down with their length: each streamed frame renders only the last… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e90f6c8](#bf-e90f6c8) | Windows paths are compared case-insensitively | A fix Pi shipped that PiG ported | Windows | 0.7.0 |
 | [BF-e90f6c8-2](#bf-e90f6c8-2) | Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -22079,6 +22080,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e8a5d2ef7e` (2026-11-02)
 - **Tests:** `ai/opencode_dropblock_catalog_test.go::TestOpencodeClaudeCatalogCompatReachesTheAnthropicPayload`, `internal/modelgen/providers/opencode_dropblock_test.go::TestOpencodeClaudeMidConvoEffort`
 - **Release note:** The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message effort (`supportsMidConvoEffort`), as Pi's generator does since 9ee7586a9 (#10954). Their `anthropic-messages` requests then carry per-message effort markers and `thinking.block_binding: drop_block` like the Anthropic provider. OpenCode Go rejected replayed thinking with a 400 because the requests carried no `drop_block` binding after the tool list or system prompt changed. The bundled catalog is converted from the published Pi package and carries the flag once the pin moves to a Pi version that includes that commit. Until then the remote catalog overlay can deliver the flag: pi-in-go.dev (D64) serves the overlay that `withRemoteCatalog` reads, as pi.dev does for released Pi.
+
+### BF-e8b66a7
+
+**An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from a half-replaced record.
+- **Root cause:** An automatic restart (startExtOnce) rewrote cancel and parentCtx, the context the extension's process runs under and the owner's context whose end means the host stopped it, on the supervisor's goroutine with no lock, on a managedExt that is already published. The callers of the extension's handlers read parentCtx on their own goroutines: dispatchError (stoppedByOwner) after a failed command, shortcut or event call, and the tool prepareArguments, reachesTools and prepareLoadout hooks.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e8b66a7037` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/dispatch_stopped_test.go::TestDispatchErrorMarksCallsTheHostStopped`, `coding/extension/host/subprocess/restart_context_race_test.go::TestRestartGivesTheGenerationItsNewOwnerWhole`, `coding/extension/host/subprocess/restart_context_race_test.go::TestRestartReplacesTheStartContextBesideItsReaders`, `coding/extension/host/subprocess/restart_declarations_test.go::TestRestartAdoptsTheNewRegistrationsDeclarations`
+- **Release note:** An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from a half-replaced record. The restart rewrote the context its new process runs under and the owner context whose end means the host stopped the extension, while a failed command, shortcut or event call read the owner context from its own goroutine; the race detector reported the pair once in a gate run. The two now change together under the lock that already guards the process handle, and every reader copies them under it. No failure a user could see was reproduced: the worst outcome of a read at the wrong moment was a failed call at the instant of a restart judged by the old owner. <!-- cause: the restart wrote cancel and parentCtx of a published extension with no lock, although procMu already guarded the process handle beside them, and no test ran a call that reads the owner context while a restart replaces it --> <!-- tests: TestRestartReplacesTheStartContextBesideItsReaders -->
 
 ### BF-e90ac19
 
