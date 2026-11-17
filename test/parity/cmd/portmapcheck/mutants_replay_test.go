@@ -69,3 +69,21 @@ func TestReplayReadsPlainOutputWhateverGOFLAGSHolds(t *testing.T) {
 		})
 	}
 }
+
+// TestReplayPanicInASubtestKeepsTheSiblingThatFailedFirst: TestA/first fails by an assertion, then TestA/second panics. go test prints
+// both headers under TestA before the panic line; the panic discards the failure of the panicking subtest and of the test that holds
+// it, and nothing else: the finished subtest is still an assertion that failed, so the replay is a kill that also panicked. The output
+// is that of a real run of the two subtests in a throwaway module.
+func TestReplayPanicInASubtestKeepsTheSiblingThatFailedFirst(t *testing.T) {
+	const source = "package fixture\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n" +
+		"\tt.Run(\"first\", func(t *testing.T) { t.Error(\"first failed\") })\n" +
+		"\tt.Run(\"second\", func(t *testing.T) { var p *int; _ = *p })\n}\n"
+	out := failingFixture(t, source, replayOf(t, "TestA"))
+	if got := failedAssertions(out); len(got) != 1 || got[0] != "TestA/first" {
+		t.Errorf("failed assertions = %v, want [TestA/first] in:\n%s", got, out)
+	}
+	verdict := classifyReplay(out, os.ErrInvalid)
+	if !verdict.killed || !strings.Contains(verdict.note, "the mutant also panicked: panic: runtime error: invalid memory address") || !strings.Contains(verdict.note, "a_test.go:") {
+		t.Errorf("verdict killed %v note %q, want a kill that also reports the panic of TestA/second", verdict.killed, verdict.note)
+	}
+}

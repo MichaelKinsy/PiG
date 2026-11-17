@@ -220,35 +220,42 @@ const testRunnerFrame = "testing.tRunner.func1"
 
 // failedAssertions lists the tests that failed by an assertion: a failure header with a line the test reported below it, which is how
 // go test prints a failed test. A test whose own goroutine panicked is not listed, whatever it reported before: its failure is the
-// crash, which proves nothing about what the tests assert. go test prints its header, with the lines it reported, just before the
-// panic line, and the panic's stack holds the test runner's frame; a panic of another goroutine, or the test timeout, has no
-// header of its own, so every failed assertion printed before it stands.
+// crash, which proves nothing about what the tests assert, and neither is any test that only failed because it contains the panicking
+// subtest (its parents). The tests that finished before it, siblings included, keep their failures: TestA/first that failed by an
+// assertion stays one when TestA/second panics. go test prints the header of the panicking test, with the lines it reported, just
+// before the panic line, and the panic's stack holds the test runner's frame; a panic of another goroutine, or the test timeout, has
+// no header of its own, so every failed assertion printed before it stands.
 func failedAssertions(out string) []string {
 	type header struct {
 		name     string
+		indent   int // the depth of the test: its subtests are indented deeper than it
 		reported bool
+		crashed  bool // the panicking test, or a test that contains it
 	}
 	var headers []header
-	lastTop, current := -1, -1 // the last header at the margin (the test and its subtests follow it), and the one the next message belongs to
+	current := -1 // the header the next message belongs to
 	lines := strings.Split(out, "\n")
 loop:
 	for i, line := range lines {
 		switch {
 		case failHeaderRe.MatchString(line):
 			m := failHeaderRe.FindStringSubmatch(line)
-			headers = append(headers, header{name: m[2]})
+			headers = append(headers, header{name: m[2], indent: len(m[1])})
 			current = len(headers) - 1
-			if m[1] == "" {
-				lastTop = current
-			}
 		case current >= 0 && failMessageRe.MatchString(line):
 			headers[current].reported = true
 			current = -1
 		case line != "" && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t"):
 			current = -1 // an unindented line (the panic, FAIL, ok) ends what the header reported
 			if strings.HasPrefix(line, "panic: ") {
-				if lastTop >= 0 && strings.Contains(strings.Join(lines[i+1:], "\n"), testRunnerFrame) {
-					headers = headers[:lastTop]
+				if len(headers) > 0 && strings.Contains(strings.Join(lines[i+1:], "\n"), testRunnerFrame) {
+					depth := headers[len(headers)-1].indent + 1
+					for j := len(headers) - 1; j >= 0; j-- {
+						if headers[j].indent < depth {
+							headers[j].crashed = true
+							depth = headers[j].indent
+						}
+					}
 				}
 				break loop
 			}
@@ -256,7 +263,7 @@ loop:
 	}
 	var failed []string
 	for _, h := range headers {
-		if h.reported {
+		if h.reported && !h.crashed {
 			failed = append(failed, h.name)
 		}
 	}
