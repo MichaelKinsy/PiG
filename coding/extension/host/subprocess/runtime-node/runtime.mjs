@@ -1223,6 +1223,11 @@ function armRequestWindow(owner, early = false) {
       return;
     }
     owner.turned = true;
+    // pig divergence (D86 cured): the window of an input or before_agent_start handler closing unanswered is the handler awaiting a timer, I/O or another real wait, which is what Pi's loop serves stdin during. The caller that holds stdin for the handler (rpcAwaitHandler) is released by the same blocked report a command's await sends.
+    if (owner.reportsWait) {
+      if (!owner.connection.closed) owner.connection.requestState(owner.id, "blocked", "external_io");
+      return;
+    }
     // A command's suspension decides only what stdin's end makes of it. Reporting it before then would latch a continuation that Pi runs before it reads stdin's end, so the report waits for runtime_input_end (releaseCommandSuspensions).
     if (owner.command && !owner.quit && !drain.inputEnded) {
       owner.unreportedAt = hostCallEpoch(owner);
@@ -5750,6 +5755,7 @@ export class Runtime {
           const snapshot = Array.isArray(messages) ? messages.slice() : undefined;
           // A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
           const encodedBefore = snapshot && (request.event === "context" || request.event === "context_with_system") ? contextMessagesEncoding(messages) : undefined;
+          if (request.event === "input") this.armHandlerWaitWindow(id);
           let pending;
           try {
             pending = selected.handler(event, ctx);
@@ -6296,6 +6302,14 @@ export class Runtime {
   armSettleTailWindow(id, ctx) {
     const owner = this.requestContext.getStore();
     if (owner?.id === id && ctx.mode === "rpc") armRequestWindow(owner);
+  }
+
+  // pig divergence (D86 cured): Pi's prompt() awaits its input and before_agent_start handlers inside its own continuation, so its RPC loop reads the next stdin line once such a handler awaits a timer, I/O or another real wait, and not while it only runs microtasks. The host holds stdin until the handler is reported suspended, and this runtime has no other report for these handlers, so it arms the handler's event-loop window as a command's is armed, before the handler runs: a handler still unanswered when the window closes (and with no short host call pending) sends the report; one that settles in its microtasks or in the check phase of the line's iteration sends none.
+  armHandlerWaitWindow(id) {
+    const owner = this.requestContext.getStore();
+    if (owner?.id !== id || this.contextValues.mode !== "rpc") return;
+    owner.reportsWait = true;
+    armRequestWindow(owner, true);
   }
 
   // Host-backed synchronous effects belong to the handler's prefix, not its suspension. Flush them before releasing the caller that awaits invocation. A handler whose Promise has already settled never entered an awaited operation: its response releases the caller with the result, as Pi continues a settled await before its next input event.
