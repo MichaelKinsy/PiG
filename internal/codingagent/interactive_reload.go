@@ -85,6 +85,9 @@ func (m *InteractiveMode) awaitReloadStep(parent context.Context, work func(cont
 		}
 		select {
 		case <-done:
+			// Pi's step is an awaited call in one process, so what the step's handlers asked of the UI (an extension's setEditorComponent from session_start)
+			// has happened when it returns. Here the handler's posts are queued ahead of this wake, and the select above takes either at random.
+			m.runQueuedUITasks()
 			if ctx.Err() != nil {
 				return context.Cause(ctx)
 			}
@@ -105,6 +108,18 @@ func (m *InteractiveMode) awaitReloadStep(parent context.Context, work func(cont
 			} else {
 				m.handleAgentEvent(event)
 			}
+		}
+	}
+}
+
+// runQueuedUITasks runs the UI tasks already queued, in order, and none posted meanwhile that this goroutine would have to wait for. Owner loop only.
+func (m *InteractiveMode) runQueuedUITasks() {
+	for queued := len(m.uiTaskCh); queued > 0; queued-- {
+		select {
+		case task := <-m.uiTaskCh:
+			task()
+		default:
+			return
 		}
 	}
 }

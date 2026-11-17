@@ -65,7 +65,7 @@ func (m *InteractiveMode) setRemoteEditor(editor extension.RemoteEditor) {
 	} else {
 		h := &remoteEditor{m: m, editor: editor}
 		m.remoteEditor = h
-		m.editor.SetAutocompleteChanged(func(base tui.AutocompleteProvider) { m.rebuildAutocompleteWrappers(base, nil) })
+		m.editor.SetAutocompleteChanged(m.autocompleteChangedCallback())
 		if delegated, ok := editor.(extension.DelegatedRemoteEditor); ok && delegated.Delegated() {
 			m.editor.SetDelegatedRemote(h)
 		} else {

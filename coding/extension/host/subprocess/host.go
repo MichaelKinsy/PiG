@@ -918,6 +918,7 @@ func (h *Host) SetUIBridge(bridge *UIBridge) {
 		bridge.OnRunSignalChanged = h.runSignalChanged
 		bridge.OnHostStateChanged = h.hostStateChanged
 		bridge.resolveFlag = h.resolveFlagValue
+		bridge.extensionPath = h.extensionPathOf
 		bridge.withSession = h.withSessionCallback
 		bridge.setup = h.setupCallback
 		bridge.mu.Lock()
@@ -1881,6 +1882,17 @@ func (h *Host) OAuthProviderNames(extName string) []string {
 		return nil
 	}
 	return append([]string(nil), me.oauthProviderNames...)
+}
+
+// extensionPathOf is the path the named extension was selected from, which ExtensionError shows; an unknown name is its own path.
+func (h *Host) extensionPathOf(name string) string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if me := h.exts[name]; me != nil {
+		path, _ := extensionSourcePaths(me.config)
+		return path
+	}
+	return name
 }
 
 // FlagDefault returns the first committed default for a flag registered by the named extension.
