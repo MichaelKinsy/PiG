@@ -167,9 +167,9 @@ func TestForwardTerminalConsumesAnOwedReplyThatReachesTheLoopLate(t *testing.T) 
 // continuation on each side of each deadline with a fake clock; each says what is forwarded as input and what is consumed.
 //
 // Pi's rules, at the pinned Pi: stdin-buffer.ts:23,316,417-418 flush a held partial sequence after 50 ms (DEFAULT_SEQUENCE_TIMEOUT_MS; the 10 ms
-// escape timeout is for a lone ESC); terminal.ts:261-264,390-395 hold the flushed prefix for 150 ms (KEYBOARD_PROTOCOL_RESPONSE_FRAGMENT_TIMEOUT_MS)
+// escape timeout is for a lone ESC); terminal.ts:20,261-264,390-395 hold the flushed prefix for 150 ms (KEYBOARD_PROTOCOL_RESPONSE_FRAGMENT_TIMEOUT_MS)
 // and then forward it as input; terminal.ts:347-364 (readKeyboardProtocolNegotiationSequence) joins the next sequence to the held prefix while the
-// result is still a prefix, and terminal.ts:385-388 cancels the flush timer when it does. Pi has no rule for the tail of an introducer it has already
+// result is still a prefix, and terminal.ts:373-376 cancels the flush timer when it does. Pi has no rule for the tail of an introducer it has already
 // forwarded: it forwards the tail as text (Pi #10657), and D143 absorbs it instead.
 func TestTerminalInputConsumesAnOwedReplyOnEachSideOfTheBareIntroducersReplayDeadline(t *testing.T) {
 	t.Setenv("PI_PROGRAM_STATUS", "")
