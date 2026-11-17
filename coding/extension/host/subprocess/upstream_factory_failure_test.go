@@ -9,6 +9,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/8423-extension-factory-failure.test.ts:12
@@ -105,6 +107,7 @@ func TestFailedFactoryCapturedAPIThroughNodeCell(t *testing.T) {
 
 func BenchmarkFailedFactoryAPIThroughNodeCell(b *testing.B) {
 	nodeCellRequireNode(b)
+	testenv.PathOf(b, "node")
 	fixtures := filepath.Join(findModuleRoot(b), "test/parity/scenarios/extensions-runtime/testdata/factory-failure")
 	root, cache := b.TempDir(), b.TempDir()
 	configs := []ExtConfig{
