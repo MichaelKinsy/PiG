@@ -1040,6 +1040,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9be7181](#bf-9be7181) | Pasting in the shell no longer hangs after copying text in pig and suspending it with Ctrl+Z on Linux: the… | PiG's own defect | Linux | 0.5.2 |
 | [BF-9c1a0e9](#bf-9c1a0e9) | An OpenAI Responses stream event or output item with a member of an unexpected type is read as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9c98038](#bf-9c98038) | An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
+| [BF-9cfcd03](#bf-9cfcd03) | A Node extension no longer sees PiG's own loader in `process.execArgv` | PiG's own defect | All platforms | Unreleased |
 | [BF-9d02a48](#bf-9d02a48) | Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9d2095f](#bf-9d2095f) | fix(durable/core): fewer TinyGo heap sites for deferred commits; a read or host operation that stores held… | PiG's own defect | All platforms | Unreleased |
 | [BF-9d4fe9c](#bf-9d4fe9c) | Selecting a model or cycling models with Ctrl+P no longer freezes the interactive mode when an extension's… | PiG's own defect | All platforms | 0.5.0 |
@@ -15795,6 +15796,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9c980381eb` (2026-10-20)
 - **Tests:** `tui/markdown_latex_table_test.go::TestMarkdownContainsTableStart`, `tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTables`, `tui/markdown_latex_table_test.go::TestMarkdownUnclosedDisplayMathBeforeTablesMatchesPi`
 - **Release note:** An unclosed `$$` or `\[` display-math block no longer swallows or corrupts every Markdown table after it. A display-math block never spans a table, and the streaming pending-math fallback no longer treats a following table as pending math (Pi 2ed3118b, #11159).
+
+### BF-9cfcd03
+
+**A Node extension no longer sees PiG's own loader in `process.execArgv`**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Node extension no longer sees PiG's own loader in `process.execArgv`.
+- **Root cause:** Node started an extension as , so process.execArgv in the extension held PiG's loader path. A child forked with the default execArgv, or with [...process.execArgv, ...], started with that loader too, and under --permission with only the child directory readable it died with ERR_ACCESS_DENIED before running.
+- **User impact:** Credential or permission exposure
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9cfcd03b22` (2026-11-16, #517)
+- **Tests:** `coding/extension/host/subprocess/node_launch_test.go::TestNodeBootstrapStartsInADirectoryWithURLSpecials`, `coding/extension/host/subprocess/node_launch_test.go::TestNodeLauncherSpawnsNodeDirectlyWithLauncherArguments`, `coding/extension/host/subprocess/packed_node_platform_test.go::TestPackedNodeLauncherUsesDirectNodeOnEveryPlatform`, `coding/extension/host/subprocess/ts_runtime_test.go::TestTypeScriptRuntimeCommandShapes`
+- **Release note:** A Node extension no longer sees PiG's own loader in `process.execArgv`. It held `["--import", "file:///…/runtime/register-loader.mjs"]`, where Pi's is the empty list Node was started with, so a child the extension forked with the default `execArgv` or with `[...process.execArgv, …]` started with PiG's loader too. Under Node's permission model (`--permission` with only the child's own directory readable) that child died before it ran with `ERR_ACCESS_DENIED`, which is how every workflow of pi-extensible-workflows failed with `Workflow child exited with code 1`. PiG now starts the extension's process with a small bootstrap file (`node-cli.mjs`, `node-cell.mjs`) that registers the loader inside the process and then loads the runtime, so `process.execArgv` stays empty in an isolated extension and in a packed cell, and a forked child, a spawned `process.execPath` and a worker thread start as they do under Pi; none of them gets PiG's module hooks (the `@earendil-works/pi-*` specifiers resolve in the extension's process only, as they do under Pi). What the extension itself loads, and every other property it reads from `process` (`argv`, `execPath`, `title`, `NODE_OPTIONS`, `cwd()`), are unchanged. The cache of built Node launchers and cells is rebuilt once after the update.
 
 ### BF-9d02a48
 
