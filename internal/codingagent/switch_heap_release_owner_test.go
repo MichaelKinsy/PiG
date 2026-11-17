@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"testing"
+	"time"
 )
 
 // pig additive (D172, D112): the heap return after a Session replacement runs on a task the mode owns, never on the owner loop: while the
@@ -24,7 +25,19 @@ func TestSwitchHeapReleaseRunsOffTheOwnerLoopAndNotOnAnOrdinaryRepaint(t *testin
 		t.Fatalf("an ordinary repaint requested %d heap releases, want 0", got)
 	}
 
-	m.renderCurrentSessionState() // returns while the return below is held: it is not run by the caller
+	// The owner loop's call runs on its own goroutine so that a release run inline (which waits for hold) fails the test on its deadline instead of hanging it.
+	returned := make(chan struct{})
+	go func() {
+		defer close(returned)
+		m.renderCurrentSessionState()
+	}()
+	select {
+	case <-returned:
+	case <-time.After(10 * time.Second):
+		close(hold)
+		<-returned
+		t.Fatal("renderCurrentSessionState did not return while the heap return was held: the owner loop runs the return")
+	}
 	<-started
 	m.renderCurrentSessionState() // a switch while the return runs is covered by it
 	close(hold)
