@@ -131,12 +131,17 @@ func (m *InteractiveMode) handleFatalRuntimeError(prefix string, value any) erro
 	}
 	message := crashMessage(value)
 	stack := string(debug.Stack())
+	// Pi shows the hint for the thrown Error's own stack: an error an extension's runtime threw carries the frames of its source.
+	if failure, ok := value.(error); ok && extension.ErrorStack(failure) != "" {
+		stack = extension.ErrorStack(failure)
+	}
 	m.showError(prefix + ": " + message)
 	if hint := m.crashExtensionHint(stack); hint != "" {
-		m.appendChatBlock(tui.NewText(tui.ActiveTheme().Warning + hint + "\x1b[0m"))
+		// Pi adds both notes straight under the error, at the output padding and without a spacer (handleFatalRuntimeError).
+		m.chatContainer.Add(themedNotice("warning", hint, m.outputPad))
 	}
 	if m.recordCrash("fatal_error", value, stack) {
-		m.appendChatBlock(tui.NewText(dim(crashReportInstructions(m.crashSessionFile()))))
+		m.chatContainer.Add(themedNotice("muted", crashReportInstructions(m.crashSessionFile()), m.outputPad))
 	}
 	m.fatalRuntime.Store(true)
 	m.requestExit.Store(true)
