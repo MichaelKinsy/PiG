@@ -887,6 +887,12 @@ func NewWebSocketLink(socket WebSocketLike, options WebSocketLinkOptions) *WebSo
 		}
 	})
 	socket.AddEventListener("close", func(WebSocketMessage) { link.ended("socket closed") })
+	// A socket closing or closed already gives a closed link (Pi's Chord v2 webSocketLink, next/link/websocket.ts:52). The
+	// state is read after the listeners are registered: a Go socket closes on its own goroutine, and a close that came
+	// before the close listener existed reached nobody (a browser's events come after the code that made the socket).
+	if socket.ReadyState() > webSocketOpen {
+		link.ended("socket closed")
+	}
 	return link
 }
 
