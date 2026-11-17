@@ -3,7 +3,7 @@
 # interactive chat does: scenario 111), and nothing is written to
 # stderr (the event bus's console.error line is gone). The handler runs inside the emit of /events-boom's command handler, so the event is written
 # before the command's prompt response.
-name = "83-rpc-events-handler-error"
+name = "90-rpc-events-handler-error"
 description = "A throwing pi.events handler is an extension_error event before the command response, and stderr stays empty"
 covers = ["packages/coding-agent/src/core/extensions/loader.ts", "packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
 tags = ["hermetic", "fast"]

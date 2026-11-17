@@ -43,7 +43,7 @@ oracle = "carried: c47ad0432bb8 (pi-coding-agent/main.js; the table patches the 
 path = "packages/coding-agent/src/modes/diagnostics-stderr.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:coding/cli/rpc_replacement_diagnostics_upstream_test.go#TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce", "scenario:test/parity/scenarios/rpc/83-rpc-replacement-diagnostics-stderr.toml", "scenario:test/parity/scenarios/json/15-json-replacement-diagnostics-stderr.toml"]
+evidence = ["test:coding/cli/rpc_replacement_diagnostics_upstream_test.go#TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce", "scenario:test/parity/scenarios/rpc/86-rpc-replacement-diagnostics-stderr.toml", "scenario:test/parity/scenarios/json/15-json-replacement-diagnostics-stderr.toml"]
 rationale = "c47ad0432bb8: writeDiagnosticsToStderr, the one stderr writer for main.ts's startup diagnostics and the print / JSON / RPC rebind callbacks. Ported as internal/codingagent/diagnostics_stderr.go WriteDiagnosticsToStderr with the CLI's existing format (red Error: for errors, yellow Warning: for warnings, dim for info)."
 oracle = "carried: c47ad0432bb8 (the new module's function is carried in core/settings-diagnostics.js, because the backport table patches existing files only; the callers import it from there)."
 
@@ -67,7 +67,7 @@ oracle = "carried: c47ad0432bb8 (modes/print-mode.js)."
 path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:coding/cli/rpc_replacement_diagnostics_upstream_test.go#TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce", "scenario:test/parity/scenarios/rpc/83-rpc-replacement-diagnostics-stderr.toml"]
+evidence = ["test:coding/cli/rpc_replacement_diagnostics_upstream_test.go#TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce", "scenario:test/parity/scenarios/rpc/86-rpc-replacement-diagnostics-stderr.toml"]
 rationale = "c47ad0432bb8: the rebind callback writes takeUnreportedDiagnostics to stderr, never stdout. Ported in coding/cli/rpc_mode.go."
 oracle = "carried: c47ad0432bb8 (modes/rpc/rpc-mode.js)."
 
@@ -83,7 +83,7 @@ oracle = "not carried: a test of the TypeScript source; the package ships no tes
 path = "packages/coding-agent/test/rpc-replacement-diagnostics.test.ts"
 change = "added"
 disposition = "ported"
-evidence = ["test:coding/cli/rpc_replacement_diagnostics_upstream_test.go#TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce", "scenario:test/parity/scenarios/rpc/83-rpc-replacement-diagnostics-stderr.toml"]
+evidence = ["test:coding/cli/rpc_replacement_diagnostics_upstream_test.go#TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce", "scenario:test/parity/scenarios/rpc/86-rpc-replacement-diagnostics-stderr.toml"]
 rationale = "c47ad0432bb8: spawns pi --mode rpc with enabledModels naming the faux model, changes the settings to add a missing one, sends new_session and expects the warning once on stderr and nothing about it on stdout. Ported against the pig binary with the same steps."
 oracle = "not carried: a test of the TypeScript source; the package ships no tests."
 

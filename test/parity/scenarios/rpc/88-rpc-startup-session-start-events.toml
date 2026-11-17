@@ -6,7 +6,7 @@
 # context as before. Before the commit (Pi 1.5.2) the subscription followed the bind, and RPC wrote neither event at startup.
 # PiG held its writer back until session_start returned (rpcModeSession.writing) and wrote neither.
 # Entry IDs and clocks are masked as bijections/timestamps; the member order and every other byte compare.
-name = "84-rpc-startup-session-start-events"
+name = "88-rpc-startup-session-start-events"
 description = "RPC writes the entry_appended and session_info_changed events the startup session_start handler emits, once"
 covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/agent-session.ts"]
 tags = ["hermetic", "fast"]

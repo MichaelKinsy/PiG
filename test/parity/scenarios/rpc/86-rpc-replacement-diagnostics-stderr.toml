@@ -6,7 +6,7 @@
 # new_session; the trace: start with enabledModels ["test-faux/faux-1"], change the settings to add "github-copilot/missing-model", send new_session twice: stderr
 # carries `Warning: No models match pattern "github-copilot/missing-model"` once (the second replacement's diagnostic equals the first's) and no event or response carries it.
 # The settings change is an RPC bash command that writes the copy of the agent directory each binary runs with. stderr_equal compares the whole stream.
-name = "83-rpc-replacement-diagnostics-stderr"
+name = "86-rpc-replacement-diagnostics-stderr"
 description = "RPC: new_session reports a diagnostic that appeared since startup on stderr once, and stdout carries frames only"
 covers = [
   "packages/coding-agent/src/modes/rpc/rpc-mode.ts",

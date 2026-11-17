@@ -6,7 +6,7 @@
 # (starts 2). Before the commit (Pi 1.5.2) every command rebound twice: session_start and resources_discover ran twice, the entry was written twice, and the first call's events were not written.
 # PiG ran the second announce (rpcHost.rebindAgain) after every replacement command.
 # Entry IDs and clocks are masked as bijections/timestamps; the member order and every other byte compare.
-name = "83-rpc-replacement-session-start-once"
+name = "87-rpc-replacement-session-start-once"
 description = "RPC switch_session, clone and fork run the replacement's session_start once and write the entry it appends once"
 covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/agent-session-runtime.ts", "packages/coding-agent/src/core/agent-session.ts"]
 tags = ["hermetic", "fast"]

@@ -3,7 +3,7 @@
 #
 # Upstream evidence (Pi 6aab551a79ba, #12232; test/suite/print-mode-session-start-events.test.ts): runPrintMode's rebindSession subscribes the JSON writer before `session.bindExtensions(...)`, at startup and for the replacement session, so the entry_appended of the startup session_start handler (data "startup") and of the new session's (data "new") are both on the stream; the new session writes no header. Before that commit the stream carried neither; the oracle carries the commit through the backport block of automation/gen/pi-post-release-backports.mjs.
 # Entry IDs and clocks are masked; member order and every other byte compare.
-name = "15-json-session-start-replacement"
+name = "16-json-session-start-replacement"
 description = "--mode json writes the entry a session_start handler appends at startup and after ctx.newSession()"
 covers = ["packages/coding-agent/src/modes/print-mode.ts", "packages/coding-agent/src/core/agent-session.ts"]
 tags = ["hermetic", "fast"]
