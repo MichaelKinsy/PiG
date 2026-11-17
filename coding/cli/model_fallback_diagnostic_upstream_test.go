@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -292,6 +293,15 @@ func TestNoModelsAvailableIsReportedOnceAsAWarning(t *testing.T) {
 		requireOnce(t, p.stderr.String(), stdout.String())
 	})
 }
+
+// docsRootRE matches a documentation path line of the guidance; the root differs by distribution (D2/D22), the file names do not.
+var docsRootRE = regexp.MustCompile(`(?m)^  \S*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\.md$`)
+
+// cutDocsRoot replaces the root of the two documentation paths of the guidance and nothing else.
+func cutDocsRoot(s string) string { return docsRootRE.ReplaceAllString(s, "  <DOCS>/$1.md") }
+
+// noModelsWarningCut is the whole warning of a start without a model, with its documentation roots cut.
+const noModelsWarningCut = noModelsGuidanceFirstLine + "\n  <DOCS>/providers.md\n  <DOCS>/models.md\n"
 
 // noModelsGuidanceFirstLine is the first line of the warning of a start without a model; two documentation paths follow, whose root differs by distribution.
 const noModelsGuidanceFirstLine = "Warning: No models available. Use /login to log into a provider via OAuth or API key. See:"

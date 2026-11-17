@@ -48,16 +48,17 @@ func TestHelpListsExtensionFlagsAfterSettingsDiagnostics(t *testing.T) {
 		"  --target-environment-name <value>Registered by " + first + "\n" +
 		"  --zeta <value>              Second extension flag\n" +
 		"\n\nExamples:\n"
-	warning := "Warning: Invalid settings file " + settings + ": Unexpected end of JSON input\n"
+	// Pi c8c456c85c6e (main.ts:917-918): the runtime's diagnostics end with the no-models warning, which --help lists too (probed on Pi; documentation roots cut).
+	warning := "Warning: Invalid settings file " + settings + ": Unexpected end of JSON input\n" + noModelsWarningCut
 
 	help, stderr := run("--help")
 	if !strings.Contains(help, section) {
 		t.Errorf("help lacks the extension flag section %q:\n%s", section, help)
 	}
-	if stderr != warning {
+	if cutDocsRoot(stderr) != warning {
 		t.Errorf("help stderr=%q, want %q", stderr, warning)
 	}
-	if stdout, stderr := run("--mode", "rpc", "--help"); stdout != "" || stderr != warning+help {
+	if stdout, stderr := run("--mode", "rpc", "--help"); stdout != "" || cutDocsRoot(stderr) != warning+help {
 		t.Errorf("rpc help stdout=%q stderr=%q, want the warning then the plain help on stderr", stdout, stderr)
 	}
 }

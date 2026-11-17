@@ -41,9 +41,10 @@ func TestListModelsEndsWithTheAvailabilityFailure(t *testing.T) {
 	}
 	const message = "Expected property name or '}' in JSON at position 2 (line 1 column 3)"
 	warning := "Warning: errors loading models.json:\nAvailability refresh: " + message + "\n"
-	rest, found := strings.CutPrefix(stderr.String(), warning)
+	// Pi c8c456c85c6e (main.ts:917-918): the diagnostics listed before the models end with the no-models warning, then listModels reports the availability failure (probed on Pi, documentation roots cut).
+	rest, found := strings.CutPrefix(cutDocsRoot(stderr.String()), noModelsWarningCut+warning)
 	if !found {
-		t.Fatalf("stderr = %q, want it to start with the warning %q", stderr.String(), warning)
+		t.Fatalf("stderr = %q, want it to start with %q", cutDocsRoot(stderr.String()), noModelsWarningCut+warning)
 	}
 	if !strings.Contains(rest, message) {
 		t.Fatalf("stderr after the warning = %q, want the pass's error %q", rest, message)
