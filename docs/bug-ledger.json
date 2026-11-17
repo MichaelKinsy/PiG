@@ -13272,6 +13272,28 @@
       ]
     },
     {
+      "id": "BF-59aa6f6",
+      "title": "`/logout` of a provider no longer erases the terminal's scrollback",
+      "symptom": "`/logout` of a provider no longer erases the terminal's scrollback.",
+      "rootCause": "/logout of a provider changes no transcript row. Pi runs the logout and shows the status, which requests an ordinary render (interactive-mode.ts:6141-6150); PiG forced a destructive full redraw after it, which wrote ESC[2J ESC[H ESC[3J and replayed the page, so the lines above the TUI were erased.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/logout` of a provider no longer erases the terminal's scrollback. It changes no transcript row, and Pi asks for an ordinary render after it. \u003c!-- cause: runOAuthLogout called ForceFullRender after the logout, where Pi's logout shows its status and requests an ordinary render --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "59aa6f6818",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/provider_logout_scrollback_test.go::TestLogoutKeepsTheTerminalScrollback"
+      ]
+    },
+    {
       "id": "BF-59b5dae",
       "title": "OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base…",
       "symptom": "OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base: OpenAI-compatible models at `/inference/openai/v1`, Anthropic models at `/inference/anthropic`, Google models at `/inference/google/v1beta` and Jev at `/inference/systemone/v1` (the same paths under `/inference/go` for OpenCode Go).",
@@ -25037,6 +25059,29 @@
         "chord/nextnode/plugins/plugins_watcher_test.go::TestTheWatcherAfterCloseOnlyAPluginLinkedFromOutsideGetsItsWatchAgain",
         "chord/nextnode/plugins/plugins_watcher_unix_test.go::TestTheWatcherReportsAFailureToWatchOnceAndStopsWatching",
         "chord/nextnode/workers/workers_main_test.go::TestTheWorkersIdleStateReadsTheNodeHostsActivityThroughItsReports"
+      ]
+    },
+    {
+      "id": "BF-904c733",
+      "title": "The frame that a key press requested before an awaited `/new`, `/resume`, `/fork` or `/clone` is painted…",
+      "symptom": "The frame that a key press requested before an awaited `/new`, `/resume`, `/fork` or `/clone` is painted before the session operation begins, as in Pi, instead of only when the operation outlasts the 16 ms frame throttle.",
+      "rootCause": "Pi paints the frame the key press requested inside the awaited /fork, /resume, /clone and /new (tui.ts:1033-1041 requestRender on the next tick; interactive-mode.ts:5614-5618 closes the picker, then awaits the runtime), so the old transcript with the picker gone is on screen before the swap. PiG painted it only when the swap outlasted the 16 ms throttle, which left the footer of a long forked session in a different row. replaceSessionFromCommand now paints first.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The frame that a key press requested before an awaited `/new`, `/resume`, `/fork` or `/clone` is painted before the session operation begins, as in Pi, instead of only when the operation outlasts the 16 ms frame throttle. The footer of a long forked session now ends in the row where Pi's does. \u003c!-- cause: replaceSessionFromCommand began the awaited swap with the frame the closed picker had requested still waiting behind the throttle, where Pi's frame runs on the next tick inside the await --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "904c7332f1",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_swap_frame_test.go::TestFrameRequestedBeforeAwaitedSwapIsPaintedFirst",
+        "internal/codingagent/session_swap_held_hook_test.go::TestForkOfALongTranscriptWithAHeldBeforeHook"
       ]
     },
     {
@@ -43732,6 +43777,29 @@
       "tests": [
         "internal/codingagent/code_highlighter_rows_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
         "tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender"
+      ]
+    },
+    {
+      "id": "BF-ee2fc5e",
+      "title": "`/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's…",
+      "symptom": "`/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback.",
+      "rootCause": "/new, /resume, /fork, /clone, /tree and a compaction repainted the transcript with ForceFullRender, which writes ESC[2J ESC[H ESC[3J and replays every row, so the text above the frame (what a package install or a wrapper printed before the TUI started, and older transcript rows) was gone. Pi clears the chat container and requests a normal render; the main screen repaints from the first changed row and sends the clearing redraw only where its own rules ask for it (a size change, a changed row above the viewport, the reload box).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback. The text above the TUI (the `Installing ...` lines of a package install at startup, or what a wrapper script printed) and the older transcript rows that had scrolled above the frame stayed in Pi and were gone in PiG. The transcript repaint now clears the chat and renders normally, as Pi's does, and the clearing redraw is sent only where Pi sends it: when the first changed row is above the viewport, and once for the box of `/reload`. This has been so since 0.2.0 for the session commands and since 0.3.0 for a compaction. \u003c!-- cause: rebuildChat and renderCompactionResult called ForceFullRender, which writes ESC[2J ESC[H ESC[3J and replays the transcript from the top, where Pi's chatContainer.clear() plus renderInitialMessages() request an ordinary render that repaints only from the first changed row --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee2fc5ed41",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_swap_scrollback_test.go::TestReloadBoxForcesTheRedrawAsPiDoes",
+        "internal/codingagent/session_swap_scrollback_test.go::TestSessionReplacementRepaintsDifferentially"
       ]
     },
     {

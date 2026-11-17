@@ -44,7 +44,6 @@ func (m *InteractiveMode) addCompactionSummary(summary string, tokensBefore int,
 func (m *InteractiveMode) renderCompactionResult(event agent.CompactionEndEvent, entries []SessionEntry) {
 	m.disposeArminComponents()
 	m.chatContainer.Clear()
-	m.tuiInst.ForceFullRender()
 	if len(entries) > 0 {
 		entries = entries[1:]
 	}

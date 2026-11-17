@@ -468,6 +468,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-58f6697](#bf-58f6697) | Text typed and followed at once by Enter no longer skips the autocomplete menu Pi opens: `/model provider/id`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59456ae](#bf-59456ae) | Pressing a key in a subprocess extension's overlay no longer freezes interactive mode when the key reaches… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-598e27f](#bf-598e27f) | Escape over an open autocomplete list during compaction now closes the list and lets compaction continue, as… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-59aa6f6](#bf-59aa6f6) | `/logout` of a provider no longer erases the terminal's scrollback | PiG's own defect | All platforms | Unreleased |
 | [BF-59b5dae](#bf-59b5dae) | OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59e2efb](#bf-59e2efb) | A Chord HTTP connection kept after a host, relay or socket handler it was admitted by was removed and then… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-59fb623](#bf-59fb623) | fix(requestvalidity): one Responses assistant turn holds all its items, in any order | PiG's own defect | All platforms | Unreleased |
@@ -895,6 +896,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8f45099](#bf-8f45099) | Compaction summaries, branch summaries and bug reports omit thinking blocks (Pi 15e7bdc1, Pi #9602): replayed… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8f88d43](#bf-8f88d43) | On Windows, an extension's `exec` no longer returns no output for a command that printed, when the machine is… | PiG's own defect | Windows | 0.7.0 |
 | [BF-8fead2d](#bf-8fead2d) | fix(chord/nextnode/workers,chord/nextnode/plugins): the workers run on the plugins' Node host; no test hooks… | PiG's own defect | All platforms | Unreleased |
+| [BF-904c733](#bf-904c733) | The frame that a key press requested before an awaited `/new`, `/resume`, `/fork` or `/clone` is painted… | PiG's own defect | All platforms | Unreleased |
 | [BF-905f3d0](#bf-905f3d0) | A trap of the codemode module on a Worker no longer loses the output the script printed before it: the host… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9076cd5](#bf-9076cd5) | Markdown bold and italic render next to CJK punctuation in the terminal, for example… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-9088293](#bf-9088293) | The Azure OpenAI base URL is parsed and serialized with the WHATWG URL parser, as Pi does: hosts are… | PiG's own defect | All platforms | 0.5.0 |
@@ -1527,6 +1529,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-edd287c](#bf-edd287c) | Migrating a version 1 session file that holds a line parsing to a number, string, array or `true` no longer… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ededef9](#bf-ededef9) | `pig update` now warns when an npm package update leaves the installed version unchanged: shortly after a… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-edf1862](#bf-edf1862) | Tool rows and streamed answers no longer highlight the same code again on every redraw | PiG's own defect | All platforms | 0.7.0 |
+| [BF-ee2fc5e](#bf-ee2fc5e) | `/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's… | PiG's own defect | All platforms | Unreleased |
 | [BF-ee5045c](#bf-ee5045c) | Reading an extended attribute that is set between the size query and the read no longer panics, and on… | PiG's own defect | Windows | Unreleased |
 | [BF-ee5fdb1](#bf-ee5fdb1) | `pig status` no longer reports a shared extension name as an unhealthy duplicate | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ee96daf](#bf-ee96daf) | Unsubscribing an extension's event-bus subscription is now constant time, as deleting from Pi's `Set` of… | PiG's own defect | All platforms | 0.7.0 |
@@ -7856,6 +7859,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/custom_editor_test.go::TestCustomEditorActionLoopSkipsInterruptAndExit`, `internal/codingagent/custom_editor_test.go::TestCustomEditorEscapeOverAutocompleteGoesToTheEditor`, `internal/codingagent/interactive_test.go::TestInteractiveMode_EscapeClosesAutocompleteDuringCompactionWithoutAborting`
 - **Release note:** Escape over an open autocomplete list during compaction now closes the list and lets compaction continue, as in Pi. Previously it aborted the compaction and left the list open.
 
+### BF-59aa6f6
+
+**`/logout` of a provider no longer erases the terminal's scrollback**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/logout` of a provider no longer erases the terminal's scrollback.
+- **Root cause:** /logout of a provider changes no transcript row. Pi runs the logout and shows the status, which requests an ordinary render (interactive-mode.ts:6141-6150); PiG forced a destructive full redraw after it, which wrote ESC[2J ESC[H ESC[3J and replayed the page, so the lines above the TUI were erased.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `59aa6f6818` (2026-11-17)
+- **Tests:** `internal/codingagent/provider_logout_scrollback_test.go::TestLogoutKeepsTheTerminalScrollback`
+- **Release note:** `/logout` of a provider no longer erases the terminal's scrollback. It changes no transcript row, and Pi asks for an ordinary render after it. <!-- cause: runOAuthLogout called ForceFullRender after the logout, where Pi's logout shows its status and requests an ordinary render -->
+
 ### BF-59b5dae
 
 **OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base…**
@@ -13778,6 +13795,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `8fead2d31c` (2026-11-01)
 - **Tests:** `chord/nextnode/plugins/plugins_node_test.go::TestNodeACoreModuleImportsChordByItsPackageName`, `chord/nextnode/plugins/plugins_node_test.go::TestNodeTheHostsKeepAliveCountsReachTheApp`, `chord/nextnode/plugins/plugins_watcher_test.go::TestTheWatcherAfterCloseOnlyAPluginLinkedFromOutsideGetsItsWatchAgain`, `chord/nextnode/plugins/plugins_watcher_unix_test.go::TestTheWatcherReportsAFailureToWatchOnceAndStopsWatching`, `chord/nextnode/workers/workers_main_test.go::TestTheWorkersIdleStateReadsTheNodeHostsActivityThroughItsReports`
+
+### BF-904c733
+
+**The frame that a key press requested before an awaited `/new`, `/resume`, `/fork` or `/clone` is painted…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The frame that a key press requested before an awaited `/new`, `/resume`, `/fork` or `/clone` is painted before the session operation begins, as in Pi, instead of only when the operation outlasts the 16 ms frame throttle.
+- **Root cause:** Pi paints the frame the key press requested inside the awaited /fork, /resume, /clone and /new (tui.ts:1033-1041 requestRender on the next tick; interactive-mode.ts:5614-5618 closes the picker, then awaits the runtime), so the old transcript with the picker gone is on screen before the swap. PiG painted it only when the swap outlasted the 16 ms throttle, which left the footer of a long forked session in a different row. replaceSessionFromCommand now paints first.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `904c7332f1` (2026-11-17)
+- **Tests:** `internal/codingagent/session_swap_frame_test.go::TestFrameRequestedBeforeAwaitedSwapIsPaintedFirst`, `internal/codingagent/session_swap_held_hook_test.go::TestForkOfALongTranscriptWithAHeldBeforeHook`
+- **Release note:** The frame that a key press requested before an awaited `/new`, `/resume`, `/fork` or `/clone` is painted before the session operation begins, as in Pi, instead of only when the operation outlasts the 16 ms frame throttle. The footer of a long forked session now ends in the row where Pi's does. <!-- cause: replaceSessionFromCommand began the awaited swap with the frame the closed picker had requested still waiting behind the throttle, where Pi's frame runs on the next tick inside the await -->
 
 ### BF-905f3d0
 
@@ -22548,6 +22579,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `edf18625cb` (2026-11-01)
 - **Tests:** `internal/codingagent/code_highlighter_rows_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws`, `tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender`
 - **Release note:** Tool rows and streamed answers no longer highlight the same code again on every redraw. A running codemode row highlighted its whole script on every progress update and timer tick, and a complete `write` row its whole file on every update and expand toggle. Rows now keep their last highlighting until the code, the theme or the loaded grammars change, a Markdown component keeps the highlighting of the code blocks it rendered until `Invalidate`, and `Text.SetText` with unchanged text keeps its wrapped lines (Pi #10971).
+
+### BF-ee2fc5e
+
+**`/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback.
+- **Root cause:** /new, /resume, /fork, /clone, /tree and a compaction repainted the transcript with ForceFullRender, which writes ESC[2J ESC[H ESC[3J and replays every row, so the text above the frame (what a package install or a wrapper printed before the TUI started, and older transcript rows) was gone. Pi clears the chat container and requests a normal render; the main screen repaints from the first changed row and sends the clearing redraw only where its own rules ask for it (a size change, a changed row above the viewport, the reload box).
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ee2fc5ed41` (2026-11-17)
+- **Tests:** `internal/codingagent/session_swap_scrollback_test.go::TestReloadBoxForcesTheRedrawAsPiDoes`, `internal/codingagent/session_swap_scrollback_test.go::TestSessionReplacementRepaintsDifferentially`
+- **Release note:** `/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback. The text above the TUI (the `Installing ...` lines of a package install at startup, or what a wrapper script printed) and the older transcript rows that had scrolled above the frame stayed in Pi and were gone in PiG. The transcript repaint now clears the chat and renders normally, as Pi's does, and the clearing redraw is sent only where Pi sends it: when the first changed row is above the viewport, and once for the box of `/reload`. This has been so since 0.2.0 for the session commands and since 0.3.0 for a compaction. <!-- cause: rebuildChat and renderCompactionResult called ForceFullRender, which writes ESC[2J ESC[H ESC[3J and replays the transcript from the top, where Pi's chatContainer.clear() plus renderInitialMessages() request an ordinary render that repaints only from the first changed row -->
 
 ### BF-ee5045c
 
