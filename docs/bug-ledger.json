@@ -9612,6 +9612,28 @@
       ]
     },
     {
+      "id": "BF-2f12a5a",
+      "title": "An extension handler that called `waitForIdle` outside a command no longer hangs its run",
+      "symptom": "An extension handler that called `waitForIdle` outside a command no longer hangs its run.",
+      "rootCause": "D617 left waitForIdle off the command-only list on the assumption that a wait changes no session, overlooking that a handler inside the run waits for itself and that Pi gives the call only to the command context",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension handler that called `waitForIdle` outside a command no longer hangs its run. A `tool_call` or `agent_end` handler that waited for the run waited for the run that waited for the handler, in every SDK; as in Pi, only a command context (and a `withSession` callback's context) has `waitForIdle`, so in Node `ctx.waitForIdle` is absent from an event, tool or shortcut context and the call throws `TypeError: ctx.waitForIdle is not a function`, and the Go, Python, Rust and Lisp SDKs get the `not_a_command_context` error back at once (divergence D617).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "2f12a5a0de",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "test/extension-conformance/session_actions_event_context_test.go::TestConformance_CommandOnlySessionActionsRefusedFromEventContext"
+      ]
+    },
+    {
       "id": "BF-2f7f692",
       "title": "Chord's surfaces: a language or theme follower stopped before its pick watch bound no longer crashes the…",
       "symptom": "Chord's surfaces: a language or theme follower stopped before its pick watch bound no longer crashes the process (\"Watch is stopped\"); a follower's callback may call `SetDevice`, `SetMode` or `Stop` on it without deadlocking; `Message(key)` with no arguments sends `params: []`; `CanonicalLocale` and the text direction of a locale follow Node's `Intl` (`en_US`, `i-klingon` and `zh-min-nan` are refused, `cmn` is `zh`, `mo` is `ro`, `sam` is right to left).",
@@ -66408,7 +66430,7 @@
     },
     {
       "id": "D617",
-      "title": "A command-only session action called through a context that is not a command context is a method that refuses…",
+      "title": "A command-only action (`waitForIdle` or a session action) called through a context that is not a command…",
       "entry": "BF-105a93f"
     },
     {

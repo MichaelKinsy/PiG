@@ -368,6 +368,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-2e95347](#bf-2e95347) | Chord's active-language and active-theme followers could miss the user's pick for good: the pick's watch was… | PiG's own defect | All platforms | Unreleased |
 | [BF-2ea8ad2](#bf-2ea8ad2) | The openai-completions, openai-responses and openrouter-images requests build their URL as the openai SDK… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2ed0813](#bf-2ed0813) | A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`… | PiG's own defect | All platforms | Unreleased |
+| [BF-2f12a5a](#bf-2f12a5a) | An extension handler that called `waitForIdle` outside a command no longer hangs its run | PiG's own defect | All platforms | Unreleased |
 | [BF-2f7f692](#bf-2f7f692) | Chord's surfaces: a language or theme follower stopped before its pick watch bound no longer crashes the… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f7f692-2](#bf-2f7f692-2) | Chord's `TuiScope`: a holder that releases its own `Hold`en reference before the scope's watch of its state… | PiG's own defect | All platforms | Unreleased |
 | [BF-2f8638b](#bf-2f8638b) | Chord: the rollout Step of a published script set now lists removed plugins in UTF-16 code unit order, as Pi… | PiG's own defect | All platforms | Unreleased |
@@ -7169,6 +7170,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2ed08134a2` (2026-11-12)
 - **Tests:** `ai/constrained_sampling_oracle_test.go::TestConstrainedSamplingMatchesPi`, `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingKeepsStrictForEnumOnlySchemasUpstream`, `ai/constrained_sampling_upstream_test.go::TestConstrainedSamplingUnsupportedSchemasUpstream`, `ai/strict_untyped_nodes_port_test.go::TestUntypedSchemaNodesFallBackFromStrictInTheRequestPort`, `coding/session_untyped_strict_tool_port_test.go::TestSessionSendsAStrictPreferToolWithAnUntypedNodeWithoutStrictPort`
 - **Release note:** A tool that requires strict JSON-schema sampling and has a schema node without a type (such as `items: {}`, an unknown or any value, or a bare `const`) is now refused with a clear local error, and one that only prefers strict sampling is sent without strict mode, where before the provider rejected the request with an HTTP 400 error; a node with only an `enum` stays strict, as under Pi (upstream #12049).
+
+### BF-2f12a5a
+
+**An extension handler that called `waitForIdle` outside a command no longer hangs its run**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension handler that called `waitForIdle` outside a command no longer hangs its run.
+- **Root cause:** D617 left waitForIdle off the command-only list on the assumption that a wait changes no session, overlooking that a handler inside the run waits for itself and that Pi gives the call only to the command context
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `2f12a5a0de` (2026-11-17)
+- **Tests:** `test/extension-conformance/session_actions_event_context_test.go::TestConformance_CommandOnlySessionActionsRefusedFromEventContext`
+- **Release note:** An extension handler that called `waitForIdle` outside a command no longer hangs its run. A `tool_call` or `agent_end` handler that waited for the run waited for the run that waited for the handler, in every SDK; as in Pi, only a command context (and a `withSession` callback's context) has `waitForIdle`, so in Node `ctx.waitForIdle` is absent from an event, tool or shortcut context and the call throws `TypeError: ctx.waitForIdle is not a function`, and the Go, Python, Rust and Lisp SDKs get the `not_a_command_context` error back at once (divergence D617).
 
 ### BF-2f7f692
 
@@ -34773,7 +34788,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D607 | The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime… | deliberate difference |
 | D615 | The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider… | deliberate difference |
 | D616 | An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory… | [BF-5043738](#bf-5043738) |
-| D617 | A command-only session action called through a context that is not a command context is a method that refuses… | [BF-105a93f](#bf-105a93f) |
+| D617 | A command-only action (`waitForIdle` or a session action) called through a context that is not a command… | [BF-105a93f](#bf-105a93f) |
 | D618 | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | [BF-D618](#bf-d618) |
 | D619 | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are… | [BF-D619](#bf-d619) |
 | D624 | An opt-in screen writer sends the terminal only what changes the screen in fullscreen mode, where Pi sends… | [BF-D624](#bf-d624) |

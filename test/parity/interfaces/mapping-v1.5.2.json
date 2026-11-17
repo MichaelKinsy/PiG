@@ -183472,7 +183472,7 @@
       "evidence": [
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers",
-        "test:test/extension-conformance/ui_view_tool_test.go#TestConformance_UIViewToolShowsAndFocuses"
+        "test:test/extension-conformance/session_actions_event_context_test.go#TestConformance_CommandOnlySessionActionsRefusedFromEventContext"
       ]
     },
     {
@@ -183494,7 +183494,7 @@
       "evidence": [
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers",
-        "test:test/extension-conformance/ui_view_tool_test.go#TestConformance_UIViewToolShowsAndFocuses"
+        "test:test/extension-conformance/session_actions_event_context_test.go#TestConformance_CommandOnlySessionActionsRefusedFromEventContext"
       ]
     },
     {
