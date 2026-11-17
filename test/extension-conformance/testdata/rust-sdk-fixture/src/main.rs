@@ -5616,14 +5616,12 @@ fn main() {
                     .filter(|values| !values.is_empty())
                     .map(|values| values.remove(0));
                 // Pi ignores what a before_provider_headers handler returns and sends the headers object the handlers edited (runner.ts emitBeforeProviderHeaders), so the queued result becomes the headers by editing event.headers in place, as the Node fixture does.
-                if reported == "before_provider_headers" {
-                    if let (Some(Value::Object(replacement)), Some(headers)) = (
-                        value.as_ref(),
-                        data["headers"].as_object_mut(),
-                    ) {
-                        *headers = replacement.clone();
-                        return Ok(None);
-                    }
+                if reported == "before_provider_headers"
+                    && let (Some(Value::Object(replacement)), Some(headers)) =
+                        (value.as_ref(), data["headers"].as_object_mut())
+                {
+                    *headers = replacement.clone();
+                    return Ok(None);
                 }
                 Ok(value)
             });
