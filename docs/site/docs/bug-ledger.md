@@ -410,6 +410,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3351167](#bf-3351167) | The OAuth callback server reads an absolute-form request target with a scheme other than http or https, a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-33558f6](#bf-33558f6) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-336d0dc](#bf-336d0dc) | Chord's plugin watcher watches a directory of the app's base code again when it comes back after its watch… | PiG's own defect | macOS, Linux | Unreleased |
+| [BF-338965f](#bf-338965f) | A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory… | PiG's own defect | All platforms | Unreleased |
 | [BF-33aa6ec](#bf-33aa6ec) | An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another… | PiG's own defect | All platforms | Unreleased |
 | [BF-33dc8a0](#bf-33dc8a0) | fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does | PiG's own defect | All platforms | Unreleased |
 | [BF-33ea9e4](#bf-33ea9e4) | fix(sdk): name the Go ModelRegistry.Find change in the upgrade rules; Node adoption survives an unbound leaf… | PiG's own defect | All platforms | Unreleased |
@@ -1596,6 +1597,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-aa954ac](#bf-aa954ac) | `--model <provider>/<id>` with an id the catalog does not know, under a provider an extension registers with… | PiG's own defect | All platforms | Unreleased |
 | [BF-aabd300](#bf-aabd300) | An OpenAI Responses, Azure OpenAI Responses or Google stream event whose JSON is a number, string, boolean or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-ab0ee71](#bf-ab0ee71) | Hiding an overlay whose preFocus is another overlay, such as a panel focused when the overlay was shown over… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-ab0fedf](#bf-ab0fedf) | A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was… | PiG's own defect | All platforms | Unreleased |
 | [BF-ab1d070](#bf-ab1d070) | A durable code mode script's journal now records the calls a script had issued after a batch of results in… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ab1d070-2](#bf-ab1d070-2) | A script that ends in its first run while a journaled tool call replays after a restart no longer shows that… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-ab5be97](#bf-ab5be97) | Long streamed answers render each frame faster: the Markdown view re-wraps and re-renders only the lines and… | PiG's own defect | All platforms | 0.5.0 |
@@ -7735,6 +7737,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `336d0dc96f` (2026-11-09)
 - **Tests:** `chord/nextnode/plugins/plugins_watcher_base_test.go::TestTheBaseMarkRenewsTheWatchOfAnAncestorRemovedAndMadeAgainWhileTheRecordedDirectoryIsMissing`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesADirectoryBackWhoseWatchCouldNotBePutBackWhileItWasAway`, `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestTheBaseMarkWatchesTheTreeOfABaseDirectoryBackWhoseWatchesCouldNotBePutBackWhileItWasAway`
 - **Release note:** Chord's plugin watcher watches a directory of the app's base code again when it comes back after its watch had ended: moved away and back (the watch of a renamed directory ends on macOS and BSD, with kqueue), or removed and made again (inotify on Linux, where ext4 also gives the new directory the inode and birth time of the old one). An edit of the app's base code in that directory went unnoticed, so `base` was never marked and the app kept its hosts on the old code, where Pi marks it. When the watcher put a watch back and found the directory missing, it kept the recorded identity of a directory it did not watch, and the directory seen again looked like the same one; the watch now leaves no identity behind, so the directory is watched again.
+
+### BF-338965f
+
+**A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed.
+- **Root cause:** RPC mode ends with os.Exit after TerminateProcesses, as Pi ends with process.exit, so Runtime.Close and Host.Shutdown, which removed the Host private socket directory, never ran on a normal RPC exit: every RPC session that started an extension left an h<uint32> directory in the temp directory. TerminateHostProcesses is the last call of a host process that is about to exit, so it removes the directory of every host it was given too and makes the Host refuse a socket path afterwards, so a generation that asks for one while the process exits cannot make a directory nobody removes.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `338965f248` (2026-11-16)
+- **Tests:** `coding/cli/rpc_exit_socket_dir_test.go::TestAnRPCPigThatEndsNormallyLeavesNoSocketDirectory`, `coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesMakesNoRuntimeDirectoryAndNoneAfterIt`, `coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesRemovesTheRuntimeDirectory`
+- **Release note:** A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h<number>` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed. The host process now removes that directory when it terminates its processes, and a generation that asks for a socket path while the process exits no longer makes a new one.
 
 ### BF-33aa6ec
 
@@ -24223,6 +24239,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `2a055a7a3a` (2026-10-13), `a9058bf992` (2026-10-13), `ab0ee713e2` (2026-10-13), `d87b70c54c` (2026-10-13), `ec2080a75f` (2026-10-13)
 - **Tests:** `coding/extension/host/subprocess/node_library_bundle_test.go::TestNodeLibraryBundlesKeepSharedIdentitiesWithoutRawCatalogLoads`, `coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeFactoryTuiShowOverlayHandleIsSynchronous`, `coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayEndsWithItsConnection`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayShowsAtOnceAndEndsWithItsHide`, `coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayWithoutTUIIsNotShown`, `coding/extension/host/subprocess/ui_bridge_test.go::TestFocusedCustomComponentsStack`, `coding/extension/host/subprocess/ui_bridge_test.go::TestInteractiveDialogOpensOverFocusedOverlay` and 17 more in docs/bug-ledger.json
 - **Release note:** Hiding an overlay whose preFocus is another overlay, such as a panel focused when the overlay was shown over it, focuses that panel as an overlay, as Pi does: its handle reports `isFocused()` and its own `hide()` moves focus on.
+
+### BF-ab0fedf
+
+**A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came.
+- **Root cause:** A command that awaits ctx.reload() keeps its generation running until the command returns, which can be after the next reload staged a successor and began to listen. Every generation of an extension name listened on one path, and the old generation's stop removed the file at that path, which by then was the successor's listener: the successor's process failed to connect (ENOENT), the reload that staged it waited for a connection that never came, and the prompt that asked for the reload never answered. A Python extension beside an edited one hit it when the stop of a retired generation ran after the next staged one had bound; the CI failure was…
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `ab0fedf5d2` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/host_test.go::TestResolveSocketDir_TermuxUsesTMPDIRAndKeepsItWithinTheSocketLimit`, `coding/extension/host/subprocess/platform_windows_test.go::TestWindowsUnixSocketPathsAreShortIsolatedAndCleaned`, `coding/extension/host/subprocess/platform_windows_test.go::TestWindowsUnixSocketPathsFallBackWhenTempIsTooLong`, `coding/extension/host/subprocess/socket_lifecycle_test.go::TestAKilledHostsSocketFileIsNeitherUsedNorRemovedByTheNextHost`, `coding/extension/host/subprocess/socket_lifecycle_test.go::TestSocketFilesOfRealGenerationsEndWithTheirListeners`, `coding/extension/host/subprocess/socket_path_budget_test.go::TestEverySocketPathIsNewAndFitsTheBudget`, `coding/extension/host/subprocess/socket_retirement_test.go::TestADeferredRetirementLeavesTheSocketOfTheGenerationStagedAfterIt`, `coding/extension/host/subprocess/socket_retirement_test.go::TestAHeldRetiredGenerationOwnsItsSocketFileUntilTheSessionEnds` and 4 more in docs/bug-ledger.json
+- **Release note:** A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came. Every generation now listens on a socket path of its own and its stop removes only that file.
 
 ### BF-ab1d070
 

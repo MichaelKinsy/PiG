@@ -488,7 +488,7 @@ func TestResolveSocketDir_TermuxUsesTMPDIRAndKeepsItWithinTheSocketLimit(t *test
 	if got := socketRuntimeBase("linux", dir, 10234, ""); got != dir {
 		t.Fatalf("socketRuntimeBase = %q, want %q kept", got, dir)
 	}
-	if err := validateUnixSocketPath("linux", filepath.Join(dir, "h4294967295", "e-9999.sock")); err != nil {
+	if err := validateUnixSocketPath("linux", filepath.Join(dir, "h4294967295", worstRuntimeSocketLeaf)); err != nil {
 		t.Fatal(err)
 	}
 }

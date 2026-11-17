@@ -526,11 +526,10 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 		if desc.Name == "" {
 			return nil, nil, newLoadError(cell.Key, "resolve", "missing_name", fmt.Errorf("packed extension name is required"))
 		}
-		sockPath, err := h.sockPathFor(desc.Name)
+		sockPath, err := h.newSocketPath()
 		if err != nil {
 			return nil, nil, newLoadError(desc.Name, "spawn", "socket_dir_failed", fmt.Errorf("create socket dir: %w", err))
 		}
-		_ = os.Remove(sockPath)
 		ln, address, err := ListenExtension(sockPath, nodeRuntime)
 		if err != nil {
 			closePendingListeners(pendingExts)

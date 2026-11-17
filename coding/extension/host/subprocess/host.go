@@ -358,10 +358,8 @@ type Host struct {
 	sockRuntimeDir  string
 	sockRuntimeErr  error
 
-	// sockNames maps an extension name to its short, stable socket leaf within
-	// sockRuntimeDir (guarded by sockMu).
-	sockMu    sync.Mutex
-	sockNames map[string]string
+	// sockSeq counts the socket paths this Host has handed out (newSocketPath).
+	sockSeq atomic.Uint32
 
 	// shuttingDown is set when Shutdown is called. Crash handlers check
 	// this to suppress "connection closed" noise during normal exit.
@@ -491,7 +489,6 @@ type Host struct {
 	retained       *RuntimeRetention
 	retainedShared bool
 	epoch          int
-	parkSeq        atomic.Int64
 
 	// loadErrors holds the formatted errors from the most recent LoadAll so the
 	// interactive session can surface startup load/build/register failures
@@ -728,7 +725,7 @@ type managedExt struct {
 	oauthProviderNames []string          // subset of providerNames that also registered a bridged OAuth provider
 	stderrLogPath      string
 	stderrLog          *processStderrLog
-	sockPath           string               // Socket file path (for cleanup)
+	sockPath           string               // This generation's own socket path, listened on at its start and removed by its stop; no other generation holds it
 	packedCellKey      string               // Non-empty when hosted by a packed runtime cell
 	packedProcess      *packedProcessState  // Shared process authority for packed-member sockets.
 	shuttingDown       atomic.Bool          // True when graceful shutdown was initiated
@@ -2684,9 +2681,21 @@ func TerminateHostProcesses(hosts ...*Host) {
 	for _, log := range logs {
 		log.remove()
 	}
-	// The fused extensions run in this process and no process of theirs was killed, so the log their SDK created for a diagnostic is removed here, as Shutdown removes it.
+	// The fused extensions run in this process and no process of theirs was killed, so the log their SDK created for a diagnostic is removed here, as Shutdown removes it. The host process exits without Shutdown (RPC mode ends with os.Exit, as Pi's process.exit does), so each Host's private socket directory is removed here too.
 	for _, h := range hosts {
 		h.fusedLog.remove()
+		h.removeSockRuntimeDir()
+	}
+}
+
+// errSockRuntimeRemoved is what a Host asks for a socket path after TerminateHostProcesses removed its directory.
+var errSockRuntimeRemoved = errors.New("the Host's socket directory was removed by TerminateHostProcesses")
+
+// removeSockRuntimeDir removes the Host's private socket directory and keeps the Host from making one afterwards. Running the once itself, with an error that stands for the directory it never made, is what orders this read of sockRuntimeDir after the write of a concurrent ensureSockRuntimeDir.
+func (h *Host) removeSockRuntimeDir() {
+	h.sockRuntimeOnce.Do(func() { h.sockRuntimeErr = errSockRuntimeRemoved })
+	if h.sockRuntimeDir != "" {
+		_ = os.RemoveAll(h.sockRuntimeDir)
 	}
 }
 
@@ -2876,33 +2885,32 @@ func (h *Host) ensureSockRuntimeDir() (string, error) {
 	return h.sockRuntimeDir, h.sockRuntimeErr
 }
 
-// sockPathFor returns this Host's socket path for the named extension. Names are
-// short and stable per Host (e-0.sock, e-1.sock, ...) rather than derived from
-// the extension name: the runtime directory is private, so a counter is unique,
-// and a short leaf keeps the full path well under the platform sun_path limit
-// (104 bytes on macOS) that a long extension name plus a deep $TMPDIR could
-// otherwise exceed. The mapping is stable across reloads so a reload rebinds the
-// same path.
-func (h *Host) sockPathFor(name string) (string, error) {
+// newSocketPath returns a socket path that no other generation of this Host holds, on every call: the next count in this
+// Host's private runtime directory (socketLeaf). Each generation of an extension listens on its own path from its start
+// to its stop, and its stop removes that file and no other. A generation that a running command keeps alive after the
+// reload that replaced it (retireGeneration) therefore cannot remove the socket of the generation the next reload
+// staged. The runtime directory is made fresh for this Host (os.MkdirTemp), so no path was ever bound before it, and a
+// count that starts again in the next process starts in a directory of its own. The leaf is short and not derived from
+// the extension name: a short leaf keeps the full path under the platform sun_path limit (104 bytes on macOS) that a
+// long extension name plus a deep $TMPDIR could otherwise exceed; worstRuntimeSocketSuffix budgets its longest form.
+func (h *Host) newSocketPath() (string, error) {
 	dir, err := h.ensureSockRuntimeDir()
 	if err != nil {
 		return "", err
 	}
-	h.sockMu.Lock()
-	defer h.sockMu.Unlock()
-	if h.sockNames == nil {
-		h.sockNames = make(map[string]string)
+	for {
+		last := h.sockSeq.Load()
+		if last == lastSocketCount {
+			return "", fmt.Errorf("this Host has made all %d of its socket paths", uint64(lastSocketCount))
+		}
+		if h.sockSeq.CompareAndSwap(last, last+1) {
+			path := filepath.Join(dir, socketLeaf(last+1))
+			if err := validateUnixSocketPath(runtime.GOOS, path); err != nil {
+				return "", err
+			}
+			return path, nil
+		}
 	}
-	leaf, ok := h.sockNames[name]
-	if !ok {
-		leaf = fmt.Sprintf("e-%d.sock", len(h.sockNames))
-		h.sockNames[name] = leaf
-	}
-	path := filepath.Join(dir, leaf)
-	if err := validateUnixSocketPath(runtime.GOOS, path); err != nil {
-		return "", err
-	}
-	return path, nil
 }
 
 // IsShuttingDown returns true after Shutdown has been called.
@@ -3499,14 +3507,10 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 
 	// Create the socket path inside this Host's private runtime directory, so a
 	// parallel Pig instance running the same extension cannot collide on it.
-	sockPath, err := h.sockPathFor(me.config.Name)
+	sockPath, err := h.newSocketPath()
 	if err != nil {
 		return nil, newLoadError(me.config.Name, "spawn", "socket_dir_failed", fmt.Errorf("create socket dir: %w", err))
 	}
-
-	// Clean up a stale socket from a prior load of this same Host (private dir,
-	// so this only ever removes our own file, never a peer's live socket).
-	_ = os.Remove(sockPath)
 
 	me.sockPath = sockPath
 
