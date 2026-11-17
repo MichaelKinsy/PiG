@@ -13,6 +13,10 @@
 # its shard, in both runs. The optional fourth column names the make target a linux row runs in the light run when that
 # is a subset of the full run's (default: ci-<shard>). .github/AGENTS.md renders this table.
 #
+# Every row is a shard of the linux matrix, so a shard that fails fails "Linux verification" and with it "CI result", the required
+# check: every row blocks the merge, alloc-ratchet (the allocation baseline of the hot packages a change touches) included.
+# No ruleset change is needed for a row to block.
+#
 # job | shard | tier | light-run make target
 linux | portmap-1 | queue
 linux | portmap-2 | queue

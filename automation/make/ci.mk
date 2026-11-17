@@ -23,7 +23,7 @@ ci-test-fast-sharded: test-fast-sharded
 ci-test-changed: export TEST_CHANGED_FOR := fast-parallel
 ci-test-changed: export TEST_CHANGED_RACE := none
 ci-test-changed: test-changed sdk-vectors-changed
-# The allocation ratchet's own shard (automation/ci/ci-tiers.txt): the nightly's alloc-baseline for the hot packages the change touches or imports (TEST_BASE names the base). It is its own shard because a change to ai or tui makes it measure most of the hot packages, about 22 minutes, which test-fast must not carry; a change that touches none measures nothing.
+# The allocation ratchet's own shard (automation/ci/ci-tiers.txt): the nightly's alloc-baseline for the hot packages the change touches or imports (TEST_BASE names the base). It blocks like every shard of the linux matrix (a failure fails "Linux verification" and so "CI result"). It is its own shard because a change to ai or tui makes it measure most of the hot packages, about 22 minutes, which test-fast must not carry; a change that touches none measures nothing.
 ci-alloc-ratchet: alloc-baseline-changed
 # The SDK modules are not packages of the main module, so test-changed never runs their Pi vector suites. When the change touches the shared tui engine, an SDK or a vector file (automation/ci/sdk-vectors-changed.sh), run the vector check and each SDK's own suite.
 sdk-vectors-changed:
