@@ -156,7 +156,9 @@ func loadoutGoExtension(renderers bool) *sdk.Extension {
 	})
 	e.Tool("other", "Other.", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) { return "other", nil })
 	if renderers {
-		e.SetToolRenderers("watch", sdk.ToolRenderers{Call: func(sdk.Context, map[string]any, sdk.ToolRenderContext, int) ([]string, error) { return []string{"watch"}, nil }})
+		e.SetToolRenderers("watch", sdk.ToolRenderers{Call: func(sdk.Context, map[string]any, sdk.ToolRenderContext, int) ([]string, error) {
+			return []string{"watch"}, nil
+		}})
 	}
 	return e
 }
