@@ -244,3 +244,26 @@ func TestRPCCommandDuringInputHandlerNetworkWaitAnswersAcrossSDKs(t *testing.T) 
 		})
 	}
 }
+
+// A Go handler that computes for longer than HandlerWaitQuantum without waiting is taken to wait (D86), so a get_state sent meanwhile is answered during it and the command's own response follows when it returns. Pi's loop, which the computation would block, answers it afterwards; the runtime cannot tell the two, which D86 records. The command busy-loops on a flag that the peer's line sets, so the test, not a clock, ends the computation; the control is TestRPCCommandAfterAgentEndAnswersAfterFastSettleHandlerAcrossSDKs, where a handler that answers within the quantum holds stdin.
+func TestRPCCommandDuringGoHandlerComputationAnswersDuringIt(t *testing.T) {
+	peer := newRPCSettlePeer(t)
+	p := startRPCSettleWaitPig(t, buildGoSDKFixture(t, "rpc-settle-wait-go"), []string{"RPC_SETTLE_ADDR=" + peer.addr()})
+	awaitReady(p)
+	p.sendJSON(map[string]any{"id": "h", "type": "prompt", "message": "/spin"})
+	conn := peer.accept()
+	p.sendJSON(map[string]any{"id": "s", "type": "get_state"})
+	var seen []string
+	p.await("the get_state response while the command computes", func(r rpcRecord) bool {
+		seen = append(seen, fmt.Sprint(r["type"]))
+		return r["id"] == "s"
+	})
+	if want := []string{"response"}; !slices.Equal(seen, want) {
+		t.Fatalf("records before the command returned = %v, want %v\n%s", seen, want, p.stderr.String())
+	}
+	if _, err := conn.Write([]byte("go\n")); err != nil {
+		t.Fatal(err)
+	}
+	p.await("the command's response", func(r rpcRecord) bool { return r["id"] == "h" })
+	p.closeAndWait("after the command returned")
+}
