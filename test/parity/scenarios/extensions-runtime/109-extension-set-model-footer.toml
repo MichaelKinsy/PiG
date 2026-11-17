@@ -5,6 +5,9 @@
 # model and its context window (footer.ts: contextUsage?.contextWindow ?? state.model?.contextWindow). The extension's widget is set once, at session start, so nothing but the selection can redraw the footer.
 # Neither program redraws the footer when setModel returns: after /pick alone both still show the old window, and both show the new model's window at the next render (a key).
 
+# Upstream evidence (2026-11-16, tmux probe): the runner starts real pi and pig in tmux with the same extension (testdata/ext/set-model-footer.mjs) and the same keys, and
+# compares what both show: output_equal, three declared runs, both green.
+
 name = "109-extension-set-model-footer"
 description = "After an extension's pi.setModel both programs show the new model's context window in the footer at the next render"
 covers = [

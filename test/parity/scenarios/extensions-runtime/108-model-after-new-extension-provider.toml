@@ -9,6 +9,9 @@
 # The extension lists every model_select it sees in a widget. After /new and `/model metaprov/model-b` both programs list the model with window 555000, reasoning true, the registered costs
 # and the thinking level medium the session started with, and the footer shows `0.0%/555k (auto)` with the model and `medium`.
 
+# Upstream evidence (2026-11-16, tmux probe): the runner starts real pi and pig in tmux with the same extension (testdata/ext/model-after-new-provider.mjs) and the same keys, and
+# compares what both show: output_equal, three declared runs, both green.
+
 name = "108-model-after-new-extension-provider"
 description = "After /new, /model selects a model of an extension provider with the window, costs and thinking its registration declared"
 covers = [

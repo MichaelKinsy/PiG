@@ -1242,6 +1242,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/108-model-after-new-extension-provider.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "MODEL AFTER NEW PROBE",
+            "capture_end": "(auto)"
+          },
+          "reason": "Owned visible surface: After /new, /model selects a model of an extension provider with the window, costs and thinking its registration declared",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-extension-set-model-footer.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "SET MODEL FOOTER PROBE",
+            "capture_end": "(auto)"
+          },
+          "reason": "Owned visible surface: After an extension's pi.setModel both programs show the new model's context window in the footer at the next render",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
       "transforms": [
         {
