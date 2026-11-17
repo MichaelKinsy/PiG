@@ -138,6 +138,7 @@ func (m *InteractiveMode) rebindSession(ctx context.Context, renderBeforeBind bo
 		return err
 	}
 	var resources *extension.ResourcesDiscoverAggregateResult
+	var rebuilt <-chan error
 	if err := awaitEmit(ctx, runner, func(ctx context.Context) error {
 		if runner == nil {
 			return nil
@@ -156,7 +157,7 @@ func (m *InteractiveMode) rebindSession(ctx context.Context, renderBeforeBind bo
 	}); err != nil {
 		return err
 	}
-	return m.runOnMainAndWait(ctx, func() error {
+	if err := m.runOnMainAndWait(ctx, func() error {
 		if m.opts.SessionHandle != session {
 			return nil
 		}
@@ -167,14 +168,35 @@ func (m *InteractiveMode) rebindSession(ctx context.Context, renderBeforeBind bo
 			m.subscribeToAgent()
 		}
 		m.setupExtensionShortcutListener(m.runCtx)
-		m.editor.SetAutocomplete(m.buildAutocompleteProvider())
+		// Pi's bindCurrentSessionExtensions runs setupAutocompleteProvider after the bind, outside any extension handler: an installed editor that refuses the
+		// provider fails the bind, which is a fatal runtime error of the replacement (/new, /resume, /fork) or a crash of the startup.
+		m.autocompleteSetUp = true
+		rebuilt = m.setAutocompleteAwaiting(m.buildAutocompleteProvider())
 		m.updateProviderInfo()
 		m.editor.ThinkingLevel = m.thinkingLevel
 		m.editor.Invalidate()
 		m.updateTerminalTitle()
 		m.showLoadedResources(false, true)
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	if rebuilt == nil {
+		return nil
+	}
+	wait := func(ctx context.Context) error { return awaitAutocompleteRebuild(ctx, rebuilt) }
+	var err error
+	if m.onOwnerLoop() {
+		// The rebuild posts to the owner loop, which is this goroutine: the wait serves it, as an awaited handler phase does.
+		err = m.awaitExtensionUI(ctx, wait)
+	} else {
+		err = wait(ctx)
+	}
+	if err != nil && ctx.Err() == nil && !errors.Is(err, errInteractiveShutdown) {
+		// The throw of setupAutocompleteProvider: no handler of the bind catches it, so a replacement's caller makes it fatal and the startup's init() lets it end the process.
+		return uncaughtError{err}
+	}
+	return err
 }
 
 // runSignalNotifier is what the extension host's UI bridge offers the owner of the agent's run: a report that a run began or ended.

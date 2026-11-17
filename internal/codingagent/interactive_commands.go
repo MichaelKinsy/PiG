@@ -980,16 +980,21 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			m.ensurePngTranscoder()
 			m.applyThemeFromSettings(ctx)
 
+			// Upstream's handleReloadCommand calls setupAutocompleteProvider here (interactive-mode.ts, after themeController.applyFromSettings and before
+			// showLoadedResources), so that the commands the reload added complete. It runs inside the try of the reload: an installed editor that refuses the
+			// rebuilt provider ends the reload as "Reload failed: <message>", and nothing after it runs. The rebuild is awaited off the loop.
+			if rebuilt := m.setAutocompleteAwaiting(m.buildAutocompleteProvider()); rebuilt != nil {
+				if err := m.awaitReloadStep(ctx, func(ctx context.Context) error { return awaitAutocompleteRebuild(ctx, rebuilt) }); err != nil {
+					return err
+				}
+			}
+
 			// 8c. Upstream rebuilds the loaded-resources listing from the
 			//     reloaded resources (showLoadedResources after reload).
 			m.showLoadedResources(false, true)
 			// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:handleReloadCommand saves an implicit project trust, then reports a models.json error, before its status.
 			m.reloadSavedProjectTrust = m.maybeSaveImplicitProjectTrustAfterReload()
 			m.showModelsJSONError()
-
-			// 9. Rebuild autocomplete (may have new slash commands from
-			//    reloaded extensions).
-			m.editor.SetAutocomplete(m.buildAutocompleteProvider())
 			return nil
 		},
 		ReloadSavedProjectTrust: func() bool {
@@ -1060,7 +1065,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		OnSettingApplied: func(id, value string) {
 			switch id {
 			case "skill-commands":
-				m.editor.SetAutocomplete(m.buildAutocompleteProvider())
+				m.setAutocompleteUncaught(m.buildAutocompleteProvider())
 			case "transport":
 				m.agent.SetTransport(ai.Transport(value))
 			case "cache-miss-notices":

@@ -752,6 +752,10 @@ type InteractiveMode struct {
 	autocompleteEpoch       context.Context
 	autocompleteEpochCancel context.CancelFunc
 	autocompletePending     <-chan struct{}
+	// autocompleteSetUp is Pi's `this.autocompleteProvider !== undefined`: false until the first setupAutocompleteProvider, which is the one that follows the first bind.
+	autocompleteSetUp bool
+	// autocompleteRebuildResult is the channel the next provider rebuild answers on instead of reporting its failure (setAutocompleteAwaiting); the callback takes it.
+	autocompleteRebuildResult chan<- error
 	currentInputTicket      *inputTicket
 	pendingUserInputs       []string
 	onInputCallback         func(string)
@@ -2027,6 +2031,10 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	if err := m.bindStartupSession(ctx); err != nil {
 		if errors.Is(err, errInteractiveShutdown) {
 			return nil
+		}
+		// Pi's init() awaits the bind, and nothing catches what its setupAutocompleteProvider throws: it is the uncaughtException that ends the process.
+		if rejection, ok := errors.AsType[uncaughtError](err); ok {
+			panic(rejection)
 		}
 		return err
 	}
