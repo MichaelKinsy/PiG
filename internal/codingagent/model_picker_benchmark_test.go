@@ -22,9 +22,14 @@ func BenchmarkModelPickerSnapshotAndRender(b *testing.B) {
 	}
 }
 
+// Every reopen starts the selector's own catalog refresh (StartModelSelectorTask), which the caller's Background context never cancels. Whether that
+// refresh ran, dialed the network, or was still running when the next reopen began decided the count (5764 to 6538 allocs/op alone), so the benchmark
+// runs offline and joins the mode's background tasks inside each operation: each reopen pays its own refresh, whole, every time. One unmeasured
+// reopen first pays the one-time package state.
 func BenchmarkModelPickerScopedReopen(b *testing.B) {
 	b.Setenv("GEMINI_API_KEY", "benchmark-gemini")
 	b.Setenv("OPENAI_API_KEY", "benchmark-openai")
+	b.Setenv("PIG_OFFLINE", "1")
 	m := &InteractiveMode{opts: InteractiveModeOptions{ModelRegistry: NewModelRegistry(b.TempDir())}}
 	items := m.availableModelItems()
 	// A full catalog in reverse scope order exercises lookup without relying on catalog order.
@@ -37,11 +42,16 @@ func BenchmarkModelPickerScopedReopen(b *testing.B) {
 	input, release := m.acquireModalInputChannel()
 	defer release()
 	sc := m.buildSlashContext(context.Background())
-	b.ReportAllocs()
-	for b.Loop() {
+	reopen := func() {
 		input <- []byte("\x1b")
 		if _, accepted := sc.PickModel(""); accepted {
 			b.Fatal("Escape accepted a model")
 		}
+		m.backgroundTasks.Wait()
+	}
+	reopen()
+	b.ReportAllocs()
+	for b.Loop() {
+		reopen()
 	}
 }
