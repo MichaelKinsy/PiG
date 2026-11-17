@@ -38,7 +38,7 @@ func newRadiusLoginMenu(selector *tui.ExtensionSelectorComponent, label, text st
 
 // Render mirrors RadiusLoginMenuComponent.render.
 func (r *radiusLoginMenu) Render(width int) []string {
-	lines := r.ExtensionSelectorComponent.Render(width)
+	lines := slices.Clone(r.ExtensionSelectorComponent.Render(width))
 	theme := tui.ActiveTheme()
 	selected := tui.NewPaddedText(theme.Fg("accent", "→ ")+theme.Fg("accent", r.label), 1, 0, nil).Render(width)
 	index := -1

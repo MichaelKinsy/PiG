@@ -15,14 +15,6 @@ import (
 // the children are unchanged, and `notStrictEqual` plus an untouched old array after a change. A Go slice has no identity of its own, so
 // "the same array" is the same first element address (sameLines).
 
-func trimmedRows(lines []string) []string {
-	out := make([]string, len(lines))
-	for i, line := range lines {
-		out[i] = strings.TrimRight(line, " ")
-	}
-	return out
-}
-
 func TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged(t *testing.T) {
 	text := NewPaddedText("hello", 0, 0, nil)
 	inner := NewContainer()
