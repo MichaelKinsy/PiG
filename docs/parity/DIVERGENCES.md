@@ -342,7 +342,8 @@ Why not: the four calls that return nothing in Go and Rust carry no error for Pi
 
 Remove when: `Notify`, `SetStatus`, `SetActiveTools` and `Abort` in Go and Rust fail with Pi's stale message after a replacement (Part 1), and the in-place `Session` replacement methods and the default `Session.ExtensionCommandActions` replacement actions are deleted or routed through `Runtime`, so no caller can replace a Session without invalidating its runner (Part 2).
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 4 re-approval as recommended, checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:3f6cfbe93e7a8767
 
 ## D37 Recover from stale thinking-block signatures (retry with signatures stripped)
 
