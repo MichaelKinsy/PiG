@@ -13,8 +13,6 @@ type telemetryPrecedenceCase struct {
 	want    bool
 }
 
-func telemetryEnvValue(s string) *string { return &s }
-
 // setTelemetryEnv sets or unsets both names for one test and restores them afterwards.
 func setTelemetryEnv(t *testing.T, pig, pi *string) {
 	t.Helper()
@@ -32,7 +30,7 @@ func setTelemetryEnv(t *testing.T, pig, pi *string) {
 // opposite values; each name alone decides; with neither the enableInstallTelemetry setting decides. Telemetry is a privacy control: a
 // PIG_TELEMETRY=0 must never be overridden by a PI_TELEMETRY=1.
 func telemetryPrecedenceCases() []telemetryPrecedenceCase {
-	zero, one, yes, empty := telemetryEnvValue("0"), telemetryEnvValue("1"), telemetryEnvValue("yes"), telemetryEnvValue("")
+	zero, one, yes, empty := new("0"), new("1"), new("yes"), new("")
 	return []telemetryPrecedenceCase{
 		{"PIG=0 PI=1 setting on: off", zero, one, true, false},
 		{"PIG=1 PI=0 setting off: on", one, zero, false, true},
