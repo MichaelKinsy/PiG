@@ -18,7 +18,7 @@ import (
 // (shellWithoutTimeout). It builds the Codex request encoder before any test runs, so no testing/synctest bubble makes it (see
 // TestCodexRequestEncoderServesSynctestBubblesAndTheRestOfTheProcess).
 func TestMain(m *testing.M) {
-	root, err := os.MkdirTemp("", "pig-ai-")
+	root, err := testenv.MkdirShortTemp("pig-ai-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "create scoped test temp directory:", err)
 		os.Exit(2)

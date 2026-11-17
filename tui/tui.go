@@ -1507,6 +1507,13 @@ func (w terminalWriter) Write(data []byte) (int, error) {
 	return len(data), nil
 }
 
+// WriteString is Write for a string: the Terminal takes one, so a frame chunk reaches it as the renderer built it, where writeString would copy it
+// into a pooled byte slice for Write and Write would copy the bytes back into a new string.
+func (w terminalWriter) WriteString(data string) (int, error) {
+	w.terminal.Write(data)
+	return len(data), nil
+}
+
 // utf8Writer is a byte sink that encodes each write like Node's process.stdout: an unpaired surrogate, which a PiG string carries as WTF-8, becomes U+FFFD.
 // A Terminal does this in its own Write; a renderer built on a bare io.Writer stands in for stdout.
 type utf8Writer struct{ out io.Writer }
@@ -1870,6 +1877,12 @@ func (t *tuiBase) SetOwnerDispatcher(dispatch func(ctx context.Context, fn func(
 	t.mu.Lock()
 	t.postToOwner = dispatch
 	t.mu.Unlock()
+	// The terminal's progress keepalive is work of the same loop: Pi's setInterval callback runs on its one event loop, between renders.
+	if terminal, ok := t.terminal.(interface {
+		setKeepaliveDispatch(dispatch func(ctx context.Context, fn func()) error)
+	}); ok {
+		terminal.setKeepaliveDispatch(dispatch)
+	}
 }
 
 // PostToOwner queues fn on the owner loop (see SetOwnerDispatcher). It never drops fn: it returns once the loop has accepted it, or ctx's error when ctx ends first. Without a dispatcher fn runs inline, as the other dispatch seams do. Thread-safe.
@@ -3098,6 +3111,25 @@ func (t *TuiMainScreen) stopWithOptionsLocked(options StopOptions) {
 		WriteToTerminal(t.out, "\r\n")
 	}
 	WriteToTerminal(t.cursorOut(), "\x1b[?25h")
+	if options.ExitTerminal {
+		t.writeTerminalStopModes()
+	}
+}
+
+// writeExitTerminalStop is the stop() of Pi's TuiBase between its two hooks for a process exit: showCursor, then terminal.stop()'s mode resets.
+func (t *tuiBase) writeExitTerminalStop(options StopOptions) {
+	if !options.ExitTerminal {
+		return
+	}
+	t.writeOwned(t.cursorOut(), "\x1b[?25h")
+	t.writeTerminalStopModes()
+}
+
+// writeTerminalStopModes writes the mode resets of terminal.stop() on the renderer's terminal, when it is a process terminal.
+func (t *tuiBase) writeTerminalStopModes() {
+	if terminal, ok := t.Terminal().(interface{ WriteStopModes() }); ok {
+		terminal.WriteStopModes()
+	}
 }
 
 // drawBox draws a box with title and content lines. Content clipping and padding use terminal-cell width and preserve ANSI styling without splitting graphemes.

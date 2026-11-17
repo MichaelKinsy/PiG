@@ -19,7 +19,7 @@ pi_args = ["--offline", "--no-extensions", "--model", "strict-wire/strict", "--s
 
 [assert]
 exit_code = 0
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 runs = 3
 both_contain = ['"stopReason":"error"', 'strict wire bad request']

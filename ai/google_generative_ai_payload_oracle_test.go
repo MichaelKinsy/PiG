@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // pi: packages/ai/src/api/google-generative-ai.ts
@@ -103,7 +102,7 @@ func checkGooglePayload(t *testing.T, vertex bool) {
 	}
 	want := piPayloads(t, script, probes)
 	g.requireReplayCoverage(t, want, googleReplay)
-	failures := 0
+	failures, reordered := 0, 0
 	classes := map[string]int{}
 	for i, p := range probes {
 		model := &ai.Model{ID: p.ID, DisplayName: p.ID, Input: p.Input, Capabilities: ai.ModelCapabilities{ContextWindow: 1000000, MaxOutputTokens: 16384}, ProviderMeta: ai.ProviderMetadata{API: apiName, ProviderID: p.Provider, BaseURL: p.BaseURL, Reasoning: p.Reasoning}}
@@ -152,11 +151,7 @@ func checkGooglePayload(t *testing.T, vertex bool) {
 		}
 		var got string
 		options.OnPayload = func(payload any, _ *ai.Model) (any, error) {
-			encoded, err := sdkjson.Marshal(payload)
-			if err != nil {
-				t.Fatal(err)
-			}
-			got = string(encoded)
+			got = hookPayloadJSON(t, payload)
 			return nil, errors.New("payload captured")
 		}
 		run := stream
@@ -173,9 +168,14 @@ func checkGooglePayload(t *testing.T, vertex bool) {
 			}
 			t.Fatalf("probe %d: Pi produced no payload where PiG did: %.300s", i, got)
 		}
-		comparePayload(t, fmt.Sprintf("probe %d id=%s reasoning=%v simple=%v levels=%s options=%v", i, p.ID, p.Reasoning, p.Simple, p.Levels, p.Options), got, piPayloadWithD115(want[i]), &failures, classes)
+		label := fmt.Sprintf("probe %d id=%s reasoning=%v simple=%v levels=%s options=%v", i, p.ID, p.Reasoning, p.Simple, p.Levels, p.Options)
+		comparePayload(t, label, got, piPayloadWithD115(want[i]), &failures, classes)
+		comparePayloadBytes(t, label, got, piPayloadWithD115(want[i]), &reordered)
 	}
 	if failures > 0 {
 		t.Errorf("%d of %d probes differ from Pi; differing members: %v", failures, len(probes), classes)
+	}
+	if reordered > 0 {
+		t.Errorf("%d of %d probes write Pi's payload in another member order", reordered, len(probes))
 	}
 }

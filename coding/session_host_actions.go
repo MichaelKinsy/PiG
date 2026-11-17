@@ -17,7 +17,7 @@ func BindExtensionHostSessionActions(bridge *subprocess.UIBridge, current func()
 		if sess == nil {
 			return ErrSessionNotReady
 		}
-		return sess.SendMessage(message, &extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs)})
+		return sess.SendMessage(message, &extension.SendMessageOptions{TriggerTurn: opts.TriggerTurn, DeliverAs: extension.DeliverAs(opts.DeliverAs), AfterRun: opts.AfterRun})
 	})
 	bridge.SetHostAction("getActiveTools", func() []string {
 		if sess := current(); sess != nil {

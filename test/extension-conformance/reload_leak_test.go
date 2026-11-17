@@ -73,7 +73,7 @@ func reloadLeakRows() []reloadLeakRow {
 		rows = append(rows, reloadLeakRow{sdk: s, realization: "isolated", strategy: subprocess.CellStrategyIsolated, command: "noop", configs: func(t *testing.T, root, dir string) []subprocess.ExtConfig {
 			writeSpec(t, filepath.Join(dir, scenarioFile), sdkscenarios.Spec{Commands: []sdkscenarios.Command{{Name: "noop", Description: "Return at once", Op: sdkscenarios.CommandNoop}}})
 			// The driver registers under this name, and a directory selected directly must carry its extension's name.
-			return []subprocess.ExtConfig{scenarioDriverConfig(t, root, s, "scenario-driver-"+string(s))}
+			return []subprocess.ExtConfig{scenarioDriverConfig(t, root, s, "scenario-driver-"+string(s), "strict")}
 		}})
 		if s == sdkscenarios.Node {
 			rows = append(rows, reloadLeakRow{sdk: s, realization: "packed", strategy: subprocess.CellStrategyPackedNode, command: "noop", configs: func(t *testing.T, _, dir string) []subprocess.ExtConfig {

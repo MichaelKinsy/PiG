@@ -38,13 +38,19 @@ type JSONAliasRule struct {
 
 type identityPair struct{ forward, reverse map[string]string }
 
+// jsonPointerEscaper spells an object key as one JSON pointer segment.
+var jsonPointerEscaper = strings.NewReplacer("~", "~0", "/", "~1")
+
+// jsonResultText is the output a JSON comparison reads: the raw stdout when the driver kept it beside a canonicalised copy.
+func jsonResultText(r Result) string {
+	if r.RawOutput != "" {
+		return r.RawOutput
+	}
+	return r.Output
+}
+
 func compareJSONResults(g, p Result, rules []JSONAliasRule) error {
-	if g.RawOutput != "" {
-		g.Output = g.RawOutput
-	}
-	if p.RawOutput != "" {
-		p.Output = p.RawOutput
-	}
+	g.Output, p.Output = jsonResultText(g), jsonResultText(p)
 	left, err := parseJSONRecords(g.Output)
 	if err != nil {
 		return fmt.Errorf("pig: %w", err)
@@ -145,7 +151,7 @@ func compareJSONResults(g, p Result, rules []JSONAliasRule) error {
 			for _, key := range keys {
 				av, aok := x[key]
 				bv, bok := y[key]
-				next := path + "/" + strings.NewReplacer("~", "~0", "/", "~1").Replace(key)
+				next := path + "/" + jsonPointerEscaper.Replace(key)
 				if aok != bok {
 					if optionalDurationPresence(rules, next, av, bv, aok) {
 						continue

@@ -189,7 +189,7 @@ func TestGitMergeAndResolveExample(t *testing.T) {
 					t.Errorf("message %q does not contain %q", message, line)
 				}
 			}
-			if calls.messages[0].options != (SendUserMessageOptions{DeliverAs: "followUp"}) {
+			if options := calls.messages[0].options; options.DeliverAs != "followUp" || options.ExpandPromptTemplates != nil || options.AfterRun != nil {
 				t.Fatalf("options = %+v", calls.messages[0].options)
 			}
 		})

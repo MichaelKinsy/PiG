@@ -29,7 +29,7 @@ pi_args = ["--model", "test-faux/faux-1", "--no-session", "--system-prompt", "RP
 override_base_args = true
 
 [assert]
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 exit_code = 0
 runs = 3

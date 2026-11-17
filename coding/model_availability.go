@@ -189,6 +189,35 @@ func (runtime *ModelRuntime) GetAvailableSnapshot() []*ai.Model {
 	return runtime.virtuals.overlayAvailable(available, runtime.HasConfiguredAuth, runtime.providerOrder())
 }
 
+// AvailableRuntimeModels is GetAvailableSnapshot as selection metadata: the entries of models, a RuntimeModels listing, that the published availability lists, in the order of that availability. Selection reads it where Pi reads getAvailableSnapshot (model-resolver.ts findInitialModel): a provider's configured auth does not make every model of it available, because a provider may narrow its models per credential (filterModels, as GitHub Copilot does with the account's availableModelIds).
+//
+// upstream: packages/coding-agent/src/core/model-resolver.ts:findInitialModel, model-runtime.ts:getAvailableSnapshot
+func (runtime *ModelRuntime) AvailableRuntimeModels(models []icodingagent.RuntimeModel) []icodingagent.RuntimeModel {
+	type key struct{ provider, id string }
+	available := runtime.GetAvailableSnapshot()
+	out := make([]icodingagent.RuntimeModel, 0, len(available))
+	if len(available) == 0 {
+		return out
+	}
+	// The index holds the available entries only, so its size follows the availability and not the catalog: one pass over models records the last position of each key the availability names, as a map from every model to its position did.
+	index := make(map[key]int, len(available))
+	for _, model := range available {
+		index[key{model.ProviderMeta.ProviderID, model.ID}] = -1
+	}
+	for i, model := range models {
+		k := key{model.Provider, model.ID}
+		if _, wanted := index[k]; wanted {
+			index[k] = i
+		}
+	}
+	for _, model := range available {
+		if i := index[key{model.ProviderMeta.ProviderID, model.ID}]; i >= 0 {
+			out = append(out, models[i])
+		}
+	}
+	return out
+}
+
 // GetError joins model configuration errors and the latest non-cancelled availability failure.
 func (runtime *ModelRuntime) GetError() string {
 	var messages []string

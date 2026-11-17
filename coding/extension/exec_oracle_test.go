@@ -417,7 +417,13 @@ func TestExecCommandMatchesPi(t *testing.T) {
 	failures := 0
 	// The rows whose output both sides truncated: their codes are compared over execTruncatedRuns runs below, everything else here.
 	var truncated []execScenario
+	// The pre-aborted echo races Pi's own SIGTERM, so it is sampled below, and every other row here is an exact comparison.
+	var racedAborts []execScenario
 	for i, scenario := range scenarios {
+		if scenario.Aborted && scenario.Command == "echo" {
+			racedAborts = append(racedAborts, scenario)
+			continue
+		}
 		ctx := context.Background()
 		if scenario.Aborted {
 			var cancel context.CancelFunc
@@ -440,14 +446,6 @@ func TestExecCommandMatchesPi(t *testing.T) {
 		if reflect.DeepEqual(normalized, want) {
 			continue
 		}
-		// exec.ts kills a pre-aborted child right after spawn, so a fast command such as echo may or may not write before
-		// SIGTERM lands, in Pi as in Pig. Each side's output must then be a prefix of what the command writes.
-		if scenario.Aborted && normalized.Killed && want.Killed && normalized.Code == want.Code && normalized.Thrown == want.Thrown {
-			full := strings.Join(scenario.Args, " ") + "\n"
-			if scenario.Command == "echo" && strings.HasPrefix(full, normalized.Stdout) && strings.HasPrefix(full, want.Stdout) && normalized.Stderr == want.Stderr {
-				continue
-			}
-		}
 		// A timer that ends Git for Windows' sh while it is starting `exec sleep 60` leaves the starting process with a parent that is gone, and
 		// the MSYS runtime prints its child_copy failure on the inherited stderr. exec.ts appends whatever reaches the pipes until they end or
 		// fall idle (core/exec.ts:81-87 has no kill check, utils/child-process.ts:93-97 re-arms the grace on every chunk), in Pi as in Pig, so
@@ -465,6 +463,9 @@ func TestExecCommandMatchesPi(t *testing.T) {
 	if failures > 8 {
 		t.Errorf("%d of %d scenarios differ from Pi", failures, len(scenarios))
 	}
+	for _, scenario := range racedAborts {
+		checkAbortedBeforeStart(t, scenario)
+	}
 	pi, pig, left := sampleTruncatedCodes(t, dir, truncated)
 	piAll := codeCounts{}
 	for _, counts := range pi {
@@ -481,5 +482,54 @@ func TestExecCommandMatchesPi(t *testing.T) {
 		for _, fault := range truncatedCodeFaults(pig[script], pi[script], piAll) {
 			t.Errorf("truncated runs of %q: %s\n  Pig %s\n  Pi  %s", script, fault, pig[script], pi[script])
 		}
+	}
+}
+
+// execAbortedSamples is how many times a pre-aborted echo is run through each side: 400 runs of Pi in its Node process take about two seconds.
+const execAbortedSamples = 400
+
+// checkAbortedBeforeStart compares the scenario of a command that its call's signal aborted before the spawn. core/exec.ts spawns the child (line 58)
+// and then, on seeing the signal already aborted (lines 88-90), sends SIGTERM at once (lines 76-79): a command as fast as echo either meets the
+// signal first (nothing written, code 143: 1993 to 1998 of 2000 runs of Pi on an idle host, 1836 to 1967 beside 16 busy loops) or writes and
+// exits first (the whole text and code 0, or the text and 143). Pi has therefore several outcomes for the row, and one live sample of it is not an
+// oracle: PiG races the same way (4 of 400 runs echo) and must not be changed to always, or never, echo. What is compared is what each side reports for more than half of its runs, which is
+// the outcome of the signal winning in Pi, and PiG must give that outcome in most of its runs. The rarer outcomes of PiG must be ones the race
+// can give any process: killed, nothing on stderr, a prefix of what the command writes, code 143, or code 0 once it wrote it all.
+func checkAbortedBeforeStart(t *testing.T, scenario execScenario) {
+	t.Helper()
+	pi := map[execOutcome]int{}
+	for _, outcome := range piExecOutcomes(t, slices.Repeat([]execScenario{scenario}, execAbortedSamples)) {
+		pi[outcome]++
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	pig := map[execOutcome]int{}
+	for range execAbortedSamples {
+		pig[pigExecOutcome(ctx, scenario)]++
+	}
+	mostly := func(counts map[execOutcome]int) (execOutcome, bool) {
+		for outcome, n := range counts {
+			if 2*n > execAbortedSamples {
+				return outcome, true
+			}
+		}
+		return execOutcome{}, false
+	}
+	t.Logf("aborted before start %q: Pig %v | Pi %v", scenario.Args, pig, pi)
+	piMost, ok := mostly(pi)
+	if !ok || piMost.Stdout != "" || !piMost.Killed {
+		t.Errorf("Pi's runs of %q ended in no killed outcome without output for more than half of them (%v): on this host echo wins the race in Pi, and the row cannot tell PiG's answer from luck", scenario.Args, pi)
+		return
+	}
+	if pig[piMost] <= execAbortedSamples/2 {
+		t.Errorf("Pig ended %d of %d runs of %q as %+v, the outcome of most of Pi's %d runs; Pig %v", pig[piMost], execAbortedSamples, scenario.Args, piMost, pi[piMost], pig)
+	}
+	full := strings.Join(scenario.Args, " ") + "\n"
+	for outcome := range pig {
+		if outcome.Killed && outcome.Thrown == "" && outcome.Stderr == "" && !outcome.Truncated && strings.HasPrefix(full, outcome.Stdout) &&
+			(outcome.Code == 143 || outcome.Code == 0 && outcome.Stdout == full) {
+			continue
+		}
+		t.Errorf("Pig ended a run of %q as %+v, which no race between the child's exit and the SIGTERM gives; Pig %v", scenario.Args, outcome, pig)
 	}
 }

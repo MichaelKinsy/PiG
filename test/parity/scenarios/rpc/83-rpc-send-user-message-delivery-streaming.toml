@@ -1,0 +1,58 @@
+# Behavior family: extensions-runtime
+# Surface: pi.sendUserMessage(content, options?) while the agent streams, with no deliverAs, steer and followUp.
+#
+# Pi: sendUserMessage passes `streamingBehavior: options?.deliverAs` to prompt() (agent-session.ts:2565-2573). prompt() queues a steer or a followUp while
+# the agent streams and throws "Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message." for a message with
+# no delivery (:2240-2244); the bound action reports the refusal as the extension error `send_user_message` (:3565-3572) and the call returns. The
+# oracle is the RPC record: one extension_error for the undelivered message, the steer delivered inside the run and the follow-up after it, and no user
+# message for the refused text. The SDKs' own rows are test/extension-conformance TestSendUserMessageDeliveryAcrossSDKs.
+
+name = "83-rpc-send-user-message-delivery-streaming"
+description = "A message sent with no deliverAs while the agent streams is refused with Pi's error; steer and followUp are queued"
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"run","type":"prompt","message":"Run: expr 20 + 22"}'
+wait_event = '{"type":"agent_settled","aborted":false}'
+wait_timeout_seconds = 15
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/send-user-message-delivery.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/send-user-message-delivery.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 3
+both_contain = ['"type":"extension_error"', '"event":"send_user_message"', "Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.", 'delivery-steer', 'delivery-followUp', '"type":"agent_settled"']
+
+[[assert.json_aliases]]
+paths = ["/*/id", "/**/sessionId"]
+kind = "id"
+group = "runtime"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Session and UI request UUIDs vary. A bijection preserves distinct identities; the literal command ID remains unchanged."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "Only the exact isolated cwd varies in the system prompt sections; retain every other byte."
+
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain presence, numeric/string type and valid syntax."
+
+[[assert.json_aliases]]
+paths = ["/**/wall_time_seconds", "/**/durationMs"]
+kind = "duration"
+reason = "Pi measures each response and tool execution (#10549) with a monotonic clock, and bash.ts:392 rounds the command's wall clock to 0.1 s, so a loaded host reports 0 or 0.1 for the same command; the values vary per run. Retain presence, type, position and Pi's one-decimal number spelling."

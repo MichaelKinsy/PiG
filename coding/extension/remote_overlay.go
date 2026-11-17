@@ -164,6 +164,17 @@ type RemoteOverlayHandle interface {
 	Close(result any)
 }
 
+// RemoteOverlayRetirer is an optional [RemoteOverlayHandle] that can be taken off the screen without ending the call that opened it. Pi's reload removes the
+// extension overlays "the same way done() does, but leave the promises pending" (interactive-mode.ts:2592-2598 resetExtensionUI): the command that awaits ui.custom
+// stays awaiting. The host calls Retire on the overlays of a generation a reload replaced or removed while its process lives on; a handle that is not a retirer
+// stays as it is until the call ends or the extension's connection does. Safe to call from any goroutine, and more than once.
+//
+// pig-specific: no upstream equivalent.
+type RemoteOverlayRetirer interface {
+	RemoteOverlayHandle
+	Retire()
+}
+
 // RemoteOverlayHost is the callback surface the bridge provides so the
 // overlay can forward user input back to the remote producer.
 //

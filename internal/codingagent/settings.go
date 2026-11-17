@@ -3652,12 +3652,10 @@ func (sm *SettingsManager) SetProjectThemePaths(paths []string) error {
 // GlobalSettingsPath returns the global settings file path, or empty for memory storage.
 func (sm *SettingsManager) GlobalSettingsPath() string { return sm.GlobalPath() }
 
-// loadSettingsFile reads a settings file as Pi's tryLoadFromStorage does, returning the settings and the object Pi holds for them (settingsFileObject).
+// loadSettingsFile reads a settings file as Pi's tryLoadFromStorage does, returning the settings and the object Pi holds for them (settingsFileObject). FileSettingsStorage.withLock tests existsSync(path) (settings-manager.ts:231), which is false for every stat error: a file that cannot be reached because a parent is a regular file or cannot be searched is no settings file, not a load error.
 func loadSettingsFile(path string) (result Settings, object *orderedjson.Object, err error) {
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+	if !pathExists(path) {
 		return Settings{}, orderedjson.New(), nil
-	} else if err != nil {
-		return Settings{}, orderedjson.New(), err
 	}
 	release, err := acquireSyncLockWithRetry(path)
 	if err != nil {

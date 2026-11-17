@@ -21,7 +21,7 @@ pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
 [assert]
 exit_code = 0
 runs = 3
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 both_contain = ['"widgetKey":"lines"', '"widgetLines":["string-widget-line"]', '"widgetKey":"factory"', '"id":"w","type":"response","command":"prompt","success":true']
 both_not_contain = ['factory-ran', 'FACTORY-FRAME', '"success":false', 'extension_error']

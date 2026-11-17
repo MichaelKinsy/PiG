@@ -25,5 +25,5 @@ timeout_seconds = 60
 [assert]
 exit_code = 0
 output_equal = true
-both_contain = ['["explicit-none",[{"text":"system"}],[{"content":[{"text":"hello"}],"role":"user"}]]', '"ttl":"1h"', '"environment-none"', '"scoped-force-on"', '"scoped-force-off"', '"scoped-force-nova"']
+both_contain = ['["explicit-none",[{"text":"system"}],[{"role":"user","content":[{"text":"hello"}]}]]', '"ttl":"1h"', '"environment-none"', '"scoped-force-on"', '"scoped-force-off"', '"scoped-force-nova"']
 runs = 3

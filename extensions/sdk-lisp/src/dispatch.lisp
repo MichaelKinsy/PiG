@@ -294,24 +294,96 @@
                         "_pigPromptOptions" options
                         "_pigPromptResult" result)
                    error-message)))
+        ;; Pi hands every before_provider_request handler the one payload and sends what the runner returns: a handler that edits it in place and returns nothing changes the request (runner.ts emitBeforeProviderRequest returns currentPayload), even when it fails afterwards. The host cannot share the table, so a handler that returned no result sends the payload it left when its JSON text differs from the one it received.
+        ((equal event "before_provider_request")
+         (let* ((payload (jget data "payload"))
+                (before (and (or (hash-table-p payload) (and (vectorp payload) (not (stringp payload)))) (to-json payload)))
+                result error-message)
+           (handler-case
+               (progn (ticket-begin (request-ticket (ctx-request ctx)))
+                      (setf result (funcall handler ctx data)))
+             (serious-condition (c) (setf error-message (condition-message c))))
+           (when (and before (null result))
+             (handler-case (unless (equal (to-json payload) before) (setf result payload))
+               (serious-condition (c) (unless error-message (setf error-message (condition-message c))))))
+           (values result error-message)))
+        ;; Pi's before_provider_headers handlers mutate event.headers in place and the return value is ignored (runner.ts emitBeforeProviderHeaders): the reply is the headers table the handler left, even when it failed.
+        ((equal event "before_provider_headers")
+         (let ((headers (jget data "headers")) error-message)
+           (handler-case
+               (progn (ticket-begin (request-ticket (ctx-request ctx)))
+                      (funcall handler ctx data))
+             (serious-condition (c) (setf error-message (condition-message c))))
+           (values (if (hash-table-p headers) headers (obj)) error-message)))
+        ;; Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it fails afterwards. The host cannot share the table, so the reply carries the message the handler left when its JSON text differs from the one it received, and the handler's result.
+        ((equal event "message_end")
+         (let* ((message (jget data "message"))
+                (before (and (hash-table-p message) (to-json message)))
+                result error-message)
+           (handler-case
+               (progn (ticket-begin (request-ticket (ctx-request ctx)))
+                      (setf result (funcall handler ctx data)))
+             (serious-condition (c) (setf error-message (condition-message c))))
+           (let ((reply (obj "_pigMessageEndResult" result)))
+             (when before
+               (handler-case (unless (equal (to-json message) before) (setf (gethash "_pigMessageEndMessage" reply) message))
+                 (serious-condition (c) (unless error-message (setf error-message (condition-message c))))))
+             (values reply error-message))))
+        ;; Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the table, so the reply names the members the handler left different from the ones it received (JSON text), with their new values, and, of those, the ones it edited in the very object it received (EQ) instead of replacing; it carries them also when the handler failed.
+        ((equal event "tool_result")
+         (let* ((names '("content" "details" "isError" "structuredContent" "usage"))
+                (received (loop for name in names
+                                collect (multiple-value-bind (value present) (gethash name data)
+                                          (list name present value (and present (to-json value))))))
+                result error-message)
+           (handler-case
+               (progn (ticket-begin (request-ticket (ctx-request ctx)))
+                      (setf result (funcall handler ctx data)))
+             (serious-condition (c) (setf error-message (condition-message c))))
+           (let ((reply (obj "_pigToolResultResult" result))
+                 (members (obj))
+                 changed shared)
+             (handler-case
+                 (dolist (entry received)
+                   (destructuring-bind (name was-present was was-json) entry
+                     (multiple-value-bind (now now-present) (gethash name data)
+                       (when (or (not (eq (and was-present t) (and now-present t)))
+                                 (and now-present (not (equal (to-json now) was-json))))
+                         (push name changed)
+                         (when now-present
+                           (setf (gethash name members) now)
+                           (when (and was-present (eq now was) (or (hash-table-p now) (and (vectorp now) (not (stringp now)))))
+                             (push name shared)))))))
+               (serious-condition (c) (unless error-message (setf error-message (condition-message c)))))
+             (when changed
+               (setf (gethash "_pigToolResultEdits" reply)
+                     (obj "members" members "changed" (coerce (nreverse changed) 'vector) "shared" (coerce (nreverse shared) 'vector))))
+             (values reply error-message))))
         (t
          (let* ((messages (jget data "messages"))
                 (context-event (member event '("context" "context_with_system") :test #'equal))
                 (snapshot (and context-event (vectorp messages) (not (stringp messages)) (coerce messages 'list)))
                 (encoded-before (and snapshot (messages-encoding messages))))
            (ticket-begin (request-ticket (ctx-request ctx)))
-           (let ((result (funcall handler ctx data)))
-             (when (equal event "user_bash")
-               (setf result (or (user-bash-operations-reply result) (user-bash-event-result result))))
-             (when (and context-event snapshot)
-               (let* ((returned (let ((r (and (hash-table-p result) (jget result "messages")))) (or r messages)))
-                      (unchanged (and (vectorp returned) (= (length returned) (length snapshot))
-                                      (every #'eq (coerce returned 'list) snapshot))))
-                 (setf result
-                       (if (and unchanged encoded-before (equal (messages-encoding returned) encoded-before))
-                           (obj "_pigContextUnchanged" t)
-                           (obj "messages" returned "_pigContextUnchanged" (if unchanged t :false))))))
-             (values result nil))))))))
+          ;; Pi hands a context handler a filtered copy of the list over the one set of message objects (runner.ts emitContext): an edit to a message stays after a throw and a change to the list does not, so the reply of a failed handler carries the messages it was handed, as it left them.
+          (let* ((failure nil)
+                 (result (handler-case (funcall handler ctx data)
+                           (serious-condition (c)
+                             (if (and (equal event "context") snapshot) (progn (setf failure c) nil) (error c))))))
+            (if failure
+                (values (obj "messages" (coerce snapshot 'vector) "_pigContextUnchanged" t) (condition-message failure))
+                (progn
+                  (when (equal event "user_bash")
+                    (setf result (or (user-bash-operations-reply result) (user-bash-event-result result))))
+                  (when (and context-event snapshot)
+                    (let* ((returned (let ((r (and (hash-table-p result) (jget result "messages")))) (or r messages)))
+                           (unchanged (and (vectorp returned) (= (length returned) (length snapshot))
+                                           (every #'eq (coerce returned 'list) snapshot))))
+                      (setf result
+                            (if (and unchanged encoded-before (equal (messages-encoding returned) encoded-before))
+                                (obj "_pigContextUnchanged" t)
+                                (obj "messages" returned "_pigContextUnchanged" (if unchanged t :false))))))
+                  (values result nil))))))))))
 
 (defvar *child-tool-handler* nil
   "(lambda (ext session-id name)) -> the handler of a custom tool of a child session (child-session.lisp), or NIL.")

@@ -60,6 +60,9 @@ type fleetOptions struct {
 	store store.Store
 	// onError is called with each error of the component as it is reported (also collected in `errors`).
 	onError func(err WorkersError)
+	// onOutput, when set, is told each chunk of a worker's output before the fleet collects it, on the goroutine that reads the
+	// stream; the fleet collects the chunk only when it returns true.
+	onOutput func(stream string, chunk []byte) (collect bool)
 }
 
 // collector collects values from callbacks on other goroutines.
@@ -190,6 +193,9 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 		IdleMs:  func() time.Duration { return time.Duration(idle) * time.Millisecond },
 		Plugins: f.plugins,
 		OnOutput: func(address contracts.Address, stream string, chunk []byte) {
+			if options.onOutput != nil && !options.onOutput(stream, chunk) {
+				return
+			}
 			if stream == "stdout" {
 				f.output.add(address.Key + " " + string(trimSpace(chunk)))
 			}

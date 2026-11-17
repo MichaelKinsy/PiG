@@ -56,7 +56,7 @@ pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "Export renderers p
 [assert]
 exit_code = 0
 runs = 3
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 both_contain = ["RENDERED {", "render_card#0", "render_self#1"]
 

@@ -1,0 +1,41 @@
+# Behavior family: providers-registry
+# Surface: the tools of a Mistral chat request (mistral-conversations) as each binary sends them when the model sets compat.supportsStrictMode: a tool that
+# prefers strict sampling goes out strict.
+#
+# Upstream evidence (Pi 2c2a77f9f3ab, #12148; packages/ai/src/api/mistral-conversations.ts): with compat.supportsStrictMode true toFunctionTools resolves a
+# "prefer" tool strict as before: strict true and the strict schema (additionalProperties false, every property required, optional ones nullable).
+# 25-print-mistral-tools-non-strict-by-default is the same request without the flag.
+# The oracle is the pinned Pi plus the post-release backports (automation/gen/pi-post-release-backports.mjs), 2c2a77f9f3ab among them.
+#
+# How the request is seen: both binaries talk to the runner's local provider fixture (provider_fixture, test/parity/README.md); `ECHO_REQUEST /tools` makes the
+# fixture answer with the tools array it received, members in the order received, and output_equal compares the whole array. No normalization.
+# provider_fixture_compat = { supportsStrictMode = true } puts the flag on the fixture's model in models.json, the compat of a Mistral-compatible custom provider.
+# `--tools typed_tool,closed_tool,read` as in 25-print-mistral-tools-non-strict-by-default.
+# Mutation: with the flag read as always false (ai/mistral.go), pig sends typed_tool and read with strict false and their authored schema, and output_equal fails.
+name = "26-print-mistral-tools-strict-with-compat"
+description = "A Mistral model with compat.supportsStrictMode receives its tools strict, as pi sends them"
+covers = ["packages/ai/src/api/mistral-conversations.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+provider_fixture = "mistral-conversations"
+model = "strict-wire/strict"
+provider_fixture_compat = { supportsStrictMode = true }
+
+[print]
+prompt = "ECHO_REQUEST /tools"
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent"]
+pig_extensions = ["testdata/request-echo-tools.mjs"]
+pi_extensions = ["testdata/request-echo-tools.mjs"]
+pig_args = ["--offline", "--no-extensions", "--tools", "typed_tool,closed_tool,read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_args = ["--offline", "--no-extensions", "--tools", "typed_tool,closed_tool,read", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 0
+both_contain = ['"name":"typed_tool"', '"additionalProperties":false},"strict":true']
+output_equal = true
+stderr_equal = true
+runs = 3

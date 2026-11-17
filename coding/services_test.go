@@ -3,8 +3,6 @@ package coding
 import (
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -99,24 +97,19 @@ func TestServicesAreImmutableAfterConstruction(t *testing.T) {
 	}
 }
 
-func TestNewServicesReturnsErrorOnUnusableAuthDir(t *testing.T) {
+// agent-session-services.ts:140-147 builds the model runtime and the settings manager without making the agent directory: createAgentSessionServices resolves for a directory that cannot be made (the first write reports it), where PiG used to fail with its own "open auth storage" error.
+func TestNewServicesOpensWhereTheAgentDirCannotBeMade(t *testing.T) {
 	withTempHome(t)
-	// Point AgentDir at something that can't be created (a path under
-	// a regular file). On Linux/macOS, mkdirall fails with ENOTDIR.
 	tmp := t.TempDir()
 	notADir := filepath.Join(tmp, "blocker")
 	if err := os.WriteFile(notADir, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	bad := filepath.Join(notADir, "agent")
-	_, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{AgentDir: bad})
-	if err == nil {
-		t.Fatal("expected error for unwritable AgentDir")
+	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{AgentDir: filepath.Join(notADir, "agent")})
+	if err != nil {
+		t.Fatalf("CreateAgentSessionServices under a regular file = %v, want services", err)
 	}
-	if !strings.Contains(err.Error(), "auth storage") {
-		t.Errorf("error should mention auth storage; got: %v", err)
-	}
-	_ = runtime.GOOS // pacify import on platforms where this test is fine
+	services.Close()
 }
 
 func TestServicesSettingsReflectsProjectOverlay(t *testing.T) {

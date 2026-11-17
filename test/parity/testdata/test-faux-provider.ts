@@ -651,9 +651,8 @@ function streamTestFaux(model: any, context: any, options: any) {
       for (const [index, call] of (plan as any).toolCalls.entries()) {
         const toolCall = { type: "toolCall", id: `call_test_faux_${firstID + BigInt(index)}`, name: call.toolName, arguments: call.toolArgs };
         output.content.push(toolCall);
-        // Go's fixture serializes argument maps in sorted key order. Keep the actual delta string identical, including nested object keys.
-        const sorted = (value: any): any => Array.isArray(value) ? value.map(sorted) : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map(key => [key, sorted(value[key])])) : value;
-        const json = JSON.stringify(sorted(call.toolArgs));
+        // The delta is the arguments as the fixture wrote them, in the fixture's member order; PiG's fixture (ai/test_faux.go) writes the same text.
+        const json = JSON.stringify(call.toolArgs);
         stream.push({ type: "toolcall_start", contentIndex: index, partial: output });
         stream.push({ type: "toolcall_delta", contentIndex: index, delta: json, partial: output });
         stream.push({ type: "toolcall_end", contentIndex: index, toolCall, partial: output });

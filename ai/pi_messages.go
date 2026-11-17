@@ -267,6 +267,9 @@ func resolvePiMessagesCacheRetention(cacheRetention CacheRetention, env Provider
 	return ""
 }
 
+// piMessagesPayloadOrder is the member order of the payload Pi's stream creates (pi-messages.ts:393-403): the model, the context, the options.
+var piMessagesPayloadOrder = &HookObjectOrder{Keys: []string{"model", "context", "options"}}
+
 func (p *piMessagesProvider) payload(transcript TranscriptContext, opts StreamOptions) ([]byte, error) {
 	options := piMessagesPayloadOptions{
 		CacheRetention: resolvePiMessagesCacheRetention(opts.CacheRetention, opts.Env),
@@ -282,17 +285,18 @@ func (p *piMessagesProvider) payload(transcript TranscriptContext, opts StreamOp
 	if opts.Thinking != "" {
 		options.Reasoning = string(ModelThinkingLevel(opts.Thinking))
 	}
-	var payload any = map[string]any{
+	parameters := map[string]any{
 		"model":   p.cfg.Model,
 		"context": map[string]any{"messages": transcript.borrowed()},
 		"options": options,
 	}
+	var payload any = parameters
 	if opts.OnPayload != nil {
 		model := p.cfg.ModelMetadata
 		if model == nil {
 			model = &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: APIPiMessages, BaseURL: p.cfg.BaseURL}}
 		}
-		next, err := opts.OnPayload(payload, model)
+		next, err := callPayloadHook(opts.OnPayload, parameters, piMessagesPayloadOrder, model)
 		if err != nil {
 			return nil, err
 		}

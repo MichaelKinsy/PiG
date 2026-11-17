@@ -90,7 +90,7 @@ func probe(responses bool, test probeCase) error {
 	if responses {
 		provider = ai.NewOpenAIResponsesProvider(ai.OpenAIResponsesConfig{Model: "gpt-5-mini", ProviderID: "openai", APIKey: "test-key", BaseURL: server.URL + test.Path, Compat: test.Compat, ExtraHeaders: test.ModelHeaders, IsReasoning: true})
 		options.ToolChoice = "required"
-		request.Tools = []ai.ToolSchema{{Name: "ping", Description: "Ping", Parameters: ai.JsonObject{"type": "object", "properties": ai.JsonObject{"value": ai.JsonObject{"type": "string"}}, "required": []string{"value"}}}}
+		request.Tools = []ai.ToolSchema{toolFromJSON(`{"name":"ping","description":"Ping","parameters":{"type":"object","properties":{"value":{"type":"string"}},"required":["value"]}}`)}
 	} else {
 		provider = ai.NewOpenAIProvider(ai.OpenAIConfig{Model: "gpt-4o-mini", ProviderID: "openai", APIKey: "test-key", BaseURL: server.URL + test.Path, Compat: test.Compat, ExtraHeaders: test.ModelHeaders})
 	}
@@ -103,4 +103,13 @@ func probe(responses bool, test probeCase) error {
 		return fmt.Errorf("result=%+v", result)
 	}
 	return json.NewEncoder(os.Stdout).Encode(<-requests)
+}
+
+// toolFromJSON declares a tool as JSON text, the way an extension or an MCP server hands pig its schema: ai.ToolSchema keeps that member order, where a Go map carries none and is sent sorted. Pi's probe holds the same members in a literal.
+func toolFromJSON(text string) ai.ToolSchema {
+	var tool ai.ToolSchema
+	if err := json.Unmarshal([]byte(text), &tool); err != nil {
+		panic(err)
+	}
+	return tool
 }

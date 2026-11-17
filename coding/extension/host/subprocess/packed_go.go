@@ -45,6 +45,10 @@ type packedProcessState struct {
 	generation int
 	stopping   atomic.Bool
 	stopOnce   sync.Once
+	// holdMu guards holds and stopDeferred: the lingering members that keep the process (holdForLinger) and whether a stop waits for them.
+	holdMu       sync.Mutex
+	holds        int
+	stopDeferred bool
 	// released closes once stop has run. The watcher of a state whose process another state, or a reference parked for the next Host, still
 	// holds ends then: a reload keeps the process of an unchanged cell and admits a new state to it, and the process's end concerns that state.
 	released chan struct{}
@@ -200,7 +204,52 @@ func (p *packedProcessState) spawner() *packedProcessState {
 	return p
 }
 
+// holdForLinger makes p's process outlive the stop of the cell's other members until releaseHold: a removed member that still owns a provider keeps the cell's
+// process, which is its closure, while the members the reload replaced are stopped. It reports false when the process is already stopping.
+func (p *packedProcessState) holdForLinger() bool {
+	p.holdMu.Lock()
+	defer p.holdMu.Unlock()
+	if p.stopping.Load() {
+		return false
+	}
+	p.holds++
+	return true
+}
+
+// releaseHold gives back a holdForLinger. The stop the hold deferred runs with the last hold.
+func (p *packedProcessState) releaseHold() {
+	p.holdMu.Lock()
+	p.holds--
+	run := p.holds == 0 && p.stopDeferred
+	p.stopDeferred = false
+	p.holdMu.Unlock()
+	if run {
+		p.stop()
+	}
+}
+
+// heldByOthers reports whether a member other than me holds the process for lingering.
+func (p *packedProcessState) heldByOthers(me *managedExt) bool {
+	p.holdMu.Lock()
+	defer p.holdMu.Unlock()
+	return p.holds-btoi(me.lingerHold.Load()) > 0
+}
+
+// deferStop records a stop that a hold postpones and reports whether it did.
+func (p *packedProcessState) deferStop() bool {
+	p.holdMu.Lock()
+	defer p.holdMu.Unlock()
+	if p.holds == 0 {
+		return false
+	}
+	p.stopDeferred = true
+	return true
+}
+
 func (p *packedProcessState) stop() {
+	if p.deferStop() {
+		return
+	}
 	p.stopOnce.Do(func() {
 		p.stopping.Store(true)
 		// After the reference is released, so that the watcher reads whether the process survives this stop.
@@ -477,11 +526,10 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 		if desc.Name == "" {
 			return nil, nil, newLoadError(cell.Key, "resolve", "missing_name", fmt.Errorf("packed extension name is required"))
 		}
-		sockPath, err := h.sockPathFor(desc.Name)
+		sockPath, err := h.newSocketPath()
 		if err != nil {
 			return nil, nil, newLoadError(desc.Name, "spawn", "socket_dir_failed", fmt.Errorf("create socket dir: %w", err))
 		}
-		_ = os.Remove(sockPath)
 		ln, address, err := ListenExtension(sockPath, nodeRuntime)
 		if err != nil {
 			closePendingListeners(pendingExts)
@@ -728,6 +776,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 	h.watchedPacked[processState] = struct{}{}
 	h.mu.Unlock()
 	processState.stderrLog.hold()
+	h.runningWatchers.Add(1)
 	//portlint:allow golifetime the watcher closes processState.watcherDone when the process ends or, for a state released while its process runs on, when the state is released; Host.Shutdown waits on it for every process in h.watchedPacked whose process it ended
 	go h.watchPackedProcess(processState)
 	if acceptErr != nil {
@@ -947,6 +996,7 @@ func (h *Host) watchPackedProcess(process *packedProcessState) {
 		h.mu.Lock()
 		delete(h.watchedPacked, process)
 		h.mu.Unlock()
+		h.runningWatchers.Add(-1)
 		if process.watcherDone != nil {
 			close(process.watcherDone)
 		}

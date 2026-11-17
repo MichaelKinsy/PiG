@@ -139,6 +139,9 @@ type Runner struct {
 	// Go atomic equivalent under racing goroutines is sync.Once.
 	invalidateOnce sync.Once
 
+	// retired is set by Invalidate and InvalidateKeepingRuntime, and not by InvalidateForReload: a runner a reload invalidated that is still the Session's runner (the reload failed) is stale but not retired, and its emit methods keep delivering, as Pi's do (see assertEmitOpen).
+	retired atomic.Bool
+
 	// commandMu serializes command resolution and diagnostics. RPC clients may
 	// query command inventory while another goroutine invokes a command.
 	commandMu sync.Mutex
@@ -362,14 +365,18 @@ func (r *Runner) ExtensionCount() int { return len(r.extensions) }
 
 // ─── Stale lifecycle ──────────────────────────────────────────────────────
 
-// Invalidate marks the runner as stale. After this returns, IsStale()
+// Invalidate marks the runner stale and retires it. After this returns, IsStale()
 // reports true and assertActive() (via every API method that checks it)
-// returns a *StaleError matching ErrStaleContext. Emit and EmitBoundary still
+// returns a *StaleError matching ErrStaleContext, and the emit methods that
+// check assertEmitOpen return that error. Emit and EmitBoundary still
 // deliver events, as upstream emit and emitBoundary do; the ctx getters and
 // actions a handler uses report the stale runner.
 //
 // First-call-wins: subsequent Invalidate calls with different messages
 // are no-ops. This mirrors upstream runner.ts:461-466 (`if (!this.staleMessage)`).
+// A runner that InvalidateForReload made stale is still retired by a later
+// Invalidate or InvalidateKeepingRuntime (Close, dispose, the replace step of a
+// good reload): the message stays the first one.
 //
 // Pass message="" to use the upstream default; pass a custom message to
 // surface a specific reason in error reporting.
@@ -377,10 +384,17 @@ func (r *Runner) ExtensionCount() int { return len(r.extensions) }
 // upstream: runner.ts:461-466 (invalidate)
 func (r *Runner) Invalidate(message string) {
 	r.invalidate(message, true)
+	r.retired.Store(true)
 }
 
-// InvalidateKeepingRuntime marks the runner stale like Invalidate but leaves its ExtensionRuntime active, for a runner whose runtime was handed to its replacement (a reload rebuilds the runner over the host's registrations, which the replacement keeps using). Invalidating that runtime would make the replacement's every context report stale.
+// InvalidateKeepingRuntime marks the runner stale and retires it like Invalidate but leaves its ExtensionRuntime active, for a runner whose runtime was handed to its replacement (a reload rebuilds the runner over the host's registrations, which the replacement keeps using). Invalidating that runtime would make the replacement's every context report stale.
 func (r *Runner) InvalidateKeepingRuntime(message string) {
+	r.invalidate(message, false)
+	r.retired.Store(true)
+}
+
+// InvalidateForReload is the invalidation Pi's session.reload() makes right after session_shutdown (agent-session.ts:3825-3826), before the steps that can throw: the runner is stale and its runtime stays active, but it is not retired. A reload that fails leaves the Session on this runner, and Pi's emit methods never look at staleness (runner.ts:1135-1560), so its handlers keep receiving the Session's events while the ctx they read throws. A reload that succeeds replaces the runner and retires it with InvalidateKeepingRuntime or Invalidate.
+func (r *Runner) InvalidateForReload(message string) {
 	r.invalidate(message, false)
 }
 
@@ -783,6 +797,27 @@ func (r *Runner) assertActive() error {
 		return &StaleError{Message: err.Error()}
 	}
 	return nil
+}
+
+// assertEmitOpen is the entry check of the emit methods that carried assertActive before a failed reload had to keep the old instance in service. It fails only for a retired runner: one that Close, dispose or session replacement invalidated, or that a successful reload replaced. A runner that is only stale (InvalidateForReload, then the reload failed) delivers.
+//
+// Pi has no such check (runner.ts:1135-1560): after dispose() it clears the listeners and disconnects the agent (agent-session.ts:1477-1496), and after _buildRuntime nothing holds the old runner (agent-session.ts:3844), so no Pi path emits to a retired runner. The check guards pig's own goroutines against a late emit after Close or a replacement: it is not a Pi behaviour. The one production path that reaches it is a run in flight at Dispose: pig's Agent runs on its own goroutine, so Session.Dispose invalidates the runner and clears the listeners before it aborts the run, and a tool_call, tool_result, provider-request or message_end hook of that run can still call the retired runner. A tool_call or provider-request hook then fails that aborted call with the stale error and a message_end hook drops it; none reaches a listener (cleared), so the user sees nothing, as in Pi, whose handlers there run against a stale ctx and whose events no listener receives.
+func (r *Runner) assertEmitOpen() error {
+	if !r.retired.Load() {
+		return nil
+	}
+	return r.retiredError()
+}
+
+// retiredError builds the stale error of a retired runner. It is a separate function so the twelve emit methods that call assertEmitOpen carry a load and a call each, not the construction of the error.
+//
+//go:noinline
+func (r *Runner) retiredError() error {
+	message := extension.DefaultStaleRuntimeMessage
+	if msg := r.staleMessage.Load(); msg != nil {
+		message = *msg
+	}
+	return &StaleError{Message: message}
 }
 
 // Tools returns the tool definitions registered across all extensions,
@@ -1575,7 +1610,7 @@ func withBoundaryState(base extension.BoundaryBaseEvent, state extension.Boundar
 // It returns the first blocking result or the last non-blocking result.
 // Handler errors stop dispatch and return to the caller, as in upstream.
 func (r *Runner) EmitToolCall(ctx context.Context, event extension.ToolCallEvent) (*extension.ToolCallEventResult, error) {
-	if err := r.assertActive(); err != nil {
+	if err := r.assertEmitOpen(); err != nil {
 		return nil, err
 	}
 	if event == nil {
@@ -1636,14 +1671,14 @@ func (r *Runner) AwaitEventLoopTurns(ctx context.Context, event string) {
 // the original input). Returns the combined modification, or nil if no
 // handler modified anything.
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
+// Returns (nil, *StaleError) if the runner is retired (see assertEmitOpen).
 //
 // upstream: runner.ts:707-755 (emitToolResult)
 //
 // pig-specific: handler errors route via emitError (matches upstream's
 // explicit try/catch in this method, runner.ts:733-740).
 func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultEvent) (*extension.ToolResultEventResult, error) {
-	if err := r.assertActive(); err != nil {
+	if err := r.assertEmitOpen(); err != nil {
 		return nil, err
 	}
 	if event == nil {
@@ -1658,6 +1693,11 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 	// predecessors' values. The chained values are rebuilt into the event's
 	// own variant before each handler.
 	curContent, curDetails, curIsError, curUsage, curStructured := extractToolResultFields(event)
+	// caller is what the object the caller handed over holds: an edit a handler makes to that object (a block of the content, a member of the details) is in it, and a member a handler assigns another value is not (see [extension.ToolResultEdits]).
+	caller := toolResultMembers{curContent, curDetails, curIsError, curUsage, curStructured}
+	owns := toolResultOwns{content: true, details: true, structured: true, usage: true}
+	deep := false
+	var edits *extension.ToolResultEdits
 	modified := false
 
 	for _, snapshot := range snapshotEventHandlers(r.extensions, "tool_result") {
@@ -1666,11 +1706,21 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 			continue
 		}
 		for _, handler := range handlers {
-			event = withToolResultFields(event, curContent, curDetails, curIsError, curUsage, curStructured)
+			if edits == nil {
+				edits = new(extension.ToolResultEdits)
+			}
+			event = withToolResultFields(event, curContent, curDetails, curIsError, curUsage, curStructured, edits)
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if started != nil {
 				// The handler ran to its first await, which is when Pi starts the next call's hooks; a handler in an extension process reported it when its request was written.
 				started()
+			}
+			// upstream: runner.ts emitToolResult hands every handler the one currentEvent, so an edit a handler makes in place is what the next handler sees, even when the handler then throws. An extension process reports the members it left different from the ones it received.
+			if len(edits.Changed) > 0 {
+				cur := toolResultMembers{curContent, curDetails, curIsError, curUsage, curStructured}
+				deep = applyToolResultEdits(edits, &cur, &caller, &owns) || deep
+				curContent, curDetails, curIsError, curUsage, curStructured = cur.content, cur.details, cur.isError, cur.usage, cur.structured
+				*edits = extension.ToolResultEdits{}
 			}
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "tool_result", err)
@@ -1716,7 +1766,17 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 	}
 
 	if !modified {
-		return nil, nil
+		if !deep {
+			return nil, nil
+		}
+		// An edit made in place to the object the caller handed over is in the caller's result, which Pi's emit leaves it to read.
+		return &extension.ToolResultEventResult{
+			Content:           caller.content,
+			Details:           caller.details,
+			StructuredContent: caller.structured,
+			IsError:           &caller.isError,
+			Usage:             toolResultUsage(caller.usage),
+		}, nil
 	}
 	return &extension.ToolResultEventResult{
 		Content:           curContent,
@@ -1725,6 +1785,61 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 		IsError:           &curIsError,
 		Usage:             toolResultUsage(curUsage),
 	}, nil
+}
+
+// toolResultMembers are the members of a tool_result event a handler can change.
+type toolResultMembers struct {
+	content    []any
+	details    any
+	isError    bool
+	usage      any
+	structured json.RawMessage
+}
+
+// toolResultOwns says which members of the chain's current event are still the objects the caller handed over.
+type toolResultOwns struct{ content, details, structured, usage bool }
+
+// applyToolResultEdits writes the members a handler of an extension process left changed into cur, the chain's current event, and reports whether one of them is an edit to an object the caller handed over (which is then in caller too). A member the handler replaced with another object is no longer the caller's.
+func applyToolResultEdits(edits *extension.ToolResultEdits, cur, caller *toolResultMembers, owns *toolResultOwns) (deep bool) {
+	for _, name := range edits.Changed {
+		shared := slices.Contains(edits.Shared, name)
+		switch name {
+		case "content":
+			cur.content = edits.Members.Content
+			if shared && owns.content {
+				caller.content, deep = cur.content, true
+			} else {
+				owns.content = false
+			}
+		case "details":
+			cur.details = edits.Members.Details
+			if shared && owns.details {
+				caller.details, deep = cur.details, true
+			} else {
+				owns.details = false
+			}
+		case "isError":
+			cur.isError = edits.Members.IsError != nil && *edits.Members.IsError
+		case "structuredContent":
+			cur.structured = edits.Members.StructuredContent
+			if shared && owns.structured {
+				caller.structured, deep = cur.structured, true
+			} else {
+				owns.structured = false
+			}
+		case "usage":
+			cur.usage = nil
+			if edits.Members.Usage != nil {
+				cur.usage = edits.Members.Usage
+			}
+			if shared && owns.usage {
+				caller.usage, deep = cur.usage, true
+			} else {
+				owns.usage = false
+			}
+		}
+	}
+	return deep
 }
 
 // toolResultUsage is the chained usage as the typed override: the event carries the tool's own usage as a *ai.Usage or an
@@ -1754,14 +1869,14 @@ func toolResultUsage(usage any) *ai.Usage {
 //     Transform result with the final chained values.
 //   - Otherwise returns Continue.
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
+// Returns (nil, *StaleError) if the runner is retired (see assertEmitOpen).
 //
 // Handler errors are routed via emitError and the chain continues
 // (matches upstream's explicit try/catch at runner.ts:1004-1011).
 //
 // upstream: runner.ts:1196-1228 (emitInput)
 func (r *Runner) EmitInput(ctx context.Context, text string, images []extension.ImageContent, source extension.InputSource, streamingBehavior string) (extension.InputEventResult, error) {
-	if err := r.assertActive(); err != nil {
+	if err := r.assertEmitOpen(); err != nil {
 		return nil, err
 	}
 
@@ -1833,7 +1948,7 @@ func (r *Runner) EmitInput(ctx context.Context, text string, images []extension.
 // input. Pig preserves the concrete Go values while recursively copying their
 // pointers, interfaces, structs, slices, and maps.
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
+// Returns (nil, *StaleError) if the runner is retired (see assertEmitOpen).
 //
 // Handler errors route via emitError; chain continues.
 //
@@ -1930,7 +2045,7 @@ func (r *Runner) EmitContextTracked(ctx context.Context, messages []extension.Ag
 
 // emitContext is EmitContextTracked that also reports whether the returned list is the runner's own: it is not when every handler read its event only as JSON and none replied with a list, so there was nothing to copy and the list is messages itself.
 func (r *Runner) emitContext(ctx context.Context, messages []extension.AgentMessage) (out []extension.AgentMessage, replaced, owned bool, err error) {
-	if err := r.assertActive(); err != nil {
+	if err := r.assertEmitOpen(); err != nil {
 		return nil, false, false, err
 	}
 
@@ -1971,6 +2086,13 @@ func (r *Runner) emitContext(ctx context.Context, messages []extension.AgentMess
 			}
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "context", err)
+				// upstream: the handler's list is a filtered copy over the one set of message objects, so its edit to a message stays after a throw and its change to the list does not. An extension process reports the messages it was handed as it left them beside its error.
+				if raw, ok := handlerResult.(json.RawMessage); ok {
+					if typed, ok := coerceResult[*extension.ContextEventResult](raw); ok && len(typed.Messages) == len(snapshot) {
+						current, owned = typed.Messages, true
+						wire.Changed()
+					}
+				}
 				continue
 			}
 			var returned []extension.AgentMessage
@@ -2092,7 +2214,7 @@ func sameMessageIdentity(a, b reflect.Value) bool {
 //
 // upstream: runner.ts emitContext, context_with_system phase
 func (r *Runner) EmitContextWithSystem(ctx context.Context, messages []extension.AgentMessage) ([]extension.AgentMessage, error) {
-	if err := r.assertActive(); err != nil {
+	if err := r.assertEmitOpen(); err != nil {
 		return nil, err
 	}
 	dispatchCtx, wire := eventwire.WithDispatch(r.dispatchContext(ctx))
@@ -2150,7 +2272,7 @@ var errLeadingSystemRemoved = errors.New("Handler removed the leading system mes
 // new payload; subsequent handlers see the previous handler's output.
 // The runner returns the final chained payload.
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
+// Returns (nil, *StaleError) if the runner is retired (see assertEmitOpen).
 //
 // Handler errors route via emitError; chain continues.
 //
@@ -2160,7 +2282,7 @@ var errLeadingSystemRemoved = errors.New("Handler removed the leading system mes
 // `unknown` (provider-specific). Callers cast back to the concrete
 // provider request type after this returns.
 func (r *Runner) EmitBeforeProviderRequest(ctx context.Context, payload any) (any, error) {
-	if err := r.assertActive(); err != nil {
+	if err := r.assertEmitOpen(); err != nil {
 		return nil, err
 	}
 
@@ -2180,7 +2302,10 @@ func (r *Runner) EmitBeforeProviderRequest(ctx context.Context, payload any) (an
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "before_provider_request", err)
-				continue
+				// Upstream's catch keeps currentPayload as the handler left it: an in-place edit before a throw is in the request. An extension in another process reports the payload it left beside its error (raw JSON); a result a native handler returns beside its error is no result in Pi, where a throw returns nothing.
+				if _, edited := handlerResult.(json.RawMessage); !edited {
+					continue
+				}
 			}
 			// Upstream: `if (handlerResult !== undefined) currentPayload = handlerResult`.
 			// In Go, nil is the closest equivalent of undefined; a handler
@@ -2201,7 +2326,7 @@ func (r *Runner) EmitBeforeProviderRequest(ctx context.Context, payload any) (an
 //
 // upstream: runner.ts:1043-1080 (emitMessageEnd)
 func (r *Runner) EmitMessageEnd(ctx context.Context, event extension.MessageEndEvent) (*extension.AgentMessage, error) {
-	if err := r.assertActive(); err != nil {
+	if err := r.assertEmitOpen(); err != nil {
 		return nil, err
 	}
 	dispatchCtx := r.dispatchContext(ctx)
@@ -2245,13 +2370,15 @@ func (r *Runner) EmitMessageEnd(ctx context.Context, event extension.MessageEndE
 
 // EmitBeforeProviderHeaders lets every "before_provider_headers" handler
 // mutate the outgoing request headers in place; a nil value deletes a header.
-// A subprocess handler cannot share the map, so a returned header map
-// replaces the current headers instead. Handler errors are reported and the
+// What a handler returns is ignored, as in Pi. A handler in another process
+// cannot share the map, so its reply carries the headers it left (raw JSON,
+// also beside its error) and they replace the current headers; the result a
+// native handler returns is no result. Handler errors are reported and the
 // chain continues.
 //
-// upstream: runner.ts:1284-1310 (emitBeforeProviderHeaders)
+// upstream: runner.ts:1399-1425 (emitBeforeProviderHeaders)
 func (r *Runner) EmitBeforeProviderHeaders(ctx context.Context, headers extension.ProviderHeaders) (extension.ProviderHeaders, error) {
-	if err := r.assertActive(); err != nil {
+	if err := r.assertEmitOpen(); err != nil {
 		return nil, err
 	}
 	if headers == nil {
@@ -2265,9 +2392,9 @@ func (r *Runner) EmitBeforeProviderHeaders(ctx context.Context, headers extensio
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, "before_provider_headers", err)
-				continue
 			}
-			if handlerResult == nil {
+			// Upstream's catch keeps the headers as the handler left them: an in-place edit before a throw is in the request. Only an extension in another process reports them (raw JSON).
+			if _, left := handlerResult.(json.RawMessage); !left {
 				continue
 			}
 			replacement, ok := coerceResult[extension.ProviderHeaders](handlerResult)
@@ -2291,11 +2418,11 @@ func (r *Runner) EmitBeforeProviderHeaders(ctx context.Context, headers extensio
 // result object, is reported through emitError and returned, so callers fail
 // closed instead of running the command locally (upstream #9068).
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
+// Returns (nil, *StaleError) if the runner is retired (see assertEmitOpen).
 //
 // upstream: runner.ts emitUserBash, isUserBashEventResult
 func (r *Runner) EmitUserBash(ctx context.Context, event extension.UserBashEvent) (*extension.UserBashEventResult, error) {
-	if err := r.assertActive(); err != nil {
+	if err := r.assertEmitOpen(); err != nil {
 		return nil, err
 	}
 
@@ -2468,7 +2595,7 @@ func isUserBashNumber(value any) bool {
 // section and selectedTools edits reach later handlers and the result, and
 // they persist when the handler then fails.
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
+// Returns (nil, *StaleError) if the runner is retired (see assertEmitOpen).
 //
 // Handler errors route via emitError; chain continues.
 //
@@ -2479,7 +2606,7 @@ func (r *Runner) EmitBeforeAgentStart(
 	trigger extension.BeforeAgentStartTrigger,
 	systemPromptOptions extension.BuildSystemPromptOptions,
 ) (*extension.BeforeAgentStartCombinedResult, error) {
-	if err := r.assertActive(); err != nil {
+	if err := r.assertEmitOpen(); err != nil {
 		return nil, err
 	}
 
@@ -2640,7 +2767,7 @@ func clonePromptOptions(options extension.BuildSystemPromptOptions) *extension.B
 //
 // Returns the aggregated result with empty (non-nil) slices when no
 // handler returned any paths. Returns (nil, *StaleError) if the runner
-// has been invalidated.
+// is retired (see assertEmitOpen).
 //
 // Handler errors route via emitError; chain continues.
 //
@@ -2650,7 +2777,7 @@ func (r *Runner) EmitResourcesDiscover(
 	cwd string,
 	reason string,
 ) (*extension.ResourcesDiscoverAggregateResult, error) {
-	if err := r.assertActive(); err != nil {
+	if err := r.assertEmitOpen(); err != nil {
 		return nil, err
 	}
 
@@ -2739,9 +2866,9 @@ func extractToolResultFields(event extension.ToolResultEvent) (content []any, de
 // handler's replacement converts to them without loss; otherwise the event
 // continues as a CustomToolResultEvent with the same toolName carrying the
 // replacement exactly, as upstream assigns handlerResult.details as returned.
-func withToolResultFields(event extension.ToolResultEvent, content []any, details any, isError bool, usage any, structured json.RawMessage) extension.ToolResultEvent {
+func withToolResultFields(event extension.ToolResultEvent, content []any, details any, isError bool, usage any, structured json.RawMessage, edits *extension.ToolResultEdits) extension.ToolResultEvent {
 	base := func(b extension.ToolResultEventBase) extension.ToolResultEventBase {
-		b.Content, b.IsError, b.Usage, b.StructuredContent = content, isError, usage, structured
+		b.Content, b.IsError, b.Usage, b.StructuredContent, b.Edits = content, isError, usage, structured, edits
 		return b
 	}
 	generic := func(b extension.ToolResultEventBase, toolName string) extension.ToolResultEvent {

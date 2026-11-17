@@ -55,6 +55,8 @@ func (p *SendMessagePayload) UnmarshalJSON(data []byte) error {
 type SendMessageOptions struct {
 	TriggerTurn *bool     `json:"triggerTurn,omitempty"`
 	DeliverAs   DeliverAs `json:"deliverAs,omitempty"`
+	// AfterRun is SendUserMessageOptions.AfterRun for sendMessage (agent-session.ts:3544-3546).
+	AfterRun func(report func()) `json:"-"`
 }
 
 // SendUserMessageOptions mirrors the inline options object on
@@ -66,6 +68,9 @@ type SendMessageOptions struct {
 type SendUserMessageOptions struct {
 	DeliverAs             DeliverAs `json:"deliverAs,omitempty"`
 	ExpandPromptTemplates *bool     `json:"expandPromptTemplates,omitempty"`
+	// AfterRun, when set, takes the function that reports a failure of this send, and the caller makes it when the code that sent the message ends its run:
+	// Pi reports from a catch callback on the Promise sendUserMessage returns (agent-session.ts:3552-3555), a microtask after that run. Nil: reported at once.
+	AfterRun func(report func()) `json:"-"`
 }
 
 // ─── The fat API interface ───────────────────────────────────────────────

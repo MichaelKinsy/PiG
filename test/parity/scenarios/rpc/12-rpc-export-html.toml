@@ -27,7 +27,7 @@ pi_args = ["--model", "test-faux/faux-1", "--session", "sessions/source.jsonl", 
 
 [assert]
 exit_code = 0
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 runs = 3
 

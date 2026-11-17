@@ -70,6 +70,8 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 		ignoreInterrupt: m.ignoreSuspendInterrupt,
 		continued:       m.onSuspendContinue,
 		stop: func() {
+			// The stop for the suspend is its own transaction of the terminal: the writes of other goroutines wait behind it and run after it.
+			endStop := m.holdTerminalStop()
 			// pig additive (D91): a frontend session learns of the stop
 			// while PiG still reads its input, and keeps its frames.
 			if m.surface != nil {
@@ -79,16 +81,17 @@ func (m *InteractiveMode) suspendOperations() suspendOperations {
 				m.inputReader.pause()
 			}
 			if m.surface == nil {
-				m.tuiInst.Stop()
+				m.tuiInst.StopWithOptions(tui.StopOptions{ExitTerminal: true})
 			}
 			if m.rawRestore != nil {
 				m.rawRestore()
 				m.rawRestore = nil
 				m.rawDrain = nil
 			}
+			endStop()
 		},
 		start: func() error {
-			restore, drain, err := tui.EnterRawModeWithDrain()
+			restore, drain, err := m.startTerminal(m.altScreen != nil)
 			if err != nil {
 				m.exitIfDeadTerminal(err)
 				return err

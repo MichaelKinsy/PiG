@@ -23,7 +23,7 @@ func run() error {
 			var tools []ai.ToolSchema
 			if custom {
 				name, id, args = "query", "ctc_test", ai.JsonObject{"input": "hello"}
-				tools = []ai.ToolSchema{{Name: name, Parameters: ai.JsonObject{"type": "object", "properties": ai.JsonObject{"input": ai.JsonObject{"type": "string"}}, "required": []string{"input"}}, ConstrainedSampling: &ai.ConstrainedSamplingConfig{Type: "grammar", Variants: map[string]string{ai.GrammarFormatOpenAILark: "start: /[a-z]+/"}}}}
+				tools = []ai.ToolSchema{toolFromJSON(`{"name":"` + name + `","description":"","parameters":{"type":"object","properties":{"input":{"type":"string"}},"required":["input"]},"constrainedSampling":{"type":"grammar","variants":{"openai_lark":"start: /[a-z]+/"}}}`)}
 			}
 			provider := ai.NewOpenAIResponsesProvider(ai.OpenAIResponsesConfig{Model: target.model, ProviderID: target.provider, APIKey: "test", Compat: &ai.OpenAIResponsesCompat{SupportsOpenAIGrammarTools: new(true)}})
 			captured := errors.New("captured")
@@ -69,4 +69,13 @@ func run() error {
 		}
 	}
 	return nil
+}
+
+// toolFromJSON declares a tool as JSON text, the way an extension or an MCP server hands pig its schema: ai.ToolSchema keeps that member order, where a Go map carries none and is sent sorted. Pi's probe holds the same members in a literal.
+func toolFromJSON(text string) ai.ToolSchema {
+	var tool ai.ToolSchema
+	if err := json.Unmarshal([]byte(text), &tool); err != nil {
+		panic(err)
+	}
+	return tool
 }

@@ -45,7 +45,7 @@ both_not_contain = [
   '"id":"prompt","type":"response","command":"prompt","success":true',
   '"type":"agent_start"',
 ]
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 runs = 3
 

@@ -184,7 +184,7 @@ func (cliModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 	}
 	defer func() { _ = outputFile.Close() }()
 	var stderrFile *os.File
-	if sc.Assert.StderrEqual || sc.Assert.JSONOutputEqual {
+	if sc.Assert.StderrEqual || sc.Assert.jsonCompared() {
 		stderrFile, err = os.CreateTemp(tc.tempRoot, "stderr-*")
 		if err != nil {
 			return Result{Err: err}

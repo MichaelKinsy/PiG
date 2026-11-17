@@ -222,7 +222,8 @@ func resolveSDKModel(services *AgentSessionServices, manager *SessionManager, gi
 		return given, ""
 	}
 	runtime := services.ModelRuntime()
-	catalog := &sdkModelCatalog{models: runtime.RuntimeModels(), hasAuth: runtime.HasConfiguredAuth}
+	models := runtime.RuntimeModels()
+	catalog := &sdkModelCatalog{models: models, available: runtime.AvailableRuntimeModels(models), hasAuth: runtime.HasConfiguredAuth}
 	branch := manager.GetContextBranch()
 	existing := manager.BuildSessionContext()
 	hasExisting := len(existing.Messages) > 0
@@ -259,10 +260,11 @@ func resolveSDKModel(services *AgentSessionServices, manager *SessionManager, gi
 	return nil, icodingagent.FormatNoModelsAvailableMessage()
 }
 
-// sdkModelCatalog is the model-runtime surface findInitialModel reads: the composed models and per-provider configured auth.
+// sdkModelCatalog is the model-runtime surface findInitialModel reads: the composed models, the models the published availability lists (model-resolver.ts:598 getAvailableSnapshot), and per-provider configured auth.
 type sdkModelCatalog struct {
-	models  []icodingagent.RuntimeModel
-	hasAuth func(providerID string) bool
+	models    []icodingagent.RuntimeModel
+	available []icodingagent.RuntimeModel
+	hasAuth   func(providerID string) bool
 }
 
 func (c *sdkModelCatalog) GetModels(providerID string) []icodingagent.RuntimeModel {
@@ -281,9 +283,7 @@ func (c *sdkModelCatalog) GetModel(providerID, modelID string) *icodingagent.Run
 	return nil
 }
 
-func (c *sdkModelCatalog) GetAvailableSnapshot() []icodingagent.RuntimeModel {
-	return slices.DeleteFunc(slices.Clone(c.models), func(m icodingagent.RuntimeModel) bool { return !c.hasAuth(m.Provider) })
-}
+func (c *sdkModelCatalog) GetAvailableSnapshot() []icodingagent.RuntimeModel { return c.available }
 
 func thinkingLevelStrings(levels map[string]ai.ThinkingLevel) map[string]string {
 	out := make(map[string]string, len(levels))

@@ -493,6 +493,15 @@ func Extension() *sdk.Extension {
 		ctx.SetActiveTools(strings.Split(strings.TrimSpace(args), ","))
 		return nil
 	})
+	// host_error_probe makes the host fail navigateTree (a call Pi rejects) and reports what the extension sees: the error's text, then `|`, then its typed code ("-" where the SDK has none).
+	ext.Command("host_error_probe", "Report what a host error on navigateTree looks like to the extension", func(ctx sdk.Context, _ string) error {
+		text := "no error"
+		if _, err := ctx.NavigateTree("entry", nil); err != nil {
+			text = err.Error()
+		}
+		ctx.Notify("host_error:"+text+"|-", "info")
+		return nil
+	})
 	// session_actions_unbound drives the session actions of a command context the host never bound; Pi answers { cancelled: false } and a no-op reload (runner.ts:383-387).
 	ext.Command("session_actions_unbound", "Report what unbound session actions answer", func(ctx sdk.Context, _ string) error {
 		var parts []string
@@ -1824,6 +1833,68 @@ func Extension() *sdk.Extension {
 		return ctx.SendUserMessage(content, "followUp")
 	})
 
+	// send_user_message_delivery sends "delivery-<arg>" with the delivery the argument names: absent (no mode given), steer or followUp.
+	ext.Command("send_user_message_delivery", "Send a user message with the delivery named by the argument", func(ctx sdk.Context, args string) error {
+		deliverAs := args
+		if args == "absent" {
+			deliverAs = ""
+		}
+		return ctx.SendUserMessage("delivery-"+args, deliverAs)
+	})
+
+	// send_refusal_order makes the sends the argument names in one run of the handler, the one with no delivery (refused while the agent streams) among them,
+	// for TestSendRefusalReportedAfterSyncRunAcrossSDKs: first (refused, steer, followUp), between (refused, steer, refused), yielded (a yield, then first),
+	// throws (first, then the handler fails), blocked (first, then the handler blocks without yielding), detached (first from a goroutine after the handler
+	// returned) and detached_alone (the refused message alone, the same way).
+	ext.Command("send_refusal_order", "Send a refused user message and others in one run, as the argument names", func(ctx sdk.Context, args string) error {
+		sendFirst := func() error {
+			for _, send := range [][2]string{{"order-absent", ""}, {"order-steer", "steer"}, {"order-followUp", "followUp"}} {
+				if err := ctx.SendUserMessage(send[0], send[1]); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+		switch args {
+		case "first":
+			return sendFirst()
+		case "between":
+			for _, send := range [][2]string{{"order-absent", ""}, {"order-steer", "steer"}, {"order-absent-2", ""}} {
+				if err := ctx.SendUserMessage(send[0], send[1]); err != nil {
+					return err
+				}
+			}
+		case "yielded":
+			if err := ctx.Yield(); err != nil {
+				return err
+			}
+			return sendFirst()
+		case "throws":
+			if err := sendFirst(); err != nil {
+				return err
+			}
+			return errors.New("order-throws")
+		case "blocked":
+			if err := sendFirst(); err != nil {
+				return err
+			}
+			time.Sleep(30 * time.Second)
+		case "detached":
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				_ = sendFirst()
+			}()
+		case "detached_alone":
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				_ = ctx.SendUserMessage("order-absent", "")
+			}()
+		default:
+			return fmt.Errorf("send_refusal_order: unknown case %q", args)
+		}
+		return nil
+	})
+
 	ext.Command("send_user_message_expand", "Send a user message with expandPromptTemplates set to the argument", func(ctx sdk.Context, args string) error {
 		expand := args == "true"
 		return ctx.SendUserMessageWith("expand-user", sdk.SendUserMessageOptions{DeliverAs: "followUp", ExpandPromptTemplates: &expand})
@@ -2175,6 +2246,16 @@ func Extension() *sdk.Extension {
 				return nil, nil
 			}
 			eventProbeResults[name] = queued[1:]
+			// Pi ignores what a before_provider_headers handler returns and sends the headers object the handlers edited (runner.ts emitBeforeProviderHeaders), so the queued result becomes the headers by editing event.headers in place, as the Node fixture does.
+			if name == "before_provider_headers" {
+				headers, _ := data["headers"].(map[string]any)
+				replacement, _ := queued[0].(map[string]any)
+				for key := range headers {
+					delete(headers, key)
+				}
+				maps.Copy(headers, replacement)
+				return nil, nil
+			}
 			return queued[0], nil
 		})
 		eventProbeOn[name] = append(eventProbeOn[name], off)
@@ -2374,6 +2455,91 @@ func Extension() *sdk.Extension {
 				return map[string]any{"message": data["message"]}, nil
 			}
 			return nil, fmt.Errorf("event_echo_probe has no echo for %s", name)
+		})
+		return nil
+	})
+	// event_mutate_probe subscribes to the event named by the argument (`<event> [mode]`) with a handler that works on the event's payload (before_provider_request) or
+	// headers (before_provider_headers) as the mode says (TestConformance_InPlaceProviderHookEditsReachTheRequest, TestConformance_ProviderHookEditsAndResultsCombine):
+	// no mode edits it in place and returns nothing, fail edits it in place and fails after the edit, replace edits nothing and returns a replacement, both edits it in
+	// place under a key of its own and returns the replacement, delete (headers) sets the header the first edit wrote to null.
+	ext.Command("event_mutate_probe", "Subscribe to the event named by the argument with a handler that edits its payload or headers in place and returns nothing", func(ctx sdk.Context, args string) error {
+		name, mode, _ := strings.Cut(strings.TrimSpace(args), " ")
+		mode = strings.TrimSpace(mode)
+		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
+			key := "inPlace"
+			switch mode {
+			case "fail":
+				key = "inPlaceBeforeError"
+			case "both":
+				key = "inPlaceAlongside"
+			}
+			if name == "before_provider_headers" {
+				headers := data["headers"].(map[string]any)
+				switch mode {
+				case "replace":
+				case "delete":
+					headers["x-pig-inPlace"] = nil
+				default:
+					headers["x-pig-"+key] = "in-place-edit"
+				}
+				if mode == "replace" || mode == "both" {
+					return map[string]any{"x-pig-replaced": "returned"}, nil
+				}
+			} else {
+				payload := data["payload"].(map[string]any)
+				if mode != "replace" {
+					payload[key] = "in-place-edit"
+					if zeta, ok := payload["zeta"].(map[string]any); ok {
+						zeta[key] = "in-place-edit"
+					}
+				}
+				if mode == "replace" || mode == "both" {
+					return map[string]any{"replaced": "returned"}, nil
+				}
+			}
+			if mode == "fail" {
+				return nil, fmt.Errorf("failed after the edit")
+			}
+			return nil, nil
+		})
+		return nil
+	})
+	// event_edit_probe subscribes to the event named by the argument (`<event> <edit> [fail]`) with a handler that makes one edit of the event's content, details,
+	// isError, message or messages (tool_result, message_end, context), returns nothing and, with fail, fails after the edit
+	// (TestConformance_InPlaceEventEditsFollowPi). Every edit writes the value `other-event-edit`, which no other test uses.
+	ext.Command("event_edit_probe", "Subscribe to the event named by the argument with a handler that edits the event in place and returns nothing", func(ctx sdk.Context, args string) error {
+		words := strings.Fields(args)
+		name, edit, failing := words[0], words[1], len(words) > 2 && words[2] == "fail"
+		const edited = "other-event-edit"
+		text := func() []any { return []any{map[string]any{"type": "text", "text": edited}} }
+		first := func(blocks any) map[string]any { return blocks.([]any)[0].(map[string]any) }
+		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
+			switch name + "/" + edit {
+			case "tool_result/content-assign":
+				data["content"] = text()
+			case "tool_result/details-assign":
+				data["details"] = map[string]any{"k": edited}
+			case "tool_result/iserror-assign":
+				data["isError"] = true
+			case "tool_result/content-deep":
+				first(data["content"])["text"] = edited
+			case "tool_result/details-deep":
+				data["details"].(map[string]any)["k"] = edited
+			case "message_end/deep":
+				first(data["message"].(map[string]any)["content"])["text"] = edited
+			case "message_end/content-assign":
+				data["message"].(map[string]any)["content"] = text()
+			case "message_end/message-assign":
+				data["message"] = map[string]any{"role": "user", "content": text(), "timestamp": 1}
+			case "context/deep":
+				first(data["messages"].([]any)[0].(map[string]any)["content"])["text"] = edited
+			default:
+				return nil, fmt.Errorf("event_edit_probe has no edit %s", name+"/"+edit)
+			}
+			if failing {
+				return nil, fmt.Errorf("failed after the edit")
+			}
+			return nil, nil
 		})
 		return nil
 	})

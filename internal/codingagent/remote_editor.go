@@ -403,7 +403,7 @@ func (h *remoteEditor) EditorShortcut(data string) {
 // session_shutdown after stopping it) it writes straight to the terminal.
 func (h *remoteEditor) TerminalWrite(data string) {
 	if !h.m.remoteEditorEvents.post(h.m, func() { h.m.writeTerminal(data) }) {
-		tui.WriteToTerminal(os.Stdout, data)
+		h.m.writeDirectOutsideStop(data)
 	}
 }
 
@@ -425,14 +425,20 @@ func (h *remoteEditor) EditorClosed() {
 // writeTerminal writes raw output to the terminal between frames.
 func (m *InteractiveMode) writeTerminal(data string) {
 	if m.tuiStopped.Load() {
-		tui.WriteToTerminal(os.Stdout, data)
+		m.writeDirectOutsideStop(data)
 		return
 	}
 	if writer, ok := m.tuiInst.(interface{ WriteRaw(string) }); ok {
 		writer.WriteRaw(data)
 		return
 	}
-	tui.WriteToTerminal(os.Stdout, data)
+	m.writeDirectOutsideStop(data)
+}
+
+// writeDirectOutsideStop writes data straight to the process's terminal, where no renderer takes part: after the TUI stopped, or for a renderer that cannot write raw
+// output. The goroutine that calls it may be one that the exit's stop does not wait for, so the terminal's stop transaction orders the write (writeOutsideStop).
+func (m *InteractiveMode) writeDirectOutsideStop(data string) {
+	m.writeOutsideStop(func() { tui.WriteToTerminal(os.Stdout, data) })
 }
 
 // runOnMainOK runs fn on the owner loop and reports whether the loop took it.

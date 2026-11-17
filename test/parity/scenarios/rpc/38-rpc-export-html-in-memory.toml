@@ -34,6 +34,6 @@ exit_code = 0
 both_contain = [
   '{"id":"export","type":"response","command":"export_html","success":false,"error":"Cannot export in-memory session to HTML"}',
 ]
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 runs = 3

@@ -265,6 +265,7 @@ func TestModelPickerRefreshUpdatesSnapshotAndPreservesScope(t *testing.T) {
 				t.Fatal(err)
 			}
 			registry.RefreshCatalogs(t.Context(), CatalogRefreshOptions{})
+			settleModelTasks(registry)
 			synctest.Test(t, func(t *testing.T) {
 				blocked := &interactiveCatalogStore{InMemoryModelsStore: store, release: make(chan struct{}), started: make(chan context.Context, 4)}
 				registry.SetModelsStore(blocked)

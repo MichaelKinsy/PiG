@@ -121,7 +121,7 @@ type captureUse struct{ plain, escaped bool }
 // scenarioCaptureUse derives from the scenario's assertions which capture kinds are compared. The escaped capture is read by escaped_output_equal only. The plain capture is read by the output comparators, the contains and regex assertions (a divergence block's contains lists included), the JSON comparator and the changelog header check.
 func scenarioCaptureUse(sc *Scenario) captureUse {
 	a := sc.Assert
-	plain := a.OutputEqual || a.OutputNormalizedEqual || a.OutputLayoutEqual || a.JSONOutputEqual || a.ChangelogHeadersComplete ||
+	plain := a.OutputEqual || a.OutputNormalizedEqual || a.OutputLayoutEqual || a.jsonCompared() || a.ChangelogHeadersComplete ||
 		len(a.BothContain)+len(a.BothNotContain)+len(a.PigContains)+len(a.PigNotContain)+len(a.PiContains)+len(a.PiNotContain)+len(a.BothMatchRegex) > 0 ||
 		len(sc.Diverge.PigContains)+len(sc.Diverge.PiContains) > 0
 	return captureUse{plain: plain, escaped: a.EscapedOutputEqual}

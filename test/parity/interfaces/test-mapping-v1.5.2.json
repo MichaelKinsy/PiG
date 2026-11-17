@@ -1095,9 +1095,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:9e913e9c49c2a9a2d1cfd4dc8d137a154e005b9291d06489e52136b92e5db24e",
       "evidence": [
-        "ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization"
+        "ai/mistral_tool_schema_upstream_test.go#TestMistralToolSchemaSerialization",
+        "ai/mistral_tool_schema_upstream_test.go#TestMistralToolsAreNonStrictUnlessTheModelEnablesStrictMode"
       ],
-      "rationale": "The one case is ported over the Mistral provider with the same tool: a nested object schema with constrainedSampling json_schema strict require, a payload captured through OnPayload, a connection to 127.0.0.1:9 that fails, and the two assertions that the payload carries one tool with strict true and the nested schema and that the failure is not 'Input validation failed'. The assertions on Object.getOwnPropertySymbols cannot port: the TypeBox symbol keys they check come from Type.Object and a Go schema is a plain map with only string keys. A mutation that stops setting strict turned the case red."
+      "rationale": "The pinned file has one case, ported over the Mistral provider with the same tool: a nested object schema with constrainedSampling json_schema strict require, a payload captured through OnPayload, a connection to 127.0.0.1:9 that fails, and the two assertions that the payload carries one tool with strict true and the nested schema and that the failure is not 'Input validation failed'. The assertions on Object.getOwnPropertySymbols cannot port: the TypeBox symbol keys they check come from Type.Object and a Go schema is a plain map with only string keys. A mutation that stops setting strict turned the case red. Pi 2c2a77f9f3ab (#12148, past the pin; the hash is the pinned file's) sets compat supportsStrictMode on that case's model, which TestMistralToolSchemaSerialization does too, and adds the case 'does not send strict tools unless the model enables strict mode' (mistral-large-4, a strict 'prefer' tool, no compat: strict false and required [path]), ported as TestMistralToolsAreNonStrictUnlessTheModelEnablesStrictMode with the same input and expected results."
     },
     {
       "path": "packages/ai/test/model-catalog-types.test.ts",

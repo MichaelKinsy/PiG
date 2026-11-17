@@ -71,7 +71,9 @@ func (h *Host) observeXref(conn *Conn) {
 		h.xref.closed(conn)
 		h.loopTurns.closed(conn)
 		h.syncRuns.closed(conn)
+		h.syncReports.closed(conn)
 	}
+	conn.onRequestDone = func(requestID string) { h.syncReports.endRequest(conn, requestID) }
 }
 
 type busListener struct {
