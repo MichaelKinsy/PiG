@@ -122799,9 +122799,9 @@
         "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
@@ -122842,9 +122842,9 @@
         "call:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
@@ -122864,9 +122864,9 @@
         "call:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
@@ -123985,9 +123985,9 @@
         "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
@@ -124028,9 +124028,9 @@
         "call:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
@@ -124050,9 +124050,9 @@
         "call:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
