@@ -25,8 +25,10 @@ import (
 //	GOCACHEPROG  = this binary         a cache server (replaycacheserver.go): it answers a lookup from the private cache first and then
 //	                                   from the user's cache, read only, and stores what the go command puts into the private one
 //
-// so every entry the user's cache holds is still a hit, and nothing of it is linked, copied or touched: setting a replay up costs the
-// same for a cache of a megabyte and of a terabyte, and nothing the run leaves behind can pin a file of the user's cache.
+// so every entry the user's cache holds is still a hit, and the cache is never linked, cloned or written: setting a replay up costs the
+// same for a cache of a megabyte and of a terabyte, and nothing the run leaves behind can pin a file of the user's cache. A hit is
+// handed to the go command as a file of the private cache: the server copies that one verified output (adoptShared) on its first hit,
+// because the go command keeps reading it for the whole replay and an ordinary `go` cache trim may delete the user's file meanwhile.
 //
 // <dir> is a directory of the system's temporary directory that the run owns (replayDirPrefix + random). It carries an owner marker
 // (ownerFile: pid, the owner's start time, creation time). A run that is killed never reaches close(), so the first replay of every later
@@ -333,6 +335,7 @@ type cacheStats struct {
 	Misses   int // not in either, and so compiled
 	Rejected int // entries of the user's cache the server read but would not trust (malformed, wrong size or digest); they count as misses
 	Puts     int
+	Copied   int64 // bytes of the user's cache entries copied into the run's own cache (hits are copied, not served in place)
 }
 
 func (s *cacheStats) add(o cacheStats) {
@@ -340,6 +343,7 @@ func (s *cacheStats) add(o cacheStats) {
 	s.Misses += o.Misses
 	s.Rejected += o.Rejected
 	s.Puts += o.Puts
+	s.Copied += o.Copied
 }
 
 func (s cacheStats) String() string {
@@ -347,18 +351,21 @@ func (s cacheStats) String() string {
 	if s.Rejected > 0 {
 		out += " (" + strconv.Itoa(s.Rejected) + " user cache entries rejected)"
 	}
+	if s.Copied > 0 {
+		out += ", " + strconv.FormatInt(s.Copied>>10, 10) + " KiB copied from the user cache"
+	}
 	return out
 }
 
 // statsLine is one cache server's line of statsFile.
 func (s cacheStats) statsLine() string {
-	return fmt.Sprintf("%d %d %d %d\n", s.Hits, s.Misses, s.Rejected, s.Puts)
+	return fmt.Sprintf("%d %d %d %d %d\n", s.Hits, s.Misses, s.Rejected, s.Puts, s.Copied)
 }
 
 func parseStats(text string) (s cacheStats) {
 	for line := range strings.SplitSeq(text, "\n") {
 		var o cacheStats
-		if n, _ := fmt.Sscanf(line, "%d %d %d %d", &o.Hits, &o.Misses, &o.Rejected, &o.Puts); n == 4 {
+		if n, _ := fmt.Sscanf(line, "%d %d %d %d %d", &o.Hits, &o.Misses, &o.Rejected, &o.Puts, &o.Copied); n == 5 {
 			s.add(o)
 		}
 	}
