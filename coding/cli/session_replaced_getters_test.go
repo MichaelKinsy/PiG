@@ -13,10 +13,10 @@ const piStaleContextMessage = "This extension ctx is stale after session replace
 // (docs/parity/divergences/D30.md, group 4a audit). This test PINS today's behaviour per SDK so that it fails the day an SDK changes:
 //   - the state getters (Cwd, Mode, HasUI, Model, the theme, GetBranch, GetEntries) answer with Pi's stale message, as Pi's getters throw it:
 //     a Go or Rust getter that has no error result panics with it (the handler's error text), one with an error result returns it, Python raises it;
-//     the theme getters of Go (UITheme), Rust and Python are the exception and still answer with the outgoing session's theme;
-//   - the host calls follow D30 (b): Go and Rust return the error from the calls that have a result and discard it in Notify, SetStatus,
-//     SetActiveTools and Abort (and a []string SetWidget goes through the unchecked widget push); Python raises HostCallError from every host-call method
-//     except the same widget push; Node throws Pi's message from all of them;
+//     the theme getters (Go UITheme, Rust theme, Python theme) fail the same way (a Go or Rust one panics, Python raises);
+//   - the host calls follow D30 (b): Go and Rust return the error from the calls that have a result (SetWidget in both forms) and discard it in
+//     Notify, SetStatus, SetActiveTools and Abort, which have no error result; Python raises HostCallError from every host-call method;
+//     Node throws Pi's message from all of them;
 //   - nothing a stale ctx does reaches the replacement session (no tool change, no name, no entry, no message).
 //
 // A stale ctx belongs to the outgoing Session, so Pi's expectation for every row is the stale message (2860-replaced-session-context.test.ts:147-205).
@@ -40,23 +40,19 @@ func TestReplacedSessionCapturedContextAfterReplacementPerSDK(t *testing.T) {
 	}
 	callNames := []string{"notify", "setStatus", "setActiveTools", "abort", "sendUserMessage", "appendEntry", "setSessionName", "setWidgetLines"}
 	cases := []struct {
-		sdk, optionsCall string
-		getters, calls   []string
+		sdk            string
+		getters, calls []string
 	}{
 		{
-			sdk:         "node",
-			optionsCall: "setWidgetOptions",
-			getters:     getters([]string{"cwd", "hasUI", "model", "theme", "branch", "entries"}, func(string) string { return "throws:" + stale }),
+			sdk:     "node",
+			getters: getters([]string{"cwd", "hasUI", "model", "theme", "branch", "entries"}, func(string) string { return "throws:" + stale }),
 			calls: append(rows("call:", append(callNames, "setWidgetOptions"), func(string) string { return "throws:" + stale }),
 				"replacement:named=false customEntries=0 conversation="),
 		},
 		{
-			sdk:         "go",
-			optionsCall: "setWidgetOptions",
+			sdk: "go",
 			getters: getters([]string{"cwd", "mode", "hasUI", "model", "theme", "branch", "entries"}, func(name string) string {
 				switch name {
-				case "theme":
-					return "sdk.UITheme"
 				case "branch", "entries":
 					return "error:" + stale
 				}
@@ -64,35 +60,25 @@ func TestReplacedSessionCapturedContextAfterReplacementPerSDK(t *testing.T) {
 			}),
 			calls: append(rows("call:", append(callNames, "setWidgetOptions"), func(name string) string {
 				switch name {
-				case "notify", "setStatus", "setActiveTools", "abort", "setWidgetLines":
+				case "notify", "setStatus", "setActiveTools", "abort":
 					return "nil"
 				}
 				return "error:" + stale
 			}), "replacement:toolsChanged=false named=false customEntries=0 conversation="),
 		},
 		{
-			sdk:         "python",
-			optionsCall: "setWidgetOptions",
-			getters: getters([]string{"cwd", "mode", "hasUI", "model", "theme", "branch", "entries"}, func(name string) string {
-				if name == "theme" {
-					return "Theme"
-				}
+			sdk: "python",
+			getters: getters([]string{"cwd", "mode", "hasUI", "model", "theme", "branch", "entries"}, func(string) string {
 				return "raises:" + stale
 			}),
-			calls: append(rows("call:", append(callNames, "setWidgetOptions"), func(name string) string {
-				if name == "setWidgetLines" {
-					return "nil"
-				}
+			calls: append(rows("call:", append(callNames, "setWidgetOptions"), func(string) string {
 				return "raises:" + hostCall
 			}), "replacement:toolsChanged=false named=false customEntries=0 conversation="),
 		},
 		{
-			sdk:         "rust",
-			optionsCall: "setWidgetValue",
+			sdk: "rust",
 			getters: getters([]string{"cwd", "mode", "hasUI", "model", "theme", "branch", "entries"}, func(name string) string {
 				switch name {
-				case "theme":
-					return "Theme"
 				case "branch", "entries":
 					return "error:" + stale
 				}
@@ -100,7 +86,7 @@ func TestReplacedSessionCapturedContextAfterReplacementPerSDK(t *testing.T) {
 			}),
 			calls: append(rows("call:", append(callNames, "setWidgetValue"), func(name string) string {
 				switch name {
-				case "notify", "setStatus", "setActiveTools", "abort", "setWidgetLines":
+				case "notify", "setStatus", "setActiveTools", "abort":
 					return "nil"
 				}
 				return "error:" + stale
