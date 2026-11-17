@@ -141,25 +141,25 @@ func sweepLegacyClones(parent string, now time.Time) ([]string, error) {
 	return sweepDirs(parent, legacyClonePrefix, now)
 }
 
-// cleanReplayLeftovers is `portmapcheck -clean-replays`: both sweeps, run to the end. It reports what it removed, and returns every
-// directory it could not read or remove, so the command exits non-zero when a leftover is still there.
+// cleanReplayLeftovers is `portmapcheck -clean-replays`: both sweeps, run to the end. They are independent: the temporary directory is
+// swept whether or not the build cache can be found. It reports what it removed, and returns what failed (the lookup of the build
+// cache, and every directory it could not read or remove), so the command exits non-zero when a leftover may still be there.
 func cleanReplayLeftovers(w io.Writer) error {
-	cache, err := buildCacheDir()
-	if err != nil {
-		return err
-	}
 	now := time.Now()
 	removed, errs := sweepReplayDirs(os.TempDir(), now)
-	if cache != "" && cache != "off" {
-		legacy, lerr := sweepLegacyClones(filepath.Dir(cache), now)
-		removed, errs = append(removed, legacy...), errors.Join(errs, lerr)
+	cache, lerr := buildCacheDir()
+	if lerr != nil {
+		errs = errors.Join(errs, fmt.Errorf("cannot find the build cache, so the legacy clones beside it were not swept: %w", lerr))
+	} else if cache != "" && cache != "off" {
+		legacy, serr := sweepLegacyClones(filepath.Dir(cache), now)
+		removed, errs = append(removed, legacy...), errors.Join(errs, serr)
 	}
 	for _, d := range removed {
 		if _, err := fmt.Fprintln(w, "removed", d); err != nil {
 			return errors.Join(err, errs)
 		}
 	}
-	_, err = fmt.Fprintf(w, "portmap-check: %d leftover replay directories removed\n", len(removed))
+	_, err := fmt.Fprintf(w, "portmap-check: %d leftover replay directories removed\n", len(removed))
 	return errors.Join(err, errs)
 }
 
