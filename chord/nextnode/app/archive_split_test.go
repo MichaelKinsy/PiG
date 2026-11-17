@@ -37,7 +37,7 @@ func splitArchive(kitID, pluginID, writes string) string {
 func unpackSplit(t *testing.T, base string, entries ...[2]string) (string, error) {
 	t.Helper()
 	forged(t, filepath.Join(base, "in.tar"), append([][2]string{{"manifest.json", manifestText(t)}}, entries...)...)
-	staging, _, _, err := UnpackStaging(background, filepath.Join(base, "in.tar"), filepath.Join(base, "in"), func(ArchiveManifest) error { return nil }, ImportLimits{})
+	staging, _, err := UnpackStaging(background, filepath.Join(base, "in.tar"), filepath.Join(base, "in"), func(ArchiveManifest) error { return nil }, ImportLimits{})
 	return staging, err
 }
 
@@ -74,12 +74,17 @@ func TestUnpackStagingRefusesASplitArchiveWhoseHalvesWouldShareADocumentIdOrMisc
 	}
 }
 
-func TestUnpackStagingRefusesAKitStoreInTwoPlaces(t *testing.T) {
-	base := t.TempDir()
-	kitArchive := `{"kind":"manifest","format":1,"schema":3,"lastSeq":0,"nextId":2}` + "\n" + `{"kind":"end","writes":0}` + "\n"
-	_, err := unpackSplit(t, base, [2]string{"store.archive", splitArchive("2", "3", "8")}, [2]string{"kit.archive", kitArchive}, [2]string{"server.archive", emptyServerPart})
-	wantError(t, err, "in store.archive and in kit.archive")
-	if left := dirNames(t, filepath.Join(base, "in")); len(left) != 0 {
-		t.Fatalf("a refused import left %v", left)
+// The kit's store travels in `store.archive` only, as in Pi: PiG's former `kit.archive` and `kit-server.archive` are entries an address
+// archive does not have, refused with Pi's own words (`archive.ts:216`) and leaving nothing.
+func TestUnpackStagingRefusesTheFormerKitEntries(t *testing.T) {
+	for _, name := range []string{"kit.archive", "kit-server.archive"} {
+		t.Run(name, func(t *testing.T) {
+			base := t.TempDir()
+			_, err := unpackSplit(t, base, [2]string{"store.archive", splitArchive("2", "3", "8")}, [2]string{name, emptyServerPart}, [2]string{"server.archive", emptyServerPart})
+			wantError(t, err, "importData: the archive holds "+name+", which an address archive does not")
+			if left := dirNames(t, filepath.Join(base, "in")); len(left) != 0 {
+				t.Fatalf("a refused import left %v", left)
+			}
+		})
 	}
 }

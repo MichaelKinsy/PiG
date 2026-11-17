@@ -1,7 +1,6 @@
 package app
 
 import (
-	"context"
 	"errors"
 	"io"
 	"maps"
@@ -200,9 +199,9 @@ func sameDump(t *testing.T, what string, got, want map[string]string) {
 	}
 }
 
-// An archive PiG made is accepted by Pi's own `unpackStaging` and holds the same rows once Pi has imported it: one format, Pi's. Today
-// PiG writes the kit's store as `kit.archive` (and the Go host's server part as `kit-server.archive`), which Pi's `unpackEntries` refuses
-// (`node/app/archive.ts:216`: "the archive holds X, which an address archive does not").
+// An archive PiG made is accepted by Pi's own `unpackStaging` and holds the same rows once Pi has imported it: one format, Pi's. (PiG's
+// former `kit.archive` and `kit-server.archive` entries are refused by Pi's `unpackEntries`, `node/app/archive.ts:216`: "the archive
+// holds X, which an address archive does not".)
 func TestPisOwnUnpackStagingAcceptsAPiGArchive(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin}, projectOptions(t))
 	address := projectAddress("p1")
@@ -228,8 +227,8 @@ func TestPisOwnUnpackStagingAcceptsAPiGArchive(t *testing.T) {
 		t.Fatalf("Pi's unpackStaging refused the archive PiG made: %s", pi.Error)
 	}
 	sameRows(t, "in Pi's staging store", pi, describeHost(t, WorkerDirectory(s.dataDir, address)))
-	if !slices.Equal(pi.StagingEntries, []string{"files", "store.sqlite"}) {
-		t.Errorf("Pi's staging directory holds %v, want files and store.sqlite", pi.StagingEntries)
+	if !slices.Equal(pi.StagingEntries, []string{"files", "server.archive", "store.sqlite"}) {
+		t.Errorf("Pi's staging directory holds %v, want files, server.archive and store.sqlite", pi.StagingEntries)
 	}
 }
 
@@ -258,10 +257,22 @@ func TestPisOwnImportOfHostDataAcceptsAPiGArchivesServerPart(t *testing.T) {
 	}
 }
 
+// servingHost is the app's Go host serving more owners (Serves is what routes an archive's server part): the Go host row of goHostHolds
+// is an owner of the Go host, as an embedder's host-keyed facet would be.
+type servingHost struct {
+	host.Host
+	owners []string
+}
+
+func (h *servingHost) Serves(name string) bool {
+	return slices.Contains(h.owners, name) || h.Host.Serves(name)
+}
+
 // PiG -> PiG: an archive PiG made, imported by PiG as another address, leaves the worker's two stores and the server's records and rows
 // of the copy as the original's, table by table and document by document (everything but the allocator's ids and the seqs).
 func TestAPiGArchiveRoundTripsThroughPiGWithEverythingTheStoresHold(t *testing.T) {
 	s, meta, archive := piGProject(t, true)
+	s.app.Host = &servingHost{Host: s.app.Host, owners: []string{"test.go"}}
 	if err := s.app.ImportData(archive, projectAddress("p2"), background); err != nil {
 		t.Fatal(err)
 	}
@@ -330,18 +341,3 @@ func TestAPiGArchiveRoundTripsThroughPiBackIntoPiG(t *testing.T) {
 		t.Errorf("p2's meta = %q %v, want p1's", title, labels)
 	}
 }
-
-// partsOf is the typed parts of source as a part iterator.
-func partsOf(source store.PartSource) store.PartIterator { return typedParts{source} }
-
-type typedParts struct{ source store.PartSource }
-
-func (parts typedParts) Next(ctx context.Context) (store.ArchivePart, bool, error) {
-	part, ok, err := parts.source.Next(ctx)
-	if err != nil || !ok {
-		return nil, false, err
-	}
-	return part.(store.ArchivePart), true, nil
-}
-
-func (parts typedParts) Close() error { return parts.source.Close() }

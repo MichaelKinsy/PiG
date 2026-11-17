@@ -126,9 +126,9 @@ func (parts *filesParts) keeps(part store.ArchivePart) bool {
 	if _, isManifest := part.(*store.ManifestPart); isManifest {
 		return true
 	}
-	if created, isCreate := part.(*store.DocumentCreate); isCreate && ownedByKit(part, nil) {
+	if created, isCreate := part.(*store.DocumentCreate); isCreate && kitOwned.owns(part, nil) {
 		parts.documents[created.Record.ID] = struct{}{}
 		return true
 	}
-	return ownedByKit(part, parts.documents)
+	return kitOwned.owns(part, parts.documents)
 }
