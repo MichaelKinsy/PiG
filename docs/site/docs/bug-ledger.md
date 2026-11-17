@@ -751,6 +751,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5d04c3c](#bf-5d04c3c) | fix(chord): a CSS module's mapping is what Node's vm gives, as Pi's | PiG's own defect | All platforms | Unreleased |
 | [BF-5d36a58](#bf-5d36a58) | fix(agent): end the tool flow at custom user messages and hold system messages mid-flow | PiG's own defect | All platforms | Unreleased |
 | [BF-5d4c432](#bf-5d4c432) | A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-5d60aa5](#bf-5d60aa5) | A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with… | PiG's own defect | All platforms | Unreleased |
 | [BF-5d6bb25](#bf-5d6bb25) | The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5d8eda1](#bf-5d8eda1) | `pig auth check` and `pig auth print-api-key` no longer reject `--api-key` that another option takes as its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5dbfed1](#bf-5dbfed1) | A scripted faux response can carry `DurationMs` | PiG's own defect | All platforms | 0.5.0 |
@@ -12405,6 +12406,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5d4c43241b` (2026-11-02)
 - **Tests:** `ai/providers/bedrock/bedrock_tool_schema_order_test.go::TestBedrockToolConfigKeepsTheAuthoredSchemaOrder`, `ai/string_enum_test.go::TestStringEnumSharesTheCallersValues`, `ai/string_enum_test.go::TestStringEnumWritesTheMembersInPiOrder`, `ai/tool_schema_wire_order_test.go::TestToolSchemaKeepsAuthoredOrderInProviderRequests`, `internal/evals/evalsuites/audit_tool_test.go::TestSubmitAuditParametersKeepTheirAuthoredOrder`, `internal/evals/harness_run_test.go::TestRunPiCodingAgentCustomToolSchemaKeepsAuthoredOrderToTheModel`, `internal/evals/harness_run_test.go::TestRunPiCodingAgentServesCustomToolsThroughTheBridge`, `test/pipeline-diff/tool_schema_test.go::TestToolSchemaBytesMatchPi`
 - **Release note:** A tool schema built with `ai.StringEnum`, and the schemas of the eval harness's custom tools, reach every provider with their members in the order the author wrote them, as Pi sends them: `{"type":"string","enum":[...]}` and properties in declaration order, where PiG sorted them by name for the Anthropic, OpenAI (completions and responses), Azure, Mistral, Google and Bedrock requests. `ai.StringEnum` returns an ordered schema object and shares the caller's enum slice, as Pi does.
+
+### BF-5d60aa5
+
+**A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with `autocomplete provider is no longer available` when the install ran before the autocomplete rebuild that follows `session_start` (and on a later `/reload`).
+- **Root cause:** The host reports every autocomplete rebuild to the runtime that installed an editor as autocomplete.sync {operation: "changed", current}, as Pi's setupAutocompleteProvider calls setAutocompleteProvider on the installed editor. The Node runtime handled it; the Go, Rust, Python and Lisp SDKs looked the descriptor up as a provider id, answered an error, and the host turned that error into an uncaught exception that ended the session whenever the install ran before the rebuild that follows session_start.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5d60aa5d36` (2026-11-16, #497)
+- **Tests:** `internal/codingagent/autocomplete_installed_editor_test.go::TestInstalledSubprocessEditorHearsTheRebuildInEitherOrder`, `test/extension-conformance/autocomplete_changed_test.go::TestAutocompleteChangedReachesInstalledNativeEditor`, `test/parity/scenarios/autocomplete/14-custom-editor-installed-at-session-start.toml`
+- **Release note:** A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with `autocomplete provider is no longer available` when the install ran before the autocomplete rebuild that follows `session_start` (and on a later `/reload`). The host reports each rebuild to the editor's runtime, and those SDKs answered the notice with an error that the host raised as an uncaught exception; they now accept it, as the Node runtime always did.
 
 ### BF-5d6bb25
 
