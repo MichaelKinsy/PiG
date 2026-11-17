@@ -1,0 +1,6 @@
+{
+  "lastChangelogVersion": "99.0.0",
+  "theme": "dark",
+  "tuiMode": "regular",
+  "enabledModels": ["fixture/model-one", "fixture/model-two"]
+}

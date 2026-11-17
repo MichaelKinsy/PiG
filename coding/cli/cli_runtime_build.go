@@ -581,6 +581,21 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	return build, nil
 }
 
+// runtimeDiagnostics are the diagnostics of the construction this build serves, as Pi's createRuntime returns them (main.ts, #11973): the settings and extension diagnostics, then the model scope warnings, then the session option warnings and errors. The startup build and every replacement's build return them through the Runtime, which reports each once (TakeUnreportedDiagnostics). Call it after buildSession.
+func (build *cliBuild) runtimeDiagnostics() []codingagent.AgentSessionRuntimeDiagnostic {
+	diagnostics := slices.Concat(build.StartupDiagnostics, build.ExtensionDiagnostics)
+	for _, warning := range build.Selected.ScopeWarnings {
+		diagnostics = append(diagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: warning})
+	}
+	for _, warning := range build.Selected.Warnings {
+		diagnostics = append(diagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: warning})
+	}
+	for _, diagnosticErr := range build.Selected.Errors {
+		diagnostics = append(diagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "error", Message: diagnosticErr.Error()})
+	}
+	return codingagent.DeduplicateDiagnostics(diagnostics)
+}
+
 // buildSession resolves the model, skills, tools and system prompt against the build's resources, as Pi's createRuntime does before createAgentSessionFromServices.
 func (b *cliRuntimeBuilder) buildSession(ctx context.Context, build *cliBuild, in cliBuildInput) error {
 	flags := build.Flags

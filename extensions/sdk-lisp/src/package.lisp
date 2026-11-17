@@ -279,7 +279,7 @@
    #:session-runtime-options-session-manager #:session-runtime-options-session-start-event
    #:session-runtime-result #:make-session-runtime-result
    #:agent-session-runtime #:create-agent-session-runtime #:agent-session-runtime-session #:agent-session-runtime-services
-   #:agent-session-runtime-cwd #:agent-session-runtime-diagnostics #:agent-session-runtime-model-fallback-message
+   #:agent-session-runtime-cwd #:agent-session-runtime-diagnostics #:agent-session-runtime-take-unreported-diagnostics #:agent-session-runtime-model-fallback-message
    #:agent-session-runtime-set-rebind-session #:agent-session-runtime-set-before-session-invalidate
    #:agent-session-runtime-switch-session #:agent-session-runtime-new-session #:agent-session-runtime-fork
    #:agent-session-runtime-import-from-jsonl #:agent-session-runtime-dispose

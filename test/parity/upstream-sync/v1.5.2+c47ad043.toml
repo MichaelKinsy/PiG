@@ -1,0 +1,96 @@
+from = "1.5.2+ac78a606"
+to = "1.5.2+c47ad043"
+
+# The range ac78a6068b38..c47ad0432bb8: one commit, c47ad0432bb8 (2026-11-16, #12115, related to #11264 and #11973): fix(coding-agent): report diagnostics that appear on
+# session replacement. It starts where v1.5.2+ac78a606.toml ends: no gap, no overlap. All ten changed paths are under packages/coding-agent and are listed here.
+# What PiG did before this commit (measured on car24-head 297b8449d5 with the ported tests below: the RPC test finds the warning on stderr 0 times where one is wanted, and the runtime test does not build for want of the method):
+# the Go runtime kept the diagnostics of the construction it was built from (Runtime.Diagnostics, from the factory result) and the CLI read them once, at startup:
+# coding/cli/main.go passed them to the interactive mode's StartupDiagnostics and to the print and RPC startup reports. Nothing read them after a replacement: a
+# diagnostic that first appeared on /new, /resume, /fork, import or an RPC new_session, switch_session or fork (an enabledModels pattern that matches nothing added
+# between start and the replacement, a project extension that fails to load after /resume into another project, invalid settings of that project) was discarded in every
+# mode: no chat line, no stderr line, no event. The same code is in every tag that has the runtime (Runtime.Diagnostics and the startup-only reading, v0.5.1 and later),
+# so a fix of a fault of tagged releases: the changelog fragment says so.
+# The change in PiG: Runtime.TakeUnreportedDiagnostics (coding/runtime.go, the reported set in coding/runtime_replacement.go), codingagent.WriteDiagnosticsToStderr
+# (internal/codingagent/diagnostics_stderr.go, the one writer of main.ts's reportDiagnostics), InteractiveMode.showRuntimeDiagnostics (the one chat presentation, used at
+# startup and in the rebind callback), and the rebind callbacks of print / JSON and RPC mode. The SDKs of the extension API have the method too (Go, Rust, Python, Lisp), as
+# Pi's runtime class is part of Pi's SDK; no wire member: the factory and its diagnostics stay in the extension's process (docs/extension-api-parity.md).
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "c47ad0432bb8: Pi's package changelog entry (one Fixed line). PiG's user-visible change is its own changelog.d fragment."
+oracle = "not carried: Pi's changelog entry is not part of the installed package's behaviour."
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session-runtime.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsReturnsEachDiagnosticOnceAtStartupAndAfterReplacements", "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsKeysByTypeAndMessage", "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsDoesNotRepeatAFixedAndReappearingDiagnostic", "test:test/extension-conformance/agent_session_runtime_test.go#TestSessionGraphAgentSessionRuntimeAcrossSDKs", "test:test/extension-conformance/agent_session_runtime_test.go#TestPackedSessionGraphAgentSessionRuntimeAcrossSDKs"]
+rationale = "c47ad0432bb8: AgentSessionRuntime.takeUnreportedDiagnostics() returns the current runtime's diagnostics not reported yet and marks them reported, by type and message (reportedDiagnosticKeys). Ported to the Go runtime (Runtime.TakeUnreportedDiagnostics) and to every SDK of the extension API (Go, Rust, Python, Lisp; the Node runtime serves Pi's own), with the conformance row compared against Pi's own run."
+oracle = "carried: c47ad0432bb8 (pi-coding-agent/core/agent-session-runtime.js; the vendored runtime inherits it)."
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_replacement_diagnostics_upstream_test.go#TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce", "scenario:test/parity/scenarios/json/15-json-replacement-diagnostics-stderr.toml"]
+rationale = "c47ad0432bb8: main.ts takes the startup diagnostics through takeUnreportedDiagnostics and reportDiagnostics moves to modes/diagnostics-stderr.ts. coding/cli/main.go takes StartupDiagnostics through Runtime.TakeUnreportedDiagnostics for the interactive mode and the print / JSON / RPC startup reports, so whoever reports a diagnostic takes it."
+oracle = "carried: c47ad0432bb8 (pi-coding-agent/main.js; the table patches the compiled output)."
+
+[[files]]
+path = "packages/coding-agent/src/modes/diagnostics-stderr.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_replacement_diagnostics_upstream_test.go#TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce", "scenario:test/parity/scenarios/rpc/83-rpc-replacement-diagnostics-stderr.toml", "scenario:test/parity/scenarios/json/15-json-replacement-diagnostics-stderr.toml"]
+rationale = "c47ad0432bb8: writeDiagnosticsToStderr, the one stderr writer for main.ts's startup diagnostics and the print / JSON / RPC rebind callbacks. Ported as internal/codingagent/diagnostics_stderr.go WriteDiagnosticsToStderr with the CLI's existing format (red Error: for errors, yellow Warning: for warnings, dim for info)."
+oracle = "carried: c47ad0432bb8 (the new module's function is carried in core/settings-diagnostics.js, because the backport table patches existing files only; the callers import it from there)."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/settings_diagnostics_test.go#TestShowRuntimeDiagnosticsRendersEachType", "test:internal/codingagent/settings_diagnostics_test.go#TestInvalidSettingsWarningRendersStartupDiagnosticsInsideTranscript", "scenario:test/parity/scenarios/slash-commands/31-new-session-shows-replacement-diagnostic.toml", "scenario:test/parity/scenarios/slash-commands/32-second-new-session-repeats-no-diagnostic.toml"]
+rationale = "c47ad0432bb8: showRuntimeDiagnostics, shared by init and the setRebindSession callback, which shows the replacement's new diagnostics in the chat after the rebind and before the replacing command's own result. Ported as InteractiveMode.showRuntimeDiagnostics and rebindFromRuntime."
+oracle = "carried: c47ad0432bb8 (modes/interactive/interactive-mode.js)."
+
+[[files]]
+path = "packages/coding-agent/src/modes/print-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:test/parity/scenarios/json/15-json-replacement-diagnostics-stderr.toml"]
+rationale = "c47ad0432bb8: the rebind callback writes takeUnreportedDiagnostics to stderr. Ported in coding/cli/print_mode.go (startup and the rebind callback)."
+oracle = "carried: c47ad0432bb8 (modes/print-mode.js)."
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_replacement_diagnostics_upstream_test.go#TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce", "scenario:test/parity/scenarios/rpc/83-rpc-replacement-diagnostics-stderr.toml"]
+rationale = "c47ad0432bb8: the rebind callback writes takeUnreportedDiagnostics to stderr, never stdout. Ported in coding/cli/rpc_mode.go."
+oracle = "carried: c47ad0432bb8 (modes/rpc/rpc-mode.js)."
+
+[[files]]
+path = "packages/coding-agent/test/agent-session-runtime-diagnostics.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsReturnsEachDiagnosticOnceAtStartupAndAfterReplacements"]
+rationale = "c47ad0432bb8: 'returns each diagnostic once, at startup and after replacements'. Ported with the same inputs (a settings warning at startup; an extension error added at the next factory call; two replacements) and the same expectations."
+oracle = "not carried: a test of the TypeScript source; the package ships no tests."
+
+[[files]]
+path = "packages/coding-agent/test/rpc-replacement-diagnostics.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:coding/cli/rpc_replacement_diagnostics_upstream_test.go#TestRPCReportsADiagnosticThatFirstAppearsOnNewSessionOnStderrOnce", "scenario:test/parity/scenarios/rpc/83-rpc-replacement-diagnostics-stderr.toml"]
+rationale = "c47ad0432bb8: spawns pi --mode rpc with enabledModels naming the faux model, changes the settings to add a missing one, sends new_session and expects the warning once on stderr and nothing about it on stdout. Ported against the pig binary with the same steps."
+oracle = "not carried: a test of the TypeScript source; the package ships no tests."
+
+[[files]]
+path = "packages/coding-agent/test/suite/regressions/7829-invalid-settings-warning.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/settings_diagnostics_test.go#TestInvalidSettingsWarningRendersStartupDiagnosticsInsideTranscript"]
+rationale = "c47ad0432bb8: the harness object gains showRuntimeDiagnostics, the method init now calls. The Go test calls showInitNotices on a mode whose chat is the transcript and shows the same warning inside it (the method is the one showRuntimeDiagnostics)."
+oracle = "not carried: a test of the TypeScript source; the package ships no tests."

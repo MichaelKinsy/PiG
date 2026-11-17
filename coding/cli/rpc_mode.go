@@ -79,6 +79,8 @@ type rpcModeResources struct {
 	// SessionManager is the startup Session log, or nil to start a new one.
 	SessionManager *coding.SessionManager
 	ResumePath     string
+	// DiagnosticsReported is set when the caller already wrote the startup diagnostics of Build to stderr: --listen reports them when the server starts, so the connection that serves the startup build takes them without writing them again.
+	DiagnosticsReported bool
 	// Transport is where the session reads, writes and ends; nil is the process transport.
 	Transport *rpcTransport
 }
@@ -352,6 +354,10 @@ func runRPCMode(ctx context.Context, flags Args, activePiglet *piglet.Piglet, re
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "pig --rpc: session: %v\n", err)
 		return 1
+	}
+	// main.ts takes the startup diagnostics from the runtime and writes them to stderr before the mode runs (c47ad0432bb8); stdout carries the RPC protocol only.
+	if startup := rt.TakeUnreportedDiagnostics(); !resources.DiagnosticsReported {
+		codingagent.WriteDiagnosticsToStderr(startup)
 	}
 	host.rt = rt
 	runRpcMode(withRPCModeOptions(ctx, rpcModeOptions{
@@ -682,7 +688,12 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 	}
 
 	rt.SetRebindSession(func(ctx context.Context, session *coding.Session) error {
-		return host.bind(ctx, session, session.StartEvent(), false)
+		if err := host.bind(ctx, session, session.StartEvent(), false); err != nil {
+			return err
+		}
+		// rpc-mode.ts setRebindSession: stderr, never stdout: stdout carries the RPC protocol (c47ad0432bb8).
+		codingagent.WriteDiagnosticsToStderr(rt.TakeUnreportedDiagnostics())
+		return nil
 	})
 	// rpc-mode.ts:341-343: ctx.reload() runs session.reload() and then rebinds the Session's extensions.
 	rt.SetReload(func(ctx context.Context, session *coding.Session) error {

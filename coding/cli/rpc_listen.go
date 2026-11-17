@@ -364,6 +364,8 @@ func runRPCListen(ctx context.Context, flags Args, activePiglet *piglet.Piglet, 
 				if startupBuildTaken.CompareAndSwap(false, true) {
 					build = resources.Build
 					connResources.SessionManager, connResources.ResumePath = resources.SessionManager, resources.ResumePath
+					// main wrote this build's diagnostics when the server started.
+					connResources.DiagnosticsReported = true
 				} else {
 					build, buildErr = builder.listenBuild(ctx, cwd)
 				}

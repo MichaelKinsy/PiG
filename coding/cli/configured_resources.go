@@ -552,7 +552,7 @@ func extensionConflictDiagnostics(conflicts []codingagent.ExtensionConflict) []c
 // one of them is a load failure (main.ts:912-914). A failed virtual-model
 // registration alone reports no hint.
 func reportExtensionLoadFailures(diagnostics []codingagent.AgentSessionRuntimeDiagnostic) {
-	codingagent.ReportDiagnostics(codingagent.DeduplicateDiagnostics(diagnostics))
+	codingagent.WriteDiagnosticsToStderr(codingagent.DeduplicateDiagnostics(diagnostics))
 	if !slices.ContainsFunc(diagnostics, func(diagnostic codingagent.AgentSessionRuntimeDiagnostic) bool {
 		// pig additive (D20): a grouped build failure stands for one `Failed to load extension` error per member, so it gets Pi's hint too.
 		return strings.Contains(diagnostic.Message, "Failed to load extension") || subprocess.IsBuildFailureGroupMessage(diagnostic.Message)

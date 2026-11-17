@@ -114,7 +114,12 @@
 	"initial": {
 		"calls": 1,
 		"cwd": "\u003croot\u003e/project",
-		"diagnostics": [],
+		"diagnostics": [
+			{
+				"message": "runtime diagnostics: startup",
+				"type": "warning"
+			}
+		],
 		"fallback": null,
 		"sameLog": true,
 		"servicesAgentDir": true,
@@ -181,5 +186,20 @@
 			"cancelled": true
 		},
 		"sameSession": true
-	}
+	},
+	"takenAfterFork": [],
+	"takenAfterNew": [
+		{
+			"message": "runtime diagnostics: replaced",
+			"type": "error"
+		}
+	],
+	"takenAfterNewAgain": [],
+	"takenAtStartup": [
+		{
+			"message": "runtime diagnostics: startup",
+			"type": "warning"
+		}
+	],
+	"takenAtStartupAgain": []
 }

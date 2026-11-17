@@ -1276,7 +1276,6 @@ func Main(args []string, options *MainOptions) {
 		exitProcess(1)
 	}
 	extensionDiagnostics := build.ExtensionDiagnostics
-	startupDiagnostics := slices.Concat(build.StartupDiagnostics, extensionDiagnostics)
 	// pig additive (D109): extensions written for an older SDK are upgraded here, before piped input is read. When every one of them builds, this process loads the resources again: the Session selection, its fork and name, and the project trust answer stay as they were made.
 	if len(build.SDKDrift) > 0 && !flags.Help && flags.ListModels == "" && !flags.ListModelsAll {
 		interactive := processAppMode(flags) == appModeInteractive && term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stderr.Fd()))
@@ -1289,7 +1288,6 @@ func Main(args []string, options *MainOptions) {
 				exitProcess(1)
 			}
 			extensionDiagnostics = build.ExtensionDiagnostics
-			startupDiagnostics = slices.Concat(build.StartupDiagnostics, extensionDiagnostics)
 		}
 	}
 
@@ -1309,19 +1307,10 @@ func Main(args []string, options *MainOptions) {
 	}
 	timings.Time("createAgentSessionRuntime")
 	flags = build.Flags
-	selected, modelErr := build.Selected, build.ModelErr
-	// Pi bacd45b9c (#11973, #11264): the model scope warnings are diagnostics of the runtime, after the extension diagnostics and before buildSessionOptions' diagnostics. The factory does not print them: it runs again on /new, /resume and /fork while the interactive TUI draws on the terminal, and only this initial runtime's diagnostics are reported.
-	for _, warning := range selected.ScopeWarnings {
-		startupDiagnostics = append(startupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: warning})
-	}
+	modelErr := build.ModelErr
+	// Pi bacd45b9c (#11973, #11264): the model scope warnings are diagnostics of the runtime, after the extension diagnostics and before buildSessionOptions' diagnostics. The factory does not print them: it runs again on /new, /resume and /fork while the interactive TUI draws on the terminal. The runtime holds them and its mode reports each once (TakeUnreportedDiagnostics).
 	timings.Time("resolveModelScope")
-	for _, warning := range selected.Warnings {
-		startupDiagnostics = append(startupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: warning})
-	}
-	for _, diagnosticErr := range selected.Errors {
-		startupDiagnostics = append(startupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "error", Message: diagnosticErr.Error()})
-	}
-	startupDiagnostics = codingagent.DeduplicateDiagnostics(startupDiagnostics)
+	startupDiagnostics := build.runtimeDiagnostics()
 
 	// upstream: main.ts applies the runtime settings' httpProxy and HTTP idle timeout after createAgentSessionRuntime, before help, --list-models and every mode.
 	if err := configureHTTPDispatcherFromSettings(build.Services.SettingsManager()); err != nil {
@@ -1332,13 +1321,13 @@ func Main(args []string, options *MainOptions) {
 	// Metadata reports the startup settings diagnostics and the runtime diagnostics, such as the warning of a package that could not be installed, and never their failure status (main.ts, Pi 6dfb54678).
 	metadataDiagnostics := codingagent.DeduplicateDiagnostics(slices.Concat(startupSettingsDiagnostics, startupDiagnostics))
 	if flags.Help {
-		codingagent.ReportDiagnostics(metadataDiagnostics)
+		codingagent.WriteDiagnosticsToStderr(metadataDiagnostics)
 		// upstream: cli/args.ts printHelp styles with chalk.bold, whose level is chalk's stdout supports-color level (FORCE_COLOR, --no-color, TERM, CI), not only whether stdout is a terminal.
 		printHelp(os.Stdout, chalkStdoutColor(), extensionHelpFlags(build.Extensions)...)
 		exitProcess(0)
 	}
 	if flags.ListModels != "" || flags.ListModelsAll {
-		codingagent.ReportDiagnostics(metadataDiagnostics)
+		codingagent.WriteDiagnosticsToStderr(metadataDiagnostics)
 		// main.ts:951 leaves a rejection of listModels uncaught: Node reports the error and exits with status 1.
 		if err := listModels(ctx, build.Services.ModelRuntime(), build.Services.Registry().ModelRegistry, flags.ListModels); err != nil {
 			fmt.Fprintln(os.Stderr, uncaughtListModelsError(err))
@@ -1454,7 +1443,10 @@ func Main(args []string, options *MainOptions) {
 		if startupSession.forkPath != "" {
 			resumePath = startupSession.forkPath
 		}
-		codingagent.ReportDiagnostics(startupDiagnostics)
+		// The runtime holds the startup diagnostics, and the mode writes them to stderr once it has created the runtime and takes them (c47ad0432bb8). --listen has no Pi counterpart: it reports them when the server starts, and the first connection, which serves this build, does not report them again.
+		if flags.Listen != "" {
+			codingagent.WriteDiagnosticsToStderr(startupDiagnostics)
+		}
 		timings.PrintTimings()
 		startAutomaticExtensionCacheGC(ctx)
 		if flags.Listen != "" {
@@ -1479,7 +1471,7 @@ func Main(args []string, options *MainOptions) {
 	// Mirrors upstream main.ts resolveAppMode: --print, --mode json, or a
 	// stdin or stdout that is not a terminal runs print mode.
 	if processAppMode(flags) != appModeInteractive {
-		codingagent.ReportDiagnostics(startupDiagnostics)
+		// The runtime holds the startup diagnostics; startPrintMode writes them once it has created the runtime and takes them (c47ad0432bb8).
 		if subprocHost != nil {
 			defer subprocHost.Shutdown("quit")
 		}
@@ -1531,8 +1523,8 @@ func Main(args []string, options *MainOptions) {
 	// Create or reopen the Session with the resolved CLI thinking override before binding interactive presentation.
 	startOpts := startupSession.startOptions(flags)
 	interactiveInputs := builder.interactiveInputs(build, startOpts)
-	// The first construction carries the diagnostics startup already merged with the model selection's.
-	interactiveInputs.Diagnostics, interactiveInputs.ModelFallbackMessage = startupDiagnostics, noModelWarning
+	// The first construction carries the model fallback message startup resolved; its diagnostics are the build's (cliSessionInputs.Diagnostics).
+	interactiveInputs.ModelFallbackMessage = noModelWarning
 	sessionFactory := newCLISessionFactory(ctx, interactiveInputs, build, func(ctx context.Context, options coding.CreateAgentSessionRuntimeOptions) (cliSessionInputs, *cliBuild, error) {
 		next, err := builder.rebuild(ctx, options)
 		if err != nil {
@@ -1593,7 +1585,7 @@ func Main(args []string, options *MainOptions) {
 		ModelFallbackMessage:   rt.ModelFallbackMessage(),
 		MigratedProviders:      migratedProviders,
 		AutoTrustOnReloadCwd:   autoTrustOnReloadCwd,
-		StartupDiagnostics:     rt.Diagnostics(),
+		StartupDiagnostics:     rt.TakeUnreportedDiagnostics(),
 		Settings:               settings,
 		SettingsManager:        settingsManager,
 		SystemPrompt:           systemPrompt,
