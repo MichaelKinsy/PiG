@@ -16,8 +16,7 @@ func TestMarshalHookPayloadWritesAddedMembersInOwnKeyOrder(t *testing.T) {
 		"beta":   5,
 	}
 	order := &HookObjectOrder{Keys: []string{"model", "config"}, Nested: map[string]*HookObjectOrder{"config": {Keys: []string{"temperature"}}}}
-	release := HoldHookPayload(payload, order)
-	defer release()
+	defer HoldHookPayload(payload, order).Release()
 	const want = `{"9":4,"10":3,"model":"m","config":{"2":null,"10":true,"temperature":0.5,"Z":[],"a":"x","b":1},"alpha":2,"beta":5,"zeta":1}`
 	for range 50 {
 		encoded, ok, err := MarshalHookPayload(payload)

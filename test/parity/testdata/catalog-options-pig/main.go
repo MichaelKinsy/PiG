@@ -21,7 +21,7 @@ func main() {
 }
 
 func run() error {
-	transcript := ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Use the tool")}}, Tools: []ai.ToolSchema{{Name: "lookup", Description: "Look up a value", Parameters: map[string]any{"type": "object", "properties": map[string]any{"value": map[string]any{"type": "string"}}, "required": []string{"value"}}}}})
+	transcript := ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Use the tool")}}, Tools: []ai.ToolSchema{toolFromJSON(`{"name":"lookup","description":"Look up a value","parameters":{"type":"object","properties":{"value":{"type":"string"}},"required":["value"]}}`)}})
 	var records []map[string]any
 	for _, tc := range []struct {
 		provider, session string
@@ -110,4 +110,13 @@ func run() error {
 	}
 	records = append(records, map[string]any{"provider": "fireworks-kimi-k3", "effort": payload["reasoning_effort"]})
 	return json.NewEncoder(os.Stdout).Encode(records)
+}
+
+// toolFromJSON declares a tool as JSON text, the way an extension or an MCP server hands pig its schema: ai.ToolSchema keeps that member order, where a Go map carries none and is sent sorted. Pi's probe holds the same members in a literal.
+func toolFromJSON(text string) ai.ToolSchema {
+	var tool ai.ToolSchema
+	if err := json.Unmarshal([]byte(text), &tool); err != nil {
+		panic(err)
+	}
+	return tool
 }

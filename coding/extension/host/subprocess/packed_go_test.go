@@ -806,15 +806,14 @@ func packedTestModelStream() (*ai.AssistantMessageEventStream, error) {
 	return stream, nil
 }
 
-func TestAC59PackedSDKFocusedComponentsOwnInput(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping packed SDK builds in short mode")
-	}
-	t.Parallel()
-	tests := []struct {
-		name    string
-		configs func(*testing.T) []ExtConfig
-	}{
+// focusedPackedSDKCase is a packed SDK fixture whose `focused` command awaits a ui.custom overlay: two extensions of one SDK, so a shared cell holds both.
+type focusedPackedSDKCase struct {
+	name    string
+	configs func(*testing.T) []ExtConfig
+}
+
+func focusedPackedSDKCases() []focusedPackedSDKCase {
+	return []focusedPackedSDKCase{
 		{"go", func(t *testing.T) []ExtConfig {
 			return []ExtConfig{
 				packedFactoryConfig("focused-go-a", writePackedFactoryModule(t, "example.com/focused/goa", "focused-go-a", "tool-a", true), "example.com/focused/goa", "ha"),
@@ -841,6 +840,14 @@ func TestAC59PackedSDKFocusedComponentsOwnInput(t *testing.T) {
 			}
 		}},
 	}
+}
+
+func TestAC59PackedSDKFocusedComponentsOwnInput(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping packed SDK builds in short mode")
+	}
+	t.Parallel()
+	tests := focusedPackedSDKCases()
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			configs := tc.configs(t)
@@ -980,18 +987,28 @@ func TestAC59PackedSDKFocusedComponentsOwnInput(t *testing.T) {
 			if _, err := host.Reload(ctx); err != nil {
 				t.Fatal(err)
 			}
+			// Pi's reload removes the overlay and leaves the command awaiting it (interactive-mode.ts:2592-2598 resetExtensionUI): the screen shows nothing, the
+			// call stays pending, and the session's end ends it. Probed on Pi 1.5.2 by extensions-runtime scenarios 109 and 110.
+			select {
+			case <-reloadHandle.Retired():
+			case <-time.After(5 * time.Second):
+				t.Fatal("reload did not take the focused overlay off the screen")
+			}
 			select {
 			case <-reloadHandle.Done():
-			case <-time.After(5 * time.Second):
-				t.Fatal("reload did not close focused overlay")
+				t.Fatal("reload closed the focused overlay's call; Pi leaves it pending")
+			default:
 			}
 			select {
 			case err := <-reloadDone:
-				if err == nil {
-					t.Fatal("focused command reported success after reload removed its extension")
-				}
+				t.Fatalf("focused command returned after the reload that removed its extension: %v; Pi leaves it awaiting", err)
+			case <-time.After(300 * time.Millisecond):
+			}
+			host.Shutdown("session ended")
+			select {
+			case <-reloadDone:
 			case <-time.After(5 * time.Second):
-				t.Fatal("focused command remained blocked after reload")
+				t.Fatal("focused command remained blocked after the session ended")
 			}
 		})
 	}

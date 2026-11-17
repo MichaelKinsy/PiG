@@ -79,7 +79,7 @@ pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "Export links probe
 [assert]
 exit_code = 0
 runs = 3
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 # The dump is a JSON string inside the bash response, so each quote of the HTML is written \\\" in the stream.
 both_contain = [

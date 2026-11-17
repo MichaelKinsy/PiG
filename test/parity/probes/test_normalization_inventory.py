@@ -29,6 +29,19 @@ class NormalizationInventoryTest(unittest.TestCase):
             (base / "b.toml").unlink()
             self.assertNotEqual(before, inventory.render(root))
 
+    def test_a_floating_transcript_sequence_is_inventoried_with_its_reason(self):
+        with tempfile.TemporaryDirectory() as directory, patch.object(inventory, "MECHANISMS", {}):
+            root = Path(directory)
+            path = root / "test/parity/scenarios/startup/probe.toml"
+            path.parent.mkdir(parents=True)
+            floating = 'sequence="\\u001b[>4;2m"\nevidence_runs=20\nevidence_positions=[35,204]\n'
+            path.write_text('name="probe"\ndescription="startup"\n[[assert.transcript_sequences_equal]]\nwindow="startup"\n[[assert.transcript_sequences_equal.floating]]\n' + floating)
+            with self.assertRaisesRegex(ValueError, "floating requires a rule-level reason"):
+                inventory.inventory(root)
+            path.write_text('name="probe"\ndescription="startup"\n[[assert.transcript_sequences_equal]]\nwindow="startup"\n[[assert.transcript_sequences_equal.floating]]\nreason="answers the query late"\n' + floating)
+            transform = inventory.inventory(root)["scenarios"][0]["transforms"][0]
+            self.assertEqual((transform["kind"], transform["window"], transform["sequence"], transform["reason"]), ("transcript_sequences_floating", "startup", "\x1b[>4;2m", "answers the query late"))
+
     def test_json_cannot_be_filtered_by_regex(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

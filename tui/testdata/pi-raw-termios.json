@@ -1,0 +1,30 @@
+{
+ "cooked_all_flags_cleared": {
+  "after_exit": [],
+  "after_exit_vmin": true,
+  "after_exit_vtime": true,
+  "running": [
+   "+ONLCR"
+  ],
+  "vmin": 1,
+  "vtime": 0
+ },
+ "cooked_all_flags_set": {
+  "after_exit": [],
+  "after_exit_vmin": true,
+  "after_exit_vtime": true,
+  "running": [
+   "-BRKINT",
+   "-INPCK",
+   "-ISTRIP",
+   "-ICRNL",
+   "-IXON",
+   "-ISIG",
+   "-ICANON",
+   "-ECHO",
+   "-IEXTEN"
+  ],
+  "vmin": 1,
+  "vtime": 0
+ }
+}

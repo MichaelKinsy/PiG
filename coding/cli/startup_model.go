@@ -21,22 +21,30 @@ import (
 )
 
 // startupModelRuntime is the ModelRuntime surface startup model selection
-// reads: the composed model list and per-provider configured auth.
+// reads: the composed model list, the models the published availability lists, and per-provider configured auth.
 type startupModelRuntime struct {
 	loaded  []codingagent.RuntimeModel
 	load    func() []codingagent.RuntimeModel
 	hasAuth func(providerID string) bool
 	auth    map[string]bool
+	// availableOf selects the entries of the composed models that the availability lists, in its order.
+	availableOf func([]codingagent.RuntimeModel) []codingagent.RuntimeModel
 }
 
+// newStartupModelRuntime is a runtime over a fixed model list whose availability is its providers' configured auth.
 func newStartupModelRuntime(models []codingagent.RuntimeModel, hasAuth func(providerID string) bool) *startupModelRuntime {
-	return &startupModelRuntime{loaded: models, hasAuth: hasAuth, auth: map[string]bool{}}
+	rt := &startupModelRuntime{loaded: models, hasAuth: hasAuth, auth: map[string]bool{}}
+	rt.availableOf = func(models []codingagent.RuntimeModel) []codingagent.RuntimeModel {
+		return slices.DeleteFunc(slices.Clone(models), func(model codingagent.RuntimeModel) bool { return !rt.HasConfiguredAuth(model.Provider) })
+	}
+	return rt
 }
 
-// newLazyStartupModelRuntime is newStartupModelRuntime over the models load lists when a selection first reads them: an explicit --model
-// resolves through ModelRuntime and reads none (main.ts:803-819 reads modelRuntime only where a step needs it).
-func newLazyStartupModelRuntime(load func() []codingagent.RuntimeModel, hasAuth func(providerID string) bool) *startupModelRuntime {
-	return &startupModelRuntime{load: load, hasAuth: hasAuth, auth: map[string]bool{}}
+// newLazyStartupModelRuntime is a runtime over the models load lists when a selection first reads them: an explicit --model
+// resolves through ModelRuntime and reads none (main.ts:803-819 reads modelRuntime only where a step needs it). availableOf is
+// ModelRuntime.AvailableRuntimeModels.
+func newLazyStartupModelRuntime(load func() []codingagent.RuntimeModel, hasAuth func(providerID string) bool, availableOf func([]codingagent.RuntimeModel) []codingagent.RuntimeModel) *startupModelRuntime {
+	return &startupModelRuntime{load: load, hasAuth: hasAuth, auth: map[string]bool{}, availableOf: availableOf}
 }
 
 // models returns the composed models, loading them on the first read.
@@ -83,16 +91,9 @@ func (rt *startupModelRuntime) getModel(providerID, modelID string) *codingagent
 	return &models[index]
 }
 
-// getAvailable mirrors upstream ModelRuntime.getAvailableSnapshot: the
-// composed models whose provider has configured auth.
+// getAvailable mirrors upstream ModelRuntime.getAvailableSnapshot: the composed models the published availability lists, which a provider may narrow per credential.
 func (rt *startupModelRuntime) getAvailable() []codingagent.RuntimeModel {
-	var available []codingagent.RuntimeModel
-	for _, model := range rt.models() {
-		if rt.HasConfiguredAuth(model.Provider) {
-			available = append(available, model)
-		}
-	}
-	return available
+	return rt.availableOf(rt.models())
 }
 
 // GetModel returns an exact composed model without reading authentication.
@@ -176,7 +177,7 @@ type startupModel struct {
 func selectStartupModel(ctx context.Context, options startupModelOptions, settings codingagent.Settings, services *coding.AgentSessionServices) (startupModel, error) {
 	// upstream: main.ts:803-819 resolves against modelRuntime, whose catalog and auth include the virtual models the services registered (agent-session-services.ts:182-193).
 	modelRuntime := services.ModelRuntime()
-	rt := newLazyStartupModelRuntime(modelRuntime.RuntimeModels, modelRuntime.HasConfiguredAuth)
+	rt := newLazyStartupModelRuntime(modelRuntime.RuntimeModels, modelRuntime.HasConfiguredAuth, modelRuntime.AvailableRuntimeModels)
 	var result startupModel
 	selected, err := selectSessionOptionModel(rt, modelRuntime, options, settings, &result)
 	if err != nil {

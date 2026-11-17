@@ -7419,7 +7419,7 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/api/mistral-conversations.js",
-      "sourceSha256": "27f9cd4a233dfbb2cf8e6a0a4a7342fa486ad9181817ea1416c5b012f3f623c4",
+      "sourceSha256": "55abdef5205c0b2e63fbe8181ea40bf3754feb19e5e92a01f1d53d8eedaf092d",
       "sha256": "88c05c615487110302edcb25f05c55f0513fdd327ed6a8af74c8dc79abc53cef",
       "rewrite": "D74 host API leaf"
     },
@@ -8358,8 +8358,8 @@
         "integrity": "sha512-2tWPSnV3qzfiDIY3aWluBag3vC++Vs+VsXt/UquSU5onPMohPih72FUhIhaqmDdMYubOgB3Byl9uF4Vk40JLvQ=="
       },
       "source": "dist/providers/compat-schema.js",
-      "sourceSha256": "6d6ffae7ec48f17c4080df8607b4aa00a2b16183e02d9613ffd0608ae81c1734",
-      "sha256": "aaf10bdd5ccfdc1c4b49e77a85f9025fe81f7fb4bf060fcbb8e0f79b3b21a320",
+      "sourceSha256": "125fd870521a5db01f623a3756b460af386a9079a9890124841d9b27c9e78b7e",
+      "sha256": "a0046651e74454e58712c6c8b95360f039723fd50f66e6e6cb523a3d9d1e944f",
       "rewrite": "module specifiers"
     },
     {
@@ -12076,8 +12076,8 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "docs/models-configuration.md",
-      "sourceSha256": "3d87888507009fb61d10020d1f6576f0cf9f59d8d2e8f48b6cc69337bdeb8e54",
-      "sha256": "3d87888507009fb61d10020d1f6576f0cf9f59d8d2e8f48b6cc69337bdeb8e54"
+      "sourceSha256": "0170b8f1ad02be49cd629a6cf65875d5f8ddd637970d82a4d032181916aa39ef",
+      "sha256": "0170b8f1ad02be49cd629a6cf65875d5f8ddd637970d82a4d032181916aa39ef"
     },
     {
       "path": "pi-dist/pi-coding-agent/docs/models.md",

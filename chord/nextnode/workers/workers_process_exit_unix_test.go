@@ -88,6 +88,9 @@ func speakWhenAsked() {
 		_, _ = fmt.Fprint(output, holderReady)
 	}
 	_ = syscall.Kill(os.Getppid(), syscall.SIGUSR1)
+	if os.Getenv(holderFloods) != "" {
+		flood(outputs)
+	}
 	<-asked
 	for _, output := range outputs {
 		_, _ = fmt.Fprint(output, holderLate)

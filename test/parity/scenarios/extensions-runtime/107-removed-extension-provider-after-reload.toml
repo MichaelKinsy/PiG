@@ -1,0 +1,83 @@
+# Behavior family: extensions-runtime
+# Scenario: an extension removed from disk before /reload keeps its provider: still selected, and still answered by the old extension's own closure.
+#
+# Upstream evidence (Pi 1.5.2, build of b4afdddf, `pi --model removed-prov/r1 --no-session` with the two user extensions of testdata/removed-provider/pi-agent
+# in PI_CODING_AGENT_DIR/extensions; source: agent-session.ts:3815-3855 reload and model-runtime.ts:965-993). Pi's reload never unregisters a provider:
+# ModelRuntime holds the registration, and with it the extension's streamSimple closure, until the process ends or an extension unregisters the name.
+# Probed on Pi: "hello 1" is answered "served by closure of load 1, call 1"; /removed-unlink deletes removed-provider.js and notifies removed-unlinked;
+# after /reload ("Reloaded keybindings, extensions, ...") "hello 2" is answered "served by closure of load 1, call 2", still by the closure of the first load;
+# after a second /reload "hello 3" is "served by closure of load 1, call 3". An rpc-mode probe of the same files agreed: get_available_models still listed
+# removed-prov/r1 after the reload and set_model accepted it. PiG once unregistered the provider with the removed extension: the model vanished from the
+# list, set_model said "Model not found" and a prompt failed with "No API key found for removed-prov".
+#
+# The answer names the factory run that made the closure and the number of the call it serves, so only the old generation can give it, and a host that
+# restarted the extension would answer another load or call 1 again. The file is removed by a command of an extension that stays, then /reload is typed.
+
+name = "107-removed-extension-provider-after-reload"
+description = "A removed extension's provider stays selected and answered by its old closure across two reloads"
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/model-runtime.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "removed-prov/r1"
+
+[env]
+override_base_args = true
+pig = ["PIG_CODING_AGENT_DIR=testdata/removed-provider/pig-agent"]
+pig_args = ["--model", "removed-prov/r1", "--no-session"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/removed-provider/pi-agent"]
+pi_args = ["--model", "removed-prov/r1", "--no-session"]
+
+[tmux]
+width = 120
+height = 60
+# The compared region runs from the first prompt to the third answer: the conversation, the unlink notice and the two reload banners.
+capture_start = "hello 1"
+capture_end = "served by closure of load 1, call 3"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["hello 1", "Enter"]
+wait_visible_contains = ["served by closure of load 1, call 1"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/removed-unlink", "Enter"]
+wait_visible_contains = ["removed-unlinked"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_visible_contains = ["Reloaded"]
+wait_timeout_seconds = 20
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["hello 2", "Enter"]
+wait_visible_contains = ["served by closure of load 1, call 2"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+settle_seconds = 4
+
+[[tmux.steps]]
+keys = ["hello 3", "Enter"]
+wait_visible_contains = ["served by closure of load 1, call 3"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+output_normalized_equal = true
+both_contain = [
+  "served by closure of load 1, call 1",
+  "served by closure of load 1, call 2",
+  "served by closure of load 1, call 3",
+]
+both_not_contain = ["No API key found", "Model not found", "Failed to load extension", "panic:", "goroutine "]
+runs = 3

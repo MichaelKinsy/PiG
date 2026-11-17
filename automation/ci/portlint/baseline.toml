@@ -4494,7 +4494,7 @@ snippet = "transportClone := httpTransport.Clone()"
 [[hit]]
 check = "unixsocketpath"
 file = "coding/extension/host/subprocess/socket_runtime_dir_test.go"
-func = "TestSockPathForUsesAShortDirectoryWhenTheSocketDirectoryIsDeep"
+func = "TestNewSocketPathUsesAShortDirectoryWhenTheSocketDirectoryIsDeep"
 snippet = "listener, err := net.Listen(\"unix\", path)"
 
 [[hit]]

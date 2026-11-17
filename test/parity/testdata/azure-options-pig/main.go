@@ -21,7 +21,7 @@ func main() {
 }
 
 func run() error {
-	transcript := ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Summarize this"), Timestamp: 1}}, Tools: []ai.ToolSchema{{Name: "read", Description: "Read a file", Parameters: map[string]any{"type": "object", "properties": map[string]any{"path": map[string]any{"type": "string"}}, "required": []string{"path"}}}}})
+	transcript := ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Summarize this"), Timestamp: 1}}, Tools: []ai.ToolSchema{toolFromJSON(`{"name":"read","description":"Read a file","parameters":{"type":"object","properties":{"path":{"type":"string"}},"required":["path"]}}`)}})
 	requests := make(chan map[string]json.RawMessage, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var payload map[string]json.RawMessage
@@ -66,4 +66,13 @@ func run() error {
 	_, err := invalid.Stream(context.Background(), transcript, ai.StreamOptions{})
 	fmt.Printf("invalid-url=%t\n", err != nil && strings.Contains(err.Error(), "Invalid Azure OpenAI base URL: not-a-url"))
 	return nil
+}
+
+// toolFromJSON declares a tool as JSON text, the way an extension or an MCP server hands pig its schema: ai.ToolSchema keeps that member order, where a Go map carries none and is sent sorted. Pi's probe holds the same members in a literal.
+func toolFromJSON(text string) ai.ToolSchema {
+	var tool ai.ToolSchema
+	if err := json.Unmarshal([]byte(text), &tool); err != nil {
+		panic(err)
+	}
+	return tool
 }

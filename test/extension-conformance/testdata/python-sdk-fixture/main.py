@@ -1713,6 +1713,14 @@ def new_extension() -> pig_sdk.Extension:
         ctx.notify(json.dumps(out), "info")
     ext.command("replicated-accessors", "Read the replicated accessors after each write", replicated_accessors)
     ext.command("active_tools_set", "Set the active tools to the comma-separated names", lambda ctx, args: ctx.set_active_tools(args.strip().split(",")))
+    def host_error_probe(ctx, _args):
+        text, code = "no error", "-"
+        try:
+            ctx.navigate_tree("entry")
+        except Exception as error:
+            text, code = str(error), getattr(error, "code", None) or "-"
+        ctx.notify("host_error:%s|%s" % (text, code), "info")
+    ext.command("host_error_probe", "Report what a host error on navigateTree looks like to the extension", host_error_probe)
     def session_actions_unbound(ctx, _args):
         parts = []
         for name, call in (("new", lambda: ctx.new_session()), ("fork", lambda: ctx.fork("entry")), ("navigate", lambda: ctx.navigate_tree("entry")), ("switch", lambda: ctx.switch_session("/s.jsonl"))):
@@ -2877,6 +2885,41 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("send_message_default", "Send a custom message with default options", lambda ctx, args: ctx.send_message("notice", "default"))
     ext.command("send_message_no_turn", "Send a custom message that never starts a turn", lambda ctx, args: ctx.send_message("notice", "no-turn", trigger_turn=False))
     ext.command("send_user_message", "Send a user message", lambda ctx, args: ctx.send_user_message(json.loads(args) if args else "hello-user", "followUp"))
+    ext.command("send_user_message_delivery", "Send a user message with the delivery named by the argument", lambda ctx, args: ctx.send_user_message("delivery-" + args) if args == "absent" else ctx.send_user_message("delivery-" + args, args))
+    def send_refusal_order(ctx, args):
+        def first():
+            ctx.send_user_message("order-absent")
+            ctx.send_user_message("order-steer", "steer")
+            ctx.send_user_message("order-followUp", "followUp")
+
+        def after_return(send):
+            def run():
+                time.sleep(0.1)
+                send()
+            threading.Thread(target=run, daemon=True).start()
+
+        if args == "first":
+            first()
+        elif args == "between":
+            ctx.send_user_message("order-absent")
+            ctx.send_user_message("order-steer", "steer")
+            ctx.send_user_message("order-absent-2")
+        elif args == "yielded":
+            ctx.yield_now()
+            first()
+        elif args == "throws":
+            first()
+            raise RuntimeError("order-throws")
+        elif args == "blocked":
+            first()
+            time.sleep(30)
+        elif args == "detached":
+            after_return(first)
+        elif args == "detached_alone":
+            after_return(lambda: ctx.send_user_message("order-absent"))
+        else:
+            raise RuntimeError("send_refusal_order: unknown case " + args)
+    ext.command("send_refusal_order", "Send a refused user message and others in one run, as the argument names", send_refusal_order)
     ext.command("send_user_message_expand", "Send a user message with expandPromptTemplates set to the argument", lambda ctx, args: ctx.send_user_message("expand-user", "followUp", expand_prompt_templates=(args == "true")))
     ext.command("settings_probe", "Report the effective settings", lambda ctx, args: ctx.notify("settings_probe:" + json.dumps(ctx.get_settings(), separators=(",", ":")), "info"))
 
@@ -3154,7 +3197,13 @@ def new_extension() -> pig_sdk.Extension:
             if isinstance(data, dict) and isinstance(data.get("servers"), list):
                 hctx.notify("event_probe_servers:%s" % ",".join(str(s.get("name")) for s in data["servers"]), "info")
             queued = event_probe_results.get(name)
-            return queued.pop(0) if queued else None
+            value = queued.pop(0) if queued else None
+            # Pi ignores what a before_provider_headers handler returns and sends the headers object the handlers edited (runner.ts emitBeforeProviderHeaders), so the queued result becomes the headers by editing event.headers in place, as the Node fixture does.
+            if name == "before_provider_headers" and isinstance(value, dict):
+                data["headers"].clear()
+                data["headers"].update(value)
+                return None
+            return value
 
         off = ext.on_event(name, probe)
         event_probe_on_offs.setdefault(name, []).append(off)
@@ -3305,19 +3354,27 @@ def new_extension() -> pig_sdk.Extension:
     ext.command("event_echo_probe", "Subscribe to the event named by the argument with a handler that hands back the objects it was sent", event_echo_probe)
 
     def event_mutate_probe(ctx, args):
-        # Subscribe to the event named by the argument `<event> [fail]` with a handler that edits the event's payload (before_provider_request) or headers (before_provider_headers) in place, returns nothing and, with fail, raises.
-        name, _, fail = args.strip().partition(" ")
+        # Subscribe to the event named by the argument `<event> [mode]` with a handler that works on the event's payload (before_provider_request) or headers (before_provider_headers) as the mode says: no mode edits it in place and returns nothing, fail edits it and raises, replace edits nothing and returns a replacement, both edits it in place under a key of its own and returns the replacement, delete (headers) sets the header the first edit wrote to None.
+        name, _, mode = args.strip().partition(" ")
+        mode = mode.strip()
 
         def mutate(hctx, data):
-            key = "inPlaceBeforeError" if fail.strip() == "fail" else "inPlace"
-            if name == "before_provider_headers":
-                data["headers"]["x-pig-" + key] = "in-place-edit"
-            else:
+            key = {"fail": "inPlaceBeforeError", "both": "inPlaceAlongside"}.get(mode, "inPlace")
+            headers = name == "before_provider_headers"
+            if headers:
+                if mode == "delete":
+                    data["headers"]["x-pig-inPlace"] = None
+                elif mode != "replace":
+                    data["headers"]["x-pig-" + key] = "in-place-edit"
+            elif mode != "replace":
                 data["payload"][key] = "in-place-edit"
                 if "zeta" in data["payload"]:
                     data["payload"]["zeta"][key] = "in-place-edit"
-            if fail.strip() == "fail":
+            if mode == "fail":
                 raise RuntimeError("failed after the edit")
+            if mode in ("replace", "both"):
+                return {"x-pig-replaced": "returned"} if headers else {"replaced": "returned"}
+            return None
 
         ext.on_event(name, mutate)
 

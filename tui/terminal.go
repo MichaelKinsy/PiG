@@ -117,8 +117,11 @@ type ProcessTerminal struct {
 	progressMu        sync.Mutex
 	progressTicker    *time.Ticker
 	progressStop      chan struct{}
+	progressCancel    context.CancelFunc // ends a keepalive tick that waits for the owner dispatcher
 	progressDone      chan struct{}
 	progressKeepalive time.Duration
+	// keepaliveDispatch, when set, takes each keepalive write to the loop that renders (SetOwnerDispatcher of the renderer on this terminal).
+	keepaliveDispatch atomic.Pointer[func(ctx context.Context, fn func()) error]
 
 	// programStatusMu guards the OSC 7501 state below. The input goroutine confirms support while the owner loop reports.
 	programStatusMu sync.Mutex
@@ -134,6 +137,10 @@ type ProcessTerminal struct {
 	colorSchemeReports atomic.Bool
 	// exitRestored is set once the exit restore has written: every later write is dropped, so a frame still in flight cannot repaint over a crash report or hide the cursor again. Entering raw mode again clears it.
 	exitRestored atomic.Bool
+	// stopModesWritten is set once a renderer's exit stop wrote the mode resets of Pi's terminal.stop() (WriteStopModes); the restore that follows then does not write them a second time. Entering raw mode clears it.
+	stopModesWritten atomic.Bool
+	// stopGate orders the writes of goroutines other than the one that stops the terminal against the stop (stop_transaction.go).
+	stopGate stopGate
 	// sizeCache is the window size kept between SIGWINCHs while the interactive resize handler holds it.
 	sizeCache terminalSizeCache
 }
@@ -379,9 +386,10 @@ func (t *ProcessTerminal) EnterRawMode() (restore func(), err error) {
 	return t.enterRawMode(true)
 }
 
-// makeRawTerminal and restoreTerminal are the raw-mode ioctls (TCGETS/TCSETS, TIOCGETA/TIOCSETA); tests replace them to interrupt the call.
+// makeRawTerminal and restoreTerminal are the raw-mode calls: Pi's raw mode (libuv's uv_tty_set_mode with UV_TTY_MODE_RAW, see libuvRawMode) and the
+// restore of the mode before it (TCSETS, TIOCSETA); tests replace them to interrupt the call.
 var (
-	makeRawTerminal = term.MakeRaw
+	makeRawTerminal = libuvRawMode
 	restoreTerminal = term.Restore
 )
 
@@ -418,8 +426,10 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 	}
 	rememberSignalRestore(fd, state)
 	t.exitRestored.Store(false)
+	t.stopModesWritten.Store(false)
+	t.openForeignWrites()
 	// On Windows, enable VT output processing so pig's ANSI renderer displays;
-	// term.MakeRaw only configures raw input. No-op on unix.
+	// the raw mode above sets only the console's input. No-op on unix.
 	vtRestore := t.enableVTProcessing()
 	t.writeUnlogged("\x1b[?2004h")
 	t.queryAndEnableKittyProtocol()
@@ -438,8 +448,10 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 		// Disable bracketed paste before restoring cooked mode. A caller that
 		// is exiting the interactive process drains late key releases; a
 		// ProcessTerminal Stop preserves unread input for the next consumer,
-		// matching upstream stop().
-		t.writeUnlogged("\x1b[?2004l")
+		// matching upstream stop(). A renderer's exit stop wrote it already, in Pi's place.
+		if !t.stopModesWritten.Swap(false) {
+			t.writeUnlogged("\x1b[?2004l")
+		}
 		if drainOnRestore {
 			_ = t.DrainInput(time.Second, 50*time.Millisecond)
 		}
@@ -695,6 +707,20 @@ func (t *ProcessTerminal) Stop() {
 		t.disableKeyboardProtocol()
 		t.protocolQueried = false
 	}
+}
+
+// WriteStopModes writes the mode resets of Pi's terminal.stop() that precede the input restore: the progress clear when one is active, the program
+// status clear, bracketed paste off and the keyboard protocol pops. A renderer's exit stop calls it where Pi's stop() calls terminal.stop(), before the
+// alternate screen is left; the restore that follows does not write bracketed paste off again (stopModesWritten).
+// upstream: packages/tui/src/terminal.ts:stop (:481-512)
+func (t *ProcessTerminal) WriteStopModes() {
+	if t.clearProgressInterval() {
+		t.writeUnlogged(terminalProgressClearSeq)
+	}
+	t.stopProgramStatus()
+	t.writeUnlogged("\x1b[?2004l")
+	t.disableKeyboardProtocol()
+	t.stopModesWritten.Store(true)
 }
 
 // DrainInput drains pending stdin bytes for up to maxWait, exiting early once
@@ -966,13 +992,21 @@ func (t *ProcessTerminal) ClearFromCursor() { t.writeUnlogged("\x1b[J") }
 func (t *ProcessTerminal) ClearScreen() { t.writeUnlogged("\x1b[2J\x1b[H") }
 
 // SetTitle writes an OSC 0 title update sequence. A BEL or ESC in the title would end the sequence early and send the rest to the terminal as escape
-// sequences (session names come from session files), so control characters become spaces (terminal.ts setTitle).
+// sequences (session names come from session files), so control characters become spaces (terminal.ts setTitle). It is a write of a goroutine other than
+// the stop's: it is ordered against a stop (WriteOutsideStop), so it is before the stop's bytes or after them.
 func (t *ProcessTerminal) SetTitle(title string) {
-	t.writeUnlogged("\x1b]0;" + widthx.ReplaceControlCharacters(title) + "\x07")
+	sequence := "\x1b]0;" + widthx.ReplaceControlCharacters(title) + "\x07"
+	t.WriteOutsideStop(func() { t.writeUnlogged(sequence) })
 }
 
 // SetProgress writes the OSC 9;4 progress indicator and keeps it alive during agent work. Clearing stops the keepalive and writes OSC 9;4;0 followed directly by BEL.
+// Like SetTitle it is ordered against a stop; a terminal that a signal's stop sealed does not start the keepalive again.
 func (t *ProcessTerminal) SetProgress(active bool) {
+	t.WriteOutsideStop(func() { t.setProgress(active) })
+}
+
+// setProgress is SetProgress without the order against a stop, for the writer that holds the terminal.
+func (t *ProcessTerminal) setProgress(active bool) {
 	if active {
 		t.writeUnlogged(terminalProgressActiveSeq)
 		t.progressMu.Lock()
@@ -986,8 +1020,11 @@ func (t *ProcessTerminal) SetProgress(active bool) {
 		}
 		ticker := time.NewTicker(keepalive)
 		stopCh := make(chan struct{})
+		//portlint:allow ctxbackground this context is the progress interval's own lifetime: clearProgressInterval cancels it, and the terminal has no caller context (Pi's setInterval has none)
+		ctx, cancel := context.WithCancel(context.Background())
 		t.progressTicker = ticker
 		t.progressStop = stopCh
+		t.progressCancel = cancel
 		done := make(chan struct{})
 		t.progressDone = done
 		go func() {
@@ -1002,7 +1039,7 @@ func (t *ProcessTerminal) SetProgress(active bool) {
 						return
 					default:
 					}
-					t.writeUnlogged(terminalProgressActiveSeq)
+					t.keepalive(ctx, stopCh)
 				}
 			}
 		}()
@@ -1010,6 +1047,36 @@ func (t *ProcessTerminal) SetProgress(active bool) {
 	}
 	t.clearProgressInterval()
 	t.writeUnlogged(terminalProgressClearSeq)
+}
+
+// keepalive writes one tick of the progress keepalive. Pi's setInterval callback runs on its one event loop, between renders, so the tick is before the
+// bytes of a frame or after them: with an owner dispatcher the loop writes it, and a tick that waits for the loop ends with ctx when the progress is cleared.
+func (t *ProcessTerminal) keepalive(ctx context.Context, stopped <-chan struct{}) {
+	write := func() {
+		// The loop writes the tick after the frame it waited for, and the progress may have been cleared since.
+		select {
+		case <-stopped:
+			return
+		default:
+		}
+		t.writeUnlogged(terminalProgressActiveSeq)
+	}
+	// The tick is ordered against a stop like any write of another goroutine; one made during a stop runs after it and finds the progress cleared.
+	ordered := func() { t.WriteOutsideStop(write) }
+	if dispatch := t.keepaliveDispatch.Load(); dispatch != nil {
+		_ = (*dispatch)(ctx, ordered)
+		return
+	}
+	ordered()
+}
+
+// setKeepaliveDispatch routes the progress keepalive's writes through dispatch, the renderer's owner dispatcher; nil returns them to the ticker goroutine.
+func (t *ProcessTerminal) setKeepaliveDispatch(dispatch func(ctx context.Context, fn func()) error) {
+	if dispatch == nil {
+		t.keepaliveDispatch.Store(nil)
+		return
+	}
+	t.keepaliveDispatch.Store(&dispatch)
 }
 
 func (t *ProcessTerminal) clearProgressInterval() bool {
@@ -1020,9 +1087,11 @@ func (t *ProcessTerminal) clearProgressInterval() bool {
 	}
 	t.progressTicker.Stop()
 	close(t.progressStop)
+	t.progressCancel()
 	<-t.progressDone
 	t.progressTicker = nil
 	t.progressStop = nil
+	t.progressCancel = nil
 	t.progressDone = nil
 	return true
 }

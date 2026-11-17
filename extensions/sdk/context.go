@@ -688,7 +688,7 @@ func (c Context) SendCustomMessage(msg CustomMessage, opts SendMessageOptions) e
 	return nil
 }
 
-// SendUserMessage injects a user message containing a string or text/image content blocks.
+// SendUserMessage injects a user message containing a string or text/image content blocks. deliverAs is "steer" or "followUp"; "" sends no deliverAs, as pi.sendUserMessage(content) does: an idle agent runs the message at once and a streaming agent refuses it with Pi's error ("Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.", an extension error event send_user_message; the call itself returns), so pass "followUp" to queue it behind a run.
 func (c Context) SendUserMessage(content any, deliverAs string) error {
 	return c.SendUserMessageWith(content, SendUserMessageOptions{DeliverAs: deliverAs})
 }

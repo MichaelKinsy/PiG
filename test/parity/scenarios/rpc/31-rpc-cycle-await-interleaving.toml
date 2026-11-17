@@ -38,7 +38,7 @@ pi_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
 
 [assert]
 exit_code = 0
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 both_contain = ['"id":"model-two"', '"id":"model-three"']
 runs = 3

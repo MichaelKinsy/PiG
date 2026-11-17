@@ -1,0 +1,42 @@
+# Behavior family: startup
+# Surface: the model a resumed session gets when its saved model is not restorable and the account lists no model of the catalog.
+#
+# Upstream evidence (Pi f6600b58f347 sdk.ts:204-232, model-resolver.ts:586, models.ts:749, providers/github-copilot.ts:34): `-c` on a staged session whose
+# last model_change names github-copilot/zz-saved-model-gone restores nothing (the catalog has no such model), so createAgentSession falls back to
+# findInitialModel, which reads modelRuntime.getAvailableSnapshot(): the models the availability pass published. The GitHub Copilot OAuth credential
+# lists availableModelIds ["zz-not-in-the-catalog"], so filterModels leaves no Copilot model available, no model is chosen, and the interactive mode
+# shows the no-models warning. PiG selected from every model of a provider with configured auth, ignored the account's list and picked a Copilot default.
+
+name = "25-startup-restore-selects-only-from-the-published-availability"
+description = "A resumed session with an unrestorable saved model gets no model when the account lists none of the catalog, as pi's findInitialModel reads the availability snapshot."
+covers = [
+  "packages/coding-agent/src/core/sdk.ts",
+  "packages/coding-agent/src/core/model-resolver.ts",
+  "packages/ai/src/providers/github-copilot.ts",
+]
+tags = ["fast", "hermetic", "tui", "fixture-auth"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-copilot-unlisted", "PI_OFFLINE=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-copilot-unlisted", "PI_SKIP_VERSION_CHECK=1", "PI_OFFLINE=1"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "No models available"
+ready_pattern_pi = "No models available"
+ready_timeout_seconds = 25
+capture_start = "remember zulu-3120"
+capture_end = "No models available"
+settle_seconds = 2
+cwd = "testdata/continue-restore-unlisted"
+
+[assert]
+both_reach_ready = true
+both_contain = ["remember zulu-3120", "noted zulu-3120", "No models available"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

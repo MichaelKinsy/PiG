@@ -89,6 +89,9 @@ func recordTerminalCalls(t testing.TB, m *InteractiveMode) *terminalCalls {
 	default:
 		t.Fatalf("recordTerminalCalls: renderer %T is neither the main-screen nor the fullscreen renderer", m.tuiInst)
 	}
+	// A write off the owner loop reads the terminal where createInteractiveTui kept it (rememberDrawTerminal), so the recorder takes that place too.
+	recorded := tui.Terminal(calls)
+	m.drawTerminal.Store(&recorded)
 	return calls
 }
 

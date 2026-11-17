@@ -491,7 +491,7 @@ allocs = 1092
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCredentialProviderKeyRewrite"
-allocs = 496
+allocs = 619
 
 [[benchmark]]
 package = "./ai"
@@ -562,6 +562,11 @@ allocs = 261582
 package = "./ai"
 benchmark = "BenchmarkGoogleVertexADCTokenResolution"
 allocs = 150
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkGoogleVertexHookedRequest"
+allocs = 81
 
 [[benchmark]]
 package = "./ai"
@@ -887,6 +892,11 @@ allocs = 3
 package = "./ai"
 benchmark = "BenchmarkPiMessagesConverterLongStream"
 allocs = 171943
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkPiMessagesHookedRequest"
+allocs = 9
 
 [[benchmark]]
 package = "./ai"
@@ -1395,6 +1405,46 @@ allocs = 26
 
 [[benchmark]]
 package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=5000/available=5/available-only-index"
+allocs = 16
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=5000/available=5/catalog-wide-index"
+allocs = 33
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=5000/available=500/available-only-index"
+allocs = 19
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=5000/available=500/catalog-wide-index"
+allocs = 33
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=900/available=5/available-only-index"
+allocs = 16
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=900/available=5/catalog-wide-index"
+allocs = 21
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=900/available=500/available-only-index"
+allocs = 19
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkAvailableRuntimeModels/catalog=900/available=500/catalog-wide-index"
+allocs = 21
+
+[[benchmark]]
+package = "./coding"
 benchmark = "BenchmarkCatalogModelAuth"
 allocs = 460
 
@@ -1611,7 +1661,7 @@ allocs = 1064
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionRegistryMetadataRefresh"
-allocs = 1089
+allocs = 444
 
 [[benchmark]]
 package = "./coding"
@@ -2006,22 +2056,22 @@ allocs = 11806
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementCycle/1ext"
-allocs = 9768
+allocs = 9730
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementCycle/4ext"
-allocs = 15682
+allocs = 15606
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementPhases/1ext"
-allocs = 18496
+allocs = 17826
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementPhases/4ext"
-allocs = 22098
+allocs = 21334
 
 [[benchmark]]
 package = "./coding/cli"
@@ -2316,27 +2366,27 @@ allocs = 254
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/cross-cwd"
-allocs = 717
+allocs = 700
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/direct"
-allocs = 716
+allocs = 700
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/reload"
-allocs = 716
+allocs = 700
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/same-cwd"
-allocs = 716
+allocs = 701
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFailedFactoryAPIThroughNodeCell"
-allocs = 845
+allocs = 817
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2495,18 +2545,23 @@ allocs = 2
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeAcknowledgedEventNotify"
+allocs = 41
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAdmissionStartup/node-go-node"
 allocs = 6672
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAdmissionStartup/one-node"
-allocs = 654
+allocs = 624
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAdmissionStartup/three-node"
-allocs = 1105
+allocs = 1064
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2675,8 +2730,18 @@ allocs = 12
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
-benchmark = "BenchmarkReload_PackedCellWarmCache"
-allocs = 6199
+benchmark = "BenchmarkReload_PackedCellWarmCache/fixed"
+allocs = 1490
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/per-100-sdk-files"
+allocs = 1105
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/per-10-sdk-dirs"
+allocs = 120
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2692,6 +2757,11 @@ allocs = 0
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkRenderProxyMouseUnhandled/press"
 allocs = 0
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkSendUserMessageAccepted"
+allocs = 18
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2891,7 +2961,7 @@ allocs = 78
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkCloneCatalogInput"
-allocs = 27405
+allocs = 1017
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2976,7 +3046,7 @@ allocs = 49845
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionCatalogEncoding/uncached"
-allocs = 97795
+allocs = 89779
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3051,12 +3121,12 @@ allocs = 14
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkInteractiveSessionReload/0"
-allocs = 948
+allocs = 853
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkInteractiveSessionReload/1000"
-allocs = 21895
+allocs = 21801
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3256,12 +3326,12 @@ allocs = 133
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRuntimeInteractiveRebind/0"
-allocs = 3694
+allocs = 3608
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRuntimeInteractiveRebind/1000"
-allocs = 48984
+allocs = 46711
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3905,8 +3975,43 @@ allocs = 152
 
 [[benchmark]]
 package = "./tui"
+benchmark = "BenchmarkExpandPasteMarkers"
+allocs = 45
+
+[[benchmark]]
+package = "./tui"
 benchmark = "BenchmarkExtensionDialogRemapping"
 allocs = 201
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFindSearchCorpusMatches/quick_brown"
+allocs = 422
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFindSearchCorpusMatches/token"
+allocs = 1223
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFindSearchCorpusMatches/zzz"
+allocs = 3
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFrameLineRegexps/kitty-metadata/image-line"
+allocs = 8
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFrameLineRegexps/kitty-metadata/plain-line"
+allocs = 0
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkFrameLineRegexps/osc133-prompt-start/plain-line"
+allocs = 5
 
 [[benchmark]]
 package = "./tui"
@@ -3917,6 +4022,36 @@ allocs = 0
 package = "./tui"
 benchmark = "BenchmarkImageFallbackRender"
 allocs = 13
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/is-mouse-sequence/key"
+allocs = 0
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/is-mouse-sequence/mouse"
+allocs = 0
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/kitty-csi-u-key"
+allocs = 3
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/modify-other-keys"
+allocs = 2
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/sgr-mouse-report"
+allocs = 21
+
+[[benchmark]]
+package = "./tui"
+benchmark = "BenchmarkInputDecodeRegexps/sgr-wheel-report"
+allocs = 2
 
 [[benchmark]]
 package = "./tui"
@@ -4291,12 +4426,12 @@ allocs = 0
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkProcessTerminalFullRedrawCJK/turns=500"
-allocs = 46
+allocs = 45
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkProcessTerminalFullRedrawCJK/turns=5000"
-allocs = 315
+allocs = 285
 
 [[benchmark]]
 package = "./tui"
@@ -4566,32 +4701,32 @@ allocs = 10487
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/ascii/2097152"
-allocs = 4
+allocs = 1
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/ascii/512"
-allocs = 2
+allocs = 1
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/ascii/65536"
-allocs = 2
+allocs = 1
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/cjk/2097152"
-allocs = 4
+allocs = 1
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/cjk/512"
-allocs = 2
+allocs = 1
 
 [[benchmark]]
 package = "./tui"
 benchmark = "BenchmarkTerminalWriteThroughProcessTerminal/cjk/65536"
-allocs = 2
+allocs = 1
 
 [[benchmark]]
 package = "./tui"

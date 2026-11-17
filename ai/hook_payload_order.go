@@ -20,14 +20,50 @@ type HookObjectOrder struct {
 	Nested map[string]*HookObjectOrder
 }
 
-// hookPayloadOrders holds the order of each payload map a provider has handed to a hook that has not returned, by the map's address.
-var hookPayloadOrders sync.Map
+// hookPayloads holds the member order of each payload map a provider has handed to a hook that has not returned, by the map's address. Only a request with a
+// hook registered reaches it, and the provider releases a payload with a deferred call, so an entry lives exactly as long as the hook call that holds the map
+// (an error, a cancellation or a panic in the hook included): no entry outlives its map, so the collector cannot give its address to another map.
+var hookPayloads struct {
+	sync.Mutex
+	held []heldHookPayload
+}
 
-// HoldHookPayload records the member order of payload until the returned function is called, which the provider does when the hook has returned.
-func HoldHookPayload(payload map[string]any, order *HookObjectOrder) (release func()) {
+type heldHookPayload struct {
+	key   uintptr
+	order *HookObjectOrder
+}
+
+// HookPayloadHold is one payload held by HoldHookPayload.
+type HookPayloadHold struct{ key uintptr }
+
+// HoldHookPayload records the member order of payload until the returned hold is released, which the provider does, deferred, when the hook has returned.
+func HoldHookPayload(payload map[string]any, order *HookObjectOrder) HookPayloadHold {
 	key := reflect.ValueOf(payload).Pointer()
-	hookPayloadOrders.Store(key, order)
-	return func() { hookPayloadOrders.Delete(key) }
+	hookPayloads.Lock()
+	hookPayloads.held = append(hookPayloads.held, heldHookPayload{key: key, order: order})
+	hookPayloads.Unlock()
+	return HookPayloadHold{key: key}
+}
+
+// Release forgets the payload: its entry is replaced by the last one and the slice keeps its capacity, so a request allocates nothing once the registry has grown to the requests in flight.
+func (hold HookPayloadHold) Release() {
+	hookPayloads.Lock()
+	defer hookPayloads.Unlock()
+	held := hookPayloads.held
+	for i := len(held) - 1; i >= 0; i-- {
+		if held[i].key == hold.key {
+			held[i] = held[len(held)-1]
+			held[len(held)-1] = heldHookPayload{}
+			hookPayloads.held = held[:len(held)-1]
+			return
+		}
+	}
+}
+
+// callPayloadHook runs a provider's onPayload hook with the member order of its map payload held for the length of the call.
+func callPayloadHook(hook func(any, *Model) (any, error), payload map[string]any, order *HookObjectOrder, model *Model) (any, error) {
+	defer HoldHookPayload(payload, order).Release()
+	return hook(payload, model)
 }
 
 // MarshalHookPayload writes the payload an onPayload hook was handed as JSON.stringify writes the object Pi hands its hook: the members Pi's provider
@@ -39,11 +75,19 @@ func MarshalHookPayload(payload any) (encoded []byte, ok bool, err error) {
 	if !isMap {
 		return nil, false, nil
 	}
-	order, held := hookPayloadOrders.Load(reflect.ValueOf(object).Pointer())
-	if !held {
+	key := reflect.ValueOf(object).Pointer()
+	var order *HookObjectOrder
+	hookPayloads.Lock()
+	for _, entry := range hookPayloads.held {
+		if entry.key == key {
+			order = entry.order
+		}
+	}
+	hookPayloads.Unlock()
+	if order == nil {
 		return nil, false, nil
 	}
-	encoded, err = marshalOrderedHookObject(object, order.(*HookObjectOrder))
+	encoded, err = marshalOrderedHookObject(object, order)
 	return encoded, err == nil, err
 }
 

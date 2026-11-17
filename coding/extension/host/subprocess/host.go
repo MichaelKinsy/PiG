@@ -288,7 +288,9 @@ type Host struct {
 	toolRegistrationMu sync.Mutex
 	mu                 sync.Mutex
 	exts               map[string]*managedExt
-	xref               xrefHub
+	// lingering holds the removed generations that keep their process because they still own a provider, a bridged OAuth login or a virtual model (lingerRemoved). Guarded by mu.
+	lingering map[*managedExt]struct{}
+	xref      xrefHub
 	// providerConfigRefs maps a provider to the xref of its effective registered configuration root in the owning Node realm.
 	providerConfigRefs map[string]providerConfigRef
 	// configRefreshes holds the publish callback of each running config-form refreshModels request (providerRefreshModels), keyed by connection and request.
@@ -356,10 +358,8 @@ type Host struct {
 	sockRuntimeDir  string
 	sockRuntimeErr  error
 
-	// sockNames maps an extension name to its short, stable socket leaf within
-	// sockRuntimeDir (guarded by sockMu).
-	sockMu    sync.Mutex
-	sockNames map[string]string
+	// sockSeq counts the socket paths this Host has handed out (newSocketPath).
+	sockSeq atomic.Uint32
 
 	// shuttingDown is set when Shutdown is called. Crash handlers check
 	// this to suppress "connection closed" noise during normal exit.
@@ -482,6 +482,10 @@ type Host struct {
 	// stops a replaced process without waiting for it, so Shutdown drains
 	// these as well as the processes of the extensions still registered.
 	watchedPacked map[*packedProcessState]struct{}
+	// incomingLoops is the number of this Host's running connection read loops: raised before the loop's goroutine starts, lowered before the loop's end is signalled.
+	incomingLoops atomic.Int32
+	// runningWatchers is the number of this Host's running packed-process watchers: raised before the watcher's goroutine starts, lowered before watcherDone closes.
+	runningWatchers atomic.Int32
 
 	lastReload *ReloadReport
 
@@ -489,7 +493,6 @@ type Host struct {
 	retained       *RuntimeRetention
 	retainedShared bool
 	epoch          int
-	parkSeq        atomic.Int64
 
 	// loadErrors holds the formatted errors from the most recent LoadAll so the
 	// interactive session can surface startup load/build/register failures
@@ -550,6 +553,8 @@ type Host struct {
 	backgroundGate atomic.Pointer[func() <-chan struct{}]
 	// syncRuns holds the Session busy for every extension while a handler that sent a triggering message has not yet yielded (sync_run_hold.go).
 	syncRuns syncRunHolds
+	// syncReports holds the reports of failed sends until the code that sent them ends its run (sync_run_report.go).
+	syncReports syncRunReports
 
 	// widthFunc and heightFunc return the current terminal dimensions. Set by
 	// the wiring layer (interactive mode) so the host can pass real geometry
@@ -724,7 +729,7 @@ type managedExt struct {
 	oauthProviderNames []string          // subset of providerNames that also registered a bridged OAuth provider
 	stderrLogPath      string
 	stderrLog          *processStderrLog
-	sockPath           string               // Socket file path (for cleanup)
+	sockPath           string               // This generation's own socket path, listened on at its start and removed by its stop; no other generation holds it
 	packedCellKey      string               // Non-empty when hosted by a packed runtime cell
 	packedProcess      *packedProcessState  // Shared process authority for packed-member sockets.
 	shuttingDown       atomic.Bool          // True when graceful shutdown was initiated
@@ -736,8 +741,10 @@ type managedExt struct {
 	// share counts the extensions hosted by this isolated Node process, which Pi's loader re-invokes factories in across reloads. procOwner is the extension that spawned it, and retainedFrom the process a pending start will re-invoke its factory in.
 	share         *processShare
 	shareReleased atomic.Bool
-	procOwner     *managedExt
-	retainedFrom  *processShare
+	// lingerHold is set while me holds a reference on its packed cell's process: as a lingering generation (packedProcessState.holdForLinger), or as a generation whose running command keeps the process until the command returns (holdProcessForRunningCommand).
+	lingerHold   atomic.Bool
+	procOwner    *managedExt
+	retainedFrom *processShare
 
 	// toolRendererResolvers is the extension's pi.registerToolRenderer state.
 	toolRendererResolvers toolRendererResolvers
@@ -950,6 +957,7 @@ func (h *Host) forwardLoopTurned(from *Conn, raw json.RawMessage) {
 func (h *Host) SetUIBridge(bridge *UIBridge) {
 	h.uiBridge = bridge
 	if bridge != nil {
+		bridge.afterRun = h.syncReports.after
 		bridge.WatchSessionLog = h.watchSessionLog
 		bridge.OnStateChanged = h.BroadcastStateUpdate
 		bridge.onRuntimeStateMutated = h.runtimeStateMutated
@@ -2677,9 +2685,21 @@ func TerminateHostProcesses(hosts ...*Host) {
 	for _, log := range logs {
 		log.remove()
 	}
-	// The fused extensions run in this process and no process of theirs was killed, so the log their SDK created for a diagnostic is removed here, as Shutdown removes it.
+	// The fused extensions run in this process and no process of theirs was killed, so the log their SDK created for a diagnostic is removed here, as Shutdown removes it. The host process exits without Shutdown (RPC mode ends with os.Exit, as Pi's process.exit does), so each Host's private socket directory is removed here too.
 	for _, h := range hosts {
 		h.fusedLog.remove()
+		h.removeSockRuntimeDir()
+	}
+}
+
+// errSockRuntimeRemoved is what a Host asks for a socket path after TerminateHostProcesses removed its directory.
+var errSockRuntimeRemoved = errors.New("the Host's socket directory was removed by TerminateHostProcesses")
+
+// removeSockRuntimeDir removes the Host's private socket directory and keeps the Host from making one afterwards. Running the once itself, with an error that stands for the directory it never made, is what orders this read of sockRuntimeDir after the write of a concurrent ensureSockRuntimeDir.
+func (h *Host) removeSockRuntimeDir() {
+	h.sockRuntimeOnce.Do(func() { h.sockRuntimeErr = errSockRuntimeRemoved })
+	if h.sockRuntimeDir != "" {
+		_ = os.RemoveAll(h.sockRuntimeDir)
 	}
 }
 
@@ -2802,6 +2822,7 @@ func (h *Host) Shutdown(reason string) {
 	for _, me := range exts {
 		h.shutdownExt(me.config.Name)
 	}
+	h.stopLingering()
 	// Drain the stopped processes so none outlives Shutdown with its handles
 	// and cache usage lease still open.
 	for _, me := range exts {
@@ -2868,33 +2889,32 @@ func (h *Host) ensureSockRuntimeDir() (string, error) {
 	return h.sockRuntimeDir, h.sockRuntimeErr
 }
 
-// sockPathFor returns this Host's socket path for the named extension. Names are
-// short and stable per Host (e-0.sock, e-1.sock, ...) rather than derived from
-// the extension name: the runtime directory is private, so a counter is unique,
-// and a short leaf keeps the full path well under the platform sun_path limit
-// (104 bytes on macOS) that a long extension name plus a deep $TMPDIR could
-// otherwise exceed. The mapping is stable across reloads so a reload rebinds the
-// same path.
-func (h *Host) sockPathFor(name string) (string, error) {
+// newSocketPath returns a socket path that no other generation of this Host holds, on every call: the next count in this
+// Host's private runtime directory (socketLeaf). Each generation of an extension listens on its own path from its start
+// to its stop, and its stop removes that file and no other. A generation that a running command keeps alive after the
+// reload that replaced it (retireGeneration) therefore cannot remove the socket of the generation the next reload
+// staged. The runtime directory is made fresh for this Host (os.MkdirTemp), so no path was ever bound before it, and a
+// count that starts again in the next process starts in a directory of its own. The leaf is short and not derived from
+// the extension name: a short leaf keeps the full path under the platform sun_path limit (104 bytes on macOS) that a
+// long extension name plus a deep $TMPDIR could otherwise exceed; worstRuntimeSocketSuffix budgets its longest form.
+func (h *Host) newSocketPath() (string, error) {
 	dir, err := h.ensureSockRuntimeDir()
 	if err != nil {
 		return "", err
 	}
-	h.sockMu.Lock()
-	defer h.sockMu.Unlock()
-	if h.sockNames == nil {
-		h.sockNames = make(map[string]string)
+	for {
+		last := h.sockSeq.Load()
+		if last == lastSocketCount {
+			return "", fmt.Errorf("this Host has made all %d of its socket paths", uint64(lastSocketCount))
+		}
+		if h.sockSeq.CompareAndSwap(last, last+1) {
+			path := filepath.Join(dir, socketLeaf(last+1))
+			if err := validateUnixSocketPath(runtime.GOOS, path); err != nil {
+				return "", err
+			}
+			return path, nil
+		}
 	}
-	leaf, ok := h.sockNames[name]
-	if !ok {
-		leaf = fmt.Sprintf("e-%d.sock", len(h.sockNames))
-		h.sockNames[name] = leaf
-	}
-	path := filepath.Join(dir, leaf)
-	if err := validateUnixSocketPath(runtime.GOOS, path); err != nil {
-		return "", err
-	}
-	return path, nil
 }
 
 // IsShuttingDown returns true after Shutdown has been called.
@@ -2970,7 +2990,7 @@ func (me *managedExt) processSurvivesStop() bool {
 		if !me.packedProcess.stopping.Load() {
 			own = 1
 		}
-		return me.packedProcess.share.refs.Load()-own > 0
+		return me.packedProcess.share.refs.Load()-own > 0 || me.packedProcess.heldByOthers(me)
 	case me.share != nil:
 		own := int32(0)
 		if !me.shareReleased.Load() {
@@ -3003,6 +3023,7 @@ func (h *Host) stopManagedSkippingProviders(me *managedExt, reason string, keepP
 	}
 	switch {
 	case me.packedProcess != nil:
+		me.releaseLingerHold()
 		me.packedProcess.stop()
 	case me.share != nil:
 		// The process ends with its last extension; a spawner's own context is the process's and is cancelled with it.
@@ -3306,6 +3327,22 @@ func (h *Host) commitStaged(staged []stagedManagedExt, removed []*managedExt, re
 	}
 	h.syncGeometry(committed)
 
+	// A removed generation that keeps its provider takes its hold on its cell's process before any member of the cell stops: the stop of a replaced member
+	// would otherwise end the process the removed one still answers from.
+	lingered := make(map[*managedExt]bool, len(removed))
+	for _, old := range removed {
+		lingered[old] = h.lingerRemoved(old)
+	}
+	// The same for a generation with a command still running: the command's retirement stops it when the command returns, and the process stays until then
+	// (holdProcessForRunningCommand).
+	for _, old := range replaced {
+		old.holdProcessForRunningCommand()
+	}
+	for _, old := range removed {
+		if !lingered[old] {
+			old.holdProcessForRunningCommand()
+		}
+	}
 	var stoppedNow []*managedExt
 	for _, old := range replaced {
 		if !h.retireGeneration(old, func() {
@@ -3315,6 +3352,9 @@ func (h *Host) commitStaged(staged []stagedManagedExt, removed []*managedExt, re
 		}
 	}
 	for _, old := range removed {
+		if lingered[old] {
+			continue
+		}
 		if !h.retireGeneration(old, func() { h.stopManaged(old, "reload removed") }) {
 			stoppedNow = append(stoppedNow, old)
 		}
@@ -3471,14 +3511,10 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 
 	// Create the socket path inside this Host's private runtime directory, so a
 	// parallel Pig instance running the same extension cannot collide on it.
-	sockPath, err := h.sockPathFor(me.config.Name)
+	sockPath, err := h.newSocketPath()
 	if err != nil {
 		return nil, newLoadError(me.config.Name, "spawn", "socket_dir_failed", fmt.Errorf("create socket dir: %w", err))
 	}
-
-	// Clean up a stale socket from a prior load of this same Host (private dir,
-	// so this only ever removes our own file, never a peer's live socket).
-	_ = os.Remove(sockPath)
 
 	me.sockPath = sockPath
 
@@ -5089,9 +5125,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 // goHandleIncoming starts handleIncoming for conn on its own goroutine and records the loop on the connection before it runs, so Shutdown can wait for it (Conn.awaitIncomingEnded).
 func (h *Host) goHandleIncoming(me *managedExt, conn *Conn) {
 	conn.incoming.Store(&incomingLoop{ended: make(chan struct{})})
+	h.incomingLoops.Add(1)
 	//portlint:allow golifetime the loop ends with its connection, which the host closes before it stops the extension, and Shutdown waits for the loop through Conn.awaitIncomingEnded
 	go func() { //portlint:allow asyncorder the loop is recorded on the connection before it runs (conn.incoming) and Shutdown joins it through Conn.awaitIncomingEnded
 		defer conn.endIncoming()
+		// Counted out before the end is signalled.
+		defer h.incomingLoops.Add(-1)
 		h.handleIncoming(me, conn)
 	}()
 }
@@ -5155,6 +5194,10 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			}
 			if env.Type == MsgCall {
 				conn.dropReservedHostCall(env.ID)
+				if env.Call != nil {
+					// The read loop counted it for its request's acknowledgment hold (holdAckForCall); the host runs none of it.
+					conn.hostCallApplied(env.Call.ParentRequestID, false)
+				}
 			}
 			continue
 		}
@@ -5264,6 +5307,15 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 			}
 			if env.Notify.Method == NotifyHandlerYielded {
 				h.endSyncRunHoldOf(conn, env.Notify.Args)
+				// A send the runtime did not wait for may still be queued: the reports of its run are made once the calls queued before the report have run.
+				var payload HandlerYieldedPayload
+				if json.Unmarshal(env.Notify.Args, &payload) == nil && payload.Token != "" {
+					applied := lanes.barrierMark()
+					h.goDrainTask(func() {
+						applied()
+						h.syncReports.endToken(conn, payload.Token)
+					})
+				}
 				continue
 			}
 			if env.Notify.Method == NotifyEventLoopTurned {

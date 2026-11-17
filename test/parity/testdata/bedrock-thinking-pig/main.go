@@ -84,7 +84,12 @@ func main() {
 				messageCache = true
 			}
 		}
-		if err := json.NewEncoder(os.Stdout).Encode(map[string]any{"name": row.Name, "fields": json.RawMessage(fields), "systemCache": systemCache, "messageCache": messageCache}); err != nil {
+		if err := json.NewEncoder(os.Stdout).Encode(struct {
+			Name         string          `json:"name"`
+			Fields       json.RawMessage `json:"fields"`
+			SystemCache  bool            `json:"systemCache"`
+			MessageCache bool            `json:"messageCache"`
+		}{row.Name, json.RawMessage(fields), systemCache, messageCache}); err != nil {
 			panic(err)
 		}
 	}

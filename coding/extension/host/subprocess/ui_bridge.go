@@ -60,6 +60,9 @@ type UIBridge struct {
 		encoded json.RawMessage
 		valid   bool
 	}
+	// afterRun returns, for a send of the extension on owner, the function that makes a failure report when the sending code's run ends (Host.syncReports); nil when the Host has none.
+	afterRun func(owner *Conn, request, token string) func(report func())
+
 	// mcpServers reads the servers extensions registered; the Host installs its runtime's registry.
 	mcpServers    func() []extension.RegisteredMcpServer
 	mu            sync.RWMutex
@@ -516,6 +519,8 @@ type HostCallbacks struct {
 type SendMessageOptions struct {
 	TriggerTurn *bool  `json:"triggerTurn,omitempty"`
 	DeliverAs   string `json:"deliverAs,omitempty"` // "steer" | "followUp" | "nextTurn"
+	// AfterRun is SendUserMessageOptions.AfterRun for the failure of a message that starts or joins a run (agent-session.ts:3544-3546).
+	AfterRun func(report func()) `json:"-"`
 }
 
 // SendUserMessageOptions mirrors upstream options for sendUserMessage.
@@ -523,6 +528,9 @@ type SendUserMessageOptions struct {
 	DeliverAs string `json:"deliverAs,omitempty"` // "steer" | "followUp"
 	// ExpandPromptTemplates is Pi's option (types.ts:1792, agent-session.ts:2557): true dispatches extension commands and expands skill commands and prompt templates; absent is false.
 	ExpandPromptTemplates *bool `json:"expandPromptTemplates,omitempty"`
+	// AfterRun, when set, takes the function that reports a failure of this send. Pi reports it from a catch callback, a microtask after the sending code's run
+	// (agent-session.ts:3552-3555), so the host makes the report when that run ends (sync_run_report.go). Nil: the Session reports at once.
+	AfterRun func(report func()) `json:"-"`
 }
 
 // ToolInfo is one entry of getAllTools on the wire. Mirrors upstream ToolInfo
@@ -1650,9 +1658,9 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 
 	// ── Category 8: Agent Actions (ExtensionActions) ─────────────────────
 	case "sendMessage":
-		return b.handleSendMessage(actions, call.Args)
+		return b.handleSendMessage(owner, call, actions)
 	case "sendUserMessage":
-		return b.handleSendUserMessage(actions, call.Args)
+		return b.handleSendUserMessage(owner, call, actions)
 	case "appendEntry":
 		return b.handleAppendEntry(actions, call.Args)
 	case "exec":
@@ -1951,14 +1959,21 @@ func (b *UIBridge) AllWidgets() map[string]*PushProxy {
 
 // ClearExtension removes all widgets for a given extension (on crash/shutdown).
 func (b *UIBridge) ClearExtension(extName string) {
-	b.clearExtension(extName, nil, false)
+	b.clearExtension(extName, nil, false, false)
 }
 
 func (b *UIBridge) ClearExtensionConn(extName string, owner *Conn) {
-	b.clearExtension(extName, owner, true)
+	b.clearExtension(extName, owner, true, false)
 }
 
-func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
+// RetireExtensionConn takes off the screen what the generation on owner put there, as ClearExtensionConn does, for a generation whose process lives on after a reload
+// replaced or removed it: Pi's resetExtensionUI removes the extension overlays and leaves their promises pending (interactive-mode.ts:2592-2598), so a ui.custom call
+// that command awaits stays pending, and its component's own done still settles it. The call ends with the connection, as every pending call does.
+func (b *UIBridge) RetireExtensionConn(extName string, owner *Conn) {
+	b.clearExtension(extName, owner, true, true)
+}
+
+func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly, retire bool) {
 	b.mu.RLock()
 	endsOwner := !ownerOnly || b.extConns[extName] == owner
 	b.mu.RUnlock()
@@ -1989,7 +2004,10 @@ func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
 	for k, handle := range b.customOverlays {
 		if strings.HasPrefix(k, customOverlayOwnerPrefix(extName, owner)) || (!ownerOnly && strings.HasPrefix(k, prefix)) {
 			overlays = append(overlays, handle)
-			delete(b.customOverlays, k)
+			// A retired overlay stays registered: its call is still waiting, and the component's own close settles it.
+			if !retire {
+				delete(b.customOverlays, k)
+			}
 		}
 	}
 	for id, ref := range b.autocompleteReferences {
@@ -2021,7 +2039,11 @@ func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
 		b.notifyWidgetSync()
 	}
 	for _, handle := range overlays {
-		handle.Close(nil)
+		if !retire {
+			handle.Close(nil)
+		} else if retirer, ok := handle.(extension.RemoteOverlayRetirer); ok {
+			retirer.Retire()
+		}
 	}
 	b.clearEditorConn(extName, owner, ownerOnly)
 	b.clearTuiAlt(extName, owner, ownerOnly)
@@ -3248,6 +3270,7 @@ type overlayProxy struct {
 	width    int
 	hasBuf   bool
 	closed   bool
+	retired  bool
 	closeVal any
 	lastSeq  uint64
 	// view is the overlay's view surface once a frame carries a view
@@ -3370,6 +3393,24 @@ func (p *overlayProxy) Close(result any) {
 	p.mu.Unlock()
 }
 
+// Retire takes the overlay off the screen and leaves the ui.custom call waiting (extension.RemoteOverlayRetirer). A retire before the target binds is applied
+// when it does.
+func (p *overlayProxy) Retire() {
+	p.mu.Lock()
+	p.retired = true
+	target := p.target
+	p.mu.Unlock()
+	if target != nil {
+		retireOverlayTarget(target)
+	}
+}
+
+func retireOverlayTarget(target extension.RemoteOverlayHandle) {
+	if retirer, ok := target.(extension.RemoteOverlayRetirer); ok {
+		retirer.Retire()
+	}
+}
+
 // SetTarget binds the real overlay handle. Any buffered lines or close
 // signal collected before binding is drained into the target.
 func (p *overlayProxy) SetTarget(target extension.RemoteOverlayHandle) {
@@ -3387,7 +3428,7 @@ func (p *overlayProxy) SetTarget(target extension.RemoteOverlayHandle) {
 	lines := p.buffered
 	width := p.width
 	hasView, view, viewWidth := p.hasView, p.view, p.viewWidth
-	closed := p.closed
+	closed, retired := p.closed, p.retired
 	closeVal := p.closeVal
 	p.buffered = nil
 	p.hasBuf = false
@@ -3401,6 +3442,9 @@ func (p *overlayProxy) SetTarget(target extension.RemoteOverlayHandle) {
 	}
 	if closed {
 		target.Close(closeVal)
+	}
+	if retired {
+		retireOverlayTarget(target)
 	}
 }
 
@@ -3971,13 +4015,19 @@ func (b *UIBridge) handleOffTerminalInput(extName string, _ json.RawMessage) (*C
 // Category 8: Agent Actions (ExtensionActions)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-func (b *UIBridge) handleSendMessage(actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+func (b *UIBridge) handleSendMessage(owner *Conn, call *CallPayload, actions *HostCallbacks) (*CallResultPayload, error) {
 	var p struct {
-		Message extension.CustomMessageRef `json:"message"`
-		Options SendMessageOptions         `json:"options"`
+		Message    extension.CustomMessageRef `json:"message"`
+		Options    SendMessageOptions         `json:"options"`
+		YieldToken string                     `json:"yield_token"`
 	}
-	if err := json.Unmarshal(args, &p); err != nil {
+	if err := json.Unmarshal(call.Args, &p); err != nil {
 		return nil, fmt.Errorf("parse sendMessage args: %w", err)
+	}
+	// A message that starts or joins a run is the one whose Session method can reject (agent-session.ts:2339-2344). The runtime reports no yield for a send
+	// made while the agent_settled handlers run, which the Session holds back (holdAfterSend), so nothing would end its run.
+	if p.Options.TriggerTurn != nil && *p.Options.TriggerTurn && p.Options.DeliverAs != string(extension.DeliverAsNextTurn) && b.afterRun != nil && owner != nil && !inAgentSettled(owner, call.ParentRequestID) {
+		p.Options.AfterRun = b.afterRun(owner, call.ParentRequestID, p.YieldToken)
 	}
 	if actions == nil || actions.SendMessage == nil {
 		return &CallResultPayload{
@@ -3992,13 +4042,19 @@ func (b *UIBridge) handleSendMessage(actions *HostCallbacks, args json.RawMessag
 	return &CallResultPayload{}, nil
 }
 
-func (b *UIBridge) handleSendUserMessage(actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+func (b *UIBridge) handleSendUserMessage(owner *Conn, call *CallPayload, actions *HostCallbacks) (*CallResultPayload, error) {
 	var p struct {
 		Content any                    `json:"content"`
 		Options SendUserMessageOptions `json:"options"`
+		// YieldToken names the send for NotifyHandlerYielded; a runtime with an event loop sends it when the message names no delivery, the only send Pi can refuse.
+		YieldToken string `json:"yield_token"`
 	}
-	if err := json.Unmarshal(args, &p); err != nil {
+	if err := json.Unmarshal(call.Args, &p); err != nil {
 		return nil, fmt.Errorf("parse sendUserMessage args: %w", err)
+	}
+	// Only a send that names no delivery can be refused (agent-session.ts:2240-2244), so a queued one pays for no report.
+	if p.Options.DeliverAs == "" && b.afterRun != nil && owner != nil {
+		p.Options.AfterRun = b.afterRun(owner, call.ParentRequestID, p.YieldToken)
 	}
 	if actions == nil || actions.SendUserMessage == nil {
 		return &CallResultPayload{

@@ -1,0 +1,71 @@
+# Behavior family: extensions-runtime
+# Question: when /reload (ctx.reload()) runs while an extension COMMAND awaits ctx.ui.input(...), does the awaiting promise stay pending (the late code never
+# runs) or resolve? Pi: interactive-mode.ts resetExtensionUI (disposes dialogs, removes overlays, "leaves the promises pending"), agent-session.ts
+# reload() (invalidates the old runner), runner.ts (stale ctx). REMOVED: the owner file unlinks itself before it asks for the reload, so the new session has no such extension (the other four owner files of the directory stay).
+# /pend-input starts setTimeout(reload, 800) before it awaits the surface, awaits it, then writes late-input.marker under getAgentDir(). The keeper extension
+# (stays) shows keeper-start=N after every session_start, and N>1 it reports late-markers@3s / @7s for all markers. One session per surface: in Pi the
+# main loop awaits the command (interactive-mode.ts:1294), so a command typed afterwards is queued (pendingUserInputs, :3516-3520) and never runs;
+# the step that types /probe input records that.
+#
+# Upstream evidence (Pi 1.5.2, build of b4afdddf, interactive tmux, the extensions of testdata/pending-surface-removed/pi-agent in PI_CODING_AGENT_DIR/extensions;
+# source: interactive-mode.ts:2592-2598 resetExtensionUI and :6628 handleReloadCommand, agent-session.ts:3815-3855 reload). Probed on Pi: after /pend-input the
+# input is on the screen; the reload from the 800 ms timer prints "Reloaded keybindings, extensions, skills, prompts, themes, and context files" and the screen
+# shows "keeper-start=2" without the surface; the late marker is never written, "/probe input" is queued behind the pending command and never runs, and the keeper
+# reports at 7 s "late-markers@7s: custom=never select=never confirm=never input=never editor=never". No error text. PiG matched Pi on this surface when the
+# scenario was added.
+
+name = "110-pending-input-after-reload-removed-owner"
+description = "A reload while a command awaits input (removed owner): is the surface gone, does the late code run, does a second command run"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pending-surface-removed/pig-agent"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/pending-surface-removed/pi-agent"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[tmux]
+width = 200
+height = 60
+ready_pattern_pig = "keeper-start=1"
+ready_pattern_pi = "keeper-start=1"
+ready_timeout_seconds = 30
+capture_start = "parity-snap-cwd-"
+
+[[tmux.steps]]
+keys = ["/pend-input", "Enter"]
+wait_visible_contains = ["PEND-INPUT-TITLE"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = []
+wait_visible_contains = ["keeper-start=2"]
+wait_not_contains = ["PEND-INPUT-TITLE"]
+wait_timeout_seconds = 30
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["/probe input", "Enter"]
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = []
+wait_visible_contains = ["late-markers@7s:"]
+wait_timeout_seconds = 30
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+both_contain = ["late-markers@7s: custom=", "input=never"]
+both_not_contain = ["input=written", "probe: ", "probe-final", "panic:", "goroutine ", "connection closed"]
+output_equal = true
+runs = 3

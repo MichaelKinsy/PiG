@@ -32,6 +32,8 @@ type interactiveTerminalReader struct {
 	done     chan struct{}
 	// pending is a read its session took after pause; the next session delivers it first.
 	pending []byte
+	// hold, while open, keeps every session from reading: nil for a reader that reads at once.
+	hold <-chan struct{}
 
 	mu sync.Mutex
 	// delivering: the session is in its sink, not on the terminal.
@@ -39,7 +41,14 @@ type interactiveTerminalReader struct {
 }
 
 func newInteractiveTerminalReader(ctx context.Context, file *os.File, sink terminalInputSink) *interactiveTerminalReader {
-	r := &interactiveTerminalReader{ctx: ctx, file: file, terminal: tui.NewProcessTerminal(file, os.Stdout), sink: sink}
+	return newHeldInteractiveTerminalReader(ctx, file, sink, nil)
+}
+
+// newHeldInteractiveTerminalReader is a reader whose sessions read nothing until hold is closed: Node delivers the terminal's first reply to Pi's input
+// listener only after the synchronous run that ends in ui.start() and the first colour query (tui.ts:956, interactive-mode.ts init()), so the bytes
+// that run writes (terminal.ts:220-237, tui.ts:964-973) never follow a reply's own writes (the modifyOtherKeys fallback, terminal.ts:418).
+func newHeldInteractiveTerminalReader(ctx context.Context, file *os.File, sink terminalInputSink, hold <-chan struct{}) *interactiveTerminalReader {
+	r := &interactiveTerminalReader{ctx: ctx, file: file, terminal: tui.NewProcessTerminal(file, os.Stdout), sink: sink, hold: hold}
 	r.resume()
 	return r
 }
@@ -70,6 +79,13 @@ func (r *interactiveTerminalReader) resume() {
 		defer close(done)
 		if previous != nil {
 			<-previous
+		}
+		if r.hold != nil {
+			select {
+			case <-r.hold:
+			case <-ctx.Done():
+				return
+			}
 		}
 		if !r.deliver(ctx, r.sink.begin) {
 			return

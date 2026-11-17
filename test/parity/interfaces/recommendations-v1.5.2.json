@@ -140649,22 +140649,24 @@
     {
       "id": "pkg:chord/.#Catalog",
       "upstreamShapeHash": "sha256:c2639180a85cd142d88ac141a4c2fcfeb0ab5985084ef0ea71bc363085722f6e",
-      "recommendedDisposition": "partial",
+      "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
+        "2 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
-        "pending",
+        "partial",
         "deferred",
         "designed-out",
         "divergence"
       ],
       "pigCandidates": [
-        "go:github.com/MichaelKinsy/PiG/coding/cli#cliResourceLoader.catalog"
+        "go:github.com/MichaelKinsy/PiG/coding/cli#cliResourceLoader.catalog",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#builtinChatCatalogs.catalog"
       ],
       "missingClosure": [
+        "candidate-disambiguation",
         "shape-translation-review",
         "production-reachability",
         "required-layers",
@@ -152734,7 +152736,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "40 normalized-name Pig candidates are ambiguous."
+        "42 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -152761,6 +152763,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension#eventBusSubscription.run",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#limiter.run",
         "go:github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode#run",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltOwner.run",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#tuiAltScreenState.run",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#withSessionRoute.run",
         "go:github.com/MichaelKinsy/PiG/coding/piglet#osRuntimeCommands.Run",
@@ -152780,6 +152783,7 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#modelCatalogRefreshes.run",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionLoad.run",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalInputPass.run",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalWriteQueue.run",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/tools#shellUpdateScheduler.run",
         "go:github.com/MichaelKinsy/PiG/tui#CountdownTimer.run",
         "go:github.com/MichaelKinsy/PiG/tui#ThemeWatcher.run",
@@ -155553,7 +155557,6 @@
         "go:github.com/MichaelKinsy/PiG/ai#expandedCatalogChunks.Store",
         "go:github.com/MichaelKinsy/PiG/ai#googleGenerativeToolCallCounter.Store",
         "go:github.com/MichaelKinsy/PiG/ai#googleVertexToolCallCounter.Store",
-        "go:github.com/MichaelKinsy/PiG/ai#hookPayloadOrders.Store",
         "go:github.com/MichaelKinsy/PiG/ai#registryFQBuilt.Store",
         "go:github.com/MichaelKinsy/PiG/ai#responsesSlotObjects.Store",
         "go:github.com/MichaelKinsy/PiG/ai#streamedToolCallCounter.Store",
@@ -155609,6 +155612,7 @@
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#sessionLinesEncoded.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#signalExiting.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#stdoutTTY.Store",
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#terminalWriteOrder.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#toolCardSeq.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent#uncaughtGoroutineHandler.Store",
         "go:github.com/MichaelKinsy/PiG/internal/codingagent/export#exportCardSeq.Store",
@@ -160527,7 +160531,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "119 normalized-name Pig candidates are ambiguous."
+        "120 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -160574,6 +160578,7 @@
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#renderKeySeq.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#requestCallCount.add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#sessionGraphTable.add",
+        "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#syncRunReports.add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#toolRenderCardSeq.Add",
         "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewScrollComponent.Add",
         "go:github.com/MichaelKinsy/PiG/coding/mcpext#mcpCLI.add",
@@ -189204,21 +189209,23 @@
     {
       "id": "pkg:chord/tui/launcher#startTerminal",
       "upstreamShapeHash": "sha256:52c63171b908b7855821cd3df2198c7e29a282b37387a3f874cac6c5fbe837ff",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.startTerminal"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"

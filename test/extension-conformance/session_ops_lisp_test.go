@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -50,8 +51,20 @@ func TestLispSessionActionsReachTheHostActions(t *testing.T) {
 	})
 	*h.notify = nil
 	runConformanceCommand(t, h, "session_actions_bound")
-	const want = "bound:new=true,fork=true,navigate=true,switch=error:switch refused:info"
-	pollUntilConformance(t, "the Lisp SDK never reported its bound session actions", func() bool { return slices.Contains(*h.notify, want) })
+	const want = "bound:new=true,fork=true,navigate=true,switch=error:session_error: switch refused:info"
+	var got string
+	pollUntilConformance(t, "the Lisp SDK never reported its bound session actions", func() bool {
+		for _, notice := range *h.notify {
+			if strings.HasPrefix(notice, "bound:") {
+				got = notice
+				return true
+			}
+		}
+		return false
+	})
+	if got != want {
+		t.Fatalf("the Lisp SDK reported %q, want %q", got, want)
+	}
 	mu.Lock()
 	defer mu.Unlock()
 	wantCalls := []string{"new:/parent.jsonl", "fork:entry-1:at", "navigate:entry-2:true:brief:true:mark", "switch:/target.jsonl"}

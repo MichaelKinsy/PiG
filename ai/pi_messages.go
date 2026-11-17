@@ -296,9 +296,7 @@ func (p *piMessagesProvider) payload(transcript TranscriptContext, opts StreamOp
 		if model == nil {
 			model = &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: APIPiMessages, BaseURL: p.cfg.BaseURL}}
 		}
-		release := HoldHookPayload(parameters, piMessagesPayloadOrder)
-		next, err := opts.OnPayload(payload, model)
-		release()
+		next, err := callPayloadHook(opts.OnPayload, parameters, piMessagesPayloadOrder, model)
 		if err != nil {
 			return nil, err
 		}

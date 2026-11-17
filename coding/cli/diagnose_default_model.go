@@ -53,7 +53,7 @@ func writeDiagnoseDefaultModel(w io.Writer, cwd, agentDir string, trust projectT
 		_, _ = fmt.Fprintf(w, "  configured:     %s/%s (defaultProvider from %s, defaultModel from %s)\n", settings.DefaultProvider, settings.DefaultModel, sourceOf(project.DefaultProvider), sourceOf(project.DefaultModel))
 	}
 	runtime := services.ModelRuntime()
-	selected, err := findInitialModel(newLazyStartupModelRuntime(runtime.RuntimeModels, runtime.HasConfiguredAuth), settings.DefaultProvider, settings.DefaultModel)
+	selected, err := findInitialModel(newLazyStartupModelRuntime(runtime.RuntimeModels, runtime.HasConfiguredAuth, runtime.AvailableRuntimeModels), settings.DefaultProvider, settings.DefaultModel)
 	switch {
 	case err != nil:
 		_, _ = fmt.Fprintf(w, "  effective:      (could not resolve: %v)\n", err)

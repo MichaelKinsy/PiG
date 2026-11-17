@@ -137,7 +137,7 @@ func TestJSONScenariosAliasMeasuredDurations(t *testing.T) {
 	scriptDriven := []string{"17-tool-rpc-error-and-bash-wire"}
 	checked := 0
 	for _, sc := range scenarios {
-		if !sc.Assert.JSONOutputEqual {
+		if !sc.Assert.jsonCompared() {
 			continue
 		}
 		text, err := os.ReadFile(sc.SourcePath)

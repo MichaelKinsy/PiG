@@ -1263,6 +1263,57 @@ patch("86918f9eeb", "pi-ai/api/openai-completions.js", [
 ]);
 // END backport 86918f9eeb
 
+// BEGIN backport 2c2a77f9f3ab
+// 2c2a77f9f3ab (#12148): Mistral tools are sent non-strict unless the model's compat.supportsStrictMode is set (Mistral Large 4 goes silent for minutes before a strict tool call).
+// The compat schema's new member, which the models docs repeat. PiG's models.json schema file (pi-coding-agent/schemas/models.schema.json) is the merged provider-level schema, which
+// already holds supportsStrictMode from the other APIs (ProviderCompatPropertyOverrides), so the commit does not change it.
+patch("2c2a77f9f3ab", "pi-ai/providers/compat-schema.js", [
+    [`        description: "Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message.",
+        default: false,
+    }),
+};
+export const MistralConversationsCompatSchema`, `        description: "Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message.",
+        default: false,
+    }),
+    ${note("2c2a77f9f3ab").trim()}
+    supportsStrictMode: optionalCompatBoolean({
+        description: "Whether the model supports strict (schema-constrained) function tools.",
+        default: false,
+    }),
+};
+export const MistralConversationsCompatSchema`],
+]);
+// END backport 2c2a77f9f3ab
+
+// BEGIN backport 2c2a77f9f3ab
+// 2c2a77f9f3ab, 2145e3f6099c: the models configuration reference lists the new Mistral compat member (Pi regenerated the page in a commit of its own).
+patch("2c2a77f9f3ab", "pi-coding-agent/docs/models-configuration.md", [
+    ["| `supportsMidConvoSystemMessages` | boolean | `false` | Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message. |\n",
+     "| `supportsMidConvoSystemMessages` | boolean | `false` | Whether the exact model accepts system messages after the conversation has started. When false, later system messages are folded into the leading system message. |\n| `supportsStrictMode` | boolean | `false` | Whether the model supports strict (schema-constrained) function tools. |\n"],
+]);
+// END backport 2c2a77f9f3ab
+
+// BEGIN backport 2c2a77f9f3ab
+// 2c2a77f9f3ab (#12148), the behavior: buildChatPayload passes the model's compat.supportsStrictMode (default false) to toFunctionTools, which hands it to
+// resolveJsonSchemaStrictSampling where it passed true. PiG's vendored runtime carries pi-ai's mistral-conversations as a bridge stub that runs in PiG's host
+// (ai/mistral.go, which has the change), so the file is the installed Pi's only: the parity oracle is Pi with the fix.
+// not carried: packages/ai/test/mistral-tool-schema.test.ts (a test of the TypeScript source) and packages/ai/CHANGELOG.md (Pi's changelog entry): the package ships neither.
+// not carried: packages/ai/src/api/mistral-conversations.ts, packages/ai/src/providers/compat-schema.ts (TypeScript sources): the compiled output above carries the change.
+packageFile("2c2a77f9f3ab", "pi-ai/api/mistral-conversations.js", [
+    [`        payload.tools = toFunctionTools(currentTools);
+`, `        ${note("2c2a77f9f3ab").trim()}
+        payload.tools = toFunctionTools(currentTools, model.compat?.supportsStrictMode ?? false);
+`],
+    [`function toFunctionTools(tools) {
+    return tools.map((tool) => {
+        const strict = resolveJsonSchemaStrictSampling(tool, true);
+`, `function toFunctionTools(tools, supportsStrictMode) {
+    return tools.map((tool) => {
+        const strict = resolveJsonSchemaStrictSampling(tool, supportsStrictMode);
+`],
+]);
+// END backport 2c2a77f9f3ab
+
 // BEGIN backport 3567987250
 // 3567987250: pi-mcp exports mcpServerSummary, the one-line server summary the coding agent's mcp_servers section reads (an extension cannot import pi-mcp; the vendored coding agent and the oracle's `pi` do).
 // not carried: pi-mcp/naming.d.ts and pi-mcp/index.d.ts (the declaration of mcpServerSummary): declaration files; no backport table patches one, and nothing runs them.

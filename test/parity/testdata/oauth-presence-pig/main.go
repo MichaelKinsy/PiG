@@ -31,7 +31,13 @@ func run() error {
 	}
 	defer os.RemoveAll(dir)
 	ctx := context.Background()
-	var recordings []map[string]*ai.Credential
+	type recording struct {
+		Readonly *ai.Credential `json:"readonly"`
+		Before   *ai.Credential `json:"before"`
+		After    *ai.Credential `json:"after"`
+		Reopened *ai.Credential `json:"reopened"`
+	}
+	var recordings []recording
 	for i, input := range inputs {
 		path := filepath.Join(dir, fmt.Sprintf("%d.json", i))
 		if err := os.WriteFile(path, append(append([]byte(`{"custom":`), input...), '}'), 0600); err != nil {
@@ -67,7 +73,9 @@ func run() error {
 		if err != nil {
 			return err
 		}
-		recordings = append(recordings, map[string]*ai.Credential{"readonly": readonly, "before": before, "after": after, "reopened": reopened})
+		recordings = append(recordings, recording{readonly, before, after, reopened})
 	}
-	return json.NewEncoder(os.Stdout).Encode(map[string]any{"recordings": recordings})
+	return json.NewEncoder(os.Stdout).Encode(struct {
+		Recordings []recording `json:"recordings"`
+	}{recordings})
 }

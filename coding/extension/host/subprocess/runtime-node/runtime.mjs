@@ -2788,7 +2788,11 @@ export class Runtime {
       }),
       sendUserMessage: action((content, options = {}) => {
         this.reportCommandYield();
-        this.fireAndForget("sendUserMessage", { content, options });
+        // Pi reports a refused pi.sendUserMessage from a catch callback, after the run of the code that sent it (agent-session.ts:3552-3555). Only a message that names no delivery can be refused (:2240-2244), so only that send carries the token whose yield tells the host the run ended (Host.syncReports).
+        if (options?.deliverAs) return this.fireAndForget("sendUserMessage", { content, options });
+        const token = uuid("y");
+        this.fireAndForget("sendUserMessage", { content, options, yield_token: token });
+        this.reportHandlerYield(token);
       }),
       // Upstream appends to the in-process log at once (agent-session.ts:3406-3411), so a read in the same handler sees the entry.
       appendEntry: action((customType, data) => { this.contextValues.sessionManager.appendCustomEntry(customType, data, true); }),

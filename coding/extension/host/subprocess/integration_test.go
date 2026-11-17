@@ -733,10 +733,13 @@ type testOverlayHandle struct {
 	updates int
 	result  any
 	closed  chan struct{}
+	// retired is closed by Retire; retireOnce makes a second Retire a no-op.
+	retired    chan struct{}
+	retireOnce sync.Once
 }
 
 func newTestOverlayHandle() *testOverlayHandle {
-	return &testOverlayHandle{closed: make(chan struct{})}
+	return &testOverlayHandle{closed: make(chan struct{}), retired: make(chan struct{})}
 }
 
 func (h *testOverlayHandle) UpdateLines(lines []string) {
@@ -768,6 +771,15 @@ func (h *testOverlayHandle) Lines() []string {
 }
 
 func (h *testOverlayHandle) Done() <-chan struct{} { return h.closed }
+
+// Retire records that the overlay was taken off the screen and leaves the originating call blocked, as the interactive UI's overlay does
+// (extension.RemoteOverlayRetirer).
+func (h *testOverlayHandle) Retire() {
+	h.retireOnce.Do(func() { close(h.retired) })
+}
+
+// Retired is closed once the overlay was retired.
+func (h *testOverlayHandle) Retired() <-chan struct{} { return h.retired }
 
 func (h *testOverlayHandle) UpdateCount() int {
 	h.mu.Lock()

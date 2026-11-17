@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/entered"
 )
 
 // ownedWriter is a terminal writer that knows how many goroutines are inside it. It can park one write there, and it keeps
@@ -91,13 +93,58 @@ func secondGoroutineWaitsForALock() bool {
 		}
 		buf = make([]byte, 2*len(buf))
 	}
-	for goroutine := range strings.SplitSeq(string(buf), "\n\n") {
-		header, _, _ := strings.Cut(goroutine, "\n")
-		if strings.Contains(goroutine, "tui.secondGoroutine(") && (strings.Contains(header, "[sync.") || strings.Contains(header, "[semacquire")) {
+	return dumpShowsASecondGoroutineWaitingForALock(string(buf))
+}
+
+// dumpShowsASecondGoroutineWaitingForALock judges a dump of all goroutines (runtime.Stack): does the entry of the goroutine inside
+// secondGoroutine show a wait for a lock (a sync.Mutex or sync.RWMutex, or the lock of a file descriptor). entered.Classify reads the
+// state, the one place that tells the waits the Go runtime ends itself (the world lock of a collection a goroutine that allocates
+// waits on, assist credit, a stack scan, a trace) from the program's own.
+func dumpShowsASecondGoroutineWaitingForALock(dump string) bool {
+	for goroutine := range strings.SplitSeq(dump, "\n\n") {
+		header, frames, _ := strings.Cut(goroutine, "\n")
+		_, state, found := strings.Cut(header, " [")
+		if found && strings.Contains(frames, "tui.secondGoroutine(") && entered.Classify([]byte(state), []byte(frames)) == entered.Lock {
 			return true
 		}
 	}
 	return false
+}
+
+// The writer tests take "the second goroutine came to wait for a lock" from a dump of the goroutines, and a goroutine the Go runtime
+// has stopped is not one that waits for the writer's lock: one that allocates while a collection starts waits on the world lock,
+// which the dump shows as "semacquire", and one that allocates while a collection marks waits for assist credit. A reader that took
+// the first for a lock ended startedWhileParked with "did not start" before the second goroutine reached the writer, so a renderer
+// that let the second goroutine in a moment later passed: a test that could only mask a failure. The dumps are the recorded shapes
+// (synthetic frames), so the judgement is tested without waiting for a collection at that instant.
+func TestTheSecondGoroutineWaitsForALockOnlyWhenItsDumpEntryShowsALock(t *testing.T) {
+	const own = "\ngithub.com/MichaelKinsy/PiG/tui.secondGoroutine(0x1)\n\t/tui/terminal_writer_ownership_test.go:83 +0x1\n"
+	const allocating = "\nruntime.mallocgc(0x10, 0x0, 0x1)\n\t/runtime/malloc.go:1 +0x1\nruntime.makeslice(0x0, 0x10, 0x10)\n\t/runtime/slice.go:1 +0x1" + own
+	const mutexWait = "\nsync.runtime_SemacquireMutex(0x1, 0x0, 0x1)\n\t/runtime/sema.go:1 +0x1\nsync.(*Mutex).Lock(...)\n\t/sync/mutex.go:1 +0x1\ngithub.com/MichaelKinsy/PiG/tui.(*tuiBase).writeOwned(0x1)\n\t/tui/tui.go:1 +0x1" + own
+	const otherGoroutine = "goroutine 3 [running]:\nmain.other()\n\t/x.go:1 +0x1\n"
+	for _, test := range []struct {
+		name string
+		dump string
+		want bool
+	}{
+		{"a wait for a mutex", "goroutine 8 [sync.Mutex.Lock]:" + mutexWait, true},
+		{"a wait for a read lock for minutes", "goroutine 8 [sync.RWMutex.RLock, 3 minutes]:" + mutexWait, true},
+		{"the lock among other goroutines", otherGoroutine + "\ngoroutine 8 [sync.Mutex.Lock]:" + mutexWait, true},
+		{"the world lock of a collection that starts, which an allocating goroutine waits on", "goroutine 8 [semacquire]:" + allocating, false},
+		{"assist credit while a collection marks", "goroutine 8 [GC assist wait]:" + allocating, false},
+		{"a stack scan", "goroutine 8 [running (scan)]:" + allocating, false},
+		{"a wait for a wait group is not a lock", "goroutine 8 [sync.WaitGroup.Wait]:" + own, false},
+		{"a wait for a channel", "goroutine 8 [chan receive]:" + own, false},
+		{"a running goroutine", "goroutine 8 [running]:" + allocating, false},
+		{"another goroutine's lock wait", "goroutine 8 [sync.Mutex.Lock]:" + strings.ReplaceAll(mutexWait, own, "\nmain.other()\n\t/x.go:1 +0x1\n"), false},
+		{"no goroutine inside secondGoroutine", otherGoroutine, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := dumpShowsASecondGoroutineWaitingForALock(test.dump); got != test.want {
+				t.Fatalf("dumpShowsASecondGoroutineWaitingForALock = %v, want %v for:\n%s", got, test.want, test.dump)
+			}
+		})
+	}
 }
 
 // startedWhileParked runs call on a second goroutine while a write is parked in the writer and reports whether started was closed

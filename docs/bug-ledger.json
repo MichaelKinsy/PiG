@@ -2957,6 +2957,29 @@
       ]
     },
     {
+      "id": "BF-0e06194",
+      "title": "A SIGTERM or SIGHUP that arrives while PiG is still starting up (the session_start handlers of an extension…",
+      "symptom": "A SIGTERM or SIGHUP that arrives while PiG is still starting up (the session_start handlers of an extension, the terminal color query, the bind of the session) ends PiG with status 0, as it ends Pi, instead of printing `Error: context canceled` and exiting with status 1.",
+      "rootCause": "Pi's shutdown({ fromSignal }) disposes, stops and calls process.exit(0) whatever init() is awaiting (interactive-mode.ts:4483-4494). PiG's signal dispose runs before main cancels the root context, and the startup step it interrupted (an awaited session_start handler, an owner-loop step of the bind, the terminal colors) then returned the context error, which main prints as \"Error: context canceled\" with status 1. Run now reports the end of a session that shut down, not an error, when the startup error is a cancellation and the signal's dispose has run.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A SIGTERM or SIGHUP that arrives while PiG is still starting up (the session_start handlers of an extension, the terminal color query, the bind of the session) ends PiG with status 0, as it ends Pi, instead of printing `Error: context canceled` and exiting with status 1. The signal's shutdown ran, and the startup step it interrupted then reported the cancelled root context as a failure. Present in v0.3.0 through v0.7.0 (checked by tag: each runs the signal's shutdown before it cancels the root context and returns the startup error from the run).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0e061942a9",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_signal_stalled_terminal_linux_test.go::TestInteractiveSignalWithAStalledTerminalDeliversShutdownAndEndsOnTheResume",
+        "internal/codingagent/extension_ui_phase_shutdown_test.go::TestStartupEndedByASignalShutdownIsNotAnError"
+      ]
+    },
+    {
       "id": "BF-0e225b4",
       "title": "fix(runtimecell): keep the Python runner's _run callable without the built event",
       "symptom": "fix(runtimecell): keep the Python runner's _run callable without the built event",
@@ -4008,6 +4031,33 @@
         "schema/internal/ecmaregex/surrogate_test.go::TestLoneSurrogateSubjects",
         "schema/internal/ecmaregex/surrogate_test.go::TestModifierGroups",
         "schema/internal/ecmaregex/surrogate_test.go::TestNoPackageInitTables"
+      ]
+    },
+    {
+      "id": "BF-154d2c5",
+      "title": "The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes…",
+      "symptom": "The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes it when PiG ends: for a quit by keys (Ctrl+D, Ctrl+C twice, `/quit`) before the \"To resume this session\" line, and for SIGTERM and SIGHUP before the terminal is restored.",
+      "rootCause": "Pi's dispose() (agent-session-runtime.ts:415-424) runs session.abort(), session_shutdown, beforeSessionInvalidate (which writes the title through resetExtensionUI) and session.dispose(), and Pi's shutdown() calls it after stop() on a quit (title, then the resume hint) and first on a signal (title, then the terminal restore). pig ran the hook only at Runtime.Close, after Run returned and after the hint. Runtime.EmitQuitShutdown, where the mode calls the dispose, now runs the hook once after session_shutdown; Close runs it only when no dispose did (print and RPC emit through EmitQuitShutdownContext).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The terminal title that a session sets (the session name, or an extension's title) is written where Pi writes it when PiG ends: for a quit by keys (Ctrl+D, Ctrl+C twice, `/quit`) before the \"To resume this session\" line, and for SIGTERM and SIGHUP before the terminal is restored. PiG wrote it only when the runtime closed, after the exit had restored the terminal and, for a quit, after the resume hint, so a terminal or a recording of the exit saw the title last. A signal that arrives while the quit's last steps are running, or a terminal that has stopped taking output, no longer holds the title write or the exit behind each other. Present in v0.3.0 through v0.7.0 (checked by tag: each runs the title hook only when the runtime closes).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "154d2c5776",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/runtime_quit_invalidate_test.go::TestQuitContextEmitLeavesTheInvalidateHookToClose",
+        "coding/runtime_quit_invalidate_test.go::TestQuitDisposeRunsBeforeSessionInvalidateAfterSessionShutdown",
+        "internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild",
+        "internal/codingagent/interactive_exit_dispose_test.go::TestQuitWritesTheTitleInTheDisposeBeforeTheResumeHint",
+        "internal/codingagent/interactive_exit_dispose_test.go::TestSignalDisposeDoesNotWaitForAnOwnerLoopThatWaitsForItsLock",
+        "internal/codingagent/interactive_exit_title_pty_test.go::TestExitTitleIsWrittenInTheDisposeAtPisPlace"
       ]
     },
     {
@@ -5725,6 +5775,33 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-1ceb9fb",
+      "title": "A title an extension sets (`ctx.ui.setTitle`, or the session name an extension sets), the OSC 52 sequence of…",
+      "symptom": "A title an extension sets (`ctx.ui.setTitle`, or the session name an extension sets), the OSC 52 sequence of an extension's `copyToClipboard` and the progress indicator's keepalive are written between frames now, as in Pi: Pi writes each of them with `terminal.write` (the keepalive from a `setInterval` callback) on its one event loop, so each is before the bytes of a frame or after them.",
+      "rootCause": "the process terminal's own writes (title, progress keepalive) and the clipboard helper's direct OSC 52 write take no lock of the renderer, and the callers that run off the owner loop (an extension's host call, the keepalive's ticker) were not handed to the loop that writes the frames, as Pi's terminal.write calls are on its one event loop",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A title an extension sets (`ctx.ui.setTitle`, or the session name an extension sets), the OSC 52 sequence of an extension's `copyToClipboard` and the progress indicator's keepalive are written between frames now, as in Pi: Pi writes each of them with `terminal.write` (the keepalive from a `setInterval` callback) on its one event loop, so each is before the bytes of a frame or after them. PiG wrote them from the extension host's call or the keepalive's ticker goroutine, so they could land between two writes of a frame, and the race detector reported the writer. The interactive mode's loop writes them now. Released in v0.7.0 and earlier.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1ceb9fb95a",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/terminal_write_order_test.go::TestExtensionClipboardOSC52FromAHostGoroutineIsWrittenBetweenFrames",
+        "internal/codingagent/terminal_write_order_test.go::TestExtensionSessionNameTitleFromAHostGoroutineIsWrittenBetweenFrames",
+        "internal/codingagent/terminal_write_order_test.go::TestExtensionTitleFromAHostGoroutineIsWrittenBetweenFrames",
+        "internal/codingagent/terminal_write_order_test.go::TestOwnerLoopClipboardOSC52IsWrittenWhereItIsMade",
+        "internal/codingagent/terminal_write_sites_test.go::TestEveryTerminalWriteOutsideTheFrameIsOrdered",
+        "tui/terminal_progress_keepalive_order_test.go::TestProgressKeepaliveIsBeforeAFrameOrAfterIt"
+      ]
     },
     {
       "id": "BF-1d02c73",
@@ -8098,6 +8175,28 @@
       ]
     },
     {
+      "id": "BF-27c81a5",
+      "title": "A Node extension whose entry point is gone no longer keeps the extensions that share its process from loading",
+      "symptom": "A Node extension whose entry point is gone no longer keeps the extensions that share its process from loading.",
+      "rootCause": "A shared Node cell resolved the entry points of all its members before it started, and one member whose file or package entry no longer resolved failed the whole cell: every member's load was answered with that one member's error, so the extensions beside it were not loaded either. Pi loads each extension on its own and reports one error per extension that cannot be loaded (loader.ts loadExtensions), and packed mode is observationally identical to isolated mode.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension whose entry point is gone no longer keeps the extensions that share its process from loading. The extension whose file or package entry does not resolve now fails alone, with its own error, and the others load, at startup and at a reload, as Pi reports one error per extension that cannot be loaded; before, every extension of the shared Node process was reported with the missing one's error and none was loaded. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "27c81a52d1",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/reload_member_unresolved_test.go::TestNodeCellLoadsItsOtherMembersWhenOneEntryPointIsGone"
+      ]
+    },
+    {
       "id": "BF-27ddc30",
       "title": "A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its…",
       "symptom": "A tool card shows the arguments of a tool call while they stream, as Pi does: a streamed write card shows its first lines and the \"(N more lines, M total\" hint as the content arrives, instead of a bare `write ...` header until the last delta.",
@@ -8344,6 +8443,29 @@
         "ai/error_body_oracle_test.go::TestErrorBodyHelpersMatchPiOnSeededProbes",
         "ai/trim_sites_oracle_test.go::TestJSTrimSitesMatchPi",
         "internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes"
+      ]
+    },
+    {
+      "id": "BF-28e26ff",
+      "title": "fix(ext): a before_provider_headers handler's returned map changes no header, as in Pi, and the conformance…",
+      "symptom": "fix(ext): a before_provider_headers handler's returned map changes no header, as in Pi, and the conformance row binds the edits",
+      "rootCause": "Pi's emitBeforeProviderHeaders hands every handler the one headers object and ignores what a handler returns (runner.ts:1399-1425). The in-place work () made every SDK reply with the headers object the handler left, so a map a Go, Python, Rust or Lisp handler returned stopped replacing the headers. The older event_result row still queued a returned map {a:1,c:3} in those four fixtures and expected it to be the result, so the conformance row failed in every SDK but Node, whose fixture already edits event.headers in place.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "28e26ff6f5",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/inproc/null_result_test.go::TestBeforeProviderHeadersNativeResultIsIgnored",
+        "test/extension-conformance/provider_hook_combine_test.go::TestConformance_ProviderHookEditsAndResultsCombine",
+        "test/extension-conformance/provider_hook_combine_test.go::TestProviderHookEditsAndResultsMatchPi"
       ]
     },
     {
@@ -10785,6 +10907,54 @@
       ]
     },
     {
+      "id": "BF-338965f",
+      "title": "A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h\u003cnumber\u003e` directory…",
+      "symptom": "A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h\u003cnumber\u003e` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed.",
+      "rootCause": "RPC mode ends with os.Exit after TerminateProcesses, as Pi ends with process.exit, so Runtime.Close and Host.Shutdown, which removed the Host private socket directory, never ran on a normal RPC exit: every RPC session that started an extension left an h\u003cuint32\u003e directory in the temp directory. TerminateHostProcesses is the last call of a host process that is about to exit, so it removes the directory of every host it was given too and makes the Host refuse a socket path afterwards, so a generation that asks for one while the process exits cannot make a directory nobody removes.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A pig in RPC mode that ended normally, on the end of its input or on SIGTERM, left one `h\u003cnumber\u003e` directory in the temp directory for every session that started an extension: RPC mode ends with `os.Exit` after it killed the extension processes, as Pi ends with `process.exit`, so the Host's private socket directory was never removed. The host process now removes that directory when it terminates its processes, and a generation that asks for a socket path while the process exits no longer makes a new one.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "338965f248",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_exit_socket_dir_test.go::TestAnRPCPigThatEndsNormallyLeavesNoSocketDirectory",
+        "coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesMakesNoRuntimeDirectoryAndNoneAfterIt",
+        "coding/extension/host/subprocess/terminate_socket_dir_test.go::TestTerminateProcessesRemovesTheRuntimeDirectory"
+      ]
+    },
+    {
+      "id": "BF-33aa6ec",
+      "title": "An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another…",
+      "symptom": "An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another member of the command's shared Go, Rust, Python or Lisp process, as it does in Pi, where the old extension instance outlives the reload its command awaits.",
+      "rootCause": "A shared Go, Rust, Python or Lisp cell runs its members in one process. A reload that removed one member stopped that process at the commit, while the generation of the member whose command had asked for the reload waited for the command to return before it stopped: the command's connection was cut under it, `await ctx.reload()` failed, and the caller was lost. In Pi the old extension instance outlives the reload its command awaits (agent-session.ts:3828-3876), so the command resolves and goes on. A generation with a command still running now takes a hold on its cell's process before any member stops, as a lingering generation does, and its retirement releases it when the command returns.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension command that awaits `ctx.reload()` now goes on after the reload when the reload removes another member of the command's shared Go, Rust, Python or Lisp process, as it does in Pi, where the old extension instance outlives the reload its command awaits. The reload stopped the shared process while the command still ran, so `await ctx.reload()` failed with a lost connection, the command stopped half way, and the calling extension was gone after the reload (an RPC session with two extensions of one shared process, one of which removed the other's file and reloaded), in the Go, Rust, Python and Lisp SDKs alike. Node extensions were not affected. Present since 0.4.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "33aa6ec15e",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_resumes_test.go::TestRPCCommandGoesOnAfterAReloadThatRemovesACellMember",
+        "coding/extension/host/subprocess/reload_caller_packed_cell_test.go::TestPackedGoCommandGoesOnAfterAReloadThatRemovesAMemberOfItsCell",
+        "test/extension-conformance/sdkscenario_test.go::TestSDKScenarios"
+      ]
+    },
+    {
       "id": "BF-33dc8a0",
       "title": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",
       "symptom": "fix(ai): keep a custom client identity's slash in Bedrock's user agent, as the JavaScript SDK does",
@@ -12895,6 +13065,31 @@
         "ai/validate_passthrough_equivalence_test.go::TestValidateToolArgumentsPassthroughMatchesReencoding",
         "ai/validate_vectors_test.go::TestValidateToolArgumentsMatchesPiVectors",
         "internal/codingagent/tools/argument_schema_test.go::TestBuiltinArgumentSchemaIsTheDeclaredParameters"
+      ]
+    },
+    {
+      "id": "BF-3da9268",
+      "title": "A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on",
+      "symptom": "A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on.",
+      "rootCause": "A command that awaits ctx.ui.custom(...) when a /reload replaces or removes its extension went on after the reload with an undefined result: the host closed the overlay handle with nil when it cleared the retired generation, so the call resolved and the code after the await ran in the old instance. Pi leaves it pending: resetExtensionUI removes the extension overlays \"the same way done() does, but leave the promises pending\" (interactive-mode.ts:2592-2598), the screen shows nothing, and the command never goes on. In isolated mode the overlay also stayed on the screen, because the generation's stop is deferred while its command runs and nothing else took the overlay down.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `/reload` that catches an extension command awaiting `ctx.ui.custom(...)` no longer lets the command go on. The reload closed the overlay's call with `undefined` when it retired the extension's old instance, so the code after the `await` ran in the replaced or removed instance, and a second command could start behind it; Pi removes the overlay and leaves the call pending, so the command never goes on (probed on Pi 1.5.2 for the extension replaced and removed). The overlay also stayed on the screen in isolated mode, where the old instance stays until its command returns; it now leaves the screen at the reload in both modes. The call ends with the session, with the extension's connection or with the component's own close. A closed connection also ends the dialogs (`select`, `confirm`, `input`, `editor`) its extension still awaited: they waited for an answer nothing would take after a graceful close. Node, Go, Python and Rust components alike. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "3da926800b",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/packed_go_test.go::TestAC59PackedSDKFocusedComponentsOwnInput",
+        "coding/extension/host/subprocess/reload_pending_call_test.go::TestReloadLeavesPendingCustomCallPending",
+        "coding/extension/host/subprocess/reload_pending_dialog_test.go::TestReloadLeavesPendingDialogCallsPending",
+        "internal/codingagent/remote_overlay_retire_test.go::TestRemoteOverlayRetireLeavesTheCallPending"
       ]
     },
     {
@@ -21169,6 +21364,29 @@
       "tests": []
     },
     {
+      "id": "BF-60285d7",
+      "title": "Resuming a session (`pig -c`, `--resume`, `--session`, and the SDK's `CreateAgentSessionFromServices`) whose…",
+      "symptom": "The fallback chose from every model of a provider that had credentials, so an account that lists only some models (GitHub Copilot's list of models for your plan), or a provider whose own filter hides a model, was given a model it cannot use, where Pi gives it only a listed model, or none when none is listed and shows \"No models available\".",
+      "rootCause": "both fallback selectors listed available models as the composed catalog filtered by provider auth, not the published availability snapshot, which applies each provider's per-credential model filter",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Resuming a session (`pig -c`, `--resume`, `--session`, and the SDK's `CreateAgentSessionFromServices`) whose saved model is gone no longer picks a model that your account does not list. The fallback chose from every model of a provider that had credentials, so an account that lists only some models (GitHub Copilot's list of models for your plan), or a provider whose own filter hides a model, was given a model it cannot use, where Pi gives it only a listed model, or none when none is listed and shows \"No models available\". The fallback now reads the same models `/model` offers. It was present in v0.7.0 and, in the startup path, in v0.3.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "60285d7fbd",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "coding/cli/introspection_truth_test.go::TestDefaultModelResolutionDoesNotSplitAProviderPrefix",
+        "coding/cli/startup_model_test.go::TestLazyStartupModelRuntimeLoadsOnFirstReadOnly"
+      ]
+    },
+    {
       "id": "BF-60473d7",
       "title": "The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full…",
       "symptom": "The default output limit leaves 15% of the estimated input unused (at least 4,096 tokens), and near a full window requests at most 32,768 output tokens, as in Pi, so OpenRouter's higher token count for the same input no longer makes it reject the request with a 400 that PiG then treated as a context overflow and compacted.",
@@ -25637,6 +25855,29 @@
       ]
     },
     {
+      "id": "BF-6835163",
+      "title": "A terminal that answers the start-up Device Attributes query at once no longer has `CSI \u003e 4 ; 2 m` (the…",
+      "symptom": "A terminal that answers the start-up Device Attributes query at once no longer has `CSI \u003e 4 ; 2 m` (the modifyOtherKeys fallback for a terminal without the Kitty keyboard protocol) written in the middle of PiG's start-up writes, between the cursor hide and the colour-scheme and colour queries: the reply is read once the start has written its last bytes, so the fallback follows them as in Pi.",
+      "rootCause": "Node hands stdin to Pi's input listener only once the synchronous run that ends in ui.start() (tui.ts:956: hideCursor, the colour-scheme reports, the first frame request) and init()'s colour query has finished, so the fallback that the Device Attributes reply triggers (CSI \u003e 4 ; 2 m, terminal.ts:418) is written after every one of those bytes: a recorded Pi start has it at token 35 or later, after the second Device Attributes query. PiG started its terminal reader before the TUI start and the colour query, on its own goroutine, so a terminal that answered the first sentinel at once had the fallback written between the cursor hide and the colour-scheme and colour queries.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A terminal that answers the start-up Device Attributes query at once no longer has `CSI \u003e 4 ; 2 m` (the modifyOtherKeys fallback for a terminal without the Kitty keyboard protocol) written in the middle of PiG's start-up writes, between the cursor hide and the colour-scheme and colour queries: the reply is read once the start has written its last bytes, so the fallback follows them as in Pi. Since v0.3.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6835163dd2",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_start_order_pty_test.go::TestStartModeWritesFollowPiStartOrder",
+        "internal/codingagent/interactive_terminal_reader_hold_test.go::TestHeldInteractiveTerminalReaderReadsOnlyAfterTheHoldCloses"
+      ]
+    },
+    {
       "id": "BF-68457ed",
       "title": "Startup now paints the resumed transcript before the startup diagnostics, the models.json error, the model…",
       "symptom": "Startup now paints the resumed transcript before the startup diagnostics, the models.json error, the model fallback message and the crash notice, and shows the changelog notice before the transcript, as Pi orders init() and run().",
@@ -27358,6 +27599,32 @@
       ]
     },
     {
+      "id": "BF-6d4cba0",
+      "title": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled…",
+      "symptom": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before the harness closed, or before its Session failed, now fails with the cancellation, as it does in Pi, not with `ErrClosed` or the Session's failure.",
+      "rootCause": "Pi's Waiters.add (packages/durable/src/harness/util.ts:9-32) runs the abort listener inside abort(): by the time abort() returns the wait is out of the set and rejected with the reason. So rejectAll (:44-48) reaches only the waits still in the set and a wait that was aborted keeps the abort reason (the first rejection wins), and keys() (:34-36) no longer lists a key whose waits were all aborted. PiG delivered the abort with context.AfterFunc, on a goroutine of its own: between a cancel and that callback a RejectAll gave the wait the close error (ErrClosed, SessionFailed) in place of the cancellation, and Keys still listed the key, so the idle pass counted a conversation nobody waited for.…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before the harness closed, or before its Session failed, now fails with the cancellation, as it does in Pi, not with `ErrClosed` or the Session's failure. Pi rejects a wait at the abort itself (`Waiters.add` runs the abort listener there), so a later `rejectAll` never reaches it and the first rejection wins; PiG's cancellation reached the wait on its own goroutine (`context.AfterFunc`), and a close that came in between gave it the close error. The idle pass also counted a wait whose context was cancelled until that goroutine ran. The wait now listens with `chordctx.OnAbort`: for a context made by `chord/context` it is rejected and out of the set when the cancel returns. A context of another package (an embedder's own `context.WithCancel`, a deadline) still reaches the wait on a goroutine of its own, and the harness reads that context's error where the order matters. The durable library's embedders can see it (stock `pig` does not link `durable/harness`): `git tag --contains` names v0.7.0 as the first tag with the code.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6d4cba03d9",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "durable/harness/waiter_cancel_test.go::TestARejectAllAfterAWaitsContextWasCancelledKeepsTheCancellation",
+        "durable/harness/waiter_cancel_test.go::TestAWaitAddedWhileItsContextIsCancelledIsNeverLeftPending",
+        "durable/harness/waiter_cancel_test.go::TestAWaitSettledAfterItsContextWasCancelledFailsWithTheCancellation",
+        "durable/harness/waiter_cancel_test.go::TestAWaitsKeyIsGoneOnceItsContextWasCancelled",
+        "durable/harness/waiter_sampling_test.go::TestAWaitSamplesItsContextOnlyWhenOnAbortCannotListenToIt"
+      ]
+    },
+    {
       "id": "BF-6d4e10c",
       "title": "Chord: a query reader opens its read in the section of the move that created it, as Pi does, so what it reads…",
       "symptom": "Chord: a query reader opens its read in the section of the move that created it, as Pi does, so what it reads follows the move in the same section.",
@@ -28253,6 +28520,32 @@
         "tui/summary_output_pad_test.go::TestToolAndBashBlocksFollowOutputPad",
         "tui/tool_execution_test.go::TestToolExecutionStreamingFallbackUsesLeadingPreview",
         "tui/tool_execution_test.go::TestUnregisteredToolCardIsUpstreamFormatToolExecution"
+      ]
+    },
+    {
+      "id": "BF-71e0f20",
+      "title": "A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's…",
+      "symptom": "A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off.",
+      "rootCause": "Pi stop() (tui.ts) writes showCursor and terminal.stop() between beforeTerminalStop and afterTerminalStop, so CSI ?25h CSI ?2004l come before CSI ?1049l, and a fullscreen exit that prints the transcript ends with the main screen stop (CSI ?25h CSI ?2004l) and nothing after it. pig wrote them only after the alternate screen was left, then a third CSI ?25h from the mode teardown. StopOptions.ExitTerminal (pig additive) marks the exit's stops; ProcessTerminal.WriteStopModes is terminal.stop()'s mode resets, and the restore that follows no longer repeats bracketed paste off. A renderer swap is not an exit and writes none of it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A fullscreen or inline exit writes the cursor show and bracketed paste off (`CSI ?25h`, `CSI ?2004l`) in Pi's order now: before the alternate screen is left (`CSI ?1049l`) and, for a fullscreen exit that prints the transcript, once more after it, with no further cursor show after the last bracketed paste off. PiG wrote them only after the alternate screen was left and added a trailing cursor show. A terminal that handles the resets in order, or a recording of the exit bytes, now sees Pi's order; the screen a user sees is the same. Present in every release from v0.2.0 through v0.7.0 (checked by tag: v0.2.0, v0.5.3 and v0.7.0 each stop the renderer first and write the bracketed paste off in the terminal restore after it).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "71e0f20510",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_exit_bytes_pty_test.go::TestExitBytesChild",
+        "internal/codingagent/interactive_exit_order_pty_test.go::TestExitModeResetsFollowPiStopOrder",
+        "internal/codingagent/interactive_teardown_test.go::TestStopInteractiveTuiFullscreenExitOutput",
+        "tui/stop_terminal_modes_test.go::TestAltScreenExitStopWritesCursorAndPasteResetBeforeLeavingTheScreen",
+        "tui/stop_terminal_modes_test.go::TestMainScreenExitStopWritesCursorThenPasteReset"
       ]
     },
     {
@@ -29777,15 +30070,16 @@
     },
     {
       "id": "BF-7781c92",
-      "title": "fix(ai): the hook payload writes the members a handler added in byte order without a comparator sort",
-      "symptom": "fix(ai): the hook payload writes the members a handler added in byte order without a comparator sort",
+      "title": "A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was…",
+      "symptom": "A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was handed sees them written in a fixed order: an array-index key (`\"9\"`) first, as Pi's object enumerates it, then the members the provider created in Pi's order, then the added members in byte order (a Go map keeps no insertion order).",
       "rootCause": "The members the order table does not name were sorted with a comparator closure, which perf-lint flags, and then ordered by SortOwnKeys, a stable sort that needs a deterministic input. They are collected as keys and sorted with slices.Sort instead, and SortOwnKeys orders all the members, so an array-index key a handler adds enumerates first as it does in an ECMAScript object. TestMarshalHookPayloadWritesAddedMembersInOwnKeyOrder pins the order of several added members.",
       "rootCauseSource": "commit",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was handed sees them written in a fixed order: an array-index key (`\"9\"`) first, as Pi's object enumerates it, then the members the provider created in Pi's order, then the added members in byte order (a Go map keeps no insertion order). The order of the added members was decided by a sort of the map's iteration order before the fix, so it is the same on every call now. The unreleased change that gave a handler Pi's member order introduced the window; no release has it.",
+      "origin": "release note",
       "commits": [
         {
           "hash": "7781c9298c",
@@ -30123,6 +30417,36 @@
       ],
       "tests": [
         "internal/codingagent/native_provider_filter_order_test.go::TestNativeProviderFilterAllModelsSeesTheProvidersOwnModels"
+      ]
+    },
+    {
+      "id": "BF-7b36c4f",
+      "title": "A fullscreen start now writes its terminal setup in Pi's order: the alternate screen is entered first…",
+      "symptom": "PiG started the terminal on the main screen (bracketed paste, the Kitty push and the queries, so the flags went onto the main screen's stack), then popped them, entered the alternate screen and pushed them a second time (`?2004h \u003e7u ?u`, then `\u003cu ?1049h \u003e7u`), and mirrored the wrap on leaving.",
+      "rootCause": "Pi's TuiBase.start() (tui.ts:956) runs beforeTerminalStart (tui-alt-screen.ts:347, the alternate screen's enter), then terminal.start (terminal.ts:207: bracketed paste on, the Kitty keyboard push and query, the Device Attributes sentinel), then hideCursor, the colour-scheme reports and the first frame. PiG started the terminal (raw mode, bracketed paste, the push and the queries) before it entered the alternate screen, so the Kitty flags were pushed on the main screen's stack, and added a pop, enter, push wrap around the enter and a mirror wrap around the leave to move them. A terminal therefore saw `?2004h \u003e7u ?u DA1`, `\u003cu ?1049h \u003e7u` and a second push, where Pi writes `?1049h` first and…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A fullscreen start now writes its terminal setup in Pi's order: the alternate screen is entered first (`ESC[?1049h`), then bracketed paste on, the Kitty keyboard push and query and the Device Attributes query, with the Kitty flags pushed once, on the alternate screen's own stack. Before, PiG started the terminal on the main screen (bracketed paste, the Kitty push and the queries, so the flags went onto the main screen's stack), then popped them, entered the alternate screen and pushed them a second time (`?2004h \u003e7u ?u`, then `\u003cu ?1049h \u003e7u`), and mirrored the wrap on leaving. A terminal that was killed between those writes kept keyboard flags on the shell's main screen, and a recorder or terminal multiplexer saw a pop and a second push that Pi does not write. A start after an external editor, `ctrl+z` or a renderer swap, and an extension's alternate screen, follow the same order. What the screen shows, and `ctrl+digit` and `shift+enter` in fullscreen, are unchanged. Since v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7b36c4fddd",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_keyboard_protocol_pty_test.go::TestKeyboardProtocolDriverBalancesPerScreenStacks",
+        "internal/codingagent/interactive_keyboard_protocol_pty_test.go::TestKeyboardProtocolDriverChild",
+        "internal/codingagent/interactive_keyboard_protocol_pty_test.go::TestKeyboardProtocolDriverStartsAndStopsInPisOrder",
+        "internal/codingagent/interactive_start_order_pty_test.go::TestStartModeWritesFollowPiStartOrder",
+        "tui/terminal_negotiation_upstream_test.go::TestUpstreamTerminalNegotiation",
+        "tui/tui_alt_screen_keyboard_protocol_test.go::TestTuiAltScreenStartAfterHandoffWritesOnlyTheRendererTail",
+        "tui/tui_alt_screen_keyboard_protocol_test.go::TestTuiAltScreenStartSequenceFollowsPiStart",
+        "tui/tui_alt_screen_keyboard_protocol_test.go::TestTuiAltScreenStopAfterDrainWritesNoKeyboardProtocol",
+        "tui/tui_alt_screen_keyboard_protocol_test.go::TestTuiAltScreenWritesNoKeyboardStackOperations"
       ]
     },
     {
@@ -31944,28 +32268,6 @@
       ]
     },
     {
-      "id": "BF-8303e4c",
-      "title": "fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header…",
-      "symptom": "fix(entered): Classify takes the tracer and heap dump stops, the exact fd lock frames and the whole header state",
-      "rootCause": "",
-      "rootCauseSource": "",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "own",
-      "fixedIn": "Unreleased",
-      "origin": "commit",
-      "commits": [
-        {
-          "hash": "8303e4c989",
-          "date": "2026-11-09"
-        }
-      ],
-      "tests": [
-        "durable/harness/quiescence_test.go::TestAwaitQuiescentReturnsWithGoroutinesParkedInTheProgramsWaits",
-        "internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock"
-      ]
-    },
-    {
       "id": "BF-83928e2",
       "title": "A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in…",
       "symptom": "A `context` handler that edits a message of `event.messages` in place and then throws now leaves the edit in the request, as it does in Pi, where the handler works on a copy of the list over the one set of message objects: an edit to a message stays and a change to the list does not.",
@@ -32116,6 +32418,32 @@
         "internal/packagemanager/package_manager_test.go::TestPackageManagerReportsInstalledPathsPerScope",
         "internal/packagemanager/package_manager_test.go::TestPackageManagerReportsProgressToTheInstalledCallback",
         "test/extension-conformance/api_append_entry_test.go::TestConformance_ExtensionAPIAppendEntry"
+      ]
+    },
+    {
+      "id": "BF-83ee534",
+      "title": "The exit's terminal restore is one uninterrupted sequence of writes now: a title an extension sets, an OSC 52…",
+      "symptom": "The exit's terminal restore is one uninterrupted sequence of writes now: a title an extension sets, an OSC 52 copy and the terminal progress keepalive, which three other goroutines wrote at any moment, no longer land inside the stop's bytes (between the cursor show and the bracketed paste off, between the alternate screen's leave and the transcript print) and, when SIGTERM or SIGHUP ended the session, no longer follow them.",
+      "rootCause": "An extension's ctx.ui.setTitle, an OSC 52 copy and the OSC 9;4 progress keepalive are written by goroutines of their own. The exit's stop (cursor show, bracketed paste off, keyboard protocol pop, alternate screen leave) did not hold the terminal against them, so their bytes could land between the stop's writes, and after a signal's stop, where Pi's process.exit(0) leaves no callback to run (tui.ts stop() :1046-1056 is one synchronous call; interactive-mode.ts :4491-4494 ends the process right after it).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The exit's terminal restore is one uninterrupted sequence of writes now: a title an extension sets, an OSC 52 copy and the terminal progress keepalive, which three other goroutines wrote at any moment, no longer land inside the stop's bytes (between the cursor show and the bracketed paste off, between the alternate screen's leave and the transcript print) and, when SIGTERM or SIGHUP ended the session, no longer follow them. Pi's `stop()` is one synchronous call on a single thread, so nothing of its own event loop writes inside it and, after a signal, `process.exit(0)` follows it at once. A recording of the exit, or a terminal that handles the bytes in order, saw an `OSC 0`, an `OSC 52` or an `OSC 9;4` between PiG's reset sequences or after the last of them; the screen a user sees is the same. A write requested before the stop begins is still written, before it (a copy requested just before quit reaches the clipboard); one requested while it runs waits for it and, for a quit by keys, follows it as in Pi (the title Pi's dispose sets); one requested after a signal's stop is dropped, as the exit drops it in Pi. An external editor's or a suspend's stop holds the terminal the same way and gives it back when the TUI starts again. Present in every release from v0.2.0 through v0.7.0 (checked by tag: v0.2.0 and v0.7.0 each write the title, the progress keepalive and the OSC 52 copy from goroutines of their own, outside the restore).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "83ee534a7d",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_exit_storm_pty_test.go::TestExitStopSequenceHoldsNoWriterOfAnotherGoroutine",
+        "internal/codingagent/terminal_stop_transaction_test.go::TestHostWriteMadeAfterTheStopIsDroppedForASignalOnly",
+        "internal/codingagent/terminal_stop_transaction_test.go::TestHostWriteRequestedBeforeTheStopIsWrittenBeforeIt",
+        "tui/stop_transaction_test.go::TestForeignWriteStormHoldsNoByteInsideAStop",
+        "tui/stop_transaction_test.go::TestSealedStopDropsTheForeignWritesMadeDuringItAndAfterIt"
       ]
     },
     {
@@ -32816,6 +33144,30 @@
       ]
     },
     {
+      "id": "BF-873f87d",
+      "title": "Chord: a context linked from two abort sources now reports the reason of the source that aborted first when…",
+      "symptom": "The abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first.",
+      "rootCause": "abortSources and AbortOrder each walked a context's parents on their own, and only abortSources stopped at a WithoutAbortSignal context, so the two functions disagreed about which aborts reach a context.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a context linked from two abort sources now reports the reason of the source that aborted first when one of the sources is derived from a `chordctx.WithoutAbortSignal` context: the host's linked abort signals do, and so does `chordctx.OnAbort` on a context derived by `WithAbortSignal`. Before, the abort order (`chordctx.AbortOrder`) walked through the `WithoutAbortSignal` context into its parents, so the abort of a parent that never reached the derived context counted as the derived context's own, and its reason won over the other source's although that one aborted first. As in Pi, where `withoutAbortSignal` leaves the context no abort signal, the walk now ends at a `WithoutAbortSignal` context. Released in: v0.7.0, and every release since (the walk came with 0b76ae5e5, which `git tag --contains` places in v0.7.0; a probe at the v0.7.0 tag ranks `WithCancel(WithoutAbortSignal(x))` before an independent source that aborted earlier).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "873f87dc75",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "chord/context/abort_cause_oracle_test.go::TestAbortCauseMatchesPi",
+        "chord/context/abort_detached_order_test.go::TestAbortOrderStopsAtADetachedAncestor",
+        "chord/context/abort_detached_order_test.go::TestLateListenerHearsTheFirstSourceThatAbortedNotADetachedAncestorsParent"
+      ]
+    },
+    {
       "id": "BF-8780292",
       "title": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start",
       "symptom": "The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start.",
@@ -33436,6 +33788,29 @@
       "tests": [
         "ai/abort_text_pi_test.go::TestProviderAbortTextsMatchPi",
         "coding/rpc33_azure_ticks_test.go::TestRPC33AzureTickOrder"
+      ]
+    },
+    {
+      "id": "BF-8b6eb22",
+      "title": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a…",
+      "symptom": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a component it already showed with different members (it gains or loses `handleInput`, `handleMouse`, focus or `wantsKeyRelease`) no longer races the host's reads of those members: a call that named the component again stored them while a key, a mouse event, a focus change or a frame read them, with no lock between the two, so an input could be delivered or withheld by a half-stored value.",
+      "rootCause": "tuiAltScreenState.component stored a component's caps under s.mu (tui_alt_bridge.go:382) while HandleInput, WantsKeyRelease, HandleMouse, SetFocused and CapturesViewportInput (:294-357) read the same struct with no lock, on the goroutine of an input delivery, a mouse event, a focus change or a frame. Every SDK names a component's members with each call that names it, so a setFocus on one request goroutine and a key on another stored and read one struct unordered; go test -race reported it in all five readers and across the call boundary, 5 of 5 on the base. No user symptom was observed: the stores carry equal values unless an extension changes the members of a component it already showed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) and re-sends a component it already showed with different members (it gains or loses `handleInput`, `handleMouse`, focus or `wantsKeyRelease`) no longer races the host's reads of those members: a call that named the component again stored them while a key, a mouse event, a focus change or a frame read them, with no lock between the two, so an input could be delivered or withheld by a half-stored value. The host now keeps the members of a component as one value that a call replaces whole. Present since 0.7.0, the first release with the subprocess `TuiAltScreen`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8b6eb224b8",
+          "date": "2026-11-15"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/tui_alt_caps_race_test.go::TestARenamedComponentsMembersAreNotRacedByTheScreensReads",
+        "coding/extension/host/subprocess/tui_alt_caps_race_test.go::TestSetFocusAndInputOfAnExtensionScreenDoNotRaceTheComponentsMembers"
       ]
     },
     {
@@ -34912,6 +35287,30 @@
         "ai/trusted_url_oracle_test.go::TestTrustedVerificationURLsMatchPi",
         "internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode",
         "internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL"
+      ]
+    },
+    {
+      "id": "BF-90890e6",
+      "title": "An extension that registered a provider and is then removed (its file deleted, or taken out of the extension…",
+      "symptom": "An extension that registered a provider and is then removed (its file deleted, or taken out of the extension settings) keeps answering after `/reload`, as it does in Pi: the provider stays listed in `/model`, stays selectable, and a prompt to it is answered by the old extension, even across a second `/reload`.",
+      "rootCause": "Pi's reload never unregisters a provider: the model runtime keeps the registration and the extension's own streamSimple closure until the session ends or an extension unregisters the name (agent-session.ts:3815-3855 reload, model-runtime.ts:965-993). PiG stopped the removed extension and unregistered its provider, so the model vanished and a prompt failed for want of a credential.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that registered a provider and is then removed (its file deleted, or taken out of the extension settings) keeps answering after `/reload`, as it does in Pi: the provider stays listed in `/model`, stays selectable, and a prompt to it is answered by the old extension, even across a second `/reload`. PiG stopped the removed extension and dropped its provider, so the model vanished and a prompt failed with \"No API key found\". A removed extension that owns a provider (also a bridged OAuth login or a virtual model) keeps its process and its registrations but loses everything else (tools, commands, handlers, widgets, MCP servers, events); its process ends with the session or when another extension takes its last name over. Present in every release up to and including v0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "90890e61c1",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/generation_linger_packed_test.go::TestPackedGoMemberRemovedByAReloadKeepsItsProviderUntilShutdown",
+        "coding/extension/host/subprocess/generation_linger_test.go::TestRemovedExtensionKeepsItsProviderAcrossTwoReloads",
+        "coding/extension_provider_survives_removal_test.go::TestRemovedExtensionProviderStillAnswersAfterReload"
       ]
     },
     {
@@ -36987,6 +37386,29 @@
       "tests": []
     },
     {
+      "id": "BF-92adb39",
+      "title": "PiG's raw mode is the one Pi's terminal is in now (libuv's `UV_TTY_MODE_RAW`, which Node's `setRawMode(true)`…",
+      "symptom": "PiG's raw mode is the one Pi's terminal is in now (libuv's `UV_TTY_MODE_RAW`, which Node's `setRawMode(true)` uses), not the `cfmakeraw` mode of `golang.org/x/term`.",
+      "rootCause": "Flag by flag (libuv RAW | x/term MakeRaw | what a user or program sees when they differ): iflag BRKINT ICRNL ISTRIP IXON cleared | cleared | equal iflag INPCK cleared | left | parity checking of input stays as set: a serial line only iflag IGNBRK PARMRK INLCR IGNCR left | cleared | a terminal configured with them keeps them in Pi: INLCR/IGNCR change what a key's CR/NL means oflag OPOST left | cleared | with OPOST cleared no output processing at all: ONLCR below is the visible part oflag ONLCR set | not set | a bare LF written to the terminal (a child that shares it, an extension's stray console output, a Go runtime message) returns to column 0 under Pi and moved straight down under PiG; a…",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "Windows",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "PiG's raw mode is the one Pi's terminal is in now (libuv's `UV_TTY_MODE_RAW`, which Node's `setRawMode(true)` uses), not the `cfmakeraw` mode of `golang.org/x/term`. While the TUI runs, the kernel turns a line feed into carriage return plus line feed again, as under Pi: a bare `\\n` written to the terminal by a child process that shares it (an extension's stray console output, a program the bash tool starts on the terminal, a Go runtime message) returns to column 0 instead of moving straight down and leaving the next text where the previous line ended (the staircase). The input flag `INPCK` is cleared now (PiG left it as the terminal had it), `IGNBRK`, `PARMRK`, `INLCR`, `IGNCR` and `ECHONL` stay as the terminal had them (PiG cleared them; a terminal configured with `INLCR` or `IGNCR` keeps what they do to Enter, as under Pi), and the mode is applied after the output already written has drained, as libuv does. On Windows the console input mode is exactly `ENABLE_WINDOW_INPUT` plus `ENABLE_VIRTUAL_TERMINAL_INPUT`, as under Pi: selecting text in the window no longer pauses PiG's output (the quick edit flag is cleared); this part was built and vetted for Windows but not run on a console. The terminal mode the shell gets back at exit is unchanged. Present in every release from v0.2.0 through v0.7.0 (checked by tag: each calls `term.MakeRaw`).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "92adb39502",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "tui/terminal_raw_output_unix_test.go::TestRawModeIsTheModePiRecorded",
+        "tui/terminal_raw_output_unix_test.go::TestRawModeKeepsTheKernelsNewlineTranslationAsLibuvDoes"
+      ]
+    },
+    {
       "id": "BF-92da987",
       "title": "Codemode no longer reserves its whole 256 MiB script-memory limit when a session starts: the QuickJS linear…",
       "symptom": "Codemode no longer reserves its whole 256 MiB script-memory limit when a session starts: the QuickJS linear memory now grows on demand, so an idle session with one small script allocates about 4 MiB instead of about 359 MiB (Go heap held, 321 MiB before, 4 MiB after), while a runaway allocation still fails inside the script at the same limit.",
@@ -38289,6 +38711,29 @@
       ]
     },
     {
+      "id": "BF-994aab4",
+      "title": "In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and…",
+      "symptom": "In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and interactive modes.",
+      "rootCause": "RPC mode gave its extension host the set of extensions it started with as the resolver of every reload (cli_runtime_build.go passed no reload resolver, so setExtensionConfigLoader fell back to the startup configs), where print and interactive mode discover the extension files again as Pi's resource loader does (resource-loader.ts DefaultResourceLoader.reload). In RPC mode an extension command that removed a sibling's file and awaited ctx.reload() left the removed extension configured, and in a shared Node cell its missing file failed the load of the caller beside it; a file written before the reload was never loaded.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In RPC mode `ctx.reload()` loads the extensions that are on disk, as it does in Pi and in PiG's print and interactive modes. RPC mode reloaded the extensions it had started with, so an extension command that removed a sibling extension's file and awaited `ctx.reload()` left the removed extension configured, and, when the two shared a Node process, the missing file failed the load of the calling extension as well: the caller was gone after the reload. An extension file added before the reload was never loaded. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "994aab45cb",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_membership_test.go::TestRPCReloadDropsAnExtensionRemovedFromDisk",
+        "coding/cli/rpc_reload_membership_test.go::TestRPCReloadLoadsAnExtensionAddedToDisk"
+      ]
+    },
+    {
       "id": "BF-99a06cf",
       "title": "Interactive startup paints the editor and footer first and adds the startup header once the terminal reports…",
       "symptom": "Interactive startup paints the editor and footer first and adds the startup header once the terminal reports its colors or 100 ms pass, as Pi does.",
@@ -38493,6 +38938,30 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-9b30272",
+      "title": "ai: Mistral Large 4 tool calls no longer stall for minutes",
+      "symptom": "ai: Mistral Large 4 tool calls no longer stall for minutes.",
+      "rootCause": "buildChatPayload passed true as the strict-tools default to toFunctionTools, so every Mistral tool that asked for JSON-schema constrained sampling carried strict true and a converted schema, and Mistral Large 4 spends minutes before a call to a strict tool; the default is now the model's compat.supportsStrictMode, false when absent.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "pi-port",
+      "fixedIn": "Unreleased",
+      "releaseNote": "ai: Mistral Large 4 tool calls no longer stall for minutes. The model went silent before a tool call when the tools carried `strict: true`, which PiG sent on every Mistral request since 0.2.0; with strict off the call arrives in seconds (Pi 2c2a77f9f3ab, #12148).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9b302729ad",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/mistral_strict_mode_oracle_test.go::TestMistralStrictToolsRequestBodyMatchesPi",
+        "ai/mistral_test.go::TestMistralToolsWithoutStrictMode",
+        "ai/mistral_tool_schema_upstream_test.go::TestMistralToolsAreNonStrictUnlessTheModelEnablesStrictMode"
+      ]
     },
     {
       "id": "BF-9b33064",
@@ -42493,6 +42962,28 @@
       ]
     },
     {
+      "id": "BF-a8428a1",
+      "title": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled…",
+      "symptom": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before its result settled it now fails with the cancellation, as it does in Pi, not with the result.",
+      "rootCause": "Waiters.Settle (durable/harness/util.go) gave a wait the settled value even when the wait's context had already been cancelled. Pi's Waiters.add runs the abort listener at the abort itself (packages/durable/src/harness/util.ts: 22-28), so a wait whose signal was aborted is gone from the set when a later resolve looks (:38-42): it was rejected, and resolve never reaches it. Go has no listener inside the cancel: context.AfterFunc runs the callback on its own goroutine, so a Settle that came between the cancel and that goroutine resolved a wait that Pi had rejected.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled before its result settled it now fails with the cancellation, as it does in Pi, not with the result. Pi rejects a wait at the abort itself (`Waiters.add` runs the abort listener there), so a later resolve never reaches it; PiG's cancellation reaches the wait on its own goroutine (`context.AfterFunc`), and a result that settled the wait in between was returned instead. A tool that waits for a subagent's submission, aborted with its parent's conversation, could get the child's `unanswered: aborted` record as an ordinary result, not the abort error; the harness's own test for it hung once in 2041 passes on a loaded runner. The durable library's embedders can see it (stock `pig` does not link `durable/harness`); `git tag --contains` names v0.7.0 as the first tag with the code.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a8428a1f79",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "durable/harness/waiter_cancel_test.go::TestAWaitSettledAfterItsContextWasCancelledFailsWithTheCancellation"
+      ]
+    },
+    {
       "id": "BF-a8a04f4",
       "title": "`PIG_DEBUG` writes its log with mode 0600 and refuses a symlink or a file owned by another user in the shared…",
       "symptom": "`PIG_DEBUG` writes its log with mode 0600 and refuses a symlink or a file owned by another user in the shared temporary directory; `PIG_DEBUG_KEYS` logs typed text and pastes only by length, so a key entered at a masked login prompt no longer reaches the log; `pig-render.log` is private (0600).",
@@ -42796,6 +43287,32 @@
       ]
     },
     {
+      "id": "BF-a984ccc",
+      "title": "Starting PiG with an agent directory that cannot be made (a regular file where a parent directory should be…",
+      "symptom": "Starting PiG with an agent directory that cannot be made (a regular file where a parent directory should be, a parent that cannot be written, a read-only file system) now ends where Pi ends: with the session directory of a new session, the error is Node's own `ENOTDIR: not a directory, mkdir '\u003cagent\u003e/sessions/--\u003ccwd\u003e--'` (with `--no-session` Pi's project trust store reports it for the agent directory), and a program that gives `CreateAgentSession` its own session manager is no longer refused with `open auth storage at \u003cpath\u003e`: the credential store opens, and the first credential or settings write reports the mkdir error, as Pi's does.",
+      "rootCause": "NewAuthStorage called MkdirAll on the directory of auth.json at construction and returned its error, where Pi's constructor only reads through reload(), which keeps the last snapshot for every error; loadSettingsFile returned any stat error where Pi's existsSync returns false; MkdirSessionDir wrapped the error and created a path that exists as a file; and the new session's directory was made only inside the mode, after the project trust store had already failed on the agent directory.",
+      "rootCauseSource": "commit",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting PiG with an agent directory that cannot be made (a regular file where a parent directory should be, a parent that cannot be written, a read-only file system) now ends where Pi ends: with the session directory of a new session, the error is Node's own `ENOTDIR: not a directory, mkdir '\u003cagent\u003e/sessions/--\u003ccwd\u003e--'` (with `--no-session` Pi's project trust store reports it for the agent directory), and a program that gives `CreateAgentSession` its own session manager is no longer refused with `open auth storage at \u003cpath\u003e`: the credential store opens, and the first credential or settings write reports the mkdir error, as Pi's does. PiG stopped at the credential store with its own text, read a settings file behind an unmakeable directory as a load error where Pi reads none, wrapped the session directory's error in `sessionmanager: mkdir` and tried to make a session directory that exists as a file. Since PiG 0.2.0 for the credential store (v0.7.0 is the last release).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a984cccf08",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/auth_unmakeable_directory_upstream_test.go::TestNewAuthStorageOpensWhereTheDirectoryCannotBeMadeAndTheFirstWriteReports",
+        "coding/cli/unmakeable_agent_dir_modes_test.go::TestPrintAndRPCModeEndWithNodesMkdirErrorWhereTheAgentDirectoryCannotBeMade",
+        "coding/cli/unmakeable_agent_dir_modes_test.go::TestStartupMakesTheDirectoryOfANewSessionBeforeAnythingElse",
+        "coding/sdk_unmakeable_agent_dir_test.go::TestCreateAgentSessionRejectsWithNodesMkdirErrorForTheDefaultSessionDirectory",
+        "internal/codingagent/settings_unmakeable_directory_oracle_test.go::TestSettingsOfAnAgentDirectoryThatCannotBeMadeRecordNoLoadErrorAndTheFirstWriteReportsMkdir"
+      ]
+    },
+    {
       "id": "BF-a9d41ed",
       "title": "`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a…",
       "symptom": "`chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a proxy script for a Go core facet whose name has `\u003c`, `\u003e` or `\u0026` is written as `JSON.stringify` writes it.",
@@ -43082,6 +43599,39 @@
         "test/extension-conformance/overlay_show_test.go::TestFactoryTuiShowOverlayReachesTheHost",
         "test/extension-conformance/overlay_width_conformance_test.go::TestConformance_OverlayRenderWidth",
         "tui/overlay_state_test.go::TestHideRestoresFocusToAnOverlayPreFocus"
+      ]
+    },
+    {
+      "id": "BF-ab0fedf",
+      "title": "A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was…",
+      "symptom": "A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came.",
+      "rootCause": "A command that awaits ctx.reload() keeps its generation running until the command returns, which can be after the next reload staged a successor and began to listen. Every generation of an extension name listened on one path, and the old generation's stop removed the file at that path, which by then was the successor's listener: the successor's process failed to connect (ENOENT), the reload that staged it waited for a connection that never came, and the prompt that asked for the reload never answered. A Python extension beside an edited one hit it when the stop of a retired generation ran after the next staged one had bound; the CI failure was…",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A prompt sent after `/reload` no longer hangs when a command of the extension that asked for the reload was still running while the next reload staged its replacement: the old generation's stop removed the socket file at the path its extension's name mapped to, which was by then the path the staged generation listened on, so the staged extension process could not connect (a Python extension beside an edited one hit it) and the reload waited for a connection that never came. Every generation now listens on a socket path of its own and its stop removes only that file.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ab0fedf5d2",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/host_test.go::TestResolveSocketDir_TermuxUsesTMPDIRAndKeepsItWithinTheSocketLimit",
+        "coding/extension/host/subprocess/platform_windows_test.go::TestWindowsUnixSocketPathsAreShortIsolatedAndCleaned",
+        "coding/extension/host/subprocess/platform_windows_test.go::TestWindowsUnixSocketPathsFallBackWhenTempIsTooLong",
+        "coding/extension/host/subprocess/socket_lifecycle_test.go::TestAKilledHostsSocketFileIsNeitherUsedNorRemovedByTheNextHost",
+        "coding/extension/host/subprocess/socket_lifecycle_test.go::TestSocketFilesOfRealGenerationsEndWithTheirListeners",
+        "coding/extension/host/subprocess/socket_path_budget_test.go::TestEverySocketPathIsNewAndFitsTheBudget",
+        "coding/extension/host/subprocess/socket_retirement_test.go::TestADeferredRetirementLeavesTheSocketOfTheGenerationStagedAfterIt",
+        "coding/extension/host/subprocess/socket_retirement_test.go::TestAHeldRetiredGenerationOwnsItsSocketFileUntilTheSessionEnds",
+        "coding/extension/host/subprocess/socket_retirement_test.go::TestAStopRemovesTheSocketFileOfItsOwnGenerationOnly",
+        "coding/extension/host/subprocess/socket_runtime_dir_test.go::TestEnsureSockRuntimeDirNameFitsTheWorstCaseSuffix",
+        "coding/extension/host/subprocess/socket_runtime_dir_test.go::TestSocketRuntimeBaseBranchAtTheEdgeOfTheShorterLeaf",
+        "coding/extension/host/subprocess/socket_runtime_dir_test.go::TestSocketRuntimeBaseKeptDirectoryHoldsEveryRuntimeSocketPath"
       ]
     },
     {
@@ -43540,23 +44090,27 @@
     },
     {
       "id": "BF-ad24cdf",
-      "title": "fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered",
-      "symptom": "fix(entered): a wait the Go runtime ends is not a wait the goroutine has entered",
-      "rootCause": "entered.Parked read the state of the goroutine it is asked about from a goroutine dump and took every state but \"running\", \"runnable\", \"syscall\", \"copystack\" and \"preempted\" for a wait, except the sync.Mutex, sync.RWMutex and semaphore waits, which are locks (parked only for AwaitBlocked, whose caller may hold the lock). A goroutine that allocates while a collection starts waits on the world lock, which the dump shows as \"semacquire\", and one that allocates while a collection marks waits for assist credit, \"GC assist wait\". The runtime ends both on its own, so the goroutine is still on its way to the wait the program gave it; Parked took \"GC assist wait\" for parked, and \"semacquire\" for…",
-      "rootCauseSource": "commit",
-      "userImpact": "Behavior differed from Pi",
+      "title": "The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has…",
+      "symptom": "The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has stopped for its own work.",
+      "rootCause": "entered.Parked took every state of a goroutine dump except running, runnable, syscall, copystack and preempted for a wait of the program's, so a goroutine the runtime itself had stopped (assist credit, a stack scan, a trace or heap dump stop; for AwaitBlocked also the world lock of a collection) read as parked",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "origin": "commit",
+      "releaseNote": "The waits that keep upstream's one-thread order no longer return early for a goroutine the Go runtime has stopped for its own work. `entered.Await`, `entered.Go` and `entered.AwaitUnless` took a goroutine that allocates while a collection marks (it waits for assist credit) or scans its stack, or that a trace or a heap dump stops, for one parked in a wait of the program's, and `entered.AwaitBlocked` also took the world lock of a collection that is starting for one. What a caller could see: `chord/output.AwaitCaller` (`SettleInOrder`, `SettleAndAwait`) went on to settle the next `details()` waiter of a commit before the caller of the one before had run to its next await, so the continuations ran out of Pi's order; `durable/codemode` `spawnEntered` returned before the tool call it started was running, so the call that followed it, or the end of the script that aborts it, could come first; and the chord host's `goEntered` closed its channel before the handler had run to its first wait. It needed a collection or a trace at that instant, so it was rare. The first release with it is 0.5.0: `git log --diff-filter=A v0.5.0 -- internal/entered/entered.go` names 9080668e4ab, `git tag --contains` that commit lists v0.5.0 first, and v0.4.1 has no such package. `entered.Classify` is now the one place that reads a goroutine dump entry, and the durable harness's test barrier uses it too, which also ends the intermittent failure of `TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork`.",
+      "origin": "release note",
       "commits": [
+        {
+          "hash": "8303e4c989",
+          "date": "2026-11-09"
+        },
         {
           "hash": "ad24cdf7f0",
           "date": "2026-11-09"
         }
       ],
       "tests": [
-        "durable/harness/harness_idle_scopes_test.go::TestIncrementalIdleStateEqualsAFullRecomputeAfterEveryStepOfRandomNestedWork",
         "internal/entered/entered_test.go::TestClassifySeparatesTheRuntimesWaitsFromTheProgramsOwn",
         "internal/entered/entered_test.go::TestParkedKeepsAFileDescriptorLockAsALock",
         "internal/entered/entered_test.go::TestParkedNeverReportsAGoroutineThatAllocatesWithoutPause"
@@ -44769,6 +45323,30 @@
       ]
     },
     {
+      "id": "BF-b30b8aa",
+      "title": "After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in…",
+      "symptom": "After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in Pi: in v0.7.0 a compiled-in extension kept using it and its event-bus subscriptions stayed.",
+      "rootCause": "the interactive reload invalidated the old runner but kept its runtime active, where Pi's runner.invalidate() invalidates the runtime too (runner.ts:729-735), and a host that keeps one runtime across reloads never made it active again, where Pi's loader creates a new runtime for each load",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in Pi: in v0.7.0 a compiled-in extension kept using it and its event-bus subscriptions stayed. The next `/reload`, or an embedder's retry of `Session.Reload`, now loads on a live runtime again: it built its extensions over the stale one, so their registrations threw the stale message.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b30b8aa06d",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/runtime_state_test.go::TestRuntimeReactivateEndsStalenessButNotTheEndedSubscriptions",
+        "coding/session_reload_runtime_reactivate_test.go::TestAReloadAfterAFailedOneRunsOnTheSharedRuntimeAgain",
+        "internal/codingagent/reload_failed_runtime_test.go::TestFailedInteractiveReloadInvalidatesTheOldRunnersRuntimeAndTheNextReloadWorks"
+      ]
+    },
+    {
       "id": "BF-b341a82",
       "title": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again",
       "symptom": "`go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again.",
@@ -45723,6 +46301,32 @@
         "coding/cli/package_cli_output_test.go::TestPackageChildOutputAndFailure",
         "internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerNpmInstallAndUninstallPassTheRealPathWhenTheAgentDirIsASymlink",
         "internal/packagemanager/package_manager_ops_gaps_test.go::TestPackageManagerNpmUninstallAndUpdateCheckUseTheConfiguredCommand"
+      ]
+    },
+    {
+      "id": "BF-b829321",
+      "title": "Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK…",
+      "symptom": "Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK and as Pi does.",
+      "rootCause": "pi.sendUserMessage(content) passes options?.deliverAs to prompt() as streamingBehavior (agent-session.ts:2565-2573): an idle agent runs the message at once, a streaming agent refuses it (\"Agent is already processing. Specify streamingBehavior ...\", prompt() :2240-2244), and the bound action reports that refusal as the extension error event send_user_message while the call returns (:3565-3572). The Go SDK omitted an empty deliverAs, the Rust SDK sent an empty string (the host reads it as absent), and the Python and Lisp SDKs defaulted to \"followUp\": a Python or Lisp extension that sent without a mode while the agent streamed got a queued follow-up where Pi, a Node extension and a Go…",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extension SDKs: `send_user_message` / `sendUserMessage` with no delivery mode now behaves alike in every SDK and as Pi does. The Python and Lisp SDKs defaulted the mode to `\"followUp\"` (since 0.7.0), so an extension that sent while the agent was running got a queued follow-up where Pi, a Node extension and a Go extension get Pi's refusal. Python `send_user_message(content)` and Lisp `(ctx-send-user-message ctx content)` now send no `deliverAs`: an idle agent runs the message at once, and a running agent refuses it with `Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.`, reported as the extension error `send_user_message` while the call returns. The Python signature changes from `send_user_message(content, deliver_as=\"followUp\", ...)` to `deliver_as=None`, so an author who relied on the default now gets Pi's refusal while the agent runs; the old behaviour is `deliver_as=\"followUp\"` (Lisp `:deliver-as \"followUp\"`), and `steer` and `followUp` are unchanged. Interactive mode now reports a refused `sendUserMessage` and a failed `sendMessage` as those extension errors instead of returning the error to the extension, as print, JSON and RPC mode do, and the Lisp `host-call-error` prints `CODE: MESSAGE` as the other SDKs write a host error.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b829321657",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_extension_delivery_test.go::TestSendMessageFailureIsReportedNotReturned",
+        "internal/codingagent/interactive_extension_delivery_test.go::TestSendUserMessageWithoutDeliveryModeWhileStreamingIsReportedNotReturned",
+        "test/extension-conformance/host_call_error_surface_test.go::TestHostCallErrorSurfaceAcrossSDKs",
+        "test/extension-conformance/send_user_message_delivery_test.go::TestSendUserMessageDeliveryAcrossSDKs",
+        "test/parity/scenarios/rpc/83-rpc-send-user-message-delivery-streaming.toml"
       ]
     },
     {
@@ -49470,6 +50074,65 @@
       "tests": []
     },
     {
+      "id": "BF-cb409e6",
+      "title": "Chord: a context derived by `chordctx.WithAbortSignal` from a signal that is a context made by…",
+      "symptom": "`WithAbortSignal` cancelled it with `context.AfterFunc`, on a goroutine of its own, so code that ran right after the cancel could still see a context derived from the cancelled signal live.",
+      "rootCause": "Pi's withAbortSignal is AbortSignal.any. When a source aborts, every composite derived from it is marked aborted before any listener runs; then the source's own listeners run in the order they were added, then each composite's in the order the composites were created (packages/chord/src/context/index.ts:111-130, 138-153). Measured on Node v24.22.2 by chord/context/testdata/abort_order_oracle.mjs, which TestAbortListenerOrderMatchesPi runs against the pinned Pi: a1 c.aborted=true d.aborted=true / a2 / c1 / c2 / d1.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Chord: a context derived by `chordctx.WithAbortSignal` from a signal that is a context made by `chord/context` is now cancelled inside the cancel function of its source, before that function returns and before any abort listener (`OnAbort`) of the source runs, as `AbortSignal.any` marks its composite aborted in Pi. Before, `WithAbortSignal` cancelled it with `context.AfterFunc`, on a goroutine of its own, so code that ran right after the cancel could still see a context derived from the cancelled signal live. `OnAbort` now also runs listeners in Pi's order: the aborted context's own, in the order they were added, then those of the contexts derived from it, in the order those were created. Before, a listener added to a child first ran before one added to its parent. A source from another package (a deadline, the standard library's cancel) still reaches the derived context on a goroutine of its own, and `OnAbort` reports `exact` false for such a context. An embedder of `chord/context` can see all of it; no change was found through the Chord host. `git tag --contains` names v0.7.0 as the first tag with the code.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "cb409e6c32",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "chord/context/abort_link_test.go::TestAContextDerivedFromADerivedSignalFollowsEveryCancelOfItsAncestors",
+        "chord/context/abort_link_test.go::TestAContextDerivedFromAForeignSignalFollowsItAndIsNotExact",
+        "chord/context/abort_link_test.go::TestAContextLinkedWhileItsSignalIsCancelledIsNeverLeftLive",
+        "chord/context/abort_link_test.go::TestADerivedContextIsAbortedWhenItsSignalsCancelReturns",
+        "chord/context/abort_link_test.go::TestAnEndedDerivedContextIsHeldByNoSource",
+        "chord/context/abort_link_test.go::TestEveryDerivedContextIsAbortedBeforeTheFirstListenerOfTheSourceRuns",
+        "chord/context/abort_link_test.go::TestOnAbortFromAListenerOfTheSameAbortRunsAtOnceOnce",
+        "chord/context/abort_link_test.go::TestOnAbortRunsAParentsListenersBeforeItsChildrenWhateverTheOrderTheyWereAdded",
+        "chord/context/abort_order_pi_oracle_test.go::TestAbortListenerOrderMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-cb54cf2",
+      "title": "After a reload that failed (an extension that no longer loads, or a settings file the resource loader…",
+      "symptom": "After a reload that failed (an extension that no longer loads, or a settings file the resource loader rejects), the session goes on with the extensions of the old load, as in Pi: the next prompt reaches their input, before_agent_start, tool_call and tool_result handlers, their tools run, and a handler that reads its stale ctx gets an extension error while the prompt goes on.",
+      "rootCause": "every emit method of the in-process runner asserted the runner active on entry (since v0.2.0), where Pi's emit methods never check staleness (runner.ts:1135-1560), so the first event of the next prompt after a failed reload returned the stale error to the session",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After a reload that failed (an extension that no longer loads, or a settings file the resource loader rejects), the session goes on with the extensions of the old load, as in Pi: the next prompt reaches their input, before_agent_start, tool_call and tool_result handlers, their tools run, and a handler that reads its stale ctx gets an extension error while the prompt goes on. PiG ended the first event after the failed reload with the stale error instead: `pig -p` exited 1 with \"This extension ctx is stale ...\", and an RPC prompt never ran. Present in every release since v0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "09139b98ee",
+          "date": "2026-11-16"
+        },
+        {
+          "hash": "cb54cf290b",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/headless_reload_prompt_test.go::TestPromptsAfterAFailedReloadRunOnTheOldInstance",
+        "coding/extension/host/inproc/stale_emit_delivery_test.go::TestEmitInputAndToolCallOnAnInvalidatedRunnerHonourTheHandlers",
+        "coding/extension/host/inproc/stale_emit_delivery_test.go::TestEveryEmitDeliversToAnInvalidatedRunner",
+        "coding/session_reload_old_runner_emit_test.go::TestAFailedReloadLeavesTheSessionDeliveringToTheOldInstance"
+      ]
+    },
+    {
       "id": "BF-cbc986b",
       "title": "BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file…",
       "symptom": "BMP and GIF images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus, where PiG used to use Go's decoders.",
@@ -50701,6 +51364,28 @@
       "tests": []
     },
     {
+      "id": "BF-d13855f",
+      "title": "A Node extension whose file or package entry point is gone is now reported with the same error whether it…",
+      "symptom": "A Node extension whose file or package entry point is gone is now reported with the same error whether it runs in a process of its own or shares one with other Node extensions (`build \"name\": ...`, in the startup error and in the reload's issues); a member of a shared process was reported as `extension \"name\": stat ...` or `extension \"name\": package ... declares pi.extensions ... but none exist`.",
+      "rootCause": "A member of a shared Node cell whose file or package entry does not resolve was reported with the cell's own wording (`extension \"x\": stat ...`), while the same extension loaded on its own is reported with its build's (`build \"x\": ...`), at startup and in a reload's issues. The member now takes the error the builder gives the same source, so the text is the same in both realizations.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension whose file or package entry point is gone is now reported with the same error whether it runs in a process of its own or shares one with other Node extensions (`build \"name\": ...`, in the startup error and in the reload's issues); a member of a shared process was reported as `extension \"name\": stat ...` or `extension \"name\": package ... declares pi.extensions ... but none exist`. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d13855f45b",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/reload_member_unresolved_test.go::TestNodeCellLoadsItsOtherMembersWhenOneEntryPointIsGone"
+      ]
+    },
+    {
       "id": "BF-d1785c8",
       "title": "Ctrl+P and Shift+Ctrl+P now cycle to the only model in scope when the active model is outside it, instead of…",
       "symptom": "Ctrl+P and Shift+Ctrl+P now cycle to the only model in scope when the active model is outside it, instead of saying \"Only one model in scope\", and cycling from outside the scope selects the first scoped model forward and the last backward instead of skipping the first (Pi #11806, D258).",
@@ -51220,6 +51905,34 @@
         "ai/tool_surrogate_wire_test.go::TestStrictToolSchemaLoneSurrogatesReachTheWireAsPi",
         "coding/extension/marshalling_surrogate_test.go::TestInputEventResultKeepsALoneSurrogate",
         "internal/codingagent/tool_result_content_surrogate_test.go::TestToolResultEventOverrideKeepsALoneSurrogate"
+      ]
+    },
+    {
+      "id": "BF-d2ab7d8",
+      "title": "A Node extension handler's host effects are written before the RPC reply or interactive prompt drain that…",
+      "symptom": "A Node extension handler's host effects are written before the RPC reply or interactive prompt drain that waited for the handler's first suspension, as Pi writes them.",
+      "rootCause": "Pi runs a handler synchronously to its first await inside emit (runner.ts:1110), so a host API the handler calls there (ui.notify, setStatus, setWidget, setTitle, setEditorText, pi.appendEntry, pi.sendUserMessage) is written before the caller that went on after `void this._extensionRunner.emit(...)` (agent-session.ts:2788 thinking_level_select, :4108 session_info_changed): the RPC reply of set_session_name and set_thinking_level follows the handler's notification, and the interactive prompt drain releases its dialog answer after it.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension handler's host effects are written before the RPC reply or interactive prompt drain that waited for the handler's first suspension, as Pi writes them. A `session_info_changed` or `thinking_level_select` handler that calls `ctx.ui.notify`, `ctx.ui.setStatus`, `ctx.ui.setWidget`, `ctx.ui.setTitle`, `ctx.ui.setEditorText`, `pi.appendEntry` or `pi.sendUserMessage` synchronously now has that effect written before the reply of `set_session_name` or `set_thinking_level` (RPC mode) and before the prompt drain releases its dialog answer. PiG wrote the reply first, so a client saw the reply and then the notification, status or widget that Pi writes before it (isolated and packed Node extensions, since 0.2.0, the first release with the call lanes that queue those calls). A notification that followed a refused call, such as a failed `pi.appendEntry`, could also be applied after the caller went on outside RPC mode. The host releases the caller only after every call the same extension sent before its report has been applied: the wait is per extension connection, has no timer, and ends with the request, so a handler that ends or goes on, a cancelled caller or a closing session releases it, and a dialog, a model request or a child process the handler starts never holds it. Go, Python, Rust and Lisp subprocess extensions already wrote in Pi's order; the same rows now pin them in isolated and packed mode.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d2ab7d89f0",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_handler_effect_order_test.go::TestRPCHandlerEffectsPrecedeTheReplyOfTheCommandThatEmittedTheEvent",
+        "coding/extension/host/subprocess/ack_hold_test.go::TestBlockedAcknowledgmentOfAnEffectCallWaitsForTheHandlersProgress",
+        "coding/extension/host/subprocess/ack_hold_test.go::TestBlockedAcknowledgmentWaitsForTheCallsReadBeforeIt",
+        "test/extension-conformance/handler_effect_bounds_test.go::TestConformance_HandlerEffectWaitEndsWithTheCallersContext",
+        "test/extension-conformance/handler_effect_bounds_test.go::TestConformance_HandlerEffectWaitEndsWithTheSession",
+        "test/extension-conformance/handler_effect_bounds_test.go::TestConformance_HandlerEffectsPrecedeTheReleaseUnderLoad",
+        "test/extension-conformance/handler_effect_order_test.go::TestConformance_HandlerEffectsPrecedeTheReleaseOfItsCaller"
       ]
     },
     {
@@ -55525,6 +56238,33 @@
       ]
     },
     {
+      "id": "BF-dddc106",
+      "title": "Extensions: a refused `sendUserMessage` or `sendMessage` is now reported as the extension error…",
+      "symptom": "Extensions: a refused `sendUserMessage` or `sendMessage` is now reported as the extension error `send_user_message` or `send_message` after the run of the code that made the call, as Pi does, instead of when the call arrived (since 0.2.0).",
+      "rootCause": "the Session reported a failed send from the call that made it, and the host had no point at which the sending code ends its run",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Extensions: a refused `sendUserMessage` or `sendMessage` is now reported as the extension error `send_user_message` or `send_message` after the run of the code that made the call, as Pi does, instead of when the call arrived (since 0.2.0). Pi reports from a catch callback on the Promise the Session method returns, so the error comes after every effect of the sending code: the `queue_update` of a steer or follow-up sent later in the same handler, an appended entry, a notification. A handler that sent a refused message first and a steer after it now sees the queue updates before the error, in print, JSON, RPC and interactive mode and in every SDK. Inside a handler or request the report is made when the run ends (a Node run at its next microtask checkpoint, a Go, Python, Rust or Lisp handler when its request returns, fails or is cancelled, or at its yield), and an extension that exits before that has its reports made at the connection's end, in call order. A Go, Python, Rust or Lisp thread that sends outside any request has no run boundary, so its refusal is still reported at once.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dddc1064ca",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/sync_run_report_test.go::TestHostMakesHeldReportsWhenTheConnectionEnds",
+        "coding/extension/host/subprocess/sync_run_report_test.go::TestSyncRunReportsAfterTheEndAreMadeAtOnce",
+        "coding/extension/host/subprocess/sync_run_report_test.go::TestSyncRunReportsClosedMakesTheConnectionsReports",
+        "coding/extension/host/subprocess/sync_run_report_test.go::TestSyncRunReportsMakeReportsAtTheEndInCallOrder",
+        "coding/extension/host/subprocess/upstream_examples_test.go::TestGitMergeAndResolveExample",
+        "test/parity/scenarios/rpc/85-rpc-send-user-message-refusal-turn-end.toml"
+      ]
+    },
+    {
       "id": "BF-dde6aa6",
       "title": "Cache warming no longer refreshes at once when a model's promptCache lifetime is far larger than the one-hour…",
       "symptom": "Cache warming no longer refreshes at once when a model's promptCache lifetime is far larger than the one-hour safety limit.",
@@ -56408,6 +57148,54 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-e061002",
+      "title": "A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`)…",
+      "symptom": "A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`) now keeps the member order of the auth.json entry when anything prints or forwards it, as Pi does: an OAuth entry written `type, access, refresh, expires` is no longer returned as `type, refresh, access, expires`, and members the typed form does not model keep their place.",
+      "rootCause": "the read-only decode built its credential from a map and never recorded the entry's member order, which the writable decode records, so marshaling fell back to struct order",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A credential read from read-only auth storage (`ReadOnlyAuthStorage`, used by `pig auth check --no-refresh`) now keeps the member order of the auth.json entry when anything prints or forwards it, as Pi does: an OAuth entry written `type, access, refresh, expires` is no longer returned as `type, refresh, access, expires`, and members the typed form does not model keep their place. Only the order changes, not which members are returned. Present since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e061002932",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/auth_read_member_order_test.go::TestInMemoryReadKeepsDecodedMemberOrder",
+        "ai/auth_read_member_order_test.go::TestReadCredentialKeepsFileMemberOrder",
+        "ai/auth_read_member_order_test.go::TestReadCredentialMemberOrderMatchesPi",
+        "ai/auth_read_member_order_test.go::TestRefreshedCredentialKeepsFileMemberOrder",
+        "coding/auth_storage_test.go::TestReadStoredCredentialKeepsFileMemberOrder"
+      ]
+    },
+    {
+      "id": "BF-e07e1a7",
+      "title": "The terminal progress indicator (`OSC 9;4;0`, with `terminal.showTerminalProgress` on) is turned off when PiG…",
+      "symptom": "The terminal progress indicator (`OSC 9;4;0`, with `terminal.showTerminalProgress` on) is turned off when PiG ends after the terminal's color scheme reports are off and the keyboard protocols are popped, as it is in Pi: Pi's shutdown writes those and drains the input before `stop()`, whose first writes are the selector dispose and this clear.",
+      "rootCause": "Pi's shutdown writes the color scheme reports off (CSI ?2031l) and drains the input, popping the keyboard protocols (CSI \u003cu), before it calls stop(); the selector dispose and the progress clear (OSC 9;4;0) are stop()'s first writes (interactive-mode.ts:4491-4503, :7283-7287). stopInteractiveTui wrote them before the theme and the drain, so the clear came ahead of both. They now follow the drain. The pty test fails on the previous order and passes here.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The terminal progress indicator (`OSC 9;4;0`, with `terminal.showTerminalProgress` on) is turned off when PiG ends after the terminal's color scheme reports are off and the keyboard protocols are popped, as it is in Pi: Pi's shutdown writes those and drains the input before `stop()`, whose first writes are the selector dispose and this clear. PiG wrote the clear first, so a recording of the exit saw it ahead of `CSI ?2031l` and `CSI \u003cu`; the screen a user sees is the same. The order was introduced by the commit that made the exit clear the progress; no release has it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e07e1a737a",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/interactive_exit_drain_order_pty_test.go::TestStopInteractiveTuiWritesTheProgressClearAfterTheDrainAsPiDoes"
+      ]
     },
     {
       "id": "BF-e098463",
@@ -58981,6 +59769,30 @@
       ],
       "tests": [
         "chord/next/surfaces/surfaces_client_test.go::TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet"
+      ]
+    },
+    {
+      "id": "BF-ec9984a",
+      "title": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) is now sent the…",
+      "symptom": "The host sent a frame from the renderer's timer goroutine or from the call that asked for it, and an input or mouse event from the call that delivered it, with nothing between them, so an extension that keeps state across the two could draw a half-applied input.",
+      "rootCause": "Pi runs a TuiAltScreen on one event loop: the terminal's input (tui.ts:995-997), the throttled frame (requestRender arms one setTimeout, :1067-1120) and the extension's own calls are tasks of it, so a component's render and its handleInput never run together and a render never reads what a handler half applied. The subprocess bridge had no such loop: the frame ran on the renderer's timer goroutine or the caller's, input and mouse events on the call goroutine that delivered them, and the extension (which answers each request on a goroutine or thread of its own) was sent a render while it was still answering an input.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Go, Rust, Python or Lisp extension that shows its own alternate screen (`TuiAltScreen`) is now sent the callbacks of its components one at a time, as Pi runs them on one event loop: a component's `render` no longer reaches the extension while its `handleInput`, `handleMouse` or focus callback is still being answered, and a frame that a handler asks for with `requestRender` runs after the handler returns. Before, the host sent a frame from the renderer's timer goroutine or from the call that asked for it, and an input or mouse event from the call that delivered it, with nothing between them, so an extension that keeps state across the two could draw a half-applied input. Each screen now has one goroutine that sends every callback, runs the throttled frame and runs every call the extension does not make from a callback. Present since 0.7.0, the first release with the subprocess `TuiAltScreen`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ec9984ae6c",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/tui_alt_owner_order_test.go::TestAnExtensionScreensInputAndRenderNeverRunAtOnce",
+        "coding/extension/host/subprocess/tui_alt_owner_test.go::TestAScheduledFrameRunsOnTheOwner",
+        "coding/extension/host/subprocess/tui_alt_owner_test.go::TestAnInputHandlersRenderRequestRunsAfterTheHandlerAnswers"
       ]
     },
     {
@@ -65387,9 +66199,9 @@
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 2,
-    "Follow-up to unreleased work": 19,
+    "Follow-up to unreleased work": 22,
     "Repair of a merge between development branches": 9,
-    "Review follow-up to unreleased work": 3,
+    "Review follow-up to unreleased work": 4,
     "test-only": 1
   }
 }

@@ -8,3 +8,8 @@ func (m *InteractiveMode) HandleAgentEventsOnOwnerLoop(events ...agent.AgentEven
 		m.handleAgentEvent(event)
 	}
 }
+
+// SetExtensionTitleForTest is an extension's ctx.ui.setTitle, which runs on the goroutine of the extension's handler.
+func (m *InteractiveMode) SetExtensionTitleForTest(title string) {
+	(&ExtUIContext{m: m}).SetTitle(title)
+}

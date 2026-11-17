@@ -467,9 +467,10 @@ without setting."
     (ctx-call-host ctx "sendMessage" (obj "message" message "options" options))
     nil))
 
-(defun ctx-send-user-message (ctx content &key (deliver-as "followUp") expand-prompt-templates)
-  "EXPAND-PROMPT-TEMPLATES (types.ts:1792): true dispatches an extension command and expands a skill command or prompt template in CONTENT as typed input would; :false is false; NIL is Pi's default, false."
-  (let ((options (obj "deliverAs" deliver-as)))
+(defun ctx-send-user-message (ctx content &key deliver-as expand-prompt-templates)
+  "DELIVER-AS is \"steer\" or \"followUp\"; NIL sends no deliverAs, as pi.sendUserMessage(content) does: an idle agent runs CONTENT at once and a streaming agent refuses it with Pi's error (\"Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.\", an extension error event send_user_message; the call itself returns), so pass :DELIVER-AS \"followUp\" to queue it behind a run. EXPAND-PROMPT-TEMPLATES (types.ts:1792): true dispatches an extension command and expands a skill command or prompt template in CONTENT as typed input would; :false is false; NIL is Pi's default, false."
+  (let ((options (obj)))
+    (when deliver-as (setf (gethash "deliverAs" options) deliver-as))
     (when expand-prompt-templates
       (setf (gethash "expandPromptTemplates" options) (if (eq expand-prompt-templates :false) :false t)))
     (ctx-call-host ctx "sendUserMessage" (obj "content" content "options" options)))

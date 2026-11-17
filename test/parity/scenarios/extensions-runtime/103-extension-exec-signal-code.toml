@@ -55,7 +55,7 @@ pi_args = ["--model", "test-faux/faux-1", "--no-session"]
 [assert]
 exit_code = 0
 runs = 3
-json_output_equal = true
+json_output_ordered_equal = true
 stderr_equal = true
 both_contain = [
   '"message":"exec-signal term: code=143 killed=false"',

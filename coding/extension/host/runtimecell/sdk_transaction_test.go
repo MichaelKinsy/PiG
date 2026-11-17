@@ -185,7 +185,7 @@ func TestRustPackedCellWarmEntryDoesNotWaitForSDKStageLock(t *testing.T) {
 	if resolved, err := findRustSDKRoot(normalized); err != nil || resolved != sdkRoot {
 		t.Fatalf("resolved Rust SDK root = %q, %v; want %q", resolved, err, sdkRoot)
 	}
-	if _, ok := reuseRustPackedCell(cacheRoot, "packed-rust", normalized); !ok {
+	if _, ok := reuseRustPackedCell(context.Background(), cacheRoot, "packed-rust", normalized); !ok {
 		t.Fatal("freshly published Rust cell is not reusable before the SDK lock is held")
 	}
 

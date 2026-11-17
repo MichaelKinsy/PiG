@@ -980,10 +980,11 @@ type ToolUpdatePayload struct {
 // result is empty. A runtime with an event loop needs no such call: it reports its first microtask checkpoint (NotifyHandlerYielded).
 const CallYield = "yield"
 
-// NotifyHandlerYielded (ext→host) tells the host that the code that sent a triggering message, a handler or a timer's or an I/O callback, awaited or
-// returned control to the runtime's event loop. The send carried the token in its yield_token argument. A runtime with an event
-// loop sends it from the first microtask checkpoint after the send, because the host cannot see an await, and only after the host answered the send;
-// the host then answers isIdle from the Session again (sync_run_hold.go). A thread-based SDK does not send it: its handler yields in a call whose
+// NotifyHandlerYielded (ext→host) tells the host that the code that sent a message, a handler or a timer's or an I/O callback, awaited or
+// returned control to the runtime's event loop. The send carried the token in its yield_token argument: a triggering sendMessage, and a sendUserMessage that names no delivery. A runtime with an event
+// loop sends it from the first microtask checkpoint after the send, because the host cannot see an await. For a sendMessage it comes only after the host answered the send, and
+// the host then answers isIdle from the Session again (sync_run_hold.go); a sendUserMessage is not awaited, so the host first applies the calls queued before the report. The host makes the held
+// failure report of the sends of that token at the report (sync_run_report.go). A thread-based SDK does not send it: its handler yields in a call whose
 // upstream API returns a Promise, or when it returns.
 const NotifyHandlerYielded = "handler_yielded"
 
@@ -1029,11 +1030,13 @@ const (
 	CallUICustomHideOverlay = "ui.custom.hideOverlay"
 	CallUICustomSetFocus    = "ui.custom.setFocus"
 	// CallTuiAlt (ext→host) drives a TuiAltScreen the extension constructed (pi-tui's alternate-screen host) and RequestTuiAltCallback
-	// (host→ext request) asks the extension for what it owns: its Terminal, its components and its listeners. A tui.alt call the extension makes while
-	// it serves a callback names that request as its parent (CallPayload.ParentRequestID): when the host's frame goroutine sent the callback (a
-	// component's render, an overlay's visible callback, a style callback, a terminal write, an invalidate or focus it triggered), that goroutine runs
-	// the call at once, while it holds the frame lock, as Pi's render calls the screen. From such a callback the calls render, renderNow, start, stop,
-	// copyActiveSelectionToClipboard, queryTerminalColors and input fail (D208).
+	// (host→ext request) asks the extension for what it owns: its Terminal, its components and its listeners. The host sends the callbacks of one screen from
+	// one goroutine, the screen's owner, one at a time and each answered before the next, as Pi's one event loop runs a screen's frames, input and mouse events:
+	// a component's render and its handleInput never run together. A tui.alt call the extension makes while it serves a callback names that request as its
+	// parent (CallPayload.ParentRequestID): the owner waits for the callback and runs the call at once, as Pi's callbacks call the screen on its one thread;
+	// any other call runs on the owner after the task it is in. When the callback is one of a frame's (a component's render, an overlay's visible callback, a
+	// style callback, a terminal write, an invalidate or focus it triggered) the owner holds the frame lock, and from such a callback the calls render,
+	// renderNow, start, stop, copyActiveSelectionToClipboard, queryTerminalColors and input fail (D208).
 	CallTuiAlt            = "tui.alt"
 	RequestTuiAltCallback = "tui.alt.cb"
 )

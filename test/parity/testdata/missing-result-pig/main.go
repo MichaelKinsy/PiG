@@ -107,7 +107,7 @@ func main() {
 		case ai.APIMistralConversations:
 			provider = ai.NewMistralProvider(ai.MistralConfig{BaseURL: server.URL, APIKey: "test", Model: tc.model, ProviderID: tc.provider})
 		}
-		request := ai.Context{SystemPrompt: "You are a helpful assistant. Use the calculate tool when asked to perform calculations.", Tools: []ai.ToolSchema{{Name: "calculate", Description: "Evaluate mathematical expressions", Parameters: map[string]any{"type": "object", "properties": map[string]any{"expression": map[string]any{"type": "string", "description": "The mathematical expression to evaluate"}}, "required": []string{"expression"}}}}, Messages: []ai.Message{
+		request := ai.Context{SystemPrompt: "You are a helpful assistant. Use the calculate tool when asked to perform calculations.", Tools: []ai.ToolSchema{toolFromJSON(`{"name":"calculate","description":"Evaluate mathematical expressions","parameters":{"type":"object","properties":{"expression":{"type":"string","description":"The mathematical expression to evaluate"}},"required":["expression"]}}`)}, Messages: []ai.Message{
 			ai.UserMessage{Content: ai.UserText("Please calculate 25 * 18 using the calculate tool."), Timestamp: 1},
 			ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.ToolCall{ID: "calc00001", Name: "calculate", Arguments: ai.JsonObject{"expression": "25 * 18"}}}, API: tc.api, Provider: tc.provider, Model: tc.model, StopReason: ai.StopReasonToolUse, Timestamp: 2},
 			ai.UserMessage{Content: ai.UserText("Never mind, just tell me what is 2+2?"), Timestamp: 4},
@@ -128,4 +128,13 @@ func main() {
 	if err := encoder.Encode(rows); err != nil {
 		panic(err)
 	}
+}
+
+// toolFromJSON declares a tool as JSON text, the way an extension or an MCP server hands pig its schema: ai.ToolSchema keeps that member order, where a Go map carries none and is sent sorted. Pi's probe holds the same members in a literal.
+func toolFromJSON(text string) ai.ToolSchema {
+	var tool ai.ToolSchema
+	if err := json.Unmarshal([]byte(text), &tool); err != nil {
+		panic(err)
+	}
+	return tool
 }

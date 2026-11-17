@@ -167,11 +167,15 @@ func EvaluateOutcome(o *ScenarioOutcome) {
 			}
 		}
 	}
-	if a.JSONOutputEqual {
+	if a.jsonCompared() {
+		compare := compareJSONResults
+		if a.JSONOutputOrderedEqual {
+			compare = compareJSONResultsOrdered
+		}
 		for run := range min(len(o.Pig.Runs), len(o.Pi.Runs)) {
-			pig, err := dropPigOnlyRecords(o.Pig.Runs[run], a.JSONPigOnlyRecords)
+			pig, err := dropPigOnlyRecords(o.Pig.Runs[run], a.JSONPigOnlyRecords, compare)
 			if err == nil {
-				err = compareJSONResults(pig, o.Pi.Runs[run], a.JSONAliases)
+				err = compare(pig, o.Pi.Runs[run], a.JSONAliases)
 			}
 			if err != nil {
 				o.Failures = append(o.Failures, fmt.Sprintf("run %d JSON output: %v", run+1, err))
@@ -373,6 +377,9 @@ func EvaluateOutcome(o *ScenarioOutcome) {
 
 	// final_frame_cursor_only_pig / _pi: each binary's exact count of cursor-only frames after the final_frame text (D618).
 	evaluateFinalFrameCursorOnly(o, a)
+
+	// transcript_sequences_equal: the two binaries' ordered sequences in each declared window of the terminal transcript.
+	evaluateSequenceWindows(o, a)
 
 	// runtime_ratio_max: the performance gate.
 	// pig.median <= ratio * pi.median, when both have at least one run.

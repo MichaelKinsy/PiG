@@ -193,6 +193,11 @@ export default function (pi) {
     ctx.ui.notify(JSON.stringify(out), "info");
   }});
   pi.registerCommand("active_tools_set", { description: "Set the active tools to the comma-separated names", handler: async (args) => pi.setActiveTools(String(args).trim().split(",")) });
+  pi.registerCommand("host_error_probe", { description: "Report what a host error on navigateTree looks like to the extension", handler: async (_args, ctx) => {
+    let text = "no error", code = "-";
+    try { await ctx.navigateTree("entry"); } catch (error) { text = error.message; code = error.code || "-"; }
+    ctx.ui.notify(`host_error:${text}|${code}`, "info");
+  }});
   pi.registerCommand("session_actions_unbound", { description: "Report what unbound session actions answer", handler: async (_args, ctx) => {
     const parts = [];
     for (const [name, call] of [["new", () => ctx.newSession()], ["fork", () => ctx.fork("entry")], ["navigate", () => ctx.navigateTree("entry")], ["switch", () => ctx.switchSession("/s.jsonl")]]) {
@@ -1012,6 +1017,26 @@ export default function (pi) {
     description: "Set one status repeatedly without awaiting",
     handler: async (_args, ctx) => { for (let i = 0; i < 200; i++) ctx.ui.setStatus("burst", String(i)); },
   });
+  // effect_probe: one host API called in the synchronous part of an event handler, a command or a tool, which then returns (TestConformance_HandlerEffectsPrecedeTheReleaseOfItsCaller).
+  const effectProbeKinds = {
+    notify: (ctx) => ctx.ui.notify("effect_probe:notify", "info"),
+    status: (ctx) => ctx.ui.setStatus("effect_probe", "status"),
+    title: (ctx) => ctx.ui.setTitle("effect_probe:title"),
+    widget: (ctx) => ctx.ui.setWidget("effect_probe", ["effect_probe:widget"]),
+    editor: (ctx) => ctx.ui.setEditorText("effect_probe:editor"),
+    // The host actions after a slow notify: the call that follows the notify can apply only once the notify did.
+    append: (ctx) => { ctx.ui.notify("effect_probe:lead", "info"); pi.appendEntry("effect_probe", "entry"); },
+    sendUserMessage: (ctx) => { ctx.ui.notify("effect_probe:lead", "info"); pi.sendUserMessage("effect_probe:user"); },
+    failedAppend: (ctx) => { pi.appendEntry("effect_probe_fails", "entry"); ctx.ui.notify("effect_probe:notify", "info"); },
+  };
+  pi.registerCommand("effect_probe_on", { description: "Subscribe a handler that calls one host API and returns: <event> <kind> [sync|await]; a sync handler is not an async function, an await handler then awaits a timer for 20 s", handler: async (args) => { const [event, kind, style] = String(args).trim().split(" "); if (style === "sync") pi.on(event, (_event, ctx) => { effectProbeKinds[kind](ctx); }); else if (style === "await") pi.on(event, async (_event, ctx) => { effectProbeKinds[kind](ctx); await new Promise((resolve) => setTimeout(resolve, 20000)); }); else pi.on(event, async (_event, ctx) => { effectProbeKinds[kind](ctx); }); } });
+  pi.registerCommand("effect_probe_run", { description: "Call one host API and return", handler: async (args, ctx) => { effectProbeKinds[String(args).trim()](ctx); } });
+  pi.registerCommand("effect_probe_tool", {
+    description: "Register a tool that calls one host API and returns",
+    handler: async () => {
+      pi.registerTool({ name: "effect_probe_tool", label: "effect_probe_tool", description: "Call one host API and return", parameters: { type: "object", properties: { kind: { type: "string" } } }, execute: async (_id, params, _signal, _update, ctx) => { effectProbeKinds[params.kind](ctx); return { content: [{ type: "text", text: "ok" }] }; } });
+    },
+  });
   // A width handler makes a host call the way any other handler does; the host's reply must reach it (conformance TestConformance_WidthHandlerHostCall).
   let widthProbe;
   pi.registerCommand("arm_width_probe", { description: "Notify from a width handler", handler: async (_args, ctx) => { widthProbe ??= ctx.ui.onWidthChange(async (width) => { await ctx.ui.notify(`width-probe:${width}`, "info"); await ctx.ui.notify(`width-probe-returned:${width}`, "info"); }); } });
@@ -1357,6 +1382,20 @@ export default function (pi) {
   pi.registerCommand("send_message_default", { description: "Send a custom message with default options", handler: async () => pi.sendMessage({ customType: "notice", content: "default", display: true }) });
   pi.registerCommand("send_message_no_turn", { description: "Send a custom message that never starts a turn", handler: async () => pi.sendMessage({ customType: "notice", content: "no-turn", display: true }, { triggerTurn: false }) });
   pi.registerCommand("send_user_message", { description: "Send a user message", handler: async (args) => pi.sendUserMessage(args ? JSON.parse(args) : "hello-user", { deliverAs: "followUp" }) });
+  pi.registerCommand("send_user_message_delivery", { description: "Send a user message with the delivery named by the argument", handler: async (args) => args === "absent" ? pi.sendUserMessage("delivery-absent") : pi.sendUserMessage("delivery-" + args, { deliverAs: args }) });
+  pi.registerCommand("send_refusal_order", { description: "Send a refused user message and others in one run, as the argument names", handler: async (args) => {
+    const first = () => { pi.sendUserMessage("order-absent"); pi.sendUserMessage("order-steer", { deliverAs: "steer" }); pi.sendUserMessage("order-followUp", { deliverAs: "followUp" }); };
+    switch (args) {
+      case "first": first(); break;
+      case "between": pi.sendUserMessage("order-absent"); pi.sendUserMessage("order-steer", { deliverAs: "steer" }); pi.sendUserMessage("order-absent-2"); break;
+      case "yielded": await Promise.resolve(); first(); break;
+      case "throws": first(); throw new Error("order-throws");
+      case "blocked": first(); Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 30000); break;
+      case "detached": setTimeout(first, 100); break;
+      case "detached_alone": setTimeout(() => pi.sendUserMessage("order-absent"), 100); break;
+      default: throw new Error(`send_refusal_order: unknown case ${args}`);
+    }
+  } });
   pi.registerCommand("send_user_message_expand", { description: "Send a user message with expandPromptTemplates set to the argument", handler: async (args) => pi.sendUserMessage("expand-user", { deliverAs: "followUp", expandPromptTemplates: args === "true" }) });
   pi.registerCommand("set_session_name", { description: "Set the session name", handler: async () => pi.setSessionName("conformance-session") });
   pi.registerCommand("event_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
@@ -1378,7 +1417,7 @@ export default function (pi) {
   pi.registerCommand("event_ordered_result_probe", { description: "Subscribe to an event with a handler that returns the given JSON, members in written order", handler: async (args) => { const [name, ...rest] = String(args).trim().split(" "); const result = JSON.parse(rest.join(" ")); pi.on(name, async () => result); } });
   pi.registerCommand("event_keys_probe", { description: "Subscribe to the event named by the argument with a handler that reports the key order of its payload", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event, ctx) => { ctx.ui.notify("event_keys:" + name + ":" + JSON.stringify([Object.keys(event.payload), Object.keys(event.payload.zeta)]), "info"); }); } });
   pi.registerCommand("event_echo_probe", { description: "Subscribe to the event named by the argument with a handler that hands back the objects it was sent", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (event) => { switch (name) { case "turn_end": return { entries: event.entries }; case "context": return { messages: event.messages.slice(1) }; case "before_provider_request": return event.payload; case "tool_result": return { content: event.content, details: event.details }; case "message_end": return { message: event.message }; } throw new Error(`event_echo_probe has no echo for ${name}`); }); } });
-  pi.registerCommand("event_mutate_probe", { description: "Subscribe to the event named by the argument `<event> [fail]` with a handler that edits the event's payload (before_provider_request) or headers (before_provider_headers) in place, returns nothing and, with fail, throws after the edit", handler: async (args) => { const [name, fail] = String(args).trim().split(/\s+/); const key = fail === "fail" ? "inPlaceBeforeError" : "inPlace"; pi.on(name, async (event) => { if (name === "before_provider_headers") event.headers[`x-pig-${key}`] = "in-place-edit"; else { event.payload[key] = "in-place-edit"; if (event.payload.zeta) event.payload.zeta[key] = "in-place-edit"; } if (fail === "fail") throw new Error("failed after the edit"); }); } });
+  pi.registerCommand("event_mutate_probe", { description: "Subscribe to the event named by the argument `<event> [mode]` with a handler that works on the event's payload (before_provider_request) or headers (before_provider_headers) as the mode says: no mode edits it in place and returns nothing, fail throws after the edit, replace edits nothing and returns a replacement, both edits it in place under a key of its own and returns the replacement, delete (headers) sets the header the first edit wrote to null", handler: async (args) => { const [name, mode] = String(args).trim().split(/\s+/); const key = mode === "fail" ? "inPlaceBeforeError" : mode === "both" ? "inPlaceAlongside" : "inPlace"; const headers = name === "before_provider_headers"; pi.on(name, async (event) => { if (headers) { if (mode === "delete") event.headers["x-pig-inPlace"] = null; else if (mode !== "replace") event.headers[`x-pig-${key}`] = "in-place-edit"; } else if (mode !== "replace") { event.payload[key] = "in-place-edit"; if (event.payload.zeta) event.payload.zeta[key] = "in-place-edit"; } if (mode === "fail") throw new Error("failed after the edit"); if (mode === "replace" || mode === "both") return headers ? { "x-pig-replaced": "returned" } : { replaced: "returned" }; }); } });
   pi.registerCommand("event_edit_probe", { description: "Subscribe to the event named by the argument `<event> <edit> [fail]` with a handler that makes one edit of the event's content, details, isError, message or messages (tool_result, message_end, context; message_start, turn_end and agent_end hold only the Node probe), returns nothing and, with fail, throws after the edit", handler: async (args) => { const [name, edit, fail] = String(args).trim().split(/\s+/); const edited = "other-event-edit"; const text = () => [{ type: "text", text: edited }]; pi.on(name, async (event) => { switch (`${name}/${edit}`) { case "tool_result/content-assign": event.content = text(); break; case "tool_result/details-assign": event.details = { k: edited }; break; case "tool_result/iserror-assign": event.isError = true; break; case "tool_result/content-deep": event.content[0].text = edited; break; case "tool_result/details-deep": event.details.k = edited; break; case "message_end/deep": case "message_start/deep": case "turn_end/deep": event.message.content[0].text = edited; break; case "agent_end/deep": event.messages[event.messages.length - 1].content[0].text = edited; break; case "message_end/content-assign": event.message.content = text(); break; case "message_end/message-assign": event.message = { role: "user", content: text(), timestamp: 1 }; break; case "context/deep": event.messages[0].content[0].text = edited; break; default: throw new Error(`event_edit_probe has no edit ${name}/${edit}`); } if (fail === "fail") throw new Error("failed after the edit"); }); } });
   pi.registerCommand("event_field_probe", { description: "Report a field of the events named by the argument `<event> <field>`", handler: async (args) => { const [name, field] = String(args).trim().split(/\s+/); pi.on(name, async (event, ctx) => { ctx.ui.notify(`event_field:${name}.${field}=${JSON.stringify(event[field]) ?? "absent"}`, "info"); }); } });
   // event_level_edit_probe `<event> <top|deep>` subscribes to the event with a handler that edits it in place and returns nothing: `top` assigns a member of the event itself (probeTop), `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text block, else a string content, else a `probe` member. Every edit writes `other-event-edit` (TestInPlaceMessageEventEditsMatchPi).

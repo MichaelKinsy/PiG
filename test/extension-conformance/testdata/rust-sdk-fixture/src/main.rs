@@ -2500,6 +2500,18 @@ fn main() {
         },
     );
     ext.command(
+        "host_error_probe",
+        "Report what a host error on navigateTree looks like to the extension",
+        |ctx, _| {
+            let text = match ctx.navigate_tree("entry", serde_json::json!({})) {
+                Ok(_) => "no error".to_string(),
+                Err(err) => err.to_string(),
+            };
+            ctx.notify(&format!("host_error:{text}|-"), "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
         "session_actions_unbound",
         "Report what unbound session actions answer",
         |ctx, _| {
@@ -5045,6 +5057,79 @@ fn main() {
         }
     });
     ext.command(
+        "send_user_message_delivery",
+        "Send a user message with the delivery named by the argument",
+        |ctx, args| match ctx.send_user_message(
+            format!("delivery-{args}"),
+            if args == "absent" { "" } else { args },
+        ) {
+            Ok(_) => CommandResult::Ok,
+            Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
+    ext.command(
+        "send_refusal_order",
+        "Send a refused user message and others in one run, as the argument names",
+        |ctx, args| {
+            const FIRST: [(&str, &str); 3] = [
+                ("order-absent", ""),
+                ("order-steer", "steer"),
+                ("order-followUp", "followUp"),
+            ];
+            fn send(ctx: &pig_sdk::Context, items: &[(&str, &str)]) -> CommandResult {
+                for (text, deliver_as) in items {
+                    if let Err(err) = ctx.send_user_message(*text, deliver_as) {
+                        return CommandResult::Error(err.to_string());
+                    }
+                }
+                CommandResult::Ok
+            }
+            fn after_return(
+                ctx: &pig_sdk::Context,
+                items: &'static [(&'static str, &'static str)],
+            ) {
+                let ctx = ctx.clone();
+                thread::spawn(move || {
+                    thread::sleep(Duration::from_millis(100));
+                    send(&ctx, items);
+                });
+            }
+            match args {
+                "first" => send(ctx, &FIRST),
+                "between" => send(
+                    ctx,
+                    &[
+                        ("order-absent", ""),
+                        ("order-steer", "steer"),
+                        ("order-absent-2", ""),
+                    ],
+                ),
+                "yielded" => match ctx.yield_now() {
+                    Ok(_) => send(ctx, &FIRST),
+                    Err(err) => CommandResult::Error(err.to_string()),
+                },
+                "throws" => match send(ctx, &FIRST) {
+                    CommandResult::Ok => CommandResult::Error("order-throws".to_string()),
+                    failed => failed,
+                },
+                "blocked" => {
+                    let sent = send(ctx, &FIRST);
+                    thread::sleep(Duration::from_secs(30));
+                    sent
+                }
+                "detached" => {
+                    after_return(ctx, &FIRST);
+                    CommandResult::Ok
+                }
+                "detached_alone" => {
+                    after_return(ctx, &[("order-absent", "")]);
+                    CommandResult::Ok
+                }
+                other => CommandResult::Error(format!("send_refusal_order: unknown case {other}")),
+            }
+        },
+    );
+    ext.command(
         "send_user_message_expand",
         "Send a user message with expandPromptTemplates set to the argument",
         |ctx, args| match ctx.send_user_message_with(
@@ -5614,10 +5699,19 @@ fn main() {
                     "info",
                 );
                 let mut queued = results.lock().unwrap();
-                Ok(queued
+                let value = queued
                     .get_mut(&reported)
                     .filter(|values| !values.is_empty())
-                    .map(|values| values.remove(0)))
+                    .map(|values| values.remove(0));
+                // Pi ignores what a before_provider_headers handler returns and sends the headers object the handlers edited (runner.ts emitBeforeProviderHeaders), so the queued result becomes the headers by editing event.headers in place, as the Node fixture does.
+                if reported == "before_provider_headers"
+                    && let (Some(Value::Object(replacement)), Some(headers)) =
+                        (value.as_ref(), data["headers"].as_object_mut())
+                {
+                    *headers = replacement.clone();
+                    return Ok(None);
+                }
+                Ok(value)
             });
             event_probe_on_subscriptions
                 .lock()
@@ -5902,28 +5996,42 @@ fn main() {
         Arc::new(Mutex::new(Vec::new()));
     ext.command(
         "event_mutate_probe",
-        "Subscribe to the event named by the argument with a handler that edits its payload or headers in place and returns nothing",
+        "Subscribe to the event named by the argument `<event> [mode]` with a handler that works on the event's payload (before_provider_request) or headers (before_provider_headers) as the mode says: no mode edits it in place and returns nothing, fail edits it and fails, replace edits nothing and returns a replacement, both edits it in place under a key of its own and returns the replacement, delete (headers) sets the header the first edit wrote to null",
         move |_ctx, args| {
-            let (name, fail) = match args.trim().split_once(' ') {
-                Some((name, fail)) => (name.to_string(), fail.trim() == "fail"),
-                None => (args.trim().to_string(), false),
+            let (name, mode) = match args.trim().split_once(' ') {
+                Some((name, mode)) => (name.to_string(), mode.trim().to_string()),
+                None => (args.trim().to_string(), String::new()),
             };
-            let edited = name.clone();
+            let headers = name == "before_provider_headers";
             let subscription = subscribe(&event_mutate_subscriber, &name, move |_ctx, data| {
-                let key = if fail { "inPlaceBeforeError" } else { "inPlace" };
-                if edited == "before_provider_headers" {
-                    data["headers"][format!("x-pig-{key}")] = Value::from("in-place-edit");
-                } else {
+                let key = match mode.as_str() {
+                    "fail" => "inPlaceBeforeError",
+                    "both" => "inPlaceAlongside",
+                    _ => "inPlace",
+                };
+                if headers {
+                    if mode == "delete" {
+                        data["headers"]["x-pig-inPlace"] = Value::Null;
+                    } else if mode != "replace" {
+                        data["headers"][format!("x-pig-{key}")] = Value::from("in-place-edit");
+                    }
+                } else if mode != "replace" {
                     data["payload"][key] = Value::from("in-place-edit");
                     if data["payload"]["zeta"].is_object() {
                         data["payload"]["zeta"][key] = Value::from("in-place-edit");
                     }
                 }
-                if fail {
-                    Err("failed after the edit".to_string())
-                } else {
-                    Ok(None)
+                if mode == "fail" {
+                    return Err("failed after the edit".to_string());
                 }
+                if mode == "replace" || mode == "both" {
+                    return Ok(Some(if headers {
+                        serde_json::json!({"x-pig-replaced": "returned"})
+                    } else {
+                        serde_json::json!({"replaced": "returned"})
+                    }));
+                }
+                Ok(None)
             });
             event_mutate_subscriptions.lock().unwrap().push(subscription);
             CommandResult::Ok

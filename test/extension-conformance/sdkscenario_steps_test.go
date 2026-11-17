@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/test/extension-conformance/sdkscenarios"
 )
 
@@ -71,6 +72,10 @@ func (r *scenarioRig) runStep(step sdkscenarios.Step, lines *[]string) {
 		}
 	case "load-peer":
 		r.loadPeer(lines)
+	case "drop-member":
+		r.dropMember()
+	case "loaded":
+		r.observeLoaded(lines)
 	case "command":
 		r.runCommand(ctx, step, lines)
 	case "reload":
@@ -304,6 +309,34 @@ func (r *scenarioRig) loginThroughCarrier(ctx context.Context, step sdkscenarios
 	return credential, err
 }
 
+// dropMember removes the scenario's member from what a reload loads, as the removal of its file does in a mode that rediscovers its extensions on reload.
+func (r *scenarioRig) dropMember() {
+	name := "scenario-member-" + string(r.sdk)
+	before := len(r.configs)
+	r.configs = slices.DeleteFunc(r.configs, func(config subprocess.ExtConfig) bool { return config.Name == name })
+	if len(r.configs) != before-1 {
+		r.t.Fatalf("the scenario has no member %s to drop", name)
+	}
+}
+
+// observeLoaded records how many extensions the host holds and whether the driver is among them, and goes on with the extensions the host holds now (a reload a
+// command asked for replaces them without the rig seeing it).
+func (r *scenarioRig) observeLoaded(lines *[]string) {
+	r.loaded = r.host.Extensions()
+	name := "scenario-driver-" + string(r.sdk)
+	driver := "the driver is not loaded"
+	for _, ext := range r.loaded {
+		if ext.Name == name {
+			driver = "the driver is loaded"
+		}
+	}
+	noun := "extensions"
+	if len(r.loaded) == 1 {
+		noun = "extension"
+	}
+	scenariof(lines, "loaded %d %s, %s", len(r.loaded), noun, driver)
+}
+
 // loadPeer loads the scenario's second extension after the first, as another
 // process registering later.
 //
@@ -333,6 +366,7 @@ func (r *scenarioRig) runCommand(ctx context.Context, step sdkscenarios.Step, li
 		return
 	}
 	path := filepath.Join(r.dir, "result-"+step.Name)
+	_ = os.Remove(path) // a command that runs twice must write its result again
 	// A step with Args runs the command with them as its arguments and records what the echo op wrote.
 	args := path
 	if step.Args != "" {

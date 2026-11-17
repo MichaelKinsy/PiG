@@ -134,6 +134,30 @@ return JSON.stringify(body);
 // returns nothing and edits nothing, so the request is built through the same hook path.
 func probeHarness(t *testing.T, tc harnessCase, probes bool) *harness {
 	t.Helper()
+	if !probes {
+		h := openProbeHarness(t, tc)
+		runConformanceCommandArgs(t, h, "event_probe_on", "before_provider_request")
+		return h
+	}
+	return mutateHarness(t, tc, []string{"", "fail"}, []string{"", "fail"})
+}
+
+// mutateHarness is a harness of the SDK case whose extension subscribes, in this order, one event_mutate_probe handler of each mode to before_provider_request
+// (payload modes) and to before_provider_headers (header modes).
+func mutateHarness(t *testing.T, tc harnessCase, payload, headers []string) *harness {
+	t.Helper()
+	h := openProbeHarness(t, tc)
+	for event, modes := range map[string][]string{"before_provider_request": payload, "before_provider_headers": headers} {
+		for _, mode := range modes {
+			runConformanceCommandArgs(t, h, "event_mutate_probe", strings.TrimSpace(event+" "+mode))
+		}
+	}
+	return h
+}
+
+// openProbeHarness is the harness of the SDK case, shut down with the test.
+func openProbeHarness(t *testing.T, tc harnessCase) *harness {
+	t.Helper()
 	h := tc.make(t)
 	t.Cleanup(func() {
 		if h.cleanup != nil {
@@ -143,14 +167,6 @@ func probeHarness(t *testing.T, tc harnessCase, probes bool) *harness {
 			h.host.Shutdown("test done")
 		}
 	})
-	if !probes {
-		runConformanceCommandArgs(t, h, "event_probe_on", "before_provider_request")
-		return h
-	}
-	for _, event := range []string{"before_provider_request", "before_provider_headers"} {
-		runConformanceCommandArgs(t, h, "event_mutate_probe", event)
-		runConformanceCommandArgs(t, h, "event_mutate_probe", event+" fail")
-	}
 	return h
 }
 

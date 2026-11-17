@@ -780,15 +780,17 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			}); err != nil {
 				return err
 			}
-			// upstream: agent-session.ts:3825-3826 invalidates the old runner right after session_shutdown, before the steps that can throw, and builds the new one only at _buildRuntime (:3844); interactive-mode.ts:6670-6704 catches the throw and shows it. A reload that fails in between leaves the old instance stale. When this reload ends with the old runner still current, the extension processes get the stale message too, as after a failed reload in print, JSON and RPC mode (their Runtime.SetReload). The runner's runtime stays active: the next reload's runner is built over it (replaceExtensionRunner).
+			// upstream: agent-session.ts:3825-3826 invalidates the old runner right after session_shutdown, before the steps that can throw, and builds the new one only at _buildRuntime (:3844); interactive-mode.ts:6670-6704 catches the throw and shows it. A reload that fails in between leaves the old instance stale: its runner and its runtime (runner.ts:729-735, loader.ts:198-210), so the API the old extensions captured throws the stale message and their event-bus subscriptions end. When this reload ends with the old runner still current, the extension processes get the stale message too, as after a failed reload in print, JSON and RPC mode (their Runtime.SetReload). The runtime stays active while the reload runs, because the next runner is built over it (replaceExtensionRunner), and a runtime an earlier failed reload invalidated is made active again for this one.
 			// A mode with no extension host and no reloadable built-in extensions rebuilds no runner on /reload, so its runner stays in service.
 			if runner != nil && (m.opts.SubprocessHost != nil || m.opts.ReloadBuiltinExtensions != nil) {
 				previous := runner
-				previous.InvalidateKeepingRuntime("")
+				previous.Runtime().Reactivate()
+				previous.InvalidateForReload("")
 				defer func() {
 					if m.newRunner != previous {
 						return
 					}
+					previous.Runtime().Invalidate(previous.StaleMessage())
 					if host, ok := m.opts.SubprocessHost.(interface{ Invalidate(message string) }); ok {
 						host.Invalidate(previous.StaleMessage())
 					}

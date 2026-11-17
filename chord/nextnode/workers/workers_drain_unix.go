@@ -35,6 +35,7 @@ func (d *drain) reader(source io.Reader) io.Reader {
 	}
 	d.mu.Lock()
 	d.wake = func() { _ = stream.SetReadDeadline(longAgo) }
+	d.holds = func() int { return streamHolds(raw) }
 	d.mu.Unlock()
 	return &drainReader{drain: d, source: stream, raw: raw}
 }
@@ -54,19 +55,29 @@ func (r *drainReader) Read(buffer []byte) (int, error) {
 		var count int
 		var readErr error
 		err := r.raw.Read(func(descriptor uintptr) bool {
-			// Loaded before the read: what the process wrote is in the stream once it ended, so a read that began after its
-			// end and finds nothing has it all. Loaded after, the read could have been made before the process's last write.
-			ended := r.drain.ended.Load()
+			// The look at the end and the read are one section: what a read takes after the count of what the stream held at
+			// the end is taken off that count, and what it took before is not in it.
+			r.drain.mu.Lock()
+			defer r.drain.mu.Unlock()
+			// This read began after the goroutine told what its earlier reads gave it: if that was all the stream held at the
+			// end, the drain settles, and this read goes on to what a process outside the tree wrote since.
+			if r.drain.ended.Load() && r.drain.owed == 0 {
+				r.drain.settle()
+			}
 			for {
 				count, readErr = syscall.Read(int(descriptor), buffer)
 				if !errors.Is(readErr, syscall.EINTR) {
 					break
 				}
 			}
+			if readErr == nil {
+				r.drain.took(count)
+			}
 			if !errors.Is(readErr, syscall.EAGAIN) {
 				return true
 			}
-			if ended {
+			// Nothing to read after the end: whatever the stream held was told, or it could not count what it held.
+			if r.drain.ended.Load() {
 				r.drain.settle()
 			}
 			return false
