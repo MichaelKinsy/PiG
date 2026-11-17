@@ -247,7 +247,7 @@ function replaceMessageInPlace(target, source) {
 
 // eventEditMessages are the message objects of an event a handler may edit in place, by the position the reply names them at (_pigEventEdits): message_end has one. The reply is about these objects, so a handler that assigns another message to the event changes nothing, as in Pi (the event is made for each handler).
 function eventEditMessages(name, event) {
-  if (name === "message_end") return [event.message];
+  if (name === "message_start" || name === "message_end") return [event.message];
   if (name === "agent_end") return Array.isArray(event.messages) ? event.messages : [];
   if (name === "turn_end") return [event.message, ...(Array.isArray(event.toolResults) ? event.toolResults : [])];
   return [];
@@ -5697,7 +5697,7 @@ export class Runtime {
             return;
           }
           // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, turn_end, agent_end and the entry hold. The host cannot share the object, so the reply carries the message the handler left, when it differs from the one it received, even if the handler failed (the host writes it into the message, as it does a tool_call's edited input).
-          if (request.event === "message_end" || request.event === "agent_end") {
+          if (request.event === "message_start" || request.event === "message_end" || request.event === "agent_end") {
             const messages = eventEditMessages(request.event, event);
             const before = snapshotEventMessages(messages);
             let result;

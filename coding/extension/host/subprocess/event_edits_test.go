@@ -56,3 +56,25 @@ func TestAgentEndReplyRefusesAMisfitAndAppliesNone(t *testing.T) {
 		}
 	}
 }
+
+// message_start of a user message hands every handler the live message (agent-loop.ts), so an edit of it is what the entry and the requests hold; message_start of the assistant
+// message is emitted over a copy of the partial, so a handler's edit of it is what the later handlers of the event read and is lost for the entry and the requests. The unit sees
+// the first half (the event's own message holds the edit); the second (the message the envelope was copied from does not) is the row message_start/deep of TestInPlaceMessageEventEditsMatchPi.
+func TestMessageStartReplyEditsAUserMessageAndTheEventsAssistantMessage(t *testing.T) {
+	user := agentUserMessage("first")
+	reply := `{"_pigEventEdits":[{"at":0,"message":{"role":"user","content":"changed","timestamp":1}}],"_pigEventResult":null}`
+	if _, err := unwrapEventReply("message_start", extension.MessageStartEvent{Type: "message_start", Message: user}, json.RawMessage(reply)); err != nil {
+		t.Fatal(err)
+	}
+	if got := agentUserText(t, user); got != `"changed"` {
+		t.Errorf("the user message holds %s, want the edit", got)
+	}
+	assistant := &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "partial"}}, Timestamp: 1}
+	reply = `{"_pigEventEdits":[{"at":0,"message":{"role":"assistant","content":[{"type":"text","text":"edited"}],"timestamp":1}}],"_pigEventResult":null}`
+	if _, err := unwrapEventReply("message_start", extension.MessageStartEvent{Type: "message_start", Message: agent.AgentMessage{Assistant: assistant}}, json.RawMessage(reply)); err != nil {
+		t.Fatal(err)
+	}
+	if text, _ := json.Marshal(assistant.Content); !strings.Contains(string(text), "edited") {
+		t.Errorf("the event's assistant message holds %s, want the edit the later handlers read", text)
+	}
+}

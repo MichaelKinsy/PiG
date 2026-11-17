@@ -3711,7 +3711,7 @@ impl Extension {
                 // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it failed. The reply carries the messages the handler left when the JSON text differs from the one it received (member order is an edit), and the handler's result.
                 if matches!(
                     req.event.as_deref(),
-                    Some("message_end" | "agent_end")
+                    Some("message_start" | "message_end" | "agent_end")
                 ) && let Some(before) = &event_messages_before
                 {
                     let mut reply = serde_json::json!({ "_pigEventResult": value });
@@ -4063,7 +4063,7 @@ pub fn report_load_failure(sock_path: &str) -> io::Result<()> {
 /// The message objects of an event a handler may edit in place, by the position the reply names them at (`_pigEventEdits`): message_end has one.
 fn event_messages<'a>(event: Option<&str>, data: &'a Value) -> Vec<Option<&'a Value>> {
     match event {
-        Some("message_end") => vec![data.get("message")],
+        Some("message_start" | "message_end") => vec![data.get("message")],
         Some("agent_end") => data
             .get("messages")
             .and_then(Value::as_array)

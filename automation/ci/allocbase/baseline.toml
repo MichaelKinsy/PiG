@@ -2540,6 +2540,16 @@ allocs = 50
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeMessageStartEvent"
+allocs = 28
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeMessageStartEventEdit"
+allocs = 51
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeMessageUpdateStream"
 allocs = 186660
 

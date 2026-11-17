@@ -3391,6 +3391,28 @@
       ]
     },
     {
+      "id": "BF-10c7dc1",
+      "title": "fix(extension): an agent_end handler's in-place edit of the run's messages is kept",
+      "symptom": "fix(extension): an agent_end handler's in-place edit of the run's messages is kept",
+      "rootCause": "An agent_end handler edits a member of event.messages in place; Pi hands every handler the one event, whose messages are the objects the session holds, so the edit is what the next handler and the saved run hold. Every SDK now sends the messages it left, when they differ from the ones it received, as _pigEventEdits beside _pigEventResult (the pair message_end and turn_end use), and the host validates them (position in range and once, same role) before it applies any. The Node runtime shares one object per message number with the other extensions of the process, as it does for turn_end.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "10c7dc1da2",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/event_edits_test.go::TestAgentEndReplyEditsTheMessageAtItsIndex",
+        "coding/extension/host/subprocess/event_edits_test.go::TestAgentEndReplyRefusesAMisfitAndAppliesNone"
+      ]
+    },
+    {
       "id": "BF-1136763",
       "title": "A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the…",
       "symptom": "A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the prompt, the system prompt and every system prompt option of `before_agent_start` and the system prompt a handler returns, the tool names, ids and results of the `tool_execution_start`, `tool_execution_update` and `tool_execution_end` events, the entries of `turn_end` and `agent_before_settle`, the model of `model_select`, the servers of `mcp_servers_change`, and the model name of a provider an extension registers.",
@@ -27664,8 +27686,7 @@
       "tests": [
         "coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyEditsReachTheTurnsMessages",
         "coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyIgnoresAMemberItDoesNotName",
-        "coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyRefusesMalformedEditsAndAppliesNone",
-        "test/extension-conformance/in_place_event_edits_test.go::TestConformance_NodeEditsOutsideMessageEndStayInTheProcess"
+        "coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyRefusesMalformedEditsAndAppliesNone"
       ]
     },
     {

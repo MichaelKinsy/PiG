@@ -278,7 +278,7 @@ return out;
 }
 
 // TestInPlaceEditsOutsideMessageEndMatchPi runs Pi's own ExtensionRunner over a handler of message_start, turn_end and agent_end that edits the message in place,
-// and requires the event the caller holds to carry the edit: the behavior D541 records PiG does not share for a Node extension (TestConformance_NodeEditsOutsideMessageEndStayInTheProcess).
+// and requires the event the caller holds to carry the edit: the behavior PiG matches for the messages of these events in every SDK (TestInPlaceMessageEventEditsMatchPi).
 func TestInPlaceEditsOutsideMessageEndMatchPi(t *testing.T) {
 	t.Parallel()
 	runner, err := filepath.Abs("../../coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-coding-agent/core/extensions/runner.js")
@@ -311,51 +311,6 @@ return out;
 	for _, event := range []string{"message_start", "turn_end", "agent_end"} {
 		if got[event] != inPlaceEdited {
 			t.Errorf("%s: the message the caller holds after Pi's handler edited it reads %q, want %q", event, got[event], inPlaceEdited)
-		}
-	}
-}
-
-// TestConformance_NodeEditsOutsideMessageEndStayInTheProcess probes what D541 records: an edit a Node handler makes in place to the message of message_start
-// stays in the extension process's object and is not saved, where Pi's one object holds it in the entry. The row passes while the record is
-// true; a run in which the edit reaches the entry or the request means the record no longer matches.
-func TestConformance_NodeEditsOutsideMessageEndStayInTheProcess(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
-	}
-	t.Parallel()
-
-	for _, tc := range allHarnessCases() {
-		if !strings.HasPrefix(tc.name, "subprocess-node") {
-			continue
-		}
-		for _, event := range []string{"message_start"} {
-			t.Run(tc.name+"/"+event, func(t *testing.T) {
-				h := tc.make(t)
-				t.Cleanup(func() {
-					if h.cleanup != nil {
-						h.cleanup()
-					}
-					if h.host != nil {
-						h.host.Shutdown("test done")
-					}
-				})
-				field := "message"
-				if event == "agent_end" {
-					field = "messages"
-				}
-				// The host numbers a message when a Node handler receives message_start or message_end (D541), which gives the process one object for it.
-				runConformanceCommandArgs(t, h, "event_probe_on", "message_end")
-				runConformanceCommandArgs(t, h, "event_edit_probe", event+" deep")
-				// A later handler of the same process holds the one object, so it reads the edit: the handler did edit.
-				runConformanceCommandArgs(t, h, "event_field_probe", event+" "+field)
-				recorded := sendRecordedRequest(t, h, t.TempDir(), newOpenAIProbeProvider)
-				if !strings.Contains(strings.Join(*h.notify, "\n"), inPlaceEdited) {
-					t.Errorf("the next handler of the process does not see the edit made at %s: %q", event, *h.notify)
-				}
-				if strings.Contains(string(recorded.body), inPlaceEdited) || strings.Contains(recorded.entries, inPlaceEdited) {
-					t.Errorf("an edit made at %s reached the request or the entries, which D541 records as not saved\nentries %s", event, recorded.entries)
-				}
-			})
 		}
 	}
 }

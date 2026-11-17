@@ -384,7 +384,6 @@ func runTwoPrompts(t *testing.T, h *harness) (observed []string, requests [][]by
 // While a row is listed, the test requires it to still differ (a row that already matches Pi is a stale entry) and logs both.
 var curePending = map[string]string{
 	"message_start/top":   "the event is not one object across handlers and extensions",
-	"message_start/deep":  "an edit of the user or system message is not sent back (Pi: entry and both requests hold it)",
 	"message_update/top":  "the event is not one object across handlers and extensions",
 	"message_update/deep": "an edit of the partial's content is not sent back (Pi: the entry and the next request hold it)",
 	"turn_start/top":      "the event is not one object across handlers and extensions",

@@ -106,3 +106,26 @@ func benchAgentEnd(b *testing.B, source string) {
 		}
 	}
 }
+
+// BenchmarkNodeMessageStartEvent is the message_start dispatch of a user message to a Node extension whose handler edits nothing.
+func BenchmarkNodeMessageStartEvent(b *testing.B) {
+	benchMessageStart(b, `export default function(pi){let calls=0;pi.on("message_start",()=>{calls++})}`)
+}
+
+// BenchmarkNodeMessageStartEventEdit is the same dispatch to a handler that edits the user message in place.
+func BenchmarkNodeMessageStartEventEdit(b *testing.B) {
+	benchMessageStart(b, `export default function(pi){let n=0;pi.on("message_start",(event)=>{event.message.timestamp=2+n++})}`)
+}
+
+func benchMessageStart(b *testing.B, source string) {
+	b.Helper()
+	handler := loadNodeBenchExtension(b, "message_start", source)
+	message := agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserText("hello"), Timestamp: 1}}
+	ctx := extension.WithMessageSequences(context.Background(), func() []uint64 { return []uint64{9001} })
+	b.ReportAllocs()
+	for b.Loop() {
+		if _, err := handler(extension.MessageStartEvent{Type: "message_start", Message: message}, ctx); err != nil {
+			b.Fatal(err)
+		}
+	}
+}

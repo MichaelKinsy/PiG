@@ -146,6 +146,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-105a93f](#bf-105a93f) | An extension that calls `newSession`, `fork`, `navigateTree`, `switchSession` or `reload` from an event, tool… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-10818f5](#bf-10818f5) | Go extensions that receive large event payloads (`before_provider_request`, `agent_end`, `turn_end`) now… | PiG's own defect | All platforms | Unreleased |
 | [BF-108cb7d](#bf-108cb7d) | An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its… | PiG's own defect | Windows | 0.7.0 |
+| [BF-10c7dc1](#bf-10c7dc1) | fix(extension): an agent_end handler's in-place edit of the run's messages is kept | PiG's own defect | All platforms | Unreleased |
 | [BF-1136763](#bf-1136763) | A lone UTF-16 surrogate is kept, as Pi keeps it, in what an extension is given and in what it hands back: the… | PiG's own defect | All platforms | Unreleased |
 | [BF-1136763-2](#bf-1136763-2) | A lone UTF-16 surrogate in the text of an MCP tool result is kept in the session like the result of any other… | PiG's own defect | All platforms | Unreleased |
 | [BF-1136763-3](#bf-1136763-3) | The record of the calls a tool made through `executeTool` keeps a lone UTF-16 surrogate of a nested tool's… | PiG's own defect | All platforms | Unreleased |
@@ -4061,6 +4062,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `108cb7d911` (2026-11-04)
 - **Tests:** `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitDoesNotDropWhatTheProcessWrote`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsARequestInFlight`, `coding/extension/host/subprocess/peer_exit_test.go::TestExtensionExitEndsAnIdleOrLoadingRead`, `coding/extension/host/subprocess/peer_exit_test.go::TestIsolatedExtensionExitIsReportedWhenTheSocketCloseIsNotSeen`
 - **Release note:** An extension that exits while it loads, sits idle or shuts down no longer leaves the host waiting on its socket: on Windows a socket close can miss a pending read, and the host now ends the read when the extension's process exits, reporting the same transport error as a closed socket.
+
+### BF-10c7dc1
+
+**fix(extension): an agent_end handler's in-place edit of the run's messages is kept**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extension): an agent_end handler's in-place edit of the run's messages is kept
+- **Root cause:** An agent_end handler edits a member of event.messages in place; Pi hands every handler the one event, whose messages are the objects the session holds, so the edit is what the next handler and the saved run hold. Every SDK now sends the messages it left, when they differ from the ones it received, as _pigEventEdits beside _pigEventResult (the pair message_end and turn_end use), and the host validates them (position in range and once, same role) before it applies any. The Node runtime shares one object per message number with the other extensions of the process, as it does for turn_end.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `10c7dc1da2` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/event_edits_test.go::TestAgentEndReplyEditsTheMessageAtItsIndex`, `coding/extension/host/subprocess/event_edits_test.go::TestAgentEndReplyRefusesAMisfitAndAppliesNone`
 
 ### BF-1136763
 
@@ -16212,7 +16226,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `6f3ca3d155` (2026-11-16)
-- **Tests:** `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyEditsReachTheTurnsMessages`, `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyIgnoresAMemberItDoesNotName`, `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyRefusesMalformedEditsAndAppliesNone`, `test/extension-conformance/in_place_event_edits_test.go::TestConformance_NodeEditsOutsideMessageEndStayInTheProcess`
+- **Tests:** `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyEditsReachTheTurnsMessages`, `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyIgnoresAMemberItDoesNotName`, `coding/extension/host/subprocess/turn_end_edits_test.go::TestTurnEndReplyRefusesMalformedEditsAndAppliesNone`
 
 ### BF-6f4a82f
 

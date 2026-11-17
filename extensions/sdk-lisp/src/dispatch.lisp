@@ -244,7 +244,7 @@
 
 (defun event-edit-messages (event data)
   "The message objects of an event a handler may edit in place, by the position the reply names them at (_pigEventEdits): message_end has one, turn_end its assistant message and then its tool results."
-  (cond ((equal event "message_end") (list (jget data "message")))
+  (cond ((member event '("message_start" "message_end") :test #'equal) (list (jget data "message")))
         ((equal event "agent_end")
          (let ((messages (jget data "messages")))
            (and (vectorp messages) (not (stringp messages)) (coerce messages 'list))))
@@ -347,7 +347,7 @@
              (serious-condition (c) (setf error-message (condition-message c))))
            (values (if (hash-table-p headers) headers (obj)) error-message)))
         ;; Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it fails afterwards. The host cannot share the table, so the reply carries the messages the handler left when their JSON text differs from the one it received, and the handler's result.
-        ((member event '("message_end" "agent_end") :test #'equal)
+        ((member event '("message_start" "message_end" "agent_end") :test #'equal)
          (let* ((messages (event-edit-messages event data))
                 (before (snapshot-event-messages messages))
                 result error-message)

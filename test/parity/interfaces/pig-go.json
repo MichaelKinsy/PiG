@@ -1816,6 +1816,17 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/agent#AgentMessage.Original",
+      "package": "github.com/MichaelKinsy/PiG/agent",
+      "name": "AgentMessage.Original",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (AgentMessage, bool)"
+      },
+      "shapeHash": "sha256:d92fa59e8f6e3c7e6f345bdd307893d56cd385e9cc93ed910270858e59df0597"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/agent#AgentMessage.Role",
       "package": "github.com/MichaelKinsy/PiG/agent",
       "name": "AgentMessage.Role",

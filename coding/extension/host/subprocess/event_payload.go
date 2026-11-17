@@ -74,6 +74,8 @@ func applyToolCallInput(event any, input json.RawMessage) error {
 // eventMessage is the message at position at of the messages event holds: message_start and message_end hold one, turn_end its assistant message and then its tool results, agent_end the run's messages. The message shares its object with the event, so a replacement written into it is what the event's next handler and the agent's transcript read.
 func eventMessage(event any, at int) (agent.AgentMessage, bool) {
 	switch event := event.(type) {
+	case extension.MessageStartEvent:
+		return event.Message, at == 0
 	case extension.MessageEndEvent:
 		return event.Message, at == 0
 	case extension.AgentEndEvent:
@@ -96,7 +98,10 @@ func applyEventEdits(event any, edits []EventEdit) error {
 	if len(edits) == 0 {
 		return nil
 	}
-	type resolved struct{ target, replacement agent.AgentMessage }
+	type resolved struct {
+		target, replacement agent.AgentMessage
+		envelopeOnly        bool
+	}
 	var small [4]resolved
 	checked := small[:0]
 	for i, edit := range edits {
@@ -123,10 +128,19 @@ func applyEventEdits(event any, edits []EventEdit) error {
 		if role := replacement.Role(); role != target.Role() {
 			return fmt.Errorf("edit at %d: the message has role %q, the event's has %q", at, role, target.Role())
 		}
-		checked = append(checked, resolved{target, replacement})
+		// upstream: agent-loop.ts emits message_start of the assistant message over a copy of the partial ({...partial}): the later handlers of the event read a handler's edit of it, and the saved entry and the requests do not hold it, so the edit goes into the event's envelope and not into the message the envelope was copied from.
+		_, started := event.(extension.MessageStartEvent)
+		checked = append(checked, resolved{target, replacement, started && target.Role() == "assistant"})
 	}
 	for _, r := range checked {
 		agent.ReplaceMessageInPlace(r.target, r.replacement)
+		if r.envelopeOnly {
+			continue
+		}
+		// message_start carries an envelope copied from the message the transcript and the saved entry hold (agent.startEventMessage); Pi's handler edits that one object, so the edit reaches the original too.
+		if original, ok := r.target.Original(); ok {
+			agent.ReplaceMessageInPlace(original, r.replacement)
+		}
 	}
 	return nil
 }
