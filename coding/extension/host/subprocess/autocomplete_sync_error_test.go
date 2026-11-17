@@ -4,11 +4,13 @@ package subprocess
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -67,28 +69,128 @@ func TestSyncAutocompleteNamesTheExtensionWhoseEditorRefused(t *testing.T) {
 	}
 }
 
-// Pi's session_start handler installs its editor synchronously, so the bind that continues after the emit finds it in place. The install here is a notice the
-// owner loop applies later; the awaiting caller returns only once the host bound the editor (or it went away), and not for a UI that is not ready.
-func TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor(t *testing.T) {
-	bridge := NewUIBridge(func() {})
-	proxy := &editorProxy{bound: make(chan struct{})}
-	bridge.mu.Lock()
-	bridge.editor, bridge.uiReady = proxy, true
-	bridge.mu.Unlock()
+// unboundEditorUI is a UI whose owner loop has not applied the editor install yet: SetEditorComponent leaves the editor unbound.
+type unboundEditorUI struct{ *testUIContext }
 
-	waiting, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
-	defer cancel()
-	if err := bridge.AwaitEditorInstalled(waiting); !errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("an editor the host has not bound must be waited for, got %v", err)
+func (unboundEditorUI) SetEditorComponent(extension.EditorFactory) {}
+
+func installTestEditor(bridge *UIBridge) {
+	bridge.HandleNotifyFrom("ext", nil, &NotifyPayload{Method: NotifyEditorInstall, Args: json.RawMessage(`{"key":"k"}`)})
+}
+
+// pendingEditorBridge is a bridge with a ready UI and an installed editor the host has not bound.
+func pendingEditorBridge() *UIBridge {
+	bridge := NewUIBridge(func() {})
+	bridge.SetUIContext(unboundEditorUI{newTestUIContext()})
+	installTestEditor(bridge)
+	return bridge
+}
+
+func awaitingEditor(bridge *UIBridge, ctx context.Context) <-chan error {
+	done := make(chan error, 1)
+	go func() { done <- bridge.AwaitEditorInstalled(ctx) }()
+	return done
+}
+
+// requireAwaiting waits until every goroutine of the bubble is blocked and fails when the awaiting caller has returned by then.
+func requireAwaiting(t *testing.T, done <-chan error) {
+	t.Helper()
+	synctest.Wait()
+	select {
+	case err := <-done:
+		t.Fatalf("AwaitEditorInstalled returned %v with the editor not bound", err)
+	default:
 	}
-	proxy.releaseBound()
-	if err := bridge.AwaitEditorInstalled(t.Context()); err != nil {
-		t.Fatalf("a bound editor is in place: %v", err)
+}
+
+func currentEditor(bridge *UIBridge) *editorProxy {
+	bridge.mu.RLock()
+	defer bridge.mu.RUnlock()
+	return bridge.editor
+}
+
+// Pi's session_start handler installs its editor synchronously, so the bind that continues after the emit finds it in place. The install here is a notice the
+// owner loop applies later; the awaiting caller returns only once the host bound the editor.
+func TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		bridge := pendingEditorBridge()
+		done := awaitingEditor(bridge, t.Context())
+		requireAwaiting(t, done)
+		currentEditor(bridge).Bind(&testEditorHost{ui: newTestUIContext()})
+		if err := <-done; err != nil {
+			t.Fatalf("a bound editor is in place: %v", err)
+		}
+	})
+}
+
+// No editor installed, or a UI that is not ready (it installs the editor when it becomes so): the bind goes on at once. A context that has ended shows it: a
+// caller that waited would return the cancellation.
+func TestAwaitEditorInstalledDoesNotWaitWithoutAnEditor(t *testing.T) {
+	ended, cancel := context.WithCancelCause(t.Context())
+	cancel(errors.New("ended"))
+	bridge := NewUIBridge(func() {})
+	bridge.SetUIContext(unboundEditorUI{newTestUIContext()})
+	if err := bridge.AwaitEditorInstalled(ended); err != nil {
+		t.Fatalf("no editor installed: %v", err)
 	}
-	bridge.mu.Lock()
-	bridge.editor, bridge.uiReady = &editorProxy{bound: make(chan struct{})}, false
-	bridge.mu.Unlock()
-	if err := bridge.AwaitEditorInstalled(t.Context()); err != nil {
-		t.Fatalf("a UI that is not ready installs the editor when it becomes so: %v", err)
+	notReady := NewUIBridge(func() {})
+	installTestEditor(notReady)
+	if err := notReady.AwaitEditorInstalled(ended); err != nil {
+		t.Fatalf("a UI that is not ready: %v", err)
 	}
+	// An editor that is bound is in place whatever the state of the context. A select that chose at random between the two would fail one of these.
+	bound := pendingEditorBridge()
+	currentEditor(bound).releaseBound()
+	for range 64 {
+		if err := bound.AwaitEditorInstalled(ended); err != nil {
+			t.Fatalf("a bound editor with an ended context: %v", err)
+		}
+	}
+}
+
+// An extension that dies, or that its owner stops, while the host has not yet bound its editor: the connection's end releases the wait. No timer ends it.
+func TestAwaitEditorInstalledReturnsWhenTheExtensionEndsWhileTheBindIsPending(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		bridge := pendingEditorBridge()
+		done := awaitingEditor(bridge, t.Context())
+		requireAwaiting(t, done)
+		bridge.ClearExtensionConn("ext", nil)
+		if err := <-done; err != nil {
+			t.Fatalf("the extension's editor is gone, so there is nothing to wait for: %v", err)
+		}
+	})
+}
+
+// The session is swapped or shut down while the bind is pending and the extension keeps its editor unbound: the context of the session ends the wait.
+func TestAwaitEditorInstalledReturnsTheCauseOfItsContext(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		bridge := pendingEditorBridge()
+		ctx, cancel := context.WithCancelCause(t.Context())
+		done := awaitingEditor(bridge, ctx)
+		requireAwaiting(t, done)
+		stop := errors.New("session ended")
+		cancel(stop)
+		if err := <-done; !errors.Is(err, stop) {
+			t.Fatalf("AwaitEditorInstalled returned %v, want the cause of its context", err)
+		}
+	})
+}
+
+// An extension that installs a second editor replaces the first, which releases it: the bind waits for the editor that is now installed.
+func TestAwaitEditorInstalledWaitsForTheEditorThatReplacedTheOne(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		bridge := pendingEditorBridge()
+		first := currentEditor(bridge)
+		done := awaitingEditor(bridge, t.Context())
+		requireAwaiting(t, done)
+		installTestEditor(bridge)
+		if second := currentEditor(bridge); second == first {
+			t.Fatal("the second install did not replace the first editor")
+		}
+		requireAwaiting(t, done)
+		currentEditor(bridge).releaseBound()
+		if err := <-done; err != nil {
+			t.Fatalf("the replacing editor is bound: %v", err)
+		}
+	})
 }

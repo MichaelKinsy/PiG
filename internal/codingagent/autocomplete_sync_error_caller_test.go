@@ -23,6 +23,9 @@ func TestReloadWhoseInstalledEditorRefusesTheProviderIsReloadFailed(t *testing.T
 	if syncs() != 1 {
 		t.Fatalf("the editor was asked for the provider %d times in one reload, want 1:\n%s", syncs(), h.Chat())
 	}
+	if got := h.EditorAwaits(); got != 1 {
+		t.Fatalf("the reload waited %d times for the editor session_start installed, want 1", got)
+	}
 	// Pi's catch focuses the editor the reload replaced (dismissReloadBox(previousEditor)), not the one session_start installed.
 	if h.RemoteEditorInstalled() {
 		t.Fatal("a failed reload must hand the input back to the previous (default) editor, as Pi does, not keep the editor the reload installed")
@@ -43,5 +46,8 @@ func TestRebindWhoseInstalledEditorRefusesTheProviderFailsTheBind(t *testing.T) 
 	var refused *extension.EditorSyncError
 	if !errors.As(err, &refused) || refused.Error() != "EDITOR_REFUSED" {
 		t.Fatalf("the bind returned %v, want the editor's EDITOR_REFUSED", err)
+	}
+	if got := f.h.EditorAwaits(); got != 1 {
+		t.Fatalf("the bind waited %d times for the editor session_start installed, want 1", got)
 	}
 }
