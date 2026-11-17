@@ -364,7 +364,7 @@ func TestEndedToolCallQueuedBehindAStuckWriterEndsWithTheConnection(t *testing.T
 			// The heartbeat fails the connection (ExtensionUnresponsiveError) and closes the transport, which also ends the write the writer was in (TransportError).
 			var unresponsive *ExtensionUnresponsiveError
 			var transport *TransportError
-			if err == nil || errors.Is(err, ErrToolAborted) || !(errors.As(err, &unresponsive) || errors.As(err, &transport)) {
+			if err == nil || errors.Is(err, ErrToolAborted) || (!errors.As(err, &unresponsive) && !errors.As(err, &transport)) {
 				t.Fatalf("a call behind the stuck writer = %v, want the connection's failure", err)
 			}
 		case <-time.After(30 * time.Second):
