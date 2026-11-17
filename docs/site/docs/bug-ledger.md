@@ -1519,6 +1519,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D649](#bf-d649) | A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D650](#bf-d650) | A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D652](#bf-d652) | The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D657](#bf-d657) | Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -23163,6 +23164,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `24a9659012` (2026-11-14)
 - **Tests:** `internal/codingagent/compaction/provider_completer_progress_test.go::TestProviderCompleterProgressChangesNeitherRequestNorResult`, `internal/codingagent/interactive_compaction_progress_test.go::TestCompactionEscapeDuringTheStreamLeavesNothingRunning`, `internal/codingagent/interactive_compaction_progress_test.go::TestCompactionLineShowsElapsedTimeAndStreamedTokens`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionLineInANarrowTerminal`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionProgressAllocations`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionStatusMessage`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageChangesNothingWithinASecond`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageFollowsClockAndCounter` and 1 more in docs/bug-ledger.json
 
+### BF-D657
+
+**Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D657)
+- **Symptom:** none; sharing the event is Pi's design.
+- **Root cause:** the transport gives each handler a decoded copy of a frame, and a runtime that keeps one object per payload would have to hand every handler the same object across a thread, a process and a language boundary. Every realization that can share does not, so that an extension behaves the same in the isolated, the packed and the fused load, whichever the author or the Piglet Binary chooses (D31, D18), and so that a handler that writes after it returned (a goroutine, a timer) cannot change what another handler or a later dispatch reads. The fused path pays one decode and one clone for each handler (`TestFusedDispatchAllocations`).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the SDKs of every language hand the handlers of one dispatch one event object (a handle API for the payload) so that a write reaches the next handler as it does in Pi; the copy then goes from `eventArgsMemo`, the replica clones and the per-request decode of the shared object.
+- **Fix commits:** `00ebf27311` (2026-11-17), `0cd95cb097` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/fused_dispatch_norace_test.go::TestFusedDispatchAllocations`, `test/extension-conformance/event_isolation_test.go::TestConformance_EventHandlersDoNotShareTheirPayload`, `test/extension-conformance/outbound_frames_test.go::TestOutboundFramesAreTheEncodersBytes`
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -34583,6 +34599,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D650 | A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process… | [BF-D650](#bf-d650) |
 | D651 | Credential and state files are replaced through a temporary file where that changes nothing but the inode… | [BF-fbe92b6](#bf-fbe92b6) |
 | D652 | The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label | [BF-D652](#bf-d652) |
+| D657 | Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one… | [BF-D657](#bf-d657) |
 
 ## Fix-titled commits that are not bugs in a release
 
