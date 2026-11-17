@@ -282,3 +282,18 @@ func TestListenFollowsASymlinkedParentAndStaysPrivate(t *testing.T) {
 		t.Fatalf("socket mode %v, want a socket of mode 0600", info.Mode())
 	}
 }
+
+// The private bind directory is what keeps the socket unreachable in the window before its chmod: it must be 0700 whatever the umask.
+func TestMakePrivateBindDirIsOwnerOnly(t *testing.T) {
+	dir, err := makePrivateBindDir(listenTempDir(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o700 {
+		t.Fatalf("the private bind directory has mode %v, want 0700", info.Mode().Perm())
+	}
+}
