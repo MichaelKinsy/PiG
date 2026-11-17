@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // idleShutdownFactory is a conventional Go factory (a packed runtime cell member, D20). The primary member requests shutdown from a goroutine while the session is idle; every member logs its session_shutdown.
@@ -91,6 +93,7 @@ func TestRPCGoSDKIdleShutdownReturnsBeforeSessionShutdown(t *testing.T) {
 		t.Run(layout.name, func(t *testing.T) {
 			logPath := filepath.Join(t.TempDir(), "log.txt")
 			home := t.TempDir()
+			testenv.DisableGoTelemetryForChild(t, home)
 			env := []string{"HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + filepath.Join(home, "agent"), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "SP_LOG=" + logPath}
 			args := append([]string{"--no-extensions", "--no-skills", "--no-prompt-templates", "--no-session", "--model", "test-faux/faux-1"}, layout.args(t)...)
 			p := startRPCProcessAt(t, t.TempDir(), env, args...)

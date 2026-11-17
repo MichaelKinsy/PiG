@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -83,7 +84,9 @@ func KeepGoBuildCaches() error {
 
 // DisableGoTelemetry turns the go command's telemetry off in the configuration directory of a test whose HOME is now home. Call it after setting HOME and before the test's first go command.
 //
-// A fresh configuration directory has no telemetry mode, so the first go command in it finds telemetry on, claims the upload token, and forks a detached sidecar ("** telemetry **", working directory in that configuration directory). The sidecar outlives the command and creates counter and report files there. A test whose cleanup removes home then fails with "directory not empty" when the sidecar writes during RemoveAll, or leaves a recreated tree behind when it writes after. In mode off a go command opens no counters and forks nothing.
+// A fresh configuration directory has no telemetry mode, so the first go command in it finds telemetry on, claims the upload token, and forks a detached sidecar ("** telemetry **", working directory in that configuration directory; golang.org/x/telemetry start.go parent and startChild, reached from cmd/go through cmd/internal/telemetry.MaybeParent). The sidecar outlives the command and creates counter and report files there. A test whose cleanup removes home then fails with "directory not empty" when the sidecar writes during RemoveAll, or leaves a recreated tree behind when it writes after. In mode off a go command opens no counters and forks nothing.
+//
+// The mode file is the only input: GOTELEMETRY and GOTELEMETRYDIR are values `go env` reports ("non-settable" in `go help telemetry`; `go env -w` refuses them with "cannot be modified"), and cmd/go reads neither from the environment, so exporting one changes nothing.
 //
 // It writes only when the configuration directory lies inside home. Where XDG_CONFIG_HOME or APPDATA keeps it elsewhere the sidecar cannot write into home, and the mode of the user running `go test` must not change.
 func DisableGoTelemetry(t testing.TB, home string) {
@@ -95,12 +98,77 @@ func DisableGoTelemetry(t testing.TB, home string) {
 	if rel, err := filepath.Rel(home, config); err != nil || !filepath.IsLocal(rel) {
 		return
 	}
+	writeGoTelemetryOff(t, config)
+}
+
+// SetHome points HOME at home for the rest of the test and turns the go command's telemetry off there (DisableGoTelemetry). A test that moves HOME and can then run a go command, itself or through a pig build, calls it instead of t.Setenv("HOME", home).
+func SetHome(t testing.TB, home string) {
+	t.Helper()
+	t.Setenv("HOME", home)
+	DisableGoTelemetry(t, home)
+}
+
+func writeGoTelemetryOff(t testing.TB, config string) {
+	t.Helper()
 	dir := filepath.Join(config, "go", "telemetry")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "mode"), []byte("off"), 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// DisableGoTelemetryForChild is DisableGoTelemetry for a child process that is started with HOME=home, whatever HOME this process has: the mode file goes into the configuration directory the child derives from home (see ChildHomeEnv). Call it before the child starts, at the one place a test names the child's home. A child that inherits XDG_CONFIG_HOME or APPDATA from this process keeps its configuration there, outside home, and the mode file in home is then merely unused.
+func DisableGoTelemetryForChild(t testing.TB, home string) {
+	t.Helper()
+	writeGoTelemetryOff(t, childConfigDir(home))
+}
+
+// ChildHomeEnv returns the environment entries that give a child process the scratch home home, for a caller that builds the child's Env by hand instead of inheriting os.Environ(): HOME (with USERPROFILE and APPDATA under home on Windows), the GOCACHE and GOMODCACHE this process pinned (KeepGoBuildCaches), and the go command's telemetry mode off in the configuration directory the child derives from them: home/.config, home/Library/Application Support on macOS, home/AppData/Roaming on Windows, home/lib on Plan 9. A caller that adds XDG_CONFIG_HOME for the child moves that directory out of home.
+//
+// A child that is itself a test binary runs testenv.ScopeTempDir from its TestMain, and KeepGoBuildCaches there runs `go env` unless both caches are set. In a scratch home that is the first go command, it forks the telemetry sidecar, and the sidecar keeps writing under home after the parent test removes it (macOS CI: TestRefreshedCredentialSurvivesALockTakenMeanwhile, "unlinkat .../Library/Application Support/go/telemetry: directory not empty"). The pinned caches make that child run no go command, and the mode file covers a go command the child starts itself (pig build, go build).
+func ChildHomeEnv(t testing.TB, home string) []string {
+	t.Helper()
+	env := []string{"HOME=" + home}
+	if runtime.GOOS == "windows" {
+		env = append(env, "USERPROFILE="+home, "APPDATA="+childConfigDir(home))
+	}
+	for _, key := range []string{"GOCACHE", "GOMODCACHE"} {
+		if value := os.Getenv(key); value != "" {
+			env = append(env, key+"="+value)
+		}
+	}
+	DisableGoTelemetryForChild(t, home)
+	return env
+}
+
+// childConfigDir is the configuration directory of a child whose HOME is home and whose environment carries no XDG_CONFIG_HOME: ChildHomeEnv sets APPDATA to it on Windows.
+func childConfigDir(home string) string {
+	switch runtime.GOOS {
+	case "windows":
+		return filepath.Join(home, "AppData", "Roaming")
+	case "darwin", "ios":
+		return filepath.Join(home, "Library", "Application Support")
+	case "plan9":
+		return filepath.Join(home, "lib")
+	default:
+		return filepath.Join(home, ".config")
+	}
+}
+
+// RequireNoGoTelemetryActivity fails the test when a go command has run with telemetry on in the scratch home home that ChildHomeEnv gave a child: the telemetry directory then holds counters (local) or the upload state a sidecar keeps, beside the mode file. The go command creates local before it exits, so the check needs no wait.
+func RequireNoGoTelemetryActivity(t testing.TB, home string) {
+	t.Helper()
+	dir := filepath.Join(childConfigDir(home), "go", "telemetry")
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.Name() != "mode" {
+			t.Fatalf("a go command ran with telemetry on in %q: it holds %q beside the mode file, and its sidecar goes on writing there after the test removes the home", dir, entry.Name())
+		}
 	}
 }
 

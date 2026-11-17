@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // print-mode.ts:97-99 and rpc-mode.ts:341-343 bind the command context's reload to session.reload() (agent-session.ts:3575-3625 in 0.99.2), so
@@ -177,6 +178,7 @@ func TestExtensionReloadIsWiredInEveryHeadlessMode(t *testing.T) {
 			t.Run(language+"/"+mode, func(t *testing.T) {
 				extension := writeReloadProbe(t, language)
 				home, cwd, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()
+				testenv.DisableGoTelemetryForChild(t, home)
 				agentDir := filepath.Join(home, "pig")
 				if err := os.MkdirAll(agentDir, 0o755); err != nil {
 					t.Fatal(err)
@@ -259,6 +261,7 @@ func TestExtensionReloadFailureRejectsTheExtensionCall(t *testing.T) {
 		t.Fatal(err)
 	}
 	home, cwd, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()
+	testenv.DisableGoTelemetryForChild(t, home)
 	agentDir := filepath.Join(home, "pig")
 	if err := os.MkdirAll(agentDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -309,6 +312,7 @@ func TestExtensionCallAfterReloadFailsAsStale(t *testing.T) {
 		t.Fatal(err)
 	}
 	home, cwd, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()
+	testenv.DisableGoTelemetryForChild(t, home)
 	agentDir := filepath.Join(home, "pig")
 	if err := os.MkdirAll(agentDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -369,6 +373,7 @@ func TestFailedExtensionReloadLeavesTheOldInstanceStale(t *testing.T) {
 	for _, mode := range []string{"print", "rpc"} {
 		t.Run(mode, func(t *testing.T) {
 			home, cwd, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()
+			testenv.DisableGoTelemetryForChild(t, home)
 			agentDir := filepath.Join(home, "pig")
 			if err := os.MkdirAll(agentDir, 0o755); err != nil {
 				t.Fatal(err)

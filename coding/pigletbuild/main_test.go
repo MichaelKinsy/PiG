@@ -11,6 +11,7 @@ import (
 
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func TestParseArgsAcceptsBuilderAndRejectsUnregisteredVerification(t *testing.T) {
@@ -116,7 +117,7 @@ func TestRunBuildRejectsListedExtensionThatResolvesToNothing(t *testing.T) {
 func TestRunBuildRejectsPigletWhoseCellsAllStayOutsideTheBinary(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("PIG_HOME", filepath.Join(dir, "home"))
-	t.Setenv("HOME", filepath.Join(dir, "home"))
+	testenv.SetHome(t, filepath.Join(dir, "home"))
 	extensionDir := filepath.Join(dir, "sidecar")
 	if err := os.Mkdir(extensionDir, 0o755); err != nil {
 		t.Fatal(err)

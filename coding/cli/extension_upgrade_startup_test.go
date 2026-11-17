@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // startupDriftFixture is an agent directory whose extension was written for an older SDK.
@@ -28,6 +29,7 @@ func startupDriftFixture(t *testing.T) (home, agentDir, extension string) {
 
 func runDriftStartup(t *testing.T, binary, home, agentDir string, extraEnv []string, args ...string) (stdout, stderr string, exitCode int) {
 	t.Helper()
+	testenv.DisableGoTelemetryForChild(t, home)
 	cmd := exec.Command(binary, append([]string{"--model", "test-faux/faux-1", "--offline"}, args...)...)
 	cmd.Dir = home
 	cmd.Env = append(os.Environ(), "HOME="+home, "PIG_HOME="+filepath.Join(home, "pig"), "PI_HOME="+filepath.Join(home, "pi"), "PIG_CODING_AGENT_DIR="+agentDir, "PI_CODING_AGENT_DIR="+agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic")
