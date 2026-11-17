@@ -1972,6 +1972,18 @@ export default function (pi) {
   } });
   let installedEditorFactory;
   pi.registerCommand("editor-install", { description: "Install a custom editor component", handler: async (_args, ctx) => { installedEditorFactory = (tui, theme, keybindings) => new CustomEditor(tui, theme, keybindings); ctx.ui.setEditorComponent(installedEditorFactory); } });
+  // An editor that refuses a provider with the "!" trigger, as an extension's own setAutocompleteProvider may throw.
+  pi.registerCommand("editor-install-refusing", { description: "Install a custom editor that refuses a rebuilt autocomplete provider", handler: async (_args, ctx) => {
+    ctx.ui.setEditorComponent((tui, theme, keybindings) => {
+      const editor = new CustomEditor(tui, theme, keybindings);
+      const take = editor.setAutocompleteProvider.bind(editor);
+      editor.setAutocompleteProvider = (provider) => {
+        if ((provider.triggerCharacters ?? []).includes("!")) throw new Error("EDITOR_SYNC_REFUSED");
+        take(provider);
+      };
+      return editor;
+    });
+  } });
   pi.registerCommand("editor-get-probe", { description: "Report the factory getEditorComponent returns", handler: async (_args, ctx) => { const got = ctx.ui.getEditorComponent(); ctx.ui.notify(`editor_get:${got === undefined ? "absent" : got === installedEditorFactory ? "installed" : "other"}:end`, "info"); } });
   pi.registerCommand("editor-clear", { description: "Restore the host's editor", handler: async (_args, ctx) => { installedEditorFactory = undefined; ctx.ui.setEditorComponent(undefined); } });
   pi.registerCommand("settings_probe", { description: "Report the effective settings", handler: async (_args, ctx) => ctx.ui.notify(`settings_probe:${JSON.stringify(pi.getSettings())}`, "info") });
