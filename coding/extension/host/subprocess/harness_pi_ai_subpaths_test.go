@@ -15,11 +15,6 @@ import (
 	"testing"
 )
 
-// codexHelpersNotYetRestored: the three Codex WebSocket helpers the next commit of this branch restores (cure in progress, not waived); it deletes this set.
-var codexHelpersNotYetRestored = map[string]bool{
-	"closeOpenAICodexWebSocketSessions": true, "getOpenAICodexWebSocketDebugStats": true, "resetOpenAICodexWebSocketDebugStats": true,
-}
-
 // TestHelperResolvingPiAiFromTheHarnessSeesPisExports: a detached helper process (pi-subagents' background runner) imports `@earendil-works/pi-ai/<subpath>` as plain Node resolves it from the package that process.argv[1] belongs to: Pi's install has the pinned pi-ai package next to pi-coding-agent, PiG's harness has its generated peer (internal/noderuntimepeers). Every `./api/*` subpath Pi's package.json exports must import in the helper with the same export names and kinds as under Pi, or fail as a missing subpath does.
 func TestHelperResolvingPiAiFromTheHarnessSeesPisExports(t *testing.T) {
 	node, err := exec.LookPath("node")
@@ -84,7 +79,7 @@ process.stdout.write(JSON.stringify(out));`
 			t.Errorf("%s: Pi serves %d names; the harness peer fails: %s", spec, len(want.Names), got.Error)
 		case !maps.Equal(want.Names, got.Names):
 			for name, kind := range want.Names {
-				if got.Names[name] != kind && !codexHelpersNotYetRestored[name] {
+				if got.Names[name] != kind {
 					t.Errorf("%s: Pi exports %s (%s); the harness peer has %q", spec, name, kind, got.Names[name])
 				}
 			}
