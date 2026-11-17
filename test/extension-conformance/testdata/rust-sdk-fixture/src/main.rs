@@ -2507,14 +2507,20 @@ fn main() {
         "tool_call_cancel_on",
         "Subscribe to tool_call with a handler that waits for the cancel signal",
         move |_ctx, _args| {
-            let subscription = subscribe(&tool_call_cancel_subscriber, "tool_call", move |ctx, _data| {
-                ctx.notify("cancel_wait", "info");
-                while !ctx.is_cancelled() {
-                    std::thread::sleep(std::time::Duration::from_millis(5));
-                }
-                ctx.notify("cancel_seen", "info");
-                Ok(Some(json!({"block": true, "reason": "answered after the abort"})))
-            });
+            let subscription = subscribe(
+                &tool_call_cancel_subscriber,
+                "tool_call",
+                move |ctx, _data| {
+                    ctx.notify("cancel_wait", "info");
+                    while !ctx.is_cancelled() {
+                        std::thread::sleep(std::time::Duration::from_millis(5));
+                    }
+                    ctx.notify("cancel_seen", "info");
+                    Ok(Some(
+                        json!({"block": true, "reason": "answered after the abort"}),
+                    ))
+                },
+            );
             tool_call_cancel_subscriptions
                 .lock()
                 .unwrap()
