@@ -47,7 +47,6 @@ func (m *InteractiveMode) renderCompactionResult(event agent.CompactionEndEvent,
 	m.disposeArminComponents()
 	m.chatContainer.Clear()
 	m.transcriptEmptied()
-	m.tuiInst.ForceFullRender()
 	if len(entries) > 0 {
 		entries = entries[1:]
 	}
