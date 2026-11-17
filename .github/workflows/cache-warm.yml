@@ -3,12 +3,13 @@ name: Cache warm
 
 # Builds what CI restores and saves it from main, so every pull request falls back to a fresh default-branch Go build
 # cache and Pi oracle build: a pull request's own caches are visible only to later runs of that pull request. It runs
-# no gate.
+# no gate, and only when a lockfile changes on main (or by dispatch).
 on:
+  # A lockfile change is the one case where a whole cache goes invalid; the nightly CI run on main (ci.yml) saves every
+  # other cache once a night, so this workflow does not run on every push to main.
   push:
     branches: [main]
-  schedule:
-    - cron: '23 5 * * *'
+    paths: ['**/go.sum', '**/Cargo.lock', '**/package-lock.json']
   workflow_dispatch:
 
 permissions:
@@ -142,7 +143,22 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/Library/Caches/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -158,3 +174,14 @@ jobs:
           automation/ci/install-npm-toolchain.sh
           export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
           python3 automation/pin/pin.py install-oracle
+      - name: Save the Go module cache
+        if: ${{ steps.cache-gomod.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Save the Go build cache
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/Library/Caches/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}

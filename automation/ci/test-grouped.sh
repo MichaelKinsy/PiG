@@ -27,7 +27,7 @@ SHARDED_SPEC=(
   ./codemode:2
   ./durable/codemode:2
   ./coding/extension/host/subprocess:3
-  ./test/extension-conformance:8
+  ./test/extension-conformance:14
   ./tui/internal/hljs:2
 )
 # Under -race a package runs several times slower, so make test-changed multiplies the shard count of an edited sharded package by this factor (the shard patterns partition the package for any count; the weights apply only to the count CI uses).

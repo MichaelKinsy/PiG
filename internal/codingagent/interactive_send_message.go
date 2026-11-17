@@ -96,6 +96,10 @@ func (m *InteractiveMode) startCustomTurn(agentMsg agent.AgentMessage, followUp 
 			if m.agent == nil {
 				return
 			}
+			// The action was released before a quit key set requestExit: the quit settles the interrupted run on the owner loop (settleRunAtQuit) and would wait for a turn started here (D247).
+			if m.requestExit.Load() {
+				return
+			}
 			if m.enqueueIfTurnActive(func() {
 				if followUp {
 					m.agent.FollowUp(agentMsg)

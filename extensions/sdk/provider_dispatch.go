@@ -237,12 +237,10 @@ func (e *Extension) dispatchProviderObject(ctx Context, req *requestMsg) (any, e
 		if err := e.conn.notify("tool_update", map[string]any{"request_id": ctx.requestID, "result": map[string]string{"type": "provider_started"}}); err != nil {
 			return nil, err
 		}
-		for event := range stream.Events(e.runCtx) {
-			if err := e.conn.notify("tool_update", map[string]any{"request_id": ctx.requestID, "result": event}); err != nil {
-				return nil, err
-			}
-		}
-		return nil, nil
+		err = stream.forward(e.runCtx, func(event any) error {
+			return e.conn.notifyResult("tool_update", ctx.requestID, event)
+		})
+		return nil, err
 	default:
 		return nil, fmt.Errorf("Unknown Provider method %s", request.Method)
 	}

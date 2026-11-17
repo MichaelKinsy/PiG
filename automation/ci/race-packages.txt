@@ -63,6 +63,7 @@ libs  ./durable/core/contracttest/guard
 libs  ./durable/durabletest
 libs  ./durable/images/node
 libs  ./internal/entered
+libs  ./internal/gcpolicy
 libs  ./internal/requestvalidity
 libs  ./internal/testenv
 libs  ./mcp/mcptest

@@ -47,5 +47,11 @@ func ProviderProducer() *sdk.Extension {
 			return stream, nil
 		},
 	})
+	// A provider whose model names an api that no extension registers and that has no streamSimple: a request for it is refused (provider-composer.ts:605-606).
+	ext.RegisterProvider("unknown-api-provider", sdk.ProviderConfig{
+		"api": "unknown-api-no-extension-registered", "baseUrl": "https://extension.invalid", "apiKey": "extension-key",
+		"models": []any{map[string]any{"id": "faux", "name": "Faux", "reasoning": false, "input": []string{"text"}, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}, "contextWindow": 128000, "maxTokens": 4096}},
+	})
+	registerProviderSnapshot(ext)
 	return ext
 }

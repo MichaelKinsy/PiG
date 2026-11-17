@@ -289,7 +289,7 @@ extension drops the functions it held for it."
     (with-prov (ps) (push stream (ps-forwarding ps)))
     (unwind-protect
          (model-stream-forward stream (lambda (event) (notify-host ext "tool_update" (obj "request_id" id "result" event)))
-                               :stopped (lambda () (ps-stopped ps)))
+                               :stopped (lambda () (ps-stopped ps)) :wire t)
       (with-prov (ps) (setf (ps-forwarding ps) (remove stream (ps-forwarding ps)))))))
 
 (def-stop-hook "providers" (ext)
@@ -401,12 +401,12 @@ extension drops the functions it held for it."
            (unsubscribe (abort-signal-subscribe signal (lambda () (model-stream-end stream nil)))))
       (unwind-protect
            (progn
-             (loop (multiple-value-bind (event more) (model-stream-next stream)
+             (loop (multiple-value-bind (event more) (model-stream-next stream :wire t)
                      (unless more (return))
                      (when (abort-signal-set-p signal) (error "provider stream aborted"))
                      (notify-host ext "provider_stream_event" (obj "request_id" (ctx-request-id ctx) "result" event))))
              (when (abort-signal-set-p signal) (error "provider stream aborted"))
-             (model-stream-result stream))
+             (model-stream-wire-result stream))
         (funcall unsubscribe)))))
 
 ;;; ---------------------------------------------------------------- Providers other extensions registered
@@ -463,7 +463,7 @@ and SIGNAL, once set, cancels the call (the cancel is sent after the call, so th
                                 (setf condition (make-condition 'simple-error :format-control "Provider stream ended without a terminal event")))
              (error (e) (setf condition e)))
            (model-stream-mark-started stream condition)
-           (model-stream-push stream (model-stream-error-event condition model))
+           (model-stream-enqueue stream (model-stream-error-event condition model))
            (model-stream-unregister ext id))))
       (model-stream-wait-started stream)
       stream)))
