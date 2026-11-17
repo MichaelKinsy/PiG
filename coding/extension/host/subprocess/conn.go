@@ -1200,7 +1200,7 @@ func (c *Conn) Close(reason string) error {
 			Type: MsgResponse,
 			ID:   id,
 			Response: &ResponsePayload{
-				Error: &ErrorInfo{Code: failureCode, Message: "connection closed"},
+				Error: &ErrorInfo{Code: failureCode, Message: "connection closed", closedByHost: failureCode == ""},
 			},
 		}:
 		default:

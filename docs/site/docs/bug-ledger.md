@@ -1411,6 +1411,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-92adb39](#bf-92adb39) | PiG's raw mode is the one Pi's terminal is in now (libuv's `UV_TTY_MODE_RAW`, which Node's `setRawMode(true)`… | PiG's own defect | Windows | Unreleased |
 | [BF-92da987](#bf-92da987) | Codemode no longer reserves its whole 256 MiB script-memory limit when a session starts: the QuickJS linear… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-930c88e](#bf-930c88e) | Claude models with per-message effort no longer fail with `Invalid effort level` on accounts whose… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-9315f49](#bf-9315f49) | Ordering `/fork`, `/new` or `/resume` while an extension's `session_start` handler (or any other event… | PiG's own defect | All platforms | Unreleased |
 | [BF-9327bc7](#bf-9327bc7) | A closed Harness or Session no longer stays reachable from Go's timer heap | PiG's own defect | All platforms | 0.7.0 |
 | [BF-93319f4](#bf-93319f4) | The terminal UI worked example now describes the typed `/model` prefix in words | PiG's own defect | All platforms | 0.5.0 |
 | [BF-935b371](#bf-935b371) | A start with a Node extension no longer writes the whole model catalog to the extension once per step of the… | PiG's own defect | All platforms | Unreleased |
@@ -21647,6 +21648,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `930c88ec0c` (2026-10-23)
 - **Tests:** `ai/anthropic_beta_override_test.go::TestAnthropicManagedEffortBodyFollowsTheBetasSent`, `ai/anthropic_mid_effort_upstream_test.go::TestAnthropicUpstreamMidConversationEffort`
 - **Release note:** Claude models with per-message effort no longer fail with `Invalid effort level` on accounts whose organization caps effort below `high`: the fixed top-level effort is `low`.
+
+### BF-9315f49
+
+**Ordering `/fork`, `/new` or `/resume` while an extension's `session_start` handler (or any other event…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Ordering `/fork`, `/new` or `/resume` while an extension's `session_start` handler (or any other event, command or shortcut handler of a subprocess extension) has not returned no longer shows `Extension "<path>" error: connection closed`.
+- **Root cause:** Conn.Close answered the requests still pending with a made-up response that Request returns as a plain response, and the response branches of the event, command and shortcut calls returned it without the classification their transport-error branches apply, and no test held a handler across a stop of its extension
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9315f493e3` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/conn_closed_by_host_test.go::TestAHostCloseAnswersPendingRequestsWithTheMark`, `coding/extension/host/subprocess/owner_stop_pending_handler_test.go::TestAHandlerPendingWhenTheHostStopsItsExtensionIsNotItsFailure`, `internal/codingagent/owner_stop_in_flight_handler_test.go::TestSessionReplacementDuringAHeldSessionStartShowsNoExtensionError`, `test/parity/scenarios/extensions-runtime/113-fork-while-session-start-held.toml`
+- **Release note:** Ordering `/fork`, `/new` or `/resume` while an extension's `session_start` handler (or any other event, command or shortcut handler of a subprocess extension) has not returned no longer shows `Extension "<path>" error: connection closed`. The swap stops the old extension process, and the connection answered the call still pending with its own "connection closed"; the host returned that answer as the handler's failure, so the runner reported it. It is now marked as cut short by the host, as the same call ended by a transport error already was, and nothing is shown, as in Pi, whose handler finishes. An error the extension answers itself, whatever its text, and a crash are still reported as before. The old process is stopped, so a handler in flight does not finish as it does in Pi (D70, in-flight handler clause).
 
 ### BF-9327bc7
 

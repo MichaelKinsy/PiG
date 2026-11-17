@@ -880,6 +880,8 @@ type ErrorInfo struct {
 	// builtinTool.localExec, and an SDK sets it on the error response of user_bash_exec when the error its exec raised is the one its local operations returned,
 	// unchanged. Message is then "timeout:<seconds>". It is omitted otherwise.
 	ShellExit *ShellExitInfo `json:"shellExit,omitempty"`
+	// closedByHost is set only on the answer a Conn makes up for a request still pending when the host closed the connection (Close, Retire): the extension did not give it, so it is no failure of the handler. It is neither sent nor read on the wire, and a copy of the value outside this process loses it, which is right: only the host's callers classify it (managedExt.answerError).
+	closedByHost bool
 }
 
 // ShellExitInfo is Pi's `shellExit`: the shell's own exit code and the seconds it ran, rounded to a tenth as Pi rounds them (Math.round(ms / 100) / 10).

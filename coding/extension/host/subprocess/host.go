@@ -4732,7 +4732,7 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 			}
 		}
 		if resp.Response != nil && resp.Response.Error != nil {
-			return resp.Response.Error.ToError()
+			return me.answerError(resp.Response.Error)
 		}
 
 		return nil
@@ -4801,7 +4801,7 @@ func (h *Host) makeShortcutHandler(me *managedExt, key string) extension.Shortcu
 		}
 
 		if resp.Response != nil && resp.Response.Error != nil {
-			return resp.Response.Error.ToError()
+			return me.answerError(resp.Response.Error)
 		}
 
 		return nil
@@ -5181,7 +5181,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 					//portlint:allow hotpathalloc the reply frame returns to the connection when this handler returns (releaseResponse) and the result outlives it; one copy of the object or messages a failed handler left, once per provider request or context emit
 					return slices.Clone(resp.Response.Result), resp.Response.Error.ToError()
 				}
-				return nil, resp.Response.Error.ToError()
+				return nil, me.answerError(resp.Response.Error)
 			}
 			// A user_bash reply that names a BashOperations object the extension holds becomes the object Pi's runner holds.
 			if event == "user_bash" && len(resp.Response.Result) > 0 {
@@ -5953,6 +5953,15 @@ func (me *managedExt) stoppedByOwner() bool {
 func (me *managedExt) dispatchError(err error) error {
 	if err != nil && me.stoppedByOwner() {
 		return fmt.Errorf("%w: %w", extension.ErrHandlerStopped, err)
+	}
+	return err
+}
+
+// answerError is the error an extension's error answer stands for. An answer the connection made up because the host closed it while the request was pending (ErrorInfo.closedByHost) is no failure of the handler: for a call whose transport failure dispatchError already classifies, it is marked as cut short by the host when the host stopped the extension, as that transport failure is, so the runner does not report it. The extension's own error answer, whatever its text, is returned as it is.
+func (me *managedExt) answerError(info *ErrorInfo) error {
+	err := info.ToError()
+	if info.closedByHost {
+		return me.dispatchError(err)
 	}
 	return err
 }
