@@ -39,7 +39,7 @@ func collectCLIPackageResources(cwd, agentDir string, sm *codingagent.SettingsMa
 		if strings.HasPrefix(source, codingagent.BuiltinPathPrefix) {
 			continue
 		}
-		resolved, err := resolveCLIPackageSource(cwd, agentDir, sm, source)
+		resolved, err := resolveCLIPackageSource(cwd, agentDir, sm, flags.packages, source)
 		if err != nil {
 			if packagemanager.DetectSourceKind(source) != "local" {
 				break
@@ -54,7 +54,7 @@ func collectCLIPackageResources(cwd, agentDir string, sm *codingagent.SettingsMa
 }
 
 // resolveCLIPackageSource is resolveExtensionSources for one -e source. An npm or git source resolves once per load.
-func resolveCLIPackageSource(cwd, agentDir string, sm *codingagent.SettingsManager, source string) (packagemanager.ResolvedPaths, error) {
+func resolveCLIPackageSource(cwd, agentDir string, sm *codingagent.SettingsManager, packages *packageRun, source string) (packagemanager.ResolvedPaths, error) {
 	remote := packagemanager.DetectSourceKind(source) != "local"
 	key := remoteCLIKey{cwd, agentDir, source}
 	if remote {
@@ -63,8 +63,7 @@ func resolveCLIPackageSource(cwd, agentDir string, sm *codingagent.SettingsManag
 			return resolution.resolved, resolution.err
 		}
 	}
-	manager := packagemanager.NewPackageManager(packagemanager.PackageManagerOptions{CWD: cwd, SettingsManager: sm})
-	manager.AgentDir = agentDir
+	manager := packages.manager(cwd, agentDir, sm)
 	resolved, err := manager.ResolveExtensionSources([]string{source}, false, true)
 	if remote {
 		remoteCLIResolutions.Store(key, remoteCLIResolution{resolved: resolved, err: err})

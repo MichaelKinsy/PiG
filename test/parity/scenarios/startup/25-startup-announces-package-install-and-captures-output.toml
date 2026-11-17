@@ -1,0 +1,36 @@
+# Behavior family: startup
+# Upstream evidence: Pi b513b64d8ac8 (#11264) runs the npm and git commands of a package install with piped output in interactive
+# mode, and main.ts prints `Installing <source>...` on stderr until the TUI starts. Probed on Pi at b513b64d8ac8 and at its
+# parent in tmux (120x40) with a fake npm command that prints `npm warn deprecated ...`, `added 1 package in 1s` and
+# `found 0 vulnerabilities` and installs a package with one prompt template:
+#   before: the three npm lines are printed above the banner, no announcement;
+#   after:  `Installing npm:probe-npm...` above the banner, none of the npm lines, `/probenpm` listed under [Prompts].
+# PiG before this commit printed the npm lines (inherited output) and no announcement. PiG also prints its own `[pig] Reinstalled missing
+# packages` line (a pig additive), so the frames are not compared whole: the announcement, the absent child output and the loaded
+# prompt are asserted for both.
+name = "25-startup-announces-package-install-and-captures-output"
+description = "A package installed at interactive startup shows only Pi's Installing line; the package manager's own output stays off the terminal."
+covers = ["packages/coding-agent/src/core/package-manager.ts", "packages/coding-agent/src/main.ts", "packages/coding-agent/src/core/resource-loader.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_TELEMETRY=0", "PIG_CODING_AGENT_DIR=testdata/pig-agent-package-install"]
+pi = ["PI_TELEMETRY=0", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/pi-agent-package-install"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+override_base_args = true
+
+[tmux]
+width = 120
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 30
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["Installing npm:probe-npm...", "/probenpm"]
+both_not_contain = ["npm warn deprecated", "added 1 package", "found 0 vulnerabilities", "panic:", "goroutine "]
+runs = 3

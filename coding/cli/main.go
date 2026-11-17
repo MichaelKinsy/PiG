@@ -1239,7 +1239,7 @@ func Main(args []string, options *MainOptions) {
 	// The builder is Pi's createRuntime closure: every mode builds its first Session
 	// and every replacement Session from the same process-fixed inputs.
 	builder := &cliRuntimeBuilder{
-		mode: processAppMode(flags), flags: flags, agentDir: agentDir, launchCWD: initialCWD,
+		mode: processAppMode(flags), packages: newPackageRun(processAppMode(flags)), flags: flags, agentDir: agentDir, launchCWD: initialCWD,
 		activePiglet: activePiglet, activePigletBaked: activePigletBaked, activePigletOpen: activePigletOpen,
 		shadowedPiglet:  piglet.ShadowedWorkspacePiglet(requestedPigletName(flags.UnknownFlags), flags.ProjectTrustOverride),
 		settingsManager: startupSettingsManager, settingsDiagnostics: startupSettingsDiagnostics,
@@ -1702,6 +1702,8 @@ func Main(args []string, options *MainOptions) {
 	iopts.InitialThemeSetting = flags.UseTheme
 	iopts.TerminateExtensionProcesses = sessionFactory.TerminateProcesses
 	interactive := codingagent.NewInteractiveMode(interactiveRuntime{rt}, iopts)
+	// main.ts: the TUI draws from here on, so an install is no longer announced on stderr.
+	builder.packages.stopAnnouncing()
 	// SIGTERM must reach extensions before the root context is cancelled.
 	setTerminationShutdownHook(func() {
 		// A quit by keys that waits for its dispose has stopped the TUI: the signal ends the process at once, as Pi's does after its stop().

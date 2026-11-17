@@ -63,7 +63,9 @@ func (b *cliRuntimeBuilder) ambientScopes(projectTrusted bool) (extensions, skil
 
 // cliRuntimeBuilder holds the process-fixed inputs of Pi's createRuntime closure and builds the cwd-bound state of one Session runtime: services, resources, extension host, model, tools and system prompt.
 type cliRuntimeBuilder struct {
-	mode              appMode
+	mode appMode
+	// packages is how this process's package installs run (main.ts packageCommandOutput, onPackageProgress); nil outside interactive mode.
+	packages          *packageRun
 	flags             Args
 	agentDir          string
 	launchCWD         string
@@ -185,6 +187,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	flags := b.flags
 	cwd := in.CWD
 	resourceFlags, err := resolveCLIResourceFlags(flags, b.launchCWD)
+	resourceFlags.packages = b.packages
 	if err != nil {
 		return nil, cliCLIError("%v", err)
 	}
@@ -383,7 +386,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	}
 	// pig additive (D216): a configured local Package whose directory does not exist warns in the session with its resolved path; Pi skips it silently.
 	missingLocal := packagemanager.MissingLocalPackages(cwd, services.SettingsManager().AgentDir(), services.SettingsManager())
-	if reinstalled, missingPkgs := packagemanager.EnsureConfiguredPackagesInstalled(cwd, services.SettingsManager().AgentDir(), services.SettingsManager()); len(reinstalled)+len(missingPkgs) > 0 {
+	if reinstalled, missingPkgs := packagemanager.EnsureConfiguredPackagesInstalled(cwd, services.SettingsManager().AgentDir(), services.SettingsManager(), b.packages.options()...); len(reinstalled)+len(missingPkgs) > 0 {
 		if len(reinstalled) > 0 {
 			fmt.Fprintf(os.Stderr, "[pig] Reinstalled missing packages: %s\n", strings.Join(reinstalled, ", "))
 		}
@@ -416,7 +419,7 @@ func (b *cliRuntimeBuilder) buildResources(ctx context.Context, in cliBuildInput
 	skillScan := codingagent.NewAgentsSkillScan(cwd)
 	build.SkillInputs = collectSkillInputsIn(skillScan, cwd, b.agentDir, services.SettingsManager(), resourceFlags, skillScopes, resolver.Resolve)
 	trace.Mark("extension-discovery-start")
-	cliExtensions := collectCLIExtensionConfigs(cwd, b.agentDir, services.SettingsManager(), resourceFlags.Extensions, resolver.Resolve)
+	cliExtensions := collectCLIExtensionConfigs(cwd, b.agentDir, services.SettingsManager(), b.packages, resourceFlags.Extensions, resolver.Resolve)
 	extraExtConfigs := collectExtensionConfigsWith(cliExtensions, cwd, b.agentDir, services.SettingsManager(), resourceFlags, extensionScopes, resolver.Resolve)
 	trace.Mark("extension-discovery-done")
 	if err := cliPackageSourceError(extraExtConfigs); err != nil {

@@ -1,0 +1,11 @@
+{
+  "npmCommand": [
+    "sh",
+    "-c",
+    "[ \"$1\" = install ] || { echo '\"1.0.0\"'; exit 0; }; prefix=; while [ $# -gt 0 ]; do case $1 in --prefix) prefix=$2; shift 2;; *) shift;; esac; done; echo \"npm warn deprecated left-pad@1.0.0: use something else\"; d=$prefix/node_modules/probe-npm; mkdir -p $d/prompts; printf '{\"name\":\"probe-npm\",\"version\":\"1.0.0\",\"pi\":{\"prompts\":[\"prompts\"]}}' > $d/package.json; printf 'hello\\n' > $d/prompts/probenpm.md; echo \"added 1 package in 1s\"",
+    "npm"
+  ],
+  "packages": [
+    "npm:probe-npm"
+  ]
+}

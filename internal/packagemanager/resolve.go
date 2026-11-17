@@ -119,7 +119,8 @@ func (m *PackageManager) installMissing(onMissing MissingSourceCallback) ([]Pack
 				return nil, errors.New("Missing source: " + pkg.Source.Source)
 			}
 		}
-		if err := InstallPackageArtifacts(m.CWD, m.agentDir(), m.SettingsManager, pkg.Source, pkg.Scope == "project", nil); err != nil {
+		// Pi's installMissing announces the install (package-manager.ts resolvePackageSources, withProgress "install"): the progress callback hears it.
+		if err := InstallPackageArtifacts(m.CWD, m.agentDir(), m.SettingsManager, pkg.Source, pkg.Scope == "project", m.progress, m.installOptions()...); err != nil {
 			failures = append(failures, PackageInstallFailure{Source: pkg.Source.Source, Scope: pkg.Scope, Message: err.Error()})
 		}
 	}
@@ -189,7 +190,7 @@ func (m *PackageManager) ResolveExtensionSources(sources []string, local, tempor
 func (m *PackageManager) extensionSourceRoot(source, scope string, local bool) (string, error) {
 	cwd, agentDir := m.CWD, m.agentDir()
 	if scope == "temporary" {
-		return ResolveTemporarySource(cwd, agentDir, m.SettingsManager, source, m.progress)
+		return ResolveTemporarySource(cwd, agentDir, m.SettingsManager, source, m.progress, m.installOptions()...)
 	}
 	root, err := SourceRootForResources(cwd, agentDir, m.SettingsManager, source, local)
 	if err != nil {
@@ -209,7 +210,7 @@ func (m *PackageManager) extensionSourceRoot(source, scope string, local bool) (
 		if IsOfflineModeEnabled() {
 			return "", nil
 		}
-		if err := InstallPackageArtifacts(cwd, agentDir, m.SettingsManager, pkg.Source, local, m.progress); err != nil {
+		if err := InstallPackageArtifacts(cwd, agentDir, m.SettingsManager, pkg.Source, local, m.progress, m.installOptions()...); err != nil {
 			return "", &InstallFailureError{Err: err}
 		}
 	}

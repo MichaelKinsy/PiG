@@ -29,7 +29,7 @@ type npmUpdateBatch struct {
 	sources  []npmUpdateTarget
 }
 
-func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packages []ConfiguredPackage, progress ProgressCallback) error {
+func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packages []ConfiguredPackage, progress ProgressCallback, output CommandOutput) error {
 	if IsOfflineModeEnabled() || len(packages) == 0 {
 		return nil
 	}
@@ -104,7 +104,7 @@ func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packag
 		}
 		report(ProgressEvent{Type: "start", Action: "update", Source: label, Message: new(fmt.Sprintf("Updating %s...", label))})
 		tasks = append(tasks, func() error {
-			if err := FinishPackageProgress(report, "update", label, installNpmBatch(sm, batch)); err != nil {
+			if err := FinishPackageProgress(report, "update", label, installNpmBatch(sm, batch, output)); err != nil {
 				return err
 			}
 			reportUnchangedNpmUpdates(cwd, sm, batch, report)
@@ -129,7 +129,7 @@ func updateConfiguredSources(cwd string, sm *codingagent.SettingsManager, packag
 						}
 						checkout, _ := GitCheckoutPath(cwd, sm.AgentDir(), pkg.Source.Source, pkg.Scope == "project")
 						from := gitHead(checkout)
-						err := FinishPackageProgress(report, "update", pkg.Source.Source, InstallManagedGit(cwd, sm.AgentDir(), sm, pkg.Source.Source, pkg.Scope == "project", WithProgressReporter(report)))
+						err := FinishPackageProgress(report, "update", pkg.Source.Source, InstallManagedGit(cwd, sm.AgentDir(), sm, pkg.Source.Source, pkg.Scope == "project", WithProgressReporter(report), WithCommandOutput(output)))
 						if err != nil && first == nil {
 							first = err
 						}
@@ -256,7 +256,7 @@ func reportUnchangedNpmUpdates(cwd string, sm *codingagent.SettingsManager, batc
 	}
 }
 
-func installNpmBatch(sm *codingagent.SettingsManager, batch npmUpdateBatch) error {
+func installNpmBatch(sm *codingagent.SettingsManager, batch npmUpdateBatch, output CommandOutput) error {
 	if batch.local && !sm.IsProjectTrusted() {
 		return fmt.Errorf("Project is not trusted; refusing to access project package storage")
 	}
@@ -285,7 +285,7 @@ func installNpmBatch(sm *codingagent.SettingsManager, batch npmUpdateBatch) erro
 	args = append(args, installArgs[0])
 	args = append(args, specs...)
 	args = append(args, installArgs[2:]...)
-	return RunPackageProcess("", command[0], args...)
+	return RunPackageProcess(output, "", command[0], args...)
 }
 
 // runPackageTasks joins every started operation and reports the first rejection. Start callbacks run in input order before work leaves the queue; metadata and Git pools use Pi's bounded concurrency.

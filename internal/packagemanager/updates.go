@@ -31,8 +31,9 @@ func IsOfflineModeEnabled() bool {
 // Ports packages/coding-agent/src/core/package-manager.ts (isOfflineModeEnabled, resolvePackageSources missing-source installation).
 //
 // Returns the source strings that were reinstalled and the sources that remain unavailable because installation failed or offline mode prevented it.
+// WithProgressReporter receives the install events of the sources that need a package manager, as Pi's resolve announces them; WithCommandOutput chooses where git and npm write.
 // upstream: packages/coding-agent/src/core/package-manager.ts:resolvePackageSources
-func EnsureConfiguredPackagesInstalled(cwd, agentDir string, sm *codingagent.SettingsManager) (reinstalled, missing []string) {
+func EnsureConfiguredPackagesInstalled(cwd, agentDir string, sm *codingagent.SettingsManager, opts ...InstallOption) (reinstalled, missing []string) {
 	packages := ConfiguredPackagesForResolution(cwd, agentDir, sm)
 	if IsOfflineModeEnabled() {
 		for _, pkg := range packages {
@@ -56,7 +57,11 @@ func EnsureConfiguredPackagesInstalled(cwd, agentDir string, sm *codingagent.Set
 			}
 			source.Source = resolved
 		}
-		if err := InstallPackageArtifacts(cwd, agentDir, sm, source, local, nil); err != nil {
+		progress := resolveInstallOptions(opts).progress
+		if DetectSourceKind(source.Source) == "local" {
+			progress = nil
+		}
+		if err := InstallPackageArtifacts(cwd, agentDir, sm, source, local, progress, opts...); err != nil {
 			missing = append(missing, pkg.Source.Source)
 			continue
 		}
