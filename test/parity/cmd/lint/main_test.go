@@ -950,6 +950,11 @@ func TestLintTranscriptSequences(t *testing.T) {
 		"an unfinished OSC":             {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.Sequence = "\x1b]0;title" })}}, []string{"transcript-sequences-floating"}},
 		"sequence and osc":              {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.OSC = title.OSC })}}, []string{"transcript-sequences-floating"}},
 		"no reason":                     {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.Reason = "" })}}, []string{"transcript-sequences-floating"}},
+		"write kinds":                   {"interactive-tmux", "", sequenceWindowBlock{From: "\x1b[?2004h", WriteKinds: true}, nil},
+		"write kinds, erasures only":    {"interactive-tmux", "", sequenceWindowBlock{From: "\x1b[?2004h", WriteKinds: true, ErasuresOnly: true}, []string{"transcript-sequences-write-kinds"}},
+		"runs collapse without kinds":   {"interactive-tmux", "# frame-count-evidence: x\n", sequenceWindowBlock{From: "\x1b[?2004h", CollapseFrameRuns: true}, []string{"transcript-sequences-write-kinds"}},
+		"runs collapse, no evidence":    {"interactive-tmux", "", sequenceWindowBlock{From: "\x1b[?2004h", WriteKinds: true, CollapseFrameRuns: true}, []string{"frame-count-evidence-missing"}},
+		"runs collapse with evidence":   {"interactive-tmux", "# frame-count-evidence: 2 Pi runs, 2 and 3 frames\n", sequenceWindowBlock{From: "\x1b[?2004h", WriteKinds: true, CollapseFrameRuns: true}, nil},
 		"one recorded position":         {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.EvidencePositions = []int{35, 35} })}}, []string{"transcript-sequences-floating"}},
 		"one recorded run":              {"interactive-tmux", evidence, sequenceWindowBlock{Window: "startup", Floating: []floatingSequenceBlock{with(func(f *floatingSequenceBlock) { f.EvidenceRuns = 1 })}}, []string{"transcript-sequences-floating"}},
 	} {
