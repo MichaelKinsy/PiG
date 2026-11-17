@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 const abortProbeNode = `import { appendFileSync } from "node:fs";
@@ -229,6 +230,7 @@ func TestExtensionAbortFromAHandlerInInteractiveMode(t *testing.T) {
 		t.Run(layout, func(t *testing.T) {
 			extension := writeAbortProbe(t, layout)
 			home, cwd, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()
+			testenv.DisableGoTelemetryForChild(t, home)
 			agentDir := filepath.Join(home, "pig")
 			if err := os.MkdirAll(agentDir, 0o755); err != nil {
 				t.Fatal(err)

@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The store keeps credentials by provider id without knowing any provider, so the fixtures use neutral ids in the two shapes a store holds: OAuth credentials (three live and one expired, the one a refresh replaces) and API keys.
@@ -111,15 +113,27 @@ func credentialFixtureEntries(t *testing.T, path string) []string {
 	return ids
 }
 
-// credentialChild re-executes this test binary as another process on the same agent directory, with its own scratch HOME and Pi/PiG variables. The child runs the top-level test, whose first lines act on the role and the provider it is given.
+// credentialChild re-executes this test binary as another process on the same agent directory, with its own scratch HOME (testenv.ChildHomeEnv: pinned Go caches and the go command's telemetry off in it) and Pi/PiG variables. The child runs the top-level test, whose first lines act on the role and the provider it is given.
 func credentialChild(t *testing.T, scratch, path, role, provider string) *exec.Cmd {
 	t.Helper()
 	top, _, _ := strings.Cut(t.Name(), "/")
 	cmd := exec.Command(os.Args[0], "-test.run=^"+top+"$", "-test.count=1")
 	agentDir := filepath.Dir(path)
-	cmd.Env = []string{"AUTH_TEST_ROLE=" + role, "AUTH_TEST_PATH=" + path, "AUTH_TEST_PROVIDER=" + provider, "HOME=" + scratch, "PIG_HOME=" + scratch, "PI_HOME=" + scratch,
-		"PIG_CODING_AGENT_DIR=" + agentDir, "PI_CODING_AGENT_DIR=" + agentDir, "PATH=" + os.Getenv("PATH")}
+	cmd.Env = append(testenv.ChildHomeEnv(t, scratch), "AUTH_TEST_ROLE="+role, "AUTH_TEST_PATH="+path, "AUTH_TEST_PROVIDER="+provider, "PIG_HOME="+scratch, "PI_HOME="+scratch,
+		"PIG_CODING_AGENT_DIR="+agentDir, "PI_CODING_AGENT_DIR="+agentDir, "PATH="+os.Getenv("PATH"))
 	return cmd
+}
+
+// The credential tests' child is this test binary with a scratch HOME that its parent's cleanup removes. Its TestMain runs testenv.ScopeTempDir, whose KeepGoBuildCaches runs `go env` unless the caches arrive in the environment, and the first go command in a home with telemetry on forks a sidecar that keeps writing under the home after the cleanup removed it (macOS CI: TestRefreshedCredentialSurvivesALockTakenMeanwhile, "unlinkat .../Library/Application Support/go/telemetry: directory not empty"). The go command creates telemetry/local before it exits, so the home must hold nothing but the mode file once the child is done.
+func TestCredentialChildLeavesNoGoTelemetryInItsHome(t *testing.T) {
+	if os.Getenv("AUTH_TEST_ROLE") == "probe" {
+		return
+	}
+	scratch := t.TempDir()
+	if out, err := credentialChild(t, scratch, filepath.Join(scratch, "agent", "auth.json"), "probe", "").CombinedOutput(); err != nil {
+		t.Fatalf("probe child: %v\n%s", err, out)
+	}
+	testenv.RequireNoGoTelemetryActivity(t, scratch)
 }
 
 // rotateCredential replaces the stored credential of provider with what its shape stores after a refresh or a replacement.

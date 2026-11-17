@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // oldExtensionSource is an extension written for SDK 0.2.0: its getter returns one value and its option is a bool.
@@ -516,6 +517,7 @@ func Extension() *sdk.Extension {
 func TestExtensionUpgradeCommandOnADirectory(t *testing.T) {
 	binary := buildPigBinaryForSignalTest(t)
 	home := t.TempDir()
+	testenv.DisableGoTelemetryForChild(t, home)
 	agentDir := filepath.Join(home, "agent")
 	dir := filepath.Join(home, "ask")
 	writeOldExtension(t, dir)
@@ -583,6 +585,7 @@ func TestUpgradeSummaryLines(t *testing.T) {
 func TestExtensionUpgradeAllDiscoversAgentExtensions(t *testing.T) {
 	binary := buildPigBinaryForSignalTest(t)
 	home := t.TempDir()
+	testenv.DisableGoTelemetryForChild(t, home)
 	agentDir := filepath.Join(home, "agent")
 	ask := filepath.Join(agentDir, "extensions", "ask")
 	writeOldExtension(t, ask)
