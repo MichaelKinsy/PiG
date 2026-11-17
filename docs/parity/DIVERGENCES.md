@@ -2172,6 +2172,7 @@ Pi bug: Pi's second Session-replacing command overlaps the first (`rpc-mode.ts:8
 Scope: `coding/cli/rpc_mode.go` (`awaitReplacement`, `finishReplacements`, the stdin-end wait). Replacements of one batch chain through `rpcAwaitInOrder`: each starts after the previous applied and answers after it. Pi starts them at once (`rpc-mode.ts:456-463`, `agent-session-runtime.ts:226-259`): its second replacement shuts down the Session the first has not yet applied or bound, so Pi sends `session_shutdown` twice to the outgoing Session and none to the first replacement's, or one while that Session's `session_start` handler still runs (stale ctx, `extension_error`), binds the second Session a third time, and answers the second first when the first's handlers run longer. PiG delivers each event once and answers in request order; the final Session is the same. A fork or clone requested while an earlier replacement is pending reads its entry from the Session that was current when it was requested (`coding.WithForkSession`, `Session.ValidateFork`), so it succeeds as in Pi, and a failed check answers before that replacement does. `export_html` answers at stdin end in Pi and in PiG.
 
 Owner decision: 2026-10-10, owner ruling that every confirmed Pi bug is fixed now, ported from Pi or not. Lead question for the stdin-end drop: `questions/comb-audit.md`, row 58. For replacements in flight together: the owner's rule of 2026-11-13T22:52:04Z ("fix all bugs": PiG's own, and Pi bugs PiG can cure without breaking Pi compatibility), the form of D632.
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern; a cure of a Pi defect under the owner's fix-all-bugs rule of 2026-11-13T22:52:04Z
 
 Call-site markers: `coding/cli/rpc_mode.go` (`replacementWG`, the stdin-end wait).
 
@@ -2181,7 +2182,7 @@ Parity allowance: two replacements of one batch, the first replacement's `sessio
 
 Remove when: Pi answers a replacement command that is in flight when stdin ends. The part about replacements in flight together goes when Pi runs them one after the other (it starts every line at once at `rpc-mode.ts:833` and does not guard `AgentSessionRuntime` in Pi 1.5.2, and nothing upstream says it will): until then PiG keeps its order, which cannot be dropped without copying the double `session_shutdown`.
 
-SCRUTINIZED:approved text-sha256:b96329edb13145e6
+SCRUTINIZED:approved 2026-11-17 text-sha256:637a3672de15efe8
 
 ## D147 Compactions requested in one input batch run one after another
 
