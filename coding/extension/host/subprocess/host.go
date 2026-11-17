@@ -4138,7 +4138,7 @@ func lastRegistrationWins[T any](kind string, values []T, nameOf func(T) string)
 	return out, nil
 }
 
-// adoptRestartedExtension keeps the Extension a runner already holds for a restarted extension. Its handlers, tools, commands, flags, shortcuts and message and entry renderers become exactly the new registration, so what the new process registers reaches dispatch and what only the old process registered does not. An isolated restart and a packed cell's recovery adopt the same way.
+// adoptRestartedExtension keeps the Extension a runner already holds for a restarted extension. Its handlers, tools, commands, flags, shortcuts, message and entry renderers and Markdown transformer become exactly the new registration, so what the new process registers reaches dispatch and what only the old process registered does not. Its tool renderer resolver is the same for every generation: it asks the process the managedExt runs now. An isolated restart and a packed cell's recovery adopt the same way.
 func adoptRestartedExtension(previous, built *extension.Extension) *extension.Extension {
 	previous.ReplaceEventHandlers(built)
 	previous.ReplaceRegisteredTools(built)
