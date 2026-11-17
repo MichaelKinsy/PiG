@@ -38,3 +38,17 @@ func TestStderrEqualAppliesNormalizeReplace(t *testing.T) {
 		})
 	}
 }
+
+// stderr_normalize_replace reaches the stderr comparison only: a documentation root that differs in stdout still fails output_equal with the same rule set.
+func TestStderrNormalizeReplaceDoesNotTouchStdout(t *testing.T) {
+	rule := NormalizeReplaceRule{Pattern: `/[^ \n]*/docs/(?:bundle-[0-9a-f]+/)?(providers|models)\.md`, With: "<DOCS>/$1.md", Reason: "the documentation root is distribution-specific"}
+	o := &ScenarioOutcome{
+		Scenario: &Scenario{Assert: AssertSpec{OutputEqual: true, StderrEqual: true, StderrNormalizeReplace: []NormalizeReplaceRule{rule}}},
+		Pig:      SystemResults{Runs: []Result{{Output: "see /tmp/a/docs/bundle-0123456789abcdef/providers.md\n", Stderr: "", StderrCaptured: true}}},
+		Pi:       SystemResults{Runs: []Result{{Output: "see /tmp/b/pkg/docs/providers.md\n", Stderr: "", StderrCaptured: true}}},
+	}
+	EvaluateOutcome(o)
+	if len(o.Failures) == 0 {
+		t.Fatal("a stdout difference passed: stderr_normalize_replace must not apply to output_equal")
+	}
+}
