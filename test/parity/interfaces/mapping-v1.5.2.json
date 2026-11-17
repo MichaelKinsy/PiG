@@ -168128,8 +168128,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed",
-        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsReportsOnceTheRunnerExistsAndDropsBefore",
+        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed"
       ]
     },
     {
@@ -168150,8 +168150,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed",
-        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsReportsOnceTheRunnerExistsAndDropsBefore",
+        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed"
       ]
     },
     {
@@ -174131,8 +174131,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder",
-        "test:test/extension-conformance/api_events_test.go#TestConformance_ExtensionAPIEventsOrder"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsBusKeepsItsOwnReportForADirectSubscriber",
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {
@@ -174153,8 +174153,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder",
-        "test:test/extension-conformance/api_events_test.go#TestConformance_ExtensionAPIEventsOrder"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsBusKeepsItsOwnReportForADirectSubscriber",
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {
@@ -174281,8 +174281,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder",
-        "test:test/extension-conformance/api_events_test.go#TestConformance_ExtensionAPIEventsOrder"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsBusKeepsItsOwnReportForADirectSubscriber",
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {
@@ -174303,8 +174303,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder",
-        "test:test/extension-conformance/api_events_test.go#TestConformance_ExtensionAPIEventsOrder"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsBusKeepsItsOwnReportForADirectSubscriber",
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {
@@ -175672,8 +175672,8 @@
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIMcpServersRegisterAndUnregister"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsReportsOnceTheRunnerExistsAndDropsBefore",
+        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -183646,7 +183646,7 @@
       "evidence": [
         "test:coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
-        "test:coding/extension/host/inproc/upstream_modes_test.go#TestRunnerCapturedContextsFollowUIBinding"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {
@@ -183668,7 +183668,7 @@
       "evidence": [
         "test:coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
-        "test:coding/extension/host/inproc/upstream_modes_test.go#TestRunnerCapturedContextsFollowUIBinding"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {

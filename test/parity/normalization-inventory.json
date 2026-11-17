@@ -1242,6 +1242,41 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/108-events-handler-error.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "error:",
+            "capture_end": "events-last-frame"
+          },
+          "reason": "Owned visible surface: A pi.events handler that throws is shown as an extension error with its stack, not written behind the TUI",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-events-late-failure-after-failed-reload.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Reload failed: "
+          },
+          "reason": "Owned visible surface: A pi.events handler that fails after a failed reload left the runner stale reports nothing",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
       "transforms": [
         {
@@ -5188,6 +5223,78 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/interactive-rendering/76-resume-model-fallback-warning.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Warning: Could not restore model",
+            "capture_end": "Resumed session"
+          },
+          "reason": "Owned visible surface: /resume into a session whose model is gone shows the fallback warning above Resumed session, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/77-resume-model-fallback-warning-fullscreen.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Warning: Could not restore model",
+            "capture_end": "Resumed session"
+          },
+          "reason": "Owned visible surface: /resume into a session whose model is gone shows the fallback warning above Resumed session in the alternate screen, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/78-continue-model-fallback-warning-once.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "hello aaaaaaaa",
+            "capture_end": "$ echo startup-done"
+          },
+          "reason": "Owned visible surface: --continue into a session whose model is gone shows the fallback warning once, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/interactive-rendering/79-second-resume-model-fallback-repeats-no-warning.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "hello aaaaaaaa",
+            "capture_end": "$ echo second-resume-done"
+          },
+          "reason": "Owned visible surface: A second /resume into the session whose model is gone adds no second fallback warning, as pi does.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/json/01-json-mode-streams-events.toml",
       "transforms": [
         {
@@ -5737,6 +5844,52 @@
         {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: --mode json writes the entry a session_start handler appends at startup and after ctx.newSession()",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/json/17-json-model-fallback-stderr.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"(id|parentId)\":\"[0-9a-f-]{8,36}\"",
+          "with": "\"$1\":\"<ID>\"",
+          "reason": "Generated entry keys and the session header id are random per run; keep each member's name and position."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"cwd\":\"[^\"]*\"",
+          "with": "\"cwd\":\"<CWD>\"",
+          "reason": "D2: each binary runs in its own isolated cwd."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "/tmp/parity-snap-cwd-[0-9]+",
+          "with": "<CWD>",
+          "reason": "D2: the isolated cwd root differs per run and binary; the system prompt's cwd section keeps its position."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Independent wall-clock durations of the assistant turn vary by a millisecond; the member's name and position stay byte-compared."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: --mode json -c into a session whose model is gone: the fallback is a warning on stderr, the event stream on stdout",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         }
       ]
@@ -7063,6 +7216,16 @@
         {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: Print and JSON mode expand /skill: before the auth check, so an unreadable skill reports skill_expansion first",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/print/13-print-model-fallback-stderr.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: print -c into a session whose model is gone: the fallback is a warning on stderr, the answer on stdout",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         }
       ]
@@ -9608,6 +9771,18 @@
             "/**/sections/cwd"
           ],
           "reason": "D2: alias only the exact isolated cwd in the system section."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/rpc/83-rpc-events-handler-error.toml",
+      "transforms": [
+        {
+          "kind": "path",
+          "paths": [
+            "/**/extensionPath"
+          ],
+          "reason": "The extension's snapshot path varies per host and run; the member's presence and the event and message stay exact."
         }
       ]
     },
