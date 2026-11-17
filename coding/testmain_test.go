@@ -35,7 +35,7 @@ func TestMain(m *testing.M) {
 	if runtime.GOOS != "windows" {
 		configvalue.SetExecutorForTest(shellWithoutTimeout)
 	}
-	testRoot, err := os.MkdirTemp("", "pig-coding-")
+	testRoot, err := testenv.MkdirShortTemp("pig-coding-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "create isolated test config root:", err)
 		os.Exit(2)
