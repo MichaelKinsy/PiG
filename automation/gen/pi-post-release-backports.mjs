@@ -2738,6 +2738,21 @@ patch("b513b64d8ac8", "pi-coding-agent/main.js", [
 ]);
 // END backport b513b64d8ac8
 
+// BEGIN backport e56d35ce5ece
+// e56d35ce5ece: GPT-6.2 Sol is the default model of the openai, azure and openai-codex providers (defaultModelPerProvider). The GPT-6.2 models themselves are catalog data: the recording and the pi-overlay of the catalog files make the provider data.
+// not carried: pi-coding-agent/core/model-resolver.d.ts: no declaration changes. packages/ai catalog (families/openai.ts, providers/azure.ts, openai.ts, openai-codex.ts) and the ai and coding-agent tests and CHANGELOGs: the package ships none of them (the generator and the tests are not in the package); the generated data carries the catalog change.
+patch("e56d35ce5ece", "pi-coding-agent/core/model-resolver.js", [
+    [`    openai: "gpt-6.1-sol",
+    azure: "gpt-6.1-sol",
+    "openai-codex": "gpt-6.1-sol",
+`, `    ${note("e56d35ce5ece").trim()}
+    openai: "gpt-6.2-sol",
+    azure: "gpt-6.2-sol",
+    "openai-codex": "gpt-6.2-sol",
+`],
+]);
+// END backport e56d35ce5ece
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

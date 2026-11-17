@@ -12,6 +12,10 @@ var openaiCodexModelList = []struct {
 	id, name      string
 	contextWindow float64
 }{
+	// GPT-6.2 is not in Codex's bundled catalog yet; use Codex's 272k default until
+	// /backend-api/codex/models is checked.
+	{"gpt-6.2-astra", "GPT-6.2 Astra", 272000},
+	{"gpt-6.2-sol", "GPT-6.2 Sol", 272000},
 	// GPT-6.1 uses the 500k default returned by /backend-api/codex/models.
 	{"gpt-6.1-sol", "GPT-6.1 Sol", 500000},
 	{"gpt-6.1-terra", "GPT-6.1 Terra", 500000},
@@ -34,6 +38,8 @@ var openaiCodexAdditionalToolsModelIDs = map[string]bool{
 	"gpt-6-luna":    true,
 	"gpt-6.1-sol":   true,
 	"gpt-6.1-terra": true,
+	"gpt-6.2-astra": true,
+	"gpt-6.2-sol":   true,
 }
 
 func openaiCodex() ProviderDefinition {

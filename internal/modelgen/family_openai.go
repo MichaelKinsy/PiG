@@ -38,6 +38,8 @@ func OpenAIStandardCosts() map[string]*Obj {
 		"gpt-6-sol":     rates(2, 10, 0.2, 2.5),
 		"gpt-6.1-sol":   rates(2, 10, 0.1, 2.5),
 		"gpt-6.1-terra": rates(1, 5, 0.05, 1.25),
+		"gpt-6.2-astra": rates(8, 40, 0.4, 10),
+		"gpt-6.2-sol":   rates(2, 10, 0.1, 2.5),
 	}
 }
 
@@ -54,6 +56,7 @@ func OpenAIStandardCost(id string) *Obj {
 var OpenAIToolSearchModelIDs = map[string]bool{
 	"gpt-5.6-sol": true, "gpt-5.6-terra": true, "gpt-5.6-luna": true,
 	"gpt-6-astra": true, "gpt-6-sol": true, "gpt-6-luna": true, "gpt-6.1-sol": true, "gpt-6.1-terra": true,
+	"gpt-6.2-astra": true, "gpt-6.2-sol": true,
 }
 
 // OpenAIMidConvoModelIDs are the models that accept mid-conversation developer messages.
@@ -83,7 +86,14 @@ func SupportsOpenAIXhigh(modelID string) bool {
 	return false
 }
 
-var gpt6ModelIDs = map[string]bool{"gpt-6-astra": true, "gpt-6-sol": true, "gpt-6-luna": true, "gpt-6.1-sol": true, "gpt-6.1-terra": true}
+var gpt6ModelIDs = map[string]bool{
+	"gpt-6-astra": true, "gpt-6-sol": true, "gpt-6-luna": true, "gpt-6.1-sol": true, "gpt-6.1-terra": true,
+	"gpt-6.2-astra": true, "gpt-6.2-sol": true,
+}
+
+// GPT-6 models that reject reasoning.effort "none", so `off` is unavailable. For GPT-6.2 see
+// https://developers.openai.com/api/docs/models/gpt-6.2-sol
+var gpt6NoNoneEffortModelIDs = map[string]bool{"gpt-6-astra": true, "gpt-6.1-sol": true, "gpt-6.2-astra": true, "gpt-6.2-sol": true}
 
 // applyOpenAIFamilyRules sets the thinking levels of GPT models on any host.
 func applyOpenAIFamilyRules(model ChatModel) {
@@ -92,10 +102,9 @@ func applyOpenAIFamilyRules(model ChatModel) {
 		MergeThinking(model, O("off", nil))
 	}
 	if gpt6ModelIDs[id] && isResponsesAPI(model) {
-		// GPT-6 Astra and GPT-6.1 Sol reject reasoning.effort "none"; GPT-6.1 Terra accepts it. All reject "minimal" (verified on
-		// Codex, October 2026).
+		// All reject "minimal" (verified on Codex, October 2026).
 		var off any = "none"
-		if id == "gpt-6-astra" || id == "gpt-6.1-sol" {
+		if gpt6NoNoneEffortModelIDs[id] {
 			off = nil
 		}
 		MergeThinking(model, O("off", off, "minimal", nil, "low", "low", "medium", "medium", "high", "high", "xhigh", "xhigh", "max", "max"))
