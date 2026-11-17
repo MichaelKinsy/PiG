@@ -241,10 +241,11 @@ func BenchmarkPostLoginModelSelection(b *testing.B) {
 	for _, model := range ai.ListModels("") {
 		models = append(models, tui.ModelSelectorItem{Provider: model.Provider, ID: model.ID})
 	}
+	want := providerDefault("openai")
 	b.ReportAllocs()
 	for b.Loop() {
-		selected, problem := postLoginModel("openai", "Saved API key for OpenAI", DefaultModelPerProvider()["openai"], models)
-		if selected != providerDefault("openai") || problem != "" {
+		selected, problem := postLoginModel("openai", "Saved API key for OpenAI", want, models)
+		if selected != want || problem != "" {
 			b.Fatalf("selection = %s, %s", selected, problem)
 		}
 	}
