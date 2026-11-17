@@ -5657,40 +5657,6 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/json/15-json-session-start-replacement.toml",
-      "transforms": [
-        {
-          "kind": "normalize_replace",
-          "pattern": "\"(id|parentId)\":\"[0-9a-f-]{8,36}\"",
-          "with": "\"$1\":\"<ID>\"",
-          "reason": "Generated entry keys and the session header id are random per run; keep each member's name and position."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "\"timestamp\":[0-9]+",
-          "with": "\"timestamp\":0",
-          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
-          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
-          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
-        },
-        {
-          "kind": "normalize_replace",
-          "pattern": "\"cwd\":\"[^\"]*\"",
-          "with": "\"cwd\":\"<CWD>\"",
-          "reason": "D2: each binary runs in its own isolated cwd."
-        },
-        {
-          "kind": "output_normalized_equal",
-          "reason": "Declared plain-text/layout surface: --mode json writes the entry a session_start handler appends at startup and after ctx.newSession()",
-          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
-        }
-      ]
-    },
-    {
       "scenario": "test/parity/scenarios/json/15-json-replacement-diagnostics-stderr.toml",
       "transforms": [
         {
@@ -5720,6 +5686,40 @@
         {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: --mode json: the diagnostic of a replacement is on stderr once and not in the event stream",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/json/15-json-session-start-replacement.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"(id|parentId)\":\"[0-9a-f-]{8,36}\"",
+          "with": "\"$1\":\"<ID>\"",
+          "reason": "Generated entry keys and the session header id are random per run; keep each member's name and position."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"cwd\":\"[^\"]*\"",
+          "with": "\"cwd\":\"<CWD>\"",
+          "reason": "D2: each binary runs in its own isolated cwd."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: --mode json writes the entry a session_start handler appends at startup and after ctx.newSession()",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         }
       ]
