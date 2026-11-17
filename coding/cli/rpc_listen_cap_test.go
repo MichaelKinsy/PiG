@@ -138,16 +138,15 @@ func TestListenAdmissionCountsAConnectionStillWaitingForTheBuildLock(t *testing.
 	dir := listenTempDir(t)
 	var wg sync.WaitGroup
 	a := newListenAdmission(3, func(int) {})
-	var buildMu sync.Mutex
-	buildMu.Lock()
+	buildGate := make(chan struct{})
 	for range 3 {
 		s, _ := capPair(t, dir)
-		a.serve(&wg, s, func() { buildMu.Lock(); buildMu.Unlock() })
+		a.serve(&wg, s, func() { <-buildGate })
 	}
 	s, c := capPair(t, dir)
 	a.serve(&wg, s, func() { t.Error("served past the cap while three waited for the build lock") })
 	expectRefusal(t, c, "3")
-	buildMu.Unlock()
+	close(buildGate)
 	wg.Wait()
 	if got := a.liveCount(); got != 0 {
 		t.Fatalf("live = %d after every handler ended", got)
