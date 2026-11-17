@@ -170,3 +170,26 @@ func TestFailureArtifactsKeepHangDump(t *testing.T) {
 		t.Fatal("a run without a dump wrote pi.hang-dump.txt")
 	}
 }
+
+// A step wait that times out records the dump the same way as the ready wait: the program became ready, then never produced the output the step waits for.
+func TestStepWaitTimeoutRecordsHangDump(t *testing.T) {
+	program := buildFakeHungProgram(t)
+	signals := countSignals(t)
+	sc := hangScenario()
+	sc.Tmux.ReadyPatternPig = "booting"
+	sc.Tmux.Steps = []TmuxStep{{Keys: []string{"x"}, WaitContains: []string{"NEVER-PRINTED"}, WaitTimeoutSeconds: 2}}
+	result := (tmuxDriver{}).Run(t.Context(), t, BinaryRef{Label: "pig", Path: program}, sc)
+	if result.Err == nil || !strings.Contains(result.Err.Error(), "step output") {
+		t.Fatalf("Err = %v, want the step timeout", result.Err)
+	}
+	if got := signals.Load(); got != 1 {
+		t.Fatalf("pig was sent %d signals, want 1", got)
+	}
+	for name, text := range map[string]string{"failure output": result.Err.Error(), "HangDump": result.HangDump} {
+		for _, want := range []string{"fake program booting, never ready", "SIGQUIT: quit", "main.blockForeverInKnownFunction"} {
+			if !strings.Contains(text, want) {
+				t.Errorf("%s lacks %q:\n%s", name, want, text)
+			}
+		}
+	}
+}
