@@ -17,7 +17,7 @@ type GitUpdateTarget struct {
 	fetchArgs []string
 }
 
-func GetLocalGitUpdateTarget(checkout string) (GitUpdateTarget, error) {
+func GetLocalGitUpdateTarget(checkout string, opts ...InstallOption) (GitUpdateTarget, error) {
 	upstream, err := RunPackageCapture(checkout, "git", "rev-parse", "--abbrev-ref", "@{upstream}")
 	if branch, ok := strings.CutPrefix(upstream, "origin/"); err == nil && ok && branch != "" {
 		if _, err := RunPackageCapture(checkout, "git", "rev-parse", "@{upstream}"); err == nil {
@@ -25,7 +25,7 @@ func GetLocalGitUpdateTarget(checkout string) (GitUpdateTarget, error) {
 		}
 	}
 	// upstream: packages/coding-agent/src/core/package-manager.ts:getLocalGitUpdateTarget
-	_ = RunPackageProcess(checkout, "git", "remote", "set-head", "origin", "-a")
+	_ = RunPackageProcess(resolveInstallOptions(opts).output, checkout, "git", "remote", "set-head", "origin", "-a")
 	if _, err := RunPackageCapture(checkout, "git", "rev-parse", "origin/HEAD"); err != nil {
 		return GitUpdateTarget{}, err
 	}
@@ -43,7 +43,7 @@ func GitUpdateMarkerPath(checkout string) string {
 }
 
 func EnsureGitRef(checkout, packageRoot string, sm *codingagent.SettingsManager, target GitUpdateTarget, opts ...InstallOption) error {
-	if err := RunPackageProcess(checkout, "git", target.fetchArgs...); err != nil {
+	if err := RunPackageProcess(resolveInstallOptions(opts).output, checkout, "git", target.fetchArgs...); err != nil {
 		return err
 	}
 	local, err := RunPackageCapture(checkout, "git", "rev-parse", "HEAD")
@@ -65,7 +65,7 @@ func EnsureGitRef(checkout, packageRoot string, sm *codingagent.SettingsManager,
 	if err := os.WriteFile(marker, nil, 0o644); err != nil {
 		return err
 	}
-	if err := RunPackageProcess(checkout, "git", "reset", "--hard", commitRef); err != nil {
+	if err := RunPackageProcess(resolveInstallOptions(opts).output, checkout, "git", "reset", "--hard", commitRef); err != nil {
 		return err
 	}
 	return CleanAndInstallGitDependencies(checkout, packageRoot, marker, sm, opts...)
@@ -85,7 +85,7 @@ func InstallGitDependencies(packageRoot string, sm *codingagent.SettingsManager,
 		return err
 	}
 	args = append(args, installArgs...)
-	return RunPackageProcess(packageRoot, command[0], args...)
+	return RunPackageProcess(resolveInstallOptions(opts).output, packageRoot, command[0], args...)
 }
 
 func RepairMissingGitDependencies(packageRoot string, sm *codingagent.SettingsManager, opts ...InstallOption) error {
@@ -116,7 +116,7 @@ func RepairMissingGitDependencies(packageRoot string, sm *codingagent.SettingsMa
 // Pi e3da248e (#11648, fixes #11597) no longer aborts the update when `git clean -fdx` fails (on Windows a file another pi session holds open cannot be deleted). It warns through the progress callback, still installs the dependencies and keeps the update marker so the next update retries the clean.
 func CleanAndInstallGitDependencies(checkout, packageRoot, marker string, sm *codingagent.SettingsManager, opts ...InstallOption) error {
 	cleaned := true
-	if err := RunPackageProcess(checkout, "git", "clean", "-fdx"); err != nil {
+	if err := RunPackageProcess(resolveInstallOptions(opts).output, checkout, "git", "clean", "-fdx"); err != nil {
 		cleaned = false
 		// pig divergence (D2): the message names pig where Pi's names pi ("Product name in messages").
 		EmitProgress(resolveInstallOptions(opts).progress, ProgressEvent{Type: "progress", Action: "update", Source: checkout, Message: new(fmt.Sprintf("Could not remove all untracked files in %s (%s). Files may be in use by another pig session; close it and run the update again.", checkout, err.Error()))})

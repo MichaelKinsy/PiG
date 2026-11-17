@@ -636,6 +636,17 @@ export async function main(args, options) {
     const resolvedSkillPaths = resolveCliPaths(cwd, parsed.skills);
     const resolvedPromptTemplatePaths = resolveCliPaths(cwd, parsed.promptTemplates);
     const resolvedThemePaths = resolveCliPaths(cwd, parsed.themes);
+    // Pi b513b64d8ac8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+    // Interactive mode installs and refreshes packages again on /reload, /new, /resume and /fork while the TUI
+    // draws on the terminal, where git and npm output would corrupt its screen (#11264). Their output is
+    // captured, and until the TUI starts each install is announced on stderr instead.
+    const packageCommandOutput = appMode === "interactive" ? "capture" : "inherit";
+    let announcePackageInstalls = packageCommandOutput === "capture";
+    const onPackageProgress = (event) => {
+        if (announcePackageInstalls && event.type === "start" && event.message) {
+            console.error(chalk.dim(event.message));
+        }
+    };
     const createRuntime = async ({ cwd, agentDir, sessionManager, sessionStartEvent, projectTrustContext, }) => {
         const isInitialRuntime = sessionStartEvent === undefined;
         const projectTrustDiagnostics = [];
@@ -676,6 +687,8 @@ export async function main(args, options) {
                 }
                 : undefined,
             resourceLoaderOptions: {
+                packageCommandOutput,
+                onPackageProgress,
                 additionalExtensionPaths: resolvedExtensionPaths,
                 additionalSkillPaths: resolvedSkillPaths,
                 additionalPromptTemplatePaths: resolvedPromptTemplatePaths,
@@ -841,6 +854,7 @@ export async function main(args, options) {
         await runRpcMode(runtime);
     }
     else if (appMode === "interactive") {
+        announcePackageInstalls = false;
         const interactiveMode = new InteractiveMode(runtime, {
             migratedProviders,
             startupDiagnostics,

@@ -27,6 +27,9 @@ type ReloadResourceSnapshot struct {
 	// resources [Context] section lists before ContextFiles.
 	SystemPromptSourcePaths []string
 	ResourceSourceInfo      map[string]ResourceSourceInfo
+	// ExtensionWarnings are the install failures and package warnings of the load, which Pi's resource loader keeps in getExtensions().warnings and
+	// the loaded-resources listing shows under [Extension issues].
+	ExtensionWarnings []ExtensionWarning
 	// Err is the error resource resolution threw (an invalid settings file:
 	// URL); /reload fails with it and applies nothing.
 	Err error
@@ -50,6 +53,7 @@ func (m *InteractiveMode) applyReloadResourceSnapshot(snapshot ReloadResourceSna
 	if snapshot.ResourceSourceInfo != nil {
 		m.resourceSourceInfo = cloneResourceSourceInfoMap(snapshot.ResourceSourceInfo)
 	}
+	m.extensionWarnings = slices.Clone(snapshot.ExtensionWarnings)
 	m.publishSlashCommandCatalog()
 }
 

@@ -114,7 +114,7 @@ func collectSkillInputsIn(scan *codingagent.AgentsSkillScan, cwd, agentDir strin
 }
 
 func collectExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsManager, flags Args, ambientScopes *[]string, resolvers ...extsource.ResolveFunc) []subprocess.ExtConfig {
-	return collectExtensionConfigsWith(collectCLIExtensionConfigs(cwd, agentDir, sm, flags.Extensions, resolvers...), cwd, agentDir, sm, flags, ambientScopes, resolvers...)
+	return collectExtensionConfigsWith(collectCLIExtensionConfigs(cwd, agentDir, sm, flags.packages, flags.Extensions, resolvers...), cwd, agentDir, sm, flags, ambientScopes, resolvers...)
 }
 
 // cliExtensionSet is the extension configs of the -e sources: those that load first, and the missing or unresolved ones, reported after the rest.
@@ -125,7 +125,7 @@ type cliExtensionSet struct {
 }
 
 // collectCLIExtensionConfigs resolves the -e sources once, as Pi's resolveExtensionSources does for one load (resource-loader.ts:525-528).
-func collectCLIExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsManager, sources []string, resolvers ...extsource.ResolveFunc) cliExtensionSet {
+func collectCLIExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsManager, packages *packageRun, sources []string, resolvers ...extsource.ResolveFunc) cliExtensionSet {
 	var configs, missing []subprocess.ExtConfig
 	var installFailures []packagemanager.PackageInstallFailure
 	for _, p := range sources {
@@ -135,7 +135,7 @@ func collectCLIExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsMa
 		}
 		if kind := packagemanager.DetectSourceKind(p); kind == "git" || kind == "npm" {
 			// Pi package-manager.ts:1293-1307 collects an npm or git -e checkout only as a Package; unlike a local directory (:1346-1351), it never loads the checkout root itself.
-			resolved, err := resolveCLIPackageSource(cwd, agentDir, sm, p)
+			resolved, err := resolveCLIPackageSource(cwd, agentDir, sm, packages, p)
 			if err != nil {
 				// Pi resolves the sources in turn and stops at the first rejection, so no later source installs (package-manager.ts:1293-1342).
 				missing = append(missing, subprocess.UnresolvedExtConfig(p, &cliSourceResolveError{err: err}))

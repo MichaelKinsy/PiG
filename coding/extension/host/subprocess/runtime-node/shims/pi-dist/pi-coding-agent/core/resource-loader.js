@@ -268,7 +268,10 @@ export class DefaultResourceLoader {
             agentDir: this.agentDir,
             settingsManager: this.settingsManager,
             builtinExtensions: [...this.builtinExtensions.keys()],
+            commandOutput: options.packageCommandOutput,
         });
+        // Pi b513b64d8ac8 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+        this.packageManager.setProgressCallback(options.onPackageProgress);
         this.additionalExtensionPaths = options.additionalExtensionPaths ?? [];
         this.additionalSkillPaths = options.additionalSkillPaths ?? [];
         this.additionalPromptTemplatePaths = options.additionalPromptTemplatePaths ?? [];

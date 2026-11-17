@@ -1,0 +1,40 @@
+from = "1.5.2+18e99051"
+to = "1.5.2+b513b64d"
+
+[[files]]
+path = "packages/coding-agent/src/core/package-manager.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/packagemanager/captured_output_test.go#TestCapturedCommandReportsTheEndOfAFailingCommandsOutputInTheError", "test:internal/packagemanager/captured_output_test.go#TestCapturedCommandReturnsWhenTheCommandExitsAlthoughABackgroundProcessStillHoldsItsOutput", "test:internal/packagemanager/captured_output_test.go#TestCapturedGitCommandStopsGitAndSSHFromPromptingAndNamesTheFix", "test:internal/packagemanager/captured_output_test.go#TestCapturedOutputKeepsTheLast8000UTF16CodeUnits", "test:internal/packagemanager/captured_output_test.go#TestCapturedCommandThatCannotStartReportsTheStartError", "test:internal/packagemanager/captured_output_test.go#TestResolveAnnouncesAPackageItInstalls", "scenario:test/parity/scenarios/startup/26-startup-announces-package-install-and-captures-output.toml", "scenario:test/parity/scenarios/startup/27-startup-announces-temporary-package-install-and-captures-output.toml"]
+rationale = "b513b64d8ac8 (#11264): PackageManagerOptions.commandOutput (`inherit` by default, `capture`) decides where the git and npm commands of an install, update or refresh write. Captured, runCommand pipes stdout and stderr, keeps the last 8000 UTF-16 code units, runs git and ssh with GIT_TERMINAL_PROMPT=0 and GIT_SSH_COMMAND defaulting to `ssh -o BatchMode=yes`, waits for the child with waitForChildProcess (the pipes close with the process, not with a background script that holds them), and fails with `<command> <args> failed with code N:` plus the tail, plus a credentials hint when a git failure reads as a refused prompt. installMissing wraps each install in withProgress, so `Installing <source>...` reaches the progress callback. PiG has no DefaultPackageManager class: the counterpart is internal/packagemanager (CommandOutput and process_capture.go over childwait.Pipes, threaded through manager, git, temporary, resolve and the update operations), and the tail counts UTF-16 code units as String.slice does (internal/jsstring). The hint names `pig install`, the product name (D2). The commit's own four tests run on the Go side as the captured-output tests."
+oracle = "carried: b513b64d8ac8 (pi-coding-agent/core/package-manager.js: commandOutput, the captured runCommand, the Installing progress around installParsedSource)"
+
+[[files]]
+path = "packages/coding-agent/src/core/resource-loader.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/package_run_test.go#TestInteractivePackageRunKeepsNpmOutputOffTheTerminalAndAnnouncesTheInstallUntilTheTUIStarts", "scenario:test/parity/scenarios/startup/26-startup-announces-package-install-and-captures-output.toml"]
+rationale = "b513b64d8ac8: ResourceLoaderOptions gains packageCommandOutput and onPackageProgress, which the constructor hands to the package manager (commandOutput and setProgressCallback). PiG's counterpart is the PackageCommandOutput and OnPackageProgress options of coding.DefaultResourceLoader (coding/resource_loader.go newPackageManager)."
+oracle = "carried: b513b64d8ac8 (pi-coding-agent/core/resource-loader.js: the constructor binds commandOutput and the progress callback)"
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/package_run_test.go#TestInteractivePackageRunKeepsNpmOutputOffTheTerminalAndAnnouncesTheInstallUntilTheTUIStarts", "test:coding/cli/package_run_test.go#TestOtherModesInheritNpmOutputAndAnnounceNothing", "test:coding/cli/package_run_test.go#TestInteractivePackageRunReportsTheEndOfAFailingInstallsOutput", "scenario:test/parity/scenarios/startup/26-startup-announces-package-install-and-captures-output.toml", "scenario:test/parity/scenarios/startup/27-startup-announces-temporary-package-install-and-captures-output.toml"]
+rationale = "b513b64d8ac8: main captures the package commands in interactive mode (`inherit` in every other mode), announces each install on stderr in dim text (`Installing <source>...`) until the TUI starts, and stops announcing just before InteractiveMode is built. PiG's counterpart is coding/cli package_run.go (packageRun, set in buildResources) with stopAnnouncing called in main.go before interactive.Run. The reload and session-replacement installs the commit relies on are PiG's own prerequisite: Pi's createAgentSessionServices reloads the resource loader on every replacement and session.reload serves /reload, so each install there; PiG's /reload and its replacements now run the same installer (fix/reload-installs-missing-packages, changelog fragment reload-installs-missing-packages)."
+oracle = "carried: b513b64d8ac8 (pi-coding-agent/main.js: packageCommandOutput, onPackageProgress, announcePackageInstalls)"
+
+[[files]]
+path = "packages/coding-agent/test/package-manager.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/packagemanager/captured_output_test.go#TestCapturedCommandReportsTheEndOfAFailingCommandsOutputInTheError", "test:internal/packagemanager/captured_output_test.go#TestCapturedCommandReturnsWhenTheCommandExitsAlthoughABackgroundProcessStillHoldsItsOutput", "test:internal/packagemanager/captured_output_test.go#TestCapturedGitCommandStopsGitAndSSHFromPromptingAndNamesTheFix", "test:internal/packagemanager/captured_output_test.go#TestResolveAnnouncesAPackageItInstalls"]
+rationale = "b513b64d8ac8 adds four cases: a failing captured command's error carries the end of its output; the command returns when it exits although a background process holds its pipes; captured git cannot prompt and the error names the fix; an install is announced through the progress callback. The Go twins use the same inputs (captured_output_test.go), with a UTF-16 tail case and a start-error case added."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "b513b64d8ac8: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment."

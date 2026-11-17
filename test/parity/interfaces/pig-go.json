@@ -71578,6 +71578,17 @@
       "shapeHash": "sha256:0f2968a9388602eaa8f57d1f7e5b375c907427e157cbd7b1de81da8325f14ba3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#DefaultResourceLoader.newPackageManager",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "DefaultResourceLoader.newPackageManager",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *github.com/MichaelKinsy/PiG/internal/packagemanager.PackageManager"
+      },
+      "shapeHash": "sha256:41cfedd57a5bf59464d26347184522c1b83140ce2261be763b51910a315aa1d8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#DefaultResourceLoader.normalizeExtensionPaths",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "DefaultResourceLoader.normalizeExtensionPaths",
@@ -76484,6 +76495,39 @@
       "shapeHash": "sha256:7299b045cf306f7bc6190a73a65ffe596ae4e3ca90fa9e042b59aa5cdfe5a6c9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#PackageCommandOutput",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "PackageCommandOutput",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "PackageCommandOutput"
+      },
+      "shapeHash": "sha256:32895033325144e0073d6ef1adae643d85ed432269f12bc24a8b4e9e7a494d5d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#PackageCommandOutputCapture",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "PackageCommandOutputCapture",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "github.com/MichaelKinsy/PiG/internal/packagemanager.CommandOutput"
+      },
+      "shapeHash": "sha256:240c03abf4ad09885b1d4b08e1c792b10705f5ceefae82c504a5502a5e04a60c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#PackageCommandOutputInherit",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "PackageCommandOutputInherit",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "github.com/MichaelKinsy/PiG/internal/packagemanager.CommandOutput"
+      },
+      "shapeHash": "sha256:240c03abf4ad09885b1d4b08e1c792b10705f5ceefae82c504a5502a5e04a60c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#PigVersion",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "PigVersion",
@@ -76570,6 +76614,28 @@
         "type": "func() error"
       },
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ProgressCallback",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ProgressCallback",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ProgressCallback"
+      },
+      "shapeHash": "sha256:bbc5616613df22c3ddf16a2634b1e036f8f63d71e09be083492cf0f9ccb50a69"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ProgressEvent",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ProgressEvent",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ProgressEvent"
+      },
+      "shapeHash": "sha256:b6f7f1110d602f3090975612ad964eb585bfef1b35eac0cea6841f10999f5902"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#PromptDisposition",
@@ -94178,9 +94244,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, sources []string, resolvers ...github.com/MichaelKinsy/PiG/coding/extension/source.ResolveFunc) cliExtensionSet"
+        "type": "func(cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, packages *packageRun, sources []string, resolvers ...github.com/MichaelKinsy/PiG/coding/extension/source.ResolveFunc) cliExtensionSet"
       },
-      "shapeHash": "sha256:53f1357081b936f0d857635da31f7336d5551083d0fbb7fc57ea5d62de722249"
+      "shapeHash": "sha256:b2deea8ba88b6409a64cab7bae14ad98d7b8875f8d59a447a8b529db78e97dce"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#collectCLIPackageResources",
@@ -96911,6 +96977,17 @@
       "shapeHash": "sha256:7b834351636410bb5f47e994b9f171b688945e3c1c2be4970e4b30f8a31d86e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#installPackagesForLoad",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "installPackagesForLoad",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(run *packageRun, cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager) ([]github.com/MichaelKinsy/PiG/internal/packagemanager.PackageInstallFailure, error)"
+      },
+      "shapeHash": "sha256:a61502f2e3d99332d2c54babc2343f58197bd564f4cf43be4c5f8af055910c39"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#installStartupTrace",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "installStartupTrace",
@@ -98627,6 +98704,17 @@
       "shapeHash": "sha256:6658c97f9f52e40af75d122603cb5d16dcafabfc8001c91bde19ae4134662e19"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newPackageRun",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "newPackageRun",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(mode appMode) *packageRun"
+      },
+      "shapeHash": "sha256:075cebf1d00f96a66c67d5249a4e335e51f692f67f5470042cf3d7f6f699d6fa"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newProjectTrustContext",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "newProjectTrustContext",
@@ -99208,6 +99296,50 @@
         "type": "packageCommand"
       },
       "shapeHash": "sha256:b3d1f2cc4ef8c4a4eaf25547aa1658f17919b6f8c187ce5444605ef57559ee37"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#packageRun",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "packageRun",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "packageRun"
+      },
+      "shapeHash": "sha256:92df682898a525a5e6d759137db165641ae42f4fefb7db4b2061b2840bd7a934"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#packageRun.manager",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "packageRun.manager",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager) *github.com/MichaelKinsy/PiG/internal/packagemanager.PackageManager"
+      },
+      "shapeHash": "sha256:2a739a128e635b2f161bd37d01f8ccaadf72e304224ed8d8e607f0976aaa5445"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#packageRun.progress",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "packageRun.progress",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() github.com/MichaelKinsy/PiG/internal/packagemanager.ProgressCallback"
+      },
+      "shapeHash": "sha256:a061b8be8ff82f5db635aa4156f70c76953dd1aa995ad49c50497b2288054a55"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#packageRun.stopAnnouncing",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "packageRun.stopAnnouncing",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#packageUpdate",
@@ -101130,9 +101262,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, source string) (github.com/MichaelKinsy/PiG/internal/packagemanager.ResolvedPaths, error)"
+        "type": "func(cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, packages *packageRun, source string) (github.com/MichaelKinsy/PiG/internal/packagemanager.ResolvedPaths, error)"
       },
-      "shapeHash": "sha256:591b185af49073de7f44d641c4f1f3cc5e134aae0272bc3f2058d9720ce8f3da"
+      "shapeHash": "sha256:a0489ed4cc93144e90f8fc299f25bb1831c28a0b59b4faa5ff94fcead0ed75d4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#resolveCLIResourceFlags",
@@ -107315,6 +107447,17 @@
         "type": "func() string"
       },
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#toCodingAgentWarnings",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "toCodingAgentWarnings",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(warnings []extensionSetWarning) []github.com/MichaelKinsy/PiG/internal/codingagent.ExtensionWarning"
+      },
+      "shapeHash": "sha256:599f615c2868dc7c2fc123db39614e9795f908ad0002adb4ba7644beebc4196c"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#toPromptContextFiles",

@@ -106,7 +106,7 @@ func TestTemporaryGitInstallAndCleanup(t *testing.T) {
 			cached := filepath.Join(sm.AgentDir(), "tmp", "extensions", "git-github.com", fmt.Sprintf("%x", digest)[:8], "test", "extension")
 			if fail {
 				// Pi 6dfb54678: a temporary source that cannot be installed contributes nothing and is reported as an install failure.
-				set := collectCLIExtensionConfigs(cwd, sm.AgentDir(), sm, []string{source})
+				set := collectCLIExtensionConfigs(cwd, sm.AgentDir(), sm, nil, []string{source})
 				if len(set.configs) != 0 || len(set.missing) != 0 || len(set.installFailures) != 1 || set.installFailures[0].Source != source || set.installFailures[0].Scope != "temporary" {
 					t.Fatalf("set = %+v, want one temporary install failure and no configs", set)
 				}

@@ -274,9 +274,14 @@ release. `--models` forces a model-catalog refresh through the shared model
 runtime without updating PiG or installed Packages. It cannot be combined with
 another update target. Conflicting targets fail before either update path starts.
 
-At startup, an npm Package needs an installed manifest version that satisfies its
-configured pin or range. If installation fails or offline mode prevents it, the
-old installation does not supply Resources.
+Every resource load installs the configured npm and Git Packages that are
+missing: startup, `/reload`, and each session replacement (`/new`, `/resume`,
+`/fork`; RPC `new_session`, `switch_session`, `fork`). An npm Package needs an
+installed manifest version that satisfies its configured pin or range. If
+installation fails or offline mode prevents it, the old installation does not
+supply Resources. In the interactive TUI a failed install is listed under
+[Extension issues] with the end of the command's output, and the rest of the
+load goes on; during the TUI, git and npm output is not written to the terminal.
 
 With the global `extensionsAutoUpgrade` setting on, `pig update` also runs the
 `pig extension upgrade` rules on Go extensions written for an older SDK

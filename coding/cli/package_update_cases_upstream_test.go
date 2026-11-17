@@ -71,7 +71,7 @@ func TestPackageOfflineResolutionOriginal(t *testing.T) {
 		if err := f.settings.SetProjectPackages([]codingagent.PackageSource{{Source: "npm:missing-package"}, {Source: "git:github.com/example/missing-repo"}}); err != nil {
 			t.Fatal(err)
 		}
-		installed, _ := packagemanager.EnsureConfiguredPackagesInstalled(f.cwd, f.settings.AgentDir(), f.settings)
+		installed, _ := ensureConfiguredPackagesInstalled(f.cwd, f.settings.AgentDir(), f.settings)
 		if len(installed) != 0 {
 			t.Fatalf("installed=%v", installed)
 		}
@@ -128,7 +128,7 @@ func TestPackageOfflineResolutionOriginal(t *testing.T) {
 		if err := f.settings.SetProjectPackages([]codingagent.PackageSource{{Source: "npm:example@2.0.0"}}); err != nil {
 			t.Fatal(err)
 		}
-		_, missing := packagemanager.EnsureConfiguredPackagesInstalled(f.cwd, f.settings.AgentDir(), f.settings)
+		_, missing := ensureConfiguredPackagesInstalled(f.cwd, f.settings.AgentDir(), f.settings)
 		if len(missing) != 0 {
 			t.Fatalf("missing=%v", missing)
 		}

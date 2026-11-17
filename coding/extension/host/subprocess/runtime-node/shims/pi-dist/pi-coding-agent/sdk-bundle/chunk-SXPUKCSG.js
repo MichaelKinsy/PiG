@@ -12537,6 +12537,18 @@ function getEnv() {
 }
 __name(getEnv, "getEnv");
 var NETWORK_TIMEOUT_MS = 1e4;
+var CAPTURED_OUTPUT_TAIL_CHARS = 8e3;
+var GIT_PROMPT_FAILURE = /terminal prompts disabled|could not read (Username|Password)|Permission denied \(publickey|Host key verification failed|passphrase/i;
+var GIT_CREDENTIALS_HINT = "git cannot ask for a password or passphrase while pi runs. Set up a git credential helper or an ssh agent, or install the package once from the shell with `pi install <source>`.";
+function getNonInteractiveGitEnv(env) {
+  return {
+    ...env,
+    GIT_TERMINAL_PROMPT: "0",
+    // A user-defined GIT_SSH_COMMAND is kept: it may be needed to reach the host at all.
+    GIT_SSH_COMMAND: env.GIT_SSH_COMMAND ?? "ssh -o BatchMode=yes"
+  };
+}
+__name(getNonInteractiveGitEnv, "getNonInteractiveGitEnv");
 var UPDATE_CHECK_CONCURRENCY = 4;
 var GIT_UPDATE_CONCURRENCY = 4;
 function isOfflineModeEnabled() {
@@ -13106,11 +13118,13 @@ var DefaultPackageManager = class {
   globalNpmRoot;
   globalNpmRootCommandKey;
   progressCallback;
+  commandOutput;
   constructor(options) {
     this.cwd = resolvePath(options.cwd);
     this.agentDir = resolvePath(options.agentDir);
     this.settingsManager = options.settingsManager;
     this.builtinExtensions = options.builtinExtensions ?? [];
+    this.commandOutput = options.commandOutput ?? "inherit";
   }
   setProgressCallback(callback) {
     this.progressCallback = callback;
@@ -13565,7 +13579,7 @@ var DefaultPackageManager = class {
             throw new Error(`Missing source: ${resolvedSource}`);
         }
         try {
-          await this.installParsedSource(parsed, resolvedScope);
+          await this.withProgress("install", resolvedSource, `Installing ${resolvedSource}...`, () => this.installParsedSource(parsed, resolvedScope));
           return true;
         } catch (error) {
           installFailures.push({
@@ -14725,6 +14739,9 @@ var DefaultPackageManager = class {
     });
   }
   runCommand(command, args, options) {
+    if (this.commandOutput === "capture") {
+      return this.runCommandCaptured(command, args, options);
+    }
     return new Promise((resolvePromise, reject) => {
       const child = this.spawnCommand(command, args, options);
       child.on("error", reject);
@@ -14736,6 +14753,31 @@ var DefaultPackageManager = class {
         }
       });
     });
+  }
+  /**
+   * Run a command without touching the terminal: output is piped and git and ssh cannot prompt.
+   * Only the end of the output is kept, for the error message.
+   */
+  async runCommandCaptured(command, args, options) {
+    const child = spawnProcess(command, args, {
+      cwd: options?.cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+      env: getNonInteractiveGitEnv(getEnv())
+    });
+    let output = "";
+    const append = /* @__PURE__ */ __name((chunk) => {
+      output = (output + chunk.toString()).slice(-CAPTURED_OUTPUT_TAIL_CHARS);
+    }, "append");
+    child.stdout.on("data", append);
+    child.stderr.on("data", append);
+    const code = await waitForChildProcess(child);
+    if (code === 0)
+      return;
+    const tail = output.trim();
+    const hint = command === "git" && GIT_PROMPT_FAILURE.test(tail) ? `
+${GIT_CREDENTIALS_HINT}` : "";
+    throw new Error(`${command} ${args.join(" ")} failed with code ${code}${tail ? `:
+${tail}` : ""}${hint}`);
   }
   runCommandSync(command, args) {
     const env = getEnv();
@@ -15301,8 +15343,10 @@ var DefaultResourceLoader = class {
       cwd: this.cwd,
       agentDir: this.agentDir,
       settingsManager: this.settingsManager,
-      builtinExtensions: [...this.builtinExtensions.keys()]
+      builtinExtensions: [...this.builtinExtensions.keys()],
+      commandOutput: options.packageCommandOutput
     });
+    this.packageManager.setProgressCallback(options.onPackageProgress);
     this.additionalExtensionPaths = options.additionalExtensionPaths ?? [];
     this.additionalSkillPaths = options.additionalSkillPaths ?? [];
     this.additionalPromptTemplatePaths = options.additionalPromptTemplatePaths ?? [];

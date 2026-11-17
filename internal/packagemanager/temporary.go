@@ -35,13 +35,13 @@ func ResolveManagedPackagePath(root string, parts ...string) (string, error) {
 
 // Ports packages/coding-agent/src/core/package-manager.ts (resolvePackageSources with the temporary scope).
 // ResolveTemporarySource resolves temporary Packages before loading their extensions. Offline sources that need installation contribute no resources. Cached unpinned Git sources, and cached unpinned npm sources whose registry has a newer version, refresh before discovery; a failed refresh retains the cache, while an initial installation failure is surfaced.
-func ResolveTemporarySource(cwd, agentDir string, sm *codingagent.SettingsManager, source string, progress ProgressCallback) (string, error) {
+func ResolveTemporarySource(cwd, agentDir string, sm *codingagent.SettingsManager, source string, progress ProgressCallback, opts ...InstallOption) (string, error) {
 	kind := DetectSourceKind(source)
 	if kind == "local" {
 		return ResolveLocalPackageRoot(cwd, source)
 	}
 	if kind == "git" {
-		return resolveTemporaryGitSource(sm, source, progress)
+		return resolveTemporaryGitSource(sm, source, progress, opts...)
 	}
 	ref, err := sourceref.Parse(source, sourceref.Options{Bare: sourceref.BareReject})
 	if err != nil {
@@ -57,7 +57,8 @@ func ResolveTemporarySource(cwd, agentDir string, sm *codingagent.SettingsManage
 		if IsOfflineModeEnabled() {
 			return "", nil
 		}
-		if err := installTemporaryNpm(sm, root, ref, ref.Locator); err != nil {
+		// Pi's installMissing announces the install (package-manager.ts resolvePackageSources, withProgress "install").
+		if err := WithProgress(progress, "install", source, fmt.Sprintf("Installing %s...", source), func() error { return installTemporaryNpm(sm, root, ref, ref.Locator, opts...) }); err != nil {
 			return "", err
 		}
 	} else if !isExactNpmVersion(ref.NPMVer) && !IsOfflineModeEnabled() && npmHasAvailableUpdate(cwd, sm, ref, packageRoot, false) {
@@ -68,13 +69,13 @@ func ResolveTemporarySource(cwd, agentDir string, sm *codingagent.SettingsManage
 			spec = ref.NPMName + "@latest"
 		}
 		// A failed refresh keeps the cached install.
-		_ = installTemporaryNpm(sm, root, ref, spec)
+		_ = installTemporaryNpm(sm, root, ref, spec, opts...)
 	}
 	return packageRoot, nil
 }
 
 // installTemporaryNpm installs spec into the temporary npm root (package-manager.ts installNpm with temporary set). A failure of the install itself is an InstallFailureError; an unusable package manager command is reported as it is.
-func installTemporaryNpm(sm *codingagent.SettingsManager, root string, ref sourceref.Ref, spec string) error {
+func installTemporaryNpm(sm *codingagent.SettingsManager, root string, ref sourceref.Ref, spec string, opts ...InstallOption) error {
 	if err := EnsureManagedPackageRoot(root); err != nil {
 		return &InstallFailureError{Err: err}
 	}
@@ -88,8 +89,8 @@ func installTemporaryNpm(sm *codingagent.SettingsManager, root string, ref sourc
 	if err != nil {
 		return &InstallFailureError{Err: err}
 	}
-	args = append(args, NpmInstallArgs(manager, spec, realRoot, ref.NPMRegistry)...)
-	if err := RunPackageProcess("", command[0], args...); err != nil {
+	args = append(args, NpmInstallArgs(manager, spec, realRoot, ref.NPMRegistry, opts...)...)
+	if err := RunPackageProcess(resolveInstallOptions(opts).output, "", command[0], args...); err != nil {
 		return &InstallFailureError{Err: err}
 	}
 	return nil
@@ -117,7 +118,7 @@ func TemporaryPackagePath(agentDir, prefix, suffix string) (string, error) {
 
 // resolveTemporaryGitSource waits for a cache refresh and its progress callbacks before discovering resources. Offline cache misses contribute no resources; refresh failures report an error event and retain the existing checkout.
 // Ports packages/coding-agent/src/core/package-manager.ts (resolvePackageSources, refreshTemporaryGitSource, getTemporaryDir).
-func resolveTemporaryGitSource(sm *codingagent.SettingsManager, source string, progress ProgressCallback) (string, error) {
+func resolveTemporaryGitSource(sm *codingagent.SettingsManager, source string, progress ProgressCallback, opts ...InstallOption) (string, error) {
 	ref, err := sourceref.Parse(source, sourceref.Options{Bare: sourceref.BareReject})
 	if err != nil || ref.Kind != sourceref.KindGit {
 		return "", fmt.Errorf("invalid Git package source: %s", source)
@@ -133,13 +134,16 @@ func resolveTemporaryGitSource(sm *codingagent.SettingsManager, source string, p
 		if IsOfflineModeEnabled() {
 			return "", nil
 		}
-		if err := InstallGitCheckout(sm, ref, checkout, packageRoot, "", WithProgressReporter(progress)); err != nil {
+		install := func() error {
+			return InstallGitCheckout(sm, ref, checkout, packageRoot, "", append([]InstallOption{WithProgressReporter(progress)}, opts...)...)
+		}
+		if err := WithProgress(progress, "install", source, fmt.Sprintf("Installing %s...", source), install); err != nil {
 			return "", &InstallFailureError{Err: err}
 		}
 	case statErr != nil:
 		return "", statErr
 	case !IsOfflineModeEnabled():
-		refreshTemporaryGitSource(sm, ref, source, checkout, packageRoot, progress)
+		refreshTemporaryGitSource(sm, ref, source, checkout, packageRoot, progress, opts...)
 	}
 	if err := RequireGitSubdirectoryWithinCheckout(checkout, packageRoot); err != nil {
 		return "", err
@@ -153,7 +157,7 @@ var commitHashRef = lazyregexp.New(`^[0-9a-fA-F]{7,64}$`)
 // refreshTemporaryGitSource is package-manager.ts refreshTemporaryGitSource. Every failure keeps the cached checkout.
 // Pi bec60c54 (#11375) refreshes a temporary Git source pinned to a ref too, because a ref can name a moving branch, so git:host/repo@main does not stay on its first checkout.
 // The network call is skipped only when the ref is a commit hash that is already checked out.
-func refreshTemporaryGitSource(sm *codingagent.SettingsManager, ref sourceref.Ref, source, checkout, packageRoot string, progress ProgressCallback) {
+func refreshTemporaryGitSource(sm *codingagent.SettingsManager, ref sourceref.Ref, source, checkout, packageRoot string, progress ProgressCallback, opts ...InstallOption) {
 	if commitHashRef.MatchString(ref.GitRef) {
 		head, err := RunPackageCapture(checkout, "git", "rev-parse", "HEAD")
 		if err != nil {
@@ -165,7 +169,7 @@ func refreshTemporaryGitSource(sm *codingagent.SettingsManager, ref sourceref.Re
 	}
 	// upstream: packages/coding-agent/src/core/package-manager.ts:refreshTemporaryGitSource
 	_ = WithProgress(progress, "pull", source, fmt.Sprintf("Refreshing %s...", source), func() error {
-		return InstallGitCheckout(sm, ref, checkout, packageRoot, "", WithProgressReporter(progress))
+		return InstallGitCheckout(sm, ref, checkout, packageRoot, "", append([]InstallOption{WithProgressReporter(progress)}, opts...)...)
 	})
 }
 

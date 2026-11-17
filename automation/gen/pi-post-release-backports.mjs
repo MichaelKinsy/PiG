@@ -1850,6 +1850,113 @@ patch("18e99051be24", "pi-coding-agent/core/extensions/runner.js", [
 ]);
 // END backport 18e99051be24
 
+// BEGIN backport b513b64d8ac8
+// b513b64d8ac8 (#11264): interactive mode installs and refreshes packages with git and npm output captured (a failure carries the last 8000 characters; git and ssh never prompt) and announces each install on stderr until the TUI starts, so no command output draws over it.
+// not carried: pi-coding-agent/core/package-manager.d.ts and pi-coding-agent/core/resource-loader.d.ts (PackageCommandOutput, packageCommandOutput, onPackageProgress): declarations follow the pin. packages/coding-agent/test/package-manager.test.ts and packages/coding-agent/CHANGELOG.md: the package ships neither.
+patch("b513b64d8ac8", "pi-coding-agent/core/package-manager.js", [
+    [`import { spawnProcess, spawnProcessSync } from "../utils/child-process.js";`, `import { spawnProcess, spawnProcessSync, waitForChildProcess } from "../utils/child-process.js";`],
+    [`const NETWORK_TIMEOUT_MS = 10000;
+`, `const NETWORK_TIMEOUT_MS = 10000;
+${note("b513b64d8ac8").trim()}
+/** End of a captured command's output kept for its error message. */
+const CAPTURED_OUTPUT_TAIL_CHARS = 8000;
+/** Output of git, or of ssh run by git, that failed because it could not ask for credentials. */
+const GIT_PROMPT_FAILURE = /terminal prompts disabled|could not read (Username|Password)|Permission denied \\(publickey|Host key verification failed|passphrase/i;
+const GIT_CREDENTIALS_HINT = "git cannot ask for a password or passphrase while pi runs. Set up a git credential helper or an ssh agent, or install the package once from the shell with \`pi install <source>\`.";
+/** Make git and ssh fail instead of prompting on the terminal, which a captured command cannot answer. */
+function getNonInteractiveGitEnv(env) {
+    return {
+        ...env,
+        GIT_TERMINAL_PROMPT: "0",
+        // A user-defined GIT_SSH_COMMAND is kept: it may be needed to reach the host at all.
+        GIT_SSH_COMMAND: env.GIT_SSH_COMMAND ?? "ssh -o BatchMode=yes",
+    };
+}
+`],
+    [`    progressCallback;
+    constructor(options) {`, `    progressCallback;
+    commandOutput;
+    constructor(options) {`],
+    [`        this.builtinExtensions = options.builtinExtensions ?? [];
+    }
+    setProgressCallback(callback) {`, `        this.builtinExtensions = options.builtinExtensions ?? [];
+        this.commandOutput = options.commandOutput ?? "inherit";
+    }
+    setProgressCallback(callback) {`],
+    [`                    await this.installParsedSource(parsed, resolvedScope);
+                    return true;`, `                    await this.withProgress("install", resolvedSource, \`Installing \${resolvedSource}...\`, () => this.installParsedSource(parsed, resolvedScope));
+                    return true;`],
+    [`    runCommand(command, args, options) {
+        return new Promise((resolvePromise, reject) => {`, `    runCommand(command, args, options) {
+        if (this.commandOutput === "capture") {
+            return this.runCommandCaptured(command, args, options);
+        }
+        return new Promise((resolvePromise, reject) => {`],
+    [`    runCommandSync(command, args) {
+        const env = getEnv();`, `    /**
+     * Run a command without touching the terminal: output is piped and git and ssh cannot prompt.
+     * Only the end of the output is kept, for the error message.
+     */
+    async runCommandCaptured(command, args, options) {
+        const child = spawnProcess(command, args, {
+            cwd: options?.cwd,
+            stdio: ["ignore", "pipe", "pipe"],
+            env: getNonInteractiveGitEnv(getEnv()),
+        });
+        let output = "";
+        const append = (chunk) => {
+            output = (output + chunk.toString()).slice(-CAPTURED_OUTPUT_TAIL_CHARS);
+        };
+        child.stdout.on("data", append);
+        child.stderr.on("data", append);
+        // Waits for the pipes too, but not for a background process an npm script left holding them.
+        const code = await waitForChildProcess(child);
+        if (code === 0)
+            return;
+        const tail = output.trim();
+        const hint = command === "git" && GIT_PROMPT_FAILURE.test(tail) ? \`\\n\${GIT_CREDENTIALS_HINT}\` : "";
+        throw new Error(\`\${command} \${args.join(" ")} failed with code \${code}\${tail ? \`:\\n\${tail}\` : ""}\${hint}\`);
+    }
+    runCommandSync(command, args) {
+        const env = getEnv();`],
+]);
+patch("b513b64d8ac8", "pi-coding-agent/core/resource-loader.js", [
+    [`            builtinExtensions: [...this.builtinExtensions.keys()],
+        });
+        this.additionalExtensionPaths`, `            builtinExtensions: [...this.builtinExtensions.keys()],
+            commandOutput: options.packageCommandOutput,
+        });
+        ${note("b513b64d8ac8").trim()}
+        this.packageManager.setProgressCallback(options.onPackageProgress);
+        this.additionalExtensionPaths`],
+]);
+patch("b513b64d8ac8", "pi-coding-agent/main.js", [
+    [`    const resolvedThemePaths = resolveCliPaths(cwd, parsed.themes);
+    const createRuntime = async (`, `    const resolvedThemePaths = resolveCliPaths(cwd, parsed.themes);
+    ${note("b513b64d8ac8").trim()}
+    // Interactive mode installs and refreshes packages again on /reload, /new, /resume and /fork while the TUI
+    // draws on the terminal, where git and npm output would corrupt its screen (#11264). Their output is
+    // captured, and until the TUI starts each install is announced on stderr instead.
+    const packageCommandOutput = appMode === "interactive" ? "capture" : "inherit";
+    let announcePackageInstalls = packageCommandOutput === "capture";
+    const onPackageProgress = (event) => {
+        if (announcePackageInstalls && event.type === "start" && event.message) {
+            console.error(chalk.dim(event.message));
+        }
+    };
+    const createRuntime = async (`],
+    [`            resourceLoaderOptions: {
+                additionalExtensionPaths: resolvedExtensionPaths,`, `            resourceLoaderOptions: {
+                packageCommandOutput,
+                onPackageProgress,
+                additionalExtensionPaths: resolvedExtensionPaths,`],
+    [`    else if (appMode === "interactive") {
+        const interactiveMode = new InteractiveMode(runtime, {`, `    else if (appMode === "interactive") {
+        announcePackageInstalls = false;
+        const interactiveMode = new InteractiveMode(runtime, {`],
+]);
+// END backport b513b64d8ac8
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

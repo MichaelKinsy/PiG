@@ -74,7 +74,9 @@ type InteractiveReplacement struct {
 	ExtensionRunner         *inproc.Runner
 	SessionStartEvent       extension.SessionStartEvent
 	// ExtensionConflicts are the tool and flag conflicts of the build's final extension set, which Pi lists with the extension load errors.
-	ExtensionConflicts      []ExtensionConflict
+	ExtensionConflicts []ExtensionConflict
+	// ExtensionWarnings are the install failures and package warnings of the build's load (resource-loader.ts getExtensions().warnings), listed with the extension load errors.
+	ExtensionWarnings       []ExtensionWarning
 	BuiltinExtensions       []extension.Extension
 	ExplicitBuiltinPaths    []string
 	ReloadBuiltinExtensions func() []extension.Extension
@@ -283,6 +285,7 @@ func (m *InteractiveMode) applyReplacement(session InteractiveSessionHandle, r I
 	m.loadThemes()
 	m.reloadIssues = nil
 	m.extensionConflicts = r.ExtensionConflicts
+	m.extensionWarnings = r.ExtensionWarnings
 	m.publishSlashCommandCatalog()
 	m.attachSubprocess()
 	m.applyRuntimeSettings()

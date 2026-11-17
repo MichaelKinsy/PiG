@@ -34,7 +34,7 @@ func TestPackageChildOutputDuringStdoutTakeover(t *testing.T) {
 			t.Fatal(err)
 		}
 		defer codingagent.RestoreStdout()
-		if err := packagemanager.RunPackageProcess("", script); err != nil {
+		if err := packagemanager.RunPackageProcess(packagemanager.CommandOutputInherit, "", script); err != nil {
 			t.Fatal(err)
 		}
 		return 0

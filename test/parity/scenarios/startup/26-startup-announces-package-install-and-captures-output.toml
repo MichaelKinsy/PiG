@@ -1,0 +1,57 @@
+# Behavior family: startup
+# Upstream evidence: Pi b513b64d8ac8 (#11264) runs the npm and git commands of a package install with piped output in interactive
+# mode, and main.ts prints `Installing <source>...` on stderr until the TUI starts. Probed on Pi at b513b64d8ac8 and at its
+# parent in tmux (120x40) with a fake npm command that prints `npm warn deprecated ...`, `added 1 package in 1s` and
+# `found 0 vulnerabilities` and installs a package with one prompt template:
+#   before: the three npm lines are printed above the banner, no announcement;
+#   after:  `Installing npm:probe-npm...` above the banner, none of the npm lines, `/probenpm` listed under [Prompts].
+# PiG before the capture printed the npm lines (inherited output) and no announcement; with it, PiG still printed its own `[pig] Reinstalled
+# missing packages` line (a pig additive with no divergence record, removed with the reload install): both_not_contain asserts it gone.
+# lint-known-gap: the screens differ by D2 (PiG draws its pig head and names the product in the onboarding line), so no whole-screen equality comparator applies; the install surface is asserted with both_contain, both_not_contain and the startup transcript window.
+name = "26-startup-announces-package-install-and-captures-output"
+description = "A package installed at interactive startup shows only Pi's Installing line; the package manager's own output stays off the terminal."
+covers = ["packages/coding-agent/src/core/package-manager.ts", "packages/coding-agent/src/main.ts", "packages/coding-agent/src/core/resource-loader.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_TELEMETRY=0", "PIG_CODING_AGENT_DIR=testdata/pig-agent-package-install"]
+pi = ["PI_TELEMETRY=0", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/pi-agent-package-install"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+override_base_args = true
+
+[tmux]
+width = 120
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 30
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["/probenpm"]
+both_not_contain = ["Reinstalled", "Could not install", "npm warn deprecated", "added 1 package", "found 0 vulnerabilities", "panic:", "goroutine "]
+runs = 3
+
+# What both binaries write before the first frame (CSI ? 2026 h), in order: the terminal mode setup and the `Installing <source>...` line on stderr. The first frame redraws the screen, so the line is not on the final screen of either binary; the transcript is where it is observable.
+# floating-evidence: the same two sequences float here as in 00-startup-banner (Pi, 20 runs of that scenario on xd6702, 2026-11-16, the transcript attached before the program ran); this scenario's own runs are the three of each parity run.
+# complete from byte 0; token positions counted from 0 in the whole transcript). CSI > 4 ; 2 m is first seen at token 35 in 9 runs (before the first
+# frame, token 37) and at token 204 in 11 (after it, the first frame at token 35); the OSC 0 window title follows it, at token 36 or 205. Pi writes both
+# when the terminal's reply to its Kitty keyboard query arrives, which the host's load moves across the first frame. Every other sequence before the
+# first frame was the same 35 tokens, in the same order, in all 20 runs.
+[[assert.transcript_sequences_equal]]
+window = "startup"
+
+[[assert.transcript_sequences_equal.floating]]
+sequence = "\u001b[>4;2m"
+reason = "Pi writes it when the terminal answers its Kitty keyboard query; the answer's time moves it across the first frame."
+evidence_runs = 20
+evidence_positions = [35, 204]
+
+[[assert.transcript_sequences_equal.floating]]
+osc = 0
+reason = "Pi sets the window title in the same step as the CSI > 4 ; 2 m above, and the title ends in the run's random working directory name."
+evidence_runs = 20
+evidence_positions = [36, 205]

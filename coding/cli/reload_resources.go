@@ -5,6 +5,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
 // Ports packages/coding-agent/src/core/resource-loader.ts (DefaultResourceLoader.reload for a CLI build).
@@ -13,8 +14,13 @@ func reloadResourceSnapshotProvider(cwd, agentDir string, sm *codingagent.Settin
 		if err := validateConfiguredResourceEntries(cwd, agentDir, sm, sm.IsProjectTrusted()); err != nil {
 			return codingagent.ReloadResourceSnapshot{Err: err}
 		}
-		resetCLIPackageResolutions()
-		extConfigs := collectExtensionConfigs(cwd, agentDir, sm, flags, nil)
+		// resource-loader.ts reload: resolve() installs each configured Package that is missing before it resolves the -e sources, which refresh. A failure is skipped and warns.
+		installFailures, err := installPackagesForLoad(flags.packages, cwd, agentDir, sm)
+		if err != nil {
+			return codingagent.ReloadResourceSnapshot{Err: err}
+		}
+		cliExtensions := collectCLIExtensionConfigs(cwd, agentDir, sm, flags.packages, flags.Extensions)
+		extConfigs := collectExtensionConfigsWith(cliExtensions, cwd, agentDir, sm, flags, nil)
 		if err := cliPackageSourceError(extConfigs); err != nil {
 			return codingagent.ReloadResourceSnapshot{Err: err}
 		}
@@ -32,6 +38,7 @@ func reloadResourceSnapshotProvider(cwd, agentDir string, sm *codingagent.Settin
 			ContextFiles:            contextFiles,
 			SystemPromptSourcePaths: resolvePromptInputs(cwd, agentDir, flags, sm.IsProjectTrusted()).sourcePaths,
 			ResourceSourceInfo:      infos,
+			ExtensionWarnings:       packagemanager.PackageInstallWarnings(installFailures, packagemanager.MissingLocalPackages(cwd, agentDir, sm), cliExtensions.installFailures),
 		}
 	}
 }

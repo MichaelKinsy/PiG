@@ -123,6 +123,8 @@ type Args struct {
 	// ViewEndpoint serves the view carrier of an interactive session on a Unix socket. A Piglet's viewEndpoint: socket sets it; no command-line flag does. Print, JSON and RPC mode do not read it.
 	// pig additive (D614).
 	ViewEndpoint bool
+	// packages is how the package installs of the process's loads run: where git and npm write and how an install is announced. The builder sets it on the resource flags of every load; nil inherits the output and announces nothing.
+	packages *packageRun
 	// Export exports a session file to HTML and exits.
 	// Mirrors upstream --export (args.ts:106).
 	Export string

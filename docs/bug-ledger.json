@@ -12071,7 +12071,6 @@
         "internal/packagemanager/package_manager_test.go::TestPackageManagerReportsInstalledPathsPerScope",
         "internal/packagemanager/package_manager_test.go::TestPackageManagerReportsProgressToTheInstalledCallback",
         "internal/packagemanager/package_update_operations_test.go::TestPackageTasksStartOrderAndJoin",
-        "internal/packagemanager/package_updates_test.go::TestEnsureConfiguredPackagesInstalledTreatsProjectDeltaAsInherited",
         "internal/packagemanager/package_updates_test.go::TestIsPinnedNpm",
         "internal/packagemanager/package_updates_test.go::TestParseNpmSpec"
       ]
@@ -15076,6 +15075,35 @@
         "test/extension-conformance/renderer_click_test.go::TestRendererClickOutsideTheRegionFallsThrough",
         "test/parity/scenarios/extensions-runtime/96-message-click-expansion.toml",
         "tui/container_mouse_redraw_test.go::TestHandledMouseEventRedrawsComponentsThatChangedSilently"
+      ]
+    },
+    {
+      "id": "BF-451287c",
+      "title": "`/reload` and every session replacement now install the configured git and npm packages that are missing and…",
+      "symptom": "Only startup installed (since v0.3.0; `/reload` never did since v0.2.0), so a package added to `settings.json` in a running session stayed missing until the next start.",
+      "rootCause": "Pi resolves its packages on every resource load (resource-loader.ts reload: resolve installs each missing git and npm package and refreshes the -e sources), so startup, /reload, /new, /resume, /fork and the RPC replacements all install. PiG installed only at startup and listed a failed install as one stderr line without its output.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/reload` and every session replacement now install the configured git and npm packages that are missing and refresh the temporary `-e` git and npm packages, as Pi's resource loader does on every load: `/new`, `/resume`, `/fork` and the RPC `new_session`, `switch_session` and `fork` as well as startup. Before, only startup installed (since v0.3.0; `/reload` never did since v0.2.0), so a package added to `settings.json` in a running session stayed missing until the next start. In the interactive TUI the install runs while the reload message is shown and git and npm output stays off the screen, and a failure is listed under `[Extension issues]`.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "451287c12e",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/cli/reload_installs_packages_test.go::TestEveryResourceLoadInstallsPackages",
+        "coding/cli/reload_installs_packages_test.go::TestReloadSnapshotInstallsAConfiguredPackageAddedAfterStartup",
+        "coding/cli/reload_installs_packages_test.go::TestReloadSnapshotListsAFailedInstallWithTheEndOfItsOutput",
+        "coding/cli/reload_installs_packages_test.go::TestRuntimeBuildInstallsConfiguredPackagesAndListsAFailureAsAnExtensionWarning",
+        "internal/codingagent/reload_package_warnings_test.go::TestReloadListsTheInstallWarningsOfItsLoadAsExtensionIssues",
+        "internal/codingagent/reload_package_warnings_test.go::TestStartupListsTheInstallWarningsOfItsLoadAsExtensionIssues",
+        "test/parity/scenarios/startup/26-startup-announces-package-install-and-captures-output.toml",
+        "test/parity/scenarios/startup/27-startup-announces-temporary-package-install-and-captures-output.toml"
       ]
     },
     {
@@ -65299,7 +65327,6 @@
         "internal/packagemanager/package_manager_test.go::TestPackageManagerReportsInstalledPathsPerScope",
         "internal/packagemanager/package_manager_test.go::TestPackageManagerReportsProgressToTheInstalledCallback",
         "internal/packagemanager/package_update_operations_test.go::TestPackageTasksStartOrderAndJoin",
-        "internal/packagemanager/package_updates_test.go::TestEnsureConfiguredPackagesInstalledTreatsProjectDeltaAsInherited",
         "internal/packagemanager/package_updates_test.go::TestIsPinnedNpm",
         "internal/packagemanager/package_updates_test.go::TestParseNpmSpec",
         "test/parity/scenarios/extensions-runtime/77-package-manifest-glob-syntax.toml"
