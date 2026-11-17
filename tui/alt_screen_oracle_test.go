@@ -328,18 +328,10 @@ func checkAltScreenOracleIn(t *testing.T, screens bool, env map[string]string, t
 					parts[index].image = NewImage(image.Data, "image/png", ImageTheme{}, options, &ImageDimensions{WidthPx: image.Dims[0], HeightPx: image.Dims[1]})
 				}
 			}
-			// A component that changes what it shows asks for a frame, as Pi's do: a view-only frame (a scroll) reuses the output of the one before.
-			contentChanged := len(spec.Set) > 0
 			for i, rendered := range sc.Log[step].Rendered {
 				if parts[i].image == nil {
-					next := closed(rendered)
-					contentChanged = contentChanged || !slices.Equal(parts[i].lines.lines, next)
-					parts[i].lines.lines = next
+					parts[i].lines.lines = closed(rendered)
 				}
-			}
-			// Only a step that scrolls needs the request: its frame is view-only, while the step's own RenderNow draws everything.
-			if contentChanged && (spec.ScrollBy != nil || spec.ScrollTop || spec.ScrollBottom) {
-				ui.RequestRender()
 			}
 			if spec.Resize != nil {
 				ui.SetFixedSize(spec.Resize[0], spec.Resize[1])
