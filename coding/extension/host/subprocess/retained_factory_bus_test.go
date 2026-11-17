@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/pprof"
+	"slices"
 	"strings"
 	"syscall"
 	"testing"
@@ -32,6 +33,8 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 )
 
+const generation = GENERATION
+
 var factoryCalls, heard atomic.Int64
 
 func Extension() *sdk.Extension {
@@ -44,7 +47,7 @@ func Extension() *sdk.Extension {
 		panic(err)
 	}
 	e.Tool("probe", "probe", sdk.Schema{"type": "object"}, func(_ sdk.Context, _ map[string]any) (any, error) {
-		return map[string]string{"content": fmt.Sprintf("{\"calls\":%d,\"heard\":%d,\"pid\":%d}", factoryCalls.Load(), heard.Load(), os.Getpid())}, nil
+		return map[string]string{"content": fmt.Sprintf("{\"calls\":%d,\"heard\":%d,\"pid\":%d,\"generation\":%d}", factoryCalls.Load(), heard.Load(), os.Getpid(), generation)}, nil
 	})
 	e.Tool("ping", "ping", sdk.Schema{"type": "object"}, func(ctx sdk.Context, _ map[string]any) (any, error) {
 		if err := ctx.Events().Emit("retained-bus:ping", map[string]any{"from": EXTENSION_NAME}); err != nil {
@@ -57,26 +60,32 @@ func Extension() *sdk.Extension {
 `
 
 type retainedBusProbe struct {
-	Calls int `json:"calls"`
-	Heard int `json:"heard"`
-	Pid   int `json:"pid"`
+	Calls      int `json:"calls"`
+	Heard      int `json:"heard"`
+	Pid        int `json:"pid"`
+	Generation int `json:"generation"`
+}
+
+// writeRetainedBusMember writes the member's module with the given source generation and returns its configuration. Rewriting the
+// module with another generation changes the member's content, as an edit does.
+func writeRetainedBusMember(t *testing.T, name, dir string, generation int) ExtConfig {
+	t.Helper()
+	modulePath := "example.com/retainedbus/" + name
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), fmt.Appendf(nil, "module %s\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\n", modulePath), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	source := strings.NewReplacer("EXTENSION_NAME", fmt.Sprintf("%q", name), "GENERATION", fmt.Sprint(generation)).Replace(retainedBusSource)
+	if err := os.WriteFile(filepath.Join(dir, "ext.go"), []byte(source), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return packedFactoryConfig(name, dir, modulePath, fmt.Sprintf("%s-%d", name, generation))
 }
 
 func retainedBusConfigs(t *testing.T, count int) []ExtConfig {
 	t.Helper()
 	configs := make([]ExtConfig, 0, count)
 	for i := range count {
-		name := fmt.Sprintf("bus-member-%d", i)
-		modulePath := "example.com/retainedbus/" + name
-		dir := t.TempDir()
-		if err := os.WriteFile(filepath.Join(dir, "go.mod"), fmt.Appendf(nil, "module %s\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\n", modulePath), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		source := strings.ReplaceAll(retainedBusSource, "EXTENSION_NAME", fmt.Sprintf("%q", name))
-		if err := os.WriteFile(filepath.Join(dir, "ext.go"), []byte(source), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		configs = append(configs, packedFactoryConfig(name, dir, modulePath, name))
+		configs = append(configs, writeRetainedBusMember(t, fmt.Sprintf("bus-member-%d", i), t.TempDir(), 0))
 	}
 	return configs
 }
@@ -186,5 +195,45 @@ func TestGoFactoryReloadWithFactoryTimeSubscriptionsCompletesAndDeliversOnce(t *
 				t.Fatalf("reload %d member %d probe = %+v, want pid %d, %d factory calls and %d deliveries", reload, i, got, first.Pid, reload+1, reload)
 			}
 		}
+	}
+}
+
+// A reload that edits one member keeps the others' runner: the edited member's cell is built and started afresh, and the cell of the
+// unchanged members re-invokes their factories in the process that holds them. Each pass delivers one ping to the live listener of
+// every member, the edited member's new instance among them.
+func TestGoFactoryReloadRetainedMembersBesideAChangedMemberDeliverOnce(t *testing.T) {
+	configs := retainedBusConfigs(t, retainedBusMembers)
+	changedDir := t.TempDir()
+	changed := writeRetainedBusMember(t, "bus-changed", changedDir, 1)
+	changed.Isolation = "isolated"
+	all := append(slices.Clone(configs), changed)
+	h := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
+	h.SetConfigLoader(func() ([]ExtConfig, error) { return all, nil })
+	t.Cleanup(func() { h.Shutdown("test done") })
+	if _, errs := h.LoadAll(t.Context(), all); len(errs) > 0 {
+		t.Fatal(errs)
+	}
+	first := retainedBusToolOf(t, h, configs[0].Name, "probe")
+	changedPid := retainedBusToolOf(t, h, changed.Name, "probe").Pid
+	for reload := 1; reload <= 2; reload++ {
+		edited := writeRetainedBusMember(t, "bus-changed", changedDir, reload+1)
+		edited.Isolation = "isolated"
+		all[len(all)-1] = edited
+		reloadWithinBudget(t, h)
+		if issues := h.LastReloadReport().Issues; len(issues) != 0 {
+			t.Fatalf("reload %d issues = %q, want none", reload, issues)
+		}
+		retainedBusToolOf(t, h, configs[0].Name, "ping")
+		for i, cfg := range configs {
+			got := retainedBusToolOf(t, h, cfg.Name, "probe")
+			if got.Pid != first.Pid || got.Calls != reload+1 || got.Heard != reload {
+				t.Fatalf("reload %d unchanged member %d probe = %+v, want pid %d, %d factory calls and %d deliveries", reload, i, got, first.Pid, reload+1, reload)
+			}
+		}
+		got := retainedBusToolOf(t, h, changed.Name, "probe")
+		if got.Generation != reload+1 || got.Heard != 1 || got.Pid == changedPid {
+			t.Fatalf("reload %d edited member probe = %+v, want generation %d in a new process (not %d) that heard the ping once", reload, got, reload+1, changedPid)
+		}
+		changedPid = got.Pid
 	}
 }
