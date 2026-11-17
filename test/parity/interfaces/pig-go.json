@@ -165342,6 +165342,17 @@
       "shapeHash": "sha256:1715bff60f19df4122b1696376b72989294054eea2541c249103bfd9d465bc8d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#unawaitedFirstSuspension",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "unawaitedFirstSuspension",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event string) bool"
+      },
+      "shapeHash": "sha256:a069791dad0ceff3a47995491e721a05a5d7bba95738665aefc05fa7ba426f02"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#unixSocketPathLimit",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "unixSocketPathLimit",
