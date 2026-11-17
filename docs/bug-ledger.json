@@ -31182,6 +31182,34 @@
       ]
     },
     {
+      "id": "BF-8013c00",
+      "title": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room…",
+      "symptom": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or no right to write the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error, or a prompt that had lost turns.",
+      "rootCause": "without a snapshot the entries were located by the file offsets of their lines in the live file, and a load that made no snapshot, a snapshot write that failed and the first write of a new session were all left to read from that file",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or no right to write the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error, or a prompt that had lost turns. Such a session now reads the whole file once and keeps its entries in memory, as Pi does, and never reads the file again.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8013c00611",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_lazy_test.go::TestLazyEntryOfAChangedRecordIsAnError",
+        "internal/codingagent/session_nosnapshot_test.go::TestCreatedSessionWithoutASnapshotReadsAsWrittenAfterItsFileChanges",
+        "internal/codingagent/session_nosnapshot_test.go::TestForkAfterTheFileChangesWithoutASnapshotWritesTheLoadedBranch",
+        "internal/codingagent/session_nosnapshot_test.go::TestLeafMovedAfterTheFileChangesWithoutASnapshotBuildsTheLoadedContext",
+        "internal/codingagent/session_nosnapshot_test.go::TestResumedSessionWithoutASnapshotReadsAsLoadedAfterItsFileChanges",
+        "internal/codingagent/session_nosnapshot_test.go::TestSessionWhoseSnapshotWriteFailsLaterReadsAsLoadedAfterItsFileChanges",
+        "internal/codingagent/session_nosnapshot_test.go::TestSessionWithoutASnapshotKeepsOnlyItsContextTailDecoded"
+      ]
+    },
+    {
       "id": "BF-8019120",
       "title": "`pig config` in the default theme no longer draws the space after a dim checkbox, or the name of a…",
       "symptom": "`pig config` in the default theme no longer draws the space after a dim checkbox, or the name of a project-owned enabled item, faint: its spans close the faint attribute as Pi's do.",
