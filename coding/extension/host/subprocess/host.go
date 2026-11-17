@@ -3529,7 +3529,14 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 			return nil, loadErr
 		}
 	}
-
+	// A restarted extension is already in h.exts, where Extensions and the flag readers copy *me.ext under Host.mu, so adoption (which rewrites the held Extension's registries) holds it. A restart adopts into the Extension it holds and never stores it again, and it adopts before the call loop starts: a registerDeclaration, registerTool, event.subscribe or ownThinkingRuns call the new process makes right after its ready lands after the replace.
+	ext := h.buildExtension(me, reg)
+	h.mu.Lock()
+	adopted := isRestart && me.ext != nil
+	if adopted {
+		ext = adoptRestartedExtension(me.ext, ext)
+	}
+	h.mu.Unlock()
 	// Reverse provider callbacks may call the host while registering.
 	h.goHandleIncoming(me, conn)
 	// On a crash restart the providers are already registered and their
@@ -3582,20 +3589,17 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		h.uiBridge.RegisterExtConn(me.config.Name, conn, reg.WantsModelRegistry)
 	}
 
-	ext := h.buildExtension(me, reg)
 	me.resetToolRenderers(reg.ToolRenderers)
-	// A restarted extension is already in h.exts, where Extensions and the flag readers copy *me.ext under Host.mu, so adoption (which rewrites the held Extension's registries) and publication hold it too. The first registration stores the pointer before the extension is published; a restart adopts into the Extension it holds and never stores it again.
-	h.mu.Lock()
-	if isRestart && me.ext != nil {
-		ext = adoptRestartedExtension(me.ext, ext)
-	} else {
+	if !adopted {
+		// The first registration stores the pointer before the extension is published. The call loop already runs, so a call that needs the Extension can find it not yet built.
+		h.mu.Lock()
 		me.ext = ext
-	}
-	early := me.earlyOwnsThinkingRuns
-	me.earlyOwnsThinkingRuns = nil
-	h.mu.Unlock()
-	if early != nil {
-		ext.SetOwnsThinkingRuns(*early) // pig additive (D214): a call that arrived before the registration was applied
+		early := me.earlyOwnsThinkingRuns
+		me.earlyOwnsThinkingRuns = nil
+		h.mu.Unlock()
+		if early != nil {
+			ext.SetOwnsThinkingRuns(*early) // pig additive (D214): a call that arrived before the registration was applied
+		}
 	}
 	me.supervisor.RecordSuccess()
 
