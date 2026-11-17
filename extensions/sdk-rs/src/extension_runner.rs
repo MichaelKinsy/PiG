@@ -14,7 +14,8 @@ use crate::resource_loader::LoadedExtension;
 use crate::session_manager_class::SessionManager;
 use serde_json::{Map, Value, json};
 use std::io;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 
 /// A bound function that takes no argument.
 pub type Fn0<R> = Arc<dyn Fn() -> Result<R, String> + Send + Sync>;
@@ -29,16 +30,45 @@ type SelectFn = Fn2<(String, Vec<String>), Option<Value>, Option<String>>;
 type InputFn = Fn2<(String, Option<String>), Option<Value>, Option<String>>;
 type SetWidgetFn = Fn2<(String, Vec<String>), Option<Value>, ()>;
 
-/// What the host reads of the signals one `get_signal` function returns: undefined, or `{aborted}`.
+/// Numbers the signal objects of every `get_signal` function of this process, so that the extensions packed in one process never share a token.
+static SIGNAL_RUN_COUNTER: AtomicU64 = AtomicU64::new(0);
+
 #[derive(Default)]
-struct SignalRuns;
+struct SignalRunState {
+    last: Option<ProviderSignal>,
+    run: u64,
+    ended_aborted: bool,
+}
+
+/// What the host reads of the signals one `get_signal` function returns: undefined, or `{aborted, run, endedAborted?}`.
+/// Pi gives every run its own signal object (`agent.ts`), so the object is the run: `run` is a token that is new whenever the function returns another object than the one of the last answer (it never repeats in this process), and `endedAborted` says the signal of the previous answer had aborted, which the host cannot see when the next run begins before it reads again. The wrapper holds the last signal, so an object that was answered is never freed and reused while its token is the last. An undefined answer touches nothing.
+#[derive(Default)]
+struct SignalRuns {
+    state: Mutex<SignalRunState>,
+}
 
 impl SignalRuns {
     fn wire(&self, signal: Option<ProviderSignal>) -> Value {
-        match signal {
-            Some(signal) => json!({"aborted": signal.is_cancelled()}),
-            None => Value::Null,
+        let Some(signal) = signal else {
+            return Value::Null;
+        };
+        let aborted = signal.is_cancelled();
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        if state.last.as_ref() != Some(&signal) {
+            state.ended_aborted = state
+                .last
+                .as_ref()
+                .is_some_and(ProviderSignal::is_cancelled);
+            state.run = SIGNAL_RUN_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
+            state.last = Some(signal);
         }
+        let mut answer = Map::new();
+        answer.insert("aborted".into(), Value::from(aborted));
+        answer.insert("run".into(), Value::from(state.run));
+        if state.ended_aborted {
+            answer.insert("endedAborted".into(), Value::Bool(true));
+        }
+        Value::Object(answer)
     }
 }
 
