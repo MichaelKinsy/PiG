@@ -180,8 +180,10 @@ func mergeProviderConfigInput(previous *ProviderConfigInput, input ProviderConfi
 	if input.RefreshModels != nil {
 		merged.RefreshModels = input.RefreshModels
 	}
-	// pig additive (D36): Pi merges a re-registration's defined values and keeps the undefined ones (model-runtime.ts:921-933); an omitted (false) opt-in keeps the earlier one, as the fields above keep theirs.
-	merged.Insecure = merged.Insecure || input.Insecure
+	// pig additive (D36): Pi merges a re-registration's defined values over the previous registration and keeps the undefined ones (model-runtime.ts:970-977), so an explicit false turns an earlier opt-in off and an omitted value keeps it.
+	if setting := input.InsecureSetting(); setting != nil {
+		merged.SetInsecureSetting(setting)
+	}
 	return merged
 }
 

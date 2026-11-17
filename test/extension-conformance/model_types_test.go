@@ -845,6 +845,14 @@ def new_extension():
             registry.unregister_provider("late")
         return json.dumps({"mode": args.get("mode")})
 
+    def insecure_provider(ctx, args):
+        registry = ctx.model_registry
+        registry.register_provider("tls", {"baseUrl": "https://tls.test/v1", "insecure": True})
+        registry.register_provider("tls", {"insecure": False})
+        registry.register_provider("tls", {"baseUrl": "https://tls.test/v2"})
+        registry.register_provider("tls", {"insecure": True})
+        return json.dumps({"registered": 4})
+
     def tui_probe(ctx, args):
         from pig_sdk import tui
 
@@ -900,7 +908,7 @@ def new_extension():
         report["swapped"] = swapped
         return json.dumps(report)
 
-    for name, handler in (("late_provider", late_provider), ("typed_reads", typed_reads), ("classify_probe", classify_probe), ("images_probe", images_probe), ("virtual_probe", virtual_probe), ("virtual_visible", virtual_visible), ("theme_probe", theme_probe), ("tui_probe", tui_probe), ("tui_theme_probe", tui_theme_probe), ("ops_status", lambda ctx, args: json.dumps({"cancelled": CANCELLED["n"]}))):
+    for name, handler in (("late_provider", late_provider), ("insecure_provider", insecure_provider), ("typed_reads", typed_reads), ("classify_probe", classify_probe), ("images_probe", images_probe), ("virtual_probe", virtual_probe), ("virtual_visible", virtual_visible), ("theme_probe", theme_probe), ("tui_probe", tui_probe), ("tui_theme_probe", tui_theme_probe), ("ops_status", lambda ctx, args: json.dumps({"cancelled": CANCELLED["n"]}))):
         ext.register_tool(pig_sdk.ToolDefinition(name=name, label=name, description=name, parameters={"type": "object"}, execute=handler))
     register_host_surface(ext)
     return ext

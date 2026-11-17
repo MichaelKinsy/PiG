@@ -522,6 +522,20 @@ pub fn new_extension() -> Extension {
             Err(error) => ToolResult::Error(error.to_string()),
         }
     });
+    ext.tool("insecure_provider", "Registers a provider four times with insecure true, false, omitted and true.", empty_schema(), |ctx, _| {
+        let registry = ctx.model_registry();
+        let outcome = (|| -> std::io::Result<()> {
+            registry.register_provider("tls", json!({"baseUrl": "https://tls.test/v1", "insecure": true}))?;
+            registry.register_provider("tls", json!({"insecure": false}))?;
+            registry.register_provider("tls", json!({"baseUrl": "https://tls.test/v2"}))?;
+            registry.register_provider("tls", json!({"insecure": true}))?;
+            Ok(())
+        })();
+        match outcome {
+            Ok(()) => ToolResult::text(json!({"registered": 4}).to_string()),
+            Err(error) => ToolResult::Error(error.to_string()),
+        }
+    });
     ext.tool(
         "ops_status",
         "Reports what the host's provider requests did in the extension.",

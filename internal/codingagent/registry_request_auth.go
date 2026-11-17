@@ -225,7 +225,7 @@ func (r *ModelRegistry) ProviderInsecure(providerID string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if dynamic, ok := r.dynamic[providerID]; ok {
-		return dynamic.Insecure
+		return optedIn(dynamic.Insecure)
 	}
 	r.nativeMu.Lock()
 	composed := r.nativeInputs[providerID]
@@ -234,7 +234,7 @@ func (r *ModelRegistry) ProviderInsecure(providerID string) bool {
 		return composed.Insecure
 	}
 	if r.config != nil {
-		return r.config.Providers[providerID].Insecure
+		return optedIn(r.config.Providers[providerID].Insecure)
 	}
 	return false
 }
