@@ -1318,6 +1318,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-d1af7ae](#bf-d1af7ae) | The crash message of a deterministic code mode VM that is told a result number it cannot take now reads as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d1af7ae-2](#bf-d1af7ae-2) | The errors that name a code mode tool or global (`Tool "x" is already registered`, `Invalid global name "x"`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-d1af7ae-3](#bf-d1af7ae-3) | A code mode `done` message that carries no store writes now fails the execution with Pi's `store writes is… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-d1be20b](#bf-d1be20b) | Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package… | PiG's own defect | All platforms | Unreleased |
 | [BF-d1cbde3](#bf-d1cbde3) | The pi-messages, Cloudflare Workers AI and TypeSafe System One, and OpenAI decisions request URLs are built… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d1f258f](#bf-d1f258f) | The `/settings` search edits like Pi's search input: the cursor moves with the arrow keys, Ctrl+W, Ctrl+K… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-d212cdf](#bf-d212cdf) | `pig --piglet piglets/standard/pig-standard.yaml` no longer warns on every start that its `piglogin`… | PiG's own defect | All platforms | 0.5.0 |
@@ -19656,6 +19657,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `d1af7aece3` (2026-10-24)
 - **Tests:** `codemode/deterministic_test.go::TestAVMThatIsToldTheSameResultNumberTwiceCrashes`, `codemode/wire_oracle_test.go::TestWireBehaviorMatchesPi`
 - **Release note:** A code mode `done` message that carries no store writes now fails the execution with Pi's `store writes is not valid JSON` instead of `unknown message from the worker`.
+
+### BF-d1be20b
+
+**Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package extension back under Pi's (the Startup latency check had it at 1.157 of Pi against a budget of 1.15).
+- **Root cause:** The extension host's first model catalog frame encoded every model of the catalog (about 2,500 with the D199 routing variants) by encoding its typed record, decoding its catalog record and encoding that too, only to learn that the model was unchanged and its encoding is the record. Since (first tagged in v0.7.0) this was about 42 ms of the median package-warm start (50 interleaved runs).
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `d1be20b36a` (2026-11-16)
+- **Tests:** `ai/catalog_record_cache_test.go::TestCatalogRecordShapeCacheHoldsOnlyBuiltinRecords`, `ai/catalog_unchanged_cost_test.go::TestRecognizedCatalogModelCostsTwoAllocations`, `ai/catalog_unchanged_entry_test.go::TestCatalogModelDeepEqualErrsTowardTheEncodingPath`, `ai/catalog_unchanged_entry_test.go::TestEveryListedCatalogEntryIsRecognizedAndEncodesAsItsRecord`, `ai/catalog_unchanged_entry_test.go::TestModelOfNoEntryTakesTheEncodingPath`
+- **Release note:** Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package extension back under Pi's (the Startup latency check had it at 1.157 of Pi against a budget of 1.15). Since v0.7.0 each start encoded the whole model catalog for the extension host (about 2,500 models with the OpenRouter routing variants) by decoding every model's catalog record and encoding it twice just to learn that the model was unchanged; an unchanged built-in model is now recognized by comparing it with its catalog entry, and what the extension receives is unchanged. <!-- cause: the D199 routing variants added about a thousand models whose derived records were never in the baseline cache, and the check that a built-in model is unchanged encoded the model and decoded and encoded its record for each model at each start -->
 
 ### BF-d1cbde3
 

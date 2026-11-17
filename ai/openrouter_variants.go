@@ -179,6 +179,8 @@ type derivedVariant struct {
 var derivedVariants struct {
 	sync.RWMutex
 	byKey map[derivedVariantKey]*derivedVariant
+	// byRecord is the entry of each held variant by its record (catalogEntryOf).
+	byRecord map[string]*GeneratedModel
 }
 
 // matches reports whether v was derived from base as it is now.
@@ -205,8 +207,12 @@ func derivedOpenRouterVariant(base *GeneratedModel, variant string) *GeneratedMo
 	if actual == nil {
 		if derivedVariants.byKey == nil {
 			derivedVariants.byKey = map[derivedVariantKey]*derivedVariant{}
+			derivedVariants.byRecord = map[string]*GeneratedModel{}
 		}
 		derivedVariants.byKey[key] = built
+		if built.entry.Record != "" {
+			derivedVariants.byRecord[built.entry.Record] = &built.entry
+		}
 		actual = built
 	}
 	derivedVariants.Unlock()
