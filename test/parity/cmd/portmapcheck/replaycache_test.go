@@ -172,8 +172,8 @@ func TestCacheServerAnswersOnlyWhatItCanVerify(t *testing.T) {
 
 	c := startServer(t, shared, store, stats)
 	res := c.get(good)
-	if res.Miss || res.DiskPath != fileName(shared, goodOut[:], "d") || res.Size != int64(len("compiled package")) || !bytes.Equal(res.OutputID, goodOut[:]) {
-		t.Fatalf("a good entry of the user's cache is a hit served from where it lies: %+v", res)
+	if res.Miss || res.DiskPath != fileName(store, goodOut[:], "d") || res.Size != int64(len("compiled package")) || !bytes.Equal(res.OutputID, goodOut[:]) {
+		t.Fatalf("a good entry of the user's cache is a hit served from a copy in the store: %+v", res)
 	}
 	for name, action := range map[string][sha256.Size]byte{
 		"an action nobody stored": sha256.Sum256([]byte("nothing")), "a truncated entry": short, "an output of another size": wrongSize,
@@ -197,13 +197,40 @@ func TestCacheServerAnswersOnlyWhatItCanVerify(t *testing.T) {
 	}
 	c.close()
 	b, _ := os.ReadFile(stats)
-	if st := parseStats(string(b)); st != (cacheStats{Hits: 2, Misses: 6, Rejected: 5, Puts: 1}) {
+	if st := parseStats(string(b)); st != (cacheStats{Hits: 2, Misses: 6, Rejected: 5, Puts: 1, Copied: int64(len("compiled package"))}) {
 		t.Fatalf("counters %+v from %q: want 2 hits (the user's entry and the put), 6 misses, 5 rejected entries, 1 put", st, b)
 	}
 }
 
+// TestSharedHitIsACopyTheRunOwns: a hit in the user's cache is answered with a file of the run's own cache, so a trim of the user's cache
+// (go deletes entries not used for five days) in the middle of a replay cannot take it away; and the copy is not the user's file: writing
+// it leaves the user's bytes as they were.
+func TestSharedHitIsACopyTheRunOwns(t *testing.T) {
+	root := t.TempDir()
+	shared, store := filepath.Join(root, "user"), filepath.Join(root, "store")
+	body := []byte("compiled package of the user's cache")
+	action, out := seedEntry(t, shared, "trimmed", body)
+	c := startServer(t, shared, store, "")
+	res := c.get(action)
+	if res.Miss || res.DiskPath == fileName(shared, out[:], "d") || !strings.HasPrefix(res.DiskPath, store) {
+		t.Fatalf("the hit must name a file of the store, not the user's: %+v", res)
+	}
+	for _, p := range []string{fileName(shared, out[:], "d"), fileName(shared, action[:], "a")} { // the trim
+		if err := os.Remove(p); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got, err := os.ReadFile(res.DiskPath); err != nil || !bytes.Equal(got, body) {
+		t.Fatalf("the path handed out must still open after the user's file is gone, with the same bytes: %v %q", err, got)
+	}
+	if r := c.get(action); r.Miss || r.DiskPath != res.DiskPath { // later lookups are the store's own
+		t.Fatalf("the adopted entry must stay a hit: %+v", r)
+	}
+	c.close()
+}
+
 // TestServerReadsTheLayoutOfGo pins the cache layout the server reads to the repository's go: a build into an ordinary cache is read back
-// through the server, which must answer it from where the go command put it. When a Go release changes the layout this turns red, instead
+// through the server, which must answer it with a copy at the place in the store where the go command put it in its own cache. When a Go release changes the layout this turns red, instead
 // of every lookup silently missing.
 func TestServerReadsTheLayoutOfGo(t *testing.T) {
 	mod := t.TempDir()
@@ -235,8 +262,10 @@ func TestServerReadsTheLayoutOfGo(t *testing.T) {
 	}
 	stats := filepath.Join(root, "stats")
 	got := goList("GOCACHE="+filepath.Join(root, "store"), "GOCACHEPROG="+exe+" "+cacheServerArg, envSharedCache+"="+user, envStatsFile+"="+stats)
-	if got != want {
-		t.Fatalf("through the server the export data of lib is at %q, go's own cache keeps it at %q: the server does not read go's layout", got, want)
+	wantRel, err1 := filepath.Rel(user, want)
+	gotRel, err2 := filepath.Rel(filepath.Join(root, "store"), got)
+	if err1 != nil || err2 != nil || gotRel != wantRel {
+		t.Fatalf("through the server the export data of lib is at %q (in the store), go's own cache keeps it at %q: the server does not read go's layout", got, want)
 	}
 	b, _ := os.ReadFile(stats)
 	if st := parseStats(string(b)); st.Hits == 0 || st.Rejected != 0 || st.Puts != 0 {

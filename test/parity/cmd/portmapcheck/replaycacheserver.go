@@ -82,6 +82,7 @@ type replayCacheServer struct {
 	hits, misses  atomic.Int64
 	rejected      atomic.Int64
 	puts          atomic.Int64
+	copied        atomic.Int64 // bytes copied from the user's cache into the store
 }
 
 // serveReplayCache answers the go command's requests on in and out until in ends or the go command says close, then appends its
@@ -134,7 +135,7 @@ loop:
 	wg.Wait()
 	if statsPath != "" {
 		if f, err := os.OpenFile(statsPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600); err == nil {
-			st := cacheStats{Hits: int(s.hits.Load()), Misses: int(s.misses.Load()), Rejected: int(s.rejected.Load()), Puts: int(s.puts.Load())}
+			st := cacheStats{Hits: int(s.hits.Load()), Misses: int(s.misses.Load()), Rejected: int(s.rejected.Load()), Puts: int(s.puts.Load()), Copied: s.copied.Load()}
 			_, _ = f.WriteString(st.statsLine())
 			_ = f.Close()
 		}
@@ -187,10 +188,9 @@ func readEntry(dir string, action []byte) (cacheEntry, bool) {
 	return cacheEntry{out: out, size: size, when: time.Unix(0, nanos)}, true
 }
 
-// outputOK reports whether the output file of e in dir is a regular file of the recorded size and, when digest is set, whose sha256 is
-// the output id. cmd/go itself trusts size alone for its own cache; the user's cache is checked in full because a replay would build
-// on whatever this returns.
-func outputOK(dir string, e cacheEntry, digest bool) (path string, ok bool) {
+// outputOK reports whether the output file of e in dir is a regular file of the recorded size. cmd/go itself trusts size alone for its
+// own cache, and so does this for the store, which only this run writes.
+func outputOK(dir string, e cacheEntry) (path string, ok bool) {
 	path = fileName(dir, e.out[:], "d")
 	f, err := os.Open(path)
 	if err != nil {
@@ -201,13 +201,44 @@ func outputOK(dir string, e cacheEntry, digest bool) (path string, ok bool) {
 	if err != nil || !info.Mode().IsRegular() || info.Size() != e.size {
 		return "", false
 	}
-	if digest {
-		h := sha256.New()
-		if n, err := io.Copy(h, f); err != nil || n != e.size || !bytes.Equal(h.Sum(nil), e.out[:]) {
-			return "", false
-		}
-	}
 	return path, true
+}
+
+// adoptShared copies the output of e from the user's cache into the store, and its entry with it, and returns the copy's path (ok is
+// false when the user's output is not a regular file of the recorded size and sha256: it is read once, so what is checked is what is
+// copied). The user's cache is checked in full because a replay builds on whatever this returns. The replay is handed the copy and
+// never the user's file: an ordinary `go` cache trim (entries not used for five days) can delete that file while the replay still
+// reads it, and the copy is the run's own, so nothing a replay does to its file can reach the user's cache. A hard link would be free
+// of copying, but it shares the inode with the user's file (a write through it would change the user's cache), needs the two
+// directories on one filesystem, and so needs a copy as its fallback as well. The cost is one copy per distinct output, once: the next
+// lookup is answered from the store, and the store is emptied every replaysPerTrim replays.
+func (s *replayCacheServer) adoptShared(e cacheEntry, action []byte) (path string, ok bool, err error) {
+	f, err := os.Open(fileName(s.shared, e.out[:], "d"))
+	if err != nil {
+		return "", false, nil
+	}
+	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Size() != e.size {
+		return "", false, nil
+	}
+	data := make([]byte, e.size)
+	if _, err := io.ReadFull(f, data); err != nil {
+		return "", false, nil
+	}
+	if sum := sha256.Sum256(data); sum != e.out {
+		return "", false, nil
+	}
+	path = fileName(s.store, e.out[:], "d")
+	if err := writeFileAtomic(path, data); err != nil {
+		return "", false, err
+	}
+	entry := fmt.Sprintf("v1 %x %x %20d %20d\n", action, e.out, e.size, e.when.UnixNano())
+	if err := writeFileAtomic(fileName(s.store, action, "a"), []byte(entry)); err != nil {
+		return "", false, err
+	}
+	s.copied.Add(e.size)
+	return path, true, nil
 }
 
 func (s *replayCacheServer) get(req cacheRequest) cacheResponse {
@@ -217,12 +248,16 @@ func (s *replayCacheServer) get(req cacheRequest) cacheResponse {
 		return cacheResponse{ID: req.ID, OutputID: e.out[:], Size: e.size, Time: &t, DiskPath: path}
 	}
 	if e, ok := readEntry(s.store, req.ActionID); ok {
-		if p, ok := outputOK(s.store, e, false); ok {
+		if p, ok := outputOK(s.store, e); ok {
 			return hit(e, p)
 		}
 	}
 	if e, ok := readEntry(s.shared, req.ActionID); ok {
-		if p, ok := outputOK(s.shared, e, true); ok {
+		p, ok, err := s.adoptShared(e, req.ActionID)
+		if err != nil {
+			return cacheResponse{ID: req.ID, Err: err.Error()}
+		}
+		if ok {
 			return hit(e, p)
 		}
 		s.rejected.Add(1)
