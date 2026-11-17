@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"go/version"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -105,11 +106,21 @@ func mergeFusedModules(pig *modfile.File, fused []fusedEntry) (fusedModuleGraph,
 	want := map[string]string{}
 	wantFrom := map[string]string{}
 	replaces := map[module.Version]replacement{}
+	// A member whose module graph requires a newer language version than
+	// Pig's go directive records must raise the directive, or the merged
+	// go.mod fails -mod=readonly with "updates to go.mod needed" (go mod
+	// tidy would bump it for the member-raised module graph). Track the
+	// highest member go version here and raise Pig's directive after the
+	// merge.
+	memberGoVersion := ""
 	for _, root := range roots {
 		member := owner[root]
 		file, err := readModFile(root)
 		if err != nil {
 			return fusedModuleGraph{}, fmt.Errorf("fuse %q: %w", member, err)
+		}
+		if file.Go != nil && (memberGoVersion == "" || version.Compare("go"+file.Go.Version, "go"+memberGoVersion) > 0) {
+			memberGoVersion = file.Go.Version
 		}
 		for _, requirement := range file.Require {
 			path, version := requirement.Mod.Path, requirement.Mod.Version
@@ -145,6 +156,18 @@ func mergeFusedModules(pig *modfile.File, fused []fusedEntry) (fusedModuleGraph,
 				return fusedModuleGraph{}, fmt.Errorf("fuse %q: conflicting replacements for %s: %s replaces it with %s, %s with %s", member, formatModule(r.Old), filepath.Join(previous.root, "go.mod"), formatModule(previous.target), filepath.Join(root, "go.mod"), formatModule(target))
 			}
 			replaces[r.Old] = replacement{target: target, root: root}
+		}
+	}
+
+	if memberGoVersion != "" {
+		pigGoVersion := ""
+		if pig.Go != nil {
+			pigGoVersion = pig.Go.Version
+		}
+		if version.Compare("go"+memberGoVersion, "go"+pigGoVersion) > 0 {
+			if err := pig.AddGoStmt(memberGoVersion); err != nil {
+				return fusedModuleGraph{}, fmt.Errorf("raise pig go directive to %s: %w", memberGoVersion, err)
+			}
 		}
 	}
 
