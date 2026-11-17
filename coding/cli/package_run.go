@@ -48,14 +48,6 @@ func (r *packageRun) progress() packagemanager.ProgressCallback {
 	}
 }
 
-// options are the install options of the run's package commands.
-func (r *packageRun) options() []packagemanager.InstallOption {
-	if r == nil {
-		return nil
-	}
-	return []packagemanager.InstallOption{packagemanager.WithCommandOutput(r.output), packagemanager.WithProgressReporter(r.progress())}
-}
-
 // manager is the run's package manager over cwd and the settings (the resource loader's, with packageCommandOutput and onPackageProgress).
 func (r *packageRun) manager(cwd, agentDir string, sm *codingagent.SettingsManager) *packagemanager.PackageManager {
 	options := packagemanager.PackageManagerOptions{CWD: cwd, SettingsManager: sm}
