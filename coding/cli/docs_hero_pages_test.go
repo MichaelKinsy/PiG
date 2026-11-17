@@ -202,8 +202,10 @@ func TestDocsEventBusPage(t *testing.T) {
 		// The page's second example: answers that come after emit returned, to an asker that waits.
 		"slow-geo.mjs": examples["slow-geo.mjs"],
 		"slow-geo.py":  examples["slow-geo.py"],
-		// The page's rule for a listener that fails: its error is reported, and the emitter and the listeners after it do not see it.
+		// The page's rule for a listener that fails: its error is reported as an extension error, and the emitter and the listeners after it do not see it.
 		"failing.mjs": "export default function (pi) {\n  pi.events.on(\"geo:locate\", () => {\n    throw new Error(\"failing listener\");\n  });\n}\n",
+		// The page's rule for an async listener that fails: it is reported when it fails, after emit returned.
+		"asyncfailing.mjs": "export default function (pi) {\n  pi.events.on(\"geo:locate\", async () => {\n    await new Promise((resolve) => setTimeout(resolve, 1500));\n    throw new Error(\"async failing listener\");\n  });\n}\n",
 		// The page's rule for an async listener: emit returns at the listener's first await, so a reply after it comes too late for an
 		// asker that does not wait.
 		"late.mjs": "export default function (pi) {\n  pi.events.on(\"geo:locate\", async (request) => {\n    await new Promise((resolve) => setTimeout(resolve, 300));\n    pi.events.emit(\"geo:found\", { id: request.id, name: request.name, lat: 48.86, lon: 2.35 });\n  });\n}\n",
@@ -228,7 +230,8 @@ func TestDocsEventBusPage(t *testing.T) {
 		{"the answering extension is loaded first", []string{"geo.mjs", "asker"}, found, false},
 		{"no extension listens", []string{"asker"}, "warning: no extension answers geo:locate", false},
 		{"a listener before the answering one fails", []string{"asker", "failing.mjs", "geo.mjs"}, found, false},
-		{"a listener's report is delivered when the terminal stalls as pig ends", []string{"asker", "failing.mjs", "geo.mjs"}, found, true},
+		{"a listener's report is delivered while stderr stalls as pig ends", []string{"asker", "failing.mjs", "geo.mjs"}, found, true},
+		{"an async listener that fails is reported after the command answered", []string{"asker", "asyncfailing.mjs", "geo.mjs"}, found, false},
 		{"an async listener replies after emit returned", []string{"asker", "late.mjs"}, "warning: no extension answers geo:locate", false},
 		{"a waiting asker hears a Node listener that answers after an await", []string{"waiter", "slow-geo.mjs"}, found, false},
 		{"a waiting asker hears a Python extension that answers from a thread", []string{"waiter", "slow-geo.py"}, found, false},
@@ -271,18 +274,22 @@ func TestDocsEventBusPage(t *testing.T) {
 			session.budget = probeWait(t, 5*time.Minute)
 			started := time.Now()
 			if pipe != nil {
-				// Past the start the pig process writes nothing to stderr until the extension's report: the next write blocks.
+				// Past the start the pig process writes nothing to stderr: its next write would block.
 				session.send(`{"id":"state","type":"get_state"}`)
 				session.until("the response to get_state", func(record map[string]any) bool { return record["type"] == "response" && record["id"] == "state" })
 				pipe.stall()
 			}
 			notes := docsHeroCommand(t, session, "locate", "/locate Paris")
 			t.Logf("/locate Paris answered after %s: %q", time.Since(started).Round(time.Millisecond), notes)
+			if slices.Contains(row.extensions, "asyncfailing.mjs") {
+				// The rejection comes 1.5 s after the emit, long after the response: the session must still be open when it does.
+				session.until("the async listener's extension_error", func(record map[string]any) bool { return record["type"] == "extension_error" })
+			}
 			if pipe != nil {
-				// The report of the failing listener is a write of the Node process that the pig process copies to its stderr on a goroutine of its own, and the exit of pig must wait for it as Pi's console.error, written before the exit, is never lost: the pipe has no reader until after pig was told to end.
+				// A stalled stderr must neither hold up the report, which RPC mode writes to stdout as an event, nor keep pig from ending: the pipe has no reader until after pig was told to end.
 				pipe.release(150 * time.Millisecond)
 			}
-			session.end()
+			lines := session.end()
 			if pipe != nil {
 				pipe.finish()
 			}
@@ -292,8 +299,63 @@ func TestDocsEventBusPage(t *testing.T) {
 			if _, message, _ := strings.Cut(row.want, ": "); !strings.Contains(page, message) {
 				t.Fatalf("%s does not show %q, which /locate Paris shows", docsEventBusPagePath, message)
 			}
-			if report := "Event handler error (geo:locate)"; slices.Contains(row.extensions, "failing.mjs") != strings.Contains(stderr.String(), report) {
-				t.Fatalf("stderr holds %q: %v, want it for the failing listener only:\n%s", report, strings.Contains(stderr.String(), report), stderr.String())
+			// Pi 18e99051be24 (loader.ts `on`, runner.ts constructor, rpc-mode.ts:355-356 `onError: (err) => output({ type: "extension_error", extensionPath, event, error })`):
+			// a failing listener is an extension error, which RPC mode writes as an `extension_error` event carrying the extension's path, the event `events:<channel>` and
+			// the message, and no stack. A listener that throws is reported inside the emit, so its event comes before the reply of the listener after it and before the
+			// command's response; an async listener that rejects after its first await is reported when it rejects, after the response (probed on Pi with the commit).
+			// The bus's own `Event handler error (...)` line is no longer written for a pi.events handler.
+			if strings.Contains(stderr.String(), "Event handler error") {
+				t.Fatalf("stderr holds the bus's report of a failing listener, which the extension-error route replaced:\n%s", stderr.String())
+			}
+			failing, message := "", ""
+			for name, text := range map[string]string{"failing.mjs": "failing listener", "asyncfailing.mjs": "async failing listener"} {
+				if slices.Contains(row.extensions, name) {
+					failing, message = name, text
+				}
+			}
+			var reports []map[string]any
+			reportAt, answerAt, responseAt := -1, -1, -1
+			for i, line := range lines {
+				var record map[string]any
+				if json.Unmarshal([]byte(line), &record) != nil {
+					continue
+				}
+				if record["type"] == "extension_error" {
+					reports = append(reports, record)
+					reportAt = i
+				}
+				if text, _ := record["message"].(string); record["type"] == "extension_ui_request" && record["method"] == "notify" && answerAt < 0 && strings.Contains(text, "Paris is at") {
+					answerAt = i
+				}
+				if record["type"] == "response" && record["id"] == "locate" {
+					responseAt = i
+				}
+			}
+			if failing == "" {
+				if len(reports) != 0 {
+					t.Fatalf("an extension_error event for a session without a failing listener: %v", reports)
+				}
+				return
+			}
+			if len(reports) != 1 {
+				t.Fatalf("got %d extension_error events, want one for the failing listener:\n%s", len(reports), strings.Join(lines, "\n"))
+			}
+			report := reports[0]
+			path, _ := report["extensionPath"].(string)
+			if filepath.Base(path) != failing || report["event"] != "events:geo:locate" || report["error"] != message {
+				t.Fatalf("extension_error = %v, want the path of %s, event events:geo:locate and the message %q", report, failing, message)
+			}
+			if _, hasStack := report["stack"]; hasStack {
+				t.Fatalf("extension_error carries a stack, which Pi's RPC event does not: %v", report)
+			}
+			if answerAt < 0 || responseAt < 0 {
+				t.Fatalf("no reply notification or no response among the lines:\n%s", strings.Join(lines, "\n"))
+			}
+			if failing == "failing.mjs" && (reportAt > answerAt || reportAt > responseAt) {
+				t.Fatalf("the throwing listener's extension_error (line %d) came after the answering listener's reply (line %d) or the response (line %d)", reportAt, answerAt, responseAt)
+			}
+			if failing == "asyncfailing.mjs" && reportAt < responseAt {
+				t.Fatalf("the async listener's extension_error (line %d) came before the response (line %d), though it fails after emit returned", reportAt, responseAt)
 			}
 		})
 	}

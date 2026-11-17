@@ -1,12 +1,16 @@
 package extensionconformance
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
 )
 
 // Pi 18e99051be24 (loader.ts pi.events.on, runner.ts constructor, types.ts ExtensionRuntimeState.reportError): a pi.events handler that throws is an
@@ -211,4 +215,40 @@ func TestConformance_PiEventsNodeAsyncHandlerRejectionIsReportedAfterTheEmitRetu
 			t.Errorf("the Host wrote %q to the terminal, want nothing", out)
 		}
 	})
+}
+
+// A Go extension fused into the Host's own process (a Piglet Binary runs it over an in-memory pipe, the form no isolated or packed row reaches) reports a failing listener
+// on the same route as the isolated and packed SDK realms: the Host's dispatch sees the handler's error reply and sends it to the runner's error listeners with the fused
+// extension's path; nothing is printed, the emit returns, and the fused extension's next listener still runs. The path and the message are the row's own values.
+func TestConformance_PiEventsFusedGoHandlerErrorIsAnExtensionError(t *testing.T) {
+	stop := captureStderr(t)
+	rig := newBusRig(t, busSpec("node", "isolated", "e"))
+	const fusedPath = "builtin:fused-bus-error-ü"
+	fused := sdk.New("fused")
+	ran := make(chan any, 1)
+	if _, err := fused.Events().On(busRowChannel, func(sdk.Context, any) error { return errors.New("fused-listener-failed") }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fused.Events().On(busRowChannel, func(_ sdk.Context, data any) error { ran <- data; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := rig.host.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: "fused", Enabled: true, Path: fusedPath}, fused.RunWithConn); err != nil {
+		t.Fatal(err)
+	}
+	rig.must("e", "emit", busRowChannel+` json {"ok":true}`)
+	select {
+	case data := <-ran:
+		if got := fmt.Sprint(data); got != "map[ok:true]" {
+			t.Fatalf("the listener after the failing one received %s", got)
+		}
+	default:
+		t.Fatal("the listener after the failing one did not run before the emit returned")
+	}
+	got := waitForBusErrors(t, rig, busRowChannel, 1)
+	if len(got) != 1 || got[0].ExtensionPath != fusedPath || got[0].Event != "events:"+busRowChannel || !strings.Contains(got[0].Error, "fused-listener-failed") {
+		t.Fatalf("errors on %s = %+v, want one {%s, events:%s, fused-listener-failed}", busRowChannel, rig.reported(), fusedPath, busRowChannel)
+	}
+	if out := stop(); out != "" {
+		t.Errorf("the Host wrote %q to the terminal, want nothing", out)
+	}
 }
