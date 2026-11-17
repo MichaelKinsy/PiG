@@ -164,7 +164,7 @@ loop, so rendering continues while a verdict is pending, and input typed after
 the chunk waits so verdicts, rewrites, and handling keep upstream's order.
 Footers and headers follow Pi's component contract across the process
 boundary. Pi renders the component at the current width every frame
-(`interactive-mode.ts:2418-2480`). Each SDK therefore offers a renderer form
+(`interactive-mode.ts:2664-2729`, `setExtensionFooter` and `setExtensionHeader`). Each SDK therefore offers a renderer form
 (`SetFooterRenderer`/`SetHeaderRenderer`, `set_footer_renderer`/`set_header_renderer`)
 that renders at the host's width and again after every `width_change`, and every
 static `SetFooter`/`SetHeader` call tags its rows with the width the SDK holds.
@@ -172,7 +172,7 @@ The host paints rows only at the width they carry, so a frame laid out for a
 wider pane never reaches the renderer's overflow check after a resize (public
 issue #104). A string-list widget is sent with no width, as a `widget_push`
 that needs no reply, and the host lays a width-less list out with
-`Text(line, 1, 0)` as Pi does (`interactive-mode.ts:2321-2336`). In RPC mode
+`Text(line, 1, 0)` as Pi does (`interactive-mode.ts:2561-2567`, `setExtensionWidget`). In RPC mode
 the SDKs send the list as a `ui.setWidget` call instead, so the host writes
 one request per call in call order, as `rpc-mode.ts` does.
 The wire has no independent version or compatibility
@@ -229,7 +229,7 @@ yet. Staged-versus-embedded status, with each staged directory, is reported by
 `pig diagnose`, which already covers it alongside paths, auth, models, and
 environment.
 
-The Go bridge keeps nullable usage counts and optional booleans as pointers. `sdk.Bool`, `ContextUsage.TokensOr`, and `PercentOr` provide explicit construction/fallback ergonomics without changing field presence or wire behavior. Legacy Go factories and exact standalones build against a private current SDK alias with recursively copied subpackages and rewritten self-imports, including internal packages. Build-local aliases and modfiles are removed after success, failure, or cancellation; authored files remain unchanged. Interactive native cold builds select a product-neutral `Building extensions...` notice through the build observer. Node loads and print/JSON/RPC modes do not select it, regardless of terminal stderr.
+The Go bridge keeps nullable usage counts and optional booleans as pointers. `sdk.Bool`, `ContextUsage.TokensOr`, and `PercentOr` provide explicit construction/fallback ergonomics without changing field presence or wire behavior. Legacy Go factories and exact standalones build against a private current SDK alias with recursively copied subpackages and rewritten self-imports, including internal packages. Build-local aliases and modfiles are removed after success, failure, or cancellation; authored files remain unchanged. Interactive native cold builds on a terminal show one rewriting status line, `Building extensions [<finished>/<planned>] (first run, will be cached)` followed by the names being compiled (`buildLine` in `coding/extension/host/subprocess/build_line.go`), which the build observer feeds. Node loads and print/JSON/RPC modes do not select it, regardless of terminal stderr.
 
 `pig reload` is deliberately the same word as the interactive `/reload`: both
 mean make what is loaded match what is on disk, and it is the command reached
