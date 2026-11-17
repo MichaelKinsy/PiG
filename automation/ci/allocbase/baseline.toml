@@ -401,7 +401,7 @@ allocs = 24
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCatalogModelJSONAll"
-allocs = 30688
+allocs = 12227
 
 [[benchmark]]
 package = "./ai"
@@ -3006,12 +3006,12 @@ allocs = 1
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionCatalogEncoding/cached"
-allocs = 49845
+allocs = 44134
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionCatalogEncoding/uncached"
-allocs = 89779
+allocs = 48090
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3621,12 +3621,12 @@ allocs = 110
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWireModelCatalogBinding/encoded"
-allocs = 141665
+allocs = 94936
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWireModelCatalogBinding/legacy"
-allocs = 155106
+allocs = 99120
 
 [[benchmark]]
 package = "./internal/codingagent"

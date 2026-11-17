@@ -29,6 +29,8 @@ func cachedCatalogRecordBaselines() int {
 func TestCatalogRecordShapeCacheHoldsOnlyBuiltinRecords(t *testing.T) {
 	clearCatalogRecordBaselines()
 	builtin := GeneratedModels[0].ToModel()
+	// An unchanged model is recognized by its entry and decodes nothing; a changed one is decided by its record's baseline.
+	builtin.Capabilities.ContextWindow++
 	if _, ok, err := CatalogModelJSON(builtin); !ok || err != nil {
 		t.Fatalf("builtin: ok %t, %v", ok, err)
 	}

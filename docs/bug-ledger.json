@@ -33044,6 +33044,32 @@
       ]
     },
     {
+      "id": "BF-8695b8e",
+      "title": "Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package…",
+      "symptom": "Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package extension back under Pi's (the Startup latency check had it at 1.157 of Pi against a budget of 1.15).",
+      "rootCause": "the OpenRouter routing variants added about a thousand models whose derived records were never in the baseline cache, and the check that a built-in model is unchanged encoded the model and decoded and encoded its record for each model at each start",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package extension back under Pi's (the Startup latency check had it at 1.157 of Pi against a budget of 1.15). Since v0.7.0 each start encoded the whole model catalog for the extension host (about 2,500 models with the OpenRouter routing variants) by decoding every model's catalog record and encoding it twice just to learn that the model was unchanged; an unchanged built-in model is now recognized by comparing it with its catalog entry, and what the extension receives is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8695b8e54d",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/catalog_record_cache_test.go::TestCatalogRecordShapeCacheHoldsOnlyBuiltinRecords",
+        "ai/catalog_unchanged_cost_test.go::TestRecognizedCatalogModelCostsTwoAllocations",
+        "ai/catalog_unchanged_entry_test.go::TestCatalogModelDeepEqualErrsTowardTheEncodingPath",
+        "ai/catalog_unchanged_entry_test.go::TestEveryListedCatalogEntryIsRecognizedAndEncodesAsItsRecord",
+        "ai/catalog_unchanged_entry_test.go::TestModelOfNoEntryTakesTheEncodingPath"
+      ]
+    },
+    {
       "id": "BF-869cef8",
       "title": "A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of…",
       "symptom": "A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of unknown type, instead of ending the reply with a JSON decode error.",
