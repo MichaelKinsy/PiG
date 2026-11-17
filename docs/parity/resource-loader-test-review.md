@@ -13,12 +13,12 @@ Test aliases:
 
 | Alias | Go evidence |
 |---|---|
-| SDKOptions | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamSDKOptions` |
+| SDKOptions | `coding/cli/configured_resources_node_test.go#TestResourceLoaderUpstreamSDKOptions` |
 | Discovery | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamDiscovery` |
 | Precedence | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamProjectPrecedence` and `internal/codingagent/theme_precedence_test.go#TestResourceLoaderUpstreamThemePrecedence` |
-| Symlinks | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamSymlinkedExtensions` |
-| Trust | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamPreTrustExtensions` |
-| Conflicts | `coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamExtensionConflicts` |
+| Symlinks | `coding/cli/configured_resources_node_test.go#TestResourceLoaderUpstreamSymlinkedExtensions` |
+| Trust | `coding/cli/configured_resources_node_test.go#TestResourceLoaderUpstreamPreTrustExtensions` |
+| Conflicts | `coding/cli/configured_resources_node_test.go#TestResourceLoaderUpstreamExtensionConflicts` |
 | ContextOptions | `coding/cli/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderContextOptions` |
 | ContextFiles | `internal/codingagent/upstream_resource_context_test.go#TestUpstreamResourceLoaderContextFiles` |
 | Untrusted | `coding/cli/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderUntrustedProject` |
