@@ -68,7 +68,7 @@ func TestMain(m *testing.M) {
 		})
 		stopStallDump = func() { stall.Stop() }
 	}
-	testRoot, err := os.MkdirTemp("", "pig-cmd-")
+	testRoot, err := testenv.MkdirShortTemp("pig-cmd-")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "create isolated test home:", err)
 		os.Exit(2)

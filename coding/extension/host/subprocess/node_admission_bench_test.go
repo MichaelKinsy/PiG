@@ -11,6 +11,7 @@ import (
 
 func BenchmarkNodeAdmissionStartup(b *testing.B) {
 	nodeCellRequireNode(b)
+	testenv.PathOf(b, "node", "go")
 	root, cache := b.TempDir(), b.TempDir()
 	var nodes []ExtConfig
 	for i := range 3 {

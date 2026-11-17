@@ -23,11 +23,7 @@ const maxShortTempDirBytes = 70
 // does.
 func ShortTempDir(t testing.TB, prefix string) string {
 	t.Helper()
-	base := shortTempBase(runtime.GOOS, os.TempDir(), os.Getenv("LOCALAPPDATA"), prefix)
-	if err := os.MkdirAll(base, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	dir, err := os.MkdirTemp(base, prefix)
+	dir, err := MkdirShortTemp(prefix)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,6 +42,18 @@ func ShortTempDir(t testing.TB, prefix string) string {
 		}
 	})
 	return dir
+}
+
+// MkdirShortTemp creates the directory ShortTempDir returns, with no test to remove it: a package's TestMain makes its scoped root with it, scopes the process temporary directory to
+// it with ScopeTempDir, and removes it after m.Run. The root is then directly in /tmp outside Windows whatever TMPDIR names, so every t.TempDir and b.TempDir of the package is
+// <root>/<test>/001 at the same depth on every machine. Code that walks the ancestors of its working directory (a reload's context files, the skills of a project, the resolution
+// of a path one component at a time) allocates per level, and the allocs/op of a benchmark that runs in a fixture below TMPDIR follows the depth of the TMPDIR of whoever runs it.
+func MkdirShortTemp(prefix string) (string, error) {
+	base := shortTempBase(runtime.GOOS, os.TempDir(), os.Getenv("LOCALAPPDATA"), prefix)
+	if err := os.MkdirAll(base, 0o700); err != nil {
+		return "", err
+	}
+	return os.MkdirTemp(base, prefix)
 }
 
 // shortTempBase returns the directory ShortTempDir creates its directory in.
