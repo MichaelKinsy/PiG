@@ -209232,6 +209232,17 @@
       "shapeHash": "sha256:06498c1ea862953c09d886cc90aeb74577e3b252f483ffe07b19cf8012986095"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.changeTools",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Extension.changeTools",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(change func() []toolDef)"
+      },
+      "shapeHash": "sha256:503dba46c0f4cf3b21a9066670da1b3bcfba6525a8d0e79481bbdbbb48e7821d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.commandArgumentCompletions",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "Extension.commandArgumentCompletions",
@@ -209725,17 +209736,6 @@
         "type": "func(id string, provider *OAuthProvider) (OAuthCredentialStore, bool)"
       },
       "shapeHash": "sha256:61314d52146326cad46b31eaea06582a642fd5622dfdc2fd2bf4aecda47ce168"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.publishTool",
-      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "Extension.publishTool",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(decl toolDef)"
-      },
-      "shapeHash": "sha256:7c8123bb3f8eac09b53c770d60a7232dd5203cc009a68d74306a70b21139a776"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.refreshEditor",

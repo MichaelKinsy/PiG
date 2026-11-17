@@ -4796,6 +4796,8 @@ class Extension:
         self._name = name
         self._tools: list[dict[str, Any]] = []
         self._tool_registration_lock = threading.RLock()
+        # Orders each tool change with its registerTool publication (taken before the registration lock; reentrant because tool_renderers reads the tool and publishes it under one hold).
+        self._tool_publish_lock = threading.RLock()
         self._tools_live = False
         # Raw terminal-input handlers, consulted synchronously while the host
         # holds the user's keystroke. Empty means the host never round-trips.
@@ -4989,19 +4991,22 @@ class Extension:
         declaration = {key: value for key, value in declaration.items() if key != "prepares_arguments"}
         if prepare is not None:
             declaration["prepares_arguments"] = True
-        with self._tool_registration_lock:
-            index = next((i for i, tool in enumerate(self._tools) if tool["name"] == name), None)
-            if index is None:
-                self._tools.append(declaration)
-            else:
-                self._tools[index] = declaration
-            self._tool_handlers[name] = handler
-            for handlers, callback in ((self._tool_prepare_handlers, prepare), (self._tool_call_renderers, render_call), (self._tool_result_renderers, render_result), (self._tool_loadout_handlers, prepare_loadout), (self._tool_reach_handlers, reaches_tools), (self._tool_call_view_renderers, call_view), (self._tool_result_view_renderers, result_view)):
-                if callback is None:
-                    handlers.pop(name, None)
+        with self._tool_publish_lock:
+            with self._tool_registration_lock:
+                index = next((i for i, tool in enumerate(self._tools) if tool["name"] == name), None)
+                if index is None:
+                    self._tools.append(declaration)
                 else:
-                    handlers[name] = callback
-            if self._tools_live:
+                    self._tools[index] = declaration
+                self._tool_handlers[name] = handler
+                for handlers, callback in ((self._tool_prepare_handlers, prepare), (self._tool_call_renderers, render_call), (self._tool_result_renderers, render_result), (self._tool_loadout_handlers, prepare_loadout), (self._tool_reach_handlers, reaches_tools), (self._tool_call_view_renderers, call_view), (self._tool_result_view_renderers, result_view)):
+                    if callback is None:
+                        handlers.pop(name, None)
+                    else:
+                        handlers[name] = callback
+                live = self._tools_live
+            # The host refreshes the registry before it answers and asks every tool's prepare_loadout hook while it does: the hook is answered from another thread that reads the tables under the registration lock, so the call is made without it. The publish lock keeps changes and their publications in one order.
+            if live:
                 self._call("registerTool", declaration)
 
     def register_tool(self, definition: ToolDefinition) -> None:
@@ -5488,16 +5493,20 @@ class Extension:
         """
         if render_shell not in {"default", "self"}:
             raise ValueError("render_shell must be 'default' or 'self'")
-        with self._tool_registration_lock:
-            for tool in self._tools:
-                if tool.get("name") != name:
-                    continue
+        with self._tool_publish_lock:
+            with self._tool_registration_lock:
+                tool = next((tool for tool in self._tools if tool.get("name") == name), None)
+                if tool is None:
+                    return
                 declaration = dict(tool)
-                declaration["render_shell"] = render_shell
-                declaration["renders_call"] = render_call is not None or call_view is not None
-                declaration["renders_result"] = render_result is not None or result_view is not None
-                self._register_tool(declaration, self._tool_handlers[name], self._tool_prepare_handlers.get(name), render_call, render_result, self._tool_loadout_handlers.get(name), call_view, result_view, self._tool_reach_handlers.get(name))
-                break
+                handler = self._tool_handlers[name]
+                prepare = self._tool_prepare_handlers.get(name)
+                prepare_loadout = self._tool_loadout_handlers.get(name)
+                reaches_tools = self._tool_reach_handlers.get(name)
+            declaration["render_shell"] = render_shell
+            declaration["renders_call"] = render_call is not None or call_view is not None
+            declaration["renders_result"] = render_result is not None or result_view is not None
+            self._register_tool(declaration, handler, prepare, render_call, render_result, prepare_loadout, call_view, result_view, reaches_tools)
 
     def _render_tool(self, ctx: "Context", name: str, args: dict[str, Any]) -> tuple[Any, bool]:
         """Run the tool's renderer for the request's phase: its lines, or its view when the renderer is a view form
