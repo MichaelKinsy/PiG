@@ -197,6 +197,17 @@ func (e *Extension) ReplaceDeclarations(source *Extension) {
 	}
 	state.messageRenderers = messageRenderers
 	state.entryRenderers = entryRenderers
+	e.MarkdownTransformer = source.MarkdownTransformerRegistration()
+}
+
+// MarkdownTransformerRegistration returns the Markdown transformer the extension currently registered, or nil. Once the extension is shared (its
+// declaration registry exists) a restart replaces it under the registry's lock, so readers holding the Extension use this and not the field.
+func (e *Extension) MarkdownTransformerRegistration() *MarkdownTransformerRegistration {
+	if state := e.declarationState; state != nil {
+		state.mu.RLock()
+		defer state.mu.RUnlock()
+	}
+	return e.MarkdownTransformer
 }
 
 // Command returns the current command registered under name.
