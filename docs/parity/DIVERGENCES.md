@@ -3085,7 +3085,7 @@ Remove when: Pi checks the foreground process group before it restarts the UI on
 
 Call-site markers: `internal/codingagent/suspend.go` (`suspendTerminal` continuation), `internal/codingagent/interactive_signals_unix.go` (`foreground` operation and the `onSuspendContinue` waiter).
 
-Evidence: `TestSuspendedSessionResumedInTheBackgroundStaysParkedUntilFg`, `TestSuspendedSessionWhoseTerminalIsGoneDoesNotRestart`, `TestSuspendWaiterKeepsWaitingAfterAParkedContinuation` (`internal/codingagent`), `TestStdinInForegroundFollowsTheTerminalProcessGroup` (`tui`, a real pseudo-terminal).
+Evidence: `TestSuspendedSessionResumedInTheBackgroundStaysParkedUntilFg`, `TestSuspendedSessionWhoseTerminalIsGoneDoesNotRestart`, `TestSuspendWaiterKeepsWaitingAfterAParkedContinuation`, `TestResumeWithoutAControllingTerminalRestartsTheUI` (`internal/codingagent`), `TestStdinInForegroundFollowsTheTerminalProcessGroup` (`tui`, a real pseudo-terminal).
 
 ## D228 Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy
 
