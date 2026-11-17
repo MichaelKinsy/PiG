@@ -64,8 +64,8 @@ func contextEditsOf(t *testing.T, h *harness, phase string) (edits contextEdit) 
 }
 
 // contextEditsReached is the table of what the second handler reads, by realization. Every cell the session's dispatch runs reads both edits, as Pi's one realm does,
-// except the Lisp SDK's list: its handler reply carries no list edit (an element appended in place is not carried to the next handler). That is an SDK difference from Node; the
-// row pins it so that a change in either direction is seen.
+// except the Lisp SDK's list: the probe there can only assign event.messages a new vector (the SDK decodes arrays as simple vectors, which cannot grow in place), and a
+// reassignment of the list is not carried in Pi either (runner.ts emitContext compares its own visibleMessages). The cell is a limit of the Lisp language, not a comparison the SDK omits.
 func contextEditsReached(name string) contextEdit {
 	return contextEdit{message: true, list: !strings.Contains(name, "lisp")}
 }
