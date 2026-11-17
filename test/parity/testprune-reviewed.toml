@@ -2297,3 +2297,17 @@ commit = "403d92f5ed5875e9cd3e1505efca4c841d5155ce"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "A tool-internal expectation of PiG's portmapcheck, not Pi behavior: the cache server now hands a shared-cache hit out as a copy in the run's private cache (the review thread at replaycacheserver.go:226 asked for it: a go cache trim could delete the shared file mid-replay), so TestCacheServerAnswersOnlyWhatItCanVerify expects the DiskPath of the hit under the store, not under the shared cache, and TestServerReadsTheLayoutOfGo compares that path relative to the store with go's own path relative to its cache. The expected value moves from the shared file's path to the copy's; the bytes, size and output id are unchanged."
+
+[[entry]]
+path = "coding/extension/host/subprocess/runtime_node_event_message_identity_test.go"
+commit = "18e1649ef208ebeede2d22441497938e435a8189"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit moves message_end's host reply onto the pair {_pigEventEdits:[{at,message}], _pigEventResult} that message_start, turn_end and agent_end carry, and removes _pigMessageEndMessage and _pigMessageEndResult. The test's assertions read the same values from the new members: reply.result._pigMessageEndMessage becomes reply.result._pigEventEdits[0].message (the message the handler left; absent when no edit was made, even when the handler threw) and _pigMessageEndResult.message becomes _pigEventResult.message. The members are PiG's private host-to-SDK reply wire: Pi has one JavaScript realm and no reply envelope, so no Pi line governs the names, and docs/parity/divergences/D541.md names the event's edit members as the way the host receives an edit. The old names are in no release (none at tag v0.7.0)."
+
+[[entry]]
+path = "extensions/sdk/key_order_test.go"
+commit = "18e1649ef208ebeede2d22441497938e435a8189"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "TestHandedBackEventMembersKeepTheirMemberOrder expects the Go SDK's reply to a message_end handler that hands the message back: the wrapper member is _pigEventResult where it was _pigMessageEndResult (commit 18e1649ef2 gives message_end the reply pair message_start, turn_end and agent_end carry). The message inside keeps its member order (z before a), which is what the test checks. The wrapper is PiG's private host-to-SDK reply wire with no Pi counterpart (Pi has no reply envelope); D541 names the event's edit members as the way the host receives an edit. The old name is in no release (none at tag v0.7.0)."
