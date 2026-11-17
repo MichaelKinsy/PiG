@@ -1485,6 +1485,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e63c61c](#bf-e63c61c) | fix(interactive): pump the owner loop while model selection awaits extensions (#208) (#209) | PiG's own defect | All platforms | Unreleased |
 | [BF-e64d2cf](#bf-e64d2cf) | fix(tui): a tool error result collapses like any other (Pi updateResult) | PiG's own defect | All platforms | Unreleased |
 | [BF-e65ade9](#bf-e65ade9) | `WaitForIdle` on the Harness or a Conversation no longer resumes before the `SubscribeCommits` listeners saw… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-e67ba4d](#bf-e67ba4d) | `/reload` no longer hangs when extensions that share a packed process (Go, Rust, Python or Lisp) subscribe to… | PiG's own defect | All platforms | Unreleased |
 | [BF-e69d018](#bf-e69d018) | Closing an `env` connection, or losing it, now ends its daemon process with SIGTERM, as in Pi, instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e73e536](#bf-e73e536) | Codemode scripts no longer fail immediately when both codemode workers are busy, for example with parallel… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-e75a8b9](#bf-e75a8b9) | The external editor (`ctrl+g`) now edits `prompt.md` inside a private `pi-editor-*` directory under the… | PiG's own defect | All platforms | 0.5.0 |
@@ -21969,6 +21970,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `e65ade9b1b` (2026-10-27)
 - **Tests:** `durable/harness/harness_tasks_test.go::TestPublicationAtAdoption`
 - **Release note:** `WaitForIdle` on the Harness or a Conversation no longer resumes before the `SubscribeCommits` listeners saw the commit that made the work idle. The idle settle that ends a reconcile pass, and the one the context expiry timer runs, could decide on a commit another goroutine had just adopted and resolve the waits ahead of its host listeners; Pi's continuation there cannot run between an adoption and its publication, and PiG's now leaves the decision to the settle queued behind the listeners.
+
+### BF-e67ba4d
+
+**`/reload` no longer hangs when extensions that share a packed process (Go, Rust, Python or Lisp) subscribe to…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `/reload` no longer hangs when extensions that share a packed process (Go, Rust, Python or Lisp) subscribe to the event bus with `pi.events.on` while their factory runs.
+- **Root cause:** A reload that keeps a packed process wrote the admissions of every retained member before the host accepted the first connection. The runner starts each admitted factory on its own goroutine, and a factory that calls the host before it returns (pi.events.on, as the factories of Pi do) waits for the host to serve the connection of its own member. The host serves the connections in member order, so when a later member took the factory turn of the runner first, the host waited for an earlier member that could not start its factory, and /reload never returned.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e67ba4d381` (2026-11-16)
+- **Tests:** `coding/extension/host/subprocess/reload_fused_events_test.go::TestHostReloadFusedFactoriesWithFactoryTimeSubscriptionsDeliverOnce`, `coding/extension/host/subprocess/retained_factory_bus_test.go::TestGoFactoryReloadRetainedMembersBesideAChangedMemberDeliverOnce`, `coding/extension/host/subprocess/retained_factory_bus_test.go::TestGoFactoryReloadWithFactoryTimeSubscriptionsCompletesAndDeliversOnce`, `test/extension-conformance/events_bridge_reload_test.go::TestNativeEventBusReloadKeepsEveryFactoryTimeListenerOnce`
+- **Release note:** `/reload` no longer hangs when extensions that share a packed process (Go, Rust, Python or Lisp) subscribe to the event bus with `pi.events.on` while their factory runs. The Host wrote the admissions of every retained member before it accepted the first connection. A runner starts each admitted factory on its own goroutine or thread and takes them in whatever order the scheduler picks, and a factory that calls the Host before it returns waits for the Host to serve its member's connection. When a later member took the factory turn first, the Host waited for an earlier member that could not start its factory, so the reload never returned. The Host now admits each retained member after the members before it have registered, which is the order Pi loads its factories in, and every listener hears an emit once after a reload. PiG 0.5.2 through 0.7.0 have the defect. <!-- cause: the Host admitted every retained member of a packed process before it accepted the first connection, while a factory that subscribes to the event bus waits for the Host to serve its own member's connection and the Host serves the members in order --> <!-- tests: coding/extension/host/subprocess/retained_factory_bus_test.go::TestGoFactoryReloadWithFactoryTimeSubscriptionsCompletesAndDeliversOnce, coding/extension/host/subprocess/retained_factory_bus_test.go::TestGoFactoryReloadRetainedMembersBesideAChangedMemberDeliverOnce, test/extension-conformance/events_bridge_reload_test.go::TestNativeEventBusReloadKeepsEveryFactoryTimeListenerOnce -->
 
 ### BF-e69d018
 
