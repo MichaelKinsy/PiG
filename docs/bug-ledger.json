@@ -16104,6 +16104,26 @@
       ]
     },
     {
+      "id": "BF-497aa27",
+      "title": "A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses…",
+      "symptom": "A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses the tool's `prepare_loadout` and `reaches_tools` hooks: the host asked for hooks the extension had dropped and kept the registered description, and the tool's `reaches_tools` calls failed.",
+      "rootCause": "tool_renderers registered the tool again with its renderers and passed only the prepare_arguments handler along, so the registration dropped the tool's prepare_loadout and reaches_tools handlers while its declaration still asked the host for them; the fault is in tag v0.7.0",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses the tool's `prepare_loadout` and `reaches_tools` hooks: the host asked for hooks the extension had dropped and kept the registered description, and the tool's `reaches_tools` calls failed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "497aa275b2",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-49e7c6d",
       "title": "agent (Go API): a message that a tool or an `AfterToolCall` hook of a parallel tool batch replaced in place…",
       "symptom": "agent (Go API): a message that a tool or an `AfterToolCall` hook of a parallel tool batch replaced in place in its context (`call.Context.Messages[i] = m`) never reached the run: with two or more calls each call wrote a copy, so the batch's other calls and the next model request did not see it.",
