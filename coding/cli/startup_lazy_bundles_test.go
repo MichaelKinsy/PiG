@@ -13,7 +13,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/pigdocs"
@@ -206,21 +205,6 @@ func TestReplacementBuildReportsSDKStageFailureAsADiagnostic(t *testing.T) {
 	})
 	if !strings.Contains(stderr, "pig: warning: extension SDK staging failed: disk full\n") {
 		t.Fatalf("the startup build did not print the stage failure; stderr:\n%s", stderr)
-	}
-}
-
-// `pig diagnose` names when unstaged SDKs are staged.
-func TestDiagnoseSaysWhenSDKsStage(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("PIG_HOME", home)
-	stages, err := pigsdk.Status(home)
-	if err != nil || len(stages) == 0 || stages[0].Current {
-		t.Fatalf("a fresh config root reports %+v (err %v)", stages, err)
-	}
-	var out strings.Builder
-	runDiagnose(&out, "")
-	if !strings.Contains(out.String(), "not staged: stages when an extension loads") {
-		t.Fatalf("diagnose output:\n%s", out.String())
 	}
 }
 

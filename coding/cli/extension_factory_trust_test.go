@@ -1,3 +1,5 @@
+//go:build !pig_strip_codemode || !pig_strip_llama_cpp || !pig_strip_mcp || !pig_strip_pig_login || !pig_strip_tool_search
+
 package cli
 
 import (

@@ -228,22 +228,28 @@ func TestSettingsPatternErrorsFollowPi(t *testing.T) {
 	// minimatch 11.0.3 throws only for a pattern over 65,536 UTF-16 units; through 10.2.6 "[[:alpha:]]-x" threw a SyntaxError.
 	const want = "pattern is too long"
 	filterThrow := strings.Repeat("a", 65537)
-	for _, tc := range []struct {
+	type patternCase struct {
 		name          string
 		prompts       []string
 		user, project string
 		fails         bool
-	}{
+	}
+	cases := []patternCase{
 		{"auto-discovered prompt reaches the exclude", []string{"a"}, `{"prompts":["!` + filterThrow + `"]}`, "", true},
 		{"an earlier exclude matches every prompt", []string{"a"}, `{"prompts":["!a.md","!` + filterThrow + `"]}`, "", false},
 		{"a prompt the earlier exclude misses", []string{"a", "b"}, `{"prompts":["!a.md","!` + filterThrow + `"]}`, "", true},
-		{"a built-in extension reaches the exclude", nil, `{"extensions":["!` + filterThrow + `"]}`, "", true},
-		{"the project setting decides every built-in", nil, `{"extensions":["!` + filterThrow + `"]}`, `{"extensions":["!builtin:*"]}`, false},
-		{"the project setting decides no built-in", nil, `{"extensions":["!` + filterThrow + `"]}`, `{"extensions":["!nothing-here"]}`, true},
 		// An entry with "*" or "?" is a pattern over the files the plain entries collect (splitPatterns, resolveLocalEntries).
 		{"an include pattern over the collected files", []string{"a"}, `{"prompts":["prompts","` + filterThrow + `*"]}`, "", true},
 		{"an entry without a glob character is a path", []string{"a"}, `{"prompts":["prompts","` + filterThrow + `"]}`, "", false},
-	} {
+	}
+	// A Binary with every built-in extension stripped has none for an exclude to reach, so these three cases do not exist there (pig additive, D92).
+	if len(builtInExtensions) > 0 {
+		cases = append(cases,
+			patternCase{"a built-in extension reaches the exclude", nil, `{"extensions":["!` + filterThrow + `"]}`, "", true},
+			patternCase{"the project setting decides every built-in", nil, `{"extensions":["!` + filterThrow + `"]}`, `{"extensions":["!builtin:*"]}`, false},
+			patternCase{"the project setting decides no built-in", nil, `{"extensions":["!` + filterThrow + `"]}`, `{"extensions":["!nothing-here"]}`, true})
+	}
+	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			cwd, agentDir := t.TempDir(), t.TempDir()
 			for _, name := range tc.prompts {
