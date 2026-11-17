@@ -55,11 +55,9 @@ func checkConcurrencyLines(t *testing.T, lines []string) {
 	}
 }
 
-// Container.Render returns a fresh slice that its caller owns, as Pi's
-// Container.render does, so goroutines that render the same container never
-// share an array. A Render that copied the reused window array after
-// releasing the lock raced with the next render writing into it (go test
-// -race).
+// Container.Render returns a borrowed slice, as Pi's Container.render does (b7bb7ca905b8): goroutines that render the same container share the
+// array while the lines are unchanged, and a render that changes them replaces the array instead of writing into it. A Render that handed out the
+// reused window array raced with the next render writing into it (go test -race).
 func TestContainerRenderIsSafeForConcurrentCallers(t *testing.T) {
 	chat, head := concurrencyChat()
 	var wg sync.WaitGroup
@@ -69,8 +67,8 @@ func TestContainerRenderIsSafeForConcurrentCallers(t *testing.T) {
 				head.set(fmt.Sprintf("head %d %d", g, i))
 				lines := chat.Render(40)
 				checkConcurrencyLines(t, lines)
-				// The caller owns the slice: editing it changes no later render.
-				lines[1] = "edited"
+				// The slice is borrowed: a caller that edits a line copies first, and that changes no later render.
+				slices.Clone(lines)[1] = "edited"
 			}
 		})
 	}

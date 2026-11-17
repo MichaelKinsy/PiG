@@ -18,6 +18,8 @@ type boxRenderCache struct {
 	hasBg              bool
 	bgSample           string
 	lines              []string
+	// parts is each child's lines as that child returned them, compared with the next render's to find out whether any changed.
+	parts [][]string
 }
 
 // Box component - a container that applies padding and background to children.
@@ -34,6 +36,8 @@ type Box struct {
 	// mouseLayout records child heights from the last render for mouse
 	// dispatch. Mirrors upstream Box.mouseLayout.
 	mouseLayout *mouseLayout
+	// partsBuf is the array the next render collects the children's lines into; the cache owns the one it holds.
+	partsBuf [][]string
 }
 
 func NewBox() *Box { return &Box{PaddingX: 1, PaddingY: 1} }
@@ -89,43 +93,73 @@ func (b *Box) Invalidate() {
 	}
 }
 
-func (b *Box) matchCache(width int, childLines []string, hasBg bool, bgSample string) bool {
+func (b *Box) matchCache(width int, parts [][]string, hasBg bool, bgSample string) bool {
 	cache := b.cache
-	if cache == nil || cache.width != width || cache.paddingX != b.PaddingX || cache.paddingY != b.PaddingY || cache.hasBg != hasBg || cache.bgSample != bgSample || len(cache.childLines) != len(childLines) {
+	if cache == nil || cache.width != width || cache.paddingX != b.PaddingX || cache.paddingY != b.PaddingY || cache.hasBg != hasBg || cache.bgSample != bgSample || len(cache.parts) != len(parts) {
 		return false
 	}
-	for i := range childLines {
-		if cache.childLines[i] != childLines[i] {
+	for i := range parts {
+		if !sameChildLines(cache.parts[i], parts[i]) {
 			return false
 		}
 	}
 	return true
 }
 
+// sameChildLines reports whether two renders of a child are the same lines: the same array, or equal rows (box.ts sameLines).
+func sameChildLines(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	if len(a) == 0 || &a[0] == &b[0] {
+		return true
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// Render returns the box's lines. As Pi's Box.render (b7bb7ca905b8), it returns the same array again, with the same length, while the children's
+// lines, the width, the padding and the background are unchanged; the children's lines are compared child by child, without concatenating them. The
+// slice is borrowed: read-only, capacity equal to its length; copy it before writing (see Container.Render).
 func (b *Box) Render(width int) []string {
 	if len(b.children) == 0 {
 		return []string{}
 	}
+	b.verifyCacheLines()
 	contentWidth := max(1, width-b.PaddingX*2)
 	leftPad := strings.Repeat(" ", b.PaddingX)
 	// Keep the child lines unpadded: children usually return the same string values every frame, so the cache check below compares identical strings. Padding here would create new strings that must be compared byte by byte.
-	childLines := make([]string, 0, 8)
-	children := make([]mouseChild, len(b.children))
-	for i, child := range b.children {
+	parts := b.partsBuf[:0]
+	total := 0
+	for _, child := range b.children {
 		lines := child.Render(contentWidth)
-		children[i] = mouseChild{component: child, height: len(lines)}
-		childLines = append(childLines, lines...)
-	}
-	b.mouseLayout = &mouseLayout{width: contentWidth, children: children}
-	if len(childLines) == 0 {
-		return []string{}
+		parts = append(parts, lines)
+		total += len(lines)
 	}
 	bgSample := ""
 	if b.BgFn != nil {
 		bgSample = b.BgFn("test")
 	}
-	if b.matchCache(width, childLines, b.BgFn != nil, bgSample) {
-		return b.cache.lines
+	if b.matchCache(width, parts, b.BgFn != nil, bgSample) {
+		b.partsBuf = parts[:0]
+		return b.cache.lines[:len(b.cache.lines):len(b.cache.lines)]
+	}
+	mouseChildren := make([]mouseChild, len(parts))
+	for i, child := range b.children {
+		mouseChildren[i] = mouseChild{component: child, height: len(parts[i])}
+	}
+	b.mouseLayout = &mouseLayout{width: contentWidth, children: mouseChildren}
+	if total == 0 {
+		b.partsBuf = parts[:0]
+		return []string{}
+	}
+	childLines := make([]string, 0, total)
+	for _, part := range parts {
+		childLines = append(childLines, part...)
 	}
 	// A row whose child line is the one the last render drew keeps the last render's row: the cache above is dropped by every
 	// change of the children, but a card that draws again after each streamed update changes one line of the many it holds.
@@ -155,9 +189,15 @@ func (b *Box) Render(width int) []string {
 			result = append(result, b.applyBg("", width))
 		}
 	}
-	b.cache = &boxRenderCache{childLines: childLines, width: width, paddingX: b.PaddingX, paddingY: b.PaddingY, hasBg: b.BgFn != nil, bgSample: bgSample, lines: result}
-	b.last = b.cache
-	return result
+	cache := &boxRenderCache{childLines: childLines, parts: parts, width: width, paddingX: b.PaddingX, paddingY: b.PaddingY, hasBg: b.BgFn != nil, bgSample: bgSample, lines: result}
+	b.partsBuf = nil // the cache owns the array now
+	if b.cache != nil {
+		b.partsBuf = b.cache.parts[:0]
+	}
+	b.cache = cache
+	b.last = cache
+	b.sealCacheLines()
+	return result[:len(result):len(result)]
 }
 
 func (b *Box) applyBg(line string, width int) string {

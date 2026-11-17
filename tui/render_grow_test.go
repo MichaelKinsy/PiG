@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -197,7 +198,7 @@ func TestTUIRender_StreamingToolCollapseDoesNotRetainHiddenRowsInScrollback(t *t
 				tool.SetDefinition(&ToolDefinitionRenderers{}, json.RawMessage(`{}`))
 			}
 			ui.Add(renderFuncComponent(func(renderWidth int) []string {
-				lines := tool.Render(renderWidth)
+				lines := slices.Clone(tool.Render(renderWidth))
 				for i := range lines {
 					lines[i] = stripANSI(lines[i])
 				}

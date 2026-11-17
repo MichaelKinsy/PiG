@@ -27,7 +27,7 @@ func TestShowImagesUpstreamRender(t *testing.T) {
 				}
 				border := strings.Repeat("─", width)
 				want := []string{border, yes, no, border}
-				got := s.Render(width)
+				got := slices.Clone(s.Render(width))
 				for i := range got {
 					got[i] = stripANSI(got[i])
 				}

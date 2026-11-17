@@ -341,7 +341,8 @@ func (t *TuiAltScreen) autoScrollSelection(gen uint64) {
 	}
 	t.selectionAutoScrollTimer = t.afterFunc(altSelectionAutoScrollInterval, func() { t.dispatchAutoScrollTick(func() { t.autoScrollSelection(gen) }) })
 	t.mu.Unlock()
-	t.RequestRender()
+	// Selection is painted onto the screen after layout, so it needs no new component output (tui-alt-screen.ts autoScrollSelection).
+	t.requestViewRender()
 }
 
 // stopSelectionAutoScrollLocked stops the auto-scroll timer and clears its

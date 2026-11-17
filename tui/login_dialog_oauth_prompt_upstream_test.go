@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -73,7 +74,7 @@ func TestLoginDialogPreservesSetupDetailsUpstream(t *testing.T) {
 }
 
 func loginDialogPlainLines(dialog *LoginDialogComponent) []string {
-	lines := dialog.Render(120)
+	lines := slices.Clone(dialog.Render(120))
 	for i, line := range lines {
 		lines[i] = strings.TrimRight(widthx.StripAnsi(line), " ")
 	}

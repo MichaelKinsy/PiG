@@ -221,23 +221,35 @@ func (c *Container) handleMouse(event TuiMouseEvent, held bool) *TuiMouseDispatc
 	if !held {
 		c.mu.RLock()
 	}
-	var children []mouseChild
+	var result *TuiMouseDispatchResult
 	if c.layoutValid && c.layoutWidth == event.Width {
-		children = make([]mouseChild, len(c.builtKids))
-		top := 0
+		// The heights of the last render are in the window (builtEnds): find the child under the row and release the lock, copying nothing
+		// (tui.ts dispatchMouseToChildLines reads the cached heights the same way).
+		var target Component
+		top, height := 0, 0
 		for i, child := range c.builtKids {
-			children[i] = mouseChild{component: child, height: c.builtEnds[i] - top}
-			top = c.builtEnds[i]
+			end := c.builtEnds[i]
+			if event.Y >= top && event.Y < end {
+				target, height = child, end-top
+				break
+			}
+			top = end
 		}
+		if !held {
+			c.mu.RUnlock()
+		}
+		if target != nil {
+			event.Y -= top
+			event.Height = height
+			result = DispatchMouseEvent(target, event)
+		}
+	} else {
+		components := append([]Component(nil), c.children...)
+		if !held {
+			c.mu.RUnlock()
+		}
+		result = dispatchToStackedChild(measureMouseChildren(components, event.Width), event, event.X, event.Y, event.Width)
 	}
-	components := append([]Component(nil), c.children...)
-	if !held {
-		c.mu.RUnlock()
-	}
-	if children == nil {
-		children = measureMouseChildren(components, event.Width)
-	}
-	result := dispatchToStackedChild(children, event, event.X, event.Y, event.Width)
 	if result != nil {
 		// A handler changes what its component draws without telling anyone (Pi's MouseRegion closure flips a field, and Pi redraws every
 		// component on the next frame), so no cached rows of this container's path are known to still hold. A cached row of an ancestor that reports

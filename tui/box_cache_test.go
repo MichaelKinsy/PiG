@@ -11,8 +11,10 @@ type inPlaceComponent struct{ lines []string }
 func (c *inPlaceComponent) Render(int) []string { return c.lines }
 func (*inPlaceComponent) Invalidate()           {}
 
-// box.ts keeps the unpadded child lines in its render cache and applies padding and background only on a cache miss (upstream 0.99.1 box.ts:109). The cache must not alias a child's backing array, or an in-place edit would compare equal to itself and serve a stale frame.
-func TestBoxRenderCacheSeesInPlaceChildEdits(t *testing.T) {
+// box.ts keeps the unpadded child lines in its render cache and applies padding and background only on a cache miss (upstream 0.99.1 box.ts:109). Since Pi
+// b7bb7ca905b8 the lines a component returns are read-only (`readonly string[]`) and the box compares them child by child, the same array being
+// unchanged (box.ts renderChildLines, sameLines: `a === b`): a child that changes what it shows returns a new array, and the box sees it.
+func TestBoxRenderCacheSeesAChildsNewLines(t *testing.T) {
 	child := &inPlaceComponent{lines: []string{"one", "two"}}
 	box := NewPaddedBox(2, 1, func(s string) string { return "[" + s + "]" })
 	box.AddChild(child)
@@ -20,9 +22,9 @@ func TestBoxRenderCacheSeesInPlaceChildEdits(t *testing.T) {
 	if want := []string{"[          ]", "[  one     ]", "[  two     ]", "[          ]"}; !slices.Equal(first, want) {
 		t.Fatalf("first frame = %q, want %q", first, want)
 	}
-	child.lines[1] = "changed"
+	child.lines = []string{"one", "changed"}
 	if got, want := box.Render(10)[2], "[  changed ]"; got != want {
-		t.Fatalf("frame after an in-place edit = %q, want %q", got, want)
+		t.Fatalf("frame after the child returned new lines = %q, want %q", got, want)
 	}
 	// An unchanged frame is a cache hit, and a width change is a miss.
 	again := box.Render(10)
@@ -31,6 +33,19 @@ func TestBoxRenderCacheSeesInPlaceChildEdits(t *testing.T) {
 	}
 	if got := box.Render(12)[1]; got != "[  one       ]" {
 		t.Fatalf("frame at a new width = %q", got)
+	}
+}
+
+// Pi's stated limit: output that is changed in place is not seen. The array a child returned again is the same array, so the box takes it for
+// unchanged and serves its cached frame (the child broke the rule that render output is read-only).
+func TestBoxRenderCacheTakesTheSameArrayForUnchanged(t *testing.T) {
+	child := &inPlaceComponent{lines: []string{"one", "two"}}
+	box := NewPaddedBox(2, 0, nil)
+	box.AddChild(child)
+	box.Render(10)
+	child.lines[1] = "changed"
+	if got := box.Render(10)[1]; got != "  two     " {
+		t.Fatalf("frame after an in-place edit = %q, want the cached frame", got)
 	}
 }
 

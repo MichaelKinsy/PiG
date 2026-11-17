@@ -247,7 +247,7 @@ func (t *TuiAltScreen) scrollToPrompt(direction int) {
 	for row := sv.ScrollTop() + direction; row >= 0 && row < len(lines); row += direction {
 		if osc133PromptStart.MatchString(lines[row]) {
 			sv.ScrollTo(row)
-			t.RequestRender()
+			t.requestViewRender()
 			return
 		}
 	}

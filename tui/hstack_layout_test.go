@@ -2,12 +2,13 @@ package tui
 
 import (
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
 
 func hstackRows(stack *HStack, width int) []string {
-	rows := stack.Render(width)
+	rows := slices.Clone(stack.Render(width))
 	for i := range rows {
 		rows[i] = strings.TrimRight(stripANSI(rows[i]), " ")
 	}

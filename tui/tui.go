@@ -119,7 +119,7 @@ type Container struct {
 	// childCache memoizes each child's rendered lines keyed by component
 	// identity. renderedLines is the immutable concatenation consumed by the
 	// package renderers; settled frames reuse it without copying Session history.
-	// Render clones it to preserve upstream's fresh-array ownership for callers.
+	// Render hands out public, a clone that it keeps while the lines are unchanged (upstream renderChildLines).
 	cacheWidth int
 	cacheTheme *Theme
 	// invalidatedTheme is the theme under which the whole-tree walk (invalidateComponentTree, Pi's TUI.invalidate) last invalidated
@@ -131,6 +131,13 @@ type Container struct {
 	renderedLines    []string
 	renderedValid    bool
 	renderVersion    uint64
+	// public is the capacity-clipped copy the last Render returned (upstream Container.childLines.lines): borrowed by every caller, replaced and never
+	// rewritten. publicVersion, publicGen and publicWidth are the revision, the children (structureGen) and the width it was made from.
+	public        []string
+	publicValid   bool
+	publicWidth   int
+	publicVersion uint64
+	publicGen     uint64
 	// structureGen counts the changes of the children. A render that finds it changed when its loop ends knows a child's Render changed the children
 	// (a subprocess extension's component calls the screen's addChild or removeChild, as Pi's render may), so what it built is not the children now.
 	structureGen uint64
@@ -446,18 +453,29 @@ func (c *Container) SetMaxLines(n int) {
 	c.mu.Unlock()
 }
 
-// Render returns a fresh slice, matching upstream Container.render's observable
-// array ownership. It builds into a new array and copies it under the lock, so
-// a call on another goroutine neither writes into nor reads an array that a
-// parent container or the renderer borrowed. Package renderers use
-// renderBorrowed to read the immutable cached concatenation without copying
-// settled transcript history every frame.
+// Render returns the container's lines. As Pi's Container.render (b7bb7ca905b8, renderChildLines), it returns the SAME slice again, with the same
+// length, while the children and their lines are unchanged: it is replaced when a child was added, removed or replaced, when a child's lines
+// changed or the width changed. The slice is borrowed (Pi's `readonly string[]`): do not write into it; copy it first (slices.Clone), also in a type that
+// embeds a Container and edits its own Render result. Its capacity equals its length, so an append by the caller copies into a new array and
+// cannot write into the cache. Go cannot refuse an index write: the build tag pigborrowcheck (borrow_check.go) panics on the next render when
+// the lines changed under the container; the default build has no check and no cost. A render replaces the slice, it never rewrites an array it
+// handed out, so a caller on another goroutine may keep reading the slice it got. Package renderers use renderBorrowed to read the
+// immutable concatenation without any copy.
 //
 //perf:hot
 func (c *Container) Render(width int) []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return slices.Clone(c.renderBorrowedLocked(width, false))
+	c.verifyPublicLocked()
+	lines := c.renderBorrowedLocked(width, false)
+	if c.publicValid && c.publicWidth == width && c.publicGen == c.structureGen && (c.publicVersion == c.renderVersion || slices.Equal(c.public, lines)) {
+		c.publicVersion = c.renderVersion
+		return c.public
+	}
+	c.public = slices.Clip(slices.Clone(lines))
+	c.publicValid, c.publicWidth, c.publicVersion, c.publicGen = true, width, c.renderVersion, c.structureGen
+	c.sealPublicLocked()
+	return c.public
 }
 
 // renderCopy returns a copy of the lines of a container that only its
@@ -819,8 +837,12 @@ type tuiBase struct {
 	baseOwner          atomic.Uint64
 	frameAccess        atomic.Bool // EnableFrameAccess: the renderer records frameOwner and baseOwner
 	frameRenderRequest atomic.Uint32
-	renderGeneration   uint64
-	lastRenderAt       time.Time
+	// contentChanged is whether a render request since the last frame may have changed component output (tui.ts TuiBase.contentChanged). Only a
+	// view request (requestViewRender) leaves it false, and then the frame may reuse the output of the previous one. It is an atomic so that a request
+	// from any goroutine, a focus change included, sets it without taking mu; the frame reads and clears it once, before it lays out.
+	contentChanged   atomic.Bool
+	renderGeneration uint64
+	lastRenderAt     time.Time
 	// pacing answers scheduleRenderLocked's interval from lastFrameCost, what the last throttled frame took from its start to the return of its write; nil is Pi's constant (frame_pacing.go).
 	pacing        *FramePacing
 	lastFrameCost time.Duration
@@ -1018,6 +1040,11 @@ func (t *tuiBase) currentOverlayVisibility(opts OverlayOptions) bool {
 }
 
 func (t *tuiBase) applyOverlayCommand(command overlayCommand) overlayCommandResult {
+	// A focus or overlay change draws cursors and overlays from components: no earlier output is reused (tui.ts focus change). A geometry
+	// update is not one: the frame sends it for the size it is drawing, and a view-only frame must keep its reused output.
+	if command.kind != overlayGeometryChanged {
+		t.contentChanged.Store(true)
+	}
 	t.overlayMu.Lock()
 	previous := t.overlayModel.focusedComponent()
 	result := t.overlayModel.apply(command)
@@ -1938,7 +1965,11 @@ func (t *tuiBase) RequestRender(force ...bool) {
 		return
 	}
 	forced := len(force) > 0 && force[0]
-	if t.deferFrameRenderRequest(forced) {
+	want := frameRenderRequestNormal
+	if forced {
+		want = frameRenderRequestForced
+	}
+	if t.deferFrameRenderRequest(want) {
 		return
 	}
 	t.requestRender(forced)
@@ -1946,6 +1977,7 @@ func (t *tuiBase) RequestRender(force ...bool) {
 
 const (
 	frameRenderRequestNone uint32 = iota
+	frameRenderRequestView
 	frameRenderRequestNormal
 	frameRenderRequestForced
 )
@@ -1981,14 +2013,11 @@ func (t *tuiBase) leaveFrame() {
 	t.frameOwner.Store(0)
 }
 
-// deferFrameRenderRequest records a render request made while a frame holds mu and reports whether it did. A forced request supersedes a normal one.
-func (t *tuiBase) deferFrameRenderRequest(force bool) bool {
+// deferFrameRenderRequest records a render request made while a frame holds mu and reports whether it did. A forced request supersedes a normal
+// one, and a normal one a view request.
+func (t *tuiBase) deferFrameRenderRequest(want uint32) bool {
 	if !t.frameActive.Load() {
 		return false
-	}
-	want := frameRenderRequestNormal
-	if force {
-		want = frameRenderRequestForced
 	}
 	for {
 		current := t.frameRenderRequest.Load()
@@ -2005,6 +2034,8 @@ func (t *tuiBase) deferFrameRenderRequest(force bool) bool {
 
 func (t *tuiBase) issueFrameRenderRequest() {
 	switch t.frameRenderRequest.Swap(frameRenderRequestNone) {
+	case frameRenderRequestView:
+		t.requestViewRender()
 	case frameRenderRequestNormal:
 		t.RequestRender()
 	case frameRenderRequestForced:
@@ -2043,6 +2074,7 @@ func (t *tuiBase) RequestImmediateRender() {
 	t.renderGeneration++
 	generation := t.renderGeneration
 	t.immediateRenderRequested = true
+	t.contentChanged.Store(true)
 	t.renderRequested = true
 	dispatch := t.renderOnMain
 	if dispatch == nil {
@@ -2079,8 +2111,32 @@ func (t *tuiBase) requestRender(force bool) {
 	t.requestRenderLocked(force)
 }
 
-// requestRenderLocked is requestRender with mu held.
+// requestRenderLocked is requestRender with mu held: a request for a change that may have changed the output of any component.
 func (t *tuiBase) requestRenderLocked(force bool) {
+	t.contentChanged.Store(true)
+	t.armRenderLocked(force)
+}
+
+// requestViewRender mirrors TuiBase.requestViewRender (tui.ts, protected there): it requests a frame for a change that leaves component output
+// unchanged, such as a scroll position, so the frame may reuse the output of the previous one. It is RequestRender without the
+// content flag, so a request for a changed component made before the frame still renders everything.
+func (t *tuiBase) requestViewRender() {
+	if t.stopped.Load() {
+		return
+	}
+	if t.deferFrameRenderRequest(frameRenderRequestView) {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.stopped.Load() {
+		return
+	}
+	t.armRenderLocked(false)
+}
+
+// armRenderLocked asks for a frame; mu must be held.
+func (t *tuiBase) armRenderLocked(force bool) {
 	if force {
 		t.forceRedraw = true
 		if t.resetRenderState != nil {
@@ -2301,6 +2357,7 @@ func (t *tuiBase) Render() {
 	if t.stopped.Load() {
 		return
 	}
+	t.contentChanged.Store(true) // tui.ts renderNow
 	t.CancelPendingRender()
 	t.render(frameGate{})
 }

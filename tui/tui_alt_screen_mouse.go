@@ -527,7 +527,8 @@ func (t *TuiAltScreen) routeWheel(wheel wheelEvent, delta int) {
 	t.mu.Lock()
 	t.updateScrollbarHover(wheel.x, wheel.y)
 	t.unlockAndApplyHover()
-	t.RequestRender()
+	// Scrolling moves the viewport only: a view request reuses the previous frame's component output (tui-alt-screen.ts handleWheel).
+	t.requestViewRender()
 }
 
 // getScrollbarTargetAt returns the scroll view whose scrollbar track covers
