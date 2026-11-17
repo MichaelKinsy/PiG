@@ -2724,9 +2724,9 @@ func requestIssued(ctx context.Context) func() {
 
 type abortedCallSendKey struct{}
 
-// abortedCallSendContext is the context the frames of a tool_call are written under when its own context had ended before the host sent it: the call's values and none of its cancellation, so the call is sent and the tool runs with its signal aborted, as Pi runs tool.execute. It also bounds a stuck writer. The call's own context goes on to end the wait, which cancels the tool's signal-only and starts the grace period.
+// abortedCallSendContext is the context the frames of a tool_call are written under when its own context had ended before the host sent it: the call's values and none of its cancellation, so the call is sent and the tool runs with its signal aborted, as Pi runs tool.execute. It also bounds the wait for room in the writer's queue. The call's own context goes on to end the wait, which cancels the tool's signal-only and starts the grace period.
 func abortedCallSendContext(ctx context.Context) (context.Context, context.CancelFunc) {
-	// pig divergence (D111): Pi writes nothing and waits for nothing here; a writer that has not taken the call within ToolAbortGrace fails it as ErrToolAborted.
+	// pig divergence (D111): Pi has no bound here; a call whose frames cannot be queued within ToolAbortGrace (the writer's queue stays full) fails as ErrToolAborted. A frame already queued waits for its write as every request does, and ends with the connection's failure when the peer stops reading (heartbeat, D56).
 	return context.WithTimeoutCause(context.WithoutCancel(ctx), ToolAbortGrace, ErrToolAborted)
 }
 

@@ -287,31 +287,42 @@ func TestEndedToolCallKeepsItsHostCallsUntilTheGraceEnds(t *testing.T) {
 	rig.settled(t)
 }
 
-// A writer that cannot take the call's frames does not hold the abort: the state and the request are written under one bound, ToolAbortGrace, and a call that
-// could not be written in it fails as "Operation aborted", never as "context canceled", and no request reaches the extension afterwards.
-func TestEndedToolCallThatCannotBeWrittenFailsAsAborted(t *testing.T) {
-	rig := newEndedCallRig(t)
-	// A second connection whose extension side stops reading: the first frame blocks its writer and the next fill its queue.
+// stuckPeerConn is a connection whose peer does not read: its writer holds one frame, blocked on the pipe, and, when fill is set, the queue behind it is
+// full to its capacity. Both are reached by sends the test makes itself, so nothing depends on timing.
+func stuckPeerConn(t *testing.T, rig *endedCallRig, name string, options connOptions, fill bool) (*managedExt, *Conn, net.Conn) {
+	t.Helper()
 	hostSide, peer := net.Pipe()
-	conn := newConnWithOptions("stuck", hostSide, connOptions{Clock: rig.clock, HeartbeatInterval: time.Hour})
+	conn := newConnWithOptions(name, hostSide, options)
 	conn.Start(t.Context())
 	t.Cleanup(func() {
 		_ = peer.Close()
 		<-conn.Done()
 	})
-	me := withConn(&managedExt{config: ExtConfig{Name: "stuck"}, host: rig.h}, conn)
-	rig.h.exts["stuck"] = me
-	for range cap(conn.outCh) + 2 {
-		queued := make(chan struct{})
-		go func() {
-			defer close(queued)
-			_ = conn.Send(&Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "filler"}})
-		}()
-		select {
-		case <-queued:
-		case <-time.After(50 * time.Millisecond):
+	me := withConn(&managedExt{config: ExtConfig{Name: name}, host: rig.h}, conn)
+	rig.h.exts[name] = me
+	filler := &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "filler"}}
+	if err := conn.Send(filler); err != nil {
+		t.Fatal(err)
+	}
+	for deadline := time.Now().Add(10 * time.Second); len(conn.outCh) != 0; time.Sleep(time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("the writer never took the first frame")
 		}
 	}
+	if fill {
+		for range cap(conn.outCh) {
+			if err := conn.Send(filler); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	return me, conn, peer
+}
+
+// A call whose frames cannot be queued within the grace period ends as aborted (D111): the writer is held by a peer that does not read and its queue is full.
+func TestEndedToolCallThatCannotBeWrittenFailsAsAborted(t *testing.T) {
+	rig := newEndedCallRig(t)
+	me, _, _ := stuckPeerConn(t, rig, "stuck", connOptions{Clock: rig.clock, HeartbeatInterval: time.Hour}, true)
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 	started := time.Now()
@@ -321,6 +332,50 @@ func TestEndedToolCallThatCannotBeWrittenFailsAsAborted(t *testing.T) {
 	}
 	if elapsed := time.Since(started); elapsed < ToolAbortGrace {
 		t.Fatalf("the call failed after %v, before the %v bound", elapsed, ToolAbortGrace)
+	}
+}
+
+// A frame already queued behind a writer that a peer holds waits for its write as every request does, and ends with the connection: the heartbeat (D56) fails
+// a peer that stops reading, and the call returns the connection's failure, not "Operation aborted". The call's place in the call order is released on the way, so the next
+// reserved call ends with the connection too, and the connection holds nothing of either.
+func TestEndedToolCallQueuedBehindAStuckWriterEndsWithTheConnection(t *testing.T) {
+	rig := newEndedCallRig(t)
+	me, conn, _ := stuckPeerConn(t, rig, "stuck-queued", connOptions{HeartbeatInterval: 20 * time.Millisecond, HeartbeatTimeout: 200 * time.Millisecond}, false)
+	reserve := func() *extension.CallOrder {
+		place := conn.toolOrder.Reserve()
+		return &extension.CallOrder{Wait: place.Wait, Release: place.Release}
+	}
+	first, second := reserve(), reserve()
+	execute := rig.h.makeToolExecuteFunc(me, "probe")
+	ended, cancel := context.WithCancel(t.Context())
+	cancel()
+	results := make(chan error, 2)
+	go func() {
+		_, err := execute(extension.WithCallOrder(ended, first), "tc-first", json.RawMessage(`{}`), nil)
+		results <- err
+	}()
+	go func() {
+		_, err := execute(extension.WithCallOrder(t.Context(), second), "tc-second", json.RawMessage(`{}`), nil)
+		results <- err
+	}()
+	for range 2 {
+		select {
+		case err := <-results:
+			// The heartbeat fails the connection (ExtensionUnresponsiveError) and closes the transport, which also ends the write the writer was in (TransportError).
+			var unresponsive *ExtensionUnresponsiveError
+			var transport *TransportError
+			if err == nil || errors.Is(err, ErrToolAborted) || !(errors.As(err, &unresponsive) || errors.As(err, &transport)) {
+				t.Fatalf("a call behind the stuck writer = %v, want the connection's failure", err)
+			}
+		case <-time.After(30 * time.Second):
+			t.Fatal("a call behind the stuck writer did not end with the connection")
+		}
+	}
+	conn.pendingMu.Lock()
+	pending, tools := len(conn.pending), len(conn.toolRequests)
+	conn.pendingMu.Unlock()
+	if pending != 0 || tools != 0 {
+		t.Fatalf("the connection still holds the calls: %d pending, %d tool requests", pending, tools)
 	}
 }
 
