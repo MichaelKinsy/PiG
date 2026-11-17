@@ -2233,7 +2233,7 @@
       "evidence": [
         "chord/next/contracts/contract_test.go"
       ],
-      "rationale": "All 7 upstream cases run in the evidence files."
+      "rationale": "All 7 upstream cases run in the evidence files. Pi 5f89cc0a7df6 adds the 3 cases of `member names`: TestMemberNames (contract_test.go) runs them with the same inputs (MemberNamesOf is memberNames, MemberNameLists its result; `memberNames(Notes)` without a variant is MemberNamesOf(notes, contracts.LocalVariant)) and adds a case that the returned lists are copies. The hash is the pin's."
     },
     {
       "path": "packages/chord/test/contracts/declare.test.ts",
@@ -2306,9 +2306,10 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:73bb6fd4ffc79261823d042c75a4f5abfc03861b73455ef1ff9b2cfee5efec29",
       "evidence": [
-        "chord/next/contracts/schema_test.go"
+        "chord/next/contracts/schema_test.go",
+        "chord/next/contracts/exported_api_test.go#TestEveryTypeAnExportedNameMentionsIsExported"
       ],
-      "rationale": "All 8 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none)."
+      "rationale": "All 8 upstream cases run in the evidence files (Pi case titles matched to Go tests by normalised title or words on the lane branches; chord-missing-cases/ lists none). Pi 5f89cc0a7df6 adds `the types of a contract's members are all exported` (tsc declaration emit of a contract of every member kind names no path into node_modules): there is no declaration emit in Go; its intent, that a consumer can name every type a contract's members have, is pinned by TestEveryTypeAnExportedNameMentionsIsExported, which fails when an exported name of chord/next/contracts mentions an unexported type (no lint of the repository checks that: golangci's iface covers interfaces only). The hash is the pin's."
     },
     {
       "path": "packages/chord/test/contracts/snapshot.test.ts",
@@ -3419,7 +3420,7 @@
       "evidence": [
         "chord/nextnode/http/upgrades_test.go"
       ],
-      "rationale": "19 cases (Pi 1.5.1 changes are try/finally only); added Go test TestPluginSocketsAnOversizedFrameLeavesTheSocketClosingTheServerReports1006AndThePeer1009: the error listener leaves a CLOSING socket alone, the server-side close event reports 1006 as Pi's ws does, and the peer sees 1009."
+      "rationale": "19 cases (Pi 1.5.1 changes are try/finally only); added Go test TestPluginSocketsAnOversizedFrameLeavesTheSocketClosingTheServerReports1006AndThePeer1009: the error listener leaves a CLOSING socket alone, the server-side close event reports 1006 as Pi's ws does, and the peer sees 1009. Pi 5f89cc0a7df6 adds `gives links.opened what terminates that link at once: the others stay open`: TestTheLinksEndpointGivesOpenedWhatTerminatesThatLinkAtOnceTheOthersStayOpen with its inputs; added Go tests for the order a goroutine can change (close inside the hook, close after the peer closed, close racing the peer's close). The hash is the pin's."
     },
     {
       "path": "packages/chord/test/node/plugins/base-inputs.test.ts",
@@ -3738,7 +3739,7 @@
         "chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseInANamedDirectoryEmptiedFirstWrittenAgainThereRemovedByClose",
         "chord/nextnode/workers/workers_workers_test.go#TestTheWorkerBaseAComponentThatClosedBeforeItsBuildWritesNothingAndLeavesANamedDirectoryAsItIs"
       ],
-      "rationale": "284e63d9c: the base writes nothing before its first file and leaves a named directory as it is; ported as the two TestTheWorkerBase tests. 602b8d1cb9 changes the \"stack traces name the source files\" case to read the maps beside the bundle's files (linked) and \"the bundle's file\" cases to skip them; a Go worker is a program with no bundle, source map or Node flag, so those two cases keep their PiG form above (language mechanics)."
+      "rationale": "284e63d9c: the base writes nothing before its first file and leaves a named directory as it is; ported as the two TestTheWorkerBase tests. 602b8d1cb9 changes the \"stack traces name the source files\" case to read the maps beside the bundle's files (linked) and \"the bundle's file\" cases to skip them; a Go worker is a program with no bundle, source map or Node flag, so those two cases keep their PiG form above (language mechanics). Pi 5f89cc0a7df6 adds `is minified but for the names` and changes two bundle expectations to the minified `from\"...\"` spelling: the same language mechanics (no esbuild bundle in a Go worker), designed out."
     },
     {
       "path": "packages/chord/test/node/workers/child.test.ts",

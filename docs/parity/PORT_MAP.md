@@ -759,13 +759,13 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/telemetry-sqlite/index.ts` | `chord/telemetrysqlite/index.go` | ✅ |
 | `packages/chord/src/telemetry-sqlite/store.ts` | `chord/telemetrysqlite/store.go` | ✅ |
 | `packages/chord/src/contracts/accepts.ts` | `chord/next/contracts/accepts.go` | ✅ |
-| `packages/chord/src/contracts/contract.ts` | `chord/next/contracts/contract.go` | ✅ |
+| `packages/chord/src/contracts/contract.ts` | `chord/next/contracts/contract.go` (Pi 5f89cc0a7df6: `memberNames(contract, variant = LOCAL)` is MemberNamesOf(contract, variant), returning MemberNameLists: Go has no default argument, and the name MemberNames is taken by history.ts's type of that name (the function MemberNames), so the result type is named for what it holds, as VariantNamesOf names its kind; the lists are copies; chord/next/contracts/contract_test.go TestMemberNames); `chord/nextnode/surfaces/client/pi/chord/src/contracts/contract.ts` and `chord/nextnode/plugins/node/pi/chord/src/contracts/contract.ts` (vendored byte-for-byte, manifests at Pi 5f89cc0a7df6) | ✅ |
 | `packages/chord/src/contracts/declare.ts` | `chord/next/contracts/declare.go` | ✅ |
 | `packages/chord/src/contracts/evolve.ts` | `chord/next/contracts/evolve.go` | ✅ |
 | `packages/chord/src/contracts/fingerprint.ts` | `chord/next/contracts/fingerprint.go` | ✅ |
 | `packages/chord/src/contracts/history.ts` | `chord/next/contracts/history.go` | ✅ |
 | `packages/chord/src/contracts/host-kind.ts` | `chord/next/contracts/host_kind.go` | ✅ |
-| `packages/chord/src/contracts/index.ts` | `(re-export barrel; Go packages export names directly)` | n/a |
+| `packages/chord/src/contracts/index.ts` | `(re-export barrel; Go packages export names directly). Pi 5f89cc0a7df6 exports the types Method, LiteralsSchema and HostKeyed and the function memberNames: Go's Method is contracts.Method, memberNames is MemberNamesOf; LiteralsSchema and HostKeyed are TypeScript types a declaration emit must name and have no Go type (a Go oneOf is a Schema, a host-keyed member is KeyedMember with a HostKind): the intent that a consumer can name every type of a contract's members is pinned for Go by chord/next/contracts/exported_api_test.go TestEveryTypeAnExportedNameMentionsIsExported; the vendored copies (chord/nextnode/surfaces/client/pi/chord/src/contracts/index.ts, chord/nextnode/plugins/node/pi/chord/src/contracts/index.ts) carry the exports for the TypeScript an author writes against them (chord/nextnode/surfaces TestClientVendoredFilesAreExactlyTheManifests)` | n/a |
 | `packages/chord/src/contracts/internal.ts` | `(re-export barrel for Chord's layers)` | n/a |
 | `packages/chord/src/contracts/names.ts` | `chord/next/contracts/names.go` | ✅ |
 | `packages/chord/src/contracts/params.ts` | `chord/next/contracts/params.go` | ✅ |
@@ -937,14 +937,14 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/http/cookies.ts` | `chord/nextnode/http/cookies.go` | ✅ |
 | `packages/chord/src/node/http/file.ts` | `chord/nextnode/http/file.go` | ✅ |
 | `packages/chord/src/node/http/headers.ts` | `chord/nextnode/http/headers.go` | ✅ |
-| `packages/chord/src/node/http/http.ts` | `chord/nextnode/http/http.go` | ✅ |
+| `packages/chord/src/node/http/http.ts` | `chord/nextnode/http/http.go` (Pi 5f89cc0a7df6: `links.opened(request, principal, close)` is LinksOptions.Opened with a third parameter, closeLink; a Go func gains the parameter at compile time where Pi's two-argument callbacks still type-check) | ✅ |
 | `packages/chord/src/node/http/incoming.ts` | `chord/nextnode/http/incoming.go` | ✅ |
 | `packages/chord/src/node/http/index.ts` | `(barrel: Go imports the package; exported names are those of Pi's index.ts, the rest is unexported)` | n/a |
 | `packages/chord/src/node/http/node.ts` | `chord/nextnode/http/node.go`, `chord/nextnode/http/url.go` (the listener; the wire URL Node's parser makes of Host and target in url.go, ported with Node's own parsing probed into chord/nextnode/http/testdata corpora; the packages/chord/test/node/http/node.test.ts cases in chord/nextnode/http/node_test.go, url_test.go; D218 records the net/http differences) | ✅ |
 | `packages/chord/src/node/http/request.ts` | `chord/nextnode/http/request.go` | ✅ |
 | `packages/chord/src/node/http/response.ts` | `chord/nextnode/http/response.go` | ✅ |
 | `packages/chord/src/node/http/router.ts` | `chord/nextnode/http/router.go`, `chord/nextnode/http/websocket.go` (WebSocketHandle) | ✅ |
-| `packages/chord/src/node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go` | ✅ |
+| `packages/chord/src/node/http/upgrades.ts` | `chord/nextnode/http/upgrades.go` (Pi 5f89cc0a7df6: the link's `opened(close)`, close = end(upgraded) as revocation does: Terminate, then the link's seal; chord/nextnode/http/upgrades_test.go TestTheLinksEndpointGivesOpenedWhatTerminatesThatLinkAtOnceTheOthersStayOpen. The hook's returned function is attached before the hook runs (Node emits a terminated socket's close on a later turn; a Go goroutine can emit it first): TestTheLinksEndpointRunsWhatOpenedReturnedWhenItEndedTheLinkBeforeReturning) | ✅ |
 | `packages/chord/src/node/plugins/build.ts` | `chord/nextnode/plugins/build/build_facet.go (scoped CSS modules through ScopeCSSModule, url() assets of stylesheets in a browser build), chord/nextnode/plugins/build/build_sourcemap.go`, `chord/nextnode/plugins/model/model_built.go` | ✅ |
 | `packages/chord/src/node/plugins/discover.ts` | `chord/nextnode/plugins/model/model_discover.go` | ✅ |
 | `packages/chord/src/node/plugins/evaluate.ts` | `chord/nextnode/plugins/plugins_pluginfile.go (pluginFile outside a facet script); Pi's file runs verbatim in the Node subprocess: chord/nextnode/plugins/node/pi/chord/src/node/plugins/evaluate.ts, node/host.mjs` | ✅ |
@@ -1009,7 +1009,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/chord/src/node/tui/launcher.ts` | `chord/nextnode/tui/tui_launcher.go`, `chord/nextnode/tui/tui_terminal.go` (the launcher's process terminal: TerminalOptions input and output, raw mode and resize; chord/nextnode/tui/tui_terminal_test.go, tui_terminal_pty_linux_test.go) | ✅ |
 | `packages/chord/src/node/tui/pipe.ts` | `chord/nextnode/tui/tui_pipe.go` | ✅ |
 | `packages/chord/src/node/tui/sandbox.ts` | `chord/nextnode/tui/tui_sandbox.go` | ✅ |
-| `packages/chord/src/node/workers/base.ts` | `(language mechanics: Pi bundles the worker's JavaScript with esbuild, writes the ES modules with their source maps beside them (linked, 602b8d1cb9) and forks Node on them; a Go worker is the program's own executable, copied by chord/nextnode/workers Build, with no JavaScript bundle, source map or Node flag; Go stack traces are Go's whatever Pi's maps are)` | n/a |
+| `packages/chord/src/node/workers/base.ts` | `(language mechanics: Pi bundles the worker's JavaScript with esbuild, writes the ES modules with their source maps beside them (linked, 602b8d1cb9) and forks Node on them; a Go worker is the program's own executable, copied by chord/nextnode/workers Build, with no JavaScript bundle, source map or Node flag; Go stack traces are Go's whatever Pi's maps are. Pi 5f89cc0a7df6 minifies that bundle (whitespace and syntax, names kept): PiG ships no such bundle, so no byte count, stack trace or digest of PiG moves)` | n/a |
 | `packages/chord/src/node/workers/child.ts` | `(language mechanics: the worker side of a Node fork, importable without esbuild; a Go worker is the program's own executable, whose WorkerMain is chord/nextnode/workers, and links no esbuild: chord/nextnode/workers TestTheWorkersPackageLinksNoEsbuild)` | n/a |
 | `packages/chord/src/react/hooks.ts` | `chord/nextnode/surfaces/client/pi/chord/src/react/hooks.ts` (vendored byte-for-byte, D601; chord/nextnode/surfaces/client_manifest_test.go); Pi f57cd9484: useVariant (vendored; chord/nextnode/app/app_web_browser_test.go) | ✅ |
 | `packages/chord/src/react/index.ts` | `(re-export barrel: the exports are the Go package surface)` | n/a |

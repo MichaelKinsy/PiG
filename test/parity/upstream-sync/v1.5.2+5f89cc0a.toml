@@ -1,0 +1,114 @@
+from = "1.5.2+b513b64d"
+to = "1.5.2+5f89cc0a"
+
+# The range b513b64d8ac8..5f89cc0a7df6 under packages/ (one commit, 5f89cc0a7: "feat(p3): slice 1 redo and slice 26, the release
+# build and the p3 command"; 14 paths, all under packages/chord) outside apps/p2 and apps/p3. The 91 paths of that commit under
+# apps/p3 (code, tests, release scripts and documents) are not listed: the repository's port map names apps/p3 as design documents
+# only (docs/parity/PORT_MAP.md "Outside the packages"), so the commit's code there needs a port line of its own; the list is on the
+# p3 backlog. The root package.json (a script, release:p3:local, for apps/p3) and package-lock.json (the apps/p3 workspace is
+# renamed @earendil-works/p3 and gains the dependencies esbuild 0.28.2, ws 8.21.0, pi-ai and pi-durable 1.5.2; no package of the
+# lock moves) are read by the vendoring only for react, react-dom and scheduler, which do not move: no pin moves (sdk-ts
+# dependency, vendored Node runtime packages, oracle).
+# Chord changes: links.opened gets a third argument, close; memberNames(contract, variant); the types Method, LiteralsSchema and
+# HostKeyed are exported; the workers' base is minified. The vendored Pi blobs under chord/nextnode/{surfaces/client,plugins/node}/pi
+# are re-vendored at 5f89cc0a7df6 (manifest `commit`, a catch-up): contracts/contract.ts and contracts/index.ts are the two vendored
+# files the commit changes (no other Pi commit between f6600b58f347 and 5f89cc0a7df6 changes a vendored file). No wire frame, schema
+# or fingerprint changes: memberNames reads names a contract already holds and close ends a link as a revocation does.
+
+[[files]]
+path = "packages/chord/CHANGELOG.md"
+change = "modified"
+disposition = "ported"
+evidence = []
+rationale = "5f89cc0a7: Pi's three Added entries (links.opened's close, memberNames, the exported types) and its Changed entry (the minified worker base). PiG's statement is its own changelog.d fragment followmain52chord-c5e3edfecd.md: close, MemberNamesOf and the exports of the vendored TypeScript chord are stated; the minified worker base is language mechanics (PiG ships no worker base JavaScript) and is not stated."
+
+[[files]]
+path = "packages/chord/docs/design.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5f89cc0a7: the design text names links.opened's close and p3's principal kinds. The repository mirrors no chord design document (Pi's chord documents are not ported: chord/README.md)."
+
+[[files]]
+path = "packages/chord/src/contracts/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5f89cc0a7: documents memberNames and the exported types. The repository mirrors no chord module README (chord/README.md); the Go doc comments of MemberNamesOf and MemberNameLists carry the text."
+
+[[files]]
+path = "packages/chord/src/contracts/contract.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/contract_test.go#TestMemberNames"]
+rationale = "5f89cc0a7: memberNames(contract, variant = LOCAL) returns { state, methods, events }, the keys of the variant of the current version in declared order, without a local contract's keyed and queries members; it throws `<name>: no variant \"<variant>\"` and refuses a copy of a contract. chord/next/contracts MemberNamesOf(contract, variant) does the same over NamedMap insertion order and returns MemberNameLists (Go has no default argument, and MemberNames is history.ts's function there); the three Pi cases run with the same inputs, and the lists are copies. The two vendored copies carry the file byte for byte."
+
+[[files]]
+path = "packages/chord/src/contracts/index.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/contract_test.go#TestMemberNames", "test:chord/next/contracts/exported_api_test.go#TestEveryTypeAnExportedNameMentionsIsExported"]
+rationale = "5f89cc0a7: exports memberNames, MemberNames and the types HostKeyed, LiteralsSchema and Method. Go: MemberNamesOf and MemberNameLists; Method is contracts.Method; LiteralsSchema and HostKeyed are TypeScript types a declaration emit must name and have no Go type (a Go oneOf is a Schema, a host-keyed member a KeyedMember with a HostKind). The intent, that a consumer can name every type of a contract's members, is pinned for Go by TestEveryTypeAnExportedNameMentionsIsExported (no exported name of chord/next/contracts mentions an unexported type). The two vendored copies carry the exports for the TypeScript an author writes against them."
+
+[[files]]
+path = "packages/chord/src/node/http/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5f89cc0a7: documents links.opened's close. The repository mirrors no chord module README; the doc comment of LinksOptions.Opened carries the text."
+
+[[files]]
+path = "packages/chord/src/node/http/http.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointGivesOpenedWhatTerminatesThatLinkAtOnceTheOthersStayOpen"]
+rationale = "5f89cc0a7: links.opened(request, principal, close); the hook is called with the close the upgrade made. LinksOptions.Opened gets a third parameter, closeLink (a forced Go mechanic: a Go func with two parameters no longer type-checks, where Pi's callbacks still do; Opened is new since v0.7.0, so no released caller breaks)."
+
+[[files]]
+path = "packages/chord/src/node/http/upgrades.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointGivesOpenedWhatTerminatesThatLinkAtOnceTheOthersStayOpen", "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointRunsWhatOpenedReturnedWhenItEndedTheLinkBeforeReturning", "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointsCloseAfterThePeerClosedTheLinkDoesNothingAndClosedRanOnce", "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointsCloseRacingThePeersCloseRunsClosedOnce"]
+rationale = "5f89cc0a7: link() keeps the upgraded record before accepting and gives opened `() => end(upgraded)`: the socket is terminated (no close handshake; the peer sees 1006) and the link sealed, as a revocation does; the link's other links stay; a second call, or one after the link is gone, does nothing. Upgrades.Link does the same with end(connection). Forced Go difference: Node emits a terminated socket's close on a later turn, so what the hook returns is always attached in time; a Go goroutine can emit it before the hook returned, so the close listener is attached before the hook runs and takes the hook's function when it is there, and the function runs after the hook returned when the close came first (once either way). Any goroutine may call close."
+
+[[files]]
+path = "packages/chord/src/node/workers/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5f89cc0a7: documents that the worker base is minified. A Go worker is the program's own executable, with no JavaScript bundle (chord/nextnode/workers, PORT_MAP row of base.ts)."
+
+[[files]]
+path = "packages/chord/src/node/workers/base.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5f89cc0a7: esbuild minifyWhitespace and minifySyntax (names kept) for the worker base. PiG ships no worker base JavaScript: a Go worker is the program's own executable, with no bundle, source map or Node flag, so no byte count, stack trace or digest row of PiG moves (language mechanics, the existing PORT_MAP row)."
+
+[[files]]
+path = "packages/chord/test/contracts/contract.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/contract_test.go#TestMemberNames"]
+rationale = "5f89cc0a7: the 3 cases of `member names`, run with the same inputs and results by TestMemberNames (plus a case that the lists are copies)."
+
+[[files]]
+path = "packages/chord/test/contracts/schema.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/next/contracts/exported_api_test.go#TestEveryTypeAnExportedNameMentionsIsExported"]
+rationale = "5f89cc0a7: `the types of a contract's members are all exported` emits a declaration with tsc and reads that no type is a path into node_modules. Go has no declaration emit; the intent (a consumer can name every type) is TestEveryTypeAnExportedNameMentionsIsExported, a go/types check of every exported name of chord/next/contracts, with a mutation (an exported function returning an unexported type) that turns it red."
+
+[[files]]
+path = "packages/chord/test/node/http/upgrades.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointGivesOpenedWhatTerminatesThatLinkAtOnceTheOthersStayOpen"]
+rationale = "5f89cc0a7: `gives links.opened what terminates that link at once: the others stay open` runs with the same sequence (two links of one principal, close of the first, the peer's code 1006, the hook's function once, the other link open, a second close a no-op)."
+
+[[files]]
+path = "packages/chord/test/node/workers/base.test.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5f89cc0a7: `is minified but for the names` and two bundle expectations spelled `from\"...\"` read the esbuild bundle of the worker base. A Go worker has no bundle (language mechanics, see base.ts)."
