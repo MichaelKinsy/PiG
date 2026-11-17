@@ -1013,8 +1013,8 @@ type ReportErrorPayload struct {
 	// extension's emit names its owner, and only the Node runtime sends it: the Go, Python, Rust and Lisp SDKs send no report_error at all (their
 	// handlers run inside the host's events.dispatch request and fail it). The host takes the name for that extension's error only when the extension is
 	// of the connection's own process; any other name (an extension the host does not know, or one that runs in another process) is ignored, the report is
-	// applied as the connection's own extension's in its place in the order, and the refused name is written to stderr like the bus's other failures
-	// (a notification has no reply to carry a refusal). A report without a name is the connection's own, as before.
+	// applied as the connection's own extension's in its place in the order, and the refused name is reported first as an error of the connection's
+	// extension through the runner's error listeners (a notification has no reply to carry a refusal). A report without a name is the connection's own, as before.
 	Extension string `json:"extension,omitempty"`
 }
 

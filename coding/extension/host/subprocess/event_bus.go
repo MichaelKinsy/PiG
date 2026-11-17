@@ -733,7 +733,7 @@ func (h *Host) reportExtensionError(owner *managedExt, event, message, stack str
 
 // applyReportError applies the report_error notification the read loop counted (Conn.noteReportRead), then counts it applied, so the responses queued behind it go on. A generation the host no longer accepts reports nothing, as it serves no other frame.
 // A malformed report (arguments that are not the payload, or no event name) is dropped like a malformed argument of any other notification; its size is bounded by MaxFrameSize, the cap of the frame that carries it.
-// A report is never lost for the extension it names: a name (ReportErrorPayload.Extension) that is no extension of this connection's own process is ignored, the report is applied as the connection's own extension's, in its place in the order, and the refused name is written to stderr with the host's other bus failures (reportEventBusError).
+// A report is never lost for the extension it names: a name (ReportErrorPayload.Extension) that is no extension of this connection's own process is ignored, the report is applied as the connection's own extension's, in its place in the order, and the refused name is reported first as an error of the connection's extension, through the runner's error listeners (the same mode-aware path as the report itself).
 func (h *Host) applyReportError(me *managedExt, conn *Conn, args json.RawMessage) {
 	defer conn.reportApplied()
 	if !h.acceptsNodeGeneration(me) {
@@ -745,7 +745,8 @@ func (h *Host) applyReportError(me *managedExt, conn *Conn, args json.RawMessage
 	}
 	owner := h.reportOwner(me, report.Extension)
 	if owner == nil {
-		reportEventBusError(report.Event, fmt.Errorf("report_error names the extension %q, which does not run in the process of %s: reported as %s's error", report.Extension, me.config.Name, me.config.Name))
+		// The diagnostic goes through the runner's error listeners like every extension error (the chat in the TUI, extension_error in RPC mode, stderr only in print mode, as Pi's), never to the terminal's own stderr.
+		h.reportExtensionError(me, report.Event, fmt.Sprintf("report_error names the extension %q, which does not run in the process of %s: reported as %s's error", report.Extension, me.config.Name, me.config.Name), "")
 		owner = me
 	}
 	h.reportExtensionError(owner, report.Event, report.Error, report.Stack)
