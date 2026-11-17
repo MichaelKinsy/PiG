@@ -839,6 +839,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
 | [BF-844d215](#bf-844d215) | Repairing a partial tool-call arguments text follows partial-json's `obj["__proto__"] = value`: a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8476760](#bf-8476760) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-8482ee1](#bf-8482ee1) | The footer of the interactive mode now follows an extension's `pi.setModel` at the moment the session's model… | PiG's own defect | All platforms | Unreleased |
 | [BF-848836a](#bf-848836a) | fix(frontmatter): header starts one UTF-16 unit after the fence | PiG's own defect | All platforms | Unreleased |
 | [BF-84b2fca](#bf-84b2fca) | Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-852652e](#bf-852652e) | PiG no longer names documentation that does not exist | PiG's own defect | All platforms | 0.5.0 |
@@ -13004,6 +13005,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `847676064a` (2026-10-31)
 - **Tests:** None recorded.
+
+### BF-8482ee1
+
+**The footer of the interactive mode now follows an extension's `pi.setModel` at the moment the session's model…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A change made by an extension with a `model_select` handler used to push the footer only after the handlers had replied, so a frame drawn while a handler was pending (a key press, a stream tick) came from the footer's cache with the previous model's context window, and nothing drew again: the old window stayed until the next keystroke.
+- **Root cause:** An extension's pi.setModel ran Session.ExtensionSetModel off the interactive owner loop. It awaited the model_select handlers first and only then pushed the footer (statusLine.SetModel, which invalidates and requests no render). A frame drawn in between (a key press, a stream tick) came from the cached footer with the previous model's context window, and no render followed.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8482ee1d09` (2026-11-17)
+- **Tests:** `coding/session_extension_set_model_on_main_test.go::TestExtensionSetModelOnMainMutatesInsideTheDispatcherAndAwaitsTheHandlersAfterIt`, `internal/codingagent/interactive_extension_set_model_footer_test.go::TestInteractiveExtensionSetModelShowsTheNewWindowWhileItsHandlersAreStillReplying`, `internal/codingagent/interactive_model_select_events_test.go::TestInteractiveExtensionSetModelEmitsNoModelSelectOfItsOwn`
+- **Release note:** The footer of the interactive mode now follows an extension's `pi.setModel` at the moment the session's model changes, as in Pi, where the footer reads the session's model on every frame. A change made by an extension with a `model_select` handler used to push the footer only after the handlers had replied, so a frame drawn while a handler was pending (a key press, a stream tick) came from the footer's cache with the previous model's context window, and nothing drew again: the old window stayed until the next keystroke. The session's model and the footer now change in one owner-loop unit, and the owner loop never waits on an extension: the handlers are awaited off the loop. PiG 0.7.0 has the defect. <!-- cause: the extension's setModel ran Session.ExtensionSetModel off the owner loop, awaited the model_select handlers inside it, and pushed the footer (statusLine.SetModel, which invalidates and requests no render) only after it returned, while /model and cycling already pushed it in the same owner-loop unit as the session's mutation --> <!-- tests: internal/codingagent/interactive_extension_set_model_footer_test.go::TestInteractiveExtensionSetModelShowsTheNewWindowWhileItsHandlersAreStillReplying, coding/session_extension_set_model_on_main_test.go::TestExtensionSetModelOnMainMutatesInsideTheDispatcherAndAwaitsTheHandlersAfterIt -->
 
 ### BF-848836a
 
