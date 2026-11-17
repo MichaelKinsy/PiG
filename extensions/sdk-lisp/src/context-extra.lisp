@@ -147,7 +147,8 @@
   (with-core-state (cs ctx) (and (cs-source-info cs) (clone-stream-value (cs-source-info cs)))))
 
 (defun ctx-get-settings (ctx)
-  "A copy of the effective settings the host sent. Signals until it has sent them."
+  "A copy of the effective settings the host sent. Signals until it has sent them, and after the session was replaced or reloaded."
+  (assert-call-active ctx)
   (let ((settings (with-core-state (cs ctx) (cs-settings cs))))
     (unless settings (error "settings are not available: the host has not sent them"))
     (clone-stream-value settings)))

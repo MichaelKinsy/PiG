@@ -6598,6 +6598,86 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // stale-members calls the members that answer a context kept past its Session: each outcome is one line, and the command fails with every
+    // line when one carries the stale message, else it reports them.
+    fn stale_members(ctx: &pig_sdk::Context) -> Result<(), String> {
+        let mut lines: Vec<String> = Vec::new();
+        let mut stale = false;
+        let mut member = |name: &str, call: &dyn Fn() -> Result<String, String>| {
+            let outcome = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(call)) {
+                Ok(Ok(value)) => format!("ok:{value}"),
+                Ok(Err(error)) => format!("error:{error}"),
+                Err(payload) => {
+                    let message = payload
+                        .downcast_ref::<String>()
+                        .cloned()
+                        .or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()))
+                        .unwrap_or_default();
+                    format!("panics:{message}")
+                }
+            };
+            stale = stale || outcome.contains("This extension ctx is stale");
+            lines.push(format!("{name}={outcome}"));
+        };
+        member("theme", &|| {
+            let _ = ctx.theme();
+            Ok("Theme".to_string())
+        });
+        member("width", &|| Ok(ctx.width().to_string()));
+        member("height", &|| Ok(ctx.height().to_string()));
+        member("sessionName", &|| Ok(ctx.session_name()));
+        member("setWidgetLines", &|| {
+            ctx.set_widget("stale-members", vec!["x".to_string()])
+                .map(|()| String::new())
+                .map_err(|e| e.to_string())
+        });
+        member("setWidgetView", &|| {
+            ctx.set_widget_view(
+                "stale-members-view",
+                pig_sdk::kit::View::new(pig_sdk::kit::Text::new("x", 0, 0)),
+                None,
+            )
+            .map(|()| String::new())
+            .map_err(|e| e.to_string())
+        });
+        member("setWidgetRenderer", &|| {
+            ctx.set_widget_renderer(
+                "stale-members-renderer",
+                Some(|_width: u32| vec!["x".to_string()]),
+                None,
+            )
+            .map(|()| String::new())
+            .map_err(|e| e.to_string())
+        });
+        member("onUpdate", &|| {
+            ctx.on_update(pig_sdk::ToolResult::text("x"))
+                .map(|()| String::new())
+                .map_err(|e| e.to_string())
+        });
+        member("getSettings", &|| {
+            ctx.get_settings()
+                .map(|_| String::new())
+                .map_err(|e| e.to_string())
+        });
+        member("registerToolRenderer", &|| {
+            ctx.register_tool_renderer(|_tool, _builtin| None)
+                .map(|()| String::new())
+                .map_err(|e| e.to_string())
+        });
+        if stale {
+            return Err(format!("stale-members\n{}", lines.join("\n")));
+        }
+        ctx.notify(&format!("members\n{}", lines.join("\n")), "info");
+        Ok(())
+    }
+    ext.command(
+        "stale-members",
+        "Call the members that fail with the stale message",
+        |ctx, _args| match stale_members(ctx) {
+            Ok(()) => CommandResult::Ok,
+            Err(error) => CommandResult::Error(error),
+        },
+    );
     ext.command("signal-probe", "Report ctx.signal", |ctx, _args| {
         let state = match ctx.signal() {
             None => "none",
@@ -7730,6 +7810,13 @@ fn main() {
             ctx.notify(&format!("previous:{path}"), "info");
         }
         None
+    });
+    // The handler's own context is still active (Pi invalidates after the handlers ran): the stale-members test reads every member from here.
+    ext.on_event_result("session_shutdown", |ctx, data| {
+        if data.get("reason").and_then(Value::as_str) == Some("stale-members-test") {
+            stale_members(ctx)?;
+        }
+        Ok(None)
     });
     ext.on_event("session_shutdown", |ctx, data| {
         let reason = data.get("reason").and_then(Value::as_str).unwrap_or("");

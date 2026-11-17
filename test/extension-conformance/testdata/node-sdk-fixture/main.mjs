@@ -2094,6 +2094,27 @@ export default function (pi) {
     description: "Report cwd, mode, hasUI and model",
     handler: (_args, ctx) => ctx.ui.notify(`stale:${ctx.cwd}|${ctx.mode}|${ctx.hasUI}|${ctx.model?.id ?? ""}`, "info"),
   });
+  // stale-members calls the members Pi guards with assertActive (runner.ts:883-1037): each outcome is one line, and the command fails with every
+  // line when one carries the stale message, else it reports them. Node has no width, height or tool-update member on the context.
+  pi.registerCommand("stale-members", {
+    description: "Call the members that fail with the stale message",
+    handler: (_args, ctx) => {
+      const lines = [];
+      let stale = false;
+      const member = (name, call) => {
+        let outcome;
+        try { outcome = `ok:${call() ?? ""}`; } catch (error) { outcome = `throws:${error.message}`; }
+        stale = stale || outcome.includes("This extension ctx is stale");
+        lines.push(`${name}=${outcome}`);
+      };
+      member("theme", () => typeof ctx.ui.theme);
+      member("sessionName", () => ctx.sessionManager.getSessionName());
+      member("setWidgetLines", () => ctx.ui.setWidget("stale-members", ["x"]));
+      member("setWidgetView", () => ctx.ui.setWidget("stale-members-view", () => ({ render: () => ["x"], invalidate() {} })));
+      if (stale) throw new Error(`stale-members\n${lines.join("\n")}`);
+      ctx.ui.notify(`members\n${lines.join("\n")}`, "info");
+    },
+  });
   pi.registerCommand("signal-probe", {
     description: "Report ctx.signal",
     handler: (_args, ctx) => ctx.ui.notify(`signal:${ctx.signal === undefined ? "none" : ctx.signal.aborted ? "aborted" : "live"}`, "info"),

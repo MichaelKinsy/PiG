@@ -4,12 +4,18 @@
 
 (in-package #:pig)
 
-(defun ctx-width (ctx)
-  "The terminal width in columns the host last reported (0 before one arrives)."
+(defun ctx-terminal-width (ctx)
+  "The width the host last reported, without the stale check: the SDK's own renders and pushes read it, and a push from a stale context fails with the host's error."
   (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-width (ctx-extension ctx))))
 
+(defun ctx-width (ctx)
+  "The terminal width in columns the host last reported (0 before one arrives). Signals the stale message after the session was replaced or reloaded."
+  (assert-active ctx)
+  (ctx-terminal-width ctx))
+
 (defun ctx-height (ctx)
-  "The terminal height in rows, or 0 when the host has not reported one."
+  "The terminal height in rows, or 0 when the host has not reported one. Signals the stale message after the session was replaced or reloaded."
+  (assert-active ctx)
   (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx))) (extension-height (ctx-extension ctx))))
 
 (defun widget-rpc-p (ctx)
@@ -56,7 +62,7 @@
   "Render at the host's width and send the rows with it. A render that signals is reported to the user and leaves the previous rows."
   (sb-thread:with-mutex ((widget-surface-lock surface))
     (unless (widget-surface-stopped surface)
-      (let* ((width (ctx-width ctx)) (lines nil) (failed nil))
+      (let* ((width (ctx-terminal-width ctx)) (lines nil) (failed nil))
         (handler-case
             (let ((rendered (funcall (widget-surface-render surface) width)))
               (setf lines (if (or (listp rendered) (and (vectorp rendered) (not (stringp rendered))))
@@ -123,7 +129,9 @@
   "Set or clear a widget. CONTENT is a list or vector of strings (each becomes Text(line, 1, 0) at the host's width, the first ten shown),
 a kit view the host renders at the widget's width, or NIL to clear. A string list or a view with no OPTIONS goes out as a widget_push
 frame the host applies in arrival order and never answers, so it may be called from a width handler; in RPC mode a list waits for the
-host like every other shape. OPTIONS is the placement object (obj \"placement\" \"belowEditor\")."
+host like every other shape. OPTIONS is the placement object (obj \"placement\" \"belowEditor\"). After the session was replaced or reloaded
+every form signals the stale message and sends nothing."
+  (assert-call-active ctx)
   (if (kit-view-p content)
       (widget-set-view ctx key content options)
       (let* ((ext (ctx-extension ctx)) (kit (kit-state ext)))
@@ -136,7 +144,9 @@ host like every other shape. OPTIONS is the placement object (obj \"placement\" 
 
 (defun ctx-set-widget-renderer (ctx key render &optional options)
   "Install the widget KEY with RENDER, (lambda (width)) -> rows, laid out at the host's terminal width and again after every resize. NIL
-clears the widget. OPTIONS is the placement. A render that signals is reported as \"widget render failed: ...\" and leaves the previous rows."
+clears the widget. OPTIONS is the placement. A render that signals is reported as \"widget render failed: ...\" and leaves the previous rows.
+Signals the stale message after the session was replaced or reloaded."
+  (assert-call-active ctx)
   (if (null render)
       (ctx-set-widget ctx key nil options)
       (let* ((ext (ctx-extension ctx)) (kit (kit-state ext))
@@ -153,7 +163,7 @@ clears the widget. OPTIONS is the placement. A render that signals is reported a
   (widget-replace-surface (ctx-extension ctx) method nil)
   (if (null lines)
       (ctx-call-host ctx method (obj "clear" t))
-      (ctx-call-host ctx method (widget-surface-args (map 'simple-vector #'princ-to-string lines) (ctx-width ctx))))
+      (ctx-call-host ctx method (widget-surface-args (map 'simple-vector #'princ-to-string lines) (ctx-terminal-width ctx))))
   nil)
 
 (defun widget-set-view-surface (ctx method view)

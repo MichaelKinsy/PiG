@@ -605,6 +605,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-47ec6e8](#bf-47ec6e8) | A chord plugin that starts a child process which keeps the Node host's output pipes open (a child that… | PiG's own defect | All platforms | Unreleased |
 | [BF-47ef9ce](#bf-47ef9ce) | A custom message whose `display` an extension sets to `null` (a `custom_message` draft, or `pi.sendMessage`… | PiG's own defect | All platforms | Unreleased |
 | [BF-4812c01](#bf-4812c01) | Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C… | PiG's own defect | Windows | Unreleased |
+| [BF-482fdb2](#bf-482fdb2) | A context an extension keeps past a Session replacement or reload now fails the theme, the terminal size… | PiG's own defect | All platforms | Unreleased |
 | [BF-48318eb](#bf-48318eb) | fix(hljs): a resumed run counts the scan iterations before its checkpoint | PiG's own defect | All platforms | Unreleased |
 | [BF-48435cd](#bf-48435cd) | A parsed http, https, ws, wss or ftp URL reports its fragment percent-encoded, as Node's `url.hash` does | PiG's own defect | All platforms | 0.5.0 |
 | [BF-486aee5](#bf-486aee5) | fix(sdk): the Go SDK ends the connection on a frame it cannot decode | PiG's own defect | All platforms | Unreleased |
@@ -10456,6 +10457,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4812c0127b` (2026-11-10)
 - **Tests:** `chord/nextnode/plugins/plugins_install_tar_test.go::TestInstallPluginNamesTheTarballToTarRelativeToThePackDirectory`
 - **Release note:** Windows: installing a plugin from npm also names the extraction directory relative to the pack directory (`-C ../<dir>`), so the `tar` of Git for Windows, which resolves a `-C C:\...` name against its working directory, no longer fails with "Cannot open: No such file or directory". Pi passes the absolute directory (D616 now names the archive and the destination).
+
+### BF-482fdb2
+
+**A context an extension keeps past a Session replacement or reload now fails the theme, the terminal size…**
+
+- **Source:** PiG's own defect
+- **Symptom:** These members kept working on the old context in the Go, Rust, Python and Lisp extension SDKs and a widget or tool update sent from it reached the new Session's host.
+- **Root cause:** each SDK checked only the members the first stale-context fix named (cwd, mode, hasUI, model), and every later member (theme, terminal size, setWidget, the tool update, getSettings, the renderer calls) was added without the check: Go Width, Height, SetWidget and OnUpdate since v0.2.0 and UITheme since v0.3.0, Rust and Python width, height, set_widget and on_update since v0.2.0 and theme since v0.3.0, Rust set_widget_view, set_widget_renderer, get_settings and register_tool_renderer and Python get_settings and set_widget_renderer and Go SetWidgetRenderer since v0.7.0, and every Lisp member since v0.7.0, the first release with the Lisp SDK
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3fd07e39eb` (2026-11-17), `481d6ff7f7` (2026-11-17), `482fdb2a23` (2026-11-17), `5f10e4f9cc` (2026-11-17)
+- **Tests:** `extensions/sdk-py/tests/test_stale_context.py`, `extensions/sdk/stale_context_test.go::TestStaleContextMembersFailWithTheStaleMessageAndChangeNothing`, `extensions/sdk/stale_context_test.go::TestStaleSurfaceRefreshReadsTheWidthWithoutPanicking`
+- **Release note:** A context an extension keeps past a Session replacement or reload now fails the theme, the terminal size, `setWidget`, the tool update and the SDK-extra `getSettings` with Pi's stale message, as it already did `cwd`, `mode`, `hasUI` and `model`. Before, these members kept working on the old context in the Go, Rust, Python and Lisp extension SDKs and a widget or tool update sent from it reached the new Session's host. In Go and Rust the theme and the size panic (`UITheme`, `Width`, `Height`; `theme`, `width`, `height`) and the calls return the error; Python raises `RuntimeError` or `HostCallError`; Lisp signals. `notify`, `setStatus`, `setActiveTools`, `abort` and the run signal in Go and Rust still answer on a kept context.
 
 ### BF-48318eb
 

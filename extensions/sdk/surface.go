@@ -71,7 +71,7 @@ func (s *surfaceRenderer) push(c Context) error {
 	if s.stopped {
 		return nil
 	}
-	width := c.Width()
+	width := c.terminalWidth()
 	lines, ok := s.renderSafely(c, width)
 	if !ok {
 		return nil
@@ -195,7 +195,7 @@ func (c Context) setSurface(method string, lines []string) error {
 		result, err := c.callHost(method, map[string]any{"clear": true})
 		return callResultError(result, err)
 	}
-	result, err := c.callHost(method, surfaceArgs(lines, c.Width()))
+	result, err := c.callHost(method, surfaceArgs(lines, c.terminalWidth()))
 	return callResultError(result, err)
 }
 
@@ -233,6 +233,9 @@ func (c Context) SetHeaderRenderer(render func(width int) []string) error {
 
 // SetWidgetRenderer installs the widget key with a renderer that lays its rows out at the host's terminal width, the subprocess form of the component factory Pi's ctx.ui.setWidget(key, factory, options) takes. It follows the contract of [Context.SetFooterRenderer]: the SDK renders at the width the host reports and again after every width change, sends each set of rows with the width it was rendered for, and the host paints them only at that width, so a widget never shows rows laid out for the old width. options is the placement ({"placement": "aboveEditor" | "belowEditor"}). A nil render clears the widget. A panic in render is reported as "widget render failed: ..." and leaves the previous rows. [Context.SetWidget] with the same key replaces the renderer.
 func (c Context) SetWidgetRenderer(key string, render func(width int) []string, options ...WidgetOptions) error {
+	if err := c.staleError(); err != nil {
+		return err
+	}
 	if render == nil {
 		return c.SetWidget(key, nil, options...)
 	}

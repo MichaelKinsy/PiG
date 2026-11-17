@@ -371,8 +371,10 @@ func (t UITheme) Style(text string, style ThemeStyle) (string, error) {
 }
 
 // UITheme returns a snapshot of the host's active theme (upstream
-// ctx.ui.theme), replicated from the state snapshot and theme changes.
+// ctx.ui.theme), replicated from the state snapshot and theme changes. It
+// panics with the stale message after the session was replaced or reloaded.
 func (c Context) UITheme() UITheme {
+	c.assertActive()
 	c.ext.mu.RLock()
 	defer c.ext.mu.RUnlock()
 	// A palette is replaced whole and never mutated, so the snapshot can
