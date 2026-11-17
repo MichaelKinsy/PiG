@@ -552,7 +552,9 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 		config.selectedPath = h.configuredSelectedPath(desc.Name)
 		recoveryConfigs = append(recoveryConfigs, config)
 		config.Path = cell.BinaryPath
-		me := &managedExt{config: config, nodeEntry: desc.Root, host: h, parentCtx: runtimeParent(ctx), supervisor: NewSupervisor(config.SupervisorConfig), sockPath: sockPath, packedCellKey: cell.Key}
+		me := &managedExt{config: config, nodeEntry: desc.Root, host: h, supervisor: NewSupervisor(config.SupervisorConfig), sockPath: sockPath, packedCellKey: cell.Key}
+		// As for an isolated extension (startExt), an exit after the owner cancelled ctx is teardown, not a crash.
+		me.setStartContext(nil, runtimeParent(ctx))
 		pendingExts = append(pendingExts, packedPendingExt{desc: desc, me: me, ln: ln, address: sockPath})
 		env = append(env, fmt.Sprintf("%s=%s", runtimecell.SocketEnvName(desc.Name), sockPath))
 	}
@@ -616,9 +618,6 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 	h.mu.Unlock()
 	for i := range pendingExts {
 		pendingExts[i].me.packedProcess = processState
-		// As for an isolated extension (startExt), an exit after the owner
-		// cancelled ctx is teardown, not a crash.
-		pendingExts[i].me.parentCtx = runtimeParent(ctx)
 	}
 	started := false
 	defer func() {
@@ -653,7 +652,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 		if processState.cmd != nil {
 			pendingExts[i].me.setProcess(processState.cmd.Process)
 		}
-		pendingExts[i].me.cancel = processState.cancel
+		pendingExts[i].me.setStartContext(processState.cancel, runtimeParent(ctx))
 		if processState.stderrLog != nil {
 			pendingExts[i].me.stderrLogPath = processState.stderrLog.path
 		}
