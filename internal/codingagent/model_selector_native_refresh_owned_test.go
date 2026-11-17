@@ -47,6 +47,7 @@ func TestModelSelectorNativeProviderRefreshDoesNotOutliveShutdown(t *testing.T) 
 	}
 	// The registration queues Pi's unawaited local refresh; it ends before the provider is armed.
 	registry.YieldToRegistrationRefresh(t.Context())
+	settleModelTasks(registry)
 	armed.Store(true)
 	synctest.Test(t, func(t *testing.T) {
 		var output bytes.Buffer
