@@ -23,6 +23,8 @@ type SequenceWindowSpec struct {
 	Until  string `toml:"until"`
 	// Floating names the sequences whose place in the window depends on timing (a reply the terminal sends, a render the program throttles) and not on the program's order. Each is left out of the compared lists, must occur in the whole transcript of every run of both binaries, and is declared with the evidence that it floats.
 	Floating []FloatingSequence `toml:"floating"`
+	// ErasuresOnly narrows the comparison to the sequences that erase the display (CSI Ps J: ESC[2J clears the screen, ESC[3J the terminal's scrollback), their number and their order. It is for a window whose other bytes differ for reasons that are not its contract, such as the run's random directory in a footer, when the contract is whether the program wipes the screen or the scrollback. It does not combine with Floating.
+	ErasuresOnly bool `toml:"erasures_only"`
 }
 
 // FloatingSequence declares one sequence kind that is left out of a window's comparison: exactly one of Sequence (one complete escape sequence, byte for byte) or OSC (every operating system command with that number, whatever its text and terminator). A prefix of a sequence, a list of them or a pattern is not a declaration.
@@ -50,6 +52,9 @@ func (w SequenceWindowSpec) title() string {
 	if w.Window != "" {
 		return fmt.Sprintf("window %q", w.Window)
 	}
+	if w.ErasuresOnly {
+		return fmt.Sprintf("window from %q until %q (erase sequences only)", from, until)
+	}
 	return fmt.Sprintf("window from %q until %q", from, until)
 }
 
@@ -62,6 +67,9 @@ func (w SequenceWindowSpec) validate() error {
 		return fmt.Errorf("transcript_sequences_equal window %q replaces from and until", w.Window)
 	case w.Window == "" && w.From == "" && w.Until == "":
 		return fmt.Errorf("transcript_sequences_equal needs a window name or a from or until marker: the whole stream is not a stable comparison")
+	}
+	if w.ErasuresOnly && len(w.Floating) > 0 {
+		return fmt.Errorf("transcript_sequences_equal %s: erasures_only compares the erase sequences alone, and floating names sequences left out of a full comparison", w.title())
 	}
 	for _, f := range w.Floating {
 		if err := f.validate(); err != nil {
@@ -197,6 +205,16 @@ func observeSequenceWindows(path string, windows []SequenceWindowSpec) []Sequenc
 	return out
 }
 
+// isDisplayErase reports that token is an erase-in-display sequence, CSI Ps J with Ps absent, 0, 1, 2 or 3: ESC[2J clears the screen and ESC[3J the terminal's scrollback.
+func isDisplayErase(token string) bool {
+	parameter, ok := strings.CutPrefix(token, "\x1b[")
+	if !ok {
+		return false
+	}
+	parameter, ok = strings.CutSuffix(parameter, "J")
+	return ok && (parameter == "" || len(parameter) == 1 && parameter[0] >= '0' && parameter[0] <= '3')
+}
+
 func observeSequenceWindow(raw []byte, whole []string, w SequenceWindowSpec) SequenceWindowResult {
 	from, until := w.bounds()
 	start, end := 0, len(raw)
@@ -218,7 +236,7 @@ func observeSequenceWindow(raw []byte, whole []string, w SequenceWindowSpec) Seq
 		result.FloatingAt[i] = slices.IndexFunc(whole, f.matches)
 	}
 	for _, token := range tokenizeTranscript(raw[start:end]) {
-		if !slices.ContainsFunc(w.Floating, func(f FloatingSequence) bool { return f.matches(token) }) {
+		if (!w.ErasuresOnly || isDisplayErase(token)) && !slices.ContainsFunc(w.Floating, func(f FloatingSequence) bool { return f.matches(token) }) {
 			result.Tokens = append(result.Tokens, token)
 		}
 	}

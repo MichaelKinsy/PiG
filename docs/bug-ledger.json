@@ -32760,6 +32760,28 @@
       ]
     },
     {
+      "id": "BF-851696e",
+      "title": "fix(tui): a boundary compaction and a provider logout no longer erase the scrollback",
+      "symptom": "fix(tui): a boundary compaction and a provider logout no longer erase the scrollback",
+      "rootCause": "Pi repaints both differentially (entry_appended compaction branch, logout handler): drop the two forced full redraws. Also corrects the reload box cite to interactive-mode.ts:6648.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "851696e0c0",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_swap_scrollback_test.go::TestBoundaryCompactionRepaintsDifferentially",
+        "internal/codingagent/session_swap_scrollback_test.go::TestLogoutKeepsTheTerminalScrollback"
+      ]
+    },
+    {
       "id": "BF-852652e",
       "title": "PiG no longer names documentation that does not exist",
       "symptom": "They named `\u003cconfig root\u003e/docs` files that were never written.",
@@ -59959,6 +59981,29 @@
       ],
       "tests": [
         "chord/next/surfaces/surfaces_client_test.go::TestDropsTheRetryOfASetANewerOneReplacedWhileItsTimerWasBeingSet"
+      ]
+    },
+    {
+      "id": "BF-ec8fbdc",
+      "title": "`/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's…",
+      "symptom": "`/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback.",
+      "rootCause": "rebuildChatFrom and renderCompactionResult called ForceFullRender, which writes ESC[2J ESC[H ESC[3J and replays the transcript from the top, where Pi's chatContainer.clear() plus renderInitialMessages() request an ordinary render that repaints only from the first changed row",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback. The text above the TUI (the `Installing ...` lines of a package install at startup, or what a wrapper script printed) and the older transcript rows that had scrolled above the frame stayed in Pi and were gone in PiG. The transcript repaint now clears the chat and renders normally, as Pi's does, and only the reload box forces the clearing redraw, as in Pi. A boundary compaction and a provider logout no longer erase it either, and after a `/fork` of a long session the footer sits where Pi leaves it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ec8fbdc5a9",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_swap_scrollback_test.go::TestReloadBoxForcesTheRedrawAsPiDoes",
+        "internal/codingagent/session_swap_scrollback_test.go::TestSessionReplacementRepaintsDifferentially"
       ]
     },
     {

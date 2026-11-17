@@ -83,6 +83,8 @@
 //     sequence (or one OSC number) with a reason, the recorded Pi runs and at
 //     least two distinct recorded positions, under a `# floating-evidence:`
 //     comment: a sequence that never moves is compared, not skipped.
+//     erasures_only narrows a window to its erase-in-display sequences (ESC[2J,
+//     ESC[3J) and does not combine with floating.
 package main
 
 import (
@@ -185,10 +187,11 @@ type jsonPigOnlyRecordRule struct {
 }
 
 type sequenceWindowBlock struct {
-	Window   string                  `toml:"window"`
-	From     string                  `toml:"from"`
-	Until    string                  `toml:"until"`
-	Floating []floatingSequenceBlock `toml:"floating"`
+	Window       string                  `toml:"window"`
+	From         string                  `toml:"from"`
+	Until        string                  `toml:"until"`
+	Floating     []floatingSequenceBlock `toml:"floating"`
+	ErasuresOnly bool                    `toml:"erasures_only"`
 }
 
 type floatingSequenceBlock struct {
@@ -243,6 +246,7 @@ type tmuxBlock struct {
 	CaptureEndRegex     string          `toml:"capture_end_regex"`
 	CaptureStartLast    bool            `toml:"capture_start_last"`
 	CaptureHistory      bool            `toml:"capture_history"`
+	PreTuiLines         int             `toml:"pre_tui_lines"`
 	CaptureJoinWrapped  bool            `toml:"capture_join_wrapped"`
 	CWD                 string          `toml:"cwd"`
 	GitBranch           string          `toml:"git_branch"`
@@ -470,6 +474,9 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 
 	if sc.Tmux.CaptureHistory && sc.Driver != "interactive-tmux" {
 		out = append(out, violation{path, "history-driver", "capture_history requires interactive-tmux"})
+	}
+	if sc.Tmux.PreTuiLines < 0 || sc.Tmux.PreTuiLines > 0 && sc.Driver != "interactive-tmux" {
+		out = append(out, violation{path, "pre-tui-driver", "pre_tui_lines is a count of lines printed before an interactive-tmux binary starts"})
 	}
 	if sc.Assert.ChangelogHeadersComplete && (sc.Driver != "interactive-tmux" || !sc.Tmux.CaptureHistory) {
 		out = append(out, violation{path, "changelog-history", "changelog_headers_complete requires complete tmux history"})
@@ -733,6 +740,9 @@ func lintTranscriptSequences(path, source string, sc *scenario) []violation {
 			bad("transcript-sequences-window", "transcript_sequences_equal window %q replaces from and until", w.Window)
 		case w.Window == "" && w.From == "" && w.Until == "":
 			bad("transcript-sequences-window", "transcript_sequences_equal needs a window name or a from or until marker: the whole stream is not a stable comparison")
+		}
+		if w.ErasuresOnly && len(w.Floating) > 0 {
+			bad("transcript-sequences-erasures", "transcript_sequences_equal erasures_only compares the erase sequences alone, and floating names sequences left out of a full comparison")
 		}
 		for _, f := range w.Floating {
 			floats++

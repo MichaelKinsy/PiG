@@ -166,6 +166,9 @@ type TmuxDriverConfig struct {
 
 	// CaptureHistory includes all retained scrollback, not only the final viewport. The driver gives this session its own maximum-retention pane.
 	CaptureHistory bool `toml:"capture_history"`
+
+	// PreTuiLines makes the launch shell print that many numbered lines (PRE-TUI-LINE-1 ...) before it starts the binary, the same for both binaries: the text a program, a package installer or a shell leaves above a TUI. Combine it with capture_history to see whether a command erased it.
+	PreTuiLines int `toml:"pre_tui_lines"`
 }
 
 // TmuxStep is one staged interaction block for an interactive-tmux
@@ -409,6 +412,9 @@ func validate(sc *Scenario) error {
 	}
 	if sc.Tmux.CaptureHistory && sc.Driver != "interactive-tmux" {
 		return fmt.Errorf("capture_history requires interactive-tmux")
+	}
+	if sc.Tmux.PreTuiLines < 0 || sc.Tmux.PreTuiLines > 0 && sc.Driver != "interactive-tmux" {
+		return fmt.Errorf("pre_tui_lines is a count of lines printed before an interactive-tmux binary starts")
 	}
 	if len(sc.Assert.TranscriptSequencesEqual) > 0 && sc.Driver != "interactive-tmux" {
 		return fmt.Errorf("transcript_sequences_equal requires interactive-tmux: only its panes have a terminal transcript")

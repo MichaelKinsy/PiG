@@ -1916,9 +1916,13 @@ func (t *tuiBase) SetTickDispatcher(dispatch func(func())) {
 // Height returns the terminal height of the last size the renderer took. It never takes t.mu and is safe from any goroutine.
 func (t *tuiBase) Height() int { _, height := t.size(); return height }
 
-// ForceFullRender marks the next Render() as a destructive full repaint.
-// Use it when the physical buffer is invalid, including semantic transcript
-// replacement, not for ordinary dynamic shrink or streaming updates.
+// ForceFullRender marks the next Render() as a destructive full repaint: it
+// clears the screen and the terminal's scrollback. Use it only where Pi calls
+// requestRender(true) (the reload box, a resume from suspend, the return from
+// the external editor) or when the physical buffer is invalid. A transcript
+// replacement (/new, /resume, /fork, /clone, /tree, a compaction) and an
+// ordinary shrink or streaming update never force it: the frame decides, as
+// in Pi's TuiMainScreen.
 func (t *TuiMainScreen) ForceFullRender() {
 	if t.stopped.Load() {
 		return

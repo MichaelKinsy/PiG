@@ -29,7 +29,6 @@ func (m *InteractiveMode) rebuildChatFrom(entries []SessionEntry, populateHistor
 	m.disposeArminComponents()
 	m.chatContainer.Clear()
 	m.transcriptEmptied()
-	m.tuiInst.ForceFullRender()
 	m.renderSessionEntriesFrom(entries, populateHistory)
 }
 
