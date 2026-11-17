@@ -6,19 +6,27 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/benchalloc"
 )
 
+// BenchmarkModelRegistryMetadata lists the models of a registry built from the live catalog. Its allocs/op is allocations per 1,000 listed models, measured over the loop by runtime.ReadMemStats (internal/benchalloc), so a refresh that adds entries does not move the row while a model that costs more to list does.
 func BenchmarkModelRegistryMetadata(b *testing.B) {
 	services, err := CreateAgentSessionServices(CreateAgentSessionServicesOptions{CWD: b.TempDir(), AgentDir: b.TempDir()})
 	if err != nil {
 		b.Fatal(err)
 	}
-	b.ReportAllocs()
-	for b.Loop() {
-		if len(services.ModelRuntime().GetModels()) == 0 {
-			b.Fatal("empty catalog")
-		}
+	listed := len(services.ModelRuntime().GetModels())
+	if listed == 0 {
+		b.Fatal("empty catalog")
 	}
+	b.Run("per-1000-entries", func(b *testing.B) {
+		benchalloc.Per1000Entries(b, listed, func() {
+			if len(services.ModelRuntime().GetModels()) != listed {
+				b.Fatal("catalog changed size")
+			}
+		})
+	})
 }
 
 func TestModelRegistryMetadataDoesNotResolveCommandKeys(t *testing.T) {

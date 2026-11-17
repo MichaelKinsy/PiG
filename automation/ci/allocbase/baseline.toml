@@ -351,7 +351,7 @@ allocs = 1
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCloneCatalogCompat"
-allocs = 5034
+allocs = 4870
 
 [[benchmark]]
 package = "./ai"
@@ -475,8 +475,8 @@ allocs = 1286
 
 [[benchmark]]
 package = "./ai"
-benchmark = "BenchmarkGeneratedToModelCatalog"
-allocs = 18435
+benchmark = "BenchmarkGeneratedToModelCatalog/per-1000-entries"
+allocs = 7757
 
 [[benchmark]]
 package = "./ai"
@@ -1165,8 +1165,8 @@ allocs = 10231
 
 [[benchmark]]
 package = "./coding"
-benchmark = "BenchmarkModelRegistryMetadata"
-allocs = 24324
+benchmark = "BenchmarkModelRegistryMetadata/per-1000-entries"
+allocs = 9887
 
 [[benchmark]]
 package = "./coding"
@@ -2336,7 +2336,7 @@ allocs = 82
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkCloneCatalogInput"
-allocs = 27412
+allocs = 29409
 
 [[benchmark]]
 package = "./internal/codingagent"
