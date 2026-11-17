@@ -109,14 +109,13 @@ func sessionProcessRows(ctx context.Context, session string) ([]hangProcessRow, 
 		return nil, fmt.Errorf("pane pid of %s: %w", session, err)
 	}
 	owned := make(map[int]bool)
-	for _, value := range strings.Fields(string(out)) {
+	for value := range strings.FieldsSeq(string(out)) {
 		pid, err := strconv.Atoi(value)
 		if err != nil {
 			return nil, fmt.Errorf("pane pid %q: %w", value, err)
 		}
 		owned[pid] = true
 	}
-	//nolint:gosec // G204 (class a): program is literal ps with fixed arguments.
 	table, err := exec.CommandContext(ctx, "ps", "-eo", "pid=,ppid=,stat=,etime=,args=").Output()
 	if err != nil {
 		return nil, fmt.Errorf("ps: %w", err)
