@@ -282585,6 +282585,61 @@
       "shapeHash": "sha256:864bd81dd802775a1a082d7f99fe261c8f3185dea2a3f45bbeae79e27ef91e07"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loopLife",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loopLife",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "loopLife"
+      },
+      "shapeHash": "sha256:bf2b4533cc61363053db2f354d12cabb2c0f8f5687efcd301adc4b4062c5715d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loopLife.begin",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loopLife.begin",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loopLife.end",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loopLife.end",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loopLife.ended",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loopLife.ended",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loopLife.endedCh",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loopLife.endedCh",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() \u003c-chan struct{}"
+      },
+      "shapeHash": "sha256:abf75cdd06446e4f2096decc25f9a3b8a701a6dd8afd11fe16223fb0b76991c3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#makeCodexJWT",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "makeCodexJWT",
