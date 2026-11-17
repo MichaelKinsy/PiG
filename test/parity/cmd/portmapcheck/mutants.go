@@ -137,9 +137,7 @@ func killed(root string, res result, mu mutant, replays *replayCaches) (dead boo
 	}
 	for d, names := range byDir {
 		slices.Sort(names)
-		//nolint:gosec // G204 (class a): program is literal go; args are a temp -overlay file, -run regex built from tool-generated test names, and "./"+dir.
-		cmd := exec.Command("go", "test", "-count=1", "-overlay="+overlayFile, "-run", "^("+strings.Join(names, "|")+")$", "./"+d)
-		cmd.Dir = root
+		cmd := replayCommand(root, d, overlayFile, names)
 		cmd.Env = evidenceEnv(dir)
 		cache, release := replays.acquire(cmd.Env)
 		if cache != "" {
@@ -424,4 +422,15 @@ func cloneBuildCache(src string) (clone string, err error) {
 		return os.Link(p, filepath.Join(clone, rel))
 	})
 	return clone, err
+}
+
+// replayCommand is the `go test` of one replay of a mutant: the named tests of package directory d (relative to root), compiled with
+// the overlay. classifyReplay reads the plain output of go test, where a failed test's header comes before the lines it reported, so
+// the command line fixes the two flags that change that shape and the caller's GOFLAGS, which go test reads first, must not: -v=true
+// prints every reported line as it happens, before the "--- FAIL:" header, and -json prints no text at all.
+func replayCommand(root, d, overlayFile string, names []string) *exec.Cmd {
+	//nolint:gosec // G204 (class a): program is literal go; args are literal flags, a temp -overlay file, -run regex built from tool-generated test names, and "./"+dir.
+	cmd := exec.Command("go", "test", "-count=1", "-v=false", "-json=false", "-overlay="+overlayFile, "-run", "^("+strings.Join(names, "|")+")$", "./"+d)
+	cmd.Dir = root
+	return cmd
 }
