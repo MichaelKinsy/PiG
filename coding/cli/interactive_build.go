@@ -161,6 +161,7 @@ func (b *cliRuntimeBuilder) interactiveReplacement(build *cliBuild, session *cod
 		ExtensionRunner:         session.ExtensionRunner(),
 		SessionStartEvent:       session.StartEvent(),
 		ExtensionConflicts:      codingagent.DetectExtensionConflicts(build.Extensions),
+		ExtensionWarnings:       build.ExtensionWarnings,
 		BuiltinExtensions:       build.BuiltinExtensions,
 		ExplicitBuiltinPaths:    build.ExplicitBuiltinPaths,
 		ReloadBuiltinExtensions: build.ReloadBuiltinExtensions,

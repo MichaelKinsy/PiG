@@ -32,6 +32,12 @@ func resetCLIPackageResolutions() {
 	remoteCLIResolutions.Clear()
 }
 
+// installPackagesForLoad is the package step of one resource load, which every path that loads resources goes through: it starts the load (resetCLIPackageResolutions) and installs each configured npm or git Package that is missing (resource-loader.ts reload: resolve() runs on startup, on /reload and on every session replacement). A Package that fails to install is skipped and returned. TestEveryResourceLoadInstallsPackages lists the callers.
+func installPackagesForLoad(run *packageRun, cwd, agentDir string, sm *codingagent.SettingsManager) ([]packagemanager.PackageInstallFailure, error) {
+	resetCLIPackageResolutions()
+	return run.manager(cwd, agentDir, sm).InstallMissing(nil)
+}
+
 // collectCLIPackageResources stops at the first -e source that fails to resolve: Pi's resolvePackageSources resolves the sources in turn and rejects there, so no later source installs (package-manager.ts:1293-1342). collectCLIExtensionConfigs reports the failure.
 func collectCLIPackageResources(cwd, agentDir string, sm *codingagent.SettingsManager, flags Args) cliPackageResources {
 	out := cliPackageResources{Infos: map[string]codingagent.ResourceSourceInfo{}}

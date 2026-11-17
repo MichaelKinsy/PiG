@@ -26,50 +26,6 @@ func IsOfflineModeEnabled() bool {
 	return v == "1" || v == "true" || v == "yes"
 }
 
-// EnsureConfiguredPackagesInstalled reinstalls missing installations and npm packages whose local manifest does not satisfy the configured version or range. Offline mode reports these sources as missing without installing them.
-//
-// Ports packages/coding-agent/src/core/package-manager.ts (isOfflineModeEnabled, resolvePackageSources missing-source installation).
-//
-// Returns the source strings that were reinstalled and the sources that remain unavailable because installation failed or offline mode prevented it.
-// WithProgressReporter receives the install events of the sources that need a package manager, as Pi's resolve announces them; WithCommandOutput chooses where git and npm write.
-// upstream: packages/coding-agent/src/core/package-manager.ts:resolvePackageSources
-func EnsureConfiguredPackagesInstalled(cwd, agentDir string, sm *codingagent.SettingsManager, opts ...InstallOption) (reinstalled, missing []string) {
-	packages := ConfiguredPackagesForResolution(cwd, agentDir, sm)
-	if IsOfflineModeEnabled() {
-		for _, pkg := range packages {
-			if ConfiguredPackageNeedsInstall(pkg) {
-				missing = append(missing, pkg.Source.Source)
-			}
-		}
-		return nil, missing
-	}
-	for _, pkg := range packages {
-		if !ConfiguredPackageNeedsInstall(pkg) {
-			continue
-		}
-		local := pkg.Scope == "project"
-		source := pkg.Source
-		if DetectSourceKind(source.Source) == "local" {
-			resolved, err := ResolveLocalPackageRoot(SettingsBaseDir(cwd, agentDir, local), source.Source)
-			if err != nil {
-				missing = append(missing, source.Source)
-				continue
-			}
-			source.Source = resolved
-		}
-		progress := resolveInstallOptions(opts).progress
-		if DetectSourceKind(source.Source) == "local" {
-			progress = nil
-		}
-		if err := InstallPackageArtifacts(cwd, agentDir, sm, source, local, progress, opts...); err != nil {
-			missing = append(missing, pkg.Source.Source)
-			continue
-		}
-		reinstalled = append(reinstalled, pkg.Source.Source)
-	}
-	return reinstalled, missing
-}
-
 // MissingLocalPackages lists each configured local Package whose directory does not exist, resolved against its scope's settings directory, as the
 // install failure the session warns about and `pig install --validate-only` reports (D216). Pi skips such a Package without a word.
 func MissingLocalPackages(cwd, agentDir string, sm *codingagent.SettingsManager) []PackageInstallFailure {
@@ -90,22 +46,6 @@ func MissingLocalPackages(cwd, agentDir string, sm *codingagent.SettingsManager)
 		failures = append(failures, PackageInstallFailure{Source: pkg.Source.Source, Scope: pkg.Scope, Path: path, Message: err.Error()})
 	}
 	return failures
-}
-
-// InstallMissingPackages installs each configured npm and git Package whose installation is absent or does not satisfy its configured version, as DefaultPackageManager.resolve installs a source when it has no onMissing callback (package-manager.ts:1251-1305). The first failed installation is returned. A local Package that does not exist is skipped, as resolveLocalExtensionSource skips it, and offline mode installs nothing.
-func InstallMissingPackages(cwd, agentDir string, sm *codingagent.SettingsManager) error {
-	if IsOfflineModeEnabled() {
-		return nil
-	}
-	for _, pkg := range ConfiguredPackagesForResolution(cwd, agentDir, sm) {
-		if DetectSourceKind(pkg.Source.Source) == "local" || !ConfiguredPackageNeedsInstall(pkg) {
-			continue
-		}
-		if err := InstallPackageArtifacts(cwd, agentDir, sm, pkg.Source, pkg.Scope == "project", nil); err != nil {
-			return fmt.Errorf("install %s Package %q: %w", pkg.Scope, pkg.Source.Source, err)
-		}
-	}
-	return nil
 }
 
 // ConfiguredPackageNeedsInstall reports whether the Package has no installation or an installation that does not satisfy its configured version.

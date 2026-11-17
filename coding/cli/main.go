@@ -1633,6 +1633,7 @@ func Main(args []string, options *MainOptions) {
 		BinaryUpdateChecker:        binaryUpdateChecker(),
 		ResourceSourceInfoProvider: resourceSourceInfoProvider(cwd, agentDir, services.SettingsManager(), flags, startupSourceResolver.Resolve),
 		ReloadResourceProvider:     reloadResourceSnapshotProvider(cwd, agentDir, services.SettingsManager(), resourceFlags, skillScopes),
+		ExtensionWarnings:          build.ExtensionWarnings,
 		Verbose:                    flags.Verbose,
 		Skills:                     skillDefs,
 		SkillDiagnostics:           slr.Diagnostics,

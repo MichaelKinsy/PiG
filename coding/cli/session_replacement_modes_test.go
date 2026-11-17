@@ -389,7 +389,7 @@ func TestRPCSwitchSessionFailsForADestinationWithAnInvalidFileURLPackage(t *test
 		t.Fatalf("switch_session error = %q, want fileURLToPath's invalid file: URL error", failure)
 	}
 	p.closeAndWait("after the failed switch")
-	// package-manager.ts:912-926 computes every identity before installing any package, so ./missing-package is never install-attempted. Only validateConfiguredPackageSources ahead of EnsureConfiguredPackagesInstalled keeps stderr free of the install report.
+	// package-manager.ts:912-926 computes every identity before installing any package, so ./missing-package is never install-attempted. Only validateConfiguredPackageSources ahead of the install step (installPackagesForLoad) keeps stderr free of the install report.
 	if stderr := p.stderr.String(); strings.Contains(stderr, "Could not install") || strings.Contains(stderr, "Reinstalled") {
 		t.Fatalf("the replacement build attempted an install before validating package identities:\n%s", stderr)
 	}

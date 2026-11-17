@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
 func TestUnavailableNpmPackagesUseInheritedVersionForDeltas(t *testing.T) {
@@ -25,7 +24,7 @@ func TestUnavailableNpmPackagesUseInheritedVersionForDeltas(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Setenv("PI_OFFLINE", "1")
-			packagemanager.EnsureConfiguredPackagesInstalled(cwd, settings.AgentDir(), settings)
+			ensureConfiguredPackagesInstalled(cwd, settings.AgentDir(), settings)
 			items, err := collectConfigResourceItems(cwd, settings.AgentDir(), settings)
 			if err != nil {
 				t.Fatal(err)
@@ -74,7 +73,7 @@ func TestUnavailableNpmPackagesDoNotProvideResources(t *testing.T) {
 				} else {
 					t.Setenv("PIG_NPM_TEST_FAIL", "1")
 				}
-				_, missing := packagemanager.EnsureConfiguredPackagesInstalled(cwd, settings.AgentDir(), settings)
+				_, missing := ensureConfiguredPackagesInstalled(cwd, settings.AgentDir(), settings)
 				if (len(missing) == 0) != tc.available {
 					t.Fatalf("missing=%v, available=%v", missing, tc.available)
 				}

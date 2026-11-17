@@ -32,7 +32,7 @@ func TestEnsureConfiguredNpmSelectorUsesNodeSemver(t *testing.T) {
 			t.Run(scope+tc.name, func(t *testing.T) {
 				source := "npm:example@" + tc.selector
 				cwd, settings, log := installedVersionFixture(t, source, `{"version":"`+tc.installed+`"}`, local)
-				reinstalled, missing := packagemanager.EnsureConfiguredPackagesInstalled(cwd, settings.AgentDir(), settings)
+				reinstalled, missing := ensureConfiguredPackagesInstalled(cwd, settings.AgentDir(), settings)
 				var want []string
 				if tc.install {
 					want = []string{source}

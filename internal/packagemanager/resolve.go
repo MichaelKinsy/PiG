@@ -59,7 +59,7 @@ func (m *PackageManager) Resolve(onMissing MissingSourceCallback) (ResolvedPaths
 	if err := ValidateConfiguredPackageSources(cwd, agentDir, settings); err != nil {
 		return ResolvedPaths{}, fmt.Errorf("resolve Packages: %w", err)
 	}
-	installFailures, err := m.installMissing(onMissing)
+	installFailures, err := m.InstallMissing(onMissing)
 	if err != nil {
 		return ResolvedPaths{}, err
 	}
@@ -97,8 +97,8 @@ func (m *PackageManager) Resolve(onMissing MissingSourceCallback) (ResolvedPaths
 	}, nil
 }
 
-// installMissing installs each configured npm or git Package that needs it, asking onMissing first when it is set (package-manager.ts:1282-1340 resolvePackageSources, installMissing). A Package whose install fails is skipped, as offline mode skips it, and reported in the result (Pi 6dfb54678); an onMissing error or "error" decision still fails.
-func (m *PackageManager) installMissing(onMissing MissingSourceCallback) ([]PackageInstallFailure, error) {
+// InstallMissing is the install step of resolve: it installs each configured npm or git Package that needs it, asking onMissing first when it is set (package-manager.ts:1282-1340 resolvePackageSources, installMissing). A Package whose install fails is skipped, as offline mode skips it, and reported in the result (Pi 6dfb54678); an onMissing error or "error" decision still fails.
+func (m *PackageManager) InstallMissing(onMissing MissingSourceCallback) ([]PackageInstallFailure, error) {
 	failures := []PackageInstallFailure{}
 	if IsOfflineModeEnabled() {
 		return failures, nil

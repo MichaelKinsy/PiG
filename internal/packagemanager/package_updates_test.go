@@ -49,7 +49,7 @@ func TestIsPinnedNpm(t *testing.T) {
 	}
 }
 
-func TestEnsureConfiguredPackagesInstalledTreatsProjectDeltaAsInherited(t *testing.T) {
+func TestInstallMissingTreatsProjectDeltaAsInherited(t *testing.T) {
 	root := t.TempDir()
 	cwd, agentDir, packageRoot := filepath.Join(root, "work"), filepath.Join(root, "agent"), filepath.Join(root, "pkg")
 	for _, dir := range []string{cwd, agentDir, packageRoot} {
@@ -76,9 +76,8 @@ func TestEnsureConfiguredPackagesInstalledTreatsProjectDeltaAsInherited(t *testi
 		t.Fatal(err)
 	}
 	settings.Reload()
-	t.Setenv("PIG_OFFLINE", "1")
-	reinstalled, missing := EnsureConfiguredPackagesInstalled(cwd, settings.AgentDir(), settings)
-	if len(reinstalled) != 0 || len(missing) != 0 {
-		t.Fatalf("reinstalled=%v missing=%v", reinstalled, missing)
+	failures, err := NewPackageManager(PackageManagerOptions{CWD: cwd, AgentDir: agentDir, SettingsManager: settings}).InstallMissing(nil)
+	if err != nil || len(failures) != 0 {
+		t.Fatalf("failures=%v err=%v", failures, err)
 	}
 }

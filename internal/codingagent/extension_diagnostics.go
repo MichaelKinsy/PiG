@@ -35,6 +35,9 @@ func (m *InteractiveMode) extensionDiagnostics() []extension.ResourceDiagnostic 
 	for _, conflict := range m.extensionConflicts {
 		out = append(out, extension.ResourceDiagnostic{Type: extension.DiagnosticError, Message: conflict.Message, Path: conflict.Path})
 	}
+	for _, warning := range m.extensionWarnings {
+		out = append(out, extension.ResourceDiagnostic{Type: extension.DiagnosticWarning, Message: warning.Warning, Path: warning.Path})
+	}
 	if m.newRunner != nil {
 		out = append(out, m.newRunner.CommandDiagnostics()...)
 		out = append(out, m.builtInCommandConflictDiagnostics()...)

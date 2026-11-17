@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
-	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -91,7 +90,7 @@ func TestPackageAutoloadDisabledOriginal(t *testing.T) {
 		if err := f.settings.SetProjectPackages(sources); err != nil {
 			t.Fatal(err)
 		}
-		_, missing := packagemanager.EnsureConfiguredPackagesInstalled(f.cwd, f.settings.AgentDir(), f.settings)
+		_, missing := ensureConfiguredPackagesInstalled(f.cwd, f.settings.AgentDir(), f.settings)
 		if len(missing) > 0 {
 			t.Fatal(missing)
 		}
