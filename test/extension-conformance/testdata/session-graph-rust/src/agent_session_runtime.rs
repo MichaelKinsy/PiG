@@ -225,8 +225,14 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
             "servicesCwd": runtime.services().cwd, "servicesAgentDir": runtime.services().agent_dir == agent_dir, "calls": calls.lock().unwrap().len(),
         }),
     );
-    r.insert("takenAtStartup".into(), json!(runtime.take_unreported_diagnostics()));
-    r.insert("takenAtStartupAgain".into(), json!(runtime.take_unreported_diagnostics()));
+    r.insert(
+        "takenAtStartup".into(),
+        json!(runtime.take_unreported_diagnostics()),
+    );
+    r.insert(
+        "takenAtStartupAgain".into(),
+        json!(runtime.take_unreported_diagnostics()),
+    );
     runtime.session().prompt("one")?;
     r.insert(
         "prompted".into(),
@@ -259,8 +265,14 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
             "rebinds": rebinds.load(Ordering::SeqCst), "invalidations": invalidations.load(Ordering::SeqCst),
         }),
     );
-    r.insert("takenAfterNew".into(), json!(runtime.take_unreported_diagnostics()));
-    r.insert("takenAfterNewAgain".into(), json!(runtime.take_unreported_diagnostics()));
+    r.insert(
+        "takenAfterNew".into(),
+        json!(runtime.take_unreported_diagnostics()),
+    );
+    r.insert(
+        "takenAfterNewAgain".into(),
+        json!(runtime.take_unreported_diagnostics()),
+    );
     runtime.session().prompt("two")?;
 
     // fork.
@@ -284,7 +296,10 @@ pub fn agent_session_runtime_script(ctx: &Context, args: &Value) -> io::Result<V
             "calls": calls.lock().unwrap().len() as i64 - 2,
         }),
     );
-    r.insert("takenAfterFork".into(), json!(runtime.take_unreported_diagnostics()));
+    r.insert(
+        "takenAfterFork".into(),
+        json!(runtime.take_unreported_diagnostics()),
+    );
     runtime.session().prompt("three")?;
     let forked_at = runtime.fork(
         &assistant_id()?,
