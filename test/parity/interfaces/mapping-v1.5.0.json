@@ -111712,7 +111712,7 @@
       "evidence": [
         "test:chord/host/pi_websocket_members_test.go#TestPiWebSocketLikeReadyStateGatesSend",
         "test:chord/host/pi_websocket_members_test.go#TestPiWebSocketLikeSendFlushesTheOutboxOnOpen",
-        "test:chord/host/pi_websocket_members_test.go#TestPiWebSocketLikeAddEventListenerMessageDeliversFrames"
+        "test:chord/host/closed_link_registration_test.go#TestWebSocketLinkOverASocketClosingOrClosedGivesAClosedLinkAlsoOneThatClosedAsItRegistered"
       ]
     },
     {
@@ -111832,7 +111832,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/host/link.go#WebSocketLink.shutdown"
+        "call:chord/host/link.go#NewWebSocketLink"
       ],
       "evidence": [
         "test:chord/host/pi_websocket_members_test.go#TestPiWebSocketLikeReadyStateGatesSend"
