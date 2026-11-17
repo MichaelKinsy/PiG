@@ -108,6 +108,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-0b13d8b-3](#bf-0b13d8b-3) | `pig --help` lists `pig login`, `pig logout`, `pig package`, `pig extension upgrade`, `pig reload`, and `pig… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b2baca](#bf-0b2baca) | A frame of a main-screen renderer that keeps its own frame timer, already under way when the screen stopped… | PiG's own defect | All platforms | Unreleased |
 | [BF-0b4e1e3](#bf-0b4e1e3) | The OpenAI Codex base URL keeps the whitespace around it, as Pi does (only an all-blank value falls back to… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0b5f9bd](#bf-0b5f9bd) | In the interactive mode, an extension's `pi.setModel` whose extension has `model_select` handlers could leave… | PiG's own defect | All platforms | Unreleased |
 | [BF-0b674b3](#bf-0b674b3) | Gemini model-id checks follow Pi's lowercasing: an id spelled with a dotted capital İ or a long ſ is no… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0b85f55](#bf-0b85f55) | The Rust SDK keeps every session entry when one entry of the session file holds an unpaired surrogate (it… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0bb3970](#bf-0bb3970) | `pi.exec` no longer reports code 0 for a command that a signal ended | PiG's own defect | All platforms | Unreleased |
@@ -3529,6 +3530,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `0b4e1e3376` (2026-10-09), `97e178f7f6` (2026-10-09), `c4d51d5c1a` (2026-10-09), `d1b3ad0151` (2026-10-09), `d80c1cd150` (2026-10-09)
 - **Tests:** `ai/codex_account_id_oracle_test.go::TestCodexAccountIDMatchesPi`, `ai/codex_vertex_urls_oracle_test.go::TestCodexWebSocketAndVertexVersionURLsMatchPi`, `ai/radius_config_oracle_test.go::TestRadiusConfigMatchesPiOnSeededProbes`, `ai/streaming_json_oracle_test.go::TestStreamingJSONMatchesPiOnSeededInput`, `internal/evals/plan_oracle_test.go::TestPlanMatchesPiOnSeededProbes`, `internal/nodeurl/genericurl_oracle_test.go::TestParseURLMatchesNode`, `internal/nodeurl/url_oracle_test.go::TestParseMatchesNodeURL`
 - **Release note:** The OpenAI Codex base URL keeps the whitespace around it, as Pi does (only an all-blank value falls back to the default), and its WebSocket URL is built with the WHATWG URL parser. The Vertex API-version check reads the parsed URL path.
+
+### BF-0b5f9bd
+
+**In the interactive mode, an extension's `pi.setModel` whose extension has `model_select` handlers could leave…**
+
+- **Source:** PiG's own defect
+- **Symptom:** In the interactive mode, an extension's `pi.setModel` whose extension has `model_select` handlers could leave the footer on the previous model's context window until the next keystroke.
+- **Root cause:** the extension setModel path awaited the model_select handlers between the session's model change and the footer push, and the push only invalidated the footer without requesting a render, where /model and model cycling push it in the same owner-loop unit
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0b5f9bd080` (2026-11-17)
+- **Tests:** `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveExtensionSetModelAfterNewKeepsRegisteredMetadata`, `coding/session_extension_set_model_on_main_test.go::TestExtensionSetModelOnMainMutatesInsideTheDispatcherAndAwaitsTheHandlersAfterIt`, `internal/codingagent/interactive_extension_set_model_footer_test.go::TestInteractiveExtensionSetModelShowsTheNewWindowWhileItsHandlersAreStillReplying`
+- **Release note:** In the interactive mode, an extension's `pi.setModel` whose extension has `model_select` handlers could leave the footer on the previous model's context window until the next keystroke. The model changed at once, but the footer was pushed only after the handlers replied, so a frame drawn in between (a key press, a stream tick) came from the cached footer and no render followed. The footer now changes in the same owner-loop unit as the session's model, and the handlers are awaited after it, off the owner loop. This has been so since v0.7.0 (the first tag with the extension `setModel` path).
 
 ### BF-0b674b3
 
