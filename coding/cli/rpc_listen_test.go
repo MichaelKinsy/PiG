@@ -780,6 +780,18 @@ func TestRemoveOwnSocketLeavesAPathItDidNotCreate(t *testing.T) {
 	}
 }
 
+// A server that has no record of its socket removes nothing.
+func TestRemoveOwnSocketWithoutARecordLeavesThePath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.sock")
+	if err := os.WriteFile(path, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	removeOwnSocket(path, nil)
+	if data, err := os.ReadFile(path); err != nil || string(data) != "keep" {
+		t.Fatalf("a path with no record was removed or changed: %q, %v", data, err)
+	}
+}
+
 func TestNetErrorCauseNamesTheCauseNotThePrivateBindPath(t *testing.T) {
 	cause := errors.New("too many open files")
 	err := &net.OpError{Op: "accept", Net: "unix", Addr: &net.UnixAddr{Name: "/run/.lab12/s", Net: "unix"}, Err: cause}
