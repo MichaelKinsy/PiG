@@ -125,7 +125,6 @@ D503 new added on the release line by 6ecb32e (docs(chord): D502, D503 in the ge
 D520 new added on the release line by 83ca858 (parity: regenerate DIVERGENCES.md, the bug ledger and the Go interface), first merge 669c3f0f5 Merge follow/ai 83ca858d84 (CLEAR)
 D521 new added on the release line by 1dc0e09 (Regenerate: bundles, runtime pack, ledgers, interface inventories, cov), first merge 19d5b7689 Merge remote-tracking branch 'dp/fix/size-gates' into fix/size-climb
 D540 new added on the release line by 0bbbe98 (docs(chord): D540 draft for the inode-only identity of other Unixes; P), first merge c0b4e6fb0 Merge remote-tracking branch 'origin/follow/chord-plugins' into follow/chord-tes
-D541 new added on the release line by b5a5ec1 (fix(extensions): a message crosses pi.events and a graph emit as Pi's ), first merge 68c71d77c Merge remote-tracking branch 'dp/fix/071-paseo-event-message-identity' into fix/
 D601 new added on the release line by 89948bf (docs: regenerate the divergence ledger and the bug ledger after the ga), first merge 872bac282 Merge fix/chord-gaps-root-a 72e86f2dcf1 into follow/chord-int (generated rows re
 D605 new added on the release line by 70b2b7b (docs(chord): D600, D605 and D606 are real records; the broken-entry te), first merge 41dcdf205 Merge follow/chord-int c746b21695 into fix/chord-reload-suite (app.go: the kit's
 D607 new added on the release line by fdf8853 (parity: libraryEntries lists chord/next/surfaces for chord:. and chord), first merge 245a7c5be Merge fix/chord-gaps-plugins 0ab1bc67d6e into follow/chord-int

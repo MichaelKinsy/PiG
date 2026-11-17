@@ -3608,7 +3608,7 @@ Scope: `ExtensionRunner` of the Go, Rust and Python SDKs (`sessionGraph.new` kin
 
 Owner decision: 2026-11-17, row 3 (the in-place edit of the streaming partial at message_update, including Rust): option 3, a narrow record of the two cases with the measured figures; and the Rust wholesale replacement of `message_start.message`, `agent_end.messages` and `message_update.assistantMessageEvent`: option (a), a narrow record of exactly those three rows. Approved as written. Owner decision: 2026-11-08, owner list item #8 (isolated message identity) approved as written, in the narrowed form; proposed by PaseoIdentity and narrowed after the review in `reviews/paseo-identity-f4.md` (the per-emit numbering and `pi.events` resolution the first draft listed here are ported).
 
-SCRUTINIZED:approved 2026-11-17
+SCRUTINIZED:approved 2026-11-17 text-sha256:df864a431a349d4a
 
 Remove when: Node extensions share one process or realm (the isolated placement goes), the Go, Python and Rust SDKs pass messages by reference to an object the host holds (a handle API), or a `message_end` handler's in-place edit goes back to the host of a graph emit, or the edit of the partial's content by a `message_update` handler reaches the next handler of every extension at no measurable per-delta cost: a row that shows it on the 2,000-delta benchmark (BenchmarkNodeMessageUpdateStream) with the same allocations and time per delta as the base, within the benchmark's noise, or a Rust handler's replacement of a member is told from an edit inside it (a handle API for the event, or an explicit replace call) so that the three Rust rows equal Pi. Then the call-site markers and this record go.
 
