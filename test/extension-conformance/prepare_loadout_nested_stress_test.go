@@ -161,9 +161,7 @@ export default function (pi: any) {
 			var wg sync.WaitGroup
 			var reloaded []extension.Extension
 			var reloadErr error
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+			wg.Go(func() {
 				deadline := time.Now().Add(60 * time.Second)
 				for time.Now().Before(deadline) {
 					if _, err := os.Stat(marker); err == nil {
@@ -176,7 +174,7 @@ export default function (pi: any) {
 				} else {
 					reloadErr = s.session.Abort(ctx)
 				}
-			}()
+			})
 			prompted := make(chan error, 1)
 			go func() { prompted <- s.session.Prompt(ctx, "go") }()
 			select {
