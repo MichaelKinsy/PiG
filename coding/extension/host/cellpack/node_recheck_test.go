@@ -476,3 +476,39 @@ func TestRegisterRepairsAndWarnsOnTheGivenWriter(t *testing.T) {
 		t.Fatalf("index.ts = %q, %v after the repair", body, err)
 	}
 }
+
+// The PiG configuration root, which holds installed packages and settings, and everything above it are out of scope: Node searches them for every extension anywhere, so a module-lookup name there does not stop a Binary. Only the two folders PiG creates for the cells (piglet-binary-cells and piglet-binary-cells/node) are checked.
+func TestRegisterIgnoresModuleLookupNamesInTheConfigRoot(t *testing.T) {
+	data, digest := nodeArchive(t, nodeFixtureEntries(false)...)
+	manifest, err := json.Marshal(nodeManifest(digest))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fsys := fstest.MapFS{"cells/manifest.json": {Data: manifest}, "cells/node/abc.tar": {Data: data}}
+	t.Cleanup(func() {
+		runtimecell.SetPrebuiltResolver(nil)
+		loadedCells = nil
+	})
+	home := filepath.Join(t.TempDir(), "home")
+	t.Setenv("PIG_HOME", home)
+	for _, name := range moduleLookupNames {
+		writeAll(t, filepath.Join(home, name, "keep"), "{}")
+		writeAll(t, filepath.Join(filepath.Dir(home), name, "keep"), "{}")
+	}
+	var warnings bytes.Buffer
+	for range 2 {
+		if err := registerFrom(fsys, &warnings); err != nil {
+			t.Fatalf("registerFrom with module-lookup names in the config root: %v", err)
+		}
+	}
+	if warnings.Len() != 0 {
+		t.Fatalf("warned %q", warnings.String())
+	}
+	loaded := LoadedCells()
+	if len(loaded) != 1 {
+		t.Fatalf("loaded cells = %#v", loaded)
+	}
+	if _, err := os.Lstat(filepath.Join(loaded[0].BinaryPath, "greeter", "index.ts")); err != nil {
+		t.Fatal(err)
+	}
+}

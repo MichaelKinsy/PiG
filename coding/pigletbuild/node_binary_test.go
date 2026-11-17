@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -120,12 +121,12 @@ func TestNodeExtensionStripConflictNamesTheStripEntry(t *testing.T) {
 // and the working directory.
 func runNodeBinary(t *testing.T, binary, pathEnv string, args ...string) (int, string, string, string) {
 	t.Helper()
-	return runNodeBinaryAt(t, binary, t.TempDir(), pathEnv, args...)
+	return runNodeBinaryAt(t, binary, t.TempDir(), "", pathEnv, args...)
 }
 
 // runNodeBinaryAt is runNodeBinary with the home it runs in given, so a second start sees what the first left in the
-// configuration root.
-func runNodeBinaryAt(t *testing.T, binary, home, pathEnv string, args ...string) (int, string, string, string) {
+// configuration root, and the text it reads on standard input.
+func runNodeBinaryAt(t *testing.T, binary, home, stdin, pathEnv string, args ...string) (int, string, string, string) {
 	t.Helper()
 	work := t.TempDir()
 	cmd := exec.CommandContext(t.Context(), binary, append(args, "--model", "test-faux/faux-1", "--no-session", "--offline")...)
@@ -149,6 +150,7 @@ func runNodeBinaryAt(t *testing.T, binary, home, pathEnv string, args ...string)
 		cmd.Env = append(cmd.Env, "SystemRoot="+os.Getenv("SystemRoot"), "LOCALAPPDATA="+os.Getenv("LOCALAPPDATA"))
 	}
 	var stdout, stderr strings.Builder
+	cmd.Stdin = strings.NewReader(stdin)
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	err := cmd.Run()
 	var exit *exec.ExitError
@@ -258,7 +260,7 @@ func TestPigletBinaryRunsTheOriginalNodeSourcesAfterTheExtractedCopyIsEdited(t *
 	const ask = "Run: extension echo hello"
 	run := func() (string, string) {
 		t.Helper()
-		code, out, errOut, _ := runNodeBinaryAt(t, binary, home, withNode, "--mode", "json", "-p", ask)
+		code, out, errOut, _ := runNodeBinaryAt(t, binary, home, "", withNode, "--mode", "json", "-p", ask)
 		if code != 0 {
 			t.Fatalf("exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
 		}
@@ -308,6 +310,73 @@ func TestPigletBinaryRunsTheOriginalNodeSourcesAfterTheExtractedCopyIsEdited(t *
 		t.Fatalf("the start after the repair\nstdout:\n%s\nstderr:\n%s", out, errOut)
 	}
 }
+
+// The repair's warning is a line on stderr and never anything a mode prints: standard output is byte-equal, in print, JSON
+// and RPC mode, between a start that repaired the extracted copy and a start that found it clean. The two runs share one home.
+func TestPigletBinaryRepairWarnsOnStderrAndLeavesStdoutAlone(t *testing.T) {
+	execPath, err := exec.CommandContext(t.Context(), "node", "-p", "process.execPath").Output()
+	if err != nil {
+		t.Fatalf("node is required to run the Binary's TypeScript extension: %v", err)
+	}
+	withNode := filepath.Dir(strings.TrimSpace(string(execPath)))
+	root := t.TempDir()
+	isolateBuildHome(t, root)
+	binary := filepath.Join(root, nativeBinaryName("pig-nodebin"))
+	piglet := writeNodePiglet(t, root, "")
+	var stdout, stderr strings.Builder
+	if code := runBuild([]string{piglet, "--format", "binary", "--builder", "native", "--out", binary}, &stdout, &stderr); code != 0 {
+		t.Fatalf("pig piglet build exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout.String(), stderr.String())
+	}
+	for name, mode := range map[string]struct {
+		stdin string
+		args  []string
+	}{
+		"print": {"", []string{"-p", "What is 20+22?"}},
+		"json":  {"", []string{"--mode", "json", "-p", "Run: extension echo hello"}},
+		"rpc":   {`{"id":"1","type":"get_commands"}` + "\n", []string{"--mode", "rpc"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			home := t.TempDir()
+			run := func() (string, string) {
+				t.Helper()
+				code, out, errOut, work := runNodeBinaryAt(t, binary, home, mode.stdin, withNode, mode.args...)
+				if code != 0 {
+					t.Fatalf("exit %d\nstdout:\n%s\nstderr:\n%s", code, out, errOut)
+				}
+				return strings.ReplaceAll(out, work, "<work>"), errOut
+			}
+			run() // extracts
+			clean, cleanErr := run()
+			if strings.Contains(cleanErr, "extracted them again") {
+				t.Fatalf("a clean start warned:\n%s", cleanErr)
+			}
+			entries, err := filepath.Glob(filepath.Join(home, ".pig", "piglet-binary-cells", "node", "*", "sources", "greeter", "lib", "echo.ts"))
+			if err != nil || len(entries) != 1 {
+				t.Fatalf("extracted echo.ts = %v, %v; want one", entries, err)
+			}
+			if err := os.WriteFile(entries[0], []byte("export const echo = () => 'EDITED';\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			repaired, repairedErr := run()
+			if strings.Count(repairedErr, "extracted them again") != 1 {
+				t.Fatalf("the repair is not announced once on stderr:\n%s", repairedErr)
+			}
+			if strings.Contains(repaired, "extracted them again") || strings.Contains(repaired, "pig: warning") {
+				t.Fatalf("the warning reached standard output:\n%s", repaired)
+			}
+			if normalizeRunOutput(repaired) != normalizeRunOutput(clean) {
+				t.Fatalf("standard output differs between a clean and a repaired start\nclean:\n%s\nrepaired:\n%s", clean, repaired)
+			}
+		})
+	}
+}
+
+// normalizeRunOutput blanks what differs between two runs of the same input: timestamps, durations and generated ids.
+func normalizeRunOutput(out string) string {
+	return runVaryingValues.ReplaceAllString(out, "$1<varies>")
+}
+
+var runVaryingValues = regexp.MustCompile(`("(?:timestamp|id|toolCallId|sessionId|duration|durationMs|startedAt|createdAt|responseId)":)(?:"[^"]*"|\d+(?:\.\d+)?)`)
 
 // nativeBinaryName is the --out name of a native Piglet Binary: Windows rejects an output without an executable extension
 // (nativeArtifactPath), so a build test that names its output adds .exe there.
