@@ -4384,8 +4384,19 @@ func (h *Host) toolExecuteFunc(toolName string, target toolTarget) extension.Too
 			reqCtx = withRequestWindow(reqCtx, window)
 			reqCtx = withRequestEarlierWindows(reqCtx, agent.ToolEarlierStartWindowsFromContext(ctx, toolCallID))
 		}
+		stateCtx, endedCall := reqCtx, false
+		if reqCtx.Err() != nil && conn.takesCalls() {
+			// pig divergence (D111): a call whose context ended before it reached the host still reaches the extension, with its signal aborted, as Pi runs tool.execute with an aborted signal: the state it runs against and its request are written under one bound, ToolAbortGrace. A connection that is closing or closed takes no call: a call that reaches it after a shutdown or a replacement began ends as before.
+			sent, stop := abortedCallSendContext(reqCtx)
+			defer stop()
+			stateCtx, endedCall = sent, true
+			reqCtx = withAbortedCallSend(reqCtx, sent)
+		}
 		if target.syncState != nil {
-			if err := target.syncState(reqCtx, conn); err != nil {
+			if err := target.syncState(stateCtx, conn); err != nil {
+				if endedCall && errors.Is(context.Cause(stateCtx), ErrToolAborted) {
+					return extension.AgentToolResult{}, ErrToolAborted
+				}
 				return extension.AgentToolResult{}, fmt.Errorf("sync extension state for tool %s: %w", toolName, err)
 			}
 		}

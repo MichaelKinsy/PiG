@@ -1509,6 +1509,17 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			"aborted_entry_probe": {
+				Definition: extension.ToolDefinition{
+					Name:        "aborted_entry_probe",
+					Description: "Report the signal a tool starts with",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"signal_nested_probe": {
 				Definition: extension.ToolDefinition{
 					Name:        "signal_nested_probe",

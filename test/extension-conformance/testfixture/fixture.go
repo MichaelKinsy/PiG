@@ -933,6 +933,15 @@ func Extension() *sdk.Extension {
 		second := ask("tool_signal:later")
 		return fmt.Sprintf("tool_signal:%t:%s:%s", aborted, first, second), nil
 	})
+	// aborted_entry_probe is called with its run already aborted (TestConformance_ToolCalledAbortedEntersWithItsSignalAborted): Pi runs tool.execute with an aborted signal. It echoes the nonce it was given, reports whether its signal was aborted on its first line, and makes a host call after that, which the host answers.
+	ext.Tool("aborted_entry_probe", "Report the signal a tool starts with", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		aborted := ctx.Err() != nil
+		answer, _, err := ctx.Input(fmt.Sprintf("aborted_entry:%v", params["nonce"]), "p")
+		if err != nil {
+			return fmt.Sprintf("aborted_entry:%v:%t:failed: %v", params["nonce"], aborted, err), nil
+		}
+		return fmt.Sprintf("aborted_entry:%v:%t:%v", params["nonce"], aborted, answer), nil
+	})
 	// signal_nested_probe runs abort_tool as a nested call without a signal of its own: it gets the calling tool's signal (runner.ts:979-981 `options.signal ?? signal`), so the run's abort reaches it.
 	ext.Tool("signal_nested_probe", "Run abort_tool as a nested tool call", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
 		outcome, err := ctx.ExecuteTool("abort_tool", map[string]any{}, nil)

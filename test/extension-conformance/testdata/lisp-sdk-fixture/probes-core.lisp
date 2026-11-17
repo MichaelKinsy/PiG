@@ -145,6 +145,14 @@
                          (aborted (if (pig:ctx-cancelled-p ctx) "true" "false"))
                          (second (ask "tool_signal:later")))
                     (pig:obj "content" (format nil "tool_signal:~A:~A:~A" aborted first second))))))
+    ;; aborted_entry_probe: called with its run already aborted, it echoes the nonce, reports whether its signal was aborted on its first line, and makes a host call after that, which the host answers (TestConformance_ToolCalledAbortedEntersWithItsSignalAborted).
+    (pig:tool ext "aborted_entry_probe" "Report the signal a tool starts with" (core-schema "properties" (pig:obj))
+              (lambda (ctx params)
+                (let* ((nonce (core-str (pig:jref params "nonce")))
+                       (aborted (if (pig:ctx-cancelled-p ctx) "true" "false"))
+                       (answer (handler-case (let ((text (pig:ctx-input ctx (format nil "aborted_entry:~A" nonce) :placeholder "p"))) (if (stringp text) text ""))
+                                 (error (e) (format nil "failed: ~A" e)))))
+                  (pig:obj "content" (format nil "aborted_entry:~A:~A:~A" nonce aborted answer)))))
     ;; signal_nested_probe: a nested tool call keeps being answered after the abort, as Pi's in-process calls are.
     (pig:tool ext "signal_nested_probe" "Run abort_tool as a nested tool call" (core-schema "properties" (pig:obj))
               (lambda (ctx params) (declare (ignore params))

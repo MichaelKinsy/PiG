@@ -445,24 +445,31 @@ func TestSubagentExampleChildLifecycle(t *testing.T) {
 		}
 	})
 
-	// Pi's case passes a signal that is already aborted and expects five aborted results. A PiG call whose context has ended is never sent to the
-	// extension: the host returns the context's error before the example runs, so no child can start either. This asserts both.
-	t.Run("starts no work when the signal is already aborted", func(t *testing.T) {
+	// Pi's "returns aborted task details when the signal is already aborted": the tool is called with a signal that is already aborted and answers
+	// for itself, five aborted task results with no messages. The call reaches the extension, whose own check of the signal returns them.
+	t.Run("returns aborted task details when the signal is already aborted", func(t *testing.T) {
 		rig := newSubagentRig(t, "", false, false)
 		ctx, abort := context.WithCancel(rig.ctx)
 		abort()
-		starts := filepath.Join(rig.dir, "never-started.txt")
 		tasks := make([]map[string]any, 5)
 		for i := range tasks {
-			tasks[i] = map[string]any{"agent": "worker", "task": "hold:" + starts}
+			tasks[i] = map[string]any{"agent": "worker", "task": "tool-then-final"}
 		}
-		_, err := rig.execute(ctx, map[string]any{"tasks": tasks, "agentScope": "project", "confirmProjectAgents": false}, nil)
-		if !errors.Is(err, context.Canceled) {
-			t.Fatalf("error = %v, want the context's cancellation", err)
+		result, err := rig.execute(ctx, map[string]any{"tasks": tasks, "agentScope": "project", "confirmProjectAgents": false}, nil)
+		if err != nil {
+			t.Fatalf("error = %v, want the tool's own result", err)
 		}
-		time.Sleep(500 * time.Millisecond)
-		if started := readLines(starts); len(started) != 0 {
-			t.Fatalf("%d children started for an aborted call", len(started))
+		children := subagentResults(t, result)
+		if len(children) != 5 {
+			t.Fatalf("%d results, want 5", len(children))
+		}
+		for i, child := range children {
+			if child.Status != "aborted" || len(child.Messages) != 0 {
+				t.Fatalf("result %d = %+v, want status aborted and no messages", i, child)
+			}
+		}
+		if text := subagentText(result); !strings.Contains(text, "aborted") {
+			t.Fatalf("result text %q does not contain aborted", text)
 		}
 	})
 

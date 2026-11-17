@@ -646,6 +646,11 @@ func (c *Conn) sendEncoded(data encodedEnvelope) error {
 	return c.enqueue(context.Background(), outboundFrame{data: data, work: true})
 }
 
+// takesCalls reports whether the connection still takes a new request: it is neither closing (Close, Retire) nor closed. A tool call whose context ended is sent only to such a connection (D111); on one that a shutdown, a reload or a replacement is ending it is not.
+func (c *Conn) takesCalls() bool {
+	return !c.closing.Load() && !c.closed.Load()
+}
+
 // checkSendState rejects a send on a connection that is closing or closed. answer marks a call result, the one frame a retiring connection still sends: Retire leaves the peer running until it closes, and a call it made before it read the shutdown frame, or that its teardown makes, waits for a result only this connection can carry. A peer that blocks on the result, as a Node runtime does in a synchronous host call, cannot read the shutdown frame until it arrives, so refusing it leaves the peer waiting for the result and the host waiting for the peer to close.
 func (c *Conn) checkSendState(answer bool) error {
 	if c.closed.Load() || (c.closing.Load() && (!answer || !c.retiring.Load())) {
@@ -964,7 +969,18 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		signalAborted = signal.Err() != nil
 		env.Request.SignalAborted = signalAborted
 	}
-	if err := c.sendOrdered(ctx, env, order); err != nil {
+	sendCtx := ctx
+	if env.Request != nil && env.Request.Method == MethodToolCall {
+		if sent, aborted := abortedCallSend(ctx); aborted {
+			// pig divergence (D111): a tool_call whose context had ended when it reached the host is written all the same, with its signal already aborted (RequestPayload.SignalAborted), as Pi runs tool.execute with an aborted signal (subagent-extension.test.ts "returns aborted task details when the signal is already aborted"). The cancel below follows the request, and the grace period runs from here.
+			sendCtx = sent
+			env.Request.SignalAborted = true
+		}
+	}
+	if err := c.sendOrdered(sendCtx, env, order); err != nil {
+		if sendCtx != ctx && errors.Is(context.Cause(sendCtx), ErrToolAborted) {
+			return nil, ErrToolAborted
+		}
 		return nil, err
 	}
 	if issued := requestIssued(ctx); issued != nil {
@@ -2704,6 +2720,24 @@ func withRequestIssued(ctx context.Context, fn func()) context.Context {
 func requestIssued(ctx context.Context) func() {
 	fn, _ := ctx.Value(requestIssuedKey{}).(func())
 	return fn
+}
+
+type abortedCallSendKey struct{}
+
+// abortedCallSendContext is the context the frames of a tool_call are written under when its own context had ended before the host sent it (pig divergence D111): the call's values, none of its cancellation, and ToolAbortGrace as the bound a stuck writer gets, whose end fails the call as ErrToolAborted. The call's own context goes on to end the wait, which cancels the tool's signal-only and starts the grace period.
+func abortedCallSendContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	return context.WithTimeoutCause(context.WithoutCancel(ctx), ToolAbortGrace, ErrToolAborted)
+}
+
+// withAbortedCallSend records the context abortedCallSendContext returned, for the request that sends the call.
+func withAbortedCallSend(ctx, sent context.Context) context.Context {
+	return context.WithValue(ctx, abortedCallSendKey{}, sent)
+}
+
+// abortedCallSend is the context withAbortedCallSend recorded: ok when the call's context had ended before the host sent it.
+func abortedCallSend(ctx context.Context) (sent context.Context, ok bool) {
+	sent, ok = ctx.Value(abortedCallSendKey{}).(context.Context)
+	return sent, ok
 }
 
 type requestSignalKey struct{}
