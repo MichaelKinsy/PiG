@@ -1138,7 +1138,8 @@ Parity allowance: no paired scenario asserts arbitrary live Go component identit
 
 Remove when: live main-process object operations preserve Pi's identity and callback behavior across the extension boundary, or upstream removes that object-sharing contract.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 4 re-approval as recommended, checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:e0340b38ed1c1bf6
 
 ## D74 Pi-ai's builtin API implementations run in PiG's host
 
