@@ -332,6 +332,113 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/autocomplete/14-custom-editor-installed-at-session-start.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Editor autocomplete",
+            "capture_end": "escape/ctrl+c cancel"
+          },
+          "reason": "Owned visible surface: An editor installed from session_start holds a working autocomplete provider after startup and after /reload.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/15-editor-sync-error-add-provider.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "armed",
+            "capture_end": "pong"
+          },
+          "reason": "Owned visible surface: An extension adding an autocomplete provider while its editor refuses the rebuilt one shows the extension's error and the session goes on.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/16-editor-sync-error-install-editor.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "armed",
+            "capture_end": "pong"
+          },
+          "reason": "Owned visible surface: An extension installing an editor that refuses the provider it is handed shows the extension's error and the session goes on.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/17-editor-sync-error-reload.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: Reload failed"
+          },
+          "reason": "Owned visible surface: A /reload whose editor refuses the rebuilt provider fails with Pi's Reload failed line and the process lives.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/18-editor-sync-error-new-session.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: Failed to create session",
+            "capture_end": "automatically."
+          },
+          "reason": "Owned visible surface: A /new whose editor refuses the provider ends both binaries with Pi's fatal Failed to create session report and exit status 1.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/19-editor-sync-calls.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "calls=",
+            "capture_end": "|D|"
+          },
+          "reason": "Owned visible surface: The number of setAutocompleteProvider calls an installed editor receives at startup, after an add, after /reload and after /new equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/cli-utils/01-print-initial-message-file-args.toml",
       "transforms": [
         {

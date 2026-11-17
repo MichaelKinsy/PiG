@@ -10904,6 +10904,27 @@
       ]
     },
     {
+      "id": "BF-4ce10d3",
+      "title": "fix(subprocess): the session_start reply waits for the notices the handler sent before it",
+      "symptom": "fix(subprocess): the session_start reply waits for the notices the handler sent before it",
+      "rootCause": "Pi applies an editor a session_start handler installed before the emit returns. The host accepted the handler reply from the read loop while the install notice was still queued for the dispatcher, so the bind after the emit could rebuild the autocomplete provider with no editor installed (parity scenarios 14 and 19 red under load). The reply now holds until the host dispatched the frames the handler sent before it (Conn.dispatchBarrier), as the tool result already does. Other event kinds and commands keep the unordered reply.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4ce10d30b5",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestSessionStartReplyWaitsForTheEditorInstallNotice"
+      ]
+    },
+    {
       "id": "BF-4d04134",
       "title": "The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of…",
       "symptom": "The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of always `escape/ctrl+c`.",
@@ -21494,6 +21515,38 @@
         "internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond",
         "internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64",
         "tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil"
+      ]
+    },
+    {
+      "id": "BF-77778f9",
+      "title": "An extension editor that fails to take the autocomplete provider no longer ends the session",
+      "symptom": "An extension editor that fails to take the autocomplete provider no longer ends the session.",
+      "rootCause": "- add-provider, setEditorComponent and /reload report an extension error; /new fails with Failed to create session; settings change and startup raise as in Pi - awaitReloadStep runs the queued UI tasks before it returns",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension editor that fails to take the autocomplete provider no longer ends the session. When the editor installed with `setEditorComponent` throws from `setAutocompleteProvider`, pig now does what Pi does on each path: adding a provider, installing an editor and `/reload` show an extension error (`/reload` shows `Error: Reload failed: \u003cmessage\u003e` and hands the input back to the previous editor) and the session continues, a settings change raises the uncaught exception, `/new` reports `Error: Failed to create session: \u003cmessage\u003e` and exits with status 1, and the startup raises the uncaught exception; a bind or a reload now also waits until the editor a `session_start` handler installed is in place, so that editor hears the provider exactly as often as in Pi. Present since 0.3.0, the release in which the host first sent the provider to an installed editor.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "302d225a92",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "77778f9ac0",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor",
+        "internal/codingagent/autocomplete_sync_error_caller_test.go::TestRebindWhoseInstalledEditorRefusesTheProviderFailsTheBind",
+        "internal/codingagent/autocomplete_sync_error_caller_test.go::TestReloadWhoseInstalledEditorRefusesTheProviderIsReloadFailed",
+        "internal/codingagent/autocomplete_sync_error_test.go::TestRefusedProviderAfterASettingsChangeEndsTheSession",
+        "internal/codingagent/autocomplete_sync_error_test.go::TestRefusedProviderIsAnExtensionErrorWhereNoCallerCarriesIt",
+        "internal/codingagent/crash_log_test.go::TestHandleFatalRuntimeErrorNotesSitUnderTheErrorAtTheOutputPadding",
+        "internal/codingagent/reload_step_runs_queued_ui_test.go::TestReloadStepRunsTheUITasksItsHandlersQueued"
       ]
     },
     {
@@ -34692,6 +34745,35 @@
       ]
     },
     {
+      "id": "BF-c3c2260",
+      "title": "fix(subprocess): the wait for the installed editor follows a replacing install and prefers a bound editor to…",
+      "symptom": "fix(subprocess): the wait for the installed editor follows a replacing install and prefers a bound editor to an ended context",
+      "rootCause": "- AwaitEditorInstalled waits again on the editor that replaced the one it waited for - an editor that is bound is in place whatever the state of the context - tests: no editor (no wait), the extension ends while the bind is pending, the context ends, a replacing install, a busy owner loop at the install, shutdown while the editor is not bound, and the rebind and reload steps make the wait",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c3c2260ce7",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledDoesNotWaitWithoutAnEditor",
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledReturnsTheCauseOfItsContext",
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledReturnsWhenTheExtensionEndsWhileTheBindIsPending",
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheEditorThatReplacedTheOne",
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor",
+        "internal/codingagent/autocomplete_editor_await_test.go::TestInstalledEditorIsBoundWhileTheOwnerLoopIsBusyAtTheInstall",
+        "internal/codingagent/autocomplete_editor_await_test.go::TestShutdownWhileTheInstalledEditorIsNotBoundEndsTheWait",
+        "internal/codingagent/autocomplete_sync_error_caller_test.go::TestRebindWhoseInstalledEditorRefusesTheProviderFailsTheBind",
+        "internal/codingagent/autocomplete_sync_error_caller_test.go::TestReloadWhoseInstalledEditorRefusesTheProviderIsReloadFailed"
+      ]
+    },
+    {
       "id": "BF-c416945",
       "title": "fix(ai): tool-argument member order keeps a key with an escaped lone surrogate",
       "symptom": "fix(ai): tool-argument member order keeps a key with an escaped lone surrogate",
@@ -41571,6 +41653,31 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-e0d6be5",
+      "title": "A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with…",
+      "symptom": "A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with `autocomplete provider is no longer available` when the install ran before the autocomplete rebuild that follows `session_start` (and on a later `/reload`).",
+      "rootCause": "The host reports every autocomplete rebuild to the runtime that installed an editor as autocomplete.sync {operation: \"changed\", current}, as Pi's setupAutocompleteProvider calls setAutocompleteProvider on the installed editor. The Node runtime handled it; the Go, Rust, Python and Lisp SDKs looked the descriptor up as a provider id, answered an error, and the host turned that error into an uncaught exception that ended the session whenever the install ran before the rebuild that follows session_start.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with `autocomplete provider is no longer available` when the install ran before the autocomplete rebuild that follows `session_start` (and on a later `/reload`). The host reports each rebuild to the editor's runtime, and those SDKs answered the notice with an error that the host raised as an uncaught exception; they now accept it, as the Node runtime always did.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e0d6be53de",
+          "date": "2026-11-16",
+          "pr": "497"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/autocomplete_installed_editor_test.go::TestInstalledSubprocessEditorHearsTheRebuildInEitherOrder",
+        "test/extension-conformance/autocomplete_changed_test.go::TestAutocompleteChangedReachesInstalledNativeEditor",
+        "test/parity/scenarios/autocomplete/14-custom-editor-installed-at-session-start.toml"
+      ]
     },
     {
       "id": "BF-e16cbba",

@@ -1,0 +1,65 @@
+# Upstream evidence: Pi 1.5.2 interactive-mode.ts setupAutocompleteProvider ends with `this.editor.setAutocompleteProvider?.(provider)`, so an
+# installed editor that throws there fails whichever caller rebuilt the provider. The extension (testdata/editor-sync-error.ts) arms its editor to
+# throw from setAutocompleteProvider once /arm has run (issue: an extension editor that fails to take the provider ended pig's session).
+name = "19-editor-sync-calls"
+description = "The number of setAutocompleteProvider calls an installed editor receives at startup, after an add, after /reload and after /new equals Pi's."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 110
+height = 40
+ready_pattern_pig = "No models available"
+ready_pattern_pi = "No models available"
+ready_timeout_seconds = 30
+capture_start = "calls="
+capture_end = "|D|"
+
+[[tmux.steps]]
+keys = ["/mark A", "Escape", "Enter"]
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["/add-provider", "Escape", "Enter"]
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["/mark B", "Escape", "Enter"]
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["/reload", "Escape", "Enter"]
+settle_seconds = 4
+
+[[tmux.steps]]
+keys = ["/mark C", "Escape", "Enter"]
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["/new", "Escape", "Enter"]
+settle_seconds = 4
+
+[[tmux.steps]]
+keys = ["/mark D", "Escape", "Enter"]
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["/show", "Escape", "Enter"]
+wait_contains = ["calls="]
+wait_timeout_seconds = 15
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/dialogs-default", "EDITOR_SYNC_FLAG={{TEMP}}/flag", "EDITOR_SYNC_LOG={{TEMP}}/log"]
+pi = ["PI_CODING_AGENT_DIR=../selectors/testdata/dialogs-default", "EDITOR_SYNC_FLAG={{TEMP}}/flag", "EDITOR_SYNC_LOG={{TEMP}}/log"]
+pig_extensions = ["testdata/editor-sync-error.ts"]
+pi_extensions = ["testdata/editor-sync-error.ts"]
+pig_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["calls=c|A|c|B|cc|C|cc|D|"]
+both_not_contain = ["panic:", "goroutine ", "uncaughtException"]
+output_equal = true
+runs = 3

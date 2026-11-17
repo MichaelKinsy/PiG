@@ -393,6 +393,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4c032a0](#bf-4c032a0) | A description decoded from the wire is written back with every schema member in the order it was declared in… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4c45afa](#bf-4c45afa) | fix(sdk-py): stage pig_sdk.tui with the package, which pig_sdk imports at load; keep the pi-ai patterns… | PiG's own defect | All platforms | Unreleased |
 | [BF-4c7ccf2](#bf-4c7ccf2) | A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-4ce10d3](#bf-4ce10d3) | fix(subprocess): the session_start reply waits for the notices the handler sent before it | PiG's own defect | All platforms | Unreleased |
 | [BF-4d04134](#bf-4d04134) | The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4d2f44e](#bf-4d2f44e) | A Chord object whose factory reads a key of another object (`at(key)`) could fail to go live with `not_ready`… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4d32556](#bf-4d32556) | `Math.exp` in `internal/jsmath` returns Node's bits on arm64 | PiG's own defect | All platforms | 0.7.0 |
@@ -775,6 +776,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-776b600](#bf-776b600) | fix(durable/core): the scheduler's reconcile and drain microtasks run behind the host listeners' dispatch of… | PiG's own defect | All platforms | Unreleased |
 | [BF-776d60b](#bf-776d60b) | An extension dialog (`select`, `input`, `editor`) whose `timeout` carries a fraction of a millisecond past a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-776d60b-2](#bf-776d60b-2) | A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-77778f9](#bf-77778f9) | An extension editor that fails to take the autocomplete provider no longer ends the session | PiG's own defect | All platforms | Unreleased |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-78c4c6c](#bf-78c4c6c) | `pig piglet add` now names the offending bundled path and where it came from (for example `Package herdr… | PiG's own defect | All platforms | 0.5.0 |
@@ -1248,6 +1250,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c350117](#bf-c350117) | Fixed incorrect MCP reconnect behavior after cancellation during transport cleanup | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c371a13](#bf-c371a13) | OpenAI Responses requests keep the prompt cache across tool changes (Pi #11142) | PiG's own defect | All platforms | 0.5.2 |
 | [BF-c3a6eca](#bf-c3a6eca) | Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c3c2260](#bf-c3c2260) | fix(subprocess): the wait for the installed editor follows a replacing install and prefers a bound editor to… | PiG's own defect | All platforms | Unreleased |
 | [BF-c416945](#bf-c416945) | fix(ai): tool-argument member order keeps a key with an escaped lone surrogate | PiG's own defect | All platforms | Unreleased |
 | [BF-c4734ed](#bf-c4734ed) | fix(durable/core): the span's resume stage is one if, not a one-case switch | PiG's own defect | All platforms | Unreleased |
 | [BF-c4ad739](#bf-c4ad739) | Extension shortcut conflict warnings name both extensions ("registered by both A and B | PiG's own defect | All platforms | 0.5.0 |
@@ -1451,6 +1454,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e046dd9](#bf-e046dd9) | fix(rust): resolve every clippy warning in the Rust crates | PiG's own defect | All platforms | Unreleased |
 | [BF-e098463](#bf-e098463) | A Gemini stream chunk with a member of an unexpected type is read as Pi's JavaScript reads it instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e09d2bc](#bf-e09d2bc) | fix(durable/core): Session.fail, a failing store of held changes at close rejects close, observers see a… | PiG's own defect | All platforms | Unreleased |
+| [BF-e0d6be5](#bf-e0d6be5) | A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with… | PiG's own defect | All platforms | Unreleased |
 | [BF-e16cbba](#bf-e16cbba) | Tool search ranks a tool first when the query is its name, with `-` and other non-identifier characters read… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-e1764c3](#bf-e1764c3) | A live `/skill:` message renders as the collapsed `[skill] name` block instead of the raw `<skill>` XML | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e1ad272](#bf-e1ad272) | The xAI, Kimi Code, Meta, Radius, OpenAI Codex, Sign in with ChatGPT and GitHub Copilot OAuth requests send… | PiG's own defect | All platforms | 0.5.0 |
@@ -6824,6 +6828,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/classifier_shared_exports_test.go::TestParseClassifierUsagePricesTheModelCatalog`
 - **Release note:** A classifier response that reports more than 2,147,483,647 input or output tokens keeps the reported count and its cost, as Pi does, instead of capping it.
 
+### BF-4ce10d3
+
+**fix(subprocess): the session_start reply waits for the notices the handler sent before it**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(subprocess): the session_start reply waits for the notices the handler sent before it
+- **Root cause:** Pi applies an editor a session_start handler installed before the emit returns. The host accepted the handler reply from the read loop while the install notice was still queued for the dispatcher, so the bind after the emit could rebuild the autocomplete provider with no editor installed (parity scenarios 14 and 19 red under load). The reply now holds until the host dispatched the frames the handler sent before it (Conn.dispatchBarrier), as the tool result already does. Other event kinds and commands keep the unordered reply.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4ce10d30b5` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestSessionStartReplyWaitsForTheEditorInstallNotice`
+
 ### BF-4d04134
 
 **The cancel hint of extension loaders (`/share`, `/bug`) shows the key bound to `tui.select.cancel` instead of…**
@@ -12118,6 +12135,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `776d60b196` (2026-11-02)
 - **Tests:** `internal/codingagent/ext_ui_dialog_timeout_test.go::TestDialogTimeoutKeepsAFractionOfAMillisecondPastAWholeSecond`, `internal/codingagent/ext_ui_dialog_timeout_test.go::TestSubprocessOptionalInt64RejectsAValueBeyondInt64`, `tui/countdown_timer_parity_test.go::TestCountdownTimerParity_InitialTickMatchesCeil`
 - **Release note:** A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead of converting to the largest `int64` on arm64.
+
+### BF-77778f9
+
+**An extension editor that fails to take the autocomplete provider no longer ends the session**
+
+- **Source:** PiG's own defect
+- **Symptom:** An extension editor that fails to take the autocomplete provider no longer ends the session.
+- **Root cause:** - add-provider, setEditorComponent and /reload report an extension error; /new fails with Failed to create session; settings change and startup raise as in Pi - awaitReloadStep runs the queued UI tasks before it returns
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `302d225a92` (2026-11-17), `77778f9ac0` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor`, `internal/codingagent/autocomplete_sync_error_caller_test.go::TestRebindWhoseInstalledEditorRefusesTheProviderFailsTheBind`, `internal/codingagent/autocomplete_sync_error_caller_test.go::TestReloadWhoseInstalledEditorRefusesTheProviderIsReloadFailed`, `internal/codingagent/autocomplete_sync_error_test.go::TestRefusedProviderAfterASettingsChangeEndsTheSession`, `internal/codingagent/autocomplete_sync_error_test.go::TestRefusedProviderIsAnExtensionErrorWhereNoCallerCarriesIt`, `internal/codingagent/crash_log_test.go::TestHandleFatalRuntimeErrorNotesSitUnderTheErrorAtTheOutputPadding`, `internal/codingagent/reload_step_runs_queued_ui_test.go::TestReloadStepRunsTheUITasksItsHandlersQueued`
+- **Release note:** An extension editor that fails to take the autocomplete provider no longer ends the session. When the editor installed with `setEditorComponent` throws from `setAutocompleteProvider`, pig now does what Pi does on each path: adding a provider, installing an editor and `/reload` show an extension error (`/reload` shows `Error: Reload failed: <message>` and hands the input back to the previous editor) and the session continues, a settings change raises the uncaught exception, `/new` reports `Error: Failed to create session: <message>` and exits with status 1, and the startup raises the uncaught exception; a bind or a reload now also waits until the editor a `session_start` handler installed is in place, so that editor hears the provider exactly as often as in Pi. Present since 0.3.0, the release in which the host first sent the provider to an installed editor.
 
 ### BF-779318a
 
@@ -18686,6 +18717,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/assistant_message_render_oracle_test.go::TestAssistantMessageComponentRenderMatchesPi`, `tui/basic_components_oracle_test.go::TestBasicComponentsRenderLikePi`, `tui/markdown_unicode_space_oracle_test.go::TestMarkdownUnicodeSpaceLinesMatchPi`, `tui/model_selector_oracle_test.go::TestModelSelectorInputMatchesPi`, `tui/user_message_render_oracle_test.go::TestUserMessageComponentRenderMatchesPi`
 - **Release note:** Markdown rendering follows Pi for lines made only of Unicode spaces (U+00A0, U+3000, U+2003 and the others JavaScript's trim removes) in and after lists, a list item whose first line is one such space, a heading line holding U+2028 or U+2029, a table whose last line is such a space at a narrow width, and a `$$` or `\[` block whose text is only whitespace.
 
+### BF-c3c2260
+
+**fix(subprocess): the wait for the installed editor follows a replacing install and prefers a bound editor to…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(subprocess): the wait for the installed editor follows a replacing install and prefers a bound editor to an ended context
+- **Root cause:** - AwaitEditorInstalled waits again on the editor that replaced the one it waited for - an editor that is bound is in place whatever the state of the context - tests: no editor (no wait), the extension ends while the bind is pending, the context ends, a replacing install, a busy owner loop at the install, shutdown while the editor is not bound, and the rebind and reload steps make the wait
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c3c2260ce7` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledDoesNotWaitWithoutAnEditor`, `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledReturnsTheCauseOfItsContext`, `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledReturnsWhenTheExtensionEndsWhileTheBindIsPending`, `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheEditorThatReplacedTheOne`, `coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor`, `internal/codingagent/autocomplete_editor_await_test.go::TestInstalledEditorIsBoundWhileTheOwnerLoopIsBusyAtTheInstall`, `internal/codingagent/autocomplete_editor_await_test.go::TestShutdownWhileTheInstalledEditorIsNotBoundEndsTheWait`, `internal/codingagent/autocomplete_sync_error_caller_test.go::TestRebindWhoseInstalledEditorRefusesTheProviderFailsTheBind` and 1 more in docs/bug-ledger.json
+
 ### BF-c416945
 
 **fix(ai): tool-argument member order keeps a key with an escaped lone surrogate**
@@ -21503,6 +21547,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e09d2bc369` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-e0d6be5
+
+**A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with `autocomplete provider is no longer available` when the install ran before the autocomplete rebuild that follows `session_start` (and on a later `/reload`).
+- **Root cause:** The host reports every autocomplete rebuild to the runtime that installed an editor as autocomplete.sync {operation: "changed", current}, as Pi's setupAutocompleteProvider calls setAutocompleteProvider on the installed editor. The Node runtime handled it; the Go, Rust, Python and Lisp SDKs looked the descriptor up as a provider id, answered an error, and the host turned that error into an uncaught exception that ended the session whenever the install ran before the rebuild that follows session_start.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e0d6be53de` (2026-11-16, #497)
+- **Tests:** `internal/codingagent/autocomplete_installed_editor_test.go::TestInstalledSubprocessEditorHearsTheRebuildInEitherOrder`, `test/extension-conformance/autocomplete_changed_test.go::TestAutocompleteChangedReachesInstalledNativeEditor`, `test/parity/scenarios/autocomplete/14-custom-editor-installed-at-session-start.toml`
+- **Release note:** A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with `autocomplete provider is no longer available` when the install ran before the autocomplete rebuild that follows `session_start` (and on a later `/reload`). The host reports each rebuild to the editor's runtime, and those SDKs answered the notice with an error that the host raised as an uncaught exception; they now accept it, as the Node runtime always did.
 
 ### BF-e16cbba
 

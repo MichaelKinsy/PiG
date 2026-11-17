@@ -104561,6 +104561,39 @@
       "shapeHash": "sha256:aa13a31e2fd3dc81c9ba4e0fdfd342ebad80e1173029c20c8915bffe9ce05354"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#EditorSyncError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "EditorSyncError",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "EditorSyncError"
+      },
+      "shapeHash": "sha256:e0c12135d14e999a230a1cd655378a07084518ba6c7ffbfc21f4d3421e92f66e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#EditorSyncError.Error",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "EditorSyncError.Error",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#EditorSyncError.Unwrap",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "EditorSyncError.Unwrap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#EditorTheme",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "EditorTheme",
@@ -129806,6 +129839,17 @@
       "shapeHash": "sha256:29e08688fa2fbfaf3aba76fb4a6832c6f302b838949fa947749551c33e95de51"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.extensionPathOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.extensionPathOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(name string) string"
+      },
+      "shapeHash": "sha256:7d508d280c61decf247115e90b8749e71ea5dfc4d0ae712cc664fb5de63b74fe"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.extensionSourceInfo",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.extensionSourceInfo",
@@ -135614,6 +135658,17 @@
       "shapeHash": "sha256:acac06bbd2c66d0f7a9f0298a03257ea3339e1144b7083ceb53c6880e14f4f3e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.AwaitEditorInstalled",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.AwaitEditorInstalled",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.BatchModelCatalogPublication",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.BatchModelCatalogPublication",
@@ -136217,6 +136272,17 @@
         "type": "func(extName string)"
       },
       "shapeHash": "sha256:bbe8382db9b2b4f166fb98c73799a551368eb48cd061e138367581d523ea78a6"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.extensionPathOf",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.extensionPathOf",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(extName string) string"
+      },
+      "shapeHash": "sha256:5f95e8cd04fe7e5cf9eab438a06e4e38b97ae62959c2108600d57d68ab079e23"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.flagValue",
@@ -138925,6 +138991,17 @@
       "shapeHash": "sha256:0abd0089368694002550cc0990cadf6906c0bf9678244b0589e745ece071d567"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#autocompletePendingSource",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "autocompletePendingSource",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "autocompletePendingSource"
+      },
+      "shapeHash": "sha256:26e5800239e41a996adabb56722901f25960c6a33f22994ede97888f7fda4beb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#autocompleteProviderSource",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "autocompleteProviderSource",
@@ -139011,6 +139088,17 @@
         "type": "func(ctx context.Context, conn *Conn, method string, args any, result any) error"
       },
       "shapeHash": "sha256:e183963e42379820da9a56118d1642deba99660a2961764544e00c295825966b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#awaitReplyDispatch",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "awaitReplyDispatch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(c *Conn, dispatched \u003c-chan struct{})"
+      },
+      "shapeHash": "sha256:50eeea57225f1fdb6c332f90ffa19f0452cb8aff8964d7e89dcf7af682b4be33"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#awaitStderrDrained",
@@ -240301,6 +240389,17 @@
       "shapeHash": "sha256:c597bd21ae3f237ea9d57c6d1c1f8a821896bd1e26b851055bb0b0c208894088"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtUIContext.AutocompletePending",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ExtUIContext.AutocompletePending",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context) (bool, error)"
+      },
+      "shapeHash": "sha256:30ef660e55b577f44addd25358686e3fd0050a03e8883aa311e732100088fe52"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtUIContext.AutocompleteProvider",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ExtUIContext.AutocompleteProvider",
@@ -245911,6 +246010,17 @@
       "shapeHash": "sha256:64ed68104dc2dcf13ead3b5cc7df1338bacc14efa30f9db2fdc662ad49521e69"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.autocompleteChangedCallback",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.autocompleteChangedCallback",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() func(github.com/MichaelKinsy/PiG/tui.AutocompleteProvider)"
+      },
+      "shapeHash": "sha256:e146b46236bc61d442e6bc0208fbf528b12e825b7da73cacb91c9c592d5e4397"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.autocompleteContext",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.autocompleteContext",
@@ -245953,6 +246063,17 @@
         "type": "func(ctx context.Context, work func(context.Context) error) error"
       },
       "shapeHash": "sha256:148518fb429a7b1c30b0e28a5cf72789a8417c9fd83712b8ee2e075f692761b0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.awaitInstalledEditor",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.awaitInstalledEditor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) error"
+      },
+      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.awaitModelChange",
@@ -249772,6 +249893,17 @@
       "shapeHash": "sha256:93a6c6c514b3d04f95e2b5274d3e899928348deef941bd76a022f9ea0f5ed2eb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.reportAutocompleteRebuildError",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.reportAutocompleteRebuildError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error)"
+      },
+      "shapeHash": "sha256:93a6c6c514b3d04f95e2b5274d3e899928348deef941bd76a022f9ea0f5ed2eb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.reportFrontend",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.reportFrontend",
@@ -250432,6 +250564,17 @@
       "shapeHash": "sha256:1de1d84efe42f4dbeb23135979ae586af8af08977d00323efed0793f0f9e7d89"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runQueuedUITasks",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.runQueuedUITasks",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runScheduledRender",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.runScheduledRender",
@@ -250628,6 +250771,28 @@
         "type": "func(expanded bool)"
       },
       "shapeHash": "sha256:7b3921904510b5737900a614d6d548e3ac067a2eb6b19a35e0331bb5067d1c91"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setAutocompleteAwaiting",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.setAutocompleteAwaiting",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(provider github.com/MichaelKinsy/PiG/tui.AutocompleteProvider) \u003c-chan error"
+      },
+      "shapeHash": "sha256:d6dc89d33a7c833c27f380581837e421c1d95799f37f0a79cf5ba72e73db8333"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setAutocompleteUncaught",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.setAutocompleteUncaught",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(provider github.com/MichaelKinsy/PiG/tui.AutocompleteProvider)"
+      },
+      "shapeHash": "sha256:2108017ad86e1b1d8922cf3e540d20ed70a417cb64d7104205520133c236980d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.setBuiltInHeader",
@@ -267788,6 +267953,17 @@
         "type": "untyped string"
       },
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#awaitAutocompleteRebuild",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "awaitAutocompleteRebuild",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, result \u003c-chan error) error"
+      },
+      "shapeHash": "sha256:e245fac22a2719bdfefbe43073de76cd532464a47f77800c34fe0d12a781d056"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#awaitLoginDialogInput",

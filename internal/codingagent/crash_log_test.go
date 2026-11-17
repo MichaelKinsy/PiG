@@ -550,3 +550,29 @@ func TestCrashNoticeNamesAnUnreadableTimestampAsInvalidDate(t *testing.T) {
 		t.Fatalf("a date-only timestamp is a time for Date.parse: %q", notice)
 	}
 }
+
+// Pi's handleFatalRuntimeError adds the crash report note straight under the error line, at the output padding, with no spacer between them.
+func TestHandleFatalRuntimeErrorNotesSitUnderTheErrorAtTheOutputPadding(t *testing.T) {
+	t.Setenv("PIG_HOME", t.TempDir())
+	m, _ := newExtensionDialogProbe(t)
+	m.opts.AgentDir = t.TempDir()
+	m.opts.AppVersion = "fatal-test"
+	m.opts.CWD = "/work"
+	m.outputPad = 2
+	_ = m.handleFatalRuntimeError("Failed to create session", errors.New("disk exploded"))
+	var lines []string
+	for _, line := range m.chatContainer.Render(200) {
+		if text := strings.TrimRight(stripANSITest(line), " "); text != "" {
+			lines = append(lines, text)
+		}
+	}
+	if len(lines) < 2 || lines[0] != "  Error: Failed to create session: disk exploded" || !strings.HasPrefix(lines[1], "  To report this crash:") {
+		t.Fatalf("the fatal report reads %q, want the error line then the crash note, each at padding 2", lines)
+	}
+	rendered := m.chatContainer.Render(200)
+	for i, line := range rendered {
+		if strings.Contains(stripANSITest(line), "To report this crash:") && strings.TrimSpace(stripANSITest(rendered[i-1])) == "" {
+			t.Fatalf("a blank line separates the error from the crash note:\n%q", rendered)
+		}
+	}
+}

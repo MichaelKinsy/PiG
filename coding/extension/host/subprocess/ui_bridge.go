@@ -130,6 +130,8 @@ type UIBridge struct {
 	actions *HostCallbacks
 	// resolveFlag enforces registration scope and supplies host-owned defaults after CLI overrides.
 	resolveFlag func(extName, name string, override any) any
+	// extensionPath names a loaded extension by the path it was selected from, as its ExtensionError does. Set by the Host.
+	extensionPath func(extName string) string
 
 	// withSession builds the WithSession option of a replacement call that names a callback handle. Set by the Host.
 	withSession func(ctx context.Context, extName string, owner *Conn, handle string) func(*extension.ReplacedSessionContext) error
@@ -3757,6 +3759,14 @@ func (b *UIBridge) handleExec(ctx context.Context, actions *HostCallbacks, args 
 	}
 	result, _ := json.Marshal(res)
 	return &CallResultPayload{Result: result}, nil
+}
+
+// extensionPathOf is the path extName was selected from, or extName itself when the bridge has no host.
+func (b *UIBridge) extensionPathOf(extName string) string {
+	if b.extensionPath != nil {
+		return b.extensionPath(extName)
+	}
+	return extName
 }
 
 func (b *UIBridge) flagValue(actions *HostCallbacks, extName, name string) any {
