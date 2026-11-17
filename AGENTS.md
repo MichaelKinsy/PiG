@@ -310,7 +310,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `autocomplete` | 14 | 14 | 0 | 0 | 0 | 5 | not run |
 | `cli-utils` | 38 | 38 | 0 | 0 | 0 | 17 | not run |
 | `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
-| `compaction` | 16 | 16 | 0 | 0 | 0 | 10 | not run |
+| `compaction` | 21 | 21 | 0 | 0 | 0 | 11 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `extensions-runtime` | 182 | 181 | 0 | 1 | 0 | 71 | not run |
@@ -327,12 +327,12 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `providers-registry` | 17 | 14 | 0 | 3 | 0 | 28 | not run |
 | `rpc` | 97 | 97 | 0 | 0 | 0 | 32 | not run |
 | `selectors` | 17 | 17 | 0 | 0 | 1 | 15 | not run |
-| `session` | 47 | 47 | 0 | 0 | 0 | 20 | not run |
+| `session` | 58 | 58 | 0 | 0 | 0 | 21 | not run |
 | `settings` | 17 | 17 | 0 | 0 | 0 | 21 | not run |
-| `slash-commands` | 34 | 33 | 1 | 0 | 0 | 23 | not run |
+| `slash-commands` | 37 | 36 | 1 | 0 | 0 | 23 | not run |
 | `startup` | 30 | 29 | 1 | 0 | 0 | 14 | not run |
 | `tools` | 41 | 41 | 0 | 0 | 0 | 42 | not run |
-| `tree` | 12 | 11 | 1 | 0 | 0 | 10 | not run |
+| `tree` | 16 | 15 | 1 | 0 | 0 | 11 | not run |
 | `tui-components` | 40 | 40 | 0 | 0 | 0 | 36 | not run |
 
 Full per-file detail: `test/parity/coverage.md`.
