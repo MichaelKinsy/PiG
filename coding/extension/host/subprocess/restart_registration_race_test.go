@@ -77,13 +77,12 @@ var restartReaders = []restartReader{
 	{"status", func(r *restartReaderEnv) {
 		_ = r.h.ProviderNames(r.name)
 		_ = r.h.OAuthProviderNames(r.name)
-		_ = r.h.MemberProcessID(r.name)
 		_ = r.h.IsShuttingDown()
 		r.h.notifyReloadStarted()
 	}},
 	{"stop check", func(r *restartReaderEnv) {
 		_ = r.me.stoppedByOwner()
-		_ = r.me.runtimeProcess()
+		_ = r.me.processSurvivesStop()
 		_ = processIdentity(r.me)
 	}},
 }
