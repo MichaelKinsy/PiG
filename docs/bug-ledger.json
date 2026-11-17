@@ -56353,6 +56353,35 @@
       ]
     },
     {
+      "id": "BF-e098b64",
+      "title": "A Codex turn that hits the backend's 60 minute WebSocket limit (`websocket_connection_limit_reached`…",
+      "symptom": "A Codex turn that hits the backend's 60 minute WebSocket limit (`websocket_connection_limit_reached`, \"Responses websocket connection limit reached\") after output has started, for example during long thinking, is now retried by the agent's auto-retry on a fresh connection instead of failing the turn: you see the retry notice, the interrupted response is redone from the start with the full context, its partial output stays in the session file and on screen but is left out of the retry's context, and no tool runs twice.",
+      "rootCause": "New requests also stop reusing a cached WebSocket after 45 minutes instead of 55, so a long response is less likely to reach the limit; this costs one full-context request per rotation, at most once per 45 minutes (since v0.2.0 the limit was not retried mid-stream).",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Codex turn that hits the backend's 60 minute WebSocket limit (`websocket_connection_limit_reached`, \"Responses websocket connection limit reached\") after output has started, for example during long thinking, is now retried by the agent's auto-retry on a fresh connection instead of failing the turn: you see the retry notice, the interrupted response is redone from the start with the full context, its partial output stays in the session file and on screen but is left out of the retry's context, and no tool runs twice. The retry classifier is shared, so durable and compaction recover the same way. New requests also stop reusing a cached WebSocket after 45 minutes instead of 55, so a long response is less likely to reach the limit; this costs one full-context request per rotation, at most once per 45 minutes (since v0.2.0 the limit was not retried mid-stream). An error after the first WebSocket event, a leading `codex.rate_limits` included, now ends the message in an error that the agent retries, as in Pi; before, PiG reconnected or fell back to SSE inside the provider (since v0.3.0), which a user saw as a silent second request and no retry notice. Follows Pi bb1a2b3542b5: Fixed the OpenAI Codex WebSocket 60-minute connection limit failing the turn when it hit mid-stream, for example during long thinking. The error is now retried on a fresh connection, and new requests stop reusing a cached connection after 45 minutes instead of 55, so a long response is less likely to reach the limit (#12124).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e098b6491f",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/assistant_retry_websocket_limit_upstream_test.go::TestIsRetryableAssistantErrorCodexWebSocketConnectionLimit",
+        "ai/openai_codex_ws_connection_limit_upstream_test.go::TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
+        "ai/provider_stream_event_order_test.go::TestCodexWebSocketLimitAfterLeadingRateLimitsEndsTheMessage",
+        "ai/provider_stream_event_order_test.go::TestCodexWebSocketObservesFramesThatPrecedeARetry",
+        "ai/provider_stream_event_order_test.go::TestCodexWebSocketReadErrorAfterLeadingRateLimitsEndsTheMessage",
+        "coding/session_websocket_limit_retry_upstream_test.go::TestIssue12124WebSocketConnectionLifetimeRetry",
+        "durable/core/turn/classify_carried_test.go::TestCodexWebSocketConnectionLimitIsRetryable",
+        "extensions/sdk/pi_ai_helpers_test.go::TestCodexWebSocketConnectionLimitIsRetryable"
+      ]
+    },
+    {
       "id": "BF-e09d2bc",
       "title": "fix(durable/core): Session.fail, a failing store of held changes at close rejects close, observers see a…",
       "symptom": "fix(durable/core): Session.fail, a failing store of held changes at close rejects close, observers see a storing commit's own changes only, Session-mode gate retries after adoption",
