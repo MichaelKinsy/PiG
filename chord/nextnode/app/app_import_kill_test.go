@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/chord/delta"
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
@@ -201,12 +202,15 @@ func seamServer(t *testing.T, setup func(s started)) (dataDir, root, archive str
 	return dataDir, root, archive
 }
 
-// restarted starts an app on a data directory a killed process left; it may report what it found there.
-func restarted(t *testing.T, dataDir, root string) started {
+// restarted starts an app on a data directory a killed process left; it may report what it found there. tune changes its options.
+func restarted(t *testing.T, dataDir, root string, tune ...func(*AppOptions)) started {
 	t.Helper()
 	s := startTestApp(t, seamPlugins, func(o *AppOptions) {
 		projectOptions(t)(o)
 		o.DataDir, o.Root = dataDir, root
+		for _, change := range tune {
+			change(o)
+		}
 	})
 	s.errors.expect()
 	return s
@@ -393,8 +397,8 @@ func TestAStartReportsTheInterruptedImportItUndid(t *testing.T) {
 }
 
 // An intent the start cannot use blocks its own address and no other: nothing is guessed (the address's data stays as the kill left it),
-// the address refuses every request with an error that names the file, and the other addresses serve. A broken address fails its own
-// worker today (`worker failed to start`), not the server.
+// its worker does not start, its import, delete and export are refused with an error that names the file, and the other addresses
+// serve. A broken address fails its own worker today (`worker failed to start`), not the server.
 func TestAnIntentThatCannotBeUsedBlocksItsAddressOnly(t *testing.T) {
 	damage := map[string]func(t *testing.T, intent string){
 		"torn": func(t *testing.T, intent string) {
@@ -436,7 +440,8 @@ func TestAnIntentThatCannotBeUsedBlocksItsAddressOnly(t *testing.T) {
 			killedAtTheSeam(t, dataDir, root, archive, "import", "p2", "")
 			intent := intentFileOf(t, dataDir)
 			damaged(t, intent)
-			s := restarted(t, dataDir, root)
+			// A hold of the blocked address waits for its worker's start, which fails; the host answers at its ready timeout.
+			s := restarted(t, dataDir, root, func(o *AppOptions) { o.Timeouts.ReadyTimeout = 10 * time.Second })
 			address := projectAddress("p2")
 			// Every request of the address is refused with the intent's error.
 			file := filepath.Base(intent)
@@ -587,5 +592,53 @@ func TestTheIntentStandsFromBeforeTheFirstCommitUntilTheOperationEnds(t *testing
 		if got := intentNames(t, s.dataDir); len(got) != 0 {
 			t.Errorf("server/imports after %s holds %v", outcome.name, got)
 		}
+	}
+}
+
+// The intent is durable before the first commit and its removal before the import returns: the old parts of both hosts and the record are
+// flushed, then the directory that holds them (and, where the directory was made, the directory that holds it), all before the NodeHost is
+// asked to commit; the record's removal is flushed at its directory after the second commit. A kill does not show a missing flush (the
+// page cache survives it); a power cut does, and this is the order the flushes must run in.
+func TestTheIntentIsFlushedBeforeTheFirstCommitAndItsRemovalAfterTheSecond(t *testing.T) {
+	s := startTestApp(t, seamPlugins, projectOptions(t))
+	populate(t, s, "p1", "notes of p1", "first", "red")
+	archive := exportedProject(t, s)
+	stem := "project.project%7Cp2"
+	imports := filepath.Join(s.dataDir, "server", "imports")
+	var events []string
+	note := func(event string) { events = append(events, event) }
+	flushedFile, flushedDirectory := syncFile, syncDirectory
+	t.Cleanup(func() { syncFile, syncDirectory = flushedFile, flushedDirectory })
+	syncFile = func(file *os.File) error {
+		note("flush " + filepath.Base(file.Name()))
+		return flushedFile(file)
+	}
+	syncDirectory = func(path string) error {
+		name, err := filepath.Rel(s.dataDir, path)
+		if err != nil {
+			t.Error(err)
+		}
+		record := "record there"
+		if !Exists(filepath.Join(imports, stem+".json")) {
+			record = "record gone"
+		}
+		note(fmt.Sprintf("flush directory %s (%s)", name, record))
+		return flushedDirectory(path)
+	}
+	s.app.nodeData = probeNode{nodeHostData: s.app.nodeData, observe: note}
+	s.app.Host = probeHost{Host: s.app.Host, observe: note}
+	if err := s.app.ImportData(archive, projectAddress("p2"), background); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		// The directory of the intents is new: its entry in server/ is flushed.
+		"flush directory server (record gone)",
+		"flush " + stem + ".node", "flush " + stem + ".go", "flush " + stem + ".json.tmp",
+		"flush directory server/imports (record there)",
+		"commit-node", "commit-go",
+		"flush directory server/imports (record gone)",
+	}
+	if !slices.Equal(events, want) {
+		t.Errorf("the flushes and commits of the import ran in the order\n%s\nwant\n%s", strings.Join(events, "\n"), strings.Join(want, "\n"))
 	}
 }

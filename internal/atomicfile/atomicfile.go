@@ -151,6 +151,11 @@ func replaceThroughTemp(path string, data []byte, mode os.FileMode, existing os.
 	return nil, nil
 }
 
+// SyncDirectory flushes the directory entries of path to the device, which makes a creation, a rename or a removal in it durable (WriteFile does
+// it for the replacement it makes). A failure for a real reason is returned; a file system that has no such flush, a directory the process may not
+// open, and Windows, which cannot flush a directory, are not errors: the entries are as durable there as the file system makes them.
+func SyncDirectory(path string) error { return syncDirectory(path) }
+
 // maxLinkHops is how many symbolic links the kernel follows in a path before it answers ELOOP (Linux and macOS allow 40 and 32).
 const maxLinkHops = 32
 
