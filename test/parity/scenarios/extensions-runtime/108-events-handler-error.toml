@@ -45,7 +45,8 @@ wait_timeout_seconds = 20
 
 [assert]
 both_reach_ready = true
-both_contain = ["error:", "demo handler failed", "  at demoFrame (demo.mjs:1:1)", "events-last-frame"]
+# The notice breaks at column 100 inside the message, in both binaries, so the words are asserted apart; output_equal compares the whole crop.
+both_contain = ["error:", "demo handler", "failed", "  at demoFrame (demo.mjs:1:1)", "events-last-frame"]
 both_not_contain = ["Event handler error", "panic:", "goroutine "]
 output_equal = true
 runs = 3
