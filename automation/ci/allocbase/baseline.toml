@@ -491,7 +491,7 @@ allocs = 1092
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCredentialProviderKeyRewrite"
-allocs = 496
+allocs = 619
 
 [[benchmark]]
 package = "./ai"
@@ -2505,6 +2505,11 @@ allocs = 2
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeAcknowledgedEventNotify"
+allocs = 41
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAdmissionStartup/node-go-node"
 allocs = 6672
 
@@ -2667,6 +2672,11 @@ allocs = 0
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkRenderProxyMouseUnhandled/press"
 allocs = 0
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkSendUserMessageAccepted"
+allocs = 18
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
