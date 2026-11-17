@@ -7,12 +7,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -640,5 +643,63 @@ func TestTheIntentIsFlushedBeforeTheFirstCommitAndItsRemovalAfterTheSecond(t *te
 	}
 	if !slices.Equal(events, want) {
 		t.Errorf("the flushes and commits of the import ran in the order\n%s\nwant\n%s", strings.Join(events, "\n"), strings.Join(want, "\n"))
+	}
+}
+
+// The window between the NodeHost's load and the end of the resolution: the plugins are loaded (a facet's setup only declares the types it
+// serves, so no plugin code runs and no object is live), the server's HTTP component listens and answers 503 until the plugins' load is
+// reported done, and a worker starts only when a request holds its address. So while a leftover intent is resolved nothing is served and
+// no worker starts: every probe of the port, at every step, is answered 503, and the first worker start comes after "resolved".
+func TestNothingIsServedAndNoWorkerStartsUntilTheStartHasResolvedItsIntents(t *testing.T) {
+	dataDir, root, archive := seamServer(t, nil)
+	killedAtTheSeam(t, dataDir, root, archive, "import", "p2", "")
+	free, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := free.Addr().(*net.TCPAddr).Port
+	if err := free.Close(); err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	var events []string
+	note := func(event string) {
+		mu.Lock()
+		defer mu.Unlock()
+		events = append(events, event)
+	}
+	client := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{DisableKeepAlives: true}}
+	probe := func() string {
+		response, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/", port))
+		if err != nil {
+			return "probe: no answer (" + err.Error() + ")"
+		}
+		_ = response.Body.Close()
+		return "probe: " + response.Status
+	}
+	resolveSeam = func(step string) {
+		note(step)
+		note(probe())
+	}
+	t.Cleanup(func() { resolveSeam = nil })
+	s := restarted(t, dataDir, root, func(o *AppOptions) {
+		o.Listen = &chordhttp.ListenAddress{Host: "127.0.0.1", Port: port}
+		start := o.Workers[0].Start
+		o.Workers[0].Start = func(address contracts.Address, ctx context.Context) (delta.JsonValue, error) {
+			note("worker start " + address.Key)
+			return start(address, ctx)
+		}
+	})
+	held := holdNotes(t, s, "p1")
+	held.Release()
+	unavailable := "probe: 503 Service Unavailable"
+	want := []string{
+		"restore-node", unavailable, "restore-go", unavailable, "place", unavailable, "intent", unavailable, "resolved", unavailable,
+		"worker start project|p1",
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if !slices.Equal(events, want) {
+		t.Errorf("the start resolved its intent and served as\n%s\nwant\n%s", strings.Join(events, "\n"), strings.Join(want, "\n"))
 	}
 }

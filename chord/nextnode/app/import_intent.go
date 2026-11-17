@@ -421,6 +421,7 @@ func (a *App) resolveIntents(ctx context.Context) error {
 	for _, stem := range stems {
 		a.resolveIntent(intentFiles{dir: dir, stem: stem}, ctx)
 	}
+	resolving("resolved")
 	return nil
 }
 
