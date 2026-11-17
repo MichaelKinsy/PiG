@@ -1,0 +1,74 @@
+# Behavior family: startup
+# Surface: where run()'s startup notices sit on the screen: below the header, above the editor, the model fallback message before the crash notice.
+#
+# Upstream evidence (Pi 1.5.2 interactive-mode.ts): init() mounts the header and renders once at its end (renderNow, :1162); run() shows the notices after init()
+# returns (:1230-1262), the model fallback message before the crash notice, each with showWarning, which requests a render (:4815-4819). So the frame that paints the
+# notices follows the startup frame, and the settled screen is the header, then "Warning: No models available ...", then "Warning: pi crashed on ...", then the
+# editor's top border. pig now requests the same renders (before, init() rendered after the bind and showWarning rendered at once); the position of the notices
+# is the container order, and this crop holds the whole region from the header's first hint through the editor's top border so a notice that lands above the
+# header, below the editor or in the other order fails the comparison.
+#
+# The agent directory has an empty models.json (no model, so the fallback message) and a crashes.json whose one record is dated 2099, which is never older than
+# the crash log's seven days (crash-log.ts takeUnnotifiedCrash: `now - Date.parse(timestamp) <= MAX_AGE`); the copy the runner makes of the directory takes the
+# "notified" mark, so every run shows the notice.
+name = "31-startup-fallback-and-crash-notices-follow-the-header"
+description = "The model fallback message and the crash notice sit between the header and the editor, in that order, as pi's run() shows them after init()."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/crash-log.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_OFFLINE=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent-notices"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/pi-agent-notices"]
+pig_args = ["--no-extensions"]
+
+[tmux]
+# 110 columns: the onboarding line fits beside the head (D2), so every line wraps as in Pi.
+width = 110
+height = 40
+ready_pattern_pig = "Run /bug to report it"
+ready_pattern_pi = "Run /bug to report it"
+ready_timeout_seconds = 30
+capture_start = "escape"
+capture_end_regex = '─{20}'
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+both_contain = ["Warning: No models available", "crashed on 6/15/2099", "(Boom). Run /bug to report it"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: D2 substitutes the product name only; key labels, descriptions, ANSI styling and all whitespace remain byte-faithful.
+[[assert.normalize_replace]]
+pattern = 'extend PiG\.'
+with = "extend Pi."
+reason = "D2: the onboarding sentence names the host product. Match only that sentence fragment, not arbitrary PiG text."
+
+[[assert.normalize_replace]]
+pattern = 'PiG can explain its own features'
+with = 'Pi can explain its own features'
+reason = "D2: the same onboarding sentence starts with the host product name; all remaining words, ANSI and spaces stay literal."
+
+[[assert.normalize_replace]]
+pattern = 'Warning: pig crashed on'
+with = 'Warning: pi crashed on'
+reason = "D2: the crash notice names the host product (APP_NAME); the date, the message and the rest of the sentence stay literal."
+
+# D2: PiG's 16-cell pig head takes Pi's logo slot, 7 lines tall where Pi's logo is 2, so its later lines sit beside the lines Pi draws below its logo.
+# These rules remove exactly those 16 head cells (the one-cell padding, 16 half-block or transparent cells and their colors) and the cell that separates them
+# from the text; every hint, its ANSI styling and spacing stay compared byte for byte. The head's pixels are pinned by TestEveryHeadIsTheSharedGrid and
+# TestEveryHeadIsTheSpritesPig in coding/piglogin and by internal/codingagent/pi_logo_upstream_test.go.
+[[assert.normalize_replace]]
+pattern = '(?m)^ (?:(?:\x1b\[[0-9;]*m)*[▀▄ ]){1,16}(?:\x1b\[[0-9;]*m)*[ ]*$'
+with = ""
+reason = "D2: a head line with no text beside it (tmux trims its trailing transparent cells) is the blank line Pi draws below its 2-line logo."
+
+[[assert.normalize_replace]]
+pattern = '(?m)^ (?:(?:\x1b\[[0-9;]*m)*[▀▄ ]){16}(?:\x1b\[[0-9;]*m)* '
+with = " "
+reason = "D2: a head line with text beside it carries the line Pi draws at the padded margin below its 2-line logo."
