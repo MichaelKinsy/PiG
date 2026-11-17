@@ -1046,7 +1046,7 @@ allocs = 4
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkResolveCatalogRecordSequentialAll"
-allocs = 89
+allocs = 88
 
 [[benchmark]]
 package = "./ai"
@@ -3021,12 +3021,12 @@ allocs = 1
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionCatalogEncoding/cached"
-allocs = 44134
+allocs = 41805
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionCatalogEncoding/uncached"
-allocs = 48090
+allocs = 48095
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3636,12 +3636,12 @@ allocs = 110
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWireModelCatalogBinding/encoded"
-allocs = 94936
+allocs = 94938
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWireModelCatalogBinding/legacy"
-allocs = 99120
+allocs = 99132
 
 [[benchmark]]
 package = "./internal/codingagent"
