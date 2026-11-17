@@ -1,0 +1,68 @@
+# Behavior family: extensions-runtime
+# Scenario: /model after /new selects a model of an extension provider with the metadata the provider registered.
+#
+# Issue #522. Pi's /model hands the Session a model object of its ModelRuntime, which carries what registerProvider declared (window, output limit, costs, input kinds, reasoning), and
+# setModel clamps the thinking level to that model (interactive-mode.ts selectModel, agent-session.ts setModel). A Session replacement builds the next Session's extensions and
+# registry, so after /new the registry that lists and builds the model is the replacement's. PiG's interactive mode kept the model builder of the start-up services, whose registry had
+# lost the provider when its extension process ended: the model it built had window 0, no reasoning, no costs, and the footer read `0.0%/0 (auto)` with no thinking level.
+#
+# The extension lists every model_select it sees in a widget. After /new and `/model metaprov/model-b` both programs list the model with window 555000, reasoning true, the registered costs
+# and the thinking level medium the session started with, and the footer shows `0.0%/555k (auto)` with the model and `medium`.
+
+# Upstream evidence (2026-11-16, tmux probe): the runner starts real pi and pig in tmux with the same extension (testdata/ext/model-after-new-provider.mjs) and the same keys, and
+# compares what both show: output_equal, three declared runs, both green.
+
+name = "108-model-after-new-extension-provider"
+description = "After /new, /model selects a model of an extension provider with the window, costs and thinking its registration declared"
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_HOME=testdata/quiet-pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/quiet-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--model", "metaprov/model-a", "--thinking", "medium", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--model", "metaprov/model-a", "--thinking", "medium", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/model-after-new-provider.mjs"]
+pi_extensions = ["testdata/ext/model-after-new-provider.mjs"]
+
+[tmux]
+width = 140
+height = 40
+ready_pattern_pig = "MODEL AFTER NEW PROBE"
+ready_pattern_pi = "MODEL AFTER NEW PROBE"
+ready_timeout_seconds = 30
+capture_start = "MODEL AFTER NEW PROBE"
+capture_end = "(auto)"
+
+[[tmux.steps]]
+keys = ["/new", "Enter"]
+wait_contains = ["New session started"]
+wait_visible_contains = ["session_start new"]
+wait_timeout_seconds = 20
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/model metaprov/model-b"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_visible_contains = ["model_select set metaprov/model-b"]
+wait_timeout_seconds = 20
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["model_select set metaprov/model-b window=555000 max=44444 reasoning=true image=false cost=3.25/16.5/0.325/4.0625 thinking=medium", "/555k (auto)"]
+both_not_contain = ["window=0", "/0 (auto)", "panic:", "goroutine "]
+output_equal = true
+runs = 3

@@ -1654,7 +1654,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b182cbc](#bf-b182cbc) | fix(chord/nextnode): the Windows pipe listeners close through internal/chord/winpipe, whose Close always… | PiG's own defect | Windows | Unreleased |
 | [BF-b18a7ff](#bf-b18a7ff) | `ctx.compact` answers `onComplete` with the compaction result's members in Pi's order (`summary`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-b1ff77a](#bf-b1ff77a) | The pi-env daemon answers as Pi's daemon does where a differential test found it did not: an error for an… | PiG's own defect | All platforms | 0.7.0 |
-| [BF-b214a4c](#bf-b214a4c) | After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose… | PiG's own defect | All platforms | Unreleased |
+| [BF-b214a4c](#bf-b214a4c) | After `/new`, `/resume`, `/clone` or `/fork` in the interactive mode, the model selector, an extension's… | PiG's own defect | All platforms | Unreleased |
 | [BF-b22120f](#bf-b22120f) | A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into | PiG's own defect | All platforms | 0.7.0 |
 | [BF-b2b0c63](#bf-b2b0c63) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-b2c219f](#bf-b2c219f) | fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes | PiG's own defect | All platforms | Unreleased |
@@ -25031,17 +25031,17 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 ### BF-b214a4c
 
-**After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose…**
+**After `/new`, `/resume`, `/clone` or `/fork` in the interactive mode, the model selector, an extension's…**
 
 - **Source:** PiG's own defect
-- **Symptom:** After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.
+- **Symptom:** Picking a model of a provider that the new session's extension registers gave a model with a context window of 0 and no reasoning: the footer showed `0.0%/0 (auto)` and the thinking level went to off.
 - **Root cause:** the per-session bindings of a replacement were swapped one by one and the model builder was left out of the list
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `b214a4c12d` (2026-11-14)
-- **Tests:** None recorded.
-- **Release note:** After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.
+- **Tests:** `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveExtensionSetModelAfterNewKeepsRegisteredMetadata`, `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterNewAcrossSDKs`, `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementKeepsRegisteredMetadata`, `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementProviderShapes`, `coding/cli/rpc_model_after_new_test.go::TestRPCSetModelAfterNewSessionKeepsRegisteredMetadata`
+- **Release note:** After `/new`, `/resume`, `/clone` or `/fork` in the interactive mode, the model selector, an extension's `setModel` and the post-login selection build the model from the new session's registry, not from the registry the program started with. Before, picking a model of a provider that the new session's extension registers gave a model with a context window of 0 and no reasoning: the footer showed `0.0%/0 (auto)` and the thinking level went to off.
 
 ### BF-b22120f
 

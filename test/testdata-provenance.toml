@@ -145,6 +145,10 @@ paths = ["durable/core/probe/testdata/*.events", "durable/core/contracttest/bind
 [[input]]
 paths = ["coding/cli/testdata/session-replaced-2860.lisp"]
 
+# model-after-new.lisp is the Lisp SDK realization of model-after-new.mjs (an extension provider fixture program, not expected output); same reason.
+[[input]]
+paths = ["coding/cli/testdata/model-after-new.lisp"]
+
 [[golden]]
 paths = ["internal/yaml12/testdata/v3diff/differences.txt"]
 owner = "pig"

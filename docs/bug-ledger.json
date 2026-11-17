@@ -45212,15 +45212,15 @@
     },
     {
       "id": "BF-b214a4c",
-      "title": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose…",
-      "symptom": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.",
+      "title": "After `/new`, `/resume`, `/clone` or `/fork` in the interactive mode, the model selector, an extension's…",
+      "symptom": "Picking a model of a provider that the new session's extension registers gave a model with a context window of 0 and no reasoning: the footer showed `0.0%/0 (auto)` and the thinking level went to off.",
       "rootCause": "the per-session bindings of a replacement were swapped one by one and the model builder was left out of the list",
       "rootCauseSource": "release note",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "After `/new`, `/resume` or a fork in the interactive mode, the model selector builds the model you choose from the new session's registry, not from the registry the program started with.",
+      "releaseNote": "After `/new`, `/resume`, `/clone` or `/fork` in the interactive mode, the model selector, an extension's `setModel` and the post-login selection build the model from the new session's registry, not from the registry the program started with. Before, picking a model of a provider that the new session's extension registers gave a model with a context window of 0 and no reasoning: the footer showed `0.0%/0 (auto)` and the thinking level went to off.",
       "origin": "release note",
       "commits": [
         {
@@ -45228,7 +45228,13 @@
           "date": "2026-11-14"
         }
       ],
-      "tests": []
+      "tests": [
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveExtensionSetModelAfterNewKeepsRegisteredMetadata",
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterNewAcrossSDKs",
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementKeepsRegisteredMetadata",
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementProviderShapes",
+        "coding/cli/rpc_model_after_new_test.go::TestRPCSetModelAfterNewSessionKeepsRegisteredMetadata"
+      ]
     },
     {
       "id": "BF-b22120f",
