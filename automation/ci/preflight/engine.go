@@ -190,7 +190,7 @@ func runAll(ctx context.Context, cfg config, o runOptions, version string, prs [
 		return budget <= 0 || int(admitted.Add(1)) <= budget
 	}
 	deadline := time.Now().Add(o.timeBudget)
-	env := &ruleEnv{root: o.root}
+	env := &ruleEnv{root: o.root, fixExempt: cfg.FixTitleExempt}
 	runs := make([]*prRun, len(prs))
 	each(len(prs), o.jobs, func(i int) {
 		r := &prRun{pr: prs[i].pr}

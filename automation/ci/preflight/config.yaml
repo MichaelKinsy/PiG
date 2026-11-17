@@ -2,6 +2,15 @@
 
 engine-revision: 1
 
+# A pull request whose own fix-titled commits repair code the same pull request adds (nothing released was faulty, so no
+# bug-ledger entry or ### Fixed line would be true) lists them here, by full sha, with the reason. With `Fix: no` those
+# commits are then no evidence of a fix. It never covers a commit it does not list, another pull request, or a changelog
+# fragment, and `Fix: yes` is unchanged. A maintainer adds the entry in its own reviewed pull request (see README.md).
+#   - pr: 404
+#     reason: why no fix is claimed (at least 60 characters)
+#     commits: [<full 40-digit sha>, ...]
+fix-title-exempt: []
+
 tools:
   - name: reuse
     version: 6.2.0
