@@ -2283,3 +2283,10 @@ commit = "c96c624b894a86e4d29fde72dc050cc6f42703b1"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "Row 185 (a Piglet Binary with a fused extension left pig-ext-fused-N.log in the temporary directory). Pi writes no extension log file at all: Pi runs an extension in its own process and its console reaches the terminal, so the file is PiG's own transport for SDK diagnostics (docs/extension-api-parity.md, row `SDK-owned diagnostics`, which has no Pi counterpart) and no Pi line governs the test. The two changed expected values are PiG's own rule of the commit: TestFusedExtLogIsExportedAndRemoved now requires that export names the path and creates no file (the Go SDK creates it with the first diagnostic, tested by TestFusedExtLogIsCreatedByTheFirstDiagnostic) where it required the file to exist, and that remove unsets PIG_EXT_LOG_CREATE with PIG_EXT_LOG. A session with no handler failure leaves the temporary directory as Pi's does, which TestFusedExtensionLogInTempDirectory pins in a real Piglet Binary."
+
+[[entry]]
+path = "codemode/wasm_load_test.go"
+commit = "382daffe1a5878622f3cf6499b5ff623d57cd043"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The commit moves PiG's own raw QuickJS module from codemode/assets/quickjs.wasm to codemode/assets/raw/quickjs.wasm (a nested data-only module, so the file leaves the root module zip). TestEmbeddedQuickJSWasmFrameDecodesToTheAsset compares the decoded embedded frame with that file: its read path changes from EmbeddedQuickJSWasmPath to the literal assets/raw/quickjs.wasm, and the failure message names the new path. The compared bytes, the embedded frame and the assertion are unchanged. The path is a PiG build-layout fact; Pi (a TypeScript package that loads no QuickJS module) has no line for it."
