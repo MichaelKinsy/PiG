@@ -2321,10 +2321,10 @@ Locked by: `TestInteractiveHeapGoalByLiveHeap` (the rule: live heaps of 0 to 20 
 
 Remove when: the Go runtime's default pacing stops collecting small interactive heaps, or a measurement shows GOGC 100 costs no CPU on the interactive and default-theme scenarios.
 
-Approval: owner, 2026-11-11 ("higher setting until ~8 MiB live, then normal").
+Approval: owner, 2026-11-12T14:42Z (`handoffs/0.8.0/OWNER-DECISIONS.md`): "D621 16 MiB floor approved if the complete numbers hold"; the Revision below says how that condition was met.
 ---
 
-Revision (minimum heap goal 16 MiB): approved by owner Michael Kinsy on 2026-11-12T14:42Z, through the owner's side: "D621 16 MiB floor approved if the complete numbers hold". The condition held: interactive CPU 18.6 % below Pi-Bolt (from 12.9 %), default theme 15.5 % below (from 7.9 %), interactive peak own memory 16.1 -> 20.3 MB against the bar of 22.44 MB; measured on shared cores, to be repeated on the clean host for the scoreboard. The idle change measured beside the floor is not part of this approval.
+Revision (minimum heap goal 16 MiB): approved by owner Michael Kinsy on 2026-11-12T14:42Z, through the owner's side: "D621 16 MiB floor approved if the complete numbers hold". The condition held: interactive CPU 18.6 % below Pi-Bolt (from 12.9 %), default theme 15.5 % below (from 7.9 %), interactive peak own memory 16.1 -> 20.3 MB against the bar of 22.44 MB; measured on shared cores, to be repeated on the clean host for the scoreboard. Those numbers were measured at 5c8175fb9095, whose policy has the 0.3 s idle form (`InteractiveIdle = 300 * time.Millisecond`), not the 2 s form this record describes. On the release line the 2 s form as landed (arm `base`, line tip f14a46e87fb7) was compared with the 0.3 s form picked onto it (arm `idle`) on 2026-11-13T15:43Z (16 rounds, interactive scenario; xd6702 `~/lanes/GcIdleOnLine.out/m2-int.agg.txt`, arms named in `m2.sh`): CPU 79.75 against 79.87 ms (0.1 %, inside the spread), peak own memory 19.7 against 19.6 MB (bar 22.44 MB), time to interactive 15.22 against 15.30 ms: the condition holds for the landed form. The idle change measured beside the floor is not part of this approval.
 SCRUTINIZED:approved
 
 ## D625 terminal.framePacing "adaptive" begins a streaming reply's next frame 10 to 16 ms after the last, by what that frame cost
