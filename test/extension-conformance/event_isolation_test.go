@@ -26,10 +26,10 @@ type isolationEvent struct {
 // This is PiG's isolation, which is stricter than Pi's. Pi hands every handler of an emit the same event object (runner.ts emit, emitToolCall), a fresh shallow
 // event whose context and message are the session's live objects at a boundary (emitBoundary: a write to contextMessages[i] reaches later handlers and the session),
 // and one structuredClone of the messages per request that all handlers of a context dispatch share (emitContext): in Pi a handler's write to nested event data
-// can reach another handler. A socket SDK (Node, Rust, Python, Lisp, isolated or packed) cannot do that, its handler holds a decoded copy of a frame, so there
-// isolation is forced by the transport. The fused Go realization (and the in-process Go handlers) is a choice: the SDK clones the decoded payload per handler
-// (eventArgsMemo), so all realizations agree. Whether that is a numbered divergence is the owner's decision (open); this row states the behavior, it is not a
-// Pi parity row.
+// can reach another handler. A socket SDK (Node, Rust, Python, Lisp, isolated or packed) cannot do that across a process boundary, and each handler's request carries its own
+// decoded copy of the payload. Within one extension the copy is also the SDKs' choice (the streamed path clones its replica, the fused Go realization clones a shared master:
+// eventArgsMemo), so every SDK realization agrees. The Go function handlers that inproc.Runner calls in the host's process are not in this row and share one event as Pi does.
+// This is the numbered divergence D657; this row states the behavior, it is not a Pi parity row.
 //
 // In one dispatch the first handler writes a sentinel into the payload's container (a boundary event's context.contextEntries[0].sourceEntry, a conversation event's
 // messages list: a message appended), writes sentinels into the three messages the probe reads, and where the language allows (not Rust, whose handler holds
