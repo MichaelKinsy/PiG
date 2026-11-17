@@ -1275,6 +1275,7 @@ Scope: only the five boundaries above. Any other inspect, clone or write differe
 Owner decision: 2026-09-28 approval of the foreign-data boundary, narrowed 2026-09-29 by owner Michael Kinsy (Q2 = A) to exactly these five boundaries; everything else must match Pi.
 
 Owner decision: 2026-09-29, owner Michael Kinsy approves boundary 4's effects: on Node 26, `util.inspect` of a foreign non-extensible payload, or with `customInspect: false`, prints `Proxy(...)` because V8 offers no hook (Opus R3 Node 26 print); `util.inspect` with `showProxy: true` shows the Proxy wrapper for a foreign payload (Opus R3 a); and `util.types.isProxy()` returns true for a foreign payload (Opus R3 d). Every other inspect, clone and write case matches Pi. R3 b (Promise nesting level) and R3 c (cross-owner shared clone) are not approved: they stay open defects tracked under Scope, targeted at 0.3.1. This resolves QUESTION xproc-r.
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
 Call-site markers:
 - `coding/extension/host/subprocess/runtime-node/runtime.mjs`: `pi.events.emit`, the shared-bus dispatch boundary, and the listener wait after a foreign prefix.
@@ -1286,7 +1287,7 @@ Parity allowance: no paired scenario runs two extension processes; the unit test
 
 Remove when: cross-realm scheduling is serialized into one task and microtask order, distributed cycle collection releases cross-realm cycles, and foreign objects pass internal-slot brand checks, or upstream restricts its event bus to a process-local contract.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:6c7b7debead093eb
 
 ## D84 Direct Go provider registration refreshes availability on the next awaited call
 
@@ -2644,8 +2645,9 @@ Pi bug: none.
 Scope: the six members above only, in `extensions/sdk/type_schema.go`, `extensions/sdk-py/pig_sdk/type_schema.py` and `extensions/sdk-rs/src/type_schema.rs`. Every other member of `Type` is ported and tested against Pi's own answers (`test/parity/sdk-vectors/pi-ai/Type.json`); the schemas `Type` builds are plain JSON on the wire, so a schema that a Node extension builds with a Codec registers the same JSON it would without one (`~codec` is a hidden member that JSON drops).
 
 Owner decision: approved by owner Michael Kinsy on 2026-10-24 (Codec family of `Type`: numbered divergence; `Refine` and `IsRefine` are not part of it: the SDKs run an extension tool's refinements themselves).
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:cf9843804c33e01e
 
 Amendment 2026-11-02 (owner decision of the same day): the approval above (2026-10-24) was given when the SDKs ran an extension tool's refinements themselves. Pi 1.5.2 no longer runs them (`ai/CHANGELOG.md:66`, `coding-agent/docs/extensions.md:176`: "`Type.Refine()` refinements are not run"), and this branch removed the SDK refinement round trip to match. `Refine` and `IsRefine` therefore stay schema constructors whose refinements no tool-argument validation runs, as in Pi. They are not part of D198: the owner approved a separate record for them, D226 (Go, Rust, Python and Lisp `Type.Refine` store a callback that no API runs).
 
@@ -3092,8 +3094,9 @@ Pi bug: Pi 1.5.2 behaves identically (same two source lines above). No Pi issue 
 Scope: the interactive TUI in regular and fullscreen modes, built-in editor only. An extension's custom editor, in an extension process or in the host, keeps Pi's Up exactly: no Terminal.app remap, no tip, and the queued-message row names the configured key as Pi's does. Not affected: Alt+Up and Alt+Q decoding, the Windows default (`alt+q`), RPC and print modes, and Ghostty, iTerm2, WezTerm and kitty, which send a modified arrow for Option+Up.
 
 Owner decision: 2026-11-02, owner approved both parts in this conversation (issue #402).
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:f71ca7c2957ab701
 
 Remove when: Pi distinguishes or handles plain Up while a message is queued in Terminal.app, or Pi adopts an equivalent fix.
 
@@ -3706,8 +3709,9 @@ Why: a threaded SDK cannot reproduce the microtask scheduling of one JavaScript 
 Scope: the Go, Python, Lisp and Rust SDKs: `ModelEventStream.Push`/`End` (Go), `ModelEventStream.push`/`end` (Python), `model-stream-push`/`model-stream-end` (Lisp) and, in Rust, `push`/`end`, which take the `serde_json::Value` by value, so the event is the push-time state by ownership and needs no marker; and the provider stream request that forwards them (`provider_stream`, `provider_stream_simple`, and a provider object's stream). Not affected: events the SDK builds or decodes itself, and the Node SDK, which keeps Pi's behavior.
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-09 (copy at push in the Go, Python and Lisp SDKs; keep Node as Pi does; record the burst-case difference).
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:66aebb71f360aca8
 
 Remove when: Pi's provider stream consumer captures each event at its push (or the Go, Python and Lisp SDKs gain a synchronization point that makes the forwarder see the provider's state at the consumer's turn). Then the three call-site markers and this record go.
 

@@ -464,7 +464,8 @@ Remove when: upstream provides an equivalent reload placement report, or Pig
 removes `/reload --explain`.
 
 PORT_MAP path: n/a.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:dcd191921c3d6c2a
 
 ## D22 Stock documentation materialization
 
@@ -1765,7 +1766,8 @@ Locked by: `TestRuntimePolicyRespectsUserEnv` (`coding/cli`; red at a5f9b338cf: 
 Remove when: the Go runtime stops waking idle Ps per hand-off, or a measurement shows the default width costs no CPU on the streaming rows.
 
 Approval: owner, LW roadmap section 3c S24 (2026-10-13), from E12b, approved as F1 (channels/lw.md 2026-10-13T17:32:00Z, "LANDED lw-procs 1f94bc1a41 (owner approved F1)"); parallel tool batches S26 (2026-10-13), from E16. RPC cap of 1: owner, 2026-10-18 ("proceed with recommendations"; TERN-CLAUDE-CHANNEL 2026-10-18T03:45:03Z), on the condition "not a visible or user-feeling divergence or regression", proven above.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:87edcc294ce213aa
 
 ## D175 Print, json and rpc runs collect at GOGC 400 until the live heap passes 64 MiB
 
