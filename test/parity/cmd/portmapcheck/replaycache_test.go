@@ -560,6 +560,23 @@ func TestCleanReplaysFailsWhatItCannotSweep(t *testing.T) {
 	})
 }
 
+// TestCleanReplaysSweepsTheTempDirWhenTheBuildCacheIsNotFound: the two sweeps are independent. With no GOCACHE and no go to ask, the
+// temporary directory is still swept and the lookup's error is returned.
+func TestCleanReplaysSweepsTheTempDirWhenTheBuildCacheIsNotFound(t *testing.T) {
+	tmp := scratchTemp(t)
+	t.Setenv("GOCACHE", "")
+	t.Setenv("PATH", t.TempDir()) // no go binary to ask
+	orphan := mkReplayDir(t, tmp, replayDirPrefix+"orphan", nil, replayStaleAfter+time.Hour)
+	var out strings.Builder
+	err := cleanReplayLeftovers(&out)
+	if err == nil || !strings.Contains(err.Error(), "cannot find the build cache") {
+		t.Fatalf("the failed lookup must be returned, got %v", err)
+	}
+	if exists(orphan) || !strings.Contains(out.String(), "1 leftover replay directories removed") {
+		t.Fatalf("the temporary directory must be swept anyway: orphan kept=%v output %q", exists(orphan), out.String())
+	}
+}
+
 // TestMutantReplaysLeaveTheSharedBuildCacheAlone: whatever the go command of a replay writes into its build cache is gone when the check ends
 // and never reaches the user's cache, which the replay still reads (through the cache server). The stand-in go runs everything else against the real cache, so nothing compiles cold.
 func TestMutantReplaysLeaveTheSharedBuildCacheAlone(t *testing.T) {
