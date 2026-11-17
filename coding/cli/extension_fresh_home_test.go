@@ -9,6 +9,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // A released pig binary carries its extension SDKs embedded and stages them
@@ -136,6 +138,7 @@ func runFreshHomePig(t *testing.T, binary string, env []string, home, dir string
 	t.Helper()
 	cmd := exec.CommandContext(t.Context(), binary, args...)
 	cmd.Dir = dir
+	testenv.DisableGoTelemetryForChild(t, home)
 	cmd.Env = append(append([]string(nil), env...), "HOME="+home)
 	if runtime.GOOS == "windows" {
 		// os.UserHomeDir, and Node's os.homedir, read USERPROFILE on Windows.

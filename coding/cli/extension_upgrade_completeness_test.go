@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/upgrade"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The four extension shapes of one real failure: an SDK that changed Context.ConfigHome and SendMessageOptions.TriggerTurn under extensions that call them in
@@ -319,6 +320,7 @@ func TestUpgradeRestoreRemovesAFileItAdded(t *testing.T) {
 func TestExtensionUpgradeCommandAppliesWhatItCanAndListsTheRest(t *testing.T) {
 	binary := buildPigBinaryForSignalTest(t)
 	home := t.TempDir()
+	testenv.DisableGoTelemetryForChild(t, home)
 	agentDir := filepath.Join(home, "agent")
 	dir := filepath.Join(home, "partial")
 	writeStartupFixtureFile(t, filepath.Join(dir, "extension.go"), strings.Replace(oldExtensionSource, "id := ctx.GetSessionID()\n\t\treturn ctx.SendMessage(\"id\", id, true, sdk.SendMessageOptions{TriggerTurn: true})", "id := ctx.GetSessionID()\n\t\t_ = id\n\t\treturn ctx.SetEditorComponent(42)", 1))

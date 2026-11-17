@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/internal/pigstrip/leakgate"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // keepModePiglet keeps four built-in tools and no built-in extension: the
@@ -173,7 +174,7 @@ func writePreviousBinaryRecord(t *testing.T, name string, keep, table []pigletar
 func TestRunBuildPrintsTheStripDeltaReport(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("PIG_HOME", filepath.Join(root, "home"))
-	t.Setenv("HOME", filepath.Join(root, "home"))
+	testenv.SetHome(t, filepath.Join(root, "home"))
 	pigletPath := filepath.Join(root, "core.yaml")
 	if err := os.WriteFile(pigletPath, []byte(keepModePiglet), 0o644); err != nil {
 		t.Fatal(err)
