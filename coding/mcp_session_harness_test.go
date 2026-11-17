@@ -5,6 +5,7 @@ package coding
 import (
 	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
 
+	"bytes"
 	"context"
 	"encoding/json"
 	"slices"
@@ -35,7 +36,7 @@ func requireEqual[T any](t *testing.T, what string, got, want T) {
 	t.Helper()
 	gotJSON, _ := json.Marshal(got)
 	wantJSON, _ := json.Marshal(want)
-	if string(gotJSON) != string(wantJSON) {
+	if !bytes.Equal(gotJSON, wantJSON) {
 		t.Errorf("%s = %s, want %s", what, gotJSON, wantJSON)
 	}
 }
