@@ -1277,7 +1277,8 @@ Parity allowance: no Pi scenario selects a frontend member; Stock PiG runs none.
 Remove when: Pi gains an equivalent frontend seam, or PiG stops supporting Piglet frontend members.
 
 Approval: owner Michael Kinsy, 2026-10-04 (seam and tool cards as the first D91 pull request; the cancelled status, message, thinking and diff nodes approved the same day as the Tern-native drawing direction); the editor dock (the `Editor` node and `Env.Edit`, `Env.Undo` and `Env.Send`) and the footer and status slice (the `Working` and `Footer` nodes and the borderless native editor) assigned by the owner on 2026-10-05 for PiG 0.5.0.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 4 re-approval as recommended, checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:3c17a9c1f37a95b4
 
 ---
 
@@ -1605,7 +1606,8 @@ Locked by: `extensions/sdk/upgrade` fixture tests (one old-extension fixture per
 Remove when: Pi gains a compiled extension SDK with its own upgrade path.
 
 Approval: owner Michael Kinsy, 2026-10-08 (task ext-upgrade); the setting name `extensionsAutoUpgrade` ruled by the lead for the release after 0.4.1 (0.5.0, then planned as 0.4.2).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 4 re-approval as recommended, checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:cb66f041596ac280
 
 ## D112 Bounded performance caches and pooled buffers
 
@@ -1795,7 +1797,8 @@ Locked by: `TestPrintModeRaisesGCTarget` (`test/perfgate`; red at fb18cdb01b: 2-
 Remove when: the Go runtime's default pacing stops collecting short runs, or a measurement shows GOGC 100 costs no CPU on the headless row.
 
 Approval: owner, F1 (print/json GOGC step), TERN-CLAUDE-CHANNEL 2026-10-13T17:31:25Z (recorded in owner-signoff.md: coordinator's notes, not in this repository).
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 4 re-approval as recommended, checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:c246a47101aba729
 
 ## D176 A running bash block keeps only the output window it shows
 

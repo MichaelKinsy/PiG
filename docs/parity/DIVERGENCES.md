@@ -895,7 +895,8 @@ healthy and missing heartbeat, unbounded tool/command/event/shortcut waits,
 renderer retention, cancellation ordering, writer failure, and packed-member
 versus packed-process failure. `coding/extension/host/subprocess/crash_once_test.go` covers both detector orders, replacement, real crashing commands in packed/isolated mode, and ordinary errors. `isolated_log_test.go` covers normal runs, reload, cancellation and retained failure logs. `internal/codingagent/interactive_command_error_test.go` proves command and shortcut diagnostic ownership through the interactive dispatch path; `22-command-error-once` compares ordinary command rejection and recovery against Pi.
 Ratification: explicitly approved by the user for section SHA-256 `a4109be02ff4f48b03c168073e2288b032971cff63982741e7582b68464bca81`.
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 4 re-approval as recommended, checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:6910fe6a60fb9d8d
 
 ## D57 Installing an npm or Git extension root as a package is refused
 
@@ -1028,7 +1029,8 @@ Why not: Pi's case asserts Pi's `pi/<version> (<platform>; <runtime>; <arch>)` f
 
 Remove when: never, unless the owner changes PiG's product identity.
 
-SCRUTINIZED:approved
+Owner decision 2026-11-17: group 4 re-approval as recommended, checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:f8d89c9c948a37fd
 
 ## D66 Narrow TUI rows stay within the requested width
 
@@ -1389,6 +1391,7 @@ What: Pi has two easter eggs that show Pi's art. PiG plays them with its own art
 Why: PiG never presents itself as Pi (D2). Pi's logo animation and Armin's portrait are Pi's art; the owner wants PiG's own versions of them.
 
 Owner decision: 2026-10-01, owner Michael Kinsy ("PiG versions of Pi's eggs").
+Owner decision 2026-11-17: group 4 re-approval as recommended, checked by Claude and Tern
 
 Call-site markers: `internal/codingagent/pig_egg3d.go` (`pigLogoModel`, `pig3dModel`), `internal/codingagent/pig_logo_animation.go` (the object, `pigLogoBlocks`), `internal/codingagent/pig_logo_run.go` (the running pig), `internal/codingagent/startup_header.go` (`handleBuiltInHeaderMouse`), `internal/codingagent/armin.go` (the image and label) and `internal/codingagent/startup_input.go` (`/pigsayhi`).
 
@@ -1398,7 +1401,7 @@ Parity allowance: `test/parity/scenarios/fullscreen/11-logo-click-animation.toml
 
 Remove when: never; the easter eggs are PiG's.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:56bbd83fe9ac4853
 
 ## D88 PiG runs its own first-time setup with a sprite step
 
@@ -2976,6 +2979,7 @@ Pi bug: not reported upstream. The repro is `TestMarkdownBlockReuseDiffersFromPi
 Scope: `tui.Markdown` rendering (`tui/markdown_blocks.go`, `renderBlocks`). Only a block that has a block of the same source and width in the same render or the previous one, and whose inline lexer state differs on entry (an open raw `<a>`, so a bare URL stays plain in PiG and is linked in Pi), renders differently. Every other document renders identically to Pi.
 
 Owner decision: 2026-11-01, owner approved recording this as a numbered divergence (D220).
+Owner decision 2026-11-17: group 4 re-approval as recommended, checked by Claude and Tern
 
 Call-site markers: `tui/markdown_blocks.go` (`renderBlocks`), `tui/markdown_render_oracle_test.go` (`TestMarkdownBlockReuseDiffersFromPi`).
 
@@ -2985,7 +2989,7 @@ Evidence: the same test, which needs the Pi oracle (`make install-oracle`); ever
 
 Remove when: Pi stops reusing rendered Markdown blocks by token.raw across differing inline state (markdown.ts:412). Then the markers and this record go, and the cases of `TestMarkdownBlockReuseDiffersFromPi` become documents of `markdownRenderDocs`.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:b5ed404382e7814a
 
 ## D222 A plugin input the build cannot read is reported at the import that names it, not at esbuild's library
 
