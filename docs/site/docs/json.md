@@ -88,6 +88,8 @@ The top-level `isError` reports whether the call failed. `result` is the tool's 
 
 PiG drains serialized event output after the terminal `agent_settled` event before it closes the stream. It does not print the final assistant text a second time.
 
+Nothing follows `agent_settled`. Pi detaches the stream before it runs `session_shutdown` handlers (`print-mode.ts` `disposeRuntime`), so an `entry_appended`, `session_info_changed` or custom message (`message_start`, `message_end`) that a `session_shutdown` handler produces is saved in the session file but not written. PiG detached the stream after those handlers and wrote those lines after `agent_settled`.
+
 A conversion or serialization failure fails the run without abandoning the event drain. Already serialized records remain ordered, and the first failure remains the reported cause. Termination signals retain their signal exit status rather than reporting an internal cancellation error.
 
 The process returns the prompt error as its exit status. A consumer must read standard error and inspect terminal message events.
