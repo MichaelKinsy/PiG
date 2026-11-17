@@ -13,7 +13,8 @@ fn record(line: Value) {
             .append(true)
             .open(path)
     {
-        let _ = writeln!(file, "{line}");
+        // One write call per record: Display on a Value writes it in many fragments, which a reader could see half way.
+        let _ = file.write_all(format!("{line}\n").as_bytes());
     }
 }
 
