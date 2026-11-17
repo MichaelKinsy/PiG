@@ -581,7 +581,7 @@ Use `make lint-changed` in the development loop. It runs every configured linter
 
 ## Commands
 
-Run `make generate` after changing exported Go API, CLI flags, settings, parity scenarios, or docs mirrors. Commit the result. Never hand-edit generated files; regenerate.
+Run `make generate` after changing exported Go API, CLI flags, settings, parity scenarios, or docs mirrors. Commit the result. Never hand-edit generated files; regenerate. `make generate` also vendors the Pi runtime of the Node extension host from the installed oracle (`make vendor-pi-dist`, then `make node-runtime`), so it needs the pinned Pi (`make parity-deps`): `make vendor-pi-dist-drift` and `make node-runtime-drift` fail when either is stale. The observation oracles (`automation/gen/regenerate-observation-oracles.sh`) are recordings under a pinned Node, not derivations: `make generate` does not re-record them, and their timestamps are not drift.
 
 Primary gates:
 ```bash
