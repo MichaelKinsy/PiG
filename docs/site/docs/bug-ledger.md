@@ -163,6 +163,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-20aee29](#bf-20aee29) | The crash notice prints the year of a crash time the way Node's toLocaleString does: unpadded, and counted… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-211af49](#bf-211af49) | `/hotkeys` lists extension shortcuts, and the extension shortcut listener tries them, in the order of Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-2165463](#bf-2165463) | On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once… | PiG's own defect | Windows | 0.5.0 |
+| [BF-21a89d2](#bf-21a89d2) | After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with… | PiG's own defect | All platforms | Unreleased |
 | [BF-21c27bf](#bf-21c27bf) | A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-224dbd9](#bf-224dbd9) | On Linux and macOS, the bash tool, a `!` command and an extension's `exec` no longer report no output for a… | PiG's own defect | macOS, Linux | 0.7.0 |
 | [BF-227a4c1](#bf-227a4c1) | A Piglet's tool scope now bounds the Session's tool registry, not only its active tools | PiG's own defect | All platforms | 0.7.0 |
@@ -838,6 +839,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-83fea11](#bf-83fea11) | On Windows, a refused connection reads as Node's `connect ECONNREFUSED` and is not retried, as in Pi; it was… | PiG's own defect | Windows | 0.5.0 |
 | [BF-844d215](#bf-844d215) | Repairing a partial tool-call arguments text follows partial-json's `obj["__proto__"] = value`: a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8476760](#bf-8476760) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
+| [BF-8482ee1](#bf-8482ee1) | The footer of the interactive mode now follows an extension's `pi.setModel` at the moment the session's model… | PiG's own defect | All platforms | Unreleased |
 | [BF-848836a](#bf-848836a) | fix(frontmatter): header starts one UTF-16 unit after the fence | PiG's own defect | All platforms | Unreleased |
 | [BF-84b2fca](#bf-84b2fca) | Code that fails to highlight takes the code-block color, as in Pi: `highlightCode` returns it in the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-852652e](#bf-852652e) | PiG no longer names documentation that does not exist | PiG's own defect | All platforms | 0.5.0 |
@@ -3650,6 +3652,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `21654635e7` (2026-10-13)
 - **Tests:** `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptCustomCompatibilitySettingsAndRejectMalformedKnownFields`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptSchemaInKeybindingsJSONWithoutTreatingItAsAnAction`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasAcceptSchemaInSettingsJSON`, `internal/codingagent/config_schemas_runtime_upstream_test.go::TestConfigSchemasValidateSchemaInModelsJSONAtRuntime`, `internal/pilock/delete_pending_windows_test.go::TestAcquireRetriesLockBeingRemovedAtMkdirThenSurfacesIt`, `internal/pilock/delete_pending_windows_test.go::TestAcquireSurfacesLockBeingRemovedAtStatThatIsStaleOrALink`, `internal/pilock/delete_pending_windows_test.go::TestAuthAcquireRetriesLockBeingRemovedAtStatThatIsStaleOrALink`, `internal/pilock/delete_pending_windows_test.go::TestAuthAcquireWaitsOutLockBeingRemovedAtMkdir` and 4 more in docs/bug-ledger.json
 - **Release note:** On Windows, saving credentials to `auth.json`, `models.json` or the MCP OAuth store no longer fails at once with `EPERM: operation not permitted, mkdir '….lock'` when another process has just released the lock and Windows still holds the directory pending deletion. As in Pi 1.2.0, the lock is retried: the synchronous path within its ten attempts, the cancellable path up to five times. Settings and trust locks still fail on the first `EPERM`, as in Pi.
+
+### BF-21a89d2
+
+**After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with `/model` (or switching to it from the extension) no longer gives a model without its metadata: the footer showed `0.0%/0 (auto)`, Shift+Tab said "Current model does not support thinking", and the Session recorded a thinking level change to off with the model change.
+- **Root cause:** coding/cli/interactive_model_after_replacement_pty_test.go starts the real pig on a pseudo-terminal with an extension provider whose models carry a window, an output limit, costs, an image input and reasoning that no default produces, replaces the Session, selects each of its models with /model (and with the extension's setModel) and expects the extension to see the registered model, the footer to show its window, the thinking level to stay at medium, and no compaction or thinking_level_change to off. Rows: startup, /new, /resume, /clone, /fork, /reload; an OAuth provider and a provider the Session did not start on; the Go, Rust, Python and Lisp SDKs registering the provider.…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `21a89d274c` (2026-11-16)
+- **Tests:** `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveExtensionSetModelAfterNewKeepsRegisteredMetadata`, `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterNewAcrossSDKs`, `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementKeepsRegisteredMetadata`, `coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementProviderShapes`, `coding/cli/rpc_model_after_new_test.go::TestRPCSetModelAfterNewSessionKeepsRegisteredMetadata`, `test/parity/scenarios/extensions-runtime/108-model-after-new-extension-provider.toml`
+- **Release note:** After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with `/model` (or switching to it from the extension) no longer gives a model without its metadata: the footer showed `0.0%/0 (auto)`, Shift+Tab said "Current model does not support thinking", and the Session recorded a thinking level change to off with the model change. The mode built the model from the services of the Session it was started with, which do not hold a provider that the replacement Session's extension registers. It now builds from the running Session's services, as Pi selects from the Session's model runtime.
 
 ### BF-21c27bf
 
@@ -12990,6 +13006,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `847676064a` (2026-10-31)
 - **Tests:** None recorded.
+
+### BF-8482ee1
+
+**The footer of the interactive mode now follows an extension's `pi.setModel` at the moment the session's model…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A change made by an extension with a `model_select` handler used to push the footer only after the handlers had replied, so a frame drawn while a handler was pending (a key press, a stream tick) came from the footer's cache with the previous model's context window, and nothing drew again: the old window stayed until the next keystroke.
+- **Root cause:** An extension's pi.setModel ran Session.ExtensionSetModel off the interactive owner loop. It awaited the model_select handlers first and only then pushed the footer (statusLine.SetModel, which invalidates and requests no render). A frame drawn in between (a key press, a stream tick) came from the cached footer with the previous model's context window, and no render followed.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8482ee1d09` (2026-11-17)
+- **Tests:** `coding/session_extension_set_model_on_main_test.go::TestExtensionSetModelOnMainMutatesInsideTheDispatcherAndAwaitsTheHandlersAfterIt`, `internal/codingagent/interactive_extension_set_model_footer_test.go::TestInteractiveExtensionSetModelShowsTheNewWindowWhileItsHandlersAreStillReplying`, `internal/codingagent/interactive_model_select_events_test.go::TestInteractiveExtensionSetModelEmitsNoModelSelectOfItsOwn`
+- **Release note:** The footer of the interactive mode now follows an extension's `pi.setModel` at the moment the session's model changes, as in Pi, where the footer reads the session's model on every frame. A change made by an extension with a `model_select` handler used to push the footer only after the handlers had replied, so a frame drawn while a handler was pending (a key press, a stream tick) came from the footer's cache with the previous model's context window, and nothing drew again: the old window stayed until the next keystroke. The session's model and the footer now change in one owner-loop unit, and the owner loop never waits on an extension: the handlers are awaited off the loop. PiG 0.7.0 has the defect. <!-- cause: the extension's setModel ran Session.ExtensionSetModel off the owner loop, awaited the model_select handlers inside it, and pushed the footer (statusLine.SetModel, which invalidates and requests no render) only after it returned, while /model and cycling already pushed it in the same owner-loop unit as the session's mutation --> <!-- tests: internal/codingagent/interactive_extension_set_model_footer_test.go::TestInteractiveExtensionSetModelShowsTheNewWindowWhileItsHandlersAreStillReplying, coding/session_extension_set_model_on_main_test.go::TestExtensionSetModelOnMainMutatesInsideTheDispatcherAndAwaitsTheHandlersAfterIt -->
 
 ### BF-848836a
 

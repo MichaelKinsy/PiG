@@ -2,7 +2,6 @@ package codingagent
 
 import (
 	"bytes"
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -59,7 +58,7 @@ func testExtensionHostModelMutations(t *testing.T, boundSession bool) {
 	if got := m.agent.ThinkingLevel(); got != ai.ThinkingHigh {
 		t.Errorf("agent thinking = %s, want high", got)
 	}
-	if ok, err := bridge.actions["setModel"].(func(context.Context, string) (bool, error))(t.Context(), "fixture/next"); err != nil || !ok {
+	if ok, err := callSetModelAction(t, m, bridge, "fixture/next"); err != nil || !ok {
 		t.Fatalf("model switch = %v, %v", ok, err)
 	}
 	for len(m.uiTaskCh) > 0 {
