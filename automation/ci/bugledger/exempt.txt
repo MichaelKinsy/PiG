@@ -38,3 +38,4 @@ edae8e70d7 Follow-up to unreleased work: --listen live-host tracking and second-
 f34cb22f47 Follow-up to unreleased work: ctx.abort scoped per host group for the --listen server's shared cells (D232), no behaviour of a release changes
 ddc6060aa0 Follow-up to unreleased work: shared cell processes of the --listen server outlive their spawner (D232), no behaviour of a release changes
 ada701819c Follow-up to unreleased work: the --listen server's builds join the cell registry and a closed connection retires its own Host (D232), no behaviour of a release changes
+e1098674c7 Follow-up to unreleased work: the --listen socket needs no process-wide umask change to be private (D232), no behaviour of a release changes
