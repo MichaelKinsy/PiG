@@ -21,6 +21,14 @@ import (
 // for an OpenCode target with a session id, whatever the identity holds. A request to an OpenCode-shaped endpoint with
 // install telemetry off therefore still carries the session header and no attribution header; with it on, both. The gate
 // is closed by PI_TELEMETRY=0 or by the enableInstallTelemetry setting.
+//
+// "Is not attribution" holds by absence, in PiG as in Pi: the session header is a function of the request target and the session id
+// alone (ai/identity.go GetOpenCodeSessionHeaders, 277-282, which takes no identity; its callers ai/models_runtime_stream.go:74,
+// coding/model.go:633 and 652, and ai/opencode_headers.go:24-33 read options.SessionID and the target, never options.Identity).
+// So no single mutation of an Identity.Attribution check can turn the session half red: the header is also added at several
+// sites at once (removing GetOpenCodeSessionHeaders alone, or the opencode_headers.go wrapper alone, leaves the header
+// present), and only removing all of them is red. The attribution half is the x-opencode-client assertion, which is red when
+// attributionPairs (ai/identity.go) stops emitting it or getClientIdentity ignores the gate.
 func TestOpenCodeSessionHeaderIsNotAttributionAndIgnoresTheTelemetryGate(t *testing.T) {
 	for _, provider := range []string{"opencode", "opencode-go"} {
 		for _, gate := range []struct {
