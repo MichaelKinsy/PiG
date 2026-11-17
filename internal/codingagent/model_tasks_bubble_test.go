@@ -2,12 +2,12 @@ package codingagent
 
 import (
 	"context"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
-	"strings"
+	"slices"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -48,85 +48,167 @@ func TestSettledRegistryMayEnterASynctestBubble(t *testing.T) {
 	})
 }
 
-// modelTaskStarters are the registry calls tests make that run work on its task owner and can return before the owner is idle.
+// modelTaskStarters are the names tests use to run work on a registry's task owner that can return before the owner is idle: registry methods and the plain
+// function RefreshModelCatalogs.
 var modelTaskStarters = map[string]bool{
 	"RefreshCatalogs": true, "RefreshModelCatalogs": true, "StartModelTask": true, "AwaitModelTasks": true,
 	"YieldToRegistrationRefresh": true, "StartRegistrationRefresh": true, "GetProviderAuthChecks": true,
 	"GetAvailableModelDataContext": true, "GetAvailableAllModelDataContext": true,
 }
 
-// TestTestsSettleModelTasksBeforeEnteringABubble keeps the fixture rule from being forgotten by copy: in one function body, a call that starts model work
-// and is followed by a synctest.Test call in the same scope needs settleModelTasks between them. Work started inside the bubble's own function needs nothing.
-func TestTestsSettleModelTasksBeforeEnteringABubble(t *testing.T) {
-	files, err := filepath.Glob("*_test.go")
-	if err != nil {
-		t.Fatal(err)
+// unsettledModelWork keeps the fixture rule from being forgotten by copy: in one function body, model work started before a synctest.Test call in the same
+// scope needs settleModelTasks between the two. It returns one finding per start. Work started inside the bubble's own function needs nothing.
+//
+// A start is any reference to a name in modelTaskStarters: a call through a receiver (registry.RefreshCatalogs(...)), a call of the plain function
+// (RefreshModelCatalogs(...)), the same through a package qualifier (codingagent.RefreshModelCatalogs), and a method value that is not called at once
+// (refresh := registry.RefreshCatalogs, or the method passed as an argument), because the later call cannot be placed. A call of a helper declared in a
+// test file counts as a start when the helper's own body starts work that no settleModelTasks follows, transitively.
+//
+// Blind spots: the check is by name and by position in one function body, not by types or flow. It does not see a start (1) in a function literal that is a
+// scope of its own, such as a goroutine or a t.Run closure, when the bubble is in the enclosing scope; (2) in a helper declared in a non-test file, or
+// reached through an interface or a stored func value; (3) behind a variable that carries the method value out of the scope; (4) that is a differently
+// named wrapper outside the list above (add the name there). It reads positions, so a start in an untaken branch or after an early return still counts.
+func unsettledModelWork(fset *token.FileSet, files []*ast.File) []string {
+	type scope struct {
+		name string
+		body *ast.BlockStmt
 	}
-	fset := token.NewFileSet()
-	for _, name := range files {
-		src, err := os.ReadFile(name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(string(src), "synctest.Test(") {
-			continue
-		}
-		file, err := parser.ParseFile(fset, name, src, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var scopes []ast.Node
+	var scopes []scope
+	for _, file := range files {
 		for _, decl := range file.Decls {
 			if fn, ok := decl.(*ast.FuncDecl); ok && fn.Body != nil {
-				scopes = append(scopes, fn.Body)
+				scopes = append(scopes, scope{fn.Name.Name, fn.Body})
 			}
 		}
 		ast.Inspect(file, func(n ast.Node) bool {
 			if lit, ok := n.(*ast.FuncLit); ok {
-				scopes = append(scopes, lit.Body)
+				scopes = append(scopes, scope{"", lit.Body})
 			}
 			return true
 		})
-		for _, scope := range scopes {
-			var starters, bubbles, settles []token.Pos
-			// The scope's own statements: a nested function literal is a scope of its own.
-			ast.Inspect(scope, func(n ast.Node) bool {
-				if _, nested := n.(*ast.FuncLit); nested && n != scope {
-					return false
+	}
+	type start struct {
+		pos  token.Pos
+		name string
+	}
+	type facts struct {
+		starts          []start
+		bubbles, settle []token.Pos
+	}
+	// scan reads one scope's own statements: a nested function literal is a scope of its own. helpers names the test helpers that start work.
+	scan := func(body *ast.BlockStmt, helpers map[string]bool) (f facts) {
+		qualified := map[*ast.Ident]bool{}
+		ast.Inspect(body, func(n ast.Node) bool {
+			switch n := n.(type) {
+			case *ast.FuncLit:
+				return false
+			case *ast.SelectorExpr:
+				qualified[n.Sel] = true
+				if pkg, ok := n.X.(*ast.Ident); ok && pkg.Name == "synctest" && n.Sel.Name == "Test" {
+					f.bubbles = append(f.bubbles, n.Pos())
+				} else if modelTaskStarters[n.Sel.Name] || helpers[n.Sel.Name] {
+					f.starts = append(f.starts, start{n.Sel.Pos(), n.Sel.Name})
 				}
-				call, ok := n.(*ast.CallExpr)
-				if !ok {
-					return true
-				}
-				switch fun := call.Fun.(type) {
-				case *ast.Ident:
-					if fun.Name == "settleModelTasks" {
-						settles = append(settles, call.Pos())
-					}
-				case *ast.SelectorExpr:
-					if pkg, ok := fun.X.(*ast.Ident); ok && pkg.Name == "synctest" && fun.Sel.Name == "Test" {
-						bubbles = append(bubbles, call.Pos())
-					} else if modelTaskStarters[fun.Sel.Name] {
-						starters = append(starters, call.Pos())
-					}
-				}
-				return true
-			})
-			for _, starter := range starters {
-				for _, bubble := range bubbles {
-					if bubble < starter {
-						continue
-					}
-					settled := false
-					for _, settle := range settles {
-						settled = settled || (settle > starter && settle < bubble)
-					}
-					if !settled {
-						t.Errorf("%s: model work started before the synctest bubble at %s is not settled (call settleModelTasks(registry) between them)", fset.Position(starter), fset.Position(bubble))
-					}
+			case *ast.Ident:
+				if qualified[n] {
 					break
 				}
+				if n.Name == "settleModelTasks" {
+					f.settle = append(f.settle, n.Pos())
+				} else if modelTaskStarters[n.Name] || helpers[n.Name] {
+					f.starts = append(f.starts, start{n.Pos(), n.Name})
+				}
+			}
+			return true
+		})
+		return f
+	}
+	unsettled := func(f facts) (out []start) {
+		for _, s := range f.starts {
+			if !slices.ContainsFunc(f.settle, func(p token.Pos) bool { return p > s.pos }) {
+				out = append(out, s)
 			}
 		}
+		return out
+	}
+	helpers := map[string]bool{}
+	for changed := true; changed; {
+		changed = false
+		for _, sc := range scopes {
+			if sc.name != "" && !helpers[sc.name] && len(unsettled(scan(sc.body, helpers))) > 0 {
+				helpers[sc.name] = true
+				changed = true
+			}
+		}
+	}
+	var findings []string
+	for _, sc := range scopes {
+		f := scan(sc.body, helpers)
+		for _, s := range f.starts {
+			bubble := slices.IndexFunc(f.bubbles, func(p token.Pos) bool { return p > s.pos })
+			if bubble < 0 {
+				continue
+			}
+			if !slices.ContainsFunc(f.settle, func(p token.Pos) bool { return p > s.pos && p < f.bubbles[bubble] }) {
+				findings = append(findings, fmt.Sprintf("%s: model work (%s) started before the synctest bubble at %s is not settled (call settleModelTasks(registry) between them)", fset.Position(s.pos), s.name, fset.Position(f.bubbles[bubble])))
+			}
+		}
+	}
+	return findings
+}
+
+func TestTestsSettleModelTasksBeforeEnteringABubble(t *testing.T) {
+	names, err := filepath.Glob("*_test.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fset := token.NewFileSet()
+	var files []*ast.File
+	for _, name := range names {
+		file, err := parser.ParseFile(fset, name, nil, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, file)
+	}
+	for _, finding := range unsettledModelWork(fset, files) {
+		t.Error(finding)
+	}
+}
+
+// The guard rejects each shape that starts model work before a bubble, accepts the settled and the in-bubble forms, and its documented blind spots stay
+// visible here: a case named "blind spot" is accepted today and would need the guard extended, not the test deleted.
+func TestUnsettledModelWorkGuardShapes(t *testing.T) {
+	const bubble = "synctest.Test(t, func(t *testing.T) {})"
+	for _, tc := range []struct {
+		name, body, helper string
+		want               int
+	}{
+		{"receiver call", "registry.RefreshCatalogs(ctx, opts)\n" + bubble, "", 1},
+		{"plain function call", "RefreshModelCatalogs(ctx, registry)\n" + bubble, "", 1},
+		{"package qualifier", "codingagent.RefreshModelCatalogs(ctx, registry)\n" + bubble, "", 1},
+		{"method value then call", "refresh := registry.RefreshCatalogs\nrefresh(ctx, opts)\n" + bubble, "", 1},
+		{"method value as argument", "run(registry.YieldToRegistrationRefresh)\n" + bubble, "", 1},
+		{"helper that starts work", "seed(t, registry)\n" + bubble, "func seed(t *testing.T, registry *ModelRegistry) { registry.RefreshCatalogs(ctx, opts) }", 1},
+		{"helper that starts work through a helper", "seedAll(t, registry)\n" + bubble, "func seedAll(t *testing.T, r *ModelRegistry) { seed(t, r) }\nfunc seed(t *testing.T, r *ModelRegistry) { RefreshModelCatalogs(ctx, r) }", 1},
+		{"settled receiver call", "registry.RefreshCatalogs(ctx, opts)\nsettleModelTasks(registry)\n" + bubble, "", 0},
+		{"settled plain function call", "RefreshModelCatalogs(ctx, registry)\nsettleModelTasks(registry)\n" + bubble, "", 0},
+		{"helper that settles", "seed(t, registry)\n" + bubble, "func seed(t *testing.T, r *ModelRegistry) { r.RefreshCatalogs(ctx, opts); settleModelTasks(r) }", 0},
+		{"start after the bubble", bubble + "\nregistry.RefreshCatalogs(ctx, opts)", "", 0},
+		{"start inside the bubble", "synctest.Test(t, func(t *testing.T) { RefreshModelCatalogs(ctx, registry) })", "", 0},
+		{"blind spot: start in a goroutine literal", "go func() { RefreshModelCatalogs(ctx, registry) }()\n" + bubble, "", 0},
+		{"blind spot: start through a stored func value", "refresh := callbacks.refresh\nrefresh()\n" + bubble, "", 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			src := "package codingagent\nfunc TestX(t *testing.T) {\n" + tc.body + "\n}\n" + tc.helper + "\n"
+			fset := token.NewFileSet()
+			file, err := parser.ParseFile(fset, "case_test.go", src, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := unsettledModelWork(fset, []*ast.File{file}); len(got) != tc.want {
+				t.Errorf("findings = %q, want %d", got, tc.want)
+			}
+		})
 	}
 }
