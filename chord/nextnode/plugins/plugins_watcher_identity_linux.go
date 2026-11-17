@@ -40,5 +40,5 @@ func lstatIdentity(path string) (ino uint64, birth int64, ok bool) {
 	if unix.Lstat(path, &stat) != nil {
 		return 0, 0, false
 	}
-	return stat.Ino, 0, true
+	return stat.Ino, int64(stat.Ctim.Sec)*1e9 + int64(stat.Ctim.Nsec), true
 }
