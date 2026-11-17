@@ -91,7 +91,7 @@ func (s *Session) entryHandlesOf(ids []string) ([]SessionEntry, error) {
 	}
 	lazy := 0
 	for _, i := range indexes {
-		if s.slots[i].entry == nil && s.lazyAtLocked(int(i)) {
+		if s.resident.get(int(i)) == nil && s.lazyAtLocked(int(i)) {
 			lazy++
 		}
 	}
