@@ -67,7 +67,8 @@ func (b *cliRuntimeBuilder) rpcInputs(owner context.Context, build *cliBuild, st
 	}
 	return cliSessionInputs{
 		Services: build.Services, Extensions: build.Extensions, Start: start, Host: build.Host, Bridge: build.Bridge, Runtime: build.Runtime,
-		Diagnostics: build.runtimeDiagnostics(),
+		Diagnostics:          build.runtimeDiagnostics(),
+		ModelFallbackMessage: build.ModelFallbackMessage,
 		Invalidate: func(message string) {
 			if build.Host != nil {
 				build.Host.Invalidate(message)

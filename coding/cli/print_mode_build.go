@@ -31,6 +31,7 @@ func (b *cliRuntimeBuilder) printHost(owner context.Context, build *cliBuild, st
 		Host:                 build.Host,
 		Runtime:              build.Runtime,
 		Diagnostics:          build.runtimeDiagnostics(),
+		ModelFallbackMessage: build.ModelFallbackMessage,
 		Session: coding.SessionStartOptions{
 			// The Session builds its default system prompt from this loader, as AgentSession._rebuildSystemPrompt does.
 			ResourceLoader:         b.buildResourceLoader(owner, build),

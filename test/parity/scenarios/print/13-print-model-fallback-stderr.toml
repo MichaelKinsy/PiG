@@ -1,0 +1,36 @@
+# Behavior family: print
+# Surface: print mode `-c` into a session whose saved model is gone writes "Warning: Could not restore model ..." to stderr, once, and never to stdout.
+#
+# Upstream evidence (Pi c8c456c85c6e, #12234, on top of c47ad0432bb8, #12115): main.ts's runtime factory pushes created.modelFallbackMessage onto the runtime diagnostics as a
+# warning when a fallback model was chosen; runPrintMode writes takeUnreportedDiagnostics() to stderr before the prompt (modes/diagnostics-stderr.ts: `Warning: <message>`).
+# Before the commit print and JSON mode never passed the message on, so the model changed without notice. The staged session's saved model is gone/missing-model; the
+# fallback is the settings default, test-faux/faux-1. stderr_equal compares the whole stream and stdout is the answer only.
+name = "13-print-model-fallback-stderr"
+description = "print -c into a session whose model is gone: the fallback is a warning on stderr, the answer on stdout"
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/modes/print-mode.ts",
+]
+tags = ["hermetic", "fast", "cli"]
+driver = "cli-mode"
+
+[cli]
+args = ["-p", "reply with exactly: fallback-ok", "--session-dir", "sessions", "-c", "--system-prompt", "Print probe.", "--no-context-files", "--no-skills", "--no-tools"]
+cwd = "testdata/model-fallback/cwd"
+snapshot_cwd = true
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/model-fallback/pig-agent"]
+pig_args = ["--no-extensions", "--offline"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-fallback/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--no-extensions", "--offline"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_normalized_equal = true
+stderr_equal = true
+both_contain = ["fallback-ok"]
+both_not_contain = ["panic:", "goroutine "]

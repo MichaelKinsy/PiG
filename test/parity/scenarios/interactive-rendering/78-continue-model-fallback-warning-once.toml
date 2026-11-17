@@ -1,0 +1,45 @@
+# Behavior family: interactive-rendering
+# Surface: --continue into a session whose saved model is gone shows the fallback warning once at startup.
+#
+# Upstream evidence (Pi c8c456c85c6e, #12234, on top of c47ad0432bb8, #12115; the commit's table: "--continue into it: warning once, before and after"): the startup
+# diagnostics, the fallback warning among them, are shown once by interactive mode. main.ts passes no modelFallbackMessage option when a model was chosen, so the
+# warning is not shown a second time from the option. The crop is the resumed chat through the top border of the editor. Pi's output is the oracle of the rows.
+name = "78-continue-model-fallback-warning-once"
+description = "--continue into a session whose model is gone shows the fallback warning once, as pi does."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 45
+cwd = "testdata/model-fallback/cwd"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 30
+capture_start = "hello aaaaaaaa"
+capture_end = "$ echo startup-done"
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["!echo startup-done", "Enter"]
+wait_contains = ["$ echo startup-done"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-fallback/pig-agent-regular"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-fallback/pi-agent-regular", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--no-skills", "--offline", "--session-dir", "sessions", "-c"]
+pi_args = ["--no-extensions", "--no-skills", "--offline", "--session-dir", "sessions", "-c"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["hello aaaaaaaa", "$ echo startup-done", "Warning: Could not restore model gone/missing-model. Using fixture/model-two"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

@@ -1,0 +1,62 @@
+# Behavior family: json
+# Surface: --mode json `-c` into a session whose saved model is gone writes "Warning: Could not restore model ..." to stderr, once, and never to stdout.
+#
+# Upstream evidence (Pi c8c456c85c6e, #12234, on top of c47ad0432bb8, #12115): main.ts's runtime factory pushes created.modelFallbackMessage onto the runtime diagnostics as a
+# warning when a fallback model was chosen; runPrintMode writes takeUnreportedDiagnostics() to stderr before the prompt (modes/diagnostics-stderr.ts: `Warning: <message>`).
+# Before the commit print and JSON mode never passed the message on, so the model changed without notice. The staged session's saved model is gone/missing-model; the
+# fallback is the settings default, test-faux/faux-1. stderr_equal compares the whole stream and stdout is the event stream only.
+name = "17-json-model-fallback-stderr"
+description = "--mode json -c into a session whose model is gone: the fallback is a warning on stderr, the event stream on stdout"
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/modes/print-mode.ts",
+]
+tags = ["hermetic", "fast", "cli"]
+driver = "cli-mode"
+
+[cli]
+args = ["--mode", "json", "-p", "reply with exactly: fallback-ok", "--session-dir", "sessions", "-c", "--system-prompt", "Print probe.", "--no-context-files", "--no-skills", "--no-tools"]
+cwd = "../print/testdata/model-fallback/cwd"
+snapshot_cwd = true
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../print/testdata/model-fallback/pig-agent"]
+pig_args = ["--no-extensions", "--offline"]
+pi = ["PI_CODING_AGENT_DIR=../print/testdata/model-fallback/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--no-extensions", "--offline"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_normalized_equal = true
+stderr_equal = true
+both_contain = ["fallback-ok"]
+both_not_contain = ["panic:", "goroutine "]
+
+# normalize-rationale: Only entry IDs, independent clocks and the header's UUID and cwd vary; every member name, order and value stays byte-compared.
+[[assert.normalize_replace]]
+pattern = '"(id|parentId)":"[0-9a-f-]{8,36}"'
+with = '"$1":"<ID>"'
+reason = "Generated entry keys and the session header id are random per run; keep each member's name and position."
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'
+reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+[[assert.normalize_replace]]
+pattern = '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"'
+with = '"timestamp":"2000-01-01T00:00:00.000Z"'
+reason = "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+[[assert.normalize_replace]]
+pattern = '"cwd":"[^"]*"'
+with = '"cwd":"<CWD>"'
+reason = "D2: each binary runs in its own isolated cwd."
+[[assert.normalize_replace]]
+pattern = '/tmp/parity-snap-cwd-[0-9]+'
+with = '<CWD>'
+reason = "D2: the isolated cwd root differs per run and binary; the system prompt's cwd section keeps its position."
+[[assert.normalize_replace]]
+pattern = '"durationMs":[0-9]+'
+with = '"durationMs":0'
+reason = "Independent wall-clock durations of the assistant turn vary by a millisecond; the member's name and position stay byte-compared."

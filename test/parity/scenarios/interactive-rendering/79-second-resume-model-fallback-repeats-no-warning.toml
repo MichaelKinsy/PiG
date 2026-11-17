@@ -1,0 +1,68 @@
+# Behavior family: interactive-rendering
+# Surface: a second /resume into the same session whose model is gone shows no new fallback warning.
+#
+# Upstream evidence (Pi c8c456c85c6e, #12234, on top of c47ad0432bb8, #12115): each replacement shows only the diagnostics its runtime has not reported, keyed by type and
+# message (agent-session-runtime.ts reportedDiagnosticKeys), so the second /resume recomputes the same fallback message and shows nothing; the chat is drawn again without it.
+# The `!` marker names the end of the crop; the crop is the chat of the second resume. Pi's output is the oracle of the rows.
+name = "79-second-resume-model-fallback-repeats-no-warning"
+description = "A second /resume into the session whose model is gone adds no second fallback warning, as pi does."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 45
+cwd = "testdata/model-fallback/cwd"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 30
+capture_start = "hello aaaaaaaa"
+capture_end = "$ echo second-resume-done"
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/resume", "Enter"]
+wait_visible_contains = ["Resume Session (Current Folder)", "hello aaaaaaaa"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Resumed session"]
+wait_not_contains = ["Resume Session (Current Folder)"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/resume", "Enter"]
+wait_visible_contains = ["Resume Session (Current Folder)", "hello aaaaaaaa"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Resumed session"]
+wait_not_contains = ["Resume Session (Current Folder)"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["!echo second-resume-done", "Enter"]
+wait_contains = ["$ echo second-resume-done"]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-fallback/pig-agent-regular"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-fallback/pi-agent-regular", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--no-skills", "--offline", "--session-dir", "sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--offline", "--session-dir", "sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["hello aaaaaaaa", "Resumed session", "$ echo second-resume-done"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3
