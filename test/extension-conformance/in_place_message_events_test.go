@@ -480,7 +480,15 @@ var curePending = map[string]string{
 	"agent_end/top":       "the event is not one object across handlers and extensions",
 }
 
-// curedBy lists, for a row of curePending, the SDKs (a word of the harness name) whose build already cures it: the row must match Pi there, and must still differ in the others.
+// curedSDKs are the SDKs (a word of the harness name) whose build already carries the edits of a top-level member to the later handlers of the dispatch: the rows of those edits must
+// match Pi there, and must still differ in the others. message_update/deep is another cure and has no SDK yet.
+var curedSDKs = []string{}
+
+// noIdentity are the rows a Rust handler cannot carry: it owns its event as a value, so replacing an object member (the message, the messages, the partial's event) is the same
+// value change as editing inside it, and the reply cannot tell the two apart as Pi's caller does.
+var noIdentity = map[string]bool{"message_start/reassign": true, "agent_end/reassign": true, "message_update/reassign": true}
+
+// curedBy lists, for a row of curePending, the SDKs whose build already cures it.
 var curedBy = map[string][]string{}
 
 func init() {
@@ -488,6 +496,16 @@ func init() {
 	for _, row := range messageEventRows() {
 		if row.level == "type" || row.level == "once" || row.level == "reassign" || row.level == "delete" {
 			curePending[row.name()] = members
+		}
+	}
+	for name := range curePending {
+		if name == "message_update/deep" {
+			continue
+		}
+		for _, sdk := range curedSDKs {
+			if sdk != "rust" || !noIdentity[name] {
+				curedBy[name] = append(curedBy[name], sdk)
+			}
 		}
 	}
 }

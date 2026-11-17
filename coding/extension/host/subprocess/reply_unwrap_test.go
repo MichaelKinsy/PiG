@@ -37,7 +37,7 @@ func TestNoEditReplyIsUnwrappedWithoutAllocation(t *testing.T) {
 				if event == "tool_result" {
 					_, err = unwrapToolResultReply(toolResultEvent, raw)
 				} else {
-					_, err = unwrapEventReply("message_end", messageEndEvent, raw)
+					_, err = unwrapEventReply(noDispatch(), "message_end", messageEndEvent, raw)
 				}
 				if err != nil {
 					t.Fatal(err)
@@ -73,12 +73,12 @@ func TestReplyUnwrapAgreesWithTheStrictDecode(t *testing.T) {
 			continue
 		}
 		if wantME == nil && len(messageEnd.Edits) == 0 {
-			got, err := unwrapEventReply("message_end", extension.MessageEndEvent{Type: "message_end"}, json.RawMessage(raw))
+			got, err := unwrapEventReply(noDispatch(), "message_end", extension.MessageEndEvent{Type: "message_end"}, json.RawMessage(raw))
 			if err != nil || !bytes.Equal(got, messageEnd.Result) {
 				t.Errorf("message_end reply %q: unwrapped %q, %v; the strict decode gives %q", raw, got, err, messageEnd.Result)
 			}
 		} else if wantME != nil {
-			if _, err := unwrapEventReply("message_end", extension.MessageEndEvent{Type: "message_end"}, json.RawMessage(raw)); err == nil {
+			if _, err := unwrapEventReply(noDispatch(), "message_end", extension.MessageEndEvent{Type: "message_end"}, json.RawMessage(raw)); err == nil {
 				t.Errorf("message_end reply %q: unwrapped without an error; the strict decode says %v", raw, wantME)
 			}
 		}
@@ -113,7 +113,7 @@ func TestToolResultReplyWithEditsReachesTheSink(t *testing.T) {
 func TestMessageEndReplyWithAMessageEditsTheEventsMessage(t *testing.T) {
 	message := agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserText("hello"), Timestamp: 1}}
 	raw := `{"_pigEventEdits":[{"at":0,"message":{"role":"user","content":"changed","timestamp":1}}],"_pigEventResult":null}`
-	got, err := unwrapEventReply("message_end", extension.MessageEndEvent{Type: "message_end", Message: message}, json.RawMessage(raw))
+	got, err := unwrapEventReply(noDispatch(), "message_end", extension.MessageEndEvent{Type: "message_end", Message: message}, json.RawMessage(raw))
 	if err != nil || string(got) != "null" {
 		t.Fatalf("result %q, %v; want null", got, err)
 	}
@@ -162,7 +162,7 @@ func TestEventReplyRefusesEditsThatDoNotFitTheEventAndAppliesNone(t *testing.T) 
 		"a good edit and a bad one": `{"_pigEventEdits":[{"at":0,"message":{"role":"user","content":"changed","timestamp":1}},{"at":3,"message":{"role":"user","content":"x","timestamp":1}}]}`,
 	} {
 		message := user()
-		if _, err := unwrapEventReply("message_end", extension.MessageEndEvent{Type: "message_end", Message: message}, json.RawMessage(raw)); err == nil {
+		if _, err := unwrapEventReply(noDispatch(), "message_end", extension.MessageEndEvent{Type: "message_end", Message: message}, json.RawMessage(raw)); err == nil {
 			t.Errorf("%s: the reply %s was not refused", name, raw)
 		}
 		if text, err := json.Marshal(message.User.Content); err != nil || string(text) != `"hello"` {

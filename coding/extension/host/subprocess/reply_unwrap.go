@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -13,9 +14,9 @@ const (
 	toolResultResultMember = "_pigToolResultResult"
 )
 
-// unwrapEventReply returns the handler's result from the reply of an extension process's message_start, message_end or agent_end handler, and applies the in-place edits of the messages the reply carries to event.
+// unwrapEventReply returns the handler's result from the reply of an extension process's message_start, message_update, turn_start, agent_start, message_end or agent_end handler, and applies the in-place edits of the messages the reply carries to event.
 // upstream: runner.ts emit hands every handler the one event, and so the one message of a message_start or message_end and the one list of an agent_end, and agent-session.ts stores those objects, so a handler's in-place edit of a message is what the later handlers and the saved entry hold. An extension process cannot share the objects: every SDK's reply carries the messages it left, when they differ from the ones it received, even if the handler failed.
-func unwrapEventReply(name string, event any, raw json.RawMessage) (json.RawMessage, error) {
+func unwrapEventReply(ctx context.Context, name string, event any, raw json.RawMessage) (json.RawMessage, error) {
 	if result, ok := soleMember(raw, eventResultMember); ok {
 		return result, nil
 	}
@@ -27,7 +28,7 @@ func unwrapEventReply(name string, event any, raw json.RawMessage) (json.RawMess
 	if err := json.Unmarshal(raw, &reply); err != nil {
 		return nil, fmt.Errorf("decode %s response: %w", name, err)
 	}
-	if err := applyEventEdits(event, reply.Edits); err != nil {
+	if err := applyEventEdits(ctx, event, reply.Edits); err != nil {
 		return nil, fmt.Errorf("apply %s response: %w", name, err)
 	}
 	return reply.Result, nil

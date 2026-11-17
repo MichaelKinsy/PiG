@@ -27,7 +27,7 @@ func agentUserText(t *testing.T, message agent.AgentMessage) string {
 func TestAgentEndReplyEditsTheMessageAtItsIndex(t *testing.T) {
 	event := extension.AgentEndEvent{Type: "agent_end", Messages: []agent.AgentMessage{agentUserMessage("first"), agentUserMessage("second")}}
 	raw := `{"_pigEventEdits":[{"at":1,"message":{"role":"user","content":"changed","timestamp":1}}],"_pigEventResult":null}`
-	if _, err := unwrapEventReply("agent_end", event, json.RawMessage(raw)); err != nil {
+	if _, err := unwrapEventReply(noDispatch(), "agent_end", event, json.RawMessage(raw)); err != nil {
 		t.Fatal(err)
 	}
 	if got := agentUserText(t, event.Messages[0]); got != `"first"` {
@@ -48,7 +48,7 @@ func TestAgentEndReplyRefusesAMisfitAndAppliesNone(t *testing.T) {
 		"named twice":   `[` + good + `,` + good + `]`,
 	} {
 		event := extension.AgentEndEvent{Type: "agent_end", Messages: []agent.AgentMessage{agentUserMessage("first"), agentUserMessage("second")}}
-		if _, err := unwrapEventReply("agent_end", event, json.RawMessage(`{"_pigEventEdits":`+edits+`,"_pigEventResult":null}`)); err == nil {
+		if _, err := unwrapEventReply(noDispatch(), "agent_end", event, json.RawMessage(`{"_pigEventEdits":`+edits+`,"_pigEventResult":null}`)); err == nil {
 			t.Errorf("%s: the reply was not refused", name)
 		}
 		if got := agentUserText(t, event.Messages[0]); strings.Contains(got, "changed") {
@@ -63,7 +63,7 @@ func TestAgentEndReplyRefusesAMisfitAndAppliesNone(t *testing.T) {
 func TestMessageStartReplyEditsAUserMessageAndTheEventsAssistantMessage(t *testing.T) {
 	user := agentUserMessage("first")
 	reply := `{"_pigEventEdits":[{"at":0,"message":{"role":"user","content":"changed","timestamp":1}}],"_pigEventResult":null}`
-	if _, err := unwrapEventReply("message_start", extension.MessageStartEvent{Type: "message_start", Message: user}, json.RawMessage(reply)); err != nil {
+	if _, err := unwrapEventReply(noDispatch(), "message_start", extension.MessageStartEvent{Type: "message_start", Message: user}, json.RawMessage(reply)); err != nil {
 		t.Fatal(err)
 	}
 	if got := agentUserText(t, user); got != `"changed"` {
@@ -71,7 +71,7 @@ func TestMessageStartReplyEditsAUserMessageAndTheEventsAssistantMessage(t *testi
 	}
 	assistant := &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "partial"}}, Timestamp: 1}
 	reply = `{"_pigEventEdits":[{"at":0,"message":{"role":"assistant","content":[{"type":"text","text":"edited"}],"timestamp":1}}],"_pigEventResult":null}`
-	if _, err := unwrapEventReply("message_start", extension.MessageStartEvent{Type: "message_start", Message: agent.AgentMessage{Assistant: assistant}}, json.RawMessage(reply)); err != nil {
+	if _, err := unwrapEventReply(noDispatch(), "message_start", extension.MessageStartEvent{Type: "message_start", Message: agent.AgentMessage{Assistant: assistant}}, json.RawMessage(reply)); err != nil {
 		t.Fatal(err)
 	}
 	if text, _ := json.Marshal(assistant.Content); !strings.Contains(string(text), "edited") {

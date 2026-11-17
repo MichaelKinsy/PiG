@@ -811,9 +811,26 @@ func (p *EventResponsePayload) UnmarshalJSON(data []byte) error {
 }
 
 // EventEdit is one message of an event as a handler left it: At is its position in the messages the event holds (message_start and message_end: 0; turn_end: 0 for the assistant message, then the tool results; agent_end: the index in messages) and Message the message. It has no decoder of its own: the reply's strict decode reaches its members, and applyEventEdits refuses an entry that names no position or no message object.
+//
+// The second form names a member of the event itself: {"member":"note","value":<json>} assigns it and {"member":"note","deleted":true} removes it (a top-level member of message_start, message_update, turn_start, agent_start or agent_end that a handler added, reassigned or deleted; see [extension.EventMember]). An entry is of one form: an entry with At or Message and Member, Value or Deleted is refused.
 type EventEdit struct {
 	At      *int            `json:"at"`
 	Message json.RawMessage `json:"message"`
+	Member  string          `json:"member"`
+	Value   json.RawMessage `json:"value"`
+	Deleted bool            `json:"deleted"`
+}
+
+// isMemberEntry tells whether the entry is of the second form (it names a member, or carries a member's value or deletion).
+func (e EventEdit) isMemberEntry() bool { return e.Member != "" || len(e.Value) > 0 || e.Deleted }
+
+// memberEvent tells whether a handler's edit of a top-level member of the event is carried: the events a Pi handler shares one object across handlers for (runner.ts emit) whose own members are not messages the entry holds.
+func memberEvent(event string) bool {
+	switch event {
+	case "message_start", "message_update", "turn_start", "agent_start", "agent_end":
+		return true
+	}
+	return false
 }
 
 // ToolResultResponsePayload is the result of an extension's tool_result handler, from every SDK. Edits names the members of the event the handler left different from the ones it received and, of those, the ones it edited in the object it received (see [extension.ToolResultEdits]); an omitted Edits means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.

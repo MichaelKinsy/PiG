@@ -2,9 +2,11 @@ package subprocess
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"maps"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -94,7 +96,9 @@ func eventMessage(event any, at int) (agent.AgentMessage, bool) {
 }
 
 // applyEventEdits writes the messages the handlers of an event left into the messages the event carries, as Pi's handlers edit the objects the transcript, the later handlers and the stored entries share (runner.ts emit, agent-session.ts appendMessage). Every edit is checked before any is applied: its position must be one the event holds, once, and its message must be of the role of the message it replaces.
-func applyEventEdits(event any, edits []EventEdit) error {
+//
+// The entries of the second form (a member of the event itself, see [EventEdit]) are checked with the rest and, when all pass, recorded on the dispatch parent belongs to, which writes them over the payload of every later request of the dispatch (applyEventMembers). They are carried by the events memberEvent names only.
+func applyEventEdits(parent context.Context, event any, edits []EventEdit) error {
 	if len(edits) == 0 {
 		return nil
 	}
@@ -104,7 +108,32 @@ func applyEventEdits(event any, edits []EventEdit) error {
 	}
 	var small [4]resolved
 	checked := small[:0]
+	var members []extension.EventMember
 	for i, edit := range edits {
+		if edit.isMemberEntry() {
+			if edit.At != nil || len(edit.Message) > 0 {
+				return fmt.Errorf("edit %d: an entry names a position and a member", i)
+			}
+			if !memberEvent(eventTypeOf(event)) {
+				return fmt.Errorf("edit %d: the event takes no edit of a member", i)
+			}
+			if edit.Member == "" {
+				return fmt.Errorf("edit %d: no member name", i)
+			}
+			if edit.Deleted == (len(edit.Value) > 0) {
+				return fmt.Errorf("edit %d: member %q needs exactly one of value and deleted", i, edit.Member)
+			}
+			if !edit.Deleted && !json.Valid(edit.Value) {
+				return fmt.Errorf("edit %d: member %q has no valid value", i, edit.Member)
+			}
+			for _, earlier := range members {
+				if earlier.Name == edit.Member {
+					return fmt.Errorf("edit %d: member %q named twice", i, edit.Member)
+				}
+			}
+			members = append(members, extension.EventMember{Name: edit.Member, Value: edit.Value, Deleted: edit.Deleted})
+			continue
+		}
 		if edit.At == nil {
 			return fmt.Errorf("edit %d: no position (at)", i)
 		}
@@ -132,6 +161,9 @@ func applyEventEdits(event any, edits []EventEdit) error {
 		_, started := event.(extension.MessageStartEvent)
 		checked = append(checked, resolved{target, replacement, started && target.Role() == "assistant"})
 	}
+	if len(members) > 0 && !extension.AddEventMembers(parent, members) {
+		return fmt.Errorf("edit of member %q: the event belongs to no dispatch", members[0].Name)
+	}
 	for _, r := range checked {
 		agent.ReplaceMessageInPlace(r.target, r.replacement)
 		if r.envelopeOnly {
@@ -155,4 +187,82 @@ func decodeBoundaryEditsStrictly(raw json.RawMessage) error {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	return decoder.Decode(&reply)
+}
+
+// eventEditsMember is the name of the reply member that carries the edits.
+var eventEditsMember = []byte(`"_pigEventEdits"`)
+
+// eventTypeOf is the type of the events memberEvent names, read from the event value the host handed the handler.
+func eventTypeOf(event any) string {
+	switch event := event.(type) {
+	case extension.MessageStartEvent:
+		return event.Type
+	case extension.MessageUpdateEvent:
+		return event.Type
+	case extension.TurnStartEvent:
+		return event.Type
+	case extension.AgentStartEvent:
+		return event.Type
+	case extension.AgentEndEvent:
+		return event.Type
+	}
+	return ""
+}
+
+// applyEventMembers returns payload, the JSON object of an event, with the members the dispatch's earlier handlers left written over it: a member the payload has keeps its place with the value the handler left, a deleted one is gone, and a member the payload has not is appended in the order the handlers added it, as a JavaScript object holds them. payload is not modified.
+func applyEventMembers(payload json.RawMessage, members []extension.EventMember) (json.RawMessage, error) {
+	decoder := json.NewDecoder(bytes.NewReader(payload))
+	if token, err := decoder.Token(); err != nil || token != json.Delim('{') {
+		return nil, fmt.Errorf("the event payload is not an object")
+	}
+	out := make([]byte, 0, len(payload)+64)
+	out = append(out, '{')
+	written := make([]bool, len(members))
+	first := true
+	put := func(name string, value json.RawMessage) error {
+		key, err := json.Marshal(name)
+		if err != nil {
+			return err
+		}
+		if !first {
+			out = append(out, ',')
+		}
+		first = false
+		out = append(out, key...)
+		out = append(out, ':')
+		out = append(out, value...)
+		return nil
+	}
+	for decoder.More() {
+		token, err := decoder.Token()
+		if err != nil {
+			return nil, err
+		}
+		name, _ := token.(string)
+		var value json.RawMessage
+		if err := decoder.Decode(&value); err != nil {
+			return nil, err
+		}
+		at := slices.IndexFunc(members, func(m extension.EventMember) bool { return m.Name == name })
+		switch {
+		case at < 0:
+			err = put(name, value)
+		case members[at].Deleted:
+			written[at] = true
+		default:
+			written[at] = true
+			err = put(name, members[at].Value)
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	for i, member := range members {
+		if !written[i] && !member.Deleted {
+			if err := put(member.Name, member.Value); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return append(out, '}'), nil
 }
