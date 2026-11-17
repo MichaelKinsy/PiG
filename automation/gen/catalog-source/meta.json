@@ -1,14 +1,14 @@
 {
   "fetchedAt": "2026-11-15T15:26:04.771Z",
   "piCommit": "b4afdddf44e059c67ccf5097e5317d913521b470",
-  "piOverlayCommit": "7f021f0eebfa30558b7a51dad456f1ee20e752c8",
-  "archiveSha256": "2448672426aced591276d4423572534871f5a08bc96d186285441cc4ef81761b",
+  "piOverlayCommit": "cead615b48b80d1c61eecab2f0b576d16eeaf4c5",
+  "archiveSha256": "b05123ccda25924a58c7eb65f8dbc160281b4a1ff30d286b78012accc4cf68fe",
   "responses": [
     {
       "url": "https://models.dev/experimental/v2.0/api.json",
       "status": 200,
-      "bytes": 11735108,
-      "sha256": "5c4685094db9d3afd72f5377f0506bb3c00d903dcfadc299d709f2493d22930f"
+      "bytes": 11739911,
+      "sha256": "812755756e6605c09af84fda8b19fee251a9d135e692a724e0c4a3b7510ae719"
     },
     {
       "url": "https://models.dev/models.json?type=decision",
@@ -51,6 +51,16 @@
       "status": 200,
       "bytes": 25138,
       "sha256": "08231c1f36e401e817e4ccce6f21d0e272f226254373d395324869880bbbbbd6"
+    }
+  ],
+  "merges": [
+    {
+      "response": "https://models.dev/experimental/v2.0/api.json",
+      "fetchedAt": "2026-11-17T19:51:15.988Z",
+      "ids": [
+        "openai/gpt-6.2-astra",
+        "openai/gpt-6.2-sol"
+      ]
     }
   ]
 }
