@@ -3181,8 +3181,9 @@ Observable effect: Pi's tool card names an image block whose `mimeType` is the e
 Scope: `tools.GetTextOutput` and `codemodeTextOutput`; image blocks with an empty `mimeType` only. Blocks with a type, or with none, render as in Pi.
 
 Owner decision: 2026-11-06, owner approved keeping PiG's output and recording this as a numbered divergence (D266).
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:2478db21b1bb7ae4
 
 Remove when: Pi treats an empty `mimeType` like an absent one in `getTextOutput`.
 
@@ -3233,8 +3234,9 @@ Pi bug: none; Pi's limit is the stack of the JavaScript engine, not a defect to 
 Scope: arguments, results and events (the whole payload of an event and the operations of a `message_update` or `tool_execution_update` delta) read by the Go, Python, Rust and Lisp SDKs, in every placement (isolated and packed), up to the host's 10000 levels. Not the Node SDK. Not a value nested past 10000 levels (the host refuses to send one).
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-06 (proposed by the 0.7.1 coordinator).
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:a6de9d33566f33d3
 
 Remove when: Pi parses and returns tool arguments without a stack-bound depth limit, or the owner decides the SDKs should stop at Pi's observed depth. Then the call-site markers and this record go.
 
@@ -3566,8 +3568,9 @@ Pi bug: none.
 Scope: `nodeConnectionFailure` (`ai/errors.go`): the connection-error cause of the three streaming APIs and the OpenAI SDK transport.
 
 Owner decision: approved (owner, 2026-11-13T14:52:18Z: "proceed with recommendations."; the line of that decision for this record: "D520 APPROVED (a connection reset at accept is reported on the response read, a Go dial limitation; error text only)."). Drafted by the FollowAi lane on 2026-11-08 at the reviewer's request, reviews/follow-ai3.md.
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:7111674edbe4c6fe
 
 Remove when: PiG can tell a reset on accept from a reset after the request (for example by recording whether the request body was written before the reset reached the connection), or Pi stops reporting the connect.
 
@@ -4199,8 +4202,9 @@ Pi bug: none. (The host-side loss the same rows found, eight event types that wr
 Scope: the Rust SDK (isolated and packed) on every frame position that is not a `JsString` field. No other SDK; no host code.
 
 Owner decision: owner approved option (c) 2026-11-14T03:47:02Z ("c", row 92, Rust SDK lone surrogates): a numbered Rust-SDK divergence for 0.8.0, pinned by a conformance row and a docs line; the lossless Rust value type is a post-release lane.
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved 2026-11-14
+SCRUTINIZED:approved 2026-11-17 text-sha256:17d47183a2944905
 
 Remove when: the Rust SDK has a lossless value type for JavaScript strings (UTF-16 units) in its public event, command and snapshot types, so a Rust handler holds the unit and writes it back.
 
