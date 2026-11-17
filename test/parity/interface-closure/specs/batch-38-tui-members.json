@@ -11,7 +11,7 @@
   ],
   "evidence": [
    "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-   "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+   "test:tui/box_cache_test.go#TestBoxRenderCacheSeesAChildsNewLines"
   ],
   "rationale": "Box.addChild is the Go method Box.AddChild; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
  },
@@ -27,7 +27,7 @@
   ],
   "evidence": [
    "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-   "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+   "test:tui/box_cache_test.go#TestBoxRenderCacheSeesAChildsNewLines"
   ],
   "rationale": "Box.render is the Go method Box.Render; signature reviewed against the upstream declaration; callers and tests attributed by go/types (methodrefs)."
  },

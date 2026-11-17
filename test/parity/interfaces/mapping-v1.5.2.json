@@ -159546,9 +159546,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -159568,9 +159568,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -159656,6 +159656,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -159677,6 +159678,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -160094,9 +160096,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -160116,9 +160118,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -160306,6 +160308,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -160327,6 +160330,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -161727,9 +161731,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -161749,9 +161753,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -161932,6 +161936,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -161953,6 +161958,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -162790,9 +162796,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -162812,9 +162818,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -163026,9 +163032,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -163048,9 +163054,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -165468,9 +165474,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -165490,9 +165496,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -165704,9 +165710,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -165726,9 +165732,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -170948,9 +170954,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -170970,9 +170976,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -171058,6 +171064,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -171079,6 +171086,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -180823,9 +180831,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -180845,9 +180853,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -181004,6 +181012,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -181025,6 +181034,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -181559,9 +181569,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -181581,9 +181591,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -181783,6 +181793,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -181804,6 +181815,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -185165,9 +185177,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -185187,9 +185199,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -185369,6 +185381,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -185390,6 +185403,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -193145,9 +193159,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -193167,9 +193181,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -193327,6 +193341,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -193348,6 +193363,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -199992,9 +200008,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -200014,9 +200030,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -200280,6 +200296,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -200301,6 +200318,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -200602,9 +200620,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -200624,9 +200642,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -200848,6 +200866,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -200869,6 +200888,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -213311,9 +213331,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -213333,9 +213353,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -213557,6 +213577,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -213578,6 +213599,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -222821,9 +222843,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -222843,9 +222865,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -222975,6 +222997,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -222996,6 +223019,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -223235,9 +223259,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -223257,9 +223281,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -223385,6 +223409,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -223406,6 +223431,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -223788,7 +223814,7 @@
       "evidence": [
         "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
         "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageComponentsUpstream",
-        "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi"
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -223830,9 +223856,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -223852,9 +223878,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -224066,9 +224092,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -224088,9 +224114,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -225486,9 +225512,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -225508,9 +225534,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -225636,6 +225662,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -225657,6 +225684,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -226278,9 +226306,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -226300,9 +226328,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -226498,6 +226526,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -226519,6 +226548,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -227417,9 +227447,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -227439,9 +227469,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -229533,9 +229563,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -229555,9 +229585,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -229784,6 +229814,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -229805,6 +229836,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -231225,7 +231257,7 @@
       "evidence": [
         "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
         "test:internal/codingagent/user_message_upstream_test.go#TestUpstreamUserMessageTransformerContext",
-        "test:tui/user_message_render_oracle_test.go#TestUserMessageComponentRenderMatchesPi"
+        "test:tui/osc133_reuse_upstream_test.go#TestUserMessageAddsOSC133ZoneMarkersOnceAcrossRepeatedRenders"
       ]
     },
     {
@@ -231245,9 +231277,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -231267,9 +231299,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -231355,6 +231387,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -231376,6 +231409,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -231487,7 +231521,7 @@
       "evidence": [
         "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
         "test:internal/codingagent/user_message_upstream_test.go#TestUpstreamUserMessageTransformerContext",
-        "test:tui/user_message_render_oracle_test.go#TestUserMessageComponentRenderMatchesPi"
+        "test:tui/osc133_reuse_upstream_test.go#TestUserMessageAddsOSC133ZoneMarkersOnceAcrossRepeatedRenders"
       ]
     },
     {
@@ -231509,7 +231543,7 @@
       "evidence": [
         "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
         "test:internal/codingagent/user_message_upstream_test.go#TestUpstreamUserMessageTransformerContext",
-        "test:tui/user_message_render_oracle_test.go#TestUserMessageComponentRenderMatchesPi"
+        "test:tui/osc133_reuse_upstream_test.go#TestUserMessageAddsOSC133ZoneMarkersOnceAcrossRepeatedRenders"
       ]
     },
     {
@@ -231617,9 +231651,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -231639,9 +231673,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -231771,6 +231805,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -231792,6 +231827,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -293489,9 +293525,9 @@
         "call:tui/assistant_message_block.go#AssistantMessageComponent.IsDirty"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -293511,9 +293547,9 @@
         "call:tui/box.go#NewPaddedBox"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -293534,7 +293570,7 @@
       ],
       "evidence": [
         "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesAChildsNewLines"
       ]
     },
     {
@@ -293555,7 +293591,7 @@
       ],
       "evidence": [
         "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesAChildsNewLines"
       ]
     },
     {
@@ -293756,7 +293792,7 @@
       ],
       "evidence": [
         "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesAChildsNewLines"
       ]
     },
     {
@@ -293777,7 +293813,7 @@
       ],
       "evidence": [
         "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesAChildsNewLines"
       ]
     },
     {
@@ -294368,9 +294404,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -294390,9 +294426,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -295247,9 +295283,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -295269,9 +295305,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -295355,6 +295391,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -295376,6 +295413,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -298492,6 +298530,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -298513,6 +298552,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -301993,9 +302033,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -302015,9 +302055,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -306365,8 +306405,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges"
       ]
     },
     {
@@ -306426,9 +306466,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -306448,9 +306488,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -306594,6 +306634,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -306615,6 +306656,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -307060,9 +307102,9 @@
         "call:tui/scroll_view.go#ScrollView.ScrollToEnd"
       ],
       "evidence": [
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
         "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar",
-        "test:tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi",
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+        "test:tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi"
       ]
     },
     {
@@ -307082,9 +307124,9 @@
         "call:tui/scroll_view.go#ScrollView.ScrollToEnd"
       ],
       "evidence": [
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
         "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar",
-        "test:tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi",
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+        "test:tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi"
       ]
     },
     {
@@ -307104,9 +307146,9 @@
         "call:tui/scroll_view.go#ScrollView.ScrollTop"
       ],
       "evidence": [
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses"
+        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList"
       ]
     },
     {
@@ -307319,8 +307361,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges"
       ]
     },
     {
@@ -307361,15 +307403,15 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges"
       ]
     },
     {
       "id": "pkg:tui/.#ScrollViewOptions::property:overscroll",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d5f979dcba6ba8f68481f52f68c10fe2b27ab5e96814ccac1680b140f15c5547",
-      "rationale": "Derived by the interface gap detector: ScrollViewOptions::property:overscroll is Go tui/scroll_view.go#ScrollViewOptions.Overscroll (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ScrollViewOptions::property:overscroll is Go tui/scroll_view.go#ScrollViewOptions.Overscroll (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/scroll_view.go#ScrollViewOptions.Overscroll"
       ],
@@ -307382,7 +307424,9 @@
         "call:tui/scroll_view.go#NewScrollView"
       ],
       "evidence": [
-        "reach:tui/scroll_view.go#NewScrollView"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestDumpScrollFrameTurns",
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestScrollFrameTranscriptLines",
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames"
       ]
     },
     {
@@ -307403,8 +307447,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges"
       ]
     },
     {
@@ -309665,8 +309709,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_cache_warming_test.go#TestConsecutiveCacheWarmsShareOneLine"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged",
+        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream"
       ]
     },
     {
@@ -309687,8 +309731,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
-        "test:internal/codingagent/interactive_cache_warming_test.go#TestConsecutiveCacheWarmsShareOneLine",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged",
+        "test:internal/codingagent/interactive_cache_warming_test.go#TestConsecutiveCacheWarmsShareOneLine"
       ]
     },
     {
@@ -312306,9 +312350,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -312328,9 +312372,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -313660,9 +313704,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -313682,9 +313726,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -314102,9 +314146,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -314124,9 +314168,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -314586,6 +314630,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -314607,6 +314652,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -315105,8 +315151,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -315127,8 +315173,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -315148,9 +315194,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -315170,9 +315216,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -315234,9 +315280,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollBy"
       ],
       "evidence": [
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenDoesNotScrollImageRows",
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrolledFramesShowEveryRow",
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrollsRowsDownWhenScrolledBack"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -315256,9 +315302,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollBy"
       ],
       "evidence": [
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenDoesNotScrollImageRows",
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrolledFramesShowEveryRow",
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrollsRowsDownWhenScrolledBack"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -315844,9 +315890,9 @@
         "call:tui/tui_alt_screen.go#NewTuiAltScreen"
       ],
       "evidence": [
-        "test:tui/assistant_mouse_upstream_test.go#TestAssistantThinkingClicksThroughTerminal",
-        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
-        "test:tui/key_event_type_upstream_test.go#TestIsFocusableAndIsViewportTUI"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/assistant_mouse_upstream_test.go#TestAssistantThinkingClicksThroughTerminal"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -316194,9 +316240,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -316216,9 +316262,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -316544,6 +316590,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -316565,6 +316612,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -316999,8 +317047,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -317021,8 +317069,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -317042,9 +317090,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -317064,9 +317112,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -318870,8 +318918,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -318892,8 +318940,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -318913,9 +318961,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -318935,9 +318983,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -319573,6 +319621,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -319594,6 +319643,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]

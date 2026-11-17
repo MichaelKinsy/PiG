@@ -49,6 +49,36 @@ func TestBoxRenderCacheTakesTheSameArrayForUnchanged(t *testing.T) {
 	}
 }
 
+// What "the same lines" is in Go (sameChildLines, Pi's sameLines): the same first element and the same length, or else equal rows. So the box
+// serves its cache for a fresh slice with equal content, for nil against an empty slice and for two zero-length results (no first element to
+// compare), and it re-renders when the length differs (the same array resliced), when a slice of the same array starts at another element and
+// shows other rows, and when the rows differ.
+func TestBoxRenderCacheIdentityEdges(t *testing.T) {
+	backing := []string{"a", "b", "c"}
+	child := &inPlaceComponent{lines: backing[:2]}
+	box := NewPaddedBox(0, 0, nil)
+	box.AddChild(child)
+	last := box.Render(4)
+	step := func(name string, lines, want []string, cached bool) {
+		t.Helper()
+		child.lines = lines
+		got := box.Render(4)
+		if !slices.Equal(got, want) {
+			t.Fatalf("%s: lines = %q, want %q", name, got, want)
+		}
+		if same := len(got) == len(last) && (len(got) == 0 || &got[0] == &last[0]); same != cached {
+			t.Fatalf("%s: returned the cached lines = %v, want %v", name, same, cached)
+		}
+		last = got
+	}
+	step("a fresh slice with equal rows", []string{"a", "b"}, []string{"a   ", "b   "}, true)
+	step("the same array resliced to another length", backing[:1], []string{"a   "}, false)
+	step("a slice of the same array from another element", backing[1:2], []string{"b   "}, false)
+	step("other rows", []string{"x"}, []string{"x   "}, false)
+	step("a zero-length result", []string{}, []string{}, false)
+	step("nil after an empty result", nil, []string{}, true)
+}
+
 // Box's padding fields are exported and may change between frames. Before the unpadded-cache change the left padding was part of the cached child lines; the cache key now carries the padding so a changed PaddingX or PaddingY cannot serve the previous frame.
 func TestBoxRenderCacheMissesWhenPaddingChanges(t *testing.T) {
 	box := NewPaddedBox(1, 0, nil)
