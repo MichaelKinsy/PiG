@@ -226,19 +226,23 @@ means on); once live it calls the host. The host ORs the flag over extensions an
   "Set the renderers of tool NAME and publish its updated declaration to a running session (see the tool-renderers struct for the
 function arguments). A tool this extension did not register is left alone."
   (unless (member render-shell '("default" "self") :test #'equal) (error "render-shell must be \"default\" or \"self\""))
-  (sb-thread:with-mutex ((extension-reg-lock ext))
-    (let ((declaration (find name (extension-tools ext) :key (lambda (d) (gethash "name" d)) :test #'equal)))
-      (when declaration
-        (setf (gethash "render_shell" declaration) render-shell
-              (gethash "renders_call" declaration) (prov-bool (or render-call call-view))
-              (gethash "renders_result" declaration) (prov-bool (or render-result result-view)))
-        (let ((hooks (copy-list (gethash name (extension-tool-hooks ext)))))
-          (loop for (key value) in (list (list :render-call render-call) (list :render-result render-result)
-                                         (list :call-view call-view) (list :result-view result-view))
-                do (remf hooks key)
-                   (when value (setf (getf hooks key) value)))
-          (if hooks (setf (gethash name (extension-tool-hooks ext)) hooks) (remhash name (extension-tool-hooks ext))))
-        (when (extension-live ext) (host-call ext "registerTool" declaration)))))
+  (sb-thread:with-mutex ((extension-publish-lock ext))
+    (let ((published
+            (sb-thread:with-mutex ((extension-reg-lock ext))
+              (let ((declaration (find name (extension-tools ext) :key (lambda (d) (gethash "name" d)) :test #'equal)))
+                (when declaration
+                  (setf (gethash "render_shell" declaration) render-shell
+                        (gethash "renders_call" declaration) (prov-bool (or render-call call-view))
+                        (gethash "renders_result" declaration) (prov-bool (or render-result result-view)))
+                  (let ((hooks (copy-list (gethash name (extension-tool-hooks ext)))))
+                    (loop for (key value) in (list (list :render-call render-call) (list :render-result render-result)
+                                                   (list :call-view call-view) (list :result-view result-view))
+                          do (remf hooks key)
+                             (when value (setf (getf hooks key) value)))
+                    (if hooks (setf (gethash name (extension-tool-hooks ext)) hooks) (remhash name (extension-tool-hooks ext))))
+                  (and (extension-live ext) declaration))))))
+      ;; The host asks the tool's hooks while it answers: see install-tool.
+      (when published (host-call ext "registerTool" published))))
   nil)
 
 (defstruct tool-card

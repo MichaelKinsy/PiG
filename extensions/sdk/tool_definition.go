@@ -123,54 +123,64 @@ func (e *Extension) RegisterTool(def ToolDefinition) {
 
 func (e *Extension) registerTool(decl toolDef, handler ToolFunc, prepare ToolPrepareArgumentsFunc, renderers ToolRenderers) {
 	e.validateToolSchema(decl.Name, decl.Parameters)
-	e.toolMu.Lock()
-	defer e.toolMu.Unlock()
 	if renderers.Shell == ToolRenderShellSelf {
 		decl.RenderShell = string(ToolRenderShellSelf)
 	}
 	decl.RendersCall, decl.RendersResult = renderers.rendersCall(), renderers.rendersResult()
 	decl.PreparesArguments = prepare != nil
-	replaced := false
-	for i := range e.tools {
-		if e.tools[i].Name == decl.Name {
-			e.tools[i] = decl
-			replaced = true
-			break
+	e.changeTools(func() []toolDef {
+		replaced := false
+		for i := range e.tools {
+			if e.tools[i].Name == decl.Name {
+				e.tools[i] = decl
+				replaced = true
+				break
+			}
 		}
-	}
-	if !replaced {
-		e.tools = append(e.tools, decl)
-	}
-	e.toolFuncs[decl.Name] = handler
-	e.toolPrepareFuncs[decl.Name] = prepare
-	if decl.prepareLoadout != nil {
-		e.toolLoadoutFuncs[decl.Name] = decl.prepareLoadout
-	} else {
-		delete(e.toolLoadoutFuncs, decl.Name)
-	}
-	if decl.reachesTools != nil {
-		e.toolReachFuncs[decl.Name] = decl.reachesTools
-	} else {
-		delete(e.toolReachFuncs, decl.Name)
-	}
-	e.toolRenderMu.Lock()
-	if e.toolRenderers == nil {
-		e.toolRenderers = make(map[string]ToolRenderers)
-	}
-	e.toolRenderers[decl.Name] = renderers
-	e.toolRenderMu.Unlock()
-	e.publishTool(decl)
+		if !replaced {
+			e.tools = append(e.tools, decl)
+		}
+		e.toolFuncs[decl.Name] = handler
+		e.toolPrepareFuncs[decl.Name] = prepare
+		if decl.prepareLoadout != nil {
+			e.toolLoadoutFuncs[decl.Name] = decl.prepareLoadout
+		} else {
+			delete(e.toolLoadoutFuncs, decl.Name)
+		}
+		if decl.reachesTools != nil {
+			e.toolReachFuncs[decl.Name] = decl.reachesTools
+		} else {
+			delete(e.toolReachFuncs, decl.Name)
+		}
+		e.toolRenderMu.Lock()
+		if e.toolRenderers == nil {
+			e.toolRenderers = make(map[string]ToolRenderers)
+		}
+		e.toolRenderers[decl.Name] = renderers
+		e.toolRenderMu.Unlock()
+		return []toolDef{decl}
+	})
 }
 
-func (e *Extension) publishTool(decl toolDef) {
-	if e.toolConn == nil {
+// changeTools applies change to the tool tables under toolMu, then publishes the declarations it returns to a running Session. Pi's registerTool returns once the registry is refreshed, and the refresh asks every tool's prepareLoadout hook, so the host call is made without toolMu: the hook is answered from another goroutine and reads the tables under it. Changes and their publications keep one order (toolPublishMu).
+func (e *Extension) changeTools(change func() []toolDef) {
+	e.toolPublishMu.Lock()
+	defer e.toolPublishMu.Unlock()
+	published, host := func() ([]toolDef, *conn) {
+		e.toolMu.Lock()
+		defer e.toolMu.Unlock()
+		return change(), e.toolConn
+	}()
+	if host == nil {
 		return
 	}
-	result, err := e.toolConn.call("registerTool", decl)
-	if err != nil {
-		panic(fmt.Errorf("registerTool: %w", err))
-	}
-	if result != nil && result.Error != nil {
-		panic(fmt.Errorf("registerTool: %s", result.Error.Message))
+	for _, decl := range published {
+		result, err := host.call("registerTool", decl)
+		if err != nil {
+			panic(fmt.Errorf("registerTool: %w", err))
+		}
+		if result != nil && result.Error != nil {
+			panic(fmt.Errorf("registerTool: %s", result.Error.Message))
+		}
 	}
 }

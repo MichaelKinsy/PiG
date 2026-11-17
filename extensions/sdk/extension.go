@@ -171,6 +171,8 @@ type Extension struct {
 	providerOperations map[string]providerOperations
 	toolMu             sync.RWMutex
 	toolConn           *conn
+	// toolPublishMu orders the registerTool calls to the host with the table changes they publish (lock order: toolPublishMu, then toolMu). toolMu is released before the host call: the host asks the tool's hooks (tool_prepare_loadout, tool_reaches_tools) while it answers the call, and those read the tables under toolMu.
+	toolPublishMu sync.Mutex
 	// footer is the host's footer data (guarded by mu).
 	footer           footerSnapshot
 	toolFuncs        map[string]ToolFunc
@@ -803,14 +805,16 @@ func (e *Extension) validateToolSchema(name string, schema Schema) {
 
 // ToolPromptSnippet sets the registered tool's optional system-prompt summary and refreshes a running Session.
 func (e *Extension) ToolPromptSnippet(name, snippet string) {
-	e.toolMu.Lock()
-	defer e.toolMu.Unlock()
-	for i := range e.tools {
-		if e.tools[i].Name == name {
-			e.tools[i].PromptSnippet = snippet
-			e.publishTool(e.tools[i])
+	e.changeTools(func() []toolDef {
+		var updated []toolDef
+		for i := range e.tools {
+			if e.tools[i].Name == name {
+				e.tools[i].PromptSnippet = snippet
+				updated = append(updated, e.tools[i])
+			}
 		}
-	}
+		return updated
+	})
 }
 
 // ToolWithPrepareArguments registers a tool with a local pre-validation argument transform. A nil schema panics before registration.

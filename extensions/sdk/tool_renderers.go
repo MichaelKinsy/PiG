@@ -102,30 +102,28 @@ func (r ToolRenderers) rendersResult() bool { return r.Result != nil || r.Result
 
 // SetToolRenderers sets the renderers of the registered tool name.
 func (e *Extension) SetToolRenderers(name string, renderers ToolRenderers) {
-	e.toolMu.Lock()
-	defer e.toolMu.Unlock()
-	var updated *toolDef
-	for i := range e.tools {
-		if e.tools[i].Name != name {
-			continue
+	e.changeTools(func() []toolDef {
+		var updated []toolDef
+		for i := range e.tools {
+			if e.tools[i].Name != name {
+				continue
+			}
+			e.tools[i].RenderShell = ""
+			if renderers.Shell == ToolRenderShellSelf {
+				e.tools[i].RenderShell = string(ToolRenderShellSelf)
+			}
+			e.tools[i].RendersCall = renderers.rendersCall()
+			e.tools[i].RendersResult = renderers.rendersResult()
+			updated = []toolDef{e.tools[i]}
 		}
-		e.tools[i].RenderShell = ""
-		if renderers.Shell == ToolRenderShellSelf {
-			e.tools[i].RenderShell = string(ToolRenderShellSelf)
+		e.toolRenderMu.Lock()
+		if e.toolRenderers == nil {
+			e.toolRenderers = make(map[string]ToolRenderers)
 		}
-		e.tools[i].RendersCall = renderers.rendersCall()
-		e.tools[i].RendersResult = renderers.rendersResult()
-		updated = &e.tools[i]
-	}
-	e.toolRenderMu.Lock()
-	if e.toolRenderers == nil {
-		e.toolRenderers = make(map[string]ToolRenderers)
-	}
-	e.toolRenderers[name] = renderers
-	e.toolRenderMu.Unlock()
-	if updated != nil {
-		e.publishTool(*updated)
-	}
+		e.toolRenderers[name] = renderers
+		e.toolRenderMu.Unlock()
+		return updated
+	})
 }
 
 // toolRenderCard is one tool card's renderer state. Renders of one card run
