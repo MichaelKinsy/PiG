@@ -77,7 +77,7 @@ func TestInteractiveExtensionSetModelEmitsNoModelSelectOfItsOwn(t *testing.T) {
 	detach := m.wireSubprocessHostCallbacks()
 	defer detach()
 
-	if ok, err := bridge.actions["setModel"].(func(context.Context, string) (bool, error))(t.Context(), "capture/next"); err != nil || !ok {
+	if ok, err := callSetModelAction(t, m, bridge, "capture/next"); err != nil || !ok {
 		t.Fatalf("setModel = %v, %v", ok, err)
 	}
 	if len(events) != 0 {

@@ -78,8 +78,8 @@ type InteractiveSessionHandle interface {
 	AvailableModelSnapshot() []*ai.Model
 	// ExtensionCompact is the compact action Pi binds for extensions: it starts a manual compaction without waiting, reports the result to options.OnComplete and a failure to options.OnError, and drops the outcome without callbacks.
 	ExtensionCompact(*extension.CompactOptions)
-	// ExtensionSetModel answers an extension's pi.setModel: false without configured credentials, otherwise it switches as SetModel does and answers true.
-	ExtensionSetModel(context.Context, *ai.Model) (bool, error)
+	// ExtensionSetModelOnMain answers an extension's pi.setModel: false without configured credentials, otherwise it switches as SetModelOnMain does (the state mutation inside the dispatcher, the model_select notifications on the caller, ending with ctx) and answers true.
+	ExtensionSetModelOnMain(context.Context, *ai.Model, func(func() error) error) (bool, error)
 	// SetThinkingLevel applies and records reasoning without changing defaults unless Persist is set.
 	SetThinkingLevel(ai.ModelThinkingLevel, ...ModelMutationOptions) error
 	// SetThinkingLevelOnMain dispatches the synchronous state mutation to the owner loop, then runs the thinking_level_select notification on the caller. The dispatcher may reject a superseded mutation.

@@ -23375,6 +23375,30 @@
       "tests": []
     },
     {
+      "id": "BF-8482ee1",
+      "title": "The footer of the interactive mode now follows an extension's `pi.setModel` at the moment the session's model…",
+      "symptom": "A change made by an extension with a `model_select` handler used to push the footer only after the handlers had replied, so a frame drawn while a handler was pending (a key press, a stream tick) came from the footer's cache with the previous model's context window, and nothing drew again: the old window stayed until the next keystroke.",
+      "rootCause": "An extension's pi.setModel ran Session.ExtensionSetModel off the interactive owner loop. It awaited the model_select handlers first and only then pushed the footer (statusLine.SetModel, which invalidates and requests no render). A frame drawn in between (a key press, a stream tick) came from the cached footer with the previous model's context window, and no render followed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The footer of the interactive mode now follows an extension's `pi.setModel` at the moment the session's model changes, as in Pi, where the footer reads the session's model on every frame. A change made by an extension with a `model_select` handler used to push the footer only after the handlers had replied, so a frame drawn while a handler was pending (a key press, a stream tick) came from the footer's cache with the previous model's context window, and nothing drew again: the old window stayed until the next keystroke. The session's model and the footer now change in one owner-loop unit, and the owner loop never waits on an extension: the handlers are awaited off the loop. PiG 0.7.0 has the defect. \u003c!-- cause: the extension's setModel ran Session.ExtensionSetModel off the owner loop, awaited the model_select handlers inside it, and pushed the footer (statusLine.SetModel, which invalidates and requests no render) only after it returned, while /model and cycling already pushed it in the same owner-loop unit as the session's mutation --\u003e \u003c!-- tests: internal/codingagent/interactive_extension_set_model_footer_test.go::TestInteractiveExtensionSetModelShowsTheNewWindowWhileItsHandlersAreStillReplying, coding/session_extension_set_model_on_main_test.go::TestExtensionSetModelOnMainMutatesInsideTheDispatcherAndAwaitsTheHandlersAfterIt --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8482ee1d09",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/session_extension_set_model_on_main_test.go::TestExtensionSetModelOnMainMutatesInsideTheDispatcherAndAwaitsTheHandlersAfterIt",
+        "internal/codingagent/interactive_extension_set_model_footer_test.go::TestInteractiveExtensionSetModelShowsTheNewWindowWhileItsHandlersAreStillReplying",
+        "internal/codingagent/interactive_model_select_events_test.go::TestInteractiveExtensionSetModelEmitsNoModelSelectOfItsOwn"
+      ]
+    },
+    {
       "id": "BF-848836a",
       "title": "fix(frontmatter): header starts one UTF-16 unit after the fence",
       "symptom": "fix(frontmatter): header starts one UTF-16 unit after the fence",

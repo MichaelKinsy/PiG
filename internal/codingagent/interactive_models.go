@@ -141,17 +141,12 @@ func (m *InteractiveMode) switchModel(ctx context.Context, spec string, persist 
 		finish(err)
 		return
 	}
-	showModel := func() {
-		m.opts.Model = newModel
-		m.statusLine.SetModel(newModel)
-		m.refreshThinkingLevel()
-	}
 	handle := m.opts.SessionHandle
 	if handle == nil {
 		if m.agent != nil {
 			m.agent.SetModel(newModel)
 		}
-		showModel()
+		m.showModel(newModel)
 		if persist {
 			if err := m.persistDefaultModel(newModel); err != nil {
 				finish(err)
@@ -169,7 +164,7 @@ func (m *InteractiveMode) switchModel(ctx context.Context, spec string, persist 
 			}
 			// Pi's footer reads the current Session's model.
 			if m.opts.SessionHandle == handle {
-				showModel()
+				m.showModel(newModel)
 			}
 			return nil
 		})
@@ -188,6 +183,15 @@ func (m *InteractiveMode) switchModel(ctx context.Context, spec string, persist 
 		}
 		finish(err)
 	})
+}
+
+// showModel binds the mode and the footer to model and refreshes the thinking level the model implies. It runs on the owner loop, in the same unit as the Session's mutation (Pi's footer reads the Session's model on every frame, so no frame shows the Session on one model and the footer on another).
+func (m *InteractiveMode) showModel(model *ai.Model) {
+	m.opts.Model = model
+	if m.statusLine != nil {
+		m.statusLine.SetModel(model)
+	}
+	m.refreshThinkingLevel()
 }
 
 // modelNotificationContext bounds a model change's auth check and extension notifications by the mode's lifetime. Stop cancels it
@@ -295,9 +299,7 @@ func (m *InteractiveMode) cycleModel(forward bool) {
 		m.showStatus(message)
 		return
 	}
-	m.opts.Model = result.Model
-	m.statusLine.SetModel(result.Model)
-	m.refreshThinkingLevel()
+	m.showModel(result.Model)
 	m.awaitModelChange(ctx, func() error {
 		if complete != nil {
 			complete()
