@@ -482,6 +482,10 @@ type Host struct {
 	// stops a replaced process without waiting for it, so Shutdown drains
 	// these as well as the processes of the extensions still registered.
 	watchedPacked map[*packedProcessState]struct{}
+	// incomingLoops is the number of this Host's running connection read loops: raised before the loop's goroutine starts, lowered before the loop's end is signalled.
+	incomingLoops atomic.Int32
+	// runningWatchers is the number of this Host's running packed-process watchers: raised before the watcher's goroutine starts, lowered before watcherDone closes.
+	runningWatchers atomic.Int32
 
 	lastReload *ReloadReport
 
@@ -5045,9 +5049,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 // goHandleIncoming starts handleIncoming for conn on its own goroutine and records the loop on the connection before it runs, so Shutdown can wait for it (Conn.awaitIncomingEnded).
 func (h *Host) goHandleIncoming(me *managedExt, conn *Conn) {
 	conn.incoming.Store(&incomingLoop{ended: make(chan struct{})})
+	h.incomingLoops.Add(1)
 	//portlint:allow golifetime the loop ends with its connection, which the host closes before it stops the extension, and Shutdown waits for the loop through Conn.awaitIncomingEnded
 	go func() { //portlint:allow asyncorder the loop is recorded on the connection before it runs (conn.incoming) and Shutdown joins it through Conn.awaitIncomingEnded
 		defer conn.endIncoming()
+		// Counted out before the end is signalled.
+		defer h.incomingLoops.Add(-1)
 		h.handleIncoming(me, conn)
 	}()
 }

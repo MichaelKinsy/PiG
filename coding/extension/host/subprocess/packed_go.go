@@ -728,6 +728,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 	h.watchedPacked[processState] = struct{}{}
 	h.mu.Unlock()
 	processState.stderrLog.hold()
+	h.runningWatchers.Add(1)
 	//portlint:allow golifetime the watcher closes processState.watcherDone when the process ends or, for a state released while its process runs on, when the state is released; Host.Shutdown waits on it for every process in h.watchedPacked whose process it ended
 	go h.watchPackedProcess(processState)
 	if acceptErr != nil {
@@ -947,6 +948,7 @@ func (h *Host) watchPackedProcess(process *packedProcessState) {
 		h.mu.Lock()
 		delete(h.watchedPacked, process)
 		h.mu.Unlock()
+		h.runningWatchers.Add(-1)
 		if process.watcherDone != nil {
 			close(process.watcherDone)
 		}
