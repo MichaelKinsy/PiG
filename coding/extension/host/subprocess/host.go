@@ -5129,7 +5129,7 @@ func (h *Host) awaitIncomingLoops() {
 	timer := time.NewTimer(bound)
 	defer timer.Stop()
 	for ended != nil {
-		select {
+		select { //portlint:allow golifetime the wait is bounded by the timer, and each loop it waits for ends with its closed connection
 		case <-ended:
 		case <-timer.C:
 			fmt.Fprintf(os.Stderr, "pig: %d extension connection loop(s) did not end within %s\n", running, bound)
