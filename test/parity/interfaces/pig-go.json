@@ -129493,17 +129493,6 @@
       "shapeHash": "sha256:7d508d280c61decf247115e90b8749e71ea5dfc4d0ae712cc664fb5de63b74fe"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#existingEntryDifference",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
-      "name": "existingEntryDifference",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(finalDir string, verify func(entryDir string) error) error"
-      },
-      "shapeHash": "sha256:48f4a791740c1addd64544f4cfa520fd5fa29a43142f30468ae9c2cc09f52d71"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell#explainMissingToolchain",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell",
       "name": "explainMissingToolchain",
