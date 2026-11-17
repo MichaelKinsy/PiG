@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// BenchmarkSessionGraphExtensionRunner times the extension_runner row's objects from inside each Go realization of the fixture (the loop runs in the extension, so a result is the SDK's cost of the operation with the host call it makes, not the cost of starting the cell): runner creation over two loaded extensions, one event emitted through the runner to the handlers of both, and a loader that loads and starts both extensions (the child extension spawn). Each cell reports "ns/loop-op", the in-extension loop's mean; the framework's ns/op also holds the one-time setup of a run (model runtime, first load, session manager) and is not the figure to read. Run with -benchtime=Nx: a spawn is slow (two Node processes).
+// BenchmarkSessionGraphExtensionRunner times the extension_runner row's objects from inside each Go realization of the fixture (the loop runs in the extension, so a result is the SDK's cost of the operation with the host call it makes, not the cost of starting the cell): runner creation over two loaded extensions, one event emitted through the runner to the handlers of both (op emit; op emitSignal binds getSignal, so every request reads the run signal from the client), and a loader that loads and starts both extensions (the child extension spawn). Each cell reports "ns/loop-op", the in-extension loop's mean; the framework's ns/op also holds the one-time setup of a run (model runtime, first load, session manager) and is not the figure to read. Run with -benchtime=Nx: a spawn is slow (two Node processes).
 func BenchmarkSessionGraphExtensionRunner(b *testing.B) {
 	loaders := map[string]sessionGraphLoader{}
 	for _, name := range []string{"go-fused", "go-strict"} {
@@ -22,7 +22,7 @@ func BenchmarkSessionGraphExtensionRunner(b *testing.B) {
 		names = append(names, name)
 	}
 	sort.Strings(names)
-	for _, op := range []string{"create", "emit", "spawn"} {
+	for _, op := range []string{"create", "emit", "emitSignal", "spawn"} {
 		for _, name := range names {
 			b.Run(fmt.Sprintf("%s/%s", op, name), func(b *testing.B) {
 				r := newSessionGraphRig(b)

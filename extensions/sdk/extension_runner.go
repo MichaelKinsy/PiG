@@ -3,7 +3,9 @@ package sdk
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
@@ -285,7 +287,8 @@ func (r *ExtensionRunner) bindCoreWire(actions ExtensionActions, contextActions 
 		named(wireContext, "isProjectTrusted", func([]json.RawMessage) (any, error) { return f(), nil })
 	}
 	if f := contextActions.GetSignal; f != nil {
-		named(wireContext, "getSignal", func([]json.RawMessage) (any, error) { return signalWire(f()), nil })
+		var runs signalRuns
+		named(wireContext, "getSignal", func([]json.RawMessage) (any, error) { return runs.wire(f()), nil })
 	}
 	if f := contextActions.Abort; f != nil {
 		named(wireContext, "abort", func([]json.RawMessage) (any, error) { f(); return nil, nil })
@@ -367,12 +370,39 @@ func (r *ExtensionRunner) bindCoreWire(actions ExtensionActions, contextActions 
 	return wireActions, wireContext, wireProviders
 }
 
-// signalWire is a signal as the host reads it: undefined, or `{aborted}`.
-func signalWire(signal context.Context) any {
+// signalRunCounter numbers the signal objects every getSignal function of this process returns, so that the extensions packed in one process never share a token.
+var signalRunCounter atomic.Uint64
+
+// signalRuns turns the signals one getSignal function returns into what the host reads: undefined, or `{aborted, run, endedAborted?}`.
+// Pi gives every run its own signal object (agent.ts:518-527), so the object is the run: run is a token that is new whenever the function returns another object than the one of the last answer (it never repeats in this process), and endedAborted says the signal of the previous answer had aborted, which the host cannot see when the next run begins before it reads again. The tracker holds the last signal, so an object that was answered is never collected and reused while its token is the last. A signal whose type is not comparable has no identity to compare: each answer is a new run.
+type signalRuns struct {
+	mu           sync.Mutex
+	last         context.Context
+	run          uint64
+	endedAborted bool
+}
+
+func (r *signalRuns) wire(signal context.Context) any {
 	if signal == nil {
 		return nil
 	}
-	return map[string]any{"aborted": signal.Err() != nil}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.last == nil || !sameSignal(r.last, signal) {
+		r.endedAborted = r.last != nil && r.last.Err() != nil
+		r.run = signalRunCounter.Add(1)
+		r.last = signal
+	}
+	answer := map[string]any{"aborted": signal.Err() != nil, "run": r.run}
+	if r.endedAborted {
+		answer["endedAborted"] = true
+	}
+	return answer
+}
+
+// sameSignal is whether two signals are the one object. Two values of a type that cannot be compared are never the same.
+func sameSignal(a, b context.Context) bool {
+	return reflect.TypeOf(a).Comparable() && reflect.TypeOf(b).Comparable() && a == b
 }
 
 // BindCore is `bindCore(actions, contextActions, providerActions?)`: it installs the functions the extensions' actions and contexts call, and applies the provider registrations the extensions queued while loading (to providerActions, or to the model registry the runner was built with). A nil providerActions is Pi's undefined.
