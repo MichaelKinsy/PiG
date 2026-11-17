@@ -90,3 +90,4 @@ D650 new added on the release line by e5d8c37 (docs: divergences D649 and D650, 
 D652 new added on the release line by 86e6905 (Record D652 (the compaction line shows elapsed time and streamed size)), first merge db07e98f6 Merge release/set-pimain (car 20 line) into feat/compaction-progress
 D653 new added on the release line by 549cbc9 (docs: record D653 (a fused member's CLI hook), author section and chan), first merge ce34ea27c car 23: feat/fused-retry-decider-seam-2 (cd2b13757fff)
 D654 new added on the release line by 2ba7d86 (retry decider: a failed request keeps its response only when a decider), first merge ce34ea27c car 23: feat/fused-retry-decider-seam-2 (cd2b13757fff)
+D657 new numbered by owner decision 28 of 2026-11-17 (the per-handler event copies of D31 become their own divergence; behaviour kept), added by lane RecordCorrections5 on docs/divergence-record-corrections
