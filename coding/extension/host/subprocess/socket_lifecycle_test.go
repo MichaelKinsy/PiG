@@ -93,6 +93,8 @@ func TestAKilledHostsSocketFileIsNeitherUsedNorRemovedByTheNextHost(t *testing.T
 	t.Cleanup(func() { _ = os.RemoveAll(killed.sockRuntimeDir) })
 
 	next := NewHost(socketDir)
+	// The assertions below can fail the test before the explicit Shutdown; Shutdown is safe to call twice.
+	t.Cleanup(func() { next.Shutdown("test done") })
 	ctx, cancel := buildContext(t)
 	defer cancel()
 	loaded, errs := next.LoadAll(ctx, []ExtConfig{{Name: "fixture", Path: buildFixtureExt(t), Enabled: true}})
