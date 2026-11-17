@@ -3394,8 +3394,9 @@ Pi bug: none.
 Scope: additive Go API of `chord/next/host`; no Pi behaviour changes.
 
 Owner decision: owner, 2026-11-13T19:27:20Z (`handoffs/0.8.0/OWNER-DECISIONS.md`, "procee[d]" on the six recommendations): "D430 APPROVED: Go callers start a chord call and await it apart (Reference.Start, PendingCall; AwaitingCtx, Resume); additive, no Pi behaviour change."
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:e393a4a4c3a7aabe
 
 Remove when: never; it is the Go form of an un-awaited Promise and of a handler's async remainder.
 
@@ -3666,6 +3667,7 @@ Pi bug: Not a Pi bug.
 Scope: `chord/nextnode/surfaces/client` (vendored tree, `manifest.json`, `automation/gen/vendor-chord-surfaces-client.sh`), the interface rows of `pkg:chord/web`, `pkg:chord/react` and the sandbox half of `pkg:chord/tui` (designed out in `test/parity/interface-closure/autobind/reviewed-decisions.json`).
 
 Owner decision: approved 2026-11-08 (Pi's chord web/react/tui-sandbox client modules ship as Pi's TypeScript unchanged; `client_manifest_test.go` checks their hashes). The D636 patch on two files is his own named cure (2026-11-13T03:33:12Z: "chord/p2 pages apply the stored language/theme at load", `handoffs/0.8.0/OWNER-DECISIONS.md` line 188 under his word of that time). Drafted by the ChordGapTui lane.
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
 Remove when: PiG runs the browser page or the terminal sandbox from Go-authored code.
 
@@ -3675,7 +3677,7 @@ Evidence: `TestReactWatchStoresReadTheValueCallBackOnChangesGiveUndefinedForNoWa
 
 Parity allowance: none needed: Pi's tests for these modules run over the shipped files.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:41d9cf96f7c7cce2
 
 ## D605 The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other
 
@@ -3753,8 +3755,9 @@ Pi bug: With GNU tar of Git for Windows in PATH Pi's `installPlugin` of an npm p
 Scope: `chord/nextnode/plugins` (`unpack`).
 
 Owner decision: owner approved 2026-11-10 (for 0.8.0).
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved 2026-11-10
+SCRUTINIZED:approved 2026-11-17 text-sha256:0ee3cc4493d9ddce
 
 Remove when: Pi's install names the archive and the destination relative to the pack directory.
 
@@ -3966,6 +3969,7 @@ Why: A prompt read inside the load can only fail: it runs on extensions the relo
 Pi bug: with a reloaded extension whose factory awaits while it loads, Pi's RPC mode reads stdin inside `reload()` (`rpc-mode.ts:832-834`) and runs a prompt written meanwhile on the runner the reload has invalidated (`agent-session.ts:3826`): an `extension_error` with the stale-context message and the prompt answered "handled"; at stdin's end it exits 0 and the response of the command that awaited `ctx.reload()` is never written. To be filed upstream.\n\nScope: `coding/cli/rpc_settle_gate.go` (`rpcSettleGate.holdReload`), `coding/cli/rpc_mode.go` (the reload the mode installs with `Runtime.SetReload`).
 
 Owner decision: approved by the owner, 2026-11-13T00:54:22Z. The owner's words that day: "I want the divergences that keep us on brand but still want to be faithful as we can plus our additions of go support and then my hero demo I was asking for plus ensuring the optimal quality release given how I've held it back and we can make this an exciting announcment from many angles." The decision recorded from them at that time: "Divergences APPROVED where PiG keeps a user safe or told the truth (on brand), each numbered, minimal, with remove-when and an upstream issue draft: D630 (hold a prompt during a reload), D632 (serialised reloads), D633 (show a failed settings save), p2 guest per-turn authority (pending the lane's evidence that Pi does not limit guests elsewhere). Everything else stays faithful to Pi."
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
 Call-site markers: `coding/cli/rpc_settle_gate.go` (`holdReload`).
 
@@ -3975,7 +3979,7 @@ Parity allowance: none.
 
 Remove when: Pi stops reading stdin inside `reload()`, or rejects a prompt that arrives during it.
 
-SCRUTINIZED:approved 2026-11-13
+SCRUTINIZED:approved 2026-11-17 text-sha256:8107246dd1a1815b
 
 ## D631 A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs
 
@@ -4081,8 +4085,9 @@ Pi bug: yes. Both followers should apply `watch.value` before `watch.start` (`pi
 Scope: `chord/nextnode/surfaces/client/pi/chord/src/surfaces/active-language.ts` and `active-theme.ts`, the same two files under `chord/nextnode/plugins/node/pi/chord/src/surfaces`, and `chord/next/surfaces` (`FollowActiveLanguage`, `FollowActiveTheme`). An app's own vendored copy of Pi's chord (the p2 web bundle's) is not changed by this record's patch.
 
 Owner decision: owner, 2026-11-13T03:33:12Z: "We replace pi with pig everywhere bro and for anything you think we can make a meaningful improvement to the experience do it", recorded as "Meaningful experience improvements are APPROVED as numbered divergences, each with a test and a changelog line: share-dialog warning + plain text on Read/write links; Familiar gets an off switch; chord/p2 pages apply the stored language/theme at load; backup answers (refuse wider pre-existing folder naming the chmod; write-only targets allowed and said; remote targets need a key unless 'plain' is set; secrets only from a file; Radius plain gzip disclosed) + rclone and age targets."; and owner, 2026-11-13T03:48:42Z: "Proceed with all recommendations."
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 
-SCRUTINIZED:approved 2026-11-13
+SCRUTINIZED:approved 2026-11-17 text-sha256:9af83eb72870d1ac
 
 Remove when: Pi's followers apply the value their watch was acquired with. The patch then no longer applies at the re-vendor: drop it with this record and the markers, and keep the Go ports as the port of Pi's lines. Or the owner withdraws the change.
 

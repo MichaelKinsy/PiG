@@ -2230,7 +2230,8 @@ Locked by: `TestRendererClickAcrossSDKs` (`test/extension-conformance/renderer_c
 Remove when: Pi runs extensions outside its process with a renderer that can hold state and a pointer handler, or the SDKs gain closures that cross the wire.
 
 Approval: approved by owner Michael Kinsy on 2026-11-07.
-SCRUTINIZED:approved
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:f80c04bf30c56e66
 
 ## D614 One data-only UI protocol for plugins: mounts, intents and client abilities over D107 views
 
@@ -2322,10 +2323,11 @@ Locked by: `TestInteractiveHeapGoalByLiveHeap` (the rule: live heaps of 0 to 20 
 Remove when: the Go runtime's default pacing stops collecting small interactive heaps, or a measurement shows GOGC 100 costs no CPU on the interactive and default-theme scenarios.
 
 Approval: owner, 2026-11-12T14:42Z (`handoffs/0.8.0/OWNER-DECISIONS.md`): "D621 16 MiB floor approved if the complete numbers hold"; the Revision below says how that condition was met.
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
 ---
 
 Revision (minimum heap goal 16 MiB): approved by owner Michael Kinsy on 2026-11-12T14:42Z, through the owner's side: "D621 16 MiB floor approved if the complete numbers hold". The condition held: interactive CPU 18.6 % below Pi-Bolt (from 12.9 %), default theme 15.5 % below (from 7.9 %), interactive peak own memory 16.1 -> 20.3 MB against the bar of 22.44 MB; measured on shared cores, to be repeated on the clean host for the scoreboard. Those numbers were measured at 5c8175fb9095, whose policy has the 0.3 s idle form (`InteractiveIdle = 300 * time.Millisecond`), not the 2 s form this record describes. On the release line the 2 s form as landed (arm `base`, line tip f14a46e87fb7) was compared with the 0.3 s form picked onto it (arm `idle`) on 2026-11-13T15:43Z (16 rounds, interactive scenario; xd6702 `~/lanes/GcIdleOnLine.out/m2-int.agg.txt`, arms named in `m2.sh`): CPU 79.75 against 79.87 ms (0.1 %, inside the spread), peak own memory 19.7 against 19.6 MB (bar 22.44 MB), time to interactive 15.22 against 15.30 ms: the condition holds for the landed form. The idle change measured beside the floor is not part of this approval.
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-17 text-sha256:b5aea8733275674f
 
 ## D625 terminal.framePacing "adaptive" begins a streaming reply's next frame 10 to 16 ms after the last, by what that frame cost
 
@@ -2450,7 +2452,8 @@ Locked by: `TestClihookOnTheProductionPath` (`coding/cli/clihook_test.go`: a chi
 Remove when: Pi accepts a hook of its own for the command line, a print run's output and status, and the retry defaults, or no Piglet fuses a member that registers one. Then the package, the three call sites, `SetDefaultRetryConfig` and this record go.
 
 Approval: owner, 2026-11-15T06:56:17Z. Owner decision: approved 2026-11-15T06:56:17Z (handoffs/0.8.0/OWNER-DECISIONS.md, that line): D653 and the stacked retry-decider seam (D654) are approved for 0.8.0.
-SCRUTINIZED:approved 2026-11-15
+By owner principle (decision 29, 2026-11-17), checked by Claude and Tern
+SCRUTINIZED:approved 2026-11-17 text-sha256:3870986246d2c356
 
 ## D654 A fused member decides which failed model requests PiG retries, how long it waits, and whether PiG prints its retry lines (`clihook.RetryPolicy.Decide`, `Silent`, `HTTPIdleTimeoutMs`)
 
