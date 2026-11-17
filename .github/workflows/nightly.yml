@@ -22,7 +22,7 @@ jobs:
   race:
     name: Race / ${{ matrix.os }} / ${{ matrix.group }}${{ matrix.shard && format(' / {0}', matrix.shard) || '' }}
     runs-on: ${{ matrix.os }}
-    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as four shards of its tests (PIG_RACE_SHARD).
+    # automation/ci/race-packages.txt names the packages of each group. The cli group is one package whose whole -race run took 38 minutes on a 56-core slice, so it runs as four shards of its tests (PIG_RACE_SHARD). The parity, shared and conformance groups run on Linux only (conformance is test/extension-conformance in four shards, PIG_RACE_SHARD): the parity group holds the long parity-tool test packages (closure 483 s and sdksurface 1406 s under -race on 8 CPUs), and shared the packages that use sync, atomic, channels or context cancellation without starting a goroutine themselves (race-packages.txt).
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -30,6 +30,12 @@ jobs:
         os: [ubuntu-24.04, macos-15]
         group: [ai, rest, host, coding, libs, hljs]
         include:
+          - {os: ubuntu-24.04, group: parity}
+          - {os: ubuntu-24.04, group: shared}
+          - {os: ubuntu-24.04, group: conformance, shard: 1/4}
+          - {os: ubuntu-24.04, group: conformance, shard: 2/4}
+          - {os: ubuntu-24.04, group: conformance, shard: 3/4}
+          - {os: ubuntu-24.04, group: conformance, shard: 4/4}
           - {os: ubuntu-24.04, group: cli, shard: 1/4}
           - {os: ubuntu-24.04, group: cli, shard: 2/4}
           - {os: ubuntu-24.04, group: cli, shard: 3/4}
