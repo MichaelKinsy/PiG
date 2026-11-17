@@ -63,7 +63,7 @@ func (a *listenAdmission) liveCount() int {
 
 // refuseConnection sends the response rpc mode gives an error that belongs to no command (Pi's rpc-mode.ts error(undefined, "parse", ...): no id, command "parse") and closes conn.
 func refuseConnection(conn net.Conn, max int) {
-	_ = conn.SetWriteDeadline(time.Now().Add(listenRefusalWriteTimeout))
+	_ = conn.SetWriteDeadline(time.Now().Add(listenRefusalWriteTimeout)) //portlint:allow clock a socket write deadline is a wall-clock bound on the peer, not session time
 	writeJSONLine(conn, rpcError(nil, "parse", fmt.Sprintf("too many connections (max %d)", max)))
 	_ = conn.Close()
 }
