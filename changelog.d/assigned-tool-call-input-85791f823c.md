@@ -1,0 +1,3 @@
+### Fixed
+
+- A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input. The call itself still runs with the input it carried, as in Pi, so nothing a released extension could rely on is lost; a Rust handler keeps its own behaviour (assigning and editing the input are the same edit of one value). <!-- fix: 85791f823c --> <!-- cause: the reply protocol had one member for the input, meant for in-place edits the tool must receive, so an assigned input had no way across the process boundary and was dropped as no edit -->

@@ -1220,6 +1220,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-852f029](#bf-852f029) | Durable document, conversation-view and task-graph states report failing state listeners to the Session's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-854c355](#bf-854c355) | fix(durable/core): the facade Session reads persistWithinMs and documentRetentionMs live, not once through a… | PiG's own defect | All platforms | Unreleased |
 | [BF-85618d9](#bf-85618d9) | fix(rpc): a failed switch_session answers before the replacement ahead of it; prompt compaction checks… | PiG's own defect | All platforms | Unreleased |
+| [BF-85791f8](#bf-85791f8) | A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-85908ae](#bf-85908ae) | A `/tree` branch summary the provider refuses as too long is retried with the newest half of the request… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-85a7b01](#bf-85a7b01) | A prompt now fails with Pi's error when the Session's history holds a system message whose `content` is a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-85c4c8f](#bf-85c4c8f) | `pig login <provider>` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private | PiG's own defect | All platforms | 0.7.0 |
@@ -18970,6 +18971,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `85618d9a25` (2026-10-10)
 - **Tests:** `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsWithDueCompactionsAnswerInRequestOrder`, `coding/cli/rpc_replacement_order_test.go::TestRPCEarlyReplacementErrorFollowsTheCompactionStart`, `coding/cli/rpc_replacement_order_test.go::TestRPCFailedSwitchSessionAnswersBeforeTheReplacementAheadOfIt`, `coding/session_prompt_compaction_check_test.go::TestBeginPromptCompactionCheckReturnsOnlyADueCompaction`, `coding/session_prompt_compaction_check_test.go::TestPromptCompactionCheckReplaysAnOverflowedResponse`
+
+### BF-85791f8
+
+**A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input.
+- **Root cause:** the reply protocol had one member for the input, meant for in-place edits the tool must receive, so an assigned input had no way across the process boundary and was dropped as no edit
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `85791f823c` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/tool_call_assigned_input_test.go::TestToolCallAssignedInputReachesOnlyTheNextHandlers`
+- **Release note:** A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input. The call itself still runs with the input it carried, as in Pi, so nothing a released extension could rely on is lost; a Rust handler keeps its own behaviour (assigning and editing the input are the same edit of one value).
 
 ### BF-85908ae
 

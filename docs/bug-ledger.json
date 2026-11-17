@@ -32946,6 +32946,28 @@
       ]
     },
     {
+      "id": "BF-85791f8",
+      "title": "A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the…",
+      "symptom": "A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input.",
+      "rootCause": "the reply protocol had one member for the input, meant for in-place edits the tool must receive, so an assigned input had no way across the process boundary and was dropped as no edit",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input. The call itself still runs with the input it carried, as in Pi, so nothing a released extension could rely on is lost; a Rust handler keeps its own behaviour (assigning and editing the input are the same edit of one value).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "85791f823c",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/tool_call_assigned_input_test.go::TestToolCallAssignedInputReachesOnlyTheNextHandlers"
+      ]
+    },
+    {
       "id": "BF-85908ae",
       "title": "A `/tree` branch summary the provider refuses as too long is retried with the newest half of the request…",
       "symptom": "A `/tree` branch summary the provider refuses as too long is retried with the newest half of the request, never less than the newest message, until it is accepted (D167).",
