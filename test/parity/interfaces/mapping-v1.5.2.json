@@ -190977,9 +190977,9 @@
         "call:internal/codingagent/interactive_chat.go#InteractiveMode.showNewVersionNotification"
       ],
       "evidence": [
+        "test:internal/codingagent/update_notice_changelog_link_test.go#TestNewVersionNotificationRendersAChangelogRowOnlyForAReleasePageURL",
         "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationBytesMatchPi",
-        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationLinksTheChangelogOnlyWhereSupported",
-        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationMatchesPiLayout"
+        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationLinksTheChangelogOnlyWhereSupported"
       ]
     },
     {
@@ -190999,9 +190999,9 @@
         "call:internal/codingagent/interactive_chat.go#InteractiveMode.showNewVersionNotification"
       ],
       "evidence": [
+        "test:internal/codingagent/update_notice_changelog_link_test.go#TestNewVersionNotificationRendersAChangelogRowOnlyForAReleasePageURL",
         "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationBytesMatchPi",
-        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationLinksTheChangelogOnlyWhereSupported",
-        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationMatchesPiLayout"
+        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationLinksTheChangelogOnlyWhereSupported"
       ]
     },
     {
