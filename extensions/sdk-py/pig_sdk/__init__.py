@@ -4926,7 +4926,7 @@ class Extension:
                 declaration["render_shell"] = render_shell
                 declaration["renders_call"] = render_call is not None or call_view is not None
                 declaration["renders_result"] = render_result is not None or result_view is not None
-                self._register_tool(declaration, self._tool_handlers[name], self._tool_prepare_handlers.get(name), render_call, render_result, call_view=call_view, result_view=result_view)
+                self._register_tool(declaration, self._tool_handlers[name], self._tool_prepare_handlers.get(name), render_call, render_result, self._tool_loadout_handlers.get(name), call_view, result_view, self._tool_reach_handlers.get(name))
                 break
 
     def _render_tool(self, ctx: "Context", name: str, args: dict[str, Any]) -> tuple[Any, bool]:
