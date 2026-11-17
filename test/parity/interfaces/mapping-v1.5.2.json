@@ -108849,9 +108849,9 @@
         "call:chord/next/surfaces/intl_time.go#FormatTime"
       ],
       "evidence": [
+        "test:chord/next/surfaces/intl_option_set_test.go#TestAnEmptyTimeOptionSetPrintsADateInNodeWherePiGReturnsErrOption",
         "test:chord/next/surfaces/intl_root_test.go#TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData",
-        "test:chord/next/surfaces/intl_root_test.go#TestCompoundLegacyAliasesAreCanonicalizedBeforeTheLookup",
-        "test:chord/next/surfaces/intl_root_test.go#TestFormatTimeShowsTheInstantInTheProcessZone"
+        "test:chord/next/surfaces/intl_root_test.go#TestCompoundLegacyAliasesAreCanonicalizedBeforeTheLookup"
       ]
     },
     {
@@ -109308,7 +109308,7 @@
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
         "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
+        "test:chord/nextnode/app/app_export_host_test.go#TestAppReplacesTheGoHostsDataByNothingWhenTheArchiveHasNoPartOfIt"
       ]
     },
     {
@@ -109330,7 +109330,7 @@
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
         "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
+        "test:chord/nextnode/app/app_export_host_test.go#TestAppReplacesTheGoHostsDataByNothingWhenTheArchiveHasNoPartOfIt"
       ]
     },
     {
@@ -109398,7 +109398,7 @@
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot",
         "test:chord/next/host/host_attempt_test.go#TestActivationSpansRecordHowAParkedAttemptEndedInAShortSpanLinkedToTheParkedOne",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckBreaksADependentOffACycleWithTheCyclesError"
+        "test:chord/next/host/host_delegate_refused_test.go#TestDelegateWithAuthorizeAlwaysTrueAndATrustedLinkStillRefusesWhatNobodyServesAKindThatIsNotTheAddressKindAndASecondDelegate"
       ]
     },
     {
@@ -109420,7 +109420,7 @@
       "evidence": [
         "test:chord/next/host/host_activity_test.go#TestHostActivityCountsAHoldPlacedHereFromItsArrivalBoundOrNot",
         "test:chord/next/host/host_attempt_test.go#TestActivationSpansRecordHowAParkedAttemptEndedInAShortSpanLinkedToTheParkedOne",
-        "test:chord/next/host/host_dependencies_test.go#TestTheDependencyCheckBreaksADependentOffACycleWithTheCyclesError"
+        "test:chord/next/host/host_delegate_refused_test.go#TestDelegateWithAuthorizeAlwaysTrueAndATrustedLinkStillRefusesWhatNobodyServesAKindThatIsNotTheAddressKindAndASecondDelegate"
       ]
     },
     {
@@ -112038,7 +112038,7 @@
       "evidence": [
         "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode",
         "test:chord/next/surfaces/intl_drift_test.go#TestTimesMatchNode",
-        "test:chord/next/surfaces/intl_root_test.go#TestAnUnavailableTagTakesThePlatformLocaleWhenItHasData"
+        "test:chord/next/surfaces/intl_option_set_test.go#TestAnEmptyTimeOptionSetPrintsADateInNodeWherePiGReturnsErrOption"
       ]
     },
     {
@@ -116490,8 +116490,8 @@
         "call:chord/next/host/host_host.go#chordHost.Delegate"
       ],
       "evidence": [
+        "test:chord/next/host/host_delegate_refused_test.go#TestDelegateWithAuthorizeAlwaysTrueAndATrustedLinkStillRefusesWhatNobodyServesAKindThatIsNotTheAddressKindAndASecondDelegate",
         "test:chord/next/host/host_delegate_test.go#TestDelegateIsRefusedForAKindThatIsNotTheHostsAddressAfterLoadAndTwice",
-        "test:chord/next/host/host_example_12_test.go#TestExample12Routes",
         "test:chord/next/host/host_route_admission_settle_test.go#TestRouteAdmissionAGenuinelyBrokenDecisionIsTold"
       ]
     },
@@ -118840,7 +118840,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/archive.go#beginStoreArchive"
+        "call:chord/nextnode/app/archive.go#beginExport"
       ],
       "evidence": [
         "test:chord/sync/lines_test.go#TestSnapshotBodies",
@@ -118862,7 +118862,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/archive.go#beginStoreArchive"
+        "call:chord/nextnode/app/archive.go#beginExport"
       ],
       "evidence": [
         "test:chord/sync/lines_test.go#TestSnapshotBodies",
@@ -122799,9 +122799,9 @@
         "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
@@ -122842,9 +122842,9 @@
         "call:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
@@ -122864,9 +122864,9 @@
         "call:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
@@ -123985,9 +123985,9 @@
         "call:chord/nextnode/app/app.go#App.start"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
@@ -124028,9 +124028,9 @@
         "call:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
@@ -124050,9 +124050,9 @@
         "call:chord/nextnode/app/files.go#FilesFacet"
       ],
       "evidence": [
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
-        "test:chord/nextnode/app/files_copy_test.go#TestCopyRefusesATargetThatExistsAFailedCopyLeavesNothing",
-        "test:chord/nextnode/app/files_defaults_proof_test.go#TestFilesFacetDefaultsTo64UploadsUnderWay"
+        "test:chord/nextnode/app/archive_pi_files_tables_test.go#TestGoFilesTablesAreIdenticalToPis",
+        "test:chord/nextnode/app/archive_pi_interop_test.go#TestImportsAPiMadeArchiveWithItsFilesIndex",
+        "test:chord/nextnode/app/files_copy_test.go#TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore"
       ]
     },
     {
@@ -153900,7 +153900,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_graph_extension_runner_emit.go#withEmitMessageSequences"
+        "call:coding/extension/host/subprocess/event_payload.go#eventMessage"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_subscriptions_test.go#TestUpstreamRunnerEventSubscriptions",
@@ -160989,9 +160989,9 @@
         "call:internal/codingagent/tools/ext_details.go#BashDetails.ToolResultDetails"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -173980,9 +173980,9 @@
         "call:coding/extension/keybinding_hints.go#EntryRenderOptions.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -174002,9 +174002,9 @@
         "call:coding/extension/keybinding_hints.go#EntryRenderOptions.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -174024,9 +174024,9 @@
         "call:coding/extension/keybinding_hints.go#EntryRenderOptions.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -174046,9 +174046,9 @@
         "call:coding/extension/keybinding_hints.go#EntryRenderOptions.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -174811,7 +174811,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+        "call:coding/extension/declaration_registry.go#Extension.MarkdownTransformerRegistration"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
@@ -186441,7 +186441,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_EachDialogReportsStartAndEnd",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -186464,7 +186464,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_EachDialogReportsStartAndEnd",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -186652,8 +186652,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -186674,8 +186674,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -186696,8 +186696,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -186718,8 +186718,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -187159,7 +187159,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/ui_unset_members_test.go#TestUIPrompt_UnsetMemberFormsReachTheBoundUI",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError"
       ]
     },
     {
@@ -187181,7 +187181,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/ui_unset_members_test.go#TestUIPrompt_UnsetMemberFormsReachTheBoundUI",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError"
       ]
     },
     {
@@ -187202,8 +187202,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -187224,8 +187224,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -190977,9 +190977,9 @@
         "call:internal/codingagent/interactive_chat.go#InteractiveMode.showNewVersionNotification"
       ],
       "evidence": [
+        "test:internal/codingagent/update_notice_changelog_link_test.go#TestNewVersionNotificationRendersAChangelogRowOnlyForAReleasePageURL",
         "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationBytesMatchPi",
-        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationLinksTheChangelogOnlyWhereSupported",
-        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationMatchesPiLayout"
+        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationLinksTheChangelogOnlyWhereSupported"
       ]
     },
     {
@@ -190999,9 +190999,9 @@
         "call:internal/codingagent/interactive_chat.go#InteractiveMode.showNewVersionNotification"
       ],
       "evidence": [
+        "test:internal/codingagent/update_notice_changelog_link_test.go#TestNewVersionNotificationRendersAChangelogRowOnlyForAReleasePageURL",
         "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationBytesMatchPi",
-        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationLinksTheChangelogOnlyWhereSupported",
-        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationMatchesPiLayout"
+        "test:internal/codingagent/update_notice_test.go#TestNewVersionNotificationLinksTheChangelogOnlyWhereSupported"
       ]
     },
     {
@@ -191173,9 +191173,9 @@
         "call:internal/codingagent/interactive.go#NewInteractiveMode"
       ],
       "evidence": [
+        "test:internal/codingagent/autocomplete_sync_error_caller_test.go#TestReloadWhoseInstalledEditorRefusesTheProviderIsReloadFailed",
         "test:internal/codingagent/reload_notices_caller_test.go#TestExtensionReloadFailureIsShownAndResolves",
-        "test:internal/codingagent/reload_notices_caller_test.go#TestExtensionReloadShowsTheReloadStatus",
-        "test:internal/codingagent/reload_notices_caller_test.go#TestExtensionReloadWhileStreamingWarnsAndResolves"
+        "test:internal/codingagent/reload_notices_caller_test.go#TestExtensionReloadShowsTheReloadStatus"
       ]
     },
     {
@@ -192013,9 +192013,9 @@
         "call:coding/extension/keybinding_hints.go#ToolRenderContext.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -192035,9 +192035,9 @@
         "call:coding/extension/keybinding_hints.go#ToolRenderContext.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -192057,9 +192057,9 @@
         "call:coding/extension/keybinding_hints.go#ToolRenderContext.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -192079,9 +192079,9 @@
         "call:coding/extension/keybinding_hints.go#ToolRenderContext.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -194626,7 +194626,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+        "call:coding/extension/declaration_registry.go#Extension.MarkdownTransformerRegistration"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionFollowsRegistrations",
@@ -195357,9 +195357,9 @@
         "call:coding/extension/keybinding_hints.go#MessageRenderOptions.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -195379,9 +195379,9 @@
         "call:coding/extension/keybinding_hints.go#MessageRenderOptions.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -195401,9 +195401,9 @@
         "call:coding/extension/keybinding_hints.go#MessageRenderOptions.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -195423,9 +195423,9 @@
         "call:coding/extension/keybinding_hints.go#MessageRenderOptions.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -195486,7 +195486,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/session_graph_extension_runner_emit.go#withEmitMessageSequences"
+        "call:coding/extension/host/subprocess/event_payload.go#eventMessage"
       ],
       "evidence": [
         "test:coding/session_retry_events_upstream_test.go#TestUpstreamSessionRetryEvents",
@@ -195508,7 +195508,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/event_bridge.go#emitMessageStart"
+        "call:coding/extension/host/subprocess/event_payload.go#eventTypeOf"
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_events_test.go#TestConformanceAPIOnVoidEventsReachTheTypedHandlers",
@@ -195596,7 +195596,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/message_update_delta.go#messageUpdateKeyOf"
+        "call:coding/extension/host/subprocess/event_payload.go#eventTypeOf"
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_events_test.go#TestConformanceAPIOnVoidEventsReachTheTypedHandlers",
@@ -202336,7 +202336,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/tool_dispatch_test.go#TestEmitToolResult_PowerShellVariantChainsContentAndDetails",
         "test:coding/extension/host/inproc/tool_dispatch_test.go#TestEmitToolResult_TypedDetailsChain",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError"
       ]
     },
     {
@@ -230825,7 +230825,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/event_bridge.go#emitTurnStart"
+        "call:coding/extension/host/subprocess/event_payload.go#eventTypeOf"
       ],
       "evidence": [
         "test:coding/session_extension_events_upstream_test.go#TestSessionEmitsTurnStartWithThePerRunTurnIndexAndATimestamp",

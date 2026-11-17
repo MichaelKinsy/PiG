@@ -159,6 +159,13 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
                      (extension-stale-message (ctx-extension ctx)))))
       (when message (error "~A" message)))))
 
+(defun assert-call-active (ctx)
+  "Signal the Host's stale message as the HOST-CALL-ERROR a host call signals, for the calls that would send a frame the host never answers: a context kept past its Session reaches no UI."
+  (unless (ctx-replacement ctx)
+    (let ((message (sb-thread:with-mutex ((extension-state-lock (ctx-extension ctx)))
+                     (extension-stale-message (ctx-extension ctx)))))
+      (when message (error 'host-call-error :message message)))))
+
 (defparameter *dialog-methods* '("ui.select" "ui.confirm" "ui.input" "ui.editor" "ui.custom"))
 (defparameter *rpc-synchronous-ui-effects*
   '("ui.notify" "ui.setStatus" "ui.setWidget" "ui.setTitle" "ui.setEditorText" "ui.pasteToEditor"
@@ -241,7 +248,8 @@ PARENT is the request that owns the call. Signals HOST-CALL-ERROR when the host 
   (and (ctx-request ctx) (request-reason (ctx-request ctx))))
 
 (defun ctx-on-update (ctx partial)
-  "Stream a partial result of the running tool; PARTIAL is a string or a tool-result hash-table."
+  "Stream a partial result of the running tool; PARTIAL is a string or a tool-result hash-table. Signals the stale message after the session was replaced or reloaded."
+  (assert-call-active ctx)
   (unless (and (ctx-tool-call-id ctx) (plusp (length (ctx-request-id ctx))))
     (error "ctx-on-update is only available while a tool runs"))
   (notify-host (ctx-extension ctx) "tool_update"

@@ -428,3 +428,52 @@
                                                 (message (lambda () (pig:session-get-session-name manager)))
                                                 (message (lambda () (pig:session-get-session-file manager)))))))
                                "r2")))))
+
+(deftest a-stale-context-fails-the-theme-size-widget-update-and-settings-members-with-the-stale-message
+  (let ((ext (core-extension)))
+    (with-host (host ext)
+      (check-equal '((:ok 90 30) 0)
+                   (multiple-value-list
+                    (replica-run host (lambda (ctx)
+                                        (setf (pig::extension-width ext) 90 (pig::extension-height ext) 30)
+                                        (pig:ctx-theme ctx)
+                                        (list :ok (pig:ctx-width ctx) (pig:ctx-height ctx))))))
+      (hsend host "type" "notify" "notify" (pig:obj "method" "invalidate" "args" (pig:obj "message" "session replaced")))
+      (setf *core-thunk*
+            (lambda (ctx)
+              (flet ((message (thunk) (handler-case (progn (funcall thunk) "no error") (error (e) (princ-to-string e)))))
+                (list (message (lambda () (pig:ctx-theme ctx)))
+                      (message (lambda () (pig:ctx-width ctx)))
+                      (message (lambda () (pig:ctx-height ctx)))
+                      (message (lambda () (pig:ctx-session-name ctx)))
+                      (message (lambda () (pig:ctx-set-widget ctx "kept" (list "x"))))
+                      (message (lambda () (pig:ctx-set-widget ctx "kept" nil)))
+                      (message (lambda () (pig:ctx-set-widget ctx "kept" (list "x") (pig:obj "placement" "belowEditor"))))
+                      (message (lambda () (pig:ctx-set-widget ctx "kept" (pig:kit-view (pig:kit-text "x" 0 0)))))
+                      (message (lambda () (pig:ctx-set-widget-renderer ctx "kept" (lambda (width) (declare (ignore width)) (list "y")))))
+                      (message (lambda () (pig:ctx-on-update ctx "x")))
+                      (message (lambda () (pig:ctx-get-settings ctx)))))))
+      (request host "r2" "command" "tool" "c" "args" "")
+      (let ((frames nil))
+        (loop (let ((frame (hread host)))
+                (when (eq frame :eof) (error "end of file waiting for the response"))
+                (let ((type (pig:jget frame "type")))
+                  (cond ((equal type "response") (return))
+                        ((equal type "request_state"))
+                        (t (push type frames))))))
+        (check-equal (make-list 11 :initial-element "session replaced") *core-result*)
+        (check-equal nil frames)))))
+
+;; The renders the SDK runs on its own (a width change refreshes every footer, header and widget renderer) read the width without the stale check:
+;; a context the session replaced would signal there, and the render would never reach the host's error.
+(deftest a-stale-surface-push-renders-at-the-reported-width-without-the-stale-check
+  (let ((ext (core-extension)) (widths nil))
+    (with-host (host ext)
+      (hsend host "type" "notify" "notify" (pig:obj "method" "invalidate" "args" (pig:obj "message" "session replaced")))
+      (check-equal '(:pushed 1)
+                   (multiple-value-list
+                    (replica-run host (lambda (ctx)
+                                        (setf (pig::extension-width ext) 77)
+                                        (pig::widget-push (pig::widget-make-surface "ui.setFooter" (lambda (width) (push width widths) (list "row")) nil nil) ctx)
+                                        :pushed))))
+      (check-equal '(77) widths))))

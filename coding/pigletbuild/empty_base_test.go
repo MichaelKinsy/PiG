@@ -11,6 +11,7 @@ import (
 
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // emptyBasePiglet lists no extensions and no frontend: it only strips
@@ -23,7 +24,7 @@ const emptyBasePiglet = "name: base\nmodel:\n  provider: test-faux\n  name: faux
 func buildNativeBinary(t *testing.T, root, pigletPath, name string, extraArgs ...string) string {
 	t.Helper()
 	t.Setenv("PIG_HOME", filepath.Join(root, "home"))
-	t.Setenv("HOME", filepath.Join(root, "home"))
+	testenv.SetHome(t, filepath.Join(root, "home"))
 	// Go makes downloaded module-cache files read-only by default, which would
 	// prevent testing.TempDir from removing this isolated HOME on Unix.
 	t.Setenv("GOFLAGS", strings.TrimSpace(os.Getenv("GOFLAGS")+" -modcacherw"))

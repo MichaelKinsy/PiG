@@ -3564,14 +3564,10 @@ impl Extension {
                         .and_then(|payload| serde_json::to_string(payload).ok())
                 })
                 .flatten();
-                // The message a message_end handler is handed, as the host sent it: the reply carries the message the handler left when it differs.
-                let message_end_before = (req.event.as_deref() == Some("message_end"))
-                    .then(|| {
-                        data.get("message")
-                            .filter(|message| message.is_object())
-                            .and_then(|message| serde_json::to_string(message).ok())
-                    })
-                    .flatten();
+                // The messages an event's handler is handed that it may edit in place, as the host sent them: the reply carries the ones the handler left different.
+                let event_messages_before = event_message_texts(req.event.as_deref(), &data);
+                // The members of a message_start, message_update, turn_start, agent_start or agent_end event as the handler receives them: the reply names the ones it assigned, reassigned or deleted.
+                let event_members_before = member_snapshot(req.event.as_deref(), &data);
                 // The members of a tool_result event as the host sent them, with whether each is an object or a list: the reply names the ones the handler left different.
                 let tool_result_before = (req.event.as_deref() == Some("tool_result")).then(|| {
                     [
@@ -3714,13 +3710,20 @@ impl Extension {
                     }
                     value = Some(reply);
                 }
-                // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it failed. The reply carries the message the handler left when the JSON text differs from the one it received (member order is an edit), and the handler's result.
-                if let Some(before) = message_end_before {
-                    let mut reply = serde_json::json!({ "_pigMessageEndResult": value });
-                    if let Some(after) = data.get("message")
-                        && serde_json::to_string(after).ok().as_deref() != Some(before.as_str())
-                    {
-                        reply["_pigMessageEndMessage"] = after.clone();
+                // pig divergence (D541): a handler owns its event as a value, so replacing event.message or event.messages is the same change as editing inside it, and the reply carries it as an edit where Pi keeps the original.
+                // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, the entry and the next request hold, even when it failed. The reply carries the messages the handler left when the JSON text differs from the one it received (member order is an edit), and the handler's result.
+                if matches!(
+                    req.event.as_deref(),
+                    Some("message_start" | "message_end" | "agent_end")
+                ) && let Some(before) = &event_messages_before
+                {
+                    let mut reply = serde_json::json!({ "_pigEventResult": value });
+                    let mut edits = event_message_edits(req.event.as_deref(), &data, before);
+                    if let Some(members) = &event_members_before {
+                        edits.extend(member_edits(&data, members));
+                    }
+                    if !edits.is_empty() {
+                        reply["_pigEventEdits"] = Value::Array(edits);
                     }
                     value = Some(reply);
                 }
@@ -3755,15 +3758,36 @@ impl Extension {
                     }
                     value = Some(reply);
                 }
-                // pig additive (D19): preserve boundary mutations alongside handler errors.
+                // pig additive (D19): preserve boundary mutations alongside handler errors. A turn_end handler also edits the turn's messages in place (Pi hands every handler the turn's message objects): the reply carries the ones it left different, beside the boundary members.
                 if matches!(
                     req.event.as_deref(),
                     Some("agent_before_settle" | "turn_end")
                 ) {
-                    value = Some(serde_json::json!({
+                    let mut reply = serde_json::json!({
                         "_pigBoundaryEntries": data.get("entries"),
                         "_pigBoundaryResult": value,
-                    }));
+                    });
+                    if let Some(before) = &event_messages_before {
+                        let edits = event_message_edits(req.event.as_deref(), &data, before);
+                        if !edits.is_empty() {
+                            reply["_pigEventEdits"] = Value::Array(edits);
+                        }
+                    }
+                    value = Some(reply);
+                }
+                // pig divergence (D541): a message_update handler's edit of the partial's content, and a replacement of event.assistantMessageEvent, is not sent back: nothing compares the handler's copy of the stream's partial with what the host sent (a full compare per delta is the measured cost).
+                // message_update, turn_start and agent_start (message_start and agent_end replied above): a member a handler assigns, reassigns or deletes is what the later handlers of the dispatch see (runner.ts emit), also from a handler that failed.
+                if matches!(
+                    req.event.as_deref(),
+                    Some("message_update" | "turn_start" | "agent_start")
+                ) && let Some(members) = &event_members_before
+                {
+                    let edits = member_edits(&data, members);
+                    if !edits.is_empty() {
+                        value = Some(
+                            serde_json::json!({ "_pigEventEdits": edits, "_pigEventResult": value }),
+                        );
+                    }
                 }
                 let _ = conn.respond(id, value, error);
             }
@@ -4054,6 +4078,118 @@ pub fn report_load_failure(sock_path: &str) -> io::Result<()> {
         return Ok(());
     }
     UnixStream::connect(sock_path).map(drop)
+}
+
+/// The message objects of an event a handler may edit in place, by the position the reply names them at (`_pigEventEdits`): message_end has one.
+fn event_messages<'a>(event: Option<&str>, data: &'a Value) -> Vec<Option<&'a Value>> {
+    match event {
+        Some("message_start" | "message_end") => vec![data.get("message")],
+        Some("agent_end") => data
+            .get("messages")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .map(Some)
+            .collect(),
+        Some("turn_end") => std::iter::once(data.get("message"))
+            .chain(
+                data.get("toolResults")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .map(Some),
+            )
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// The members of an event as the handler receives them, when the event is one whose members the reply carries: each name, and the value of a scalar member. An object or a list member
+/// has no identity a Rust handler could keep or change (it owns the value), so an edit inside one is an edit of the message it holds, which the message entries carry, and only its
+/// presence is compared: a member the handler adds or deletes is found, one it replaces with another object or list is not.
+fn member_snapshot(event: Option<&str>, data: &Value) -> Option<Vec<(String, Option<u64>)>> {
+    if !matches!(
+        event,
+        Some("message_start" | "message_update" | "turn_start" | "agent_start" | "agent_end")
+    ) {
+        return None;
+    }
+    Some(
+        data.as_object()?
+            .iter()
+            .map(|(name, value)| (name.clone(), scalar_fingerprint(value)))
+            .collect(),
+    )
+}
+
+/// A hash of a scalar member's value (none for an object or a list), so a snapshot copies no payload: a delta frame's text member is the size of the whole message so far.
+fn scalar_fingerprint(value: &Value) -> Option<u64> {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    match value {
+        Value::Object(_) | Value::Array(_) => return None,
+        Value::Null => 0u8.hash(&mut hasher),
+        Value::Bool(flag) => (1u8, *flag).hash(&mut hasher),
+        Value::Number(number) => (2u8, number.to_string()).hash(&mut hasher),
+        Value::String(text) => (3u8, text).hash(&mut hasher),
+    }
+    Some(hasher.finish())
+}
+
+/// The members the handler left different from the ones it received, as the second form of the reply's `_pigEventEdits` entries: `{member, value}` for one it added or whose scalar
+/// value changed, `{member, deleted: true}` for one it deleted.
+fn member_edits(data: &Value, before: &[(String, Option<u64>)]) -> Vec<Value> {
+    let Some(object) = data.as_object() else {
+        return Vec::new();
+    };
+    let mut edits = Vec::new();
+    for (name, was) in before {
+        match object.get(name) {
+            None => edits.push(serde_json::json!({ "member": name, "deleted": true })),
+            Some(now) if was.is_some_and(|was| scalar_fingerprint(now) != Some(was)) => {
+                edits.push(serde_json::json!({ "member": name, "value": now }));
+            }
+            Some(_) => {}
+        }
+    }
+    for (name, now) in object {
+        if !before.iter().any(|(was, _)| was == name) {
+            edits.push(serde_json::json!({ "member": name, "value": now }));
+        }
+    }
+    edits
+}
+
+/// The JSON text of each message of the event as the handler receives it, or `None` for an event with no messages. A value that is no object has no text: it is no edit.
+fn event_message_texts(event: Option<&str>, data: &Value) -> Option<Vec<Option<String>>> {
+    let messages = event_messages(event, data);
+    if messages.is_empty() {
+        return None;
+    }
+    Some(
+        messages
+            .iter()
+            .map(|message| {
+                message
+                    .filter(|message| message.is_object())
+                    .and_then(|message| serde_json::to_string(message).ok())
+            })
+            .collect(),
+    )
+}
+
+/// The messages whose JSON text the handler changed (member order is an edit), each at its position, as the handler left it.
+fn event_message_edits(event: Option<&str>, data: &Value, before: &[Option<String>]) -> Vec<Value> {
+    event_messages(event, data)
+        .iter()
+        .enumerate()
+        .filter_map(|(at, message)| {
+            let message = (*message)?;
+            let was = before.get(at)?.as_deref()?;
+            (serde_json::to_string(message).ok().as_deref() != Some(was))
+                .then(|| serde_json::json!({ "at": at, "message": message }))
+        })
+        .collect()
 }
 
 /// Keeps a notify the host sent before the ready. A state is older than the ready's snapshot, so `run` applies it before that snapshot; any other notify is served by the main loop once the extension is ready, in arrival order. Neither is dropped, and neither fails the load.

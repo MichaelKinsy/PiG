@@ -5207,6 +5207,94 @@ fn main() {
             CommandResult::Ok
         },
     );
+    let event_level_subscriber = ext.event_subscriber();
+    let event_level_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    // event_level_edit_probe `<event> <top|deep>`: a handler that edits the event in place and returns nothing. `top` assigns a member of the event itself (probeTop); `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text block, else a string content, else a `probe` member. Every edit writes `other-event-edit`.
+    ext.command(
+        "event_level_edit_probe",
+        "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place",
+        move |_ctx, args| {
+            let mut words = args.split_whitespace();
+            let name = words.next().unwrap_or("").to_string();
+            let top = words.next() == Some("top");
+            let subscription = subscribe(&event_level_subscriber, &name, move |_ctx, data| {
+                let edited = Value::from("other-event-edit");
+                if top {
+                    data["probeTop"] = edited;
+                    return Ok(None);
+                }
+                let target: Option<&mut Value> = if data.get("message").is_some() {
+                    data.get_mut("message")
+                } else if let Some(list) = data.get_mut("messages").and_then(|v| v.as_array_mut()) {
+                    let at = list
+                        .iter()
+                        .position(|m| m.get("role").and_then(|r| r.as_str()) == Some("user"))
+                        .unwrap_or(0);
+                    list.get_mut(at)
+                } else {
+                    None
+                };
+                let Some(target) = target.filter(|t| t.is_object()) else {
+                    return Ok(None);
+                };
+                let first_is_text = target
+                    .get("content")
+                    .and_then(|c| c.as_array())
+                    .and_then(|c| c.first())
+                    .is_some_and(|b| b.get("type").and_then(|t| t.as_str()) == Some("text"));
+                if first_is_text {
+                    target["content"][0]["text"] = edited;
+                } else if target.get("content").is_some_and(|c| c.is_string()) {
+                    target["content"] = edited;
+                } else {
+                    target["probe"] = edited;
+                }
+                Ok(None)
+            });
+            event_level_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    let event_member_subscriber = ext.event_subscriber();
+    let event_member_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    // event_member_probe `<event> <set|delete|once> <member> [json]`: a handler that assigns the member the JSON, deletes it, or (once) assigns it in its first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there.
+    ext.command(
+        "event_member_probe",
+        "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event",
+        move |_ctx, args| {
+            let mut words = args.trim().splitn(4, char::is_whitespace);
+            let name = words.next().unwrap_or("").to_string();
+            let op = words.next().unwrap_or("").to_string();
+            let member = words.next().unwrap_or("").to_string();
+            let value: Value = match words.next().map(str::trim) {
+                Some(raw) if !raw.is_empty() => match serde_json::from_str(raw) {
+                    Ok(value) => value,
+                    Err(err) => return CommandResult::Error(err.to_string()),
+                },
+                _ => Value::Null,
+            };
+            let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+            let reported = name.clone();
+            let subscription = subscribe(&event_member_subscriber, &name, move |ctx, data| {
+                let call = calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+                if op == "delete" {
+                    if let Some(object) = data.as_object_mut() {
+                        object.remove(&member);
+                    }
+                } else if op == "once" && call > 1 {
+                    let stale = data.get(member.as_str()) == Some(&value);
+                    ctx.notify(&format!("member_probe_stale:{}:{}", reported, stale), "info");
+                } else {
+                    data[member.as_str()] = value.clone();
+                }
+                Ok(None)
+            });
+            event_member_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "host_state_probe",
         "Report the thinking level and the session commands",
@@ -6510,6 +6598,86 @@ fn main() {
             CommandResult::Ok
         },
     );
+    // stale-members calls the members that answer a context kept past its Session: each outcome is one line, and the command fails with every
+    // line when one carries the stale message, else it reports them.
+    fn stale_members(ctx: &pig_sdk::Context) -> Result<(), String> {
+        let mut lines: Vec<String> = Vec::new();
+        let mut stale = false;
+        let mut member = |name: &str, call: &dyn Fn() -> Result<String, String>| {
+            let outcome = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(call)) {
+                Ok(Ok(value)) => format!("ok:{value}"),
+                Ok(Err(error)) => format!("error:{error}"),
+                Err(payload) => {
+                    let message = payload
+                        .downcast_ref::<String>()
+                        .cloned()
+                        .or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()))
+                        .unwrap_or_default();
+                    format!("panics:{message}")
+                }
+            };
+            stale = stale || outcome.contains("This extension ctx is stale");
+            lines.push(format!("{name}={outcome}"));
+        };
+        member("theme", &|| {
+            let _ = ctx.theme();
+            Ok("Theme".to_string())
+        });
+        member("width", &|| Ok(ctx.width().to_string()));
+        member("height", &|| Ok(ctx.height().to_string()));
+        member("sessionName", &|| Ok(ctx.session_name()));
+        member("setWidgetLines", &|| {
+            ctx.set_widget("stale-members", vec!["x".to_string()])
+                .map(|()| String::new())
+                .map_err(|e| e.to_string())
+        });
+        member("setWidgetView", &|| {
+            ctx.set_widget_view(
+                "stale-members-view",
+                pig_sdk::kit::View::new(pig_sdk::kit::Text::new("x", 0, 0)),
+                None,
+            )
+            .map(|()| String::new())
+            .map_err(|e| e.to_string())
+        });
+        member("setWidgetRenderer", &|| {
+            ctx.set_widget_renderer(
+                "stale-members-renderer",
+                Some(|_width: u32| vec!["x".to_string()]),
+                None,
+            )
+            .map(|()| String::new())
+            .map_err(|e| e.to_string())
+        });
+        member("onUpdate", &|| {
+            ctx.on_update(pig_sdk::ToolResult::text("x"))
+                .map(|()| String::new())
+                .map_err(|e| e.to_string())
+        });
+        member("getSettings", &|| {
+            ctx.get_settings()
+                .map(|_| String::new())
+                .map_err(|e| e.to_string())
+        });
+        member("registerToolRenderer", &|| {
+            ctx.register_tool_renderer(|_tool, _builtin| None)
+                .map(|()| String::new())
+                .map_err(|e| e.to_string())
+        });
+        if stale {
+            return Err(format!("stale-members\n{}", lines.join("\n")));
+        }
+        ctx.notify(&format!("members\n{}", lines.join("\n")), "info");
+        Ok(())
+    }
+    ext.command(
+        "stale-members",
+        "Call the members that fail with the stale message",
+        |ctx, _args| match stale_members(ctx) {
+            Ok(()) => CommandResult::Ok,
+            Err(error) => CommandResult::Error(error),
+        },
+    );
     ext.command("signal-probe", "Report ctx.signal", |ctx, _args| {
         let state = match ctx.signal() {
             None => "none",
@@ -7642,6 +7810,13 @@ fn main() {
             ctx.notify(&format!("previous:{path}"), "info");
         }
         None
+    });
+    // The handler's own context is still active (Pi invalidates after the handlers ran): the stale-members test reads every member from here.
+    ext.on_event_result("session_shutdown", |ctx, data| {
+        if data.get("reason").and_then(Value::as_str) == Some("stale-members-test") {
+            stale_members(ctx)?;
+        }
+        Ok(None)
     });
     ext.on_event("session_shutdown", |ctx, data| {
         let reason = data.get("reason").and_then(Value::as_str).unwrap_or("");

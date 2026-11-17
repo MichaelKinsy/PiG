@@ -11,6 +11,7 @@ import (
 	"golang.org/x/mod/modfile"
 
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // writeLegacySDKFactory writes a factory module shaped like a Pig 0.84
@@ -147,7 +148,7 @@ func TestBuildGoPackedCellBuildsLegacySDKFactoryAgainstCurrentSDK(t *testing.T) 
 		t.Fatal(err)
 	}
 	home := t.TempDir()
-	t.Setenv("HOME", home)
+	testenv.SetHome(t, home)
 	t.Setenv("PIG_HOME", filepath.Join(home, ".pig"))
 	t.Setenv("PIG_SDK_GO_ROOT", currentSDK)
 	extensionRoot := writeLegacySDKFactory(t)

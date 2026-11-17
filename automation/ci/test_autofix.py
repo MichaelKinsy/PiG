@@ -24,7 +24,7 @@ divergences-drift | make divergences
 coverage-drift | make coverage RESULTS=
 """
 PATHS = """docs/parity/DIVERGENCES.md
-test/parity/coverage.md
+test/parity/generated/coverage.md
 test/parity/interfaces/draft-v*.json
 """
 
@@ -32,8 +32,8 @@ FAKE_MAKE = r"""#!/bin/sh
 # Stands in for make: a generator target writes a file; a gate target fails until its file has the regenerated content.
 case "$1" in
   divergences) mkdir -p docs/parity; echo fresh > docs/parity/DIVERGENCES.md ;;
-  coverage) echo fresh > test/parity/coverage.md ;;
-  stray) echo x > outside.txt; echo fresh > test/parity/coverage.md ;;
+  coverage) echo fresh > test/parity/generated/coverage.md ;;
+  stray) echo x > outside.txt; echo fresh > test/parity/generated/coverage.md ;;
   noop) : ;;
   -k)
     shift 3
@@ -41,7 +41,7 @@ case "$1" in
     for gate in "$@"; do
       case "$gate" in
         divergences-drift) grep -qx fresh docs/parity/DIVERGENCES.md 2>/dev/null || status=1 ;;
-        coverage-drift) grep -qx fresh test/parity/coverage.md 2>/dev/null || status=1 ;;
+        coverage-drift) grep -qx fresh test/parity/generated/coverage.md 2>/dev/null || status=1 ;;
         *) status=1 ;;
       esac
     done
@@ -61,9 +61,9 @@ class WorkTree(unittest.TestCase):
         self.addCleanup(self.dir.cleanup)
         self.root = Path(self.dir.name) / "repo"
         (self.root / "docs/parity").mkdir(parents=True)
-        (self.root / "test/parity").mkdir(parents=True)
+        (self.root / "test/parity/generated").mkdir(parents=True)
         (self.root / "docs/parity/DIVERGENCES.md").write_text("stale\n")
-        (self.root / "test/parity/coverage.md").write_text("stale\n")
+        (self.root / "test/parity/generated/coverage.md").write_text("stale\n")
         git(self.root, "init", "-q")
         git(self.root, "-c", "user.name=t", "-c", "user.email=t@t", "add", "-A")
         git(self.root, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "base")
@@ -138,7 +138,7 @@ class PrepareTests(WorkTree):
         code, output, out = self.prepare("make: *** [a.mk:9: coverage-drift] Error 1\nmake: *** [Makefile:1: divergences-drift] Error 1\n")
         self.assertIn("eligible=true", output)
         manifest = json.loads((out / "manifest.json").read_text())
-        self.assertEqual(sorted(f["path"] for f in manifest["files"]), ["docs/parity/DIVERGENCES.md", "test/parity/coverage.md"])
+        self.assertEqual(sorted(f["path"] for f in manifest["files"]), ["docs/parity/DIVERGENCES.md", "test/parity/generated/coverage.md"])
 
     def test_another_failure_stops_autofix_for_the_whole_run(self) -> None:
         for log in ["make: *** [Makefile:1: divergences-drift] Error 1\nmake: *** [Makefile:2: port-map-drift] Error 2\n", "", "setup failed\n"]:
@@ -235,9 +235,9 @@ class ValidateTests(unittest.TestCase):
         self.assert_refused("not a plain file")
 
     def test_a_symlinked_directory_is_refused(self) -> None:
-        self.write_artifact({"test/parity/coverage.md": b"fresh\n"})
-        parent = self.artifact / "files/test/parity"
-        (self.artifact / "files/test/parity/coverage.md").rename(self.base / "coverage.md")
+        self.write_artifact({"test/parity/generated/coverage.md": b"fresh\n"})
+        parent = self.artifact / "files/test/parity/generated"
+        (parent / "coverage.md").rename(self.base / "coverage.md")
         parent.rmdir()
         parent.symlink_to(self.base)
         self.assert_refused("not a plain directory")

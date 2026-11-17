@@ -232,6 +232,104 @@ fn main() {
             }),
         )
     });
+    // D30: what a captured context's state getters answer after the replacement. Each outcome is one line.
+    ext.command("getters", "getters", |ctx, _| {
+        let old_ctx = ctx.clone();
+        result(
+            ctx.new_session_with(json!({}), move |replaced: &ReplacedSessionContext| {
+                let probe = |name: &str, read: &dyn Fn() -> String| match std::panic::catch_unwind(
+                    std::panic::AssertUnwindSafe(read),
+                ) {
+                    Ok(value) => record(&format!("getter:{name}={value}")),
+                    Err(payload) => {
+                        let message = payload
+                            .downcast_ref::<String>()
+                            .cloned()
+                            .or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()))
+                            .unwrap_or_default();
+                        record(&format!("getter:{name}=panics:{message}"));
+                    }
+                };
+                probe("cwd", &|| {
+                    if old_ctx.cwd().is_empty() {
+                        "empty"
+                    } else {
+                        "nonempty"
+                    }
+                    .to_string()
+                });
+                probe("mode", &|| old_ctx.mode().to_string());
+                probe("hasUI", &|| old_ctx.has_ui().to_string());
+                probe("model", &|| old_ctx.model());
+                probe("theme", &|| {
+                    let _ = old_ctx.theme();
+                    "Theme".to_string()
+                });
+                probe("branch", &|| conversation(&old_ctx));
+                probe(
+                    "entries",
+                    &|| match old_ctx.session_manager().get_entries() {
+                        Ok(entries) => entries
+                            .as_array()
+                            .map(|entries| {
+                                entries
+                                    .iter()
+                                    .filter(|entry| entry["type"] == "message")
+                                    .count()
+                            })
+                            .unwrap_or_default()
+                            .to_string(),
+                        Err(error) => format!("error:{error}"),
+                    },
+                );
+                record(&format!("replacement:{}", conversation(replaced)));
+                Ok(())
+            }),
+        )
+    });
+    // D30: what each host call from a captured context does after the replacement, and whether it reaches the replacement. One line per call.
+    ext.command("calls", "calls", |ctx, _| {
+        let old_ctx = ctx.clone();
+        result(ctx.new_session_with(
+            json!({}),
+            move |replaced: &ReplacedSessionContext| {
+                let before = replaced.get_active_tools().unwrap_or_default();
+                let report = |name: &str, call: &dyn Fn() -> std::io::Result<()>| {
+                    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(call)) {
+                        Ok(Ok(())) => record(&format!("call:{name}=nil")),
+                        Ok(Err(error)) => record(&format!("call:{name}=error:{error}")),
+                        Err(payload) => {
+                            let message = payload
+                                .downcast_ref::<String>()
+                                .cloned()
+                                .or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()))
+                                .unwrap_or_default();
+                            record(&format!("call:{name}=panics:{message}"));
+                        }
+                    }
+                };
+                report("notify", &|| { old_ctx.notify("stale note", "info"); Ok(()) });
+                report("setStatus", &|| { old_ctx.set_status("stale", "text"); Ok(()) });
+                report("setActiveTools", &|| { old_ctx.set_active_tools(&["read"]); Ok(()) });
+                report("abort", &|| { old_ctx.abort(); Ok(()) });
+                report("sendUserMessage", &|| old_ctx.send_user_message("stale message", ""));
+                report("appendEntry", &|| old_ctx.append_entry("stale-entry", json!({"a": 1})));
+                report("setSessionName", &|| old_ctx.set_session_name("stale-name"));
+                report("setWidgetLines", &|| old_ctx.set_widget("stale", vec!["line".to_string()]));
+                report("setWidgetValue", &|| old_ctx.set_widget_value("stale", json!(["line"]), Some(json!({"placement": "belowEditor"}))));
+                let after = replaced.get_active_tools().unwrap_or_default();
+                let named = replaced.session_manager().get_session_name().map(|v| v == "stale-name").unwrap_or_default();
+                let custom = replaced
+                    .session_manager()
+                    .get_entries()
+                    .ok()
+                    .and_then(|entries| entries.as_array().map(|entries| entries.iter().filter(|entry| entry["type"] == "custom").count()))
+                    .unwrap_or_default();
+                record(&format!("replacement:toolsChanged={} named={named} customEntries={custom} conversation={}", before != after, conversation(replaced)));
+                Ok(())
+            },
+        ))
+    });
     ext.command("mark", "mark", |ctx, name| {
         let mut values = marks();
         values.insert(

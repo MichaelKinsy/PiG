@@ -5,6 +5,26 @@
 (defun core-bool (value) (if (and value (not (eq value :false)) (not (eq value :null))) "true" "false"))
 (defun core-text-content (text) (pig:obj "content" (vector (pig:obj "type" "text" "text" text))))
 (defun core-str (value) (cond ((stringp value) value) ((null value) "") (t (princ-to-string value))))
+(defun core-stale-members (ctx)
+  "Call the members that fail with the stale message: each outcome is one line, and the call fails with every line when one carries the message, else it reports them."
+  (let ((lines nil) (stale nil))
+    (flet ((member-outcome (name call)
+             (let ((outcome (handler-case (format nil "ok:~A" (funcall call))
+                              (error (e) (format nil "signals:~A" e)))))
+               (when (search "This extension ctx is stale" outcome) (setf stale t))
+               (push (format nil "~A=~A" name outcome) lines))))
+      (member-outcome "theme" (lambda () (type-of (pig:ctx-theme ctx))))
+      (member-outcome "width" (lambda () (pig:ctx-width ctx)))
+      (member-outcome "height" (lambda () (pig:ctx-height ctx)))
+      (member-outcome "sessionName" (lambda () (pig:ctx-session-name ctx)))
+      (member-outcome "setWidgetLines" (lambda () (pig:ctx-set-widget ctx "stale-members" (list "x"))))
+      (member-outcome "setWidgetView" (lambda () (pig:ctx-set-widget ctx "stale-members-view" (pig:kit-view (pig:kit-text "x" 0 0)))))
+      (member-outcome "setWidgetRenderer" (lambda () (pig:ctx-set-widget-renderer ctx "stale-members-renderer" (lambda (width) (declare (ignore width)) (list "x")))))
+      (member-outcome "onUpdate" (lambda () (pig:ctx-on-update ctx "x")))
+      (member-outcome "getSettings" (lambda () (type-of (pig:ctx-get-settings ctx)))))
+    (let ((report (format nil "~{~A~^~%~}" (reverse lines))))
+      (when stale (error "stale-members~%~A" report))
+      (core-info ctx (format nil "members~%~A" report)))))
 (defun core-schema (&rest members) (apply #'pig:obj "type" "object" members))
 (defun core-json (text) (pig:from-json text))
 (defun core-dialog-text (value) (if (stringp value) value ""))
@@ -483,6 +503,8 @@
                    (let ((held (pig:ctx-signal ctx)))
                      (pig:ctx-abort ctx)
                      (core-info ctx (concatenate 'string "abort:" (state held) ":" (state (pig:ctx-signal ctx)))))))
+    (pig:command ext "stale-members" "Call the members that fail with the stale message"
+                 (lambda (ctx args) (declare (ignore args)) (core-stale-members ctx)))
     (pig:command ext "stale-probe" "Report cwd, mode, hasUI and model"
                  (lambda (ctx args) (declare (ignore args))
                    (let ((report (format nil "stale:~A|~A|~A|~A" (pig:ctx-cwd ctx) (pig:ctx-mode ctx) (if (pig:ctx-has-ui-p ctx) "true" "false") (pig:ctx-model ctx))))
@@ -735,6 +757,8 @@
     (pig:on ext "session_shutdown"
             (lambda (ctx data)
               (core-info ctx (concatenate 'string "session_shutdown:" (core-key-str data "reason" "")))
+              ;; The handler's own context is still active (Pi invalidates after the handlers ran): the stale-members test reads every member from here.
+              (when (equal (core-key-str data "reason" "") "stale-members-test") (core-stale-members ctx))
               (when (let ((f (pig:jget data "targetSessionFile"))) (and (stringp f) (plusp (length f))))
                 (core-info ctx (concatenate 'string "target:" (pig:jget data "targetSessionFile"))))
               nil))
@@ -779,6 +803,45 @@
                                           (core-info hctx (format nil "event_field:~A.~A=~A" name field
                                                                   (if (nth-value 1 (gethash field data)) (pig:to-json (gethash field data)) "absent")))
                                           nil)))))
+      ;; event_level_edit_probe: `<event> <top|deep>`, a handler that edits the event in place and returns nothing. `top` assigns a member of the event itself (probeTop); `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text block, else a string content, else a `probe` member. Every edit writes `other-event-edit`.
+      (pig:command ext "event_level_edit_probe" "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (multiple-value-bind (name level) (split-first args)
+                       (let ((edited "other-event-edit"))
+                         (pig:on ext name
+                                 (lambda (hctx data) (declare (ignore hctx))
+                                   (if (equal level "top")
+                                       (setf (gethash "probeTop" data) edited)
+                                       (let* ((messages (gethash "messages" data))
+                                              (target (or (gethash "message" data)
+                                                          (and (vectorp messages) (plusp (length messages))
+                                                               (or (find-if (lambda (m) (and (hash-table-p m) (equal (gethash "role" m) "user"))) messages)
+                                                                   (aref messages 0))))))
+                                         (when (hash-table-p target)
+                                           (let* ((content (gethash "content" target))
+                                                  (first-block (and (vectorp content) (not (stringp content)) (plusp (length content)) (aref content 0))))
+                                             (cond
+                                               ((and (hash-table-p first-block) (equal (gethash "type" first-block) "text")) (setf (gethash "text" first-block) edited))
+                                               ((stringp content) (setf (gethash "content" target) edited))
+                                               (t (setf (gethash "probe" target) edited)))))))
+                                   nil))))))
+      ;; event_member_probe: `<event> <set|delete|once> <member> [json]`, a handler that assigns the member the JSON, deletes it, or (once) assigns it in its first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there.
+      (pig:command ext "event_member_probe" "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (multiple-value-bind (name rest) (split-first args)
+                       (multiple-value-bind (op rest) (split-first rest)
+                         (multiple-value-bind (member raw) (split-first rest)
+                           (let ((value (if (plusp (length (string-trim '(#\Space #\Newline #\Tab) (or raw "")))) (pig:from-json raw) nil))
+                                 (calls 0))
+                             (pig:on ext name
+                                     (lambda (hctx data)
+                                       (incf calls)
+                                       (cond ((equal op "delete") (remhash member data))
+                                             ((and (equal op "once") (> calls 1))
+                                              (core-info hctx (format nil "member_probe_stale:~A:~A" name
+                                                                      (if (and (nth-value 1 (gethash member data)) (equal (pig:to-json (gethash member data)) (pig:to-json value))) "true" "false"))))
+                                             (t (setf (gethash member data) value)))
+                                       nil))))))))
       (pig:command ext "event_probe_result" "Queue the JSON result the next event_probe_on handler call of an event returns"
                    (lambda (ctx args) (declare (ignore ctx))
                      (multiple-value-bind (name raw) (split-first args)

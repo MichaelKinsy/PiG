@@ -986,35 +986,47 @@ func (a *App) ExportData(address contracts.Address, path string, ctx context.Con
 		return err
 	}
 	defer func() { err = errors.Join(err, os.RemoveAll(staging)) }()
-	// pig divergence (D462): the server's data is the NodeHost's part (`server.archive`) and the Go host's (`kit-server.archive`).
-	server, kitServer := filepath.Join(staging, "server.archive"), filepath.Join(staging, "kit-server.archive")
-	if err := a.nodeData.ExportHostData(address, server, ctx); err != nil {
+	// pig divergence (D462): the server's data is the NodeHost's part and the Go host's, two files merged into the one `server.archive` Pi
+	// writes (a PiG server has two hosts; the Go host's owners are the kit's own, none of them host-keyed in the stock kit).
+	nodePart, goPart, server := filepath.Join(staging, "server-node.archive"), filepath.Join(staging, "server-go.archive"), filepath.Join(staging, "server.archive")
+	if err := a.nodeData.ExportHostData(address, nodePart, ctx); err != nil {
 		return err
 	}
 	export, err := a.Host.ExportHostData(address, ctx)
 	if err != nil {
 		return err
 	}
-	if err := writeParts(ctx, export, kitServer); err != nil {
+	staged, err := stageParts(ctx, export, goPart, nil)
+	if err != nil {
 		return err
 	}
-	return a.exportWorker(found, address, manifest, server, kitServer, target, ctx)
+	nodeParts, err := openParts(nodePart)
+	if err != nil {
+		return err
+	}
+	goParts, err := openParts(goPart)
+	if err != nil {
+		return errors.Join(err, nodeParts.Close())
+	}
+	if err := writeParts(ctx, mergeParts(partsOf(nodeParts), partsOf(goParts), staged.documents), server); err != nil {
+		return err
+	}
+	return a.exportWorker(found, address, manifest, server, target, ctx)
 }
 
-// exportWorker packs the worker's data with the server's parts server and kitServer at target, by the running worker or under its
-// lock.
-func (a *App) exportWorker(found *workers.Workers, address contracts.Address, manifest ArchiveManifest, server, kitServer, target string, ctx context.Context) error {
+// exportWorker packs the worker's data with the server's part server at target, by the running worker or under its lock.
+func (a *App) exportWorker(found *workers.Workers, address contracts.Address, manifest ArchiveManifest, server, target string, ctx context.Context) error {
 	// Running: the worker packs its own store. Else the lock, unless a worker starts first: then ask it.
 	for attempt := 1; ; attempt++ {
 		if running(found, address) {
-			return a.exportRunning(address, manifest, server, kitServer, target, ctx)
+			return a.exportRunning(address, manifest, server, target, ctx)
 		}
 		lock, err := a.workerLock(address, ctx)
 		if err != nil {
 			return err
 		}
 		if lock != nil {
-			return errors.Join(PackData(ctx, WorkerDirectory(a.DataDir, address), manifest, server, kitServer, target), lock.Release())
+			return errors.Join(PackData(ctx, WorkerDirectory(a.DataDir, address), manifest, server, target), lock.Release())
 		}
 		if attempt == 5 {
 			return fmt.Errorf("exportData: the worker at %s keeps starting; try again", address.Key)
@@ -1022,7 +1034,7 @@ func (a *App) exportWorker(found *workers.Workers, address contracts.Address, ma
 	}
 }
 
-func (a *App) exportRunning(address contracts.Address, manifest ArchiveManifest, server, kitServer, target string, ctx context.Context) error {
+func (a *App) exportRunning(address contracts.Address, manifest ArchiveManifest, server, target string, ctx context.Context) error {
 	reference, err := a.Host.Get(ctx, HostData, delta.JsonObjectOf("address", AddressParam(address)), host.GetOptions{})
 	if err != nil {
 		return err
@@ -1035,7 +1047,7 @@ func (a *App) exportRunning(address contracts.Address, manifest ArchiveManifest,
 	if err != nil {
 		return err
 	}
-	_, err = reference.Call("exportTo", delta.JsonObjectOf("path", target, "manifest", string(text), "server", server, "kitServer", kitServer), ctx)
+	_, err = reference.Call("exportTo", delta.JsonObjectOf("path", target, "manifest", string(text), "server", server), ctx)
 	return err
 }
 
@@ -1086,9 +1098,18 @@ func (a *App) ImportData(archive string, address contracts.Address, ctx context.
 			return fmt.Errorf("importData: %s exists already (an address is imported once)", dir)
 		}
 		// (1) Unpacked whole into staging: nothing changed yet.
-		staging, server, kitServer, err := UnpackStaging(ctx, source, filepath.Dir(dir), accept, ImportLimits{Bytes: limits.ImportBytes, Entries: limits.ImportEntries})
+		staging, server, err := UnpackStaging(ctx, source, filepath.Dir(dir), accept, ImportLimits{Bytes: limits.ImportBytes, Entries: limits.ImportEntries})
 		if err != nil {
 			return err
+		}
+		// pig divergence (D462): the server's part is Pi's one `server.archive`; it is split by owner into the NodeHost's part and the Go host's
+		// (the owners the Go host serves), which are the two commits.
+		err = splitHostData(ctx, server, filepath.Join(staging, goServerPart), filepath.Join(staging, nodeServerPart), a.Host.Serves)
+		if err == nil {
+			err = os.Remove(server)
+		}
+		if err != nil {
+			return errors.Join(err, os.RemoveAll(staging))
 		}
 		aside := ""
 		if existing == store.ExistingReplace && Exists(dir) {
@@ -1113,7 +1134,7 @@ func (a *App) ImportData(archive string, address contracts.Address, ctx context.
 			return errors.Join(err, undo())
 		}
 		// (2) The old directory aside, (3) the new one in place, (4) the server's parts, the commits, last.
-		committed, err := a.placeAndCommit(dir, staging, aside, server, kitServer, address, existing, &placed, ctx)
+		committed, err := a.placeAndCommit(dir, staging, aside, address, existing, &placed, ctx)
 		if err != nil {
 			if unknownOutcome(err) {
 				// It may have committed: undoing could pair the old directory with the new server data.
@@ -1128,8 +1149,9 @@ func (a *App) ImportData(archive string, address contracts.Address, ctx context.
 			return errors.Join(err, undo())
 		}
 		// Committed: what is left over is harmless, so these never fail the import.
-		_ = os.Remove(filepath.Join(dir, "server.archive"))
-		_ = os.Remove(filepath.Join(dir, "kit-server.archive"))
+		for _, left := range []string{nodeServerPart, goServerPart} {
+			_ = os.Remove(filepath.Join(dir, left))
+		}
 		if aside != "" {
 			_ = os.RemoveAll(aside)
 		}
@@ -1167,11 +1189,19 @@ func (a *App) rollbackNode(address contracts.Address, existing, old string, ctx 
 	return a.nodeData.DeleteHostData(address, ctx)
 }
 
+// nodeServerPart and goServerPart are the halves of an archive's `server.archive` in the staging directory (and then the worker's
+// directory until the import is done): the records and rows of the owners the NodeHost holds and of the owners the Go host serves.
+const (
+	nodeServerPart = "server-node.archive"
+	goServerPart   = "server-go.archive"
+)
+
 // placeAndCommit is steps 2 to 4 of ImportData: the old directory aside, the new one in place, then the server's parts (the NodeHost's
-// first, then the Go host's: two commits, D462). committed is whether the first commit succeeded before err.
+// first, then the Go host's: two commits, D462; the Go host's part may be empty, which a replace takes as the address's data removed and a
+// refusal asks of it all the same). committed is whether the first commit succeeded before err.
 //
 // pig divergence (D462): the server's part is two commits (the NodeHost's store, then the Go host's), where Pi's `importHostData` is one.
-func (a *App) placeAndCommit(dir, staging, aside, server, kitServer string, address contracts.Address, existing string, placed *bool, ctx context.Context) (committed bool, err error) {
+func (a *App) placeAndCommit(dir, staging, aside string, address contracts.Address, existing string, placed *bool, ctx context.Context) (committed bool, err error) {
 	if aside != "" {
 		if err := os.Rename(dir, aside); err != nil {
 			return false, err
@@ -1181,22 +1211,10 @@ func (a *App) placeAndCommit(dir, staging, aside, server, kitServer string, addr
 		return false, err
 	}
 	*placed = true
-	if err := a.nodeData.ImportHostData(address, filepath.Join(dir, "server.archive"), existing, ctx); err != nil {
+	if err := a.nodeData.ImportHostData(address, filepath.Join(dir, nodeServerPart), existing, ctx); err != nil {
 		return false, err
 	}
-	if kitServer == "" {
-		// No part of the Go host's: its data of the address is replaced by nothing (a replace removes the address's data), or refused if it has any.
-		if existing == store.ExistingReplace {
-			_, err := a.Host.DeleteHostData(address, ctx, host.HostDeleteOptions{})
-			return true, err
-		}
-		// Refuse: Pi's one `importHostData` refuses an address that has data in the store whatever the archive holds, so the Go host's
-		// refusal is asked of an import of an empty part of the address (it changes nothing when the address has none).
-		empty := store.SlicePartSource([]any{&store.ManifestPart{Format: store.ArchiveFormat, Schema: store.StoreSchema, NextID: 1, Host: &address.Key}, &store.EndPart{}})
-		_, err := a.Host.ImportHostData(empty, ctx, store.HostImportOptions{Address: &address, Existing: existing})
-		return true, err
-	}
-	file, err := os.Open(filepath.Join(dir, "kit-server.archive"))
+	file, err := os.Open(filepath.Join(dir, goServerPart))
 	if err != nil {
 		return true, err
 	}

@@ -139,3 +139,71 @@ fn a_delta_frame_copies_the_payload_once() {
         "each delta frame allocated {copies:.2} payloads ({allocated} bytes for {delivered} payload bytes), want one copy"
     );
 }
+
+// D541 records that an in-place edit of the partial's content at message_update does not reach the host: the handler holds `&mut Value`, its own copy of the payload the connection
+// rebuilt for it (EventReplicas::apply), and the reply of a message_update handler carries no `_pigEventEdits`. A change here (a reply that carries the edit, or a replica that
+// holds it) means the record's Rust row no longer matches.
+#[test]
+fn a_message_update_handlers_edit_of_the_partial_stays_in_its_copy_and_is_not_sent_back() {
+    static SEEN: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+    let mut ext = Extension::new("rs-message-update-edit");
+    let _keep = ext.on_event("message_update", |_, data| {
+        let block = &mut data["message"]["content"][0];
+        SEEN.lock()
+            .unwrap()
+            .push(block["text"].as_str().unwrap_or("").to_string());
+        block["text"] = json!("other-event-edit");
+        None
+    });
+    let root = std::env::temp_dir().join(format!("pig-message-update-edit-{}", std::process::id()));
+    std::fs::create_dir_all(&root).unwrap();
+    let socket = root.join("sock");
+    let _ = std::fs::remove_file(&socket);
+    let listener = UnixListener::bind(&socket).unwrap();
+    let path = socket.to_str().unwrap().to_string();
+    let thread = std::thread::spawn(move || ext.run_with_socket(&path));
+    let (mut stream, _) = listener.accept().unwrap();
+    stream
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .unwrap();
+    let register = read(&mut stream);
+    assert_eq!(register["type"], "register");
+    let handler_id = register["register"]["handlers"][0]["handler_id"].clone();
+    send(
+        &mut stream,
+        &json!({"type":"ready","ready":{"state":{},"width":80,"mode":"tui"}}),
+    );
+
+    let keyframe = json!({"type":"message_update","message":{"role":"assistant","content":[{"type":"text","text":"ab"}]}});
+    send(
+        &mut stream,
+        &json!({"type":"request","id":"k","request":{"method":"event","event":"message_update","handler_id":handler_id,"args":keyframe,"stream":{"seq":1}}}),
+    );
+    let first = response(&mut stream, "k");
+    let ops = json!([{"op":"append","path":["message","content",0,"text"],"value":"cd"}]);
+    send(
+        &mut stream,
+        &json!({"type":"request","id":"d","request":{"method":"event","event":"message_update","handler_id":handler_id,"stream":{"seq":2,"base":1,"ops":ops}}}),
+    );
+    let second = response(&mut stream, "d");
+    send(
+        &mut stream,
+        &json!({"type":"shutdown","shutdown":{"reason":"done"}}),
+    );
+    thread.join().unwrap().unwrap();
+    let _ = std::fs::remove_dir_all(&root);
+
+    // The second payload is the first as the host sent it plus the delta: the edit did not reach the connection's replica either.
+    assert_eq!(*SEEN.lock().unwrap(), ["ab", "abcd"]);
+    for frame in [&first, &second] {
+        assert!(frame["response"]["result"].is_null(), "frame: {frame}");
+        assert!(
+            !frame.to_string().contains("other-event-edit"),
+            "the reply carries the edit: {frame}"
+        );
+        assert!(
+            !frame.to_string().contains("_pigEventEdits"),
+            "frame: {frame}"
+        );
+    }
+}

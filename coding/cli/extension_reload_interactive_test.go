@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // An extension's `await ctx.reload()` in the TUI of the real binary: the same log as the headless modes (TestExtensionReloadIsWiredInEveryHeadlessMode), where the old instance's command resolves after the reload and the new instance's session_start sees the reloaded state. Interactive quits through its own shutdown, so the log ends at "returned".
@@ -25,6 +26,7 @@ func TestExtensionReloadResolvesInInteractiveMode(t *testing.T) {
 		t.Run(language, func(t *testing.T) {
 			extension := writeReloadProbe(t, language)
 			home, cwd, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()
+			testenv.DisableGoTelemetryForChild(t, home)
 			agentDir := filepath.Join(home, "pig")
 			if err := os.MkdirAll(agentDir, 0o755); err != nil {
 				t.Fatal(err)

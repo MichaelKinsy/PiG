@@ -168,7 +168,7 @@ func TestHandedBackEventMembersKeepTheirMemberOrder(t *testing.T) {
 		t.Errorf("tool_result\n got %s\nwant %s", got, want)
 	}
 	const message = `{"role":"custom","customType":"x","content":"c","display":true,"details":{"z":1,"a":2},"timestamp":1}`
-	if got, want := dispatch(3, "message_end", `{"type":"message_end","message":`+message+`}`), `{"_pigMessageEndResult":{"message":`+message+`}}`; got != want {
+	if got, want := dispatch(3, "message_end", `{"type":"message_end","message":`+message+`}`), `{"_pigEventResult":{"message":`+message+`}}`; got != want {
 		t.Errorf("message_end\n got %s\nwant %s", got, want)
 	}
 }

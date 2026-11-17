@@ -365,7 +365,7 @@ const withEdit = wire(edit);
 
 // What the host sends later: the message as the reply left it, or as the host had it when the reply named no edit.
 function hostValue(reply, message) {
-  return reply?.result?._pigMessageEndMessage ?? message;
+  return reply?.result?._pigEventEdits?.[0]?.message ?? message;
 }
 
 {
@@ -384,7 +384,7 @@ function hostValue(reply, message) {
   for (const [i, [message, seq]] of messages.entries()) {
     await messageEnd(runtime, message, seq, 1);
     const reply = replies.pop();
-    assert.deepEqual(reply.result?._pigMessageEndMessage, withEdit(message), "the reply names the message the handler left");
+    assert.deepEqual(reply.result?._pigEventEdits?.[0]?.message, withEdit(message), "the reply names the message the handler left");
     const current = hostValue(reply, message);
     await messageEnd(runtime, current, seq, 2);
     assert.equal(second[i], first[i], "the next handler holds the first one's object");
@@ -413,10 +413,10 @@ function hostValue(reply, message) {
   runtime.on("message_end", () => {});
   runtime.on("message_end", (event) => { event.message.content.push({ ...edit }); throw new Error("after the edit"); });
   await messageEnd(runtime, user(), nextSeq(), 1);
-  assert.equal(replies[0].result?._pigMessageEndMessage, undefined, "no edit, no message in the reply");
+  assert.equal(replies[0].result?._pigEventEdits, undefined, "no edit, no edits in the reply");
   assert.equal(replies[0].error, null);
   await messageEnd(runtime, user(), nextSeq(), 2);
-  assert.deepEqual(replies[1].result?._pigMessageEndMessage, withEdit(user()), "the edit reaches the host although the handler threw");
+  assert.deepEqual(replies[1].result?._pigEventEdits?.[0]?.message, withEdit(user()), "the edit reaches the host although the handler threw");
   assert.ok(replies[1].error, "and so does the error");
 }
 
@@ -427,8 +427,8 @@ function hostValue(reply, message) {
   runtime.conn.respond = (id, result, error) => replies.push({ id, result, error });
   runtime.on("message_end", (event) => { event.message.content.push({ ...edit }); return { message: { ...event.message, content: [{ type: "text", text: "replacement" }] } }; });
   await messageEnd(runtime, user(), nextSeq());
-  assert.deepEqual(replies[0].result._pigMessageEndMessage, withEdit(user()));
-  assert.equal(replies[0].result._pigMessageEndResult.message.content[0].text, "replacement");
+  assert.deepEqual(replies[0].result._pigEventEdits[0].message, withEdit(user()));
+  assert.equal(replies[0].result._pigEventResult.message.content[0].text, "replacement");
 }
 `)
 }

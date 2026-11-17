@@ -4,7 +4,7 @@ Operating rules for AI agents maintaining `pig`, the Go port of upstream `pi`. T
 
 ## Mission
 
-`pig` must match upstream `pi` observable behavior unless `docs/parity/DIVERGENCES.md` records a numbered, scrutinized exception. Treat the port as a compiler from upstream TypeScript behavior to Go behavior: `docs/parity/PORT_MAP.md` defines the file map, parity scenarios define behavior, `test/parity/coverage.md` reports proof, and gates keep the claims honest.
+`pig` must match upstream `pi` observable behavior unless `docs/parity/DIVERGENCES.md` records a numbered, scrutinized exception. Treat the port as a compiler from upstream TypeScript behavior to Go behavior: `docs/parity/PORT_MAP.md` defines the file map, parity scenarios define behavior, `test/parity/generated/coverage.md` reports proof, and gates keep the claims honest.
 
 Source of truth:
 - `.upstream/current/` is the upstream mirror.
@@ -19,7 +19,7 @@ Source of truth:
   Foundation I finishes generating its statuses from these ledgers.
 - `test/parity/upstream-sync/v<version>.toml` accounts for every changed tracked source file in a version leap.
 - `test/parity/async-contracts.toml` accounts for Promise/async semantics across the complete pinned upstream source tree.
-- `test/parity/coverage.md` and the generated block below report verification.
+- `test/parity/generated/coverage.md` and the generated block below report verification.
 - `docs/parity/DIVERGENCES.md` records intentional differences.
 
 No prose status claim overrides those files.
@@ -307,17 +307,17 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 |---|---:|---:|---:|---:|---:|---:|---|
 | `_top` | 1 | 1 | 0 | 0 | 0 | 1 | not run |
 | `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 90 | not run |
-| `autocomplete` | 15 | 15 | 0 | 0 | 0 | 5 | not run |
+| `autocomplete` | 20 | 20 | 0 | 0 | 0 | 5 | not run |
 | `cli-utils` | 38 | 38 | 0 | 0 | 0 | 17 | not run |
 | `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
 | `compaction` | 21 | 21 | 0 | 0 | 0 | 11 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 184 | 183 | 0 | 1 | 0 | 71 | not run |
+| `extensions-runtime` | 185 | 184 | 0 | 1 | 0 | 71 | not run |
 | `footer` | 12 | 12 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 20 | 20 | 0 | 0 | 0 | 13 | not run |
 | `interactive-rendering` | 89 | 88 | 1 | 0 | 0 | 40 | not run |
-| `json` | 14 | 14 | 0 | 0 | 0 | 10 | not run |
+| `json` | 16 | 16 | 0 | 0 | 0 | 11 | not run |
 | `model-resolver-selector` | 30 | 30 | 0 | 0 | 0 | 16 | not run |
 | `model-runtime-store-catalog` | 26 | 26 | 0 | 0 | 0 | 24 | not run |
 | `oauth` | 37 | 37 | 0 | 0 | 0 | 19 | not run |
@@ -335,7 +335,7 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `tree` | 16 | 15 | 1 | 0 | 0 | 11 | not run |
 | `tui-components` | 40 | 40 | 0 | 0 | 0 | 36 | not run |
 
-Full per-file detail: `test/parity/coverage.md`.
+Full per-file detail: `test/parity/generated/coverage.md`.
 
 <!-- END COVERAGE -->
 

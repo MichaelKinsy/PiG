@@ -215,6 +215,94 @@ func main() {
 		})
 		return err
 	})
+	// D30: what a captured context's state getters answer after the replacement. Each outcome is one line.
+	ext.Command("getters", "getters", func(ctx sdk.Context, _ string) error {
+		oldCtx := ctx
+		_, err := ctx.NewSession(map[string]any{
+			"withSession": sdk.WithSessionFunc(func(replaced sdk.ReplacedSessionContext) error {
+				probe := func(name string, read func() string) {
+					defer func() {
+						if r := recover(); r != nil {
+							record(fmt.Sprintf("getter:%s=panics:%v", name, r))
+						}
+					}()
+					record(fmt.Sprintf("getter:%s=%s", name, read()))
+				}
+				probe("cwd", func() string {
+					if oldCtx.Cwd() != "" {
+						return "nonempty"
+					}
+					return "empty"
+				})
+				probe("mode", oldCtx.Mode)
+				probe("hasUI", func() string { return fmt.Sprint(oldCtx.HasUI()) })
+				probe("model", oldCtx.Model)
+				probe("theme", func() string { return fmt.Sprintf("%T", oldCtx.UITheme()) })
+				probe("branch", func() string { return conversation(oldCtx.SessionManager()) })
+				probe("entries", func() string {
+					entries, err := oldCtx.SessionManager().GetEntries()
+					if err != nil {
+						return "error:" + err.Error()
+					}
+					count := 0
+					for _, entry := range entries {
+						if entry["type"] == "message" {
+							count++
+						}
+					}
+					return fmt.Sprint(count)
+				})
+				record("replacement:" + conversation(replaced.SessionManager()))
+				return nil
+			}),
+		})
+		return err
+	})
+	// D30: what each host call from a captured context does after the replacement, and whether it reaches the replacement. One line per call.
+	ext.Command("calls", "calls", func(ctx sdk.Context, _ string) error {
+		oldCtx := ctx
+		_, err := ctx.NewSession(map[string]any{
+			"withSession": sdk.WithSessionFunc(func(replaced sdk.ReplacedSessionContext) error {
+				before, _ := replaced.GetActiveTools()
+				report := func(name string, call func() error) {
+					defer func() {
+						if r := recover(); r != nil {
+							record(fmt.Sprintf("call:%s=panics:%v", name, r))
+						}
+					}()
+					if err := call(); err != nil {
+						record(fmt.Sprintf("call:%s=error:%v", name, err))
+						return
+					}
+					record("call:" + name + "=nil")
+				}
+				report("notify", func() error { oldCtx.Notify("stale note", "info"); return nil })
+				report("setStatus", func() error { oldCtx.SetStatus("stale", "text"); return nil })
+				report("setActiveTools", func() error { oldCtx.SetActiveTools([]string{"read"}); return nil })
+				report("abort", func() error { oldCtx.Abort(); return nil })
+				report("sendUserMessage", func() error { return oldCtx.SendUserMessage("stale message", "") })
+				report("appendEntry", func() error { return oldCtx.AppendEntry("stale-entry", map[string]any{"a": 1}) })
+				report("setSessionName", func() error { return oldCtx.SetSessionName("stale-name") })
+				report("setWidgetLines", func() error { return oldCtx.SetWidget("stale", []string{"line"}) })
+				report("setWidgetOptions", func() error {
+					return oldCtx.SetWidget("stale", []string{"line"}, sdk.WidgetOptions{"placement": "belowEditor"})
+				})
+				after, _ := replaced.GetActiveTools()
+				name, _ := replaced.SessionManager().GetSessionName()
+				named := name != nil && *name == "stale-name"
+				entries, _ := replaced.SessionManager().GetEntries()
+				custom := 0
+				for _, entry := range entries {
+					if entry["type"] == "custom" {
+						custom++
+					}
+				}
+				record(fmt.Sprintf("replacement:toolsChanged=%t named=%t customEntries=%d conversation=%s", fmt.Sprint(before) != fmt.Sprint(after), named, custom, conversation(replaced.SessionManager())))
+				return nil
+			}),
+		})
+		return err
+	})
 	ext.Command("mark", "mark", func(ctx sdk.Context, name string) error {
 		values := marks()
 		values[name] = sessionFile(ctx.SessionManager())

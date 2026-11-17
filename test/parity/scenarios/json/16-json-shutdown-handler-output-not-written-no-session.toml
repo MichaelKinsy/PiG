@@ -1,0 +1,52 @@
+# Behavior family: json
+# Surface (the --no-session twin of scenario 15): what --mode json writes after agent_settled when a session_shutdown handler appends an entry, names the session and sends a message.
+#
+# Upstream evidence (Pi 1.5.2): print-mode.ts:44-52 disposeRuntime calls unsubscribe() and unsubscribeBackpressure() BEFORE `await runtimeHost.dispose()`, which emits session_shutdown (agent-session-runtime.ts:415-422) and then disposes the session. The JSON writer is therefore gone when the handler appends an entry (entry_appended, agent-session.ts:3563-3566), names the session (session_info_changed) or sends a custom message (message_start/message_end): none of the three is written, and each is still persisted in the session file. The stream ends with agent_settled.
+# PiG closed the runtime (session_shutdown) before it detached the writer, so the stream ended with entry_appended, session_info_changed, message_start and message_end lines Pi never writes.
+# Entry IDs and clocks are masked; member order and every other byte compare. The session file equality is asserted by TestJSONModeShutdownHandlerOutputIsNotWrittenInEverySDK.
+name = "16-json-shutdown-handler-output-not-written-no-session"
+description = "--mode json ends at agent_settled: what a session_shutdown handler appends, names and sends is not written (--no-session)"
+covers = ["packages/coding-agent/src/modes/print-mode.ts", "packages/coding-agent/src/core/agent-session-runtime.ts", "packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--mode", "json", "--model", "test-faux/faux-1", "--system-prompt", "JSON event probe.", "--no-context-files", "--no-skills", "What is 20+22?"]
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions", "--no-session"]
+pig_extensions = ["../../testdata/shutdown-writer/node/index.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../../testdata/shutdown-writer/node/index.mjs"]
+pi_args = ["--no-extensions", "--no-session"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_normalized_equal = true
+stderr_equal = true
+both_contain = ['"type":"agent_settled"', '42']
+both_not_contain = ['shutdown-entry', 'shutdown-name', 'shutdown-text', 'shutdown-label', 'entry_appended', 'session_info_changed', 'extension_error']
+
+# normalize-rationale: Only entry IDs, independent clocks and the header's UUID and cwd vary; every member name, order and value stays byte-compared.
+[[assert.normalize_replace]]
+pattern = '"(id|parentId)":"[0-9a-f-]{8,36}"'
+with = '"$1":"<ID>"'
+reason = "Generated entry keys and the session header id are random per run; keep each member's name and position."
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'
+reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+[[assert.normalize_replace]]
+pattern = '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"'
+with = '"timestamp":"2000-01-01T00:00:00.000Z"'
+reason = "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+[[assert.normalize_replace]]
+pattern = '"cwd":"[^"]*"'
+with = '"cwd":"<CWD>"'
+reason = "D2: each binary runs in its own isolated cwd."
+[[assert.normalize_replace]]
+pattern = '"durationMs":[0-9]+'
+with = '"durationMs":0'
+reason = "Pi measures each response with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."

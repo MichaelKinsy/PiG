@@ -213,7 +213,7 @@ Full-record comparisons use `[[assert.json_aliases]]` only for explicit scalar i
 
 A numbered divergence that makes PiG emit a whole record Pi never emits is declared with `[[assert.json_pig_only_records]]` in a `json_output_equal` or `json_output_ordered_equal` scenario. Each rule declares `divergence` (for example `D250`), the complete JSON `record`, `count`, `before_type` and `reason`. The runner drops the record from PiG's output only, never Pi's. Every run must carry exactly `count` such records, each directly before a record whose `type` is `before_type`; more, fewer or a moved record fails the scenario, so the rule cannot hide a second occurrence or a changed emission point and cannot outlive the divergence. It excuses no field, order or other record. The scenario's comment must cite the divergence and Pi's source lines.
 
-`test/parity/normalization-inventory.json` lists each replacement and alias with its owning scenario and justification, each plain-text comparator and crop with its limited assertion surface, and the source hashes of the shared transformations and reviewed fixture projections. `make lint-scenarios` checks the generated inventory through `normalization-inventory-check`. Run `make normalization-inventory` after reviewing a changed rule or mechanism. Inventory presence records review scope; it does not turn a crop, faux followup or diagnostic summary into complete wire proof. Provider-wire probes compare complete captured HTTP bodies alongside their legacy summaries. Real-provider RPC/JSON scenarios compare the complete mode event stream.
+`test/parity/generated/normalization-inventory.json` lists each replacement and alias with its owning scenario and justification, each plain-text comparator and crop with its limited assertion surface, and the source hashes of the shared transformations and reviewed fixture projections. `make lint-scenarios` checks the generated inventory through `normalization-inventory-check`. Run `make normalization-inventory` after reviewing a changed rule or mechanism. Inventory presence records review scope; it does not turn a crop, faux followup or diagnostic summary into complete wire proof. Provider-wire probes compare complete captured HTTP bodies alongside their legacy summaries. Real-provider RPC/JSON scenarios compare the complete mode event stream.
 
 ## Coverage contract
 
@@ -227,7 +227,7 @@ the behavior asserted by the scenario. The generated report distinguishes:
 
 Weak evidence remains visible but does not count as behavioral verification.
 Run `make coverage` after a successful parity run. Do not edit
-`test/parity/coverage.md`, the README badge, or the generated `AGENTS.md` block by
+`test/parity/generated/coverage.md`, the README badge, or the generated `AGENTS.md` block by
 hand.
 
 ## Async contract evidence

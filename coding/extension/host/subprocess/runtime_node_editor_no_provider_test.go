@@ -11,8 +11,8 @@ import (
 // Pi's setCustomEditorComponent installs the editor whatever the provider state: it hands the editor the current provider only when there is one
 // (`if (newEditor.setAutocompleteProvider && this.autocompleteProvider)`, interactive-mode.ts), and setupAutocompleteProvider gives the installed editor the
 // provider when it first runs, after bindExtensions returns (:2167). An extension installs its editor from session_start, before that. The host answers
-// ui.autocomplete.current with null when the mode has no editor to install into, with false when it has one and no provider yet, and with the provider's
-// reference otherwise: only null refuses the install, and only a reference is handed to the editor.
+// ui.autocomplete.current with null when the mode has no editor to install into, with {} while the first setupAutocompleteProvider has not run, and with the
+// provider's reference otherwise: only null refuses the install, and only a reference is handed to the editor.
 func TestNodeEditorInstallsBeforeTheHostHasAProvider(t *testing.T) {
 	abs := func(rel string) string {
 		path, err := filepath.Abs(rel)
@@ -53,7 +53,7 @@ const noEditor = attempt(null);
 assert.equal(noEditor.built, 0, "a mode with no editor builds nothing");
 assert.equal(noEditor.installed, false);
 
-const early = attempt(false);
+const early = attempt({});
 assert.equal(early.built, 1, "no provider yet: the editor is built");
 assert.equal(early.installed, true, "no provider yet: the editor is installed");
 assert.deepEqual(early.given, [], "no provider yet: the editor is handed none");

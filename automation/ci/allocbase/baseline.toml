@@ -2425,6 +2425,11 @@ allocs = 8334
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkFusedToolCall"
+allocs = 123
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkHalfBlockRows/256/cells60x30"
 allocs = 5
 
@@ -2565,6 +2570,16 @@ allocs = 1064
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeAgentEndEvent"
+allocs = 1634
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeAgentEndEventEdit"
+allocs = 1656
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAutocompleteRoundTrip"
 allocs = 171
 
@@ -2581,7 +2596,22 @@ allocs = 28
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeMessageEndEventEdit"
-allocs = 49
+allocs = 50
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeMessageStartEvent"
+allocs = 15
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeMessageStartEventEdit"
+allocs = 41
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeMessageUpdateStream"
+allocs = 186660
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2602,6 +2632,16 @@ allocs = 86
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeToolResultEventEdit"
 allocs = 134
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeTurnEndEvent"
+allocs = 120
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeTurnEndEventEdit"
+allocs = 138
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2692,6 +2732,26 @@ allocs = 5
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkRegisteredFlagSnapshot"
 allocs = 12
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRegistrationReaders/flag_resolution"
+allocs = 0
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRegistrationReaders/node_runtime"
+allocs = 0
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRegistrationReaders/parallel_node_runtime"
+allocs = 1
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRegistrationReaders/stopped_by_owner"
+allocs = 0
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -3206,7 +3266,7 @@ allocs = 3177
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelPickerScopedReopen"
-allocs = 5394
+allocs = 5613
 
 [[benchmark]]
 package = "./internal/codingagent"

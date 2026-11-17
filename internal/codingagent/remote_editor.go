@@ -68,7 +68,7 @@ func (m *InteractiveMode) setRemoteEditor(editor extension.RemoteEditor) {
 	} else {
 		h := &remoteEditor{m: m, editor: editor}
 		m.remoteEditor = h
-		m.editor.SetAutocompleteChanged(func(base tui.AutocompleteProvider) { m.rebuildAutocompleteWrappers(base, nil) })
+		m.editor.SetAutocompleteChanged(m.autocompleteChangedCallback())
 		if delegated, ok := editor.(extension.DelegatedRemoteEditor); ok && delegated.Delegated() {
 			m.editor.SetDelegatedRemote(h)
 		} else {
@@ -80,30 +80,8 @@ func (m *InteractiveMode) setRemoteEditor(editor extension.RemoteEditor) {
 	if editor != nil {
 		editor.Configure(m.remoteEditorConfig())
 		editor.SetText(text)
-		m.handAutocompleteProviderToRemoteEditor()
 	}
 	m.requestRender()
-}
-
-// handAutocompleteProviderToRemoteEditor is Pi's `newEditor.setAutocompleteProvider(this.autocompleteProvider)` at the end of setCustomEditorComponent's
-// copying (interactive-mode.ts:3015-3017): whenever a provider exists, the editor just installed gets it, whether or not its process built it with one. The
-// extension's process builds the editor while the host may still lack a provider and the owner loop installs it later, in either order with the bind's
-// provider install; with no provider yet there is nothing to hand and the change callback set by this install carries the one that is built later. It goes
-// through the same bridge call a rebuild uses, off the owner loop.
-func (m *InteractiveMode) handAutocompleteProviderToRemoteEditor() {
-	provider := m.autocompleteProvider
-	if provider == nil && m.editor.AutocompleteProvider() != nil {
-		provider = m.baseAutocompleteProvider(m.editor.AutocompleteProvider())
-	}
-	bridge, ok := m.opts.SubprocessUIBridge.(interface {
-		SyncAutocomplete(context.Context, *extension.AutocompleteProvider) error
-	})
-	if provider == nil || !ok {
-		return
-	}
-	m.startAutocompleteWork(func(context.Context) (func(), error) { return nil, nil }, nil, func(ctx context.Context) error {
-		return bridge.SyncAutocomplete(ctx, provider)
-	})
 }
 
 // placeActiveStatusIndicator puts the active status in the editor's border or the status container, whichever the installed editor opted into.

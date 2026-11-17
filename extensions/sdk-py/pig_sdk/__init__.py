@@ -1383,6 +1383,50 @@ def _json_text(value: Any) -> str:
         return _dumps_deep(value)
 
 
+def _event_edit_messages(name: str, data: dict[str, Any]) -> list[Any]:
+    """The message objects of an event a handler may edit in place, by the position the reply names them at (``_pigEventEdits``): message_end has one, turn_end its assistant message and then its tool results. The reply is about these objects, so assigning another value to the member changes nothing, as assigning event.message changes nothing in Pi."""
+    if name in ("message_start", "message_end"):
+        return [data.get("message")]
+    if name == "agent_end":
+        messages = data.get("messages")
+        return list(messages) if isinstance(messages, list) else []
+    if name == "turn_end":
+        results = data.get("toolResults")
+        return [data.get("message"), *(results if isinstance(results, list) else [])]
+    return []
+
+
+def _snapshot_event_messages(messages: list[Any]) -> list[str | None]:
+    """The JSON text of each message as the handler received it (member order included), or None for a value that is no dict."""
+    return [_json_text(message) if isinstance(message, dict) else None for message in messages]
+
+
+def _event_message_edits(messages: list[Any], before: list[str | None]) -> list[dict[str, Any]]:
+    """The messages whose JSON text the handler changed, each at its position, as the handler left it."""
+    return [{"at": at, "message": message} for at, (message, text) in enumerate(zip(messages, before, strict=True)) if text is not None and _json_text(message) != text]
+
+
+# The events whose own members a handler may assign, reassign or delete for the later handlers of the dispatch: Pi hands every handler of an emit the one event object (runner.ts emit).
+_MEMBER_EVENTS = frozenset({"message_start", "message_update", "turn_start", "agent_start", "agent_end"})
+
+
+def _same_member(was: Any, now: Any) -> bool:
+    """Whether the handler left a member as it received it: a scalar by value and type, a dict or a list by identity (an edit inside a message is carried by the message entries)."""
+    return was is now or (isinstance(was, (str, int, float)) and type(was) is type(now) and was == now)
+
+
+def _event_member_edits(data: dict[str, Any], before: dict[str, Any]) -> list[dict[str, Any]]:
+    """The members the handler left different from the ones it received, as the second form of the reply's ``_pigEventEdits`` entries: ``{"member", "value"}`` for one it added or reassigned, ``{"member", "deleted": True}`` for one it deleted."""
+    edits: list[dict[str, Any]] = []
+    for name, value in before.items():
+        if name not in data:
+            edits.append({"member": name, "deleted": True})
+        elif not _same_member(value, data[name]):
+            edits.append({"member": name, "value": data[name]})
+    edits.extend({"member": name, "value": value} for name, value in data.items() if name not in before)
+    return edits
+
+
 def _json_loads(text: str) -> Any:
     """json.loads of ``text``, read with a stack of its own when it nests past the interpreter's limit (the host's values nest up to 10000 levels). A value nested past MAX_FRAME_DEPTH raises RecursionError; malformed JSON raises ValueError."""
     try:
@@ -2368,7 +2412,7 @@ class _SurfaceRenderer:
         with self._lock:
             if self._stopped:
                 return
-            width = ctx.width
+            width = ctx._terminal_width()
             try:
                 rendered = self.render(width)
                 # The Node runtime sends [] for a render result that is not an
@@ -2977,6 +3021,7 @@ class Context:
         ``partial`` is a string or a mapping with the tool-result shape. The
         host shows updates in order, before the tool's final result.
         """
+        self._assert_call_active()
         if not self.tool_call_id or not self.request_id:
             raise RuntimeError("on_update is only available while a tool runs")
         result = {"content": partial} if isinstance(partial, str) else partial
@@ -3087,6 +3132,7 @@ class Context:
         Raises ``RuntimeError`` until the host has sent them, as upstream's
         ``getSettings`` throws before the runner binds.
         """
+        self._assert_call_active()
         return self.extension._get_settings()
 
     @property
@@ -3261,6 +3307,12 @@ class Context:
 
     @property
     def width(self) -> int:
+        """The terminal width. Raises the stale message after the session was replaced or reloaded."""
+        self._assert_active()
+        return self._terminal_width()
+
+    def _terminal_width(self) -> int:
+        """The width the host last reported, without the stale check: the SDK's own renders and pushes read it, and a push from a stale context fails with the host's error, never with an exception on a thread of the SDK."""
         with self.extension._state_lock:
             return self.extension._width
 
@@ -3268,19 +3320,30 @@ class Context:
     def height(self) -> int:
         """Terminal height in rows, or 0 when the host has not reported one.
 
-        Updated by ``height_change`` notifications.
+        Updated by ``height_change`` notifications. Raises the stale message after the session was replaced or reloaded.
         """
+        self._assert_active()
         with self.extension._state_lock:
             return self.extension._height
 
-    def _assert_active(self) -> None:
-        """Raise the Host's stale message once the session was replaced or reloaded, as Pi's ExtensionContext getters throw it (runner.ts:571-600). A replacement context belongs to the new session and is not stale."""
+    def _stale_message(self) -> str | None:
+        """The Host's stale message once the session was replaced or reloaded, else None. A replacement context belongs to the new session and is not stale."""
         if self._replacement is not None:
-            return
+            return None
         with self.extension._state_lock:
-            message = self.extension._stale_message
+            return self.extension._stale_message
+
+    def _assert_active(self) -> None:
+        """Raise the Host's stale message once the session was replaced or reloaded, as Pi's ExtensionContext getters throw it (runner.ts:571-600)."""
+        message = self._stale_message()
         if message is not None:
             raise RuntimeError(message)
+
+    def _assert_call_active(self) -> None:
+        """Raise the stale message as the HostCallError a call to the host raises, for the calls that send no host call to be answered with it."""
+        message = self._stale_message()
+        if message is not None:
+            raise HostCallError(message)
 
     def _current_model(self) -> tuple[str, str]:
         """The model's id and provider id. A replacement context asks the host, since this process replicates only the requesting Session's model."""
@@ -3574,7 +3637,8 @@ class Context:
 
     @property
     def theme(self) -> Theme:
-        """Upstream ``ctx.ui.theme``: the host's active theme, kept current."""
+        """Upstream ``ctx.ui.theme``: the host's active theme, kept current. Raises the stale message after the session was replaced or reloaded."""
+        self._assert_active()
         return self.extension._theme
 
     @property
@@ -3744,6 +3808,7 @@ class Context:
         ``widget_push`` frame, as a string list does; with options (upstream
         ``ExtensionWidgetOptions``) it waits for the host.
         """
+        self._assert_call_active()
         if isinstance(content, kit.View):
             self.extension._set_widget_view(self, key, content, options)
             return
@@ -3760,6 +3825,7 @@ class Context:
 
         It follows the contract of :meth:`set_footer_renderer`: the SDK renders at the width the host reports and again after every width change, sends each set of rows with the width it was rendered for, and the host paints them only at that width, so a widget never shows rows laid out for the old width. ``options`` is the placement (``{"placement": "aboveEditor" | "belowEditor"}``). ``None`` clears the widget. An exception in ``render`` is reported as "widget render failed: ..." and leaves the previous rows. :meth:`set_widget` with the same key replaces the renderer.
         """
+        self._assert_call_active()
         if render is None:
             self.set_widget(key, None, options)
             return
@@ -3853,7 +3919,7 @@ class Context:
         if lines is None:
             self._call(method, {"clear": True})
             return
-        self._call(method, _surface_args([str(line) for line in lines], self.width))
+        self._call(method, _surface_args([str(line) for line in lines], self._terminal_width()))
 
     def _set_surface_view(self, method: str, view: kit.View) -> None:
         # An authoritative view: no rows and no width, since the host renders it at its own width.
@@ -6591,9 +6657,11 @@ class Extension:
                 if handler is None:
                     raise RuntimeError(f"unknown event handler {handler_id} for {req.get('event', '')}")
                 data = req.get("args") or {}
-                # pig additive (D19): preserve boundary mutations alongside handler errors.
+                # pig additive (D19): preserve boundary mutations alongside handler errors. A turn_end handler also edits the turn's messages in place (Pi hands every handler the turn's message objects): the reply carries the ones it left different, beside the boundary members.
                 if req.get("event") in ("agent_before_settle", "turn_end"):
                     entries = data.get("entries", [])
+                    event_messages = _event_edit_messages(req["event"], data)
+                    before = _snapshot_event_messages(event_messages)
                     result = None
                     error = None
                     try:
@@ -6602,7 +6670,14 @@ class Extension:
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve mutations and report the handler error.
                         error = {"message": str(exc)}
-                    self._respond(req_id, {"_pigBoundaryEntries": entries, "_pigBoundaryResult": result}, error)
+                    reply = {"_pigBoundaryEntries": entries, "_pigBoundaryResult": result}
+                    try:
+                        edits = _event_message_edits(event_messages, before)
+                        if edits:
+                            reply["_pigEventEdits"] = edits
+                    except Exception as exc:  # noqa: BLE001 - A message that cannot be written is the handler's error.
+                        error = error or {"message": str(exc)}
+                    self._respond(req_id, reply, error)
                     return
                 # Pi's handler edits event.input in place and the runner reads it back (runner.ts emitToolCall). The host cannot share the dict, so the reply carries the input the handler left when it differs from the one it received, member order included, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall), so assigning a new dict to data["input"] changes nothing the tool receives.
                 if req.get("event") == "tool_call":
@@ -6622,9 +6697,10 @@ class Extension:
                     self._respond(req_id, reply, error)
                     return
                 # Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, turn_end, agent_end, the entry and the next request hold, even when it fails afterwards. The host cannot share the dict, so the reply carries the message the handler left when its JSON text differs from the one it received (member order included). Assigning a new dict to data["message"] changes nothing, as assigning event.message changes nothing in Pi.
-                if req.get("event") == "message_end":
-                    end_message = data.get("message")
-                    before = _json_text(end_message) if isinstance(end_message, dict) else None
+                if req.get("event") in ("message_start", "message_end", "agent_end"):
+                    event_messages = _event_edit_messages(req["event"], data)
+                    before = _snapshot_event_messages(event_messages)
+                    members_before = dict(data) if req["event"] in _MEMBER_EVENTS else None
                     result = None
                     error = None
                     try:
@@ -6633,13 +6709,15 @@ class Extension:
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve message edits before reporting the handler error.
                         error = {"message": str(exc)}
-                    reply = {"_pigMessageEndResult": result}
-                    if before is not None:
-                        try:
-                            if _json_text(end_message) != before:
-                                reply["_pigMessageEndMessage"] = end_message
-                        except Exception as exc:  # noqa: BLE001 - A message that cannot be written is the handler's error.
-                            error = error or {"message": str(exc)}
+                    reply = {"_pigEventResult": result}
+                    try:
+                        edits = _event_message_edits(event_messages, before)
+                        if members_before is not None:
+                            edits = [*edits, *_event_member_edits(data, members_before)]
+                        if edits:
+                            reply["_pigEventEdits"] = edits
+                    except Exception as exc:  # noqa: BLE001 - A message that cannot be written is the handler's error.
+                        error = error or {"message": str(exc)}
                     self._respond(req_id, reply, error)
                     return
                 # Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the dict, so the reply names the members the handler left different from the ones it received (JSON text, member order included), with their new values, and, of those, the ones it edited in the very object it received instead of replacing; the reply carries them also when the handler failed.
@@ -6725,6 +6803,22 @@ class Extension:
                         {"_pigPromptSections": options["sections"], "_pigPromptSelectedTools": options.get("selectedTools"), "_pigPromptOptions": options, "_pigPromptResult": result},
                         error,
                     )
+                    return
+                # message_update, turn_start and agent_start (message_start and agent_end replied above): a member a handler assigns, reassigns or deletes is what the later handlers of the dispatch see (runner.ts emit), so the reply carries the members it left different, also from a handler that raised.
+                if req.get("event") in _MEMBER_EVENTS:
+                    members_before = dict(data)
+                    if ctx._request_start is not None:
+                        ctx._request_start.begin()
+                    try:
+                        result = handler(ctx, data)
+                    except Exception as exc:  # noqa: BLE001 - A member edit is kept when the handler raises, as in Pi.
+                        member_edits = _event_member_edits(data, members_before)
+                        if not member_edits:
+                            raise
+                        self._respond(req_id, {"_pigEventEdits": member_edits}, {"message": str(exc)})
+                        return
+                    member_edits = _event_member_edits(data, members_before)
+                    self._respond(req_id, {"_pigEventEdits": member_edits, "_pigEventResult": result} if member_edits else result, None)
                     return
                 messages = data.get("messages")
                 snapshot = list(messages) if isinstance(messages, list) else None

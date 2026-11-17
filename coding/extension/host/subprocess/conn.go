@@ -1200,7 +1200,7 @@ func (c *Conn) Close(reason string) error {
 			Type: MsgResponse,
 			ID:   id,
 			Response: &ResponsePayload{
-				Error: &ErrorInfo{Code: failureCode, Message: "connection closed"},
+				Error: &ErrorInfo{Code: failureCode, Message: "connection closed", closedByHost: failureCode == ""},
 			},
 		}:
 		default:
@@ -2952,6 +2952,17 @@ func (c *Conn) dispatchBarrier(ctx context.Context) <-chan struct{} {
 		mark.release()
 	}
 	return mark.done
+}
+
+// awaitReplyDispatch waits until the host dispatched the frames that dispatched's marker was queued behind, or the connection ends. A nil dispatched is a request whose reply was not read.
+func awaitReplyDispatch(c *Conn, dispatched <-chan struct{}) {
+	if dispatched == nil {
+		return
+	}
+	select {
+	case <-dispatched:
+	case <-c.Done():
+	}
 }
 
 // requestsInFlight reports whether a request the host sent has no response yet.

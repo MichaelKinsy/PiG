@@ -1920,6 +1920,76 @@ func Extension() *sdk.Extension {
 		})
 		return nil
 	})
+	// event_level_edit_probe subscribes to the event named by the argument (`<event> <top|deep>`) with a handler that edits it in place and returns nothing: `top` assigns a
+	// member of the event itself (probeTop), `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text
+	// block, else a string content, else a `probe` member. Every edit writes `other-event-edit` (TestInPlaceMessageEventEditsMatchPi).
+	ext.Command("event_level_edit_probe", "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place", func(ctx sdk.Context, args string) error {
+		name, level, _ := strings.Cut(strings.TrimSpace(args), " ")
+		const edited = "other-event-edit"
+		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
+			if level == "top" {
+				data["probeTop"] = edited
+				return nil, nil
+			}
+			target, _ := data["message"].(map[string]any)
+			if list, ok := data["messages"].([]any); ok && target == nil && len(list) > 0 {
+				target, _ = list[0].(map[string]any)
+				for _, item := range list {
+					if m, ok := item.(map[string]any); ok && m["role"] == "user" {
+						target = m
+						break
+					}
+				}
+			}
+			if target == nil {
+				return nil, nil
+			}
+			blocks, _ := target["content"].([]any)
+			var first map[string]any
+			if len(blocks) > 0 {
+				first, _ = blocks[0].(map[string]any)
+			}
+			switch {
+			case first != nil && first["type"] == "text":
+				first["text"] = edited
+			case isStringContent(target):
+				target["content"] = edited
+			default:
+				target["probe"] = edited
+			}
+			return nil, nil
+		})
+		return nil
+	})
+	// event_member_probe `<event> <set|delete|once> <member> [json]` subscribes to the event with a handler that assigns the member the JSON, deletes it, or (once) assigns it in its
+	// first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there (TestInPlaceMessageEventEditsMatchPi).
+	ext.Command("event_member_probe", "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event", func(ctx sdk.Context, args string) error {
+		fields := strings.SplitN(strings.TrimSpace(args), " ", 4)
+		if len(fields) < 3 {
+			return fmt.Errorf("event_member_probe wants <event> <op> <member> [json]")
+		}
+		name, op, member := fields[0], fields[1], fields[2]
+		var value any
+		if len(fields) == 4 {
+			if err := json.Unmarshal([]byte(fields[3]), &value); err != nil {
+				return err
+			}
+		}
+		calls := 0
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			calls++
+			switch {
+			case op == "delete":
+				delete(data, member)
+			case op == "once" && calls > 1:
+				hctx.Notify(fmt.Sprintf("member_probe_stale:%s:%t", name, reflect.DeepEqual(data[member], value)), "info")
+			default:
+				data[member] = value
+			}
+			return nil, nil
+		})
+		return nil
+	})
 	ext.Command("host_state_probe", "Report the thinking level and the session commands", func(ctx sdk.Context, _ string) error {
 		level, err := ctx.GetThinkingLevel()
 		if err != nil {
@@ -2866,6 +2936,48 @@ func Extension() *sdk.Extension {
 	ext.Command("stale-probe", "Report cwd, mode, hasUI and model", func(ctx sdk.Context, _ string) error {
 		ctx.Notify(fmt.Sprintf("stale:%s|%s|%t|%s", ctx.Cwd(), ctx.Mode(), ctx.HasUI(), ctx.Model()), "info")
 		return nil
+	})
+	// stale-members calls the members that answer a context kept past its Session in every SDK: each outcome is one line, and the command fails with
+	// every line when one of them carries the stale message (Pi guards every context member: runner.ts:883-1037), else it reports them.
+	staleMembers := func(ctx sdk.Context) error {
+		var lines []string
+		stale := false
+		member := func(name string, call func() (string, error)) {
+			outcome := func() (out string) {
+				defer func() {
+					if recovered := recover(); recovered != nil {
+						out = fmt.Sprintf("panics:%v", recovered)
+					}
+				}()
+				value, err := call()
+				if err != nil {
+					return "error:" + err.Error()
+				}
+				return "ok:" + value
+			}()
+			stale = stale || strings.Contains(outcome, "This extension ctx is stale")
+			lines = append(lines, name+"="+outcome)
+		}
+		member("theme", func() (string, error) { return fmt.Sprintf("%T", ctx.UITheme()), nil })
+		member("width", func() (string, error) { return fmt.Sprint(ctx.Width()), nil })
+		member("height", func() (string, error) { return fmt.Sprint(ctx.Height()), nil })
+		member("sessionName", func() (string, error) { return ctx.SessionName(), nil })
+		member("setWidgetLines", func() (string, error) { return "", ctx.SetWidget("stale-members", []string{"x"}) })
+		member("setWidgetView", func() (string, error) {
+			return "", ctx.SetWidget("stale-members-view", kit.View{Root: kit.NewText("x", 0, 0)})
+		})
+		member("setWidgetRenderer", func() (string, error) {
+			return "", ctx.SetWidgetRenderer("stale-members-renderer", func(int) []string { return []string{"x"} })
+		})
+		member("onUpdate", func() (string, error) { return "", ctx.OnUpdate("x") })
+		if stale {
+			return errors.New("stale-members\n" + strings.Join(lines, "\n"))
+		}
+		ctx.Notify("members\n"+strings.Join(lines, "\n"), "info")
+		return nil
+	}
+	ext.Command("stale-members", "Call the members that fail with the stale message", func(ctx sdk.Context, _ string) error {
+		return staleMembers(ctx)
 	})
 	ext.Command("signal-wait", "Wait for ctx.signal to abort", func(ctx sdk.Context, _ string) error {
 		signal := ctx.Signal()
@@ -4483,6 +4595,12 @@ func Extension() *sdk.Extension {
 	})
 	ext.OnSessionShutdown(func(ctx sdk.Context, data map[string]any) (any, error) {
 		ctx.Notify("session_shutdown:"+fmt.Sprint(data["reason"]), "info")
+		// The handler's own context is still active (Pi invalidates after the handlers ran): the stale-members test reads every member from here.
+		if data["reason"] == "stale-members-test" {
+			if err := staleMembers(ctx); err != nil {
+				return nil, err
+			}
+		}
 		if path, ok := data["targetSessionFile"].(string); ok && path != "" {
 			ctx.Notify("target:"+path, "info")
 		}
@@ -5175,4 +5293,10 @@ func lastRenderLine(render sdk.ToolRenderContext) string {
 		return "none"
 	}
 	return render.LastComponent.Lines[0]
+}
+
+// isStringContent reports whether the message's content is a string.
+func isStringContent(message map[string]any) bool {
+	_, ok := message["content"].(string)
+	return ok
 }

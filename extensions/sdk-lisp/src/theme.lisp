@@ -179,7 +179,8 @@ An unknown token signals \"Unknown theme color: <token>\"."
       (or (kit-state-theme kit) (setf (kit-state-theme kit) (make-theme-from-palette nil))))))
 
 (defun ctx-theme (ctx)
-  "Upstream ctx.ui.theme: the host's active theme, kept current."
+  "Upstream ctx.ui.theme: the host's active theme, kept current. Signals the stale message after the session was replaced or reloaded."
+  (assert-active ctx)
   (theme-of (ctx-extension ctx)))
 
 (defun theme-apply-palette (ext palette)

@@ -3132,6 +3132,51 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, lambda hctx, data: hctx.notify("event_field:%s.%s=%s" % (name, field, json.dumps(data[field], separators=(",", ":")) if field in data else "absent"), "info"))
 
     ext.command("event_field_probe", "Report a field of the events named by the argument `<event> <field>`", event_field_probe)
+
+    def event_level_edit_probe(ctx, args):
+        # `<event> <top|deep>`: subscribe to the event with a handler that edits it in place and returns nothing. `top` assigns a member of the event itself (probeTop); `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text block, else a string content, else a `probe` member. Every edit writes `other-event-edit`.
+        name, level = args.split()
+        edited = "other-event-edit"
+
+        def make(hctx, data):
+            if level == "top":
+                data["probeTop"] = edited
+                return
+            target = data.get("message")
+            if target is None and isinstance(data.get("messages"), list) and data["messages"]:
+                target = next((m for m in data["messages"] if isinstance(m, dict) and m.get("role") == "user"), data["messages"][0])
+            if not isinstance(target, dict):
+                return
+            content = target.get("content")
+            first = content[0] if isinstance(content, list) and content else None
+            if isinstance(first, dict) and first.get("type") == "text":
+                first["text"] = edited
+            elif isinstance(content, str):
+                target["content"] = edited
+            else:
+                target["probe"] = edited
+
+        ext.on_event(name, make)
+
+    ext.command("event_level_edit_probe", "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place", event_level_edit_probe)
+    def event_member_probe(ctx, args):
+        # `<event> <set|delete|once> <member> [json]`: a handler that assigns the member the JSON, deletes it, or (once) assigns it in its first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there.
+        name, op, member, *rest = args.split(None, 3)
+        value = json.loads(rest[0]) if rest else None
+        calls = [0]
+
+        def make(hctx, data):
+            calls[0] += 1
+            if op == "delete":
+                data.pop(member, None)
+            elif op == "once" and calls[0] > 1:
+                hctx.notify("member_probe_stale:%s:%s" % (name, "true" if member in data and data[member] == value else "false"), "info")
+            else:
+                data[member] = value
+
+        ext.on_event(name, make)
+
+    ext.command("event_member_probe", "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event", event_member_probe)
     event_probe_on_offs: dict = {}
 
     event_probe_results: dict = {}
@@ -3570,6 +3615,35 @@ def new_extension() -> pig_sdk.Extension:
             pass
 
     ext.command("stale-probe", "Report cwd, mode, hasUI and model", stale_probe)
+
+    def stale_members(ctx: pig_sdk.Context, args: str = "") -> None:
+        """Call the members that fail with the stale message: each outcome is one line, and the command fails with every line when one carries the message."""
+        lines: list[str] = []
+        stale = False
+
+        def member(name, call) -> None:
+            nonlocal stale
+            try:
+                outcome = "ok:%s" % (call(),)
+            except Exception as error:  # noqa: BLE001 - the outcome is the report
+                outcome = "raises:%s:%s" % (type(error).__name__, error)
+            stale = stale or "This extension ctx is stale" in outcome
+            lines.append("%s=%s" % (name, outcome))
+
+        member("theme", lambda: type(ctx.theme).__name__)
+        member("width", lambda: ctx.width)
+        member("height", lambda: ctx.height)
+        member("sessionName", lambda: ctx.session_name)
+        member("setWidgetLines", lambda: ctx.set_widget("stale-members", ["x"]))
+        member("setWidgetView", lambda: ctx.set_widget("stale-members-view", kit.View(kit.Text("x", 0, 0))))
+        member("setWidgetRenderer", lambda: ctx.set_widget_renderer("stale-members-renderer", lambda width: ["x"]))
+        member("onUpdate", lambda: ctx.on_update("x"))
+        member("getSettings", lambda: type(ctx.get_settings()).__name__)
+        if stale:
+            raise RuntimeError("stale-members\n" + "\n".join(lines))
+        ctx.notify("members\n" + "\n".join(lines), "info")
+
+    ext.command("stale-members", "Call the members that fail with the stale message", stale_members)
     ext.command("signal-wait", "Wait for ctx.signal to abort", signal_wait)
     ext.command("usage-probe", "Report context usage", lambda ctx, args: ctx.notify(json.dumps(ctx.get_context_usage()), "info"))
 
@@ -4172,6 +4246,9 @@ def new_extension() -> pig_sdk.Extension:
 
     def session_shutdown(ctx, data):
         ctx.notify("session_shutdown:" + str(data.get("reason", "")), "info")
+        # The handler's own context is still active (Pi invalidates after the handlers ran): the stale-members test reads every member from here.
+        if data.get("reason") == "stale-members-test":
+            stale_members(ctx)
         if data.get("targetSessionFile"):
             ctx.notify("target:" + data["targetSessionFile"], "info")
 

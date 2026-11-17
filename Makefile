@@ -684,7 +684,7 @@ check: module-publication check-core parity-fast ## Pre-commit gate: published d
 	@echo "make check: all gates green."
 	@echo
 	@echo "Reminder: run 'make coverage' before signaling success to refresh"
-	@echo "the AGENTS.md dashboard and test/parity/coverage.md. Do not hand-edit."
+	@echo "the AGENTS.md dashboard and test/parity/generated/coverage.md. Do not hand-edit."
 
 # verify = deterministic gates + declared durability parity + coverage.
 # The recommended one-shot for end-of-loop verification: `parity` proves every

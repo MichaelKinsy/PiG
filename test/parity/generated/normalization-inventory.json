@@ -365,6 +365,95 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/autocomplete/15-editor-sync-error-add-provider.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "armed",
+            "capture_end": "pong"
+          },
+          "reason": "Owned visible surface: An extension adding an autocomplete provider while its editor refuses the rebuilt one shows the extension's error and the session goes on.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/16-editor-sync-error-install-editor.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "armed",
+            "capture_end": "pong"
+          },
+          "reason": "Owned visible surface: An extension installing an editor that refuses the provider it is handed shows the extension's error and the session goes on.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/17-editor-sync-error-reload.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: Reload failed"
+          },
+          "reason": "Owned visible surface: A /reload whose editor refuses the rebuilt provider fails with Pi's Reload failed line and the process lives.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/18-editor-sync-error-new-session.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: Failed to create session",
+            "capture_end": "automatically."
+          },
+          "reason": "Owned visible surface: A /new whose editor refuses the provider ends both binaries with Pi's fatal Failed to create session report and exit status 1.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/19-editor-sync-calls.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "calls=",
+            "capture_end": "|D|"
+          },
+          "reason": "Owned visible surface: The number of setAutocompleteProvider calls an installed editor receives at startup, after an add, after /reload and after /new equals Pi's.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/cli-utils/01-print-initial-message-file-args.toml",
       "transforms": [
         {
@@ -1611,7 +1700,7 @@
       ]
     },
     {
-      "scenario": "test/parity/scenarios/extensions-runtime/114-typed-ahead-before-extension-bind.toml",
+      "scenario": "test/parity/scenarios/extensions-runtime/113-fork-while-session-start-held.toml",
       "transforms": [
         {
           "kind": "cwd_snapshot_digits",
@@ -6029,6 +6118,86 @@
         {
           "kind": "output_normalized_equal",
           "reason": "Declared plain-text/layout surface: --mode json starts its stream at the prompt: nothing a session_start handler emits is written, a command's appends are",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/json/15-json-shutdown-handler-output-not-written.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"(id|parentId)\":\"[0-9a-f-]{8,36}\"",
+          "with": "\"$1\":\"<ID>\"",
+          "reason": "Generated entry keys and the session header id are random per run; keep each member's name and position."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"cwd\":\"[^\"]*\"",
+          "with": "\"cwd\":\"<CWD>\"",
+          "reason": "D2: each binary runs in its own isolated cwd."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi measures each response with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: --mode json ends at agent_settled: what a session_shutdown handler appends, names and sends is not written",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/json/16-json-shutdown-handler-output-not-written-no-session.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"(id|parentId)\":\"[0-9a-f-]{8,36}\"",
+          "with": "\"$1\":\"<ID>\"",
+          "reason": "Generated entry keys and the session header id are random per run; keep each member's name and position."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":[0-9]+",
+          "with": "\"timestamp\":0",
+          "reason": "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"timestamp\":\"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z\"",
+          "with": "\"timestamp\":\"2000-01-01T00:00:00.000Z\"",
+          "reason": "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"cwd\":\"[^\"]*\"",
+          "with": "\"cwd\":\"<CWD>\"",
+          "reason": "D2: each binary runs in its own isolated cwd."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "\"durationMs\":[0-9]+",
+          "with": "\"durationMs\":0",
+          "reason": "Pi measures each response with a monotonic clock, so the whole-millisecond value differs between runs; retain the field's presence, placement and number spelling."
+        },
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: --mode json ends at agent_settled: what a session_shutdown handler appends, names and sends is not written (--no-session)",
           "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
         }
       ]

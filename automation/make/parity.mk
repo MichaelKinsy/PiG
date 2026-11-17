@@ -382,7 +382,7 @@ parity-flow-coverage: parity-deps
 		go tool covdata textfmt -i="$$covdir" -o="$(PARITY_FLOW_COVERAGE)"; \
 		echo "$(PARITY_FLOW_COVERAGE)"
 
-# Regenerate test/parity/coverage.md from the latest results, and patch the
+# Regenerate test/parity/generated/coverage.md from the latest results, and patch the
 # condensed coverage block in AGENTS.md.
 coverage: ## Regenerate coverage.md from PORT_MAP + scenarios
 	@set -eu; mkdir -p tmp; tmp=$$(mktemp -d tmp/coverage.XXXXXXXX); trap 'rm -rf "$$tmp"' EXIT; \
@@ -393,11 +393,11 @@ coverage: ## Regenerate coverage.md from PORT_MAP + scenarios
 	    -scenarios test/parity/scenarios \
 	    -agents-md "$$tmp/AGENTS.md" \
 	    -badge "$$tmp/badge.svg" -out "$$tmp/coverage.md"; \
-	    mv "$$tmp/coverage.md" test/parity/coverage.md; \
+	    mv "$$tmp/coverage.md" test/parity/generated/coverage.md; \
 	    mv "$$tmp/AGENTS.md" AGENTS.md; \
 	    mv "$$tmp/badge.svg" .github/badges/parity-coverage.svg
-	@echo "wrote test/parity/coverage.md + AGENTS.md coverage block + Pi port progress badge"
-	@grep '^- \*\*' test/parity/coverage.md
+	@echo "wrote test/parity/generated/coverage.md + AGENTS.md coverage block + Pi port progress badge"
+	@grep '^- \*\*' test/parity/generated/coverage.md
 
 # The extractor's own tests run before each extraction; INTERFACE_EXTRACTOR_TEST=true skips them where another gate already ran them (pin-bump, a loaded host).
 INTERFACE_EXTRACTOR_TEST ?= npm test >/dev/null
@@ -633,7 +633,7 @@ async-contracts: ## Audit Promise/async semantics across the pinned upstream tre
 # parity runs so reviewers see "ported AND verified" in one column.
 port-map: coverage ## Rewrite docs/parity/PORT_MAP.md with coverage column merged
 	@echo "docs/parity/PORT_MAP.md = code mapping (human mental model)"
-	@echo "test/parity/coverage.md = verification truth (machine-generated)"
+	@echo "test/parity/generated/coverage.md = verification truth (machine-generated)"
 	@echo "(use 'make coverage' to refresh the latter)"
 
 # Scenario quality lint. Enforces rules from AGENTS.md that were
@@ -667,7 +667,7 @@ port-map-drift: pin-check ## PORT_MAP completeness gate. Coverage uses docs/pari
 # scenario-derived facts are compared; the "last run" column comes from a
 # transient parity results file and is excluded.
 coverage-drift: ## Generated-report freshness gate. A scenario added without regenerating
-	@./automation/ci/check-coverage-drift.py --coverage test/parity/coverage.md
+	@./automation/ci/check-coverage-drift.py --coverage test/parity/generated/coverage.md
 
 # Family scope report. Lists, for each behavior family declared in
 # test/parity/families.toml, which PORT_MAP entries are covered by in-family

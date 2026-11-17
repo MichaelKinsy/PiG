@@ -96,7 +96,7 @@ func nodeLinkFixtures(t *testing.T, root string) (paths []string, values []strin
 func isolateBuildHome(t *testing.T, root string) {
 	t.Helper()
 	t.Setenv("PIG_HOME", filepath.Join(root, "home"))
-	t.Setenv("HOME", filepath.Join(root, "home"))
+	testenv.SetHome(t, filepath.Join(root, "home"))
 	t.Setenv("GOFLAGS", strings.TrimSpace(os.Getenv("GOFLAGS")+" -modcacherw"))
 }
 

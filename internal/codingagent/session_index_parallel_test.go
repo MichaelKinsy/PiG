@@ -195,30 +195,73 @@ func snapshotBytes(t *testing.T, snapshot *sessionSnapshot) []byte {
 	return out
 }
 
-// A parallel load ends as the serial one does when the file has no header or needs migration, and leaves no goroutine behind.
+// A parallel load ends as the serial one does, with a snapshot and without one, for each kind of file: no header, an old version, no records,
+// a header alone, a header and one entry, and a last line cut short. It leaves no goroutine behind. Without a snapshot (none can be made: no
+// clone, no room, or a name taken, as on Windows when two loads in one clock tick took one name) both end with errSessionUnsnapshotted
+// whatever the file holds, and loadPersistedSession then reads the whole file: it returns what it returns with a snapshot.
 func TestParallelIndexStopsAsTheSerialLoadDoes(t *testing.T) {
 	data := parallelIndexFixture(t)
 	header, rest, _ := strings.Cut(string(data), "\n")
-	for name, content := range map[string]string{
-		"no header":    rest,
-		"old version":  strings.Replace(header, `"version":3`, `"version":2`, 1) + "\n" + rest,
-		"empty":        "",
-		"blank lines":  "\n\n",
-		"header alone": header + "\n",
-	} {
-		path := filepath.Join(t.TempDir(), "s.jsonl")
-		results := make([]string, 0, 2)
-		for _, batching := range []lineBatching{{workers: 1}, {batchBytes: 1, depth: 1, workers: 4}} {
-			if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
-				t.Fatal(err)
+	entry, _, _ := strings.Cut(rest, "\n")
+	const noRecords, migrate, unsnapshotted, loaded = "false session: no records", "false session: needs migration", "false session: no snapshot", "true <nil>"
+	rows := []struct {
+		name, content, withSnapshot string
+	}{
+		{"no header", rest, noRecords},
+		{"old version", strings.Replace(header, `"version":3`, `"version":2`, 1) + "\n" + rest, migrate},
+		{"empty", "", noRecords},
+		{"blank lines", "\n\n", noRecords},
+		{"header alone", header + "\n", loaded},
+		{"header and one entry", header + "\n" + entry + "\n", loaded},
+		{"last line cut short", header + "\n" + entry[:len(entry)/2], loaded},
+	}
+	// kept holds the sessions of the first mode, as Windows holds each snapshot open until its session is gone.
+	var kept []*Session
+	read := make(map[string]map[string]string)
+	for _, mode := range []string{"with a snapshot", "without a snapshot"} {
+		t.Run(mode, func(t *testing.T) {
+			if mode == "without a snapshot" {
+				withoutSnapshots(t)
 			}
-			session, err := streamSessionFileBatched(path, batching)
-			results = append(results, fmt.Sprintf("%v %v", session != nil, err))
-		}
-		if results[0] != results[1] {
-			t.Errorf("%s: serial load %s, parallel load %s", name, results[0], results[1])
+			for _, row := range rows {
+				path := filepath.Join(t.TempDir(), "s.jsonl")
+				want := row.withSnapshot
+				if mode == "without a snapshot" {
+					want = unsnapshotted
+				}
+				results := make([]string, 0, 2)
+				for _, batching := range []lineBatching{{workers: 1}, {batchBytes: 1, depth: 1, workers: 4}} {
+					if err := os.WriteFile(path, []byte(row.content), 0o600); err != nil {
+						t.Fatal(err)
+					}
+					session, err := streamSessionFileBatched(path, batching)
+					results = append(results, fmt.Sprintf("%v %v", session != nil, err))
+					kept = append(kept, session)
+				}
+				if results[0] != results[1] || results[0] != want {
+					t.Errorf("%s: serial load %s, parallel load %s, want both %s", row.name, results[0], results[1], want)
+				}
+				if err := os.WriteFile(path, []byte(row.content), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				session, empty, err := loadPersistedSession(path)
+				result := fmt.Sprintf("empty %v, error %v", empty, err)
+				if session != nil {
+					result += fmt.Sprintf(", header %s, entries %q", session.GetHeader().ID, entryJSONs(t, session))
+				}
+				if read[row.name] == nil {
+					read[row.name] = make(map[string]string)
+				}
+				read[row.name][mode] = result
+			}
+		})
+	}
+	for _, row := range rows {
+		if with, without := read[row.name]["with a snapshot"], read[row.name]["without a snapshot"]; with != without {
+			t.Errorf("%s: loadPersistedSession with a snapshot: %s; without one: %s", row.name, with, without)
 		}
 	}
+	runtime.KeepAlive(kept)
 	waitForGoroutines(t)
 }
 
