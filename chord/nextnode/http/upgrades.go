@@ -182,21 +182,45 @@ func NewUpgrades() *Upgrades {
 
 // Link upgrades request to the links endpoint: `host.accept` over the socket (its output capped) as the admitted principal,
 // with options' limits; ctx is the parent of the work on the link. checked is the router the check read. opened is `links.opened`: it
-// runs once the link is accepted and what it returns runs when the socket closes.
-func (u *Upgrades) Link(w nethttp.ResponseWriter, request *nethttp.Request, admission UpgradeAdmission, options LinkOptions, h host.Host, ctx context.Context, checked *Router, opened func() func()) {
+// runs once the link is accepted, with what terminates that link at once (as a revocation does: no close handshake a peer could
+// ignore; any goroutine, more than once), and what it returns runs when the socket closes, once.
+func (u *Upgrades) Link(w nethttp.ResponseWriter, request *nethttp.Request, admission UpgradeAdmission, options LinkOptions, h host.Host, ctx context.Context, checked *Router, opened func(closeLink func()) func()) {
 	maxPayload := options.MaxPayload
 	if maxPayload == 0 {
 		maxPayload = defaultLinkPayload
 	}
 	upgrade(w, request, maxPayload, func(socket *WebSocket) {
-		end := link.WebSocketLink(limitedSocket(socket))
-		connection := &upgraded{socket: socket, allowed: admission.Allowed, relay: admission.Relay, seal: end.Close, checked: checked.order}
+		linkEnd := link.WebSocketLink(limitedSocket(socket))
+		connection := &upgraded{socket: socket, allowed: admission.Allowed, relay: admission.Relay, seal: linkEnd.Close, checked: checked.order}
 		u.keep(connection)
-		if err := h.Accept(end, host.LinkOptions{Principal: admission.Principal, Limits: options.Limits}, ctx); err != nil {
+		if err := h.Accept(linkEnd, host.LinkOptions{Principal: admission.Principal, Limits: options.Limits}, ctx); err != nil {
 			socket.Terminate()
 		}
-		if closed := opened(); closed != nil {
-			socket.OnceClose(func(CloseEvent) { closed() })
+		// Node emits a terminated socket's `close` on a later turn, so what the hook returned is always registered in time; here the
+		// event comes from another goroutine and can come before the hook returned. The listener is attached first and takes what the
+		// hook returned when it is there; when the close came first, that function runs once the hook returned.
+		var mu sync.Mutex
+		var hooked func()
+		ended := false
+		socket.OnceClose(func(CloseEvent) {
+			mu.Lock()
+			ended = true
+			closed := hooked
+			mu.Unlock()
+			if closed != nil {
+				closed()
+			}
+		})
+		closed := opened(func() { end(connection) })
+		mu.Lock()
+		if ended {
+			mu.Unlock()
+			if closed != nil {
+				closed()
+			}
+		} else {
+			hooked = closed
+			mu.Unlock()
 		}
 		socket.Start()
 		u.recheck(connection)

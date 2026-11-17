@@ -199,6 +199,36 @@ func VariantNamesOf(variant *VariantData) VariantNames {
 
 var noNames = []string{}
 
+// MemberNameLists is the member names of one variant of a contract, by kind, in declared order: the result of MemberNamesOf (Pi's
+// contract.ts `MemberNames` type; Go's MemberNames is the function of history.ts's type of the same name, so this type is named
+// for what it holds).
+type MemberNameLists struct {
+	State   []string
+	Methods []string
+	Events  []string
+}
+
+// MemberNamesOf is the names of the state members, methods and event members of variant of a contract's current version, in the
+// order declared (a local contract has the one variant LocalVariant), for code that fills an implementation from another object's
+// members; a local contract's keyed and queries members are not among them (Pi's `memberNames(contract, variant = LOCAL)`: Go
+// has no default argument, and Go's MemberNames is taken by history.ts's type, as VariantNamesOf is the name of its kind). It
+// refuses a variant the contract does not have and a copy of a contract. The lists are the caller's own: none shares an array with
+// the contract, and a kind without members is an empty list, not nil.
+func MemberNamesOf(contract *Contract, variant string) (MemberNameLists, error) {
+	variants, err := CurrentVariants(contract)
+	if err != nil {
+		return MemberNameLists{}, err
+	}
+	found, ok := variants.Get(variant)
+	if !ok {
+		return MemberNameLists{}, fail("%s: no variant \"%s\"", contract.Name, variant)
+	}
+	return MemberNameLists{State: ownNames(found.State.Keys()), Methods: ownNames(found.Methods.Keys()), Events: ownNames(found.Events.Keys())}, nil
+}
+
+// ownNames is a copy of names that is never nil.
+func ownNames(names []string) []string { return append([]string{}, names...) }
+
 // CreateContract is a new contract handle for data.
 func CreateContract(data ContractData) *Contract {
 	data.Versions = slices.Clone(data.Versions)

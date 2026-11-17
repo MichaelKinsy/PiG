@@ -58,9 +58,12 @@ type LinksOptions struct {
 	Options LinkOptions
 	// OptionsFunc is per request and principal; an error is reported `hook_failed` and refuses the upgrade (403).
 	OptionsFunc func(request HttpRequest, principal data.Principal) (LinkOptions, error)
-	// Opened runs once a link is accepted (`links.opened`), with the request and the principal it acts as; the function it returns
-	// runs when the socket closes. An error is reported `hook_failed` and the link stays.
-	Opened func(request HttpRequest, principal data.Principal) (closed func(), err error)
+	// Opened runs once a link is accepted (`links.opened`), with the request, the principal it acts as and closeLink, which
+	// terminates that link at once (an app closing the links of a credential it revoked: no close handshake, the peer sees 1006;
+	// any goroutine may call it, later calls and calls after the link is gone do nothing); the function it returns runs when the
+	// socket closes, once, also when the hook ended the link before it returned. An error is reported `hook_failed` and the link
+	// stays.
+	Opened func(request HttpRequest, principal data.Principal, closeLink func()) (closed func(), err error)
 }
 
 // HttpErrorKind tells what an HttpError reports.
@@ -773,11 +776,11 @@ func (c *HttpComponent) upgradeSteps(w nethttp.ResponseWriter, r *nethttp.Reques
 			return
 		}
 		defer c.upgrades.release()
-		opened := func() func() {
+		opened := func(closeLink func()) func() {
 			if links.Opened == nil {
 				return nil
 			}
-			closed, err := tryOpened(links.Opened, webRequest, principal)
+			closed, err := tryOpened(links.Opened, webRequest, principal, closeLink)
 			if err != nil {
 				c.hookFailed(HookLinksOpened, "", err)
 				return nil
@@ -974,7 +977,7 @@ func panicError(recovered any) error {
 }
 
 // tryOpened is the `links.opened` hook as a call that cannot panic: a panic is its error (a thrown error of Pi's).
-func tryOpened(hook func(HttpRequest, data.Principal) (func(), error), request HttpRequest, principal data.Principal) (closed func(), err error) {
+func tryOpened(hook func(HttpRequest, data.Principal, func()) (func(), error), request HttpRequest, principal data.Principal, closeLink func()) (closed func(), err error) {
 	defer recoverAs(&err)
-	return hook(request, principal)
+	return hook(request, principal, closeLink)
 }

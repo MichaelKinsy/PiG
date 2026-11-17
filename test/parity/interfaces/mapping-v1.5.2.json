@@ -111387,7 +111387,7 @@
       "evidence": [
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyKindChanged",
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyedMappings",
-        "test:chord/next/contracts/declare_test.go#TestHostKeyedMembers"
+        "test:chord/next/contracts/contract_test.go#TestMemberNames"
       ]
     },
     {
@@ -111409,7 +111409,7 @@
       "evidence": [
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyKindChanged",
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyedMappings",
-        "test:chord/next/contracts/declare_test.go#TestHostKeyedMembers"
+        "test:chord/next/contracts/contract_test.go#TestMemberNames"
       ]
     },
     {
@@ -111431,7 +111431,7 @@
       "evidence": [
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyKindChanged",
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyedMappings",
-        "test:chord/next/contracts/declare_test.go#TestHostKeyedMembers"
+        "test:chord/next/contracts/contract_test.go#TestMemberNames"
       ]
     },
     {
@@ -128049,24 +128049,20 @@
     },
     {
       "id": "pkg:chord/http#LinksOptions",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:461e2f9e0d7b121ac88929de3766878e00b0651d33958d84ca8924131ab6873a",
-      "rationale": "Derived by the interface gap detector: LinksOptions is Go chord/nextnode/http/http.go#LinksOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/chord/src/node/http/http.ts:60-69) declares LinksOptions.opened as `(request: HttpRequest, principal: Principal) => (() => void) | undefined`; Pi main 5f89cc0a7df6 (http.ts:68) declares `(request: HttpRequest, principal: Principal, close: () => void) => (() => void) | undefined`: the hook also gets a close that ends that one link (an app closing the links of a credential it revoked), and what it returns still runs when the link closes. PiG implements the successor, not the pin shape: http.LinksOptions (chord/nextnode/http/http.go) with Opened func(request HttpRequest, principal data.Principal, closeLink func()) (closed func(), err error); Options and OptionsFunc are the two arms of Pi options (a value and a function that returns it: Go has no sum, a field per arm says which is absent; OptionsFunc is read when set, its error is a throw reported hook_failed with the upgrade refused 403) and an error from Opened is a throw reported hook_failed with the link kept. The signature rules compare the Go three parameters with the pin two and refute the row (S4). Remove condition: when the pin moves past 5f89cc0a7df6 to a Pi release that carries this declaration the row derives as ported; delete this entry then. Exercised by the Go tests of each arm and of close (inside the hook, twice, after the peer closed, racing the peer, other links stay open).",
       "pigTargets": [
         "chord/nextnode/http/http.go#LinksOptions"
       ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/http/http.go#HttpComponent.upgradeSteps"
-      ],
       "evidence": [
-        "test:chord/nextnode/http/http_example_66_test.go#TestExample66WebSocketLimits",
-        "test:chord/nextnode/http/review_test.go#TestReviewAHostRemovedAndRestoredBetweenAnUpgradesCheckAndItsKeepEndsTheConnection",
-        "test:chord/nextnode/http/review_test.go#TestReviewARouterChangeBetweenAnUpgradesCheckAndItsKeepStillEndsTheConnection"
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointRefusesASocketWithoutAPrincipalFromAnotherOriginOrHostForeignOrWhoseLinksOptionsFails403",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointCallsOpenedOnceTheLinkIsAcceptedAndItsResultWhenTheSocketCloses",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointGivesOpenedWhatTerminatesThatLinkAtOnceTheOthersStayOpen",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointRunsWhatOpenedReturnedWhenItEndedTheLinkBeforeReturning",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointsCloseAfterThePeerClosedTheLinkDoesNothingAndClosedRanOnce",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointsCloseRacingThePeersCloseRunsClosedOnce"
       ]
     },
     {
