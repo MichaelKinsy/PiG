@@ -751,7 +751,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		// re-fire session_start for extensions.
 		// Mirrors upstream handleReloadCommand (interactive-mode.ts:6223)
 		// and session.reload() (agent-session.ts:3291).
-		Reload: func() error {
+		Reload: func() (reloadErr error) {
 			// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:handleReloadCommand
 			if m.runStreaming() {
 				m.showWarning("Wait for the current response to finish before reloading.")
@@ -768,6 +768,13 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			m.resetExtensionUI()
 			dismiss := m.beginReloadBlocker()
 			defer dismiss()
+			// Pi captured the editor it had when the box appeared (the default editor, after resetExtensionUI) and a failed reload focuses that one, not the
+			// editor a session_start handler installed meanwhile (dismissReloadBox(previousEditor), interactive-mode.ts:6702).
+			defer func() {
+				if reloadErr != nil && !m.tuiTornDown && !errors.Is(reloadErr, errInteractiveShutdown) && m.remoteEditor != nil {
+					m.setRemoteEditor(nil)
+				}
+			}()
 			m.reloadIssues = nil
 			m.extensionConflicts = nil
 			runner := m.newRunner
@@ -961,6 +968,9 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 					return nil
 				}
 				_, err := runner.Emit(ctx, extension.SessionStartEvent{Type: EventSessionStart, Reason: "reload"})
+				if err == nil {
+					err = m.awaitInstalledEditor(ctx)
+				}
 				// upstream: agent-session.ts:3620 (reload)
 				runner.ReportUnhandledMcpServers()
 				return err

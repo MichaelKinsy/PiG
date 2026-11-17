@@ -146,6 +146,9 @@ func (m *InteractiveMode) rebindSession(ctx context.Context, renderBeforeBind bo
 		if _, err := runner.Emit(ctx, event); err != nil {
 			return err
 		}
+		if err := m.awaitInstalledEditor(ctx); err != nil {
+			return err
+		}
 		// upstream: agent-session.ts:3207 (bindExtensions)
 		runner.ReportUnhandledMcpServers()
 		if runner.HasHandlers(EventResourcesDiscover) && !runner.IsStale() {

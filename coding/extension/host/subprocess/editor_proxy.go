@@ -390,6 +390,23 @@ func (b *UIBridge) activeEditor() extension.RemoteEditor {
 	return b.editor
 }
 
+// AwaitEditorInstalled returns once the editor an extension installed has been bound by the host (or has gone away), so that a caller that continues
+// after the install, as Pi's synchronous setCustomEditorComponent does, finds it in place. A UI that is not ready installs it when it becomes so: no wait.
+func (b *UIBridge) AwaitEditorInstalled(ctx context.Context) error {
+	b.mu.RLock()
+	editor, ready := b.editor, b.uiReady
+	b.mu.RUnlock()
+	if editor == nil || !ready {
+		return nil
+	}
+	select {
+	case <-editor.bound:
+		return nil
+	case <-ctx.Done():
+		return context.Cause(ctx)
+	}
+}
+
 // handleEditorBase runs a delegated component's base-editor call on the host's stock editor.
 func (b *UIBridge) handleEditorBase(ctx context.Context, extName string, owner *Conn, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {

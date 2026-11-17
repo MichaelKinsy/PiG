@@ -66,3 +66,29 @@ func TestSyncAutocompleteNamesTheExtensionWhoseEditorRefused(t *testing.T) {
 		})
 	}
 }
+
+// Pi's session_start handler installs its editor synchronously, so the bind that continues after the emit finds it in place. The install here is a notice the
+// owner loop applies later; the awaiting caller returns only once the host bound the editor (or it went away), and not for a UI that is not ready.
+func TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor(t *testing.T) {
+	bridge := NewUIBridge(func() {})
+	proxy := &editorProxy{bound: make(chan struct{})}
+	bridge.mu.Lock()
+	bridge.editor, bridge.uiReady = proxy, true
+	bridge.mu.Unlock()
+
+	waiting, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+	if err := bridge.AwaitEditorInstalled(waiting); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("an editor the host has not bound must be waited for, got %v", err)
+	}
+	proxy.releaseBound()
+	if err := bridge.AwaitEditorInstalled(t.Context()); err != nil {
+		t.Fatalf("a bound editor is in place: %v", err)
+	}
+	bridge.mu.Lock()
+	bridge.editor, bridge.uiReady = &editorProxy{bound: make(chan struct{})}, false
+	bridge.mu.Unlock()
+	if err := bridge.AwaitEditorInstalled(t.Context()); err != nil {
+		t.Fatalf("a UI that is not ready installs the editor when it becomes so: %v", err)
+	}
+}

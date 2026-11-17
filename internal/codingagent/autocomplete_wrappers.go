@@ -387,6 +387,19 @@ func (m *InteractiveMode) rebuildAutocompleteWrappers(base tui.AutocompleteProvi
 	})
 }
 
+// awaitInstalledEditor returns once the editor a session_start handler installed is in place. Pi's emit is an awaited call in one process, so the editor
+// is installed when the bind goes on to setupAutocompleteProvider; here the install is a notice that the owner loop applies after the emit returned, and a
+// provider rebuilt before it ran would never reach that editor. It runs off the owner loop, which serves the install meanwhile.
+func (m *InteractiveMode) awaitInstalledEditor(ctx context.Context) error {
+	if m.onOwnerLoop() {
+		return nil
+	}
+	if bridge, ok := m.opts.SubprocessUIBridge.(interface{ AwaitEditorInstalled(context.Context) error }); ok {
+		return bridge.AwaitEditorInstalled(ctx)
+	}
+	return nil
+}
+
 // resetAutocompleteWrappers releases the old generation before resource reload and restores the local provider.
 func (m *InteractiveMode) resetAutocompleteWrappers() {
 	if m.autocompleteEpochCancel != nil {
