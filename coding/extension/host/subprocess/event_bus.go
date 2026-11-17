@@ -712,10 +712,15 @@ func (h *Host) applyReportError(me *managedExt, conn *Conn, args json.RawMessage
 	if json.Unmarshal(args, &report) != nil || report.Event == "" {
 		return
 	}
-	h.reportExtensionError(h.reportOwner(me, report.Extension), report.Event, report.Error, report.Stack)
+	owner := h.reportOwner(me, report.Extension)
+	if owner == nil {
+		reportEventBusError(report.Event, fmt.Errorf("report_error names the extension %q, which does not run in the process of %s: reported as %s's error", report.Extension, me.config.Name, me.config.Name))
+		owner = me
+	}
+	h.reportExtensionError(owner, report.Event, report.Error, report.Stack)
 }
 
-// reportOwner is the extension whose error a report_error notification on me's connection is: me, or the extension the report names (ReportErrorPayload.Extension) when it runs in me's own process. A name that is no loaded extension or runs in another process has no owner: nil.
+// reportOwner is the extension whose error a report_error notification on me's connection is: me, or the extension the report names (ReportErrorPayload.Extension) when it runs in me's own process (the shared realm of a Node cell). A name that is no loaded extension or runs in another process has no owner: nil.
 func (h *Host) reportOwner(me *managedExt, name string) *managedExt {
 	if name == "" || name == me.config.Name {
 		return me
@@ -728,3 +733,4 @@ func (h *Host) reportOwner(me *managedExt, name string) *managedExt {
 	}
 	return member
 }
+// A report is never lost for the extension it names: a name (ReportErrorPayload.Extension) that is no extension of this connection's own process is ignored, the report is applied as the connection's own extension's, in its place in the order, and the refused name is written to stderr with the host's other bus failures (reportEventBusError).

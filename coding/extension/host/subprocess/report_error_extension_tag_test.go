@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -8,11 +9,13 @@ import (
 
 // The in-heap pi.events bus of a shared Node realm runs the listener of one extension inside the emit of another, so Pi's synchronous reportError of that
 // listener is ordered before the emitter's response only on the emitter's connection: the runtime sends the report there and names the extension whose
-// listener failed (ReportErrorPayload.Extension). The host takes the name for that extension's own error when it runs in the connection's process, and
-// drops a name it does not know or one that runs elsewhere, as it drops any malformed report.
+// listener failed (ReportErrorPayload.Extension). That is not multi-registration: the host takes the name only for an extension of the connection's own
+// process (the shared realm); any other name is ignored, the report is applied as the connection's own extension's, in its place in the order, and the
+// refused name is written to stderr with the bus's other failures.
 
-// mutation-checked: a host that reports every report as the connection's own extension's (ignoring ReportErrorPayload.Extension) reports all four names under the connection's path.
-func TestReportErrorNotifyNamingAnotherExtensionIsThatExtensionsErrorInItsProcessOnly(t *testing.T) {
+// reportErrorSiblingRig is a report_error rig whose host also knows a sibling of the connection's own process and an extension of another process.
+func reportErrorSiblingRig(t *testing.T) (*reportErrorRig, func(method string, args any), *managedExt) {
+	t.Helper()
 	rig, send := newReportErrorRig(t)
 	sibling := &managedExt{config: ExtConfig{Name: "sibling", Path: "/sibling.mjs"}, host: rig.h, procOwner: rig.me}
 	foreign := &managedExt{config: ExtConfig{Name: "foreign", Path: "/foreign.mjs"}, host: rig.h}
@@ -20,9 +23,13 @@ func TestReportErrorNotifyNamingAnotherExtensionIsThatExtensionsErrorInItsProces
 	rig.h.exts["sibling"] = sibling
 	rig.h.exts["foreign"] = foreign
 	rig.h.mu.Unlock()
+	return rig, send, sibling
+}
+
+// mutation-checked: a host that reports every report as the connection's own extension's (ignoring ReportErrorPayload.Extension) reports the sibling's under the connection's path.
+func TestReportErrorNotifyNamingAnotherExtensionIsThatExtensionsErrorInItsProcessOnly(t *testing.T) {
+	rig, send, sibling := reportErrorSiblingRig(t)
 	send(NotifyReportError, `{"event":"events:ch","error":"by the sibling","extension":"sibling"}`)
-	send(NotifyReportError, `{"event":"events:ch","error":"by another process","extension":"foreign"}`)
-	send(NotifyReportError, `{"event":"events:ch","error":"by nobody","extension":"nobody"}`)
 	send(NotifyReportError, `{"event":"events:ch","error":"by itself","extension":"old"}`)
 	send(NotifyReportError, `{"event":"events:ch","error":"by the connection"}`)
 	got := rig.settled(t, send, "probe")
@@ -34,11 +41,48 @@ func TestReportErrorNotifyNamingAnotherExtensionIsThatExtensionsErrorInItsProces
 		{ExtensionPath: own, Event: "events:ch", Error: "by the connection"},
 	}
 	if len(got) != len(want) {
-		t.Fatalf("reported %+v, want %+v (a name of another process or of no extension is dropped)", got, want)
+		t.Fatalf("reported %+v, want %+v", got, want)
 	}
 	for i := range want {
 		if got[i] != want[i] {
 			t.Errorf("report %d = %+v, want %+v", i, got[i], want[i])
 		}
+	}
+}
+
+// A tag that does not name an extension of the connection's own process is never attributed to the extension it names: the report is the connection's own extension's (a process that sent the report did send it, and an error report is not lost), in order, and the refused name is written to stderr.
+//
+// mutation-checked: a host that takes any tag (no check that the named extension runs in the connection's process) attributes the foreign extension's name to /foreign.mjs; a host that drops the report loses "by another process" and "by nobody".
+func TestReportErrorNotifyNamingAnExtensionOutsideTheConnectionsProcessIsTheConnectionsOwnAndTheNameIsRefused(t *testing.T) {
+	collect := swapStd(t)
+	rig, send, _ := reportErrorSiblingRig(t)
+	send(NotifyReportError, `{"event":"events:ch","error":"first"}`)
+	send(NotifyReportError, `{"event":"events:ch","error":"by another process","extension":"foreign"}`)
+	send(NotifyReportError, `{"event":"events:ch","error":"by nobody","extension":"nobody"}`)
+	send(NotifyReportError, `{"event":"events:ch","error":"last"}`)
+	got := rig.settled(t, send, "probe")
+	_, stderr := collect()
+	own, _ := extensionSourcePaths(rig.me.config)
+	want := []extension.ExtensionError{
+		{ExtensionPath: own, Event: "events:ch", Error: "first"},
+		{ExtensionPath: own, Event: "events:ch", Error: "by another process"},
+		{ExtensionPath: own, Event: "events:ch", Error: "by nobody"},
+		{ExtensionPath: own, Event: "events:ch", Error: "last"},
+	}
+	if len(got) != len(want) {
+		t.Fatalf("reported %+v, want %+v (a refused name is the connection's own extension's report, in order)", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("report %d = %+v, want %+v", i, got[i], want[i])
+		}
+	}
+	for _, refused := range []string{`"foreign"`, `"nobody"`} {
+		if !strings.Contains(stderr, refused) {
+			t.Errorf("stderr = %q, want the refused name %s written to it", stderr, refused)
+		}
+	}
+	if strings.Contains(stderr, `"sibling"`) || strings.Contains(stderr, "first") {
+		t.Errorf("stderr = %q, want only the refused names", stderr)
 	}
 }

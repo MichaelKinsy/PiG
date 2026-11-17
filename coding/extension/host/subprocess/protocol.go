@@ -997,10 +997,16 @@ type ReportErrorPayload struct {
 	Event string `json:"event"`
 	Error string `json:"error"`
 	Stack string `json:"stack,omitempty"`
-	// Extension names the extension whose listener failed when the report travels on the connection of another extension of the same process. The in-heap
-	// pi.events bus of a shared Node realm runs a listener inside the emit of the extension that emitted, and Pi reports its error before that emit returns, so
-	// the report must precede the emitter's response, which only the emitter's own connection orders. Empty means the connection's own extension. The host
-	// reports the error as that extension's when it runs in the connection's process and drops a name it does not know or one that runs in another process.
+	// Extension names the extension whose listener failed when the report travels on the connection of another extension of the same shared Node realm.
+	// The in-heap pi.events bus of a shared realm runs a listener inside the emit of the extension that emitted, and Pi reports its error before that emit
+	// returns, so the report must precede the emitter's response, which only the emitter's own connection orders. Empty means the connection's own extension.
+	// This is not multi-registration or cross-extension targeting: every extension of a cell keeps its own connection and registers, serves its tools,
+	// events and requests only on it, and no request is addressed to another extension. Only this error report of a listener that ran inside another
+	// extension's emit names its owner, and only the Node runtime sends it: the Go, Python, Rust and Lisp SDKs send no report_error at all (their
+	// handlers run inside the host's events.dispatch request and fail it). The host takes the name for that extension's error only when the extension is
+	// of the connection's own process; any other name (an extension the host does not know, or one that runs in another process) is ignored, the report is
+	// applied as the connection's own extension's in its place in the order, and the refused name is written to stderr like the bus's other failures
+	// (a notification has no reply to carry a refusal). A report without a name is the connection's own, as before.
 	Extension string `json:"extension,omitempty"`
 }
 
