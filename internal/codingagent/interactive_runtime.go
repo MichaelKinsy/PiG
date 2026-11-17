@@ -74,8 +74,7 @@ type InteractiveReplacement struct {
 	ReloadBuiltinExtensions func() []extension.Extension
 	SubprocessUIBridge      SubprocessUIBridge
 	SubprocessHost          SubprocessHost
-	// ModelBuilder is InteractiveOptions.ModelBuilder of the replacement Session's services: the selector lists from the replacement's registry (ModelRegistry, ModelCatalog), so it builds from it too.
-	ModelBuilder            func(spec string) (*ai.Model, error)
+	ModelBuilder            func(spec string) (*ai.Model, error) // over the replacement Session's services, as the selector lists from its registry
 	ModelLookup             func(providerID, modelID string) *ai.Model
 	ModelCatalog            func(providerID ...string) []*ai.Model
 	ModelClassify           func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
