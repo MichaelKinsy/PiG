@@ -23681,6 +23681,26 @@
       ]
     },
     {
+      "id": "BF-8682e68",
+      "title": "A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses…",
+      "symptom": "A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses the tool's `prepare_loadout` and `reaches_tools` hooks: the host asked for hooks the extension had dropped and kept the registered description, and the tool's `reaches_tools` calls failed.",
+      "rootCause": "tool_renderers registers the tool again with its renderers and passed only the prepare_arguments handler along, so the registration dropped the prepare_loadout and reaches_tools handlers of the tool while its declaration still asked the host for them. The host asked for a hook the extension no longer had and kept the registered description.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses the tool's `prepare_loadout` and `reaches_tools` hooks: the host asked for hooks the extension had dropped and kept the registered description, and the tool's `reaches_tools` calls failed. \u003c!-- cause: tool_renderers registered the tool again with its renderers and passed only the prepare_arguments handler along, so the registration dropped the tool's prepare_loadout and reaches_tools handlers while its declaration still asked the host for them; the fault is in tag v0.7.0 --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8682e68e2b",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-869cef8",
       "title": "A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of…",
       "symptom": "A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of unknown type, instead of ending the reply with a JSON decode error.",
