@@ -3,14 +3,12 @@ package main
 import (
 	"encoding/json"
 	"errors"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 // mutant is a reviewed one-site edit of a cited Go file: Old occurs exactly once in File and New replaces it. A test that carries a
@@ -68,7 +66,7 @@ var diskMarkers = []string{
 // connect. They count only when no test ran: a test that ran and failed an assertion may legitimately print a dial error.
 var toolchainMarkers = []string{
 	"signal: killed", "internal compiler error", "failed to trim cache", "build cache is required", "dial tcp", "i/o timeout",
-	"no such host", "TLS handshake timeout",
+	"no such host", "TLS handshake timeout", "GOCACHEPROG",
 }
 
 // infraFailure says why a go command's result is an infrastructure failure, or "" when it is a result about the code: a failing
@@ -133,10 +131,11 @@ func killed(root string, res result, mu mutant, replays *replayCaches) (dead boo
 		cmd := exec.Command("go", "test", "-count=1", "-overlay="+overlayFile, "-run", "^("+strings.Join(names, "|")+")$", "./"+d)
 		cmd.Dir = root
 		cmd.Env = evidenceEnv(dir)
-		cache, release := replays.acquire(cmd.Env)
-		if cache != "" {
-			cmd.Env = append(cmd.Env, "GOCACHE="+cache)
+		add, release, err := replays.acquire(cmd.Env)
+		if err != nil {
+			return false, "preparing the replay's build cache: " + err.Error(), ""
 		}
+		cmd.Env = append(cmd.Env, add...)
 		out, err := cmd.CombinedOutput()
 		release()
 		if why := infraFailure(string(out), err); why != "" {
@@ -182,146 +181,4 @@ func replayNote(out string, err error) string {
 func assertionFailure(out string) bool {
 	return strings.Contains(out, "--- FAIL") && !strings.Contains(out, "[build failed]") && !strings.Contains(out, "\npanic: ") &&
 		!strings.HasPrefix(out, "panic: ")
-}
-
-// replayCaches keeps the mutant replays of a shard from filling the disk. A replay recompiles the mutated package and everything that
-// imports it into the Go build cache, and no later replay reads those entries: a shard with hundreds of replays would grow the shared
-// cache by gigabytes nothing reuses (a GitHub runner's disk ran out that way). Replays therefore compile into one hard-linked clone of
-// the cache, made when the first replay starts: it costs no space and every entry the shared cache holds is still a hit. Every
-// replaysPerTrim replays, while none runs, the entries the replays added are removed from the clone, and the clone is removed at the
-// end. The shared cache is never written to or trimmed, so a build running beside the check loses nothing and gains nothing.
-type replayCaches struct {
-	every  int
-	mu     sync.RWMutex // replays hold it shared; a trim or the final removal holds it exclusively
-	initMu sync.Mutex   // guards the clone's creation
-	src    string
-	dir    string
-	failed bool // the clone could not be made: replays use the shared cache
-	cnt    sync.Mutex
-	done   int // replays since the last trim
-}
-
-// replaysPerTrim is how many replays may add entries to the clone before they are removed.
-const replaysPerTrim = 16
-
-func newReplayCaches() *replayCaches { return &replayCaches{every: replaysPerTrim} }
-
-// acquire returns the GOCACHE a replay must use and the function that gives it back; "" means the shared cache (the cache is disabled,
-// missing, or the filesystem refuses hard links). A nil *replayCaches always answers that.
-func (c *replayCaches) acquire(env []string) (cache string, release func()) {
-	none := func() {}
-	if c == nil {
-		return "", none
-	}
-	src := ""
-	for _, kv := range slices.Backward(env) {
-		if v, ok := strings.CutPrefix(kv, "GOCACHE="); ok {
-			src = v
-			break
-		}
-	}
-	if src == "" || src == "off" {
-		return "", none
-	}
-	c.initMu.Lock()
-	if c.dir == "" && !c.failed {
-		if dir, err := cloneBuildCache(src); err != nil {
-			c.failed = true
-		} else {
-			c.src, c.dir = src, dir
-		}
-	}
-	dir := c.dir
-	c.initMu.Unlock()
-	if dir == "" {
-		return "", none
-	}
-	c.mu.RLock()
-	return dir, func() {
-		c.mu.RUnlock()
-		c.cnt.Lock()
-		c.done++
-		due := c.done >= c.every
-		c.cnt.Unlock()
-		if due {
-			c.trim()
-		}
-	}
-}
-
-// trim removes from the clone every file that is not a link to the same file of the shared cache, once the replays running now have
-// finished: what the replays compiled. A shared entry that was deleted since the clone was made goes too, which only costs a rebuild.
-func (c *replayCaches) trim() {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.cnt.Lock()
-	c.done = 0
-	c.cnt.Unlock()
-	if c.dir == "" {
-		return
-	}
-	_ = filepath.WalkDir(c.dir, func(p string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil
-		}
-		rel, rerr := filepath.Rel(c.dir, p)
-		if rerr != nil {
-			return nil
-		}
-		mine, e1 := os.Lstat(p)
-		twin, e2 := os.Lstat(filepath.Join(c.src, rel))
-		if e1 == nil && (e2 != nil || !os.SameFile(mine, twin)) {
-			_ = os.Remove(p)
-		}
-		return nil
-	})
-}
-
-// close removes the clone.
-func (c *replayCaches) close() {
-	if c == nil {
-		return
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.dir != "" {
-		_ = os.RemoveAll(c.dir)
-		c.dir = ""
-	}
-}
-
-// cloneBuildCache hard-links every file of the Go build cache at src into a new directory beside it (the same filesystem) and returns
-// that directory. Cache entries are written once and never changed, so the clone and the original can share their files. It fails, and
-// leaves nothing behind, when the cache is missing or the filesystem refuses the links.
-func cloneBuildCache(src string) (clone string, err error) {
-	if _, err := os.Stat(src); err != nil {
-		return "", err
-	}
-	clone, err = os.MkdirTemp(filepath.Dir(src), ".portmap-gocache-")
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		if err != nil {
-			_ = os.RemoveAll(clone)
-			clone = ""
-		}
-	}()
-	err = filepath.WalkDir(src, func(p string, d fs.DirEntry, werr error) error {
-		if werr != nil {
-			return werr
-		}
-		rel, rerr := filepath.Rel(src, p)
-		if rerr != nil {
-			return rerr
-		}
-		if d.IsDir() {
-			return os.MkdirAll(filepath.Join(clone, rel), 0o755)
-		}
-		if !d.Type().IsRegular() {
-			return nil
-		}
-		return os.Link(p, filepath.Join(clone, rel))
-	})
-	return clone, err
 }
