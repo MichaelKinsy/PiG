@@ -266,6 +266,29 @@
         when (and text (not (equal (to-json message) text)))
           collect (obj "at" at "message" message)))
 
+(defparameter *member-events* '("message_start" "message_update" "turn_start" "agent_start" "agent_end")
+  "The events whose own members a handler may assign, reassign or delete for the later handlers of the dispatch: Pi hands every handler of an emit the one event object (runner.ts emit).")
+
+(defun snapshot-event-members (data)
+  "The members of an event as the handler receives them, as an alist of (name . value)."
+  (let (members) (maphash (lambda (name value) (push (cons name value) members)) data) members))
+
+(defun same-member (was now)
+  "Whether the handler left a member as it received it: a string or a number by value, a table or a vector by identity (an edit inside a message is carried by the message entries)."
+  (or (eq was now)
+      (and (stringp was) (stringp now) (string= was now))
+      (and (numberp was) (numberp now) (eql was now))))
+
+(defun event-member-edits (data before)
+  "The members the handler left different from the ones it received, as the second form of the reply's _pigEventEdits entries: {member, value} for one it added or reassigned, {member, deleted: true} for one it deleted."
+  (let (edits)
+    (dolist (entry before)
+      (multiple-value-bind (now present) (gethash (car entry) data)
+        (cond ((not present) (push (obj "member" (car entry) "deleted" t) edits))
+              ((not (same-member (cdr entry) now)) (push (obj "member" (car entry) "value" now) edits)))))
+    (maphash (lambda (name value) (unless (assoc name before :test #'equal) (push (obj "member" name "value" value) edits))) data)
+    (nreverse edits)))
+
 (defun messages-encoding (messages)
   (handler-case (to-json messages) (error () nil)))
 
@@ -350,6 +373,7 @@
         ((member event '("message_start" "message_end" "agent_end") :test #'equal)
          (let* ((messages (event-edit-messages event data))
                 (before (snapshot-event-messages messages))
+                (members-before (and (member event *member-events* :test #'equal) (snapshot-event-members data)))
                 result error-message)
            (handler-case
                (progn (ticket-begin (request-ticket (ctx-request ctx)))
@@ -357,7 +381,8 @@
              (serious-condition (c) (setf error-message (condition-message c))))
            (let ((reply (obj "_pigEventResult" result)))
              (handler-case
-                 (let ((edits (event-message-edits messages before)))
+                 (let ((edits (append (event-message-edits messages before)
+                                      (and members-before (event-member-edits data members-before)))))
                    (when edits (setf (gethash "_pigEventEdits" reply) (coerce edits 'vector))))
                (serious-condition (c) (unless error-message (setf error-message (condition-message c)))))
              (values reply error-message))))
@@ -391,6 +416,16 @@
                (setf (gethash "_pigToolResultEdits" reply)
                      (obj "members" members "changed" (coerce (nreverse changed) 'vector) "shared" (coerce (nreverse shared) 'vector))))
              (values reply error-message))))
+        ;; message_update, turn_start and agent_start (message_start and agent_end are above): a member a handler assigns, reassigns or deletes is what the later handlers of the dispatch see (runner.ts emit), also from a handler that failed.
+        ((member event '("message_update" "turn_start" "agent_start") :test #'equal)
+         (let ((before (snapshot-event-members data)) result error-message)
+           (handler-case
+               (progn (ticket-begin (request-ticket (ctx-request ctx)))
+                      (setf result (funcall handler ctx data)))
+             (serious-condition (c) (setf error-message (condition-message c))))
+           (let ((edits (handler-case (event-member-edits data before)
+                          (serious-condition (c) (unless error-message (setf error-message (condition-message c))) nil))))
+             (values (if edits (obj "_pigEventEdits" (coerce edits 'vector) "_pigEventResult" result) result) error-message))))
         (t
          (let* ((messages (jget data "messages"))
                 (context-event (member event '("context" "context_with_system") :test #'equal))
