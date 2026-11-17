@@ -2695,18 +2695,33 @@ allocs = 12
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
-benchmark = "BenchmarkReload_PackedCellWarmCache/fixed"
-allocs = 1490
+benchmark = "BenchmarkReload_PackedCellWarmCache/checkout-fixed"
+allocs = 1437
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
-benchmark = "BenchmarkReload_PackedCellWarmCache/per-100-sdk-files"
-allocs = 1105
+benchmark = "BenchmarkReload_PackedCellWarmCache/checkout-per-10-sdk-dirs"
+allocs = 120
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/checkout-per-100-sdk-files"
+allocs = 1103
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/fixed"
+allocs = 1400
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkReload_PackedCellWarmCache/per-10-sdk-dirs"
 allocs = 120
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/per-100-sdk-files"
+allocs = 601
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"

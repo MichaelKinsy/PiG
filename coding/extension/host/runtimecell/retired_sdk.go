@@ -19,7 +19,7 @@ func RetiredStagedSDK(dir, stagedDir string) bool {
 		return false
 	}
 	area := filepath.Dir(filepath.Clean(stagedDir))
-	if filepath.Base(area) != "pigsdk" || filepath.Base(filepath.Dir(area)) != "state" {
+	if !isSDKStagingArea(area) {
 		return false
 	}
 	canonicalArea, err := filepath.EvalSymlinks(area)
@@ -38,6 +38,12 @@ func RetiredStagedSDK(dir, stagedDir string) bool {
 		current = resolved
 	}
 	return !pathWithin(current, canonicalDir)
+}
+
+// isSDKStagingArea reports whether dir is a staging area, <config root>/state/pigsdk, which holds one directory for each SDK a build of the host
+// staged.
+func isSDKStagingArea(dir string) bool {
+	return filepath.Base(dir) == "pigsdk" && filepath.Base(filepath.Dir(dir)) == "state"
 }
 
 // ambientStagedSDKDir is the current staging directory for lang under the
