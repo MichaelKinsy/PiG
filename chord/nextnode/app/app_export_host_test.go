@@ -1,10 +1,8 @@
 package app
 
 import (
-	"bytes"
 	"context"
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"slices"
@@ -22,7 +20,7 @@ import (
 // Ports packages/chord/test/node/app/app.test.ts "export and import per address" (Pi 8a5da3ce6), the parts about the server's records
 // and rows belonging to an address: copied, refused, replaced and deleted with it, and the order of an import and a delete around the
 // server's commit. The server's data is two parts here (D462): the NodeHost's (a plugin's documents and rows, `server.archive`) and the
-// Go host's (`kit-server.archive`); the NodeHost's part is Pi's TypeScript at the 1.5.2 pin, reached through the process's control requests (plugins.NodeHost.ExportHostData
+// Go host's (the owners it serves; `server.archive` holds both, as Pi's one host's does); the NodeHost's part is Pi's TypeScript at the 1.5.2 pin, reached through the process's control requests (plugins.NodeHost.ExportHostData
 // and its siblings).
 
 // metaStore is the Go form of the meta plugin's server object (`MetaStore`; contracts are data).
@@ -295,11 +293,10 @@ func TestUnknownImportErrorKeepsTheCommitsRejectionAsItsCause(t *testing.T) {
 	}
 }
 
-// goHost is the app's Go host with its host data operations watched or failing.
+// goHost is the app's Go host with its host data import failing.
 type goHost struct {
 	host.Host
 	importErr error
-	deleted   []string
 }
 
 func (h *goHost) ImportHostData(parts store.PartSource, ctx context.Context, options store.HostImportOptions) (store.HostDataCounts, error) {
@@ -307,11 +304,6 @@ func (h *goHost) ImportHostData(parts store.PartSource, ctx context.Context, opt
 		return store.HostDataCounts{}, h.importErr
 	}
 	return h.Host.ImportHostData(parts, ctx, options)
-}
-
-func (h *goHost) DeleteHostData(address contracts.Address, ctx context.Context, options host.HostDeleteOptions) (store.HostDataCounts, error) {
-	h.deleted = append(h.deleted, address.Key)
-	return h.Host.DeleteHostData(address, ctx, options)
 }
 
 // exportedProject exports project p1 (with notes) of a started app: its archive's path.
@@ -431,26 +423,31 @@ func textOfProject(t *testing.T, s started, id string) string {
 	return text
 }
 
-// An archive without the Go host's part replaces the Go host's data of the address by nothing under replace: Pi's replace removes the
-// address's data.
+// An archive with no records of the Go host's owners replaces the Go host's data of the address by nothing under replace: Pi's replace
+// removes the address's data. Without replace the Go host's refusal is asked all the same (the next test).
 func TestAppReplacesTheGoHostsDataByNothingWhenTheArchiveHasNoPartOfIt(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin}, projectOptions(t))
 	archive := exportedProject(t, s)
-	without := filepath.Join(t.TempDir(), "without.tar")
-	copyWithout(t, archive, without, "kit-server.archive")
-	watching := &goHost{Host: s.app.Host}
-	s.app.Host = watching
-	if err := s.app.ImportData(without, projectAddress("p2"), background); err != nil {
+	address := projectAddress("p2")
+	if err := s.app.ImportData(archive, address, background); err != nil {
 		t.Fatal(err)
 	}
-	if len(watching.deleted) != 0 {
-		t.Fatalf("a refusing import deleted the Go host's data of %v", watching.deleted)
+	goHostHolds(t, s, address)
+	goRows := func() int64 {
+		exported, err := s.app.Host.ExportHostData(address, background)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return describeParts(t, exported).Tables["test.go:rows"].Puts
 	}
-	if err := s.app.ImportData(without, projectAddress("p2"), background, DataImportOptions{Existing: store.ExistingReplace}); err != nil {
+	if got := goRows(); got != 1 {
+		t.Fatalf("the Go host holds %d rows of p2 before the replace, want 1", got)
+	}
+	if err := s.app.ImportData(archive, address, background, DataImportOptions{Existing: store.ExistingReplace}); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(watching.deleted, []string{"project|p2"}) {
-		t.Fatalf("the Go host deleted the data of %v, want project|p2", watching.deleted)
+	if got := goRows(); got != 0 {
+		t.Fatalf("the Go host holds %d rows of p2 after the replace, want none", got)
 	}
 }
 
@@ -480,8 +477,8 @@ func goHostHolds(t *testing.T, s started, address contracts.Address) {
 }
 
 // Pi's `importHostData` refuses an address that has data in the store with existing refuse whatever the archive holds. An archive Pi
-// made has no `kit-server.archive`: the Go host's refusal is still asked, and when it refuses after the NodeHost's part was imported
-// the NodeHost is rolled back (its data of the address as before, the old directory back).
+// made (its `server.archive` has no record of an owner the Go host serves) still has the Go host's refusal asked, and when it refuses after
+// the NodeHost's part was imported the NodeHost is rolled back (its data of the address as before, the old directory back).
 func TestAppRefusesAPiMadeArchiveWhenTheGoHostHoldsDataOfTheAddressAndRollsTheNodeHostBack(t *testing.T) {
 	s := startTestApp(t, map[string]map[string]string{"notes": notesPlugin, "meta": metaPlugin}, projectOptions(t))
 	meta, err := s.app.Node.Get(background, metaStore, delta.NewJsonObject(0), host.GetOptions{})
@@ -491,54 +488,14 @@ func TestAppRefusesAPiMadeArchiveWhenTheGoHostHoldsDataOfTheAddressAndRollsTheNo
 	defer meta.Release()
 	metaSet(t, meta, "p1", "first", "red")
 	archive := exportedProject(t, s)
-	piMade := filepath.Join(t.TempDir(), "pi-made.tar")
-	copyWithout(t, archive, piMade, "kit-server.archive")
 	goHostHolds(t, s, projectAddress("p3"))
-	err = s.app.ImportData(piMade, projectAddress("p3"), background)
+	err = s.app.ImportData(archive, projectAddress("p3"), background)
 	wantError(t, err, "project|p3 has data in this store")
 	if got := dirEntries(t, filepath.Join(s.dataDir, "workers", "project")); !slices.Equal(got, []string{"project%7Cp1"}) {
 		t.Fatalf("workers after the refused import = %v", got)
 	}
 	if title, labels := metaGet(t, meta, "p3"); title != "" || len(labels) != 0 {
 		t.Fatalf("p3 meta after the refused import = %q %v, want none (the NodeHost's part rolled back)", title, labels)
-	}
-}
-
-// copyWithout writes the archive at from to to, without the entry named skip.
-func copyWithout(t *testing.T, from, to, skip string) {
-	t.Helper()
-	in, err := os.Open(from)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = in.Close() }()
-	type kept struct {
-		path string
-		text []byte
-	}
-	var entries []kept
-	if err := ReadTar(in, func(entry TarRead) error {
-		text, err := io.ReadAll(entry.Data)
-		if entry.Kind != TarDirectory && entry.Path != skip {
-			entries = append(entries, kept{entry.Path, text})
-		}
-		return err
-	}); err != nil {
-		t.Fatal(err)
-	}
-	out, err := os.Create(to)
-	if err != nil {
-		t.Fatal(err)
-	}
-	all := func(yield func(TarEntry) bool) {
-		for _, entry := range entries {
-			if !yield(TarEntry{Path: entry.path, Size: int64(len(entry.text)), Data: bytes.NewReader(entry.text)}) {
-				return
-			}
-		}
-	}
-	if err := errors.Join(WriteTar(out, all), out.Close()); err != nil {
-		t.Fatal(err)
 	}
 }
 

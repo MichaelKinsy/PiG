@@ -29,6 +29,9 @@ import (
 //
 // Ports packages/chord/src/node/app/archive.ts (Pi 8a5da3ce6). Forced Go differences (language mechanics, as tar.go): streams are io.Readers
 // and the tar's entries a push; a context is a context.Context.
+//
+// The archive is Pi's, entry for entry (D462): a PiG host keeps its records in two stores, the archive holds them as one (archive_merge.go
+// writes them together, archive_split.go routes them to their stores by owner).
 
 const (
 	// ArchiveFormat is the kit's archive format version (2: `server.archive`).
@@ -65,9 +68,8 @@ func (m ArchiveManifest) text() []byte {
 }
 
 // PackData packs the host directory dir of a host that does not run (its worker's lock held: nothing writes it) into the archive
-// at path: manifest, its store's export, the server's part (the JSONL file server), the Go host's (kitServer, "": none) and its files.
-func PackData(ctx context.Context, dir string, manifest ArchiveManifest, server, kitServer, path string) error {
-	// pig divergence (D462): the server's part is two archive entries, the NodeHost's `server.archive` and the Go host's `kit-server.archive` ("": none).
+// at path: manifest, its stores' export (one `store.archive`), the server's part (the JSONL file server) and its files.
+func PackData(ctx context.Context, dir string, manifest ArchiveManifest, server, path string) error {
 	if !Exists(dir) {
 		return fmt.Errorf("exportData: %s has no data", manifest.Address.Key)
 	}
@@ -83,7 +85,7 @@ func PackData(ctx context.Context, dir string, manifest ArchiveManifest, server,
 	if err != nil {
 		return errors.Join(err, opened.Close(ctx))
 	}
-	packed := PackStore(ctx, opened, kit, filepath.Join(dir, "files"), manifest, server, kitServer, path)
+	packed := PackStore(ctx, opened, kit, filepath.Join(dir, "files"), manifest, server, path)
 	return errors.Join(packed, kitClose(), opened.Close(ctx))
 }
 
@@ -105,26 +107,25 @@ func openKitStore(ctx context.Context, dir string) (store.Store, func() error, e
 	return opened, func() error { return opened.Close(ctx) }, nil
 }
 
-// PackStore packs the open store, the kit's store beside it (nil: none), the server's part (the JSONL file server, the NodeHost's records
-// and rows belonging to the address), the Go host's part (kitServer, "": none) and the files directory files into the archive at path
-// (mode 0600, staged beside it and renamed): manifest, the store's export (one consistent point, written while the host runs on),
-// [`kit.archive`], `server.archive`, [`kit-server.archive`] and the finished files (uploads under way left out). The bracketed entries
-// are PiG's second store (D462). Both stores' commit queues are held (the first part of each export read)
-// before either archive is written, so the two are one point.
-func PackStore(ctx context.Context, opened, kit store.Store, files string, manifest ArchiveManifest, server, kitServer, path string) error {
+// PackStore packs the open store, the kit's store beside it (nil: none), the server's part (the JSONL file server: the records and rows
+// belonging to the address) and the files directory files into the archive at path (mode 0600, staged beside it and renamed): manifest,
+// `store.archive` (the two stores' export as one: one consistent point, written while the host runs on), `server.archive` and the
+// finished files (uploads under way left out). Both stores' commit queues are held (the first part of each export read) before either
+// is written, so the two are one point.
+func PackStore(ctx context.Context, opened, kit store.Store, files string, manifest ArchiveManifest, server, path string) error {
 	return packStores(ctx, kit, func(context.Context, string) (store.Store, func() error, error) {
 		return opened, func() error { return nil }, nil
-	}, files, manifest, server, kitServer, path)
+	}, files, manifest, server, path)
 }
 
-// PackRunning packs the host directory dir of a running worker into the archive at path: the manifest, the plugins' store (store.sqlite),
-// the kit's store `kit` (the live store of the worker's Go host) and the files. The plugins' store is held by the NodeHost, whose commit
-// queue is in another process, so it is read from a snapshot: the kit's commit queue is taken first, then SQLite copies the file at one
-// instant (`VACUUM INTO`, a read transaction that the NodeHost's writes do not disturb), and the copy is exported. The kit's writes
-// are held from before the snapshot until its archive is written, so the two archives are one point (D462: two stores, nothing commits
-// across them).
+// PackRunning packs the host directory dir of a running worker into the archive at path: the manifest, the plugins' store (store.sqlite)
+// and the kit's store `kit` (the live store of the worker's Go host) as one `store.archive`, the server's part and the files. The plugins'
+// store is held by the NodeHost, whose commit queue is in another process, so it is read from a snapshot: the kit's commit queue is taken
+// first, then SQLite copies the file at one instant (`VACUUM INTO`, a read transaction that the NodeHost's writes do not disturb), and the
+// copy is exported. The kit's writes are held from before the snapshot until its export is written, so the two exports are one point
+// (D462: two stores, nothing commits across them).
 // pig divergence (D462): a running worker's two stores are exported at one point by holding the kit's commit queue and snapshotting the plugins' file; Pi holds its one store's queue.
-func PackRunning(ctx context.Context, dir string, kit store.Store, manifest ArchiveManifest, server, kitServer, path string) error {
+func PackRunning(ctx context.Context, dir string, kit store.Store, manifest ArchiveManifest, server, path string) error {
 	return packStores(ctx, kit, func(ctx context.Context, staging string) (store.Store, func() error, error) {
 		snapshot := filepath.Join(staging, "snapshot.sqlite")
 		if err := snapshotDatabase(filepath.Join(dir, archiveStore), snapshot); err != nil {
@@ -139,7 +140,7 @@ func PackRunning(ctx context.Context, dir string, kit store.Store, manifest Arch
 			return nil, nil, err
 		}
 		return opened, func() error { return opened.Close(ctx) }, nil
-	}, filepath.Join(dir, "files"), manifest, server, kitServer, path)
+	}, filepath.Join(dir, "files"), manifest, server, path)
 }
 
 // snapshotDatabase writes a copy of the SQLite file at source, as of one instant, to the new file into. The source is opened read-only: its
@@ -153,28 +154,47 @@ func snapshotDatabase(source, into string) error {
 }
 
 // packStores is PackStore and PackRunning: the kit's export takes its commit queue first (when there is a kit store), then openPlugins
-// opens the plugins' store (staging is a private directory beside path to put a copy in; its close is called last), then both are
-// written.
-func packStores(ctx context.Context, kit store.Store, openPlugins func(ctx context.Context, staging string) (store.Store, func() error, error), files string, manifest ArchiveManifest, server, kitServer, path string) (err error) {
+// opens the plugins' store (staging is a private directory beside path to put a copy in; its close is called last), whose export takes its
+// own. The kit's export is then written to a file in staging (counting its documents: the merged manifest's next id needs them), which
+// gives its queue back, and the two are merged into the one `store.archive`: the kit's queue was held from before the plugins' snapshot to
+// the end of the kit's export, so the merged archive is one point of both stores.
+func packStores(ctx context.Context, kit store.Store, openPlugins func(ctx context.Context, staging string) (store.Store, func() error, error), files string, manifest ArchiveManifest, server, path string) (err error) {
 	staging, err := os.MkdirTemp(filepath.Dir(path), ".chord-export-")
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, os.RemoveAll(staging)) }()
-	var kitArchive *pendingArchive
+	var kitParts *lookahead
 	if kit != nil {
-		if kitArchive, err = beginStoreArchive(ctx, kit); err != nil {
+		if kitParts, err = beginExport(ctx, kit); err != nil {
 			return err
 		}
-		defer func() { err = errors.Join(err, kitArchive.close()) }()
+		defer func() { err = errors.Join(err, kitParts.Close()) }()
 	}
 	opened, closePlugins, err := openPlugins(ctx, staging)
 	if err != nil {
 		return err
 	}
 	defer func() { err = errors.Join(err, closePlugins()) }()
+	pluginParts, err := beginExport(ctx, opened)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, pluginParts.Close()) }()
+	var parts store.PartIterator = pluginParts
+	if kitParts != nil {
+		staged, err := stageParts(ctx, kitParts, filepath.Join(staging, "kit.part"), kitOwned)
+		if err != nil {
+			return err
+		}
+		source, err := openParts(staged.path)
+		if err != nil {
+			return err
+		}
+		parts = mergeParts(pluginParts, partsOf(source), staged.documents)
+	}
 	exported := filepath.Join(staging, "store.archive")
-	if err := writeStoreArchive(ctx, opened, exported); err != nil {
+	if err := writeParts(ctx, parts, exported); err != nil {
 		return err
 	}
 	info, err := os.Stat(exported)
@@ -184,23 +204,6 @@ func packStores(ctx context.Context, kit store.Store, openPlugins func(ctx conte
 	serverInfo, err := os.Stat(server)
 	if err != nil {
 		return err
-	}
-	var kitServerInfo os.FileInfo
-	if kitServer != "" {
-		if kitServerInfo, err = os.Stat(kitServer); err != nil {
-			return err
-		}
-	}
-	var kitExported string
-	var kitInfo os.FileInfo
-	if kitArchive != nil {
-		kitExported = filepath.Join(staging, "kit.archive")
-		if err := kitArchive.writeTo(ctx, kitExported); err != nil {
-			return err
-		}
-		if kitInfo, err = os.Stat(kitExported); err != nil {
-			return err
-		}
 	}
 	text := manifest.text()
 	written := filepath.Join(staging, "archive.tar")
@@ -222,17 +225,6 @@ func packStores(ctx context.Context, kit store.Store, openPlugins func(ctx conte
 		if !yield(TarEntry{Path: "store.archive", Size: info.Size(), Data: stored}) {
 			return
 		}
-		if kitArchive != nil {
-			kitStored, err := os.Open(kitExported)
-			if err != nil {
-				walked = err
-				return
-			}
-			defer func() { _ = kitStored.Close() }()
-			if !yield(TarEntry{Path: "kit.archive", Size: kitInfo.Size(), Data: kitStored}) {
-				return
-			}
-		}
 		served, err := os.Open(server)
 		if err != nil {
 			walked = err
@@ -241,17 +233,6 @@ func packStores(ctx context.Context, kit store.Store, openPlugins func(ctx conte
 		defer func() { _ = served.Close() }()
 		if !yield(TarEntry{Path: "server.archive", Size: serverInfo.Size(), Data: served}) {
 			return
-		}
-		if kitServer != "" {
-			kitServed, err := os.Open(kitServer)
-			if err != nil {
-				walked = err
-				return
-			}
-			defer func() { _ = kitServed.Close() }()
-			if !yield(TarEntry{Path: "kit-server.archive", Size: kitServerInfo.Size(), Data: kitServed}) {
-				return
-			}
 		}
 		walked = packedFiles(files, yield)
 	}
@@ -285,59 +266,18 @@ func writeParts(ctx context.Context, parts store.PartIterator, path string) (err
 	}
 }
 
-// pendingArchive is a store's export begun: its first chunk read, so the export holds the store's commit queue, until the archive is written
-// or closed.
-type pendingArchive struct {
-	source store.ByteSource
-	first  []byte
-	// started is false for an export that yielded nothing.
-	started bool
-}
-
-// beginStoreArchive starts the export of opened and reads its first chunk, which takes the commit queue.
-func beginStoreArchive(ctx context.Context, opened store.Store) (*pendingArchive, error) {
+// beginExport starts the export of opened and reads its first part, which takes the commit queue: the iterator holds the queue until it
+// is drained or closed.
+func beginExport(ctx context.Context, opened store.Store) (*lookahead, error) {
 	export, err := opened.Export(ctx)
 	if err != nil {
 		return nil, err
 	}
-	source := store.EncodeJsonl(export)
-	first, ok, err := source.Next(ctx)
-	if err != nil {
-		return nil, errors.Join(err, source.Close())
+	begun := &lookahead{parts: export}
+	if _, _, err := begun.peek(ctx); err != nil {
+		return nil, errors.Join(err, begun.Close())
 	}
-	return &pendingArchive{source: source, first: first, started: ok}, nil
-}
-
-// close ends the export (the queue given back when it is not drained yet).
-func (pending *pendingArchive) close() error { return pending.source.Close() }
-
-// writeTo writes the rest of the archive, as JSONL, to path (mode 0600).
-func (pending *pendingArchive) writeTo(ctx context.Context, path string) (err error) {
-	out, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, out.Close()) }()
-	chunk, ok := pending.first, pending.started
-	for ok {
-		if _, err := out.Write(chunk); err != nil {
-			return err
-		}
-		if chunk, ok, err = pending.source.Next(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// writeStoreArchive writes the store's export, as JSONL, to path (mode 0600).
-func writeStoreArchive(ctx context.Context, opened store.Store, path string) (err error) {
-	pending, err := beginStoreArchive(ctx, opened)
-	if err != nil {
-		return err
-	}
-	defer func() { err = errors.Join(err, pending.close()) }()
-	return pending.writeTo(ctx, path)
+	return begun, nil
 }
 
 // packedFiles yields the files under root as entries `files/<relative path>` (hidden ones, uploads under way, left out), each opened
@@ -424,17 +364,17 @@ type ImportLimits struct {
 }
 
 // UnpackStaging unpacks the archive at archive into a new staging directory in parent (mode 0700, files 0600): its manifest checked
-// by accept (an error refuses it), the store made from `store.archive`, `files/` restored, `server.archive` kept for the server, within
-// limits. Changes nothing else: a refused or broken archive leaves nothing. It returns the staging directory and its server parts'
-// paths (the NodeHost's `server.archive` and the Go host's `kit-server.archive`, "" when the archive has none, D462); the caller renames
-// it into place and then imports the server's parts.
-func UnpackStaging(ctx context.Context, archive, parent string, accept func(ArchiveManifest) error, limits ImportLimits) (staging, server, kitServer string, err error) {
+// by accept (an error refuses it), the stores made from `store.archive` (the plugins' `store.sqlite` and the kit's `kit.sqlite`, by owner:
+// importSplit), `files/` restored, `server.archive` kept for the server, within limits. Changes nothing else: a refused or broken archive
+// leaves nothing. It returns the staging directory and the path of the server's part in it; the caller renames the directory into place
+// and then imports the server's part.
+func UnpackStaging(ctx context.Context, archive, parent string, accept func(ArchiveManifest) error, limits ImportLimits) (staging, server string, err error) {
 	if err := PrivateDirectory(parent); err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 	made, err := os.MkdirTemp(parent, ".chord-import-")
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 	defer func() {
 		if err != nil {
@@ -442,42 +382,19 @@ func UnpackStaging(ctx context.Context, archive, parent string, accept func(Arch
 		}
 	}()
 	staging = made
-	// pig divergence (D462): the server's part is two entries, `server.archive` (the NodeHost's) and `kit-server.archive` (the Go host's, absent in an archive Pi made).
-	storeArchive, server, kitServer, err := unpackEntries(ctx, archive, staging, accept, limits)
+	storeArchive, server, err := unpackEntries(ctx, archive, staging, accept, limits)
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
-	// pig divergence (D462): the kit's store is `kit.sqlite`. An archive Pi made has one store.archive holding the kit's parts beside the
-	// plugins': they are routed by owner (importSplit). An archive PiG made has the kit's store as `kit.archive`.
-	kitArchive := filepath.Join(staging, "kit.archive")
-	haveKitArchive := Exists(kitArchive)
-	if haveKitArchive {
-		if err := PrivateStore(filepath.Join(staging, kitStore)); err != nil {
-			return "", "", "", err
-		}
-		if err := importStoreArchive(ctx, kitArchive, filepath.Join(staging, kitStore)); err != nil {
-			return "", "", "", err
-		}
-		if err := os.Remove(kitArchive); err != nil {
-			return "", "", "", err
-		}
-	}
-	if err := importSplit(ctx, storeArchive, staging, !haveKitArchive); err != nil {
-		return "", "", "", err
+	// pig divergence (D462): the kit's store is `kit.sqlite`; the one `store.archive` of an archive (Pi's shape) holds the kit's parts beside
+	// the plugins' and they are routed by owner.
+	if err := importSplit(ctx, storeArchive, staging); err != nil {
+		return "", "", err
 	}
 	if err := os.Remove(storeArchive); err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
-	return staging, server, kitServer, nil
-}
-
-// importStoreArchive makes the store at path from the JSONL archive at archive.
-func importStoreArchive(ctx context.Context, archive, path string) error {
-	source, err := openParts(archive)
-	if err != nil {
-		return err
-	}
-	return importParts(ctx, source, path)
+	return staging, server, nil
 }
 
 // importParts makes the store at path from parts (closed when the import ends: ImportStore closes it when it stops early).
@@ -516,10 +433,9 @@ func (f *fileBytes) Next(ctx context.Context) ([]byte, bool, error) {
 func (f *fileBytes) Close() error { return f.file.Close() }
 
 // unpackEntries writes the entries of archive into staging: the manifest first (checked by accept before any data is written),
-// then `store.archive`, `kit.archive` (optional), `server.archive`, `kit-server.archive` (optional) and `files/…`, within limits
-// (counted from the headers, before an entry is written). It returns the paths of the staged `store.archive`, `server.archive` and
-// `kit-server.archive` ("": none).
-func unpackEntries(ctx context.Context, archive, staging string, accept func(ArchiveManifest) error, limits ImportLimits) (storeArchive, serverArchive, kitServerArchive string, err error) {
+// then `store.archive`, `server.archive` and `files/…`, within limits (counted from the headers, before an entry is written). It returns
+// the paths of the staged `store.archive` and `server.archive`. Nothing else is an entry of an address archive (Pi's `unpackEntries`).
+func unpackEntries(ctx context.Context, archive, staging string, accept func(ArchiveManifest) error, limits ImportLimits) (storeArchive, serverArchive string, err error) {
 	maxBytes, maxEntries := limits.Bytes, limits.Entries
 	if maxBytes == 0 {
 		maxBytes = 4 << 30
@@ -529,7 +445,7 @@ func unpackEntries(ctx context.Context, archive, staging string, accept func(Arc
 	}
 	file, err := os.Open(archive)
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 	defer func() { _ = file.Close() }()
 	var haveManifest bool
@@ -573,11 +489,6 @@ func unpackEntries(ctx context.Context, archive, staging string, accept func(Arc
 		case entry.Path == "server.archive":
 			serverArchive = filepath.Join(staging, "server.archive")
 			return writeStaged(serverArchive, entry.Data)
-		case entry.Path == "kit-server.archive":
-			kitServerArchive = filepath.Join(staging, "kit-server.archive")
-			return writeStaged(kitServerArchive, entry.Data)
-		case entry.Path == "kit.archive":
-			return writeStaged(filepath.Join(staging, "kit.archive"), entry.Data)
 		case strings.HasPrefix(entry.Path, "files/"):
 			// ReadTar refused absolute paths and `..`: files/<path> stays inside the staging directory.
 			target := filepath.Join(staging, filepath.FromSlash(entry.Path))
@@ -590,12 +501,12 @@ func unpackEntries(ctx context.Context, archive, staging string, accept func(Arc
 		}
 	})
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 	if !haveManifest || storeArchive == "" || serverArchive == "" {
-		return "", "", "", errors.New("importData: the archive has no manifest.json, store.archive or server.archive")
+		return "", "", errors.New("importData: the archive has no manifest.json, store.archive or server.archive")
 	}
-	return storeArchive, serverArchive, kitServerArchive, nil
+	return storeArchive, serverArchive, nil
 }
 
 // manifestLimit is the most a manifest.json may hold: 64 KiB.

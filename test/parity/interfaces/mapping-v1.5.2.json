@@ -109308,7 +109308,7 @@
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
         "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
+        "test:chord/nextnode/app/app_export_host_test.go#TestAppReplacesTheGoHostsDataByNothingWhenTheArchiveHasNoPartOfIt"
       ]
     },
     {
@@ -109330,7 +109330,7 @@
       "evidence": [
         "test:chord/next/host/host_example_66_test.go#TestExample66HostData",
         "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAHostWithoutAStoreRefusesEveryHostDataCall",
-        "test:chord/next/host/host_host_data_test.go#TestHostDataLifecycleAnImportAbortedAfterItsLinesWereTakenIsRefusedAtAdmissionAndWritesNothing"
+        "test:chord/nextnode/app/app_export_host_test.go#TestAppReplacesTheGoHostsDataByNothingWhenTheArchiveHasNoPartOfIt"
       ]
     },
     {
@@ -118840,7 +118840,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/archive.go#beginStoreArchive"
+        "call:chord/nextnode/app/archive.go#beginExport"
       ],
       "evidence": [
         "test:chord/sync/lines_test.go#TestSnapshotBodies",
@@ -118862,7 +118862,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:chord/nextnode/app/archive.go#beginStoreArchive"
+        "call:chord/nextnode/app/archive.go#beginExport"
       ],
       "evidence": [
         "test:chord/sync/lines_test.go#TestSnapshotBodies",

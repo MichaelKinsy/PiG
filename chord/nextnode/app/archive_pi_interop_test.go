@@ -104,9 +104,16 @@ func describeStore(t *testing.T, path string) piDescription {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer func() { _ = exported.Close() }()
+	return describeParts(t, exported)
+}
+
+// describeParts is what the stream of archive parts holds; it closes the stream.
+func describeParts(t *testing.T, parts store.PartIterator) piDescription {
+	t.Helper()
+	described := piDescription{Tables: map[string]piTable{}}
+	defer func() { _ = parts.Close() }()
 	for {
-		part, ok, err := exported.Next(background)
+		part, ok, err := parts.Next(background)
 		if err != nil {
 			t.Fatal(err)
 		}

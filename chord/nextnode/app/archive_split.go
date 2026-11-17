@@ -26,45 +26,49 @@ import (
 // worker (`Files`). Everything else is a plugin's and lives in the NodeHost's.
 var kitOwners = []string{filesName}
 
-// ownedByKit reports whether part belongs to a kit owner: a table's write by its name (`<owner>:<table>`), a document's record by its
-// owner, a revision by the id of a kit document (kitDocuments). The manifest and `end` belong to neither.
-func ownedByKit(part any, kitDocuments map[int64]struct{}) bool {
+// ownerSet says whether an owner belongs to the half an archive is split for: the kit's store (kitOwned) or, in a host's data
+// archive, the server's Go host (`Host.Serves`).
+type ownerSet func(owner string) bool
+
+// kitOwned is the ownerSet of the kit's store.
+var kitOwned ownerSet = func(owner string) bool { return slices.Contains(kitOwners, owner) }
+
+// owns reports whether part belongs to the owners of the set: a table's write by its name (`<owner>:<table>`), a document's record by its
+// owner, a revision by the id of a document of the set (documents). The manifest and `end` belong to neither.
+func (owners ownerSet) owns(part any, documents map[int64]struct{}) bool {
 	switch part := part.(type) {
 	case *store.TableDefinitionWrite:
-		return kitTable(part.Table)
+		return owners(tableOwner(part.Table))
 	case *store.PutWrite:
-		return kitTable(part.Table)
+		return owners(tableOwner(part.Table))
 	case *store.IndexWrite:
-		return kitTable(part.Table)
+		return owners(tableOwner(part.Table))
 	case *store.DocumentCreate:
-		return slices.Contains(kitOwners, part.Record.Owner)
+		return owners(part.Record.Owner)
 	case *store.DocumentRevisionWrite:
-		_, ok := kitDocuments[part.ID]
+		_, ok := documents[part.ID]
 		return ok
 	}
 	return false
 }
 
-// kitTable is whether the table named table (`<owner>:<table>`) is a kit owner's.
-func kitTable(table string) bool {
-	for _, owner := range kitOwners {
-		if strings.HasPrefix(table, owner+":") {
-			return true
-		}
-	}
-	return false
+// tableOwner is the owner of the table named table (`<owner>:<table>`; "" for a name without one).
+func tableOwner(table string) string {
+	owner, _, _ := strings.Cut(table, ":")
+	return owner
 }
 
-// splitCensus is what one read of a store archive says that no half can: the ids of the kit's documents, and the writes of each half.
+// splitCensus is what one read of an archive says that no half can: the ids of the owned half's documents, and the writes of the owned
+// half.
 type splitCensus struct {
-	kitDocuments map[int64]struct{}
-	kitWrites    int64
+	documents map[int64]struct{}
+	writes    int64
 }
 
-// countSplit reads the store archive at archive once and checks what splitting could drop: no document id twice (each half is checked
+// countSplit reads the archive at archive once and checks what splitting by owners could drop: no document id twice (each half is checked
 // alone), and the writes of the two halves adding up to the `end` the archive declared.
-func countSplit(ctx context.Context, archive string) (splitCensus, error) {
-	census := splitCensus{kitDocuments: map[int64]struct{}{}}
+func countSplit(ctx context.Context, archive string, owners ownerSet) (splitCensus, error) {
+	census := splitCensus{documents: map[int64]struct{}{}}
 	source, err := openParts(archive)
 	if err != nil {
 		return census, err
@@ -92,18 +96,18 @@ func countSplit(ctx context.Context, archive string) (splitCensus, error) {
 				return census, data.Invalid(data.ReasonArgs, fmt.Sprintf("import: id %d occurs twice", part.Record.ID))
 			}
 			ids[part.Record.ID] = struct{}{}
-			if ownedByKit(part, nil) {
-				census.kitDocuments[part.Record.ID] = struct{}{}
+			if owners.owns(part, nil) {
+				census.documents[part.Record.ID] = struct{}{}
 			}
 		}
-		if ownedByKit(part, census.kitDocuments) {
-			census.kitWrites++
+		if owners.owns(part, census.documents) {
+			census.writes++
 		} else {
 			restWrites++
 		}
 	}
-	if declared >= 0 && declared != census.kitWrites+restWrites {
-		return census, data.Invalid(data.ReasonArgs, fmt.Sprintf("import: end counts %d writes, the archive has %d", declared, census.kitWrites+restWrites))
+	if declared >= 0 && declared != census.writes+restWrites {
+		return census, data.Invalid(data.ReasonArgs, fmt.Sprintf("import: end counts %d writes, the archive has %d", declared, census.writes+restWrites))
 	}
 	return census, nil
 }
@@ -136,12 +140,13 @@ func (parts *checkedParts) Next(ctx context.Context) (any, bool, error) {
 
 func (parts *checkedParts) Close() error { return parts.source.Close() }
 
-// splitParts is one half of a store archive: the manifest, the parts of the kit (kit) or of everyone else, and an `end` counting them.
+// splitParts is one half of an archive: the manifest, the parts of the owners (owned) or of everyone else, and an `end` counting them.
 type splitParts struct {
-	source       store.PartSource
-	kit          bool
-	kitDocuments map[int64]struct{}
-	writes       int64
+	source    store.PartSource
+	owners    ownerSet
+	owned     bool
+	documents map[int64]struct{}
+	writes    int64
 }
 
 // Next is the next part of the half.
@@ -157,7 +162,7 @@ func (half *splitParts) Next(ctx context.Context) (any, bool, error) {
 		case *store.EndPart:
 			return &store.EndPart{Writes: half.writes}, true, nil
 		}
-		if ownedByKit(part, half.kitDocuments) == half.kit {
+		if half.owners.owns(part, half.documents) == half.owned {
 			half.writes++
 			return part, true, nil
 		}
@@ -168,26 +173,17 @@ func (half *splitParts) Next(ctx context.Context) (any, bool, error) {
 func (half *splitParts) Close() error { return half.source.Close() }
 
 // importSplit makes the stores in staging from the store archive at archive: the plugins' `store.sqlite` from the parts no kit owner has
-// and, unless keepKit is false, the kit's `kit.sqlite` from the parts of the kit owners (an empty kit store is a valid one). With keepKit
-// false the archive must hold none (`kit.archive` carries the kit's store, see UnpackStaging). Nothing is written before the archive passed
-// countSplit; a failure leaves the staging directory for the caller to remove.
-func importSplit(ctx context.Context, archive, staging string, keepKit bool) error {
-	census, err := countSplit(ctx, archive)
+// and the kit's `kit.sqlite` from the parts of the kit owners (an empty kit store is a valid one). Nothing is written before the archive
+// passed countSplit; a failure leaves the staging directory for the caller to remove.
+func importSplit(ctx context.Context, archive, staging string) error {
+	census, err := countSplit(ctx, archive, kitOwned)
 	if err != nil {
 		return err
 	}
-	if !keepKit && census.kitWrites != 0 {
-		return errors.New("importData: the archive holds the kit's data in store.archive and in kit.archive")
-	}
-	halves := []struct {
-		name string
-		kit  bool
-		skip bool
-	}{{kitStore, true, !keepKit}, {archiveStore, false, false}}
-	for _, half := range halves {
-		if half.skip {
-			continue
-		}
+	for _, half := range []struct {
+		name  string
+		owned bool
+	}{{kitStore, true}, {archiveStore, false}} {
 		source, err := openParts(archive)
 		if err != nil {
 			return err
@@ -196,9 +192,48 @@ func importSplit(ctx context.Context, archive, staging string, keepKit bool) err
 		if err := PrivateStore(path); err != nil {
 			return errors.Join(err, source.Close())
 		}
-		if err := importParts(ctx, &splitParts{source: source, kit: half.kit, kitDocuments: census.kitDocuments}, path); err != nil {
+		if err := importParts(ctx, &splitParts{source: source, owners: kitOwned, owned: half.owned, documents: census.documents}, path); err != nil {
 			return err
 		}
 	}
 	return nil
 }
+
+// splitHostData splits the host's data archive at archive by owners into two JSONL archives, each the manifest, its parts and an `end`
+// counting them: the parts of the owners (an owner the server's Go host serves) at owned, the rest (the NodeHost's) at rest. Nothing is
+// written before the archive passed countSplit.
+func splitHostData(ctx context.Context, archive, owned, rest string, owners ownerSet) error {
+	census, err := countSplit(ctx, archive, owners)
+	if err != nil {
+		return err
+	}
+	for _, half := range []struct {
+		path  string
+		owned bool
+	}{{owned, true}, {rest, false}} {
+		source, err := openParts(archive)
+		if err != nil {
+			return err
+		}
+		parts := &splitParts{source: source, owners: owners, owned: half.owned, documents: census.documents}
+		if err := writeParts(ctx, partsOf(parts), half.path); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// partsOf is the typed parts of source (what openParts and splitParts yield) as a part iterator, which closes source.
+func partsOf(source store.PartSource) store.PartIterator { return typedParts{source} }
+
+type typedParts struct{ source store.PartSource }
+
+func (parts typedParts) Next(ctx context.Context) (store.ArchivePart, bool, error) {
+	part, ok, err := parts.source.Next(ctx)
+	if err != nil || !ok {
+		return nil, false, err
+	}
+	return part.(store.ArchivePart), true, nil
+}
+
+func (parts typedParts) Close() error { return parts.source.Close() }
