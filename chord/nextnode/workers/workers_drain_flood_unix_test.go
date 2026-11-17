@@ -11,6 +11,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -98,7 +99,10 @@ func TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatKeepsItsOutputFu
 		fuseOnce            sync.Once
 		mu                  sync.Mutex
 		head, atExit        []byte
+		holder              int
+		holderTail          []byte
 	)
+	holderLine := regexp.MustCompile(`grandchild (\d+)\n`)
 	// pending: the worker's stdout drain was told the process ended (its count of what the stream holds is made then) and has
 	// not settled. What is told before the end is not told after it, however much a reader that nothing preempts gets through;
 	// what is told after the settlement is the stream read on, which the exit does not wait for (it waits to be scheduled).
@@ -120,15 +124,7 @@ func TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatKeepsItsOutputFu
 	holderPid := func() (int, bool) {
 		mu.Lock()
 		defer mu.Unlock()
-		match := regexp.MustCompile(`grandchild (\d+)\n`).FindSubmatch(head)
-		if match == nil {
-			return 0, false
-		}
-		var pid int
-		for _, digit := range match[1] {
-			pid = pid*10 + int(digit-'0')
-		}
-		return pid, true
+		return holder, holder != 0
 	}
 	killHolder := func() {
 		if pid, ok := holderPid(); ok {
@@ -146,6 +142,18 @@ func TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatKeepsItsOutputFu
 				mu.Lock()
 				if len(head) < 512<<10 {
 					head = append(head, chunk...)
+				}
+				// The holder writes without a pause from the moment it is ready, and the worker writes the holder's pid only after it hears so: under load the flood is
+				// in the stream ahead of that line by more than head holds, so the pid is taken from the stream as it is told, not from head.
+				if holder == 0 {
+					window := slices.Concat(holderTail, chunk)
+					if match := holderLine.FindSubmatch(window); match != nil {
+						for _, digit := range match[1] {
+							holder = holder*10 + int(digit-'0')
+						}
+					} else {
+						holderTail = bytes.Clone(window[max(0, len(window)-32):])
+					}
 				}
 				mu.Unlock()
 				switch {
