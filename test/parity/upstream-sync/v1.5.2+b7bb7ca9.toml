@@ -1,0 +1,274 @@
+from = "1.5.2+18e99051"
+to = "1.5.2+b7bb7ca9"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/assistant-message.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"]
+rationale = "b7bb7ca905b8: the component copies the Container output before it writes its own lines (the zone-marked lines of the message, the animated row of the login menu), because Container.render now returns a shared array; PiG's counterpart copies the borrowed slice at the same place (the pigborrowcheck build tag finds a writer in tests)."
+oracle = "carried: b7bb7ca905b8 (pi-coding-agent/modes/interactive/components/assistant-message.js)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/user-message.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"]
+rationale = "b7bb7ca905b8: the component copies the Container output before it writes its own lines (the zone-marked lines of the message, the animated row of the login menu), because Container.render now returns a shared array; PiG's counterpart copies the borrowed slice at the same place (the pigborrowcheck build tag finds a writer in tests)."
+oracle = "carried: b7bb7ca905b8 (pi-coding-agent/modes/interactive/components/user-message.js)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/radius-login-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"]
+rationale = "b7bb7ca905b8: the component copies the Container output before it writes its own lines (the zone-marked lines of the message, the animated row of the login menu), because Container.render now returns a shared array; PiG's counterpart copies the borrowed slice at the same place (the pigborrowcheck build tag finds a writer in tests)."
+oracle = "carried: b7bb7ca905b8 (pi-coding-agent/modes/interactive/components/radius-login-selector.js)"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/bash-execution.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit only retypes the lines these components return (readonly string[]) and copies none; the compiled output differs from the pin by that typing alone, so nothing observable changes."
+oracle = "not carried: nothing observable changes"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit only retypes the lines these components return (readonly string[]) and copies none; the compiled output differs from the pin by that typing alone, so nothing observable changes."
+oracle = "not carried: nothing observable changes"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit only retypes the lines these components return (readonly string[]) and copies none; the compiled output differs from the pin by that typing alone, so nothing observable changes."
+oracle = "not carried: nothing observable changes"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/themed-text.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit only retypes the lines these components return (readonly string[]) and copies none; the compiled output differs from the pin by that typing alone, so nothing observable changes."
+oracle = "not carried: nothing observable changes"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/tool-execution.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit only retypes the lines these components return (readonly string[]) and copies none; the compiled output differs from the pin by that typing alone, so nothing observable changes."
+oracle = "not carried: nothing observable changes"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/visual-truncate.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit only retypes the lines these components return (readonly string[]) and copies none; the compiled output differs from the pin by that typing alone, so nothing observable changes."
+oracle = "not carried: nothing observable changes"
+
+[[files]]
+path = "packages/tui/src/components/image.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit retypes render() as readonly string[]; the compiled output is unchanged by it."
+oracle = "not carried: the compiled output does not change"
+
+[[files]]
+path = "packages/tui/src/components/markdown.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit retypes render() as readonly string[]; the compiled output is unchanged by it."
+oracle = "not carried: the compiled output does not change"
+
+[[files]]
+path = "packages/tui/src/components/mouse-region.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit retypes render() as readonly string[]; the compiled output is unchanged by it."
+oracle = "not carried: the compiled output does not change"
+
+[[files]]
+path = "packages/tui/src/components/scroll-view.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit retypes render() as readonly string[]; the compiled output is unchanged by it."
+oracle = "not carried: the compiled output does not change"
+
+[[files]]
+path = "packages/tui/src/components/settings-list.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit retypes render() as readonly string[]; the compiled output is unchanged by it."
+oracle = "not carried: the compiled output does not change"
+
+[[files]]
+path = "packages/tui/src/components/text.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the commit retypes render() as readonly string[]; the compiled output is unchanged by it."
+oracle = "not carried: the compiled output does not change"
+
+[[files]]
+path = "packages/tui/src/components/box.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"]
+rationale = "b7bb7ca905b8: Box keeps its rendered output and returns the same array while its children's lines are unchanged (it compared every child line one by one before); PiG's Box cache does the same."
+oracle = "carried: b7bb7ca905b8 (pi-tui/components/box.js)"
+
+[[files]]
+path = "packages/tui/src/tui.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges", "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"]
+rationale = "b7bb7ca905b8: requestViewRender (a frame that reuses the previous component output, contentChanged set by requestRender, immediate renders and focus changes), Container.render returning its cached array, and the mouse dispatch by cached child heights; PiG: tuiBase.requestViewRender (unexported, the Go counterpart of the protected method), requestRenderLocked, the Container cache and routeWheel."
+oracle = "carried: b7bb7ca905b8 (pi-tui/tui.js)"
+
+[[files]]
+path = "packages/tui/src/tui-alt-screen.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"]
+rationale = "b7bb7ca905b8: scrollBy, scrollToTop, scrollToBottom, scrollToPrompt, handleWheel, autoScrollSelection and the scrollbar drag callback of renderLayoutFrame request a view-only frame; PiG has the same seven sites (TuiAltScreen.ScrollBy, ScrollToTop, ScrollToBottom, scrollToPrompt, routeWheel, autoScrollSelection, requestRenderFromLayout)."
+oracle = "carried: b7bb7ca905b8 (pi-tui/tui-alt-screen.js)"
+
+[[files]]
+path = "packages/tui/src/layout.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"]
+rationale = "b7bb7ca905b8: renderLayoutFrame takes the reusable component output and the view request callback; PiG: RenderLayoutFrame(..., reusableOutput) with RenderCache reuse."
+oracle = "carried: b7bb7ca905b8 (pi-tui/layout.js)"
+
+[[files]]
+path = "packages/tui/src/utils.ts"
+change = "modified"
+disposition = "ported"
+evidence = []
+rationale = "b7bb7ca905b8: sliceWithWidth places a stretch of printable ASCII (and text without combining characters) by arithmetic instead of one grapheme at a time; PiG: SliceWithWidth with the same stretch rule, checked against the grapheme walk by a 60,000-case differential test."
+oracle = "carried: b7bb7ca905b8 (pi-tui/utils.js)"
+
+[[files]]
+path = "packages/tui/test/container.test.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"]
+rationale = "b7bb7ca905b8: Pi's Container reuse test; ported."
+oracle = "not carried: a test of the TypeScript source"
+
+[[files]]
+path = "packages/tui/test/layout.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"]
+rationale = "b7bb7ca905b8: Pi's layout view-frame cases; ported."
+oracle = "not carried: a test of the TypeScript source"
+
+[[files]]
+path = "packages/tui/test/tui-alt-screen.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"]
+rationale = "b7bb7ca905b8: Pi's TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges and the view-only frame cases; ported."
+oracle = "not carried: a test of the TypeScript source"
+
+[[files]]
+path = "packages/tui/test/slice-graphemes.test.ts"
+change = "added"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: Pi's cases for sliceWithWidth on ASCII and on combining characters; PiG's SliceWithWidth differential test compares the stretch rule with the grapheme walk over 60,000 cases."
+oracle = "not carried: a test of the TypeScript source"
+
+[[files]]
+path = "packages/coding-agent/test/assistant-message.test.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: a test of the TypeScript source that follows the readonly typing and the copy; PiG's counterpart is the component's own test."
+oracle = "not carried: a test of the TypeScript source"
+
+[[files]]
+path = "packages/coding-agent/test/auth-url-copy.test.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: a test of the TypeScript source that follows the readonly typing and the copy; PiG's counterpart is the component's own test."
+oracle = "not carried: a test of the TypeScript source"
+
+[[files]]
+path = "packages/coding-agent/test/tool-renderer-examples.test.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: a test of the TypeScript source that follows the readonly typing and the copy; PiG's counterpart is the component's own test."
+oracle = "not carried: a test of the TypeScript source"
+
+[[files]]
+path = "packages/coding-agent/test/user-message.test.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: a test of the TypeScript source that follows the readonly typing and the copy; PiG's counterpart is the component's own test."
+oracle = "not carried: a test of the TypeScript source"
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/ansi-to-html.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the HTML export retypes the lines it reads (readonly string[]); no output changes."
+oracle = "not carried: nothing observable changes"
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/tool-renderer.ts"
+change = "modified"
+disposition = "unchanged-observable"
+evidence = []
+rationale = "b7bb7ca905b8: the HTML export retypes the lines it reads (readonly string[]); no output changes."
+oracle = "not carried: nothing observable changes"
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "b7bb7ca905b8: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment."
+oracle = "not carried: the package ships no changelog"
+
+[[files]]
+path = "packages/tui/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "b7bb7ca905b8: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment."
+oracle = "not carried: the package ships no changelog"
+
+[[files]]
+path = "packages/coding-agent/docs/tui.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "b7bb7ca905b8: Pi's documentation of the borrowed render output; PiG documents its own Go rule (copy the slice a Container or Box returns) in its changelog fragment and the TUI docs."
+oracle = "not carried: documentation"
+
+[[files]]
+path = "packages/tui/README.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "b7bb7ca905b8: Pi's documentation of the borrowed render output; PiG documents its own Go rule (copy the slice a Container or Box returns) in its changelog fragment and the TUI docs."
+oracle = "not carried: documentation"

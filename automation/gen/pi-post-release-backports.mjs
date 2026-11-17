@@ -1850,6 +1850,787 @@ patch("18e99051be24", "pi-coding-agent/core/extensions/runner.js", [
 ]);
 // END backport 18e99051be24
 
+// BEGIN backport b7bb7ca905b8
+// b7bb7ca905b8 (#11968, refs #9549): fullscreen scroll inputs (wheel, page and line keys, top and bottom, prompt jumps, scrollbar drag, selection auto-scroll) ask for a view-only frame that reuses the previous frame's component output, and Container.render and Box.render return the same array while their children's lines are unchanged; the components that edited a Container result (the user and assistant messages, the Radius login menu) copy it first.
+// not carried: the .d.ts declarations (Container.render returns a readonly array, TUI.requestViewRender is protected): declarations follow the pin. packages/tui/test and packages/coding-agent/test (tests of the TypeScript source) and the packages' CHANGELOG.md: the packages ship none of them.
+// not carried: the TypeScript sources of packages/tui and packages/coding-agent: the compiled output below carries the change.
+patch("b7bb7ca905b8", "pi-tui/utils.js", [
+    [`    return pad ? result + " ".repeat(Math.max(0, maxWidth - visibleWidth)) : result;
+}
+/**
+ * Calculate the terminal width of a single grapheme cluster.
+ * Based on code from the string-width library, but includes a possible-emoji
+ * check to avoid running the RGI_Emoji regex unnecessarily.
+ */
+function graphemeWidth(segment) {
+    if (segment.length === 1) {
+        const code = segment.charCodeAt(0);
+        if (code >= 0x20 && code <= 0x7e)
+            return 1;
+        if (code === 0x09)
+            return 3;
+    }
+    // Some marks occupy cells even without a base character.
+    if (terminalSpacingMarkRegex.test(segment)) {
+        return [...segment].length;
+`, `    return pad ? result + " ".repeat(Math.max(0, maxWidth - visibleWidth)) : result;
+}
+/**
+ ${note("b7bb7ca905b8").trim()}
+ * Whether a UTF-16 unit always forms a grapheme cluster on its own: printable ASCII, Latin,
+ * punctuation, arrows, box drawing, symbols, kana, CJK ideographs and fullwidth forms. These ranges
+ * hold no combining marks, joiners, variation selectors, Hangul jamo or surrogates, so no Unicode
+ * grapheme rule can join two of them.
+ */
+function isStandaloneGraphemeUnit(code) {
+    if (code >= 0x20 && code <= 0x7e)
+        return true;
+    if (code >= 0xa0 && code <= 0x2ff)
+        return code !== 0xad;
+    if (code >= 0x2010 && code <= 0x2bff) {
+        // Line and bidi controls, invisible operators and combining marks for symbols.
+        return (!(code >= 0x2028 && code <= 0x202e) &&
+            !(code >= 0x2060 && code <= 0x206f) &&
+            !(code >= 0x20d0 && code <= 0x20ff));
+    }
+    return ((code >= 0x3040 && code <= 0x3096) ||
+        (code >= 0x30a0 && code <= 0x30ff) ||
+        (code >= 0x4e00 && code <= 0x9fff) ||
+        (code >= 0xff01 && code <= 0xff60));
+}
+function isStandaloneGraphemeRun(text) {
+    for (let i = 0; i < text.length; i++) {
+        if (!isStandaloneGraphemeUnit(text.charCodeAt(i)))
+            return false;
+    }
+    return true;
+}
+/**
+ * Segment a run that contains complex units. A standalone unit whose neighbours are standalone too
+ * is its own cluster, since no grapheme rule joins two standalone units. Only the stretches between
+ * such units go through Intl.Segmenter; cutting there is safe because both cut edges are boundaries.
+ */
+function* segmentGraphemes(text) {
+    const standalone = (index) => index < 0 || index >= text.length || isStandaloneGraphemeUnit(text.charCodeAt(index));
+    let complexStart = -1;
+    for (let i = 0; i < text.length; i++) {
+        if (standalone(i) && standalone(i - 1) && standalone(i + 1)) {
+            if (complexStart >= 0) {
+                for (const { segment } of graphemeSegmenter.segment(text.slice(complexStart, i)))
+                    yield segment;
+                complexStart = -1;
+            }
+            yield text[i];
+        }
+        else if (complexStart < 0) {
+            complexStart = i;
+        }
+    }
+    if (complexStart >= 0) {
+        for (const { segment } of graphemeSegmenter.segment(text.slice(complexStart)))
+            yield segment;
+    }
+}
+/**
+ * Grapheme clusters of a text run without ANSI codes. Standalone units are split per character:
+ * Intl.Segmenter costs about 15x more than the slicing it serves, which made one non-ASCII
+ * character slow down every row of a fullscreen frame.
+ */
+function graphemesOf(text) {
+    return isStandaloneGraphemeRun(text) ? text : segmentGraphemes(text);
+}
+// Widths of single non-ASCII BMP characters; bounded by the 64K code units.
+const singleUnitWidths = new Map();
+/**
+ * Calculate the terminal width of a single grapheme cluster.
+ * Based on code from the string-width library, but includes a possible-emoji
+ * check to avoid running the RGI_Emoji regex unnecessarily.
+ */
+function graphemeWidth(segment) {
+    if (segment.length !== 1)
+        return clusterWidth(segment);
+    const code = segment.charCodeAt(0);
+    if (code >= 0x20 && code <= 0x7e)
+        return 1;
+    if (code === 0x09)
+        return 3;
+    let width = singleUnitWidths.get(code);
+    if (width === undefined) {
+        width = clusterWidth(segment);
+        singleUnitWidths.set(code, width);
+    }
+    return width;
+}
+function clusterWidth(segment) {
+    // Some marks occupy cells even without a base character.
+    if (terminalSpacingMarkRegex.test(segment)) {
+        return [...segment].length;
+`],
+    [`        let textEnd = i;
+        while (textEnd < line.length && !extractAnsiCode(line, textEnd))
+            textEnd++;
+        for (const { segment } of graphemeSegmenter.segment(line.slice(i, textEnd))) {
+            const width = graphemeWidth(segment);
+            if (width > 0 && column >= currentCol && column < currentCol + width) {
+                return { start: currentCol, end: currentCol + width };
+`, `        let textEnd = i;
+        while (textEnd < line.length && !extractAnsiCode(line, textEnd))
+            textEnd++;
+        const text = line.slice(i, textEnd);
+        // Printable ASCII is one cell per character.
+        if (isPrintableAscii(text)) {
+            if (column >= currentCol && column < currentCol + text.length)
+                return { start: column, end: column + 1 };
+            currentCol += text.length;
+            i = textEnd;
+            continue;
+        }
+        for (const segment of graphemesOf(text)) {
+            const width = graphemeWidth(segment);
+            if (width > 0 && column >= currentCol && column < currentCol + width) {
+                return { start: currentCol, end: currentCol + width };
+`],
+    [`        let textEnd = i;
+        while (textEnd < line.length && !extractAnsiCode(line, textEnd))
+            textEnd++;
+        for (const { segment } of graphemeSegmenter.segment(line.slice(i, textEnd))) {
+            const w = graphemeWidth(segment);
+            const inRange = currentCol >= startCol && currentCol < endCol;
+            const fits = !strict || currentCol + w <= endCol;
+`, `        let textEnd = i;
+        while (textEnd < line.length && !extractAnsiCode(line, textEnd))
+            textEnd++;
+        const text = line.slice(i, textEnd);
+        // Printable ASCII is one cell per character.
+        if (isPrintableAscii(text)) {
+            const from = Math.max(0, startCol - currentCol);
+            const to = Math.min(text.length, endCol - currentCol);
+            if (to > from) {
+                result += pendingAnsi + text.slice(from, to);
+                pendingAnsi = "";
+                resultWidth += to - from;
+            }
+            currentCol += text.length;
+            i = textEnd;
+            if (currentCol >= endCol)
+                break;
+            continue;
+        }
+        for (const segment of graphemesOf(text)) {
+            const w = graphemeWidth(segment);
+            const inRange = currentCol >= startCol && currentCol < endCol;
+            const fits = !strict || currentCol + w <= endCol;
+`],
+]);
+patch("b7bb7ca905b8", "pi-tui/tui.js", [
+    [`    }
+    return undefined;
+}
+/**
+ * Container - a component that contains other components
+ */
+export class Container {
+    children = [];
+    mouseLayout;
+    addChild(component) {
+        this.children.push(component);
+    }
+`, `    }
+    return undefined;
+}
+${note("b7bb7ca905b8").trim()}
+function sameLines(a, b) {
+    if (a === b)
+        return true;
+    if (a.length !== b.length)
+        return false;
+    for (let index = 0; index < a.length; index++) {
+        if (a[index] !== b[index])
+            return false;
+    }
+    return true;
+}
+/**
+ * Render children and concatenate their lines.
+ *
+ * Returns \`previous\` unchanged when the children and their lines are unchanged. Unchanged subtrees
+ * then keep array identity, so every ancestor container skips its copy too. Without this, each
+ * frame of a long fullscreen transcript copied every rendered line once per nesting level.
+ * Callers must treat the returned lines as read-only, like any component's cached render output.
+ */
+export function renderChildLines(children, width, previous) {
+    const parts = children.map((child) => child.render(width));
+    if (previous?.width === width &&
+        previous.children.length === children.length &&
+        children.every((child, index) => child === previous.children[index] && sameLines(parts[index], previous.parts[index]))) {
+        return previous;
+    }
+    const lines = [];
+    for (const part of parts) {
+        for (const line of part)
+            lines.push(line);
+    }
+    return { width, children: [...children], parts, lines };
+}
+/** Dispatch a mouse event to the child of a vertical child layout that covers its row. */
+export function dispatchMouseToChildLines(layout, event) {
+    let childY = 0;
+    for (let index = 0; index < layout.children.length; index++) {
+        const childHeight = layout.parts[index].length;
+        if (event.y >= childY && event.y < childY + childHeight) {
+            return dispatchMouseEvent(layout.children[index], { ...event, y: event.y - childY, height: childHeight });
+        }
+        childY += childHeight;
+    }
+    return undefined;
+}
+/**
+ * Container - a component that contains other components
+ */
+export class Container {
+    children = [];
+    childLines;
+    addChild(component) {
+        this.children.push(component);
+    }
+`],
+    [`    handleMouse(event) {
+        if (event.y < 0 || event.y >= event.height)
+            return undefined;
+        const mouseChildren = this.mouseLayout?.width === event.width
+            ? this.mouseLayout.children
+            : this.children.map((component) => ({ component, height: component.render(event.width).length }));
+        let childY = 0;
+        for (const { component: child, height: childHeight } of mouseChildren) {
+            if (event.y >= childY && event.y < childY + childHeight) {
+                const result = dispatchMouseEvent(child, {
+                    ...event,
+                    y: event.y - childY,
+                    height: childHeight,
+                });
+                if (result?.focus && this.handleInput)
+                    return { ...result, focusTarget: this };
+                return result;
+            }
+            childY += childHeight;
+        }
+        return undefined;
+    }
+    render(width) {
+        const lines = [];
+        const mouseChildren = [];
+        for (const child of this.children) {
+            const childLines = child.render(width);
+            mouseChildren.push({ component: child, height: childLines.length });
+            for (const line of childLines) {
+                lines.push(line);
+            }
+        }
+        this.mouseLayout = { width, children: mouseChildren };
+        return lines;
+    }
+}
+/**
+`, `    handleMouse(event) {
+        if (event.y < 0 || event.y >= event.height)
+            return undefined;
+        const layout = this.childLines?.width === event.width
+            ? this.childLines
+            : renderChildLines(this.children, event.width, undefined);
+        const result = dispatchMouseToChildLines(layout, event);
+        if (result?.focus && this.handleInput)
+            return { ...result, focusTarget: this };
+        return result;
+    }
+    render(width) {
+        this.childLines = renderChildLines(this.children, width, this.childLines);
+        return this.childLines.lines;
+    }
+}
+/**
+`],
+    [`    /** Global callback for debug key (Shift+Ctrl+D). Called before input is forwarded to focused component. */
+    onDebug;
+    renderRequested = false;
+    immediateRenderScheduled = false;
+    renderTimer;
+    lastRenderAt = 0;
+`, `    /** Global callback for debug key (Shift+Ctrl+D). Called before input is forwarded to focused component. */
+    onDebug;
+    renderRequested = false;
+    /**
+     * Whether a render request since the last frame may have changed component output. Only
+     * \`requestViewRender()\` leaves it false, so a renderer may reuse the previous frame's output.
+     */
+    contentChanged = true;
+    immediateRenderScheduled = false;
+    renderTimer;
+    lastRenderAt = 0;
+`],
+    [`        this.setFocusInternal({ component, overlayFocusRestore: "clear" });
+    }
+    setFocusInternal({ component, overlayFocusRestore, }) {
+        const previousFocus = this.focusedComponent;
+        let nextFocus = component;
+        const previousFocusedOverlay = previousFocus
+`, `        this.setFocusInternal({ component, overlayFocusRestore: "clear" });
+    }
+    setFocusInternal({ component, overlayFocusRestore, }) {
+        // Focused components draw a cursor, so a focus change must not reuse earlier output.
+        this.contentChanged = true;
+        const previousFocus = this.focusedComponent;
+        let nextFocus = component;
+        const previousFocusedOverlay = previousFocus
+`],
+    [`    renderNow(force = false) {
+        if (force)
+            this.resetRenderState();
+        this.renderRequested = false;
+        this.cancelRenderTimer();
+        this.lastRenderAt = performance.now();
+`, `    renderNow(force = false) {
+        if (force)
+            this.resetRenderState();
+        this.contentChanged = true;
+        this.renderRequested = false;
+        this.cancelRenderTimer();
+        this.lastRenderAt = performance.now();
+`],
+    [`            this.requestImmediateRender();
+            return;
+        }
+        if (this.renderRequested)
+            return;
+        this.renderRequested = true;
+        process.nextTick(() => this.scheduleRender());
+    }
+    requestImmediateRender() {
+        this.cancelRenderTimer();
+        this.renderRequested = true;
+        if (this.immediateRenderScheduled)
+`, `            this.requestImmediateRender();
+            return;
+        }
+        this.contentChanged = true;
+        this.requestViewRender();
+    }
+    /** Request a frame for a change that leaves component output unchanged, such as a scroll position. */
+    requestViewRender() {
+        if (this.renderRequested)
+            return;
+        this.renderRequested = true;
+        process.nextTick(() => this.scheduleRender());
+    }
+    requestImmediateRender() {
+        this.contentChanged = true;
+        this.cancelRenderTimer();
+        this.renderRequested = true;
+        if (this.immediateRenderScheduled)
+`],
+]);
+patch("b7bb7ca905b8", "pi-tui/layout.js", [
+    [`    }
+    let lines = widths.get(safeWidth);
+    if (!lines) {
+        lines = component.render(safeWidth);
+        widths.set(safeWidth, lines);
+    }
+    return lines;
+`, `    }
+    let lines = widths.get(safeWidth);
+    if (!lines) {
+        ${note("b7bb7ca905b8").trim()}
+        lines = context.reusableOutput?.get(component)?.get(safeWidth) ?? component.render(safeWidth);
+        widths.set(safeWidth, lines);
+    }
+    return lines;
+`],
+    [`    }
+    paintScrollbar(box, screen, totalWidth);
+}
+export function renderLayoutFrame(root, width, height, requestRender) {
+    const safeWidth = Math.max(1, Math.floor(width));
+    const safeHeight = Math.max(1, Math.floor(height));
+    const context = {
+        viewport: { width: safeWidth, height: safeHeight },
+        renderCache: new Map(),
+        requestRender,
+        primaryScrollView: undefined,
+    };
+`, `    }
+    paintScrollbar(box, screen, totalWidth);
+}
+/**
+ * Lay out and paint one frame.
+ *
+ * \`reusableOutput\` is an earlier frame's \`renderCache\`; its output is used instead of calling
+ * \`render()\`. Pass it only when no component changed since that frame, e.g. when only a scroll
+ * position moved: the frame then costs O(viewport) instead of re-rendering the whole scrollable
+ * document. Each frame keeps only the output it used, so reuse never accumulates across frames.
+ */
+export function renderLayoutFrame(root, width, height, requestRender, reusableOutput) {
+    const safeWidth = Math.max(1, Math.floor(width));
+    const safeHeight = Math.max(1, Math.floor(height));
+    const renderCache = new Map();
+    const context = {
+        viewport: { width: safeWidth, height: safeHeight },
+        renderCache,
+        reusableOutput,
+        requestRender,
+        primaryScrollView: undefined,
+    };
+`],
+    [`        height: safeHeight,
+        lines,
+        ...(context.primaryScrollView === undefined ? {} : { primaryScrollView: context.primaryScrollView }),
+    };
+}
+function containsPoint(rect, x, y) {
+`, `        height: safeHeight,
+        lines,
+        ...(context.primaryScrollView === undefined ? {} : { primaryScrollView: context.primaryScrollView }),
+        renderCache,
+    };
+}
+function containsPoint(rect, x, y) {
+`],
+]);
+patch("b7bb7ca905b8", "pi-tui/tui-alt-screen.js", [
+    [`    }
+    scrollBy(lines) {
+        this.getPrimaryScrollView().scrollBy(lines);
+        this.requestRender();
+    }
+    scrollToTop() {
+        this.getPrimaryScrollView().scrollToStart();
+        this.requestRender();
+    }
+    scrollToBottom() {
+        this.getPrimaryScrollView().scrollToEnd();
+        this.requestRender();
+    }
+    scrollToPrompt(direction) {
+        if (!this.currentLayout)
+`, `    }
+    scrollBy(lines) {
+        this.getPrimaryScrollView().scrollBy(lines);
+        ${note("b7bb7ca905b8").trim()}
+        this.requestViewRender();
+    }
+    scrollToTop() {
+        this.getPrimaryScrollView().scrollToStart();
+        this.requestViewRender();
+    }
+    scrollToBottom() {
+        this.getPrimaryScrollView().scrollToEnd();
+        this.requestViewRender();
+    }
+    scrollToPrompt(direction) {
+        if (!this.currentLayout)
+`],
+    [`            if (!OSC133_PROMPT_START.test(lines[row] ?? ""))
+                continue;
+            scrollView.scrollTo(row);
+            this.requestRender();
+            return;
+        }
+    }
+`, `            if (!OSC133_PROMPT_START.test(lines[row] ?? ""))
+                continue;
+            scrollView.scrollTo(row);
+            this.requestViewRender();
+            return;
+        }
+    }
+`],
+    [`        if (remaining !== 0 && !seen.has(primary))
+            primary.scrollBy(remaining);
+        this.updateScrollbarHover(event.x, event.y);
+        this.requestRender();
+    }
+    parseSgrMouseEvent(data) {
+        const match = /^\\x1b\\[<(\\d+);(\\d+);(\\d+)([Mm])$/.exec(data);
+`, `        if (remaining !== 0 && !seen.has(primary))
+            primary.scrollBy(remaining);
+        this.updateScrollbarHover(event.x, event.y);
+        // Scrolling moves the viewport only. Reusing the previous component output keeps a wheel
+        // frame O(viewport); re-rendering a long transcript on every wheel event saturated a core.
+        this.requestViewRender();
+    }
+    parseSgrMouseEvent(data) {
+        const match = /^\\x1b\\[<(\\d+);(\\d+);(\\d+)([Mm])$/.exec(data);
+`],
+    [`        const point = this.getScrollSelectionPoint(scrollView, pointer.x, pointer.y);
+        if (point)
+            this.updateSelectionFocus(point);
+        this.requestRender();
+    }
+    stopSelectionAutoScroll() {
+        if (this.selectionAutoScrollTimer) {
+`, `        const point = this.getScrollSelectionPoint(scrollView, pointer.x, pointer.y);
+        if (point)
+            this.updateSelectionFocus(point);
+        // Selection is painted onto the screen after layout, so it needs no new component output.
+        this.requestViewRender();
+    }
+    stopSelectionAutoScroll() {
+        if (this.selectionAutoScrollTimer) {
+`],
+    [`        const width = Math.max(1, this.terminal.columns);
+        const height = Math.max(1, this.terminal.rows);
+        const root = this.layoutRoot ?? this.implicitScrollView;
+        let nextLayout = renderLayoutFrame(root, width, height, () => this.requestRender());
+        if (this.refreshSearch(nextLayout)) {
+            nextLayout = renderLayoutFrame(root, width, height, () => this.requestRender());
+        }
+        // Resolve fake cursors before highlighting and compositing, which only track SGR codes
+        let screen = this.resolveFakeCursors(nextLayout.lines.map((line) => line.replace(OSC133_ZONE_PREFIX, "")));
+`, `        const width = Math.max(1, this.terminal.columns);
+        const height = Math.max(1, this.terminal.rows);
+        const root = this.layoutRoot ?? this.implicitScrollView;
+        const requestViewRender = () => this.requestViewRender();
+        const reusableOutput = this.contentChanged ? undefined : this.currentLayout?.renderCache;
+        this.contentChanged = false;
+        let nextLayout = renderLayoutFrame(root, width, height, requestViewRender, reusableOutput);
+        if (this.refreshSearch(nextLayout)) {
+            nextLayout = renderLayoutFrame(root, width, height, requestViewRender, nextLayout.renderCache);
+        }
+        // Resolve fake cursors before highlighting and compositing, which only track SGR codes
+        let screen = this.resolveFakeCursors(nextLayout.lines.map((line) => line.replace(OSC133_ZONE_PREFIX, "")));
+`],
+]);
+patch("b7bb7ca905b8", "pi-tui/components/box.js", [
+    [`import { dispatchMouseEvent } from "../tui.js";
+import { flattenLines, visibleWidth } from "../utils.js";
+/**
+ * Box component - a container that applies padding and background to all children
+`, `${note("b7bb7ca905b8").trim()}
+import { dispatchMouseToChildLines, renderChildLines, } from "../tui.js";
+import { flattenLines, visibleWidth } from "../utils.js";
+/**
+ * Box component - a container that applies padding and background to all children
+`],
+    [`    bgFn;
+    // Cache for rendered output
+    cache;
+    mouseLayout;
+    constructor(paddingX = 1, paddingY = 1, bgFn) {
+        this.paddingX = paddingX;
+        this.paddingY = paddingY;
+`, `    bgFn;
+    // Cache for rendered output
+    cache;
+    childLines;
+    constructor(paddingX = 1, paddingY = 1, bgFn) {
+        this.paddingX = paddingX;
+        this.paddingY = paddingY;
+`],
+    [`    }
+    invalidateCache() {
+        this.cache = undefined;
+    }
+    matchCache(width, childLines, bgSample) {
+        const cache = this.cache;
+        return (!!cache &&
+            cache.width === width &&
+            cache.bgSample === bgSample &&
+            cache.childLines.length === childLines.length &&
+            cache.childLines.every((line, i) => line === childLines[i]));
+    }
+    invalidate() {
+        this.invalidateCache();
+`, `    }
+    invalidateCache() {
+        this.cache = undefined;
+        this.childLines = undefined;
+    }
+    invalidate() {
+        this.invalidateCache();
+`],
+    [`        const contentX = event.x - this.paddingX;
+        if (contentY < 0 || contentX < 0 || contentX >= contentWidth)
+            return undefined;
+        const mouseChildren = this.mouseLayout?.width === contentWidth
+            ? this.mouseLayout.children
+            : this.children.map((component) => ({ component, height: component.render(contentWidth).length }));
+        let childY = 0;
+        for (const { component: child, height: childHeight } of mouseChildren) {
+            if (contentY >= childY && contentY < childY + childHeight) {
+                return dispatchMouseEvent(child, {
+                    ...event,
+                    x: contentX,
+                    y: contentY - childY,
+                    width: contentWidth,
+                    height: childHeight,
+                });
+            }
+            childY += childHeight;
+        }
+        return undefined;
+    }
+    render(width) {
+        if (this.children.length === 0) {
+            return [];
+        }
+        const contentWidth = Math.max(1, width - this.paddingX * 2);
+        const leftPad = " ".repeat(this.paddingX);
+        // Render all children. Keep the child lines unpadded: children usually return the same string
+        // objects every frame, so the cache check below is a cheap identity comparison per line.
+        // Padding here would create new strings that must be compared character by character.
+        const childLines = [];
+        const mouseChildren = [];
+        for (const child of this.children) {
+            const lines = child.render(contentWidth);
+            mouseChildren.push({ component: child, height: lines.length });
+            for (const line of lines) {
+                childLines.push(line);
+            }
+        }
+        this.mouseLayout = { width: contentWidth, children: mouseChildren };
+        if (childLines.length === 0) {
+            return [];
+        }
+        // Check if bgFn output changed by sampling
+        const bgSample = this.bgFn ? this.bgFn("test") : undefined;
+        // Check cache validity
+        if (this.matchCache(width, childLines, bgSample)) {
+            return this.cache.lines;
+        }
+        // Apply background and padding
+        const result = [];
+`, `        const contentX = event.x - this.paddingX;
+        if (contentY < 0 || contentX < 0 || contentX >= contentWidth)
+            return undefined;
+        const layout = this.childLines?.width === contentWidth
+            ? this.childLines
+            : renderChildLines(this.children, contentWidth, undefined);
+        return dispatchMouseToChildLines(layout, { ...event, x: contentX, y: contentY, width: contentWidth });
+    }
+    render(width) {
+        if (this.children.length === 0) {
+            return [];
+        }
+        const contentWidth = Math.max(1, width - this.paddingX * 2);
+        const leftPad = " ".repeat(this.paddingX);
+        // Keep the child lines unpadded: unchanged children keep their line array, so the cache check
+        // below is one identity comparison. Padding here would create new strings every frame.
+        this.childLines = renderChildLines(this.children, contentWidth, this.childLines);
+        const childLines = this.childLines.lines;
+        if (childLines.length === 0) {
+            return [];
+        }
+        // Check if bgFn output changed by sampling
+        const bgSample = this.bgFn ? this.bgFn("test") : undefined;
+        // Check cache validity
+        const cache = this.cache;
+        if (cache?.childLines === childLines && cache.width === width && cache.bgSample === bgSample) {
+            return cache.lines;
+        }
+        // Apply background and padding
+        const result = [];
+`],
+]);
+patch("b7bb7ca905b8", "pi-coding-agent/modes/interactive/components/assistant-message.js", [
+    [`    timestamp;
+    thinkingVisibilityOverrides = new Map();
+    markdownSlots = [];
+    constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = [], messageId, timestamp) {
+        super();
+        this.hideThinkingBlock = hideThinkingBlock;
+`, `    timestamp;
+    thinkingVisibilityOverrides = new Map();
+    markdownSlots = [];
+    ${note("b7bb7ca905b8").trim()}
+    zoneLines;
+    constructor(message, hideThinkingBlock = false, markdownTheme = getMarkdownTheme(), hiddenThinkingLabel = "Thinking...", outputPad = 1, markdownTransformers = [], messageId, timestamp) {
+        super();
+        this.hideThinkingBlock = hideThinkingBlock;
+`],
+    [`        if (this.hasToolCalls || lines.length === 0) {
+            return lines;
+        }
+        lines[0] = OSC133_ZONE_START + lines[0];
+        lines[lines.length - 1] = OSC133_ZONE_END + OSC133_ZONE_FINAL + lines[lines.length - 1];
+        return lines;
+    }
+    updateContent(message, isStreaming = this.isStreaming) {
+        this.lastMessage = message;
+`, `        if (this.hasToolCalls || lines.length === 0) {
+            return lines;
+        }
+        // Container output is shared across frames; copy it once per change instead of mutating it.
+        if (this.zoneLines?.source !== lines) {
+            const zoned = [...lines];
+            zoned[0] = OSC133_ZONE_START + zoned[0];
+            zoned[zoned.length - 1] = OSC133_ZONE_END + OSC133_ZONE_FINAL + zoned[zoned.length - 1];
+            this.zoneLines = { source: lines, lines: zoned };
+        }
+        return this.zoneLines.lines;
+    }
+    updateContent(message, isStreaming = this.isStreaming) {
+        this.lastMessage = message;
+`],
+]);
+patch("b7bb7ca905b8", "pi-coding-agent/modes/interactive/components/user-message.js", [
+    [`    markdownTransformers;
+    messageId;
+    timestamp;
+    constructor(text, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
+        super();
+        this.text = text;
+`, `    markdownTransformers;
+    messageId;
+    timestamp;
+    ${note("b7bb7ca905b8").trim()}
+    zoneLines;
+    constructor(text, markdownTheme = getMarkdownTheme(), outputPad = 1, markdownTransformers = [], messageId, timestamp) {
+        super();
+        this.text = text;
+`],
+    [`        if (lines.length === 0) {
+            return lines;
+        }
+        lines[0] = OSC133_ZONE_START + lines[0];
+        lines[lines.length - 1] = OSC133_ZONE_END + OSC133_ZONE_FINAL + lines[lines.length - 1];
+        return lines;
+    }
+}
+`, `        if (lines.length === 0) {
+            return lines;
+        }
+        // Container output is shared across frames; copy it once per change instead of mutating it.
+        if (this.zoneLines?.source !== lines) {
+            const zoned = [...lines];
+            zoned[0] = OSC133_ZONE_START + zoned[0];
+            zoned[zoned.length - 1] = OSC133_ZONE_END + OSC133_ZONE_FINAL + zoned[zoned.length - 1];
+            this.zoneLines = { source: lines, lines: zoned };
+        }
+        return this.zoneLines.lines;
+    }
+}
+`],
+]);
+patch("b7bb7ca905b8", "pi-coding-agent/modes/interactive/components/radius-login-selector.js", [
+    [`        this.stopAnimationTimer = startBrandAnimation(tui, () => this.animating);
+    }
+    render(width) {
+        const lines = super.render(width);
+        const { label, text } = this.radiusOption;
+        const selectedLine = new Text(theme.fg("accent", "→ ") + theme.fg("accent", label), 1, 0).render(width)[0];
+        const index = selectedLine === undefined ? -1 : lines.indexOf(selectedLine);
+`, `        this.stopAnimationTimer = startBrandAnimation(tui, () => this.animating);
+    }
+    render(width) {
+        ${note("b7bb7ca905b8").trim()}
+        // Container output is shared across frames; copy before replacing the animated line.
+        const lines = [...super.render(width)];
+        const { label, text } = this.radiusOption;
+        const selectedLine = new Text(theme.fg("accent", "→ ") + theme.fg("accent", label), 1, 0).render(width)[0];
+        const index = selectedLine === undefined ? -1 : lines.indexOf(selectedLine);
+`],
+]);
+// END backport b7bb7ca905b8
+
 // BEGIN backport b513b64d8ac8
 // b513b64d8ac8 (#11264): interactive mode installs and refreshes packages with git and npm output captured (a failure carries the last 8000 characters; git and ssh never prompt) and announces each install on stderr until the TUI starts, so no command output draws over it.
 // not carried: pi-coding-agent/core/package-manager.d.ts and pi-coding-agent/core/resource-loader.d.ts (PackageCommandOutput, packageCommandOutput, onPackageProgress): declarations follow the pin. packages/coding-agent/test/package-manager.test.ts and packages/coding-agent/CHANGELOG.md: the package ships neither.
