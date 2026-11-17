@@ -892,6 +892,12 @@ type nodeHostData interface {
 	DeleteHostData(address contracts.Address, ctx context.Context) error
 }
 
+// resolveSeam, when set, is called with the name of each step of resolving an interrupted import or delete, before the step: "restore-node",
+// "restore-go" and "place" (the undo of an import), "delete-node", "delete-go" and "delete-directory" (the completion of a delete), and
+// "intent" (the removal of the intent, the last step of both). The kill tests' child process stops there, where it is killed by its pid;
+// nil in the product.
+var resolveSeam func(step string)
+
 // workerLock is the process lock of the worker with key: its worker holds it while it runs, an export or import meanwhile.
 func workerLock(name, dataDir, key string) string {
 	return name + ":" + dataDir + ":" + key
