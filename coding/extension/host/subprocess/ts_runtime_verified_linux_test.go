@@ -273,8 +273,9 @@ func TestTypeScriptRuntimeLaunchesReleaseTheVerifiedHandle(t *testing.T) {
 			exe := fakeELFTier(t, f.root, "tier1")
 			h := f.host()
 			// The launch fails after its selection, before it starts a process: it has no socket directory.
-			h.sockRuntimeOnce.Do(func() {})
+			h.sockMu.Lock()
 			h.sockRuntimeErr = errors.New("no socket directory")
+			h.sockMu.Unlock()
 			_, _ = h.Reload(f.ctx)
 			if starts := f.starts(); len(starts) != 0 {
 				t.Fatalf("starts = %v, want none", starts)
