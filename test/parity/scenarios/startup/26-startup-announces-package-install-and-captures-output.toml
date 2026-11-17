@@ -7,7 +7,7 @@
 #   after:  `Installing npm:probe-npm...` above the banner, none of the npm lines, `/probenpm` listed under [Prompts].
 # PiG before the capture printed the npm lines (inherited output) and no announcement; with it, PiG still printed its own `[pig] Reinstalled
 # missing packages` line (a pig additive with no divergence record, removed with the reload install): both_not_contain asserts it gone.
-name = "25-startup-announces-package-install-and-captures-output"
+name = "26-startup-announces-package-install-and-captures-output"
 description = "A package installed at interactive startup shows only Pi's Installing line; the package manager's own output stays off the terminal."
 covers = ["packages/coding-agent/src/core/package-manager.ts", "packages/coding-agent/src/main.ts", "packages/coding-agent/src/core/resource-loader.ts"]
 tags = ["fast", "hermetic", "tui"]

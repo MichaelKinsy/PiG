@@ -15102,8 +15102,8 @@
         "coding/cli/reload_installs_packages_test.go::TestRuntimeBuildInstallsConfiguredPackagesAndListsAFailureAsAnExtensionWarning",
         "internal/codingagent/reload_package_warnings_test.go::TestReloadListsTheInstallWarningsOfItsLoadAsExtensionIssues",
         "internal/codingagent/reload_package_warnings_test.go::TestStartupListsTheInstallWarningsOfItsLoadAsExtensionIssues",
-        "test/parity/scenarios/startup/25-startup-announces-package-install-and-captures-output.toml",
-        "test/parity/scenarios/startup/26-startup-announces-temporary-package-install-and-captures-output.toml"
+        "test/parity/scenarios/startup/26-startup-announces-package-install-and-captures-output.toml",
+        "test/parity/scenarios/startup/27-startup-announces-temporary-package-install-and-captures-output.toml"
       ]
     },
     {
