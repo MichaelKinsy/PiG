@@ -128,8 +128,9 @@ func (a *api) sendWhen(ctx context.Context, method, path string, repeatable bool
 //
 // The bound is the one of every call here: len(defaultRetryDelays)+1 = 4 attempts of at most apiTimeout (30 s) each,
 // 2, 4 and 6 s apart, 132 s at worst. That is inside the 5 minutes the job's timeout-minutes (30) leaves after the
-// run's --time-budget (25m) in preflight.yml, and inside the 900 s wait-preflight.sh waits for the verdict: a status
-// that needed every attempt still reaches the waiting CI jobs. A cancelled context ends the wait between two attempts.
+// run's --time-budget (25m) in preflight.yml, so the status is recorded before the run ends: the Pre-flight verdict job
+// of ci.yml follows the run's state (automation/ci/wait-preflight.py) and reads the status once the run has ended.
+// A cancelled context ends the wait between two attempts.
 func (a *api) setStatus(ctx context.Context, prefix, head, state, description string) error {
 	body := map[string]string{"state": state, "description": description, "context": statusContext}
 	return a.sendWhen(ctx, http.MethodPost, fmt.Sprintf("%s/statuses/%s", prefix, head), true, body, nil)

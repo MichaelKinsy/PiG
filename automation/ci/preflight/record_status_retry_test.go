@@ -189,9 +189,10 @@ func TestStatusPostStopsAfterItsAttempts(t *testing.T) {
 	}
 }
 
-// The bound is stated against the files that set the time there is: the job's timeout less the run's time budget in
-// preflight.yml, and the time wait-preflight.sh waits for the verdict.
-func TestStatusRetryFitsTheJobAndTheWait(t *testing.T) {
+// The bound is stated against the file that sets the time there is: the job's timeout less the run's time budget in
+// preflight.yml. The Pre-flight verdict job of ci.yml waits for the run to complete (automation/ci/wait-preflight.py), not
+// for a number of seconds, so a status that needed every attempt still reaches it before the run ends.
+func TestStatusRetryFitsTheJob(t *testing.T) {
 	// TestMain holds the delays to 2, 4 and 6 s before it shortens them for the tests.
 	attempts := len(defaultRetryDelays) + 1
 	worst := time.Duration(attempts)*apiTimeout + (2+4+6)*time.Second
@@ -216,17 +217,6 @@ func TestStatusRetryFitsTheJobAndTheWait(t *testing.T) {
 		if left := time.Duration(minutes)*time.Minute - budget; worst > left {
 			t.Errorf("the status takes %s at worst; the job leaves %s after its time budget", worst, left)
 		}
-	}
-	script, err := os.ReadFile(filepath.Join(root, "automation", "ci", "wait-preflight.sh"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	m := regexp.MustCompile(`PREFLIGHT_WAIT_SECONDS:-(\d+)`).FindSubmatch(script)
-	if m == nil {
-		t.Fatal("no default of PREFLIGHT_WAIT_SECONDS in wait-preflight.sh")
-	}
-	if seconds, _ := strconv.Atoi(string(m[1])); worst > time.Duration(seconds)*time.Second {
-		t.Errorf("the status takes %s at worst; wait-preflight.sh waits %d s", worst, seconds)
 	}
 }
 
