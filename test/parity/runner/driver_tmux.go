@@ -227,6 +227,8 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 		readyOK = waitForPaneOrCapture(ctx, session, ready, cfg.CaptureStart, timeout)
 		if !readyOK {
 			operationErr = fmt.Errorf("ready pattern %q not reached within %s", ready, timeout)
+			// A wait that timed out leaves the process in an unknown state. Every wait failure defers the probe, which runs after the final capture and before the session teardown deferred at the top; a run whose waits pass defers nothing.
+			defer hangProbe{session, transcriptPath, bin}.record(&result)
 		}
 	}
 	elapsed := time.Since(t0).Milliseconds()
@@ -266,6 +268,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 			if len(step.WaitContains) > 0 {
 				if !waitForPaneAllSince(ctx, session, transcriptPath, step.WaitContains, baseline, true, timeout) {
 					operationErr = fmt.Errorf("step output %q not reached within %s", step.WaitContains, timeout)
+					defer hangProbe{session, transcriptPath, bin}.record(&result)
 					break
 				}
 			}
@@ -273,6 +276,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 			if len(visible) > 0 || len(step.WaitNotContains) > 0 {
 				if !waitForPaneState(ctx, session, visible, step.WaitNotContains, timeout) {
 					operationErr = fmt.Errorf("visible step state includes=%q excludes=%q not reached within %s", visible, step.WaitNotContains, timeout)
+					defer hangProbe{session, transcriptPath, bin}.record(&result)
 					break
 				}
 			}
@@ -280,6 +284,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 				window := time.Duration(step.WaitStableMilliseconds) * time.Millisecond
 				if !waitForPaneQuiescent(ctx, func() string { return capturePaneVisible(ctx, session) }, window, tmuxQuiescencePoll, timeout) {
 					operationErr = fmt.Errorf("visible pane did not stay unchanged for %s within %s", window, timeout)
+					defer hangProbe{session, transcriptPath, bin}.record(&result)
 					break
 				}
 			}
