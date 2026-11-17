@@ -1466,7 +1466,7 @@ __name(openaiProvider, "openaiProvider");
 
 // pi-dist/pi-ai/api/openai-codex-responses.lazy.js
 import { lazyApi as lazyApi6 } from "../api/lazy.js";
-var openAICodexResponsesApi = /* @__PURE__ */ __name(() => lazyApi6(() => import("./chunk-23ZLWZ7U.js")), "openAICodexResponsesApi");
+var openAICodexResponsesApi = /* @__PURE__ */ __name(() => lazyApi6(() => import("./chunk-IVF7I4KX.js")), "openAICodexResponsesApi");
 
 // pi-dist/pi-ai/providers/openai-codex.js
 import { loadOpenAICodexOAuth } from "../auth/oauth/load.js";

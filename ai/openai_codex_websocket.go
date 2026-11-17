@@ -18,6 +18,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	"github.com/MichaelKinsy/PiG/internal/codexwsobserve"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 	"github.com/MichaelKinsy/PiG/internal/tlsdistrust"
@@ -205,14 +206,17 @@ func GetOpenAICodexWebSocketDebugStats(sessionID string) *OpenAICodexWebSocketDe
 // counters when no session id is supplied.
 func ResetOpenAICodexWebSocketDebugStats(sessionID ...string) {
 	codexWebSocketSessions.mu.Lock()
-	defer codexWebSocketSessions.mu.Unlock()
+	var notified string
 	if len(sessionID) > 0 && sessionID[0] != "" {
-		delete(codexWebSocketSessions.stats, sessionID[0])
-		delete(codexWebSocketSessions.fallback, sessionID[0])
-		return
+		notified = sessionID[0]
+		delete(codexWebSocketSessions.stats, notified)
+		delete(codexWebSocketSessions.fallback, notified)
+	} else {
+		clear(codexWebSocketSessions.stats)
+		clear(codexWebSocketSessions.fallback)
 	}
-	clear(codexWebSocketSessions.stats)
-	clear(codexWebSocketSessions.fallback)
+	codexWebSocketSessions.mu.Unlock()
+	codexwsobserve.Notify(notified)
 }
 
 // CloseOpenAICodexWebSocketSessions closes one session's cached connections,
@@ -258,12 +262,13 @@ func recordCodexWebSocketFailure(sessionID string, failure error) {
 		return
 	}
 	codexWebSocketSessions.mu.Lock()
-	defer codexWebSocketSessions.mu.Unlock()
 	stats := codexDebugStatsLocked(sessionID)
 	codexWebSocketSessions.fallback[sessionID] = true
 	stats.WebSocketFailures++
 	stats.WebSocketFallbackActive = true
 	stats.LastWebSocketError = failure.Error()
+	codexWebSocketSessions.mu.Unlock()
+	codexwsobserve.Notify(sessionID)
 }
 
 func recordCodexWebSocketSSEFallback(sessionID string) {
@@ -271,10 +276,11 @@ func recordCodexWebSocketSSEFallback(sessionID string) {
 		return
 	}
 	codexWebSocketSessions.mu.Lock()
-	defer codexWebSocketSessions.mu.Unlock()
 	stats := codexDebugStatsLocked(sessionID)
 	stats.SSEFallbacks++
 	stats.WebSocketFallbackActive = codexWebSocketSessions.fallback[sessionID]
+	codexWebSocketSessions.mu.Unlock()
+	codexwsobserve.Notify(sessionID)
 }
 
 func codexWebSocketFallbackActive(sessionID string) bool {
@@ -810,6 +816,7 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 			stats.LastPreviousResponseId = ""
 		}
 		codexWebSocketSessions.mu.Unlock()
+		codexwsobserve.Notify(cacheSessionID)
 	}
 
 	builder := newAssistantStreamBuilder(ctx, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model)
@@ -937,7 +944,7 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 			if !mapped.skip {
 				if mapped.terminal {
 					markCodexWebSocketFinishing(acquired.entry)
-					// The terminal frame ends the request: from here a cancelled context must not close the connection, which release keeps for the session next request.
+					// The terminal frame ends the request: from here a cancelled context must not close the connection, which release keeps for the session's next request.
 					stopCancel()
 				}
 				if _, err := fmt.Fprintf(writer, "data: %s\n\n", mapped.data); err != nil {

@@ -114,6 +114,13 @@ var vendoredAPIReexports = map[string]string{
 	"pi-messages":        `export { PiMessagesResponseError } from "./pi-messages.impl.js";` + "\n",
 }
 
+// vendoredBridgeHelperImports and vendoredBridgeHelperExports are what the openai-codex-responses stub adds: its three Codex WebSocket helpers come from the bridge, which reaches the Go cache of
+// the provider-bridge child (Pi's keep them in process-local maps).
+var vendoredBridgeHelperImports = map[string]string{"openai-codex-responses": ", bridgeCodexWebSocketHelpers"}
+var vendoredBridgeHelperExports = map[string]string{
+	"openai-codex-responses": "export const { closeOpenAICodexWebSocketSessions, getOpenAICodexWebSocketDebugStats, resetOpenAICodexWebSocketDebugStats } = bridgeCodexWebSocketHelpers();\n",
+}
+
 // vendoredBridgeStubs are pi-ai's builtin API implementations, which import
 // vendor SDKs; each is a stub that loads PiG's bridge to its host providers.
 var vendoredBridgeStubs = func() map[string]string {
@@ -124,7 +131,8 @@ var vendoredBridgeStubs = func() map[string]string {
 	for _, api := range []string{"anthropic-messages", "azure-openai-responses", "bedrock-converse-stream", "google-generative-ai", "google-vertex",
 		"mistral-conversations", "openai-codex-responses", "openai-completions", "openai-responses", "pi-messages"} {
 		stubs["pi-ai/api/"+api+".js"] = "// PiG: the " + api + " implementation runs in PiG's host (D74); see automation/gen/vendor-pi-dist.sh.\n" +
-			"import { bridgeApi } from \"../../../pi-ai-bridge.mjs\";\n" + vendoredAPIReexports[api] + "export const { stream, streamSimple } = bridgeApi(\"" + api + "\");\n"
+			"import { bridgeApi" + vendoredBridgeHelperImports[api] + " } from \"../../../pi-ai-bridge.mjs\";\n" + vendoredAPIReexports[api] +
+			"export const { stream, streamSimple } = bridgeApi(\"" + api + "\");\n" + vendoredBridgeHelperExports[api]
 	}
 	return stubs
 }()

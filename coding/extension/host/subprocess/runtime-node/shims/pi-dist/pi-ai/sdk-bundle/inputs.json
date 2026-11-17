@@ -67,7 +67,7 @@
     },
     {
       "path": "pi-dist/pi-ai/api/openai-codex-responses.js",
-      "sha256": "14f02e190bccd0a4e55d1f2d4e5ba35cac9dd25cfd171a5004bb5e781746bc99"
+      "sha256": "fb6f1d3ffd859f571252f758af3ede75762835dac0f0bfafa8b885e078f70501"
     },
     {
       "path": "pi-dist/pi-ai/api/openai-codex-responses.lazy.js",

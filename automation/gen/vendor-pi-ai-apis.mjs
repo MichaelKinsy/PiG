@@ -38,10 +38,16 @@ export const apiModules = {
   },
 };
 
+// Values a stand-in exports beside stream and streamSimple that Pi's module keeps in process-local state, so the stand-in cannot copy Pi's module: the bridge supplies them.
+export const bridgedHelpers = { "openai-codex-responses": ["closeOpenAICodexWebSocketSessions", "getOpenAICodexWebSocketDebugStats", "resetOpenAICodexWebSocketDebugStats"] };
+
 export function stubSource(api) {
   const impl = Object.entries(apiModules).find(([, module]) => module.stub === api);
   const reexport = impl ? `export { ${impl[1].reexport.join(", ")} } from "./${impl[0].slice("api/".length)}";\n` : "";
-  return `// PiG: the ${api} implementation runs in PiG's host (D74); see automation/gen/vendor-pi-dist.sh.\nimport { bridgeApi } from "../../../pi-ai-bridge.mjs";\n${reexport}export const { stream, streamSimple } = bridgeApi("${api}");\n`;
+  const helpers = bridgedHelpers[api];
+  const helperImport = helpers ? ", bridgeCodexWebSocketHelpers" : "";
+  const helperExport = helpers ? `export const { ${helpers.join(", ")} } = bridgeCodexWebSocketHelpers();\n` : "";
+  return `// PiG: the ${api} implementation runs in PiG's host (D74); see automation/gen/vendor-pi-dist.sh.\nimport { bridgeApi${helperImport} } from "../../../pi-ai-bridge.mjs";\n${reexport}export const { stream, streamSimple } = bridgeApi("${api}");\n${helperExport}`;
 }
 
 export const imagesStubSource = '// PiG: image generation has no host provider (D74); see automation/gen/vendor-pi-dist.sh.\nimport { bridgeImages } from "../../../pi-ai-bridge.mjs";\nexport const generateImages = bridgeImages("openrouter-images");\n';
