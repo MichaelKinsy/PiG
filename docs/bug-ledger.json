@@ -30071,6 +30071,29 @@
       ]
     },
     {
+      "id": "BF-77a1d72",
+      "title": "An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed`…",
+      "symptom": "An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed` or `thinking_level_select` handler written with the Go, Rust, Python or Lisp SDK: Pi replies at once because it does not await that event, but PiG's reply was held until the handler returned, for ever when the handler waited on a socket or a timer and never came back, and now waits at most the 250 ms that already bounds the other handlers a runtime cannot report waiting.",
+      "rootCause": "An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed` or `thinking_level_select` handler written with the Go, Rust, Python or Lisp SDK: Pi replies at once because it does not await that event, but PiG's reply was held until the handler returned, for ever when the handler waited on a socket or a timer and never came back, and now waits at most the 250 ms that already bounds the other handlers a runtime cannot report waiting.",
+      "rootCauseSource": "release note",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed` or `thinking_level_select` handler written with the Go, Rust, Python or Lisp SDK: Pi replies at once because it does not await that event, but PiG's reply was held until the handler returned, for ever when the handler waited on a socket or a timer and never came back, and now waits at most the 250 ms that already bounds the other handlers a runtime cannot report waiting. A handler that computes for longer than that writes its own notification after the reply, where Pi writes it before; the handler's effect is not lost. The wait has been there since v0.7.0 and earlier.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "77a1d720d9",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_unawaited_event_test.go::TestRPCUnawaitedEventAcrossSDKs",
+        "test/extension-conformance/unawaited_event_wait_conformance_test.go::TestConformance_UnawaitedEventDoesNotWaitForAWaitingHandler"
+      ]
+    },
+    {
       "id": "BF-77e64cd",
       "title": "GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3)…",
       "symptom": "GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3) now receive the selected thinking level: the request carries `reasoning_effort`, where before the level was never sent and the model always ran at its default; these models now offer their own levels (low, medium and high for the Gemini models; low, high and max for Kimi K3).",

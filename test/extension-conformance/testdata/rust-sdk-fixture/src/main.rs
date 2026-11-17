@@ -153,6 +153,9 @@ fn io_wait(addr: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+/// The address the session_info_changed handler waits on first; empty when the handler is not armed (io_wait_name).
+static NAME_WAIT_ADDR: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
 /// Subscribes `handler` to the event `name`. A before_agent_start handler registers with `on_before_agent_start` and receives the event as Pi's object (`BeforeAgentStartEvent::snapshot`).
 fn subscribe(
     subscriber: &pig_sdk::EventSubscriber,
@@ -3845,6 +3848,14 @@ fn main() {
         |_ctx, args| match io_wait(args) {
             Ok(()) => CommandResult::Ok,
             Err(err) => CommandResult::Error(err.to_string()),
+        },
+    );
+    ext.command(
+        "io_wait_name",
+        "Make the session_info_changed handler wait on a socket read",
+        |_ctx, args| {
+            *NAME_WAIT_ADDR.lock().unwrap() = args.to_string();
+            CommandResult::Ok
         },
     );
     let io_wait_subscriber = ext.event_subscriber();
@@ -7656,6 +7667,11 @@ fn main() {
         None
     });
     ext.on_event("session_info_changed", |ctx, data| {
+        // io_wait_name arms the handler to wait on a socket read first, as a handler that awaits does in Pi.
+        let addr = NAME_WAIT_ADDR.lock().unwrap().clone();
+        if !addr.is_empty() {
+            let _ = io_wait(&addr);
+        }
         let name = data.get("name").and_then(Value::as_str).unwrap_or("");
         ctx.notify(&format!("session_info_changed:{name}"), "info");
         None
