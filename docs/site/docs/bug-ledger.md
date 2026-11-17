@@ -854,6 +854,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8620e9e](#bf-8620e9e) | The SDK `DefaultResourceLoader` lists a tool or flag that two extensions register as an error of the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-86364b4](#bf-86364b4) | fix(minimatch): case-insensitive patterns compare as a JavaScript RegExp does | PiG's own defect | All platforms | Unreleased |
 | [BF-866c7f9](#bf-866c7f9) | fix(rpc): two prompts of one batch answer in request order | PiG's own defect | All platforms | Unreleased |
+| [BF-8682e68](#bf-8682e68) | A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses… | PiG's own defect | All platforms | Unreleased |
 | [BF-869cef8](#bf-869cef8) | A pi-messages stream event that is a number, string, boolean or array is skipped, as Pi skips an event of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-86c411a](#bf-86c411a) | fix(builtin): codemode and tool_search declare their parameters in TypeBox key order | PiG's own defect | All platforms | Unreleased |
 | [BF-8780292](#bf-8780292) | The footer's thinking level no longer reads `thinking off` in the first frames of an interactive start | PiG's own defect | All platforms | 0.7.0 |
@@ -13210,6 +13211,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `866c7f9fb3` (2026-10-10)
 - **Tests:** `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsOfOneBatchAnswerInRequestOrder`, `coding/session_prompt_compaction_check_test.go::TestBeginPromptCompactionCheckReturnsOnlyADueCompaction`
+
+### BF-8682e68
+
+**A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses the tool's `prepare_loadout` and `reaches_tools` hooks: the host asked for hooks the extension had dropped and kept the registered description, and the tool's `reaches_tools` calls failed.
+- **Root cause:** tool_renderers registers the tool again with its renderers and passed only the prepare_arguments handler along, so the registration dropped the prepare_loadout and reaches_tools handlers of the tool while its declaration still asked the host for them. The host asked for a hook the extension no longer had and kept the registered description.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8682e68e2b` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses the tool's `prepare_loadout` and `reaches_tools` hooks: the host asked for hooks the extension had dropped and kept the registered description, and the tool's `reaches_tools` calls failed. <!-- cause: tool_renderers registered the tool again with its renderers and passed only the prepare_arguments handler along, so the registration dropped the tool's prepare_loadout and reaches_tools handlers while its declaration still asked the host for them; the fault is in tag v0.7.0 -->
 
 ### BF-869cef8
 
