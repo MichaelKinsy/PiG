@@ -342,7 +342,7 @@ func streamSessionFileBatched(path string, batching lineBatching) (*Session, err
 	defer func() { _ = file.Close() }()
 	// The lines are read from the snapshot when it is a clone, and copied into it as they are read otherwise, so the snapshot holds the bytes
 	// the index locates. A load that can make no snapshot indexes nothing: loadPersistedSession reads the whole file instead.
-	var source io.Reader = file
+	var source io.Reader
 	snapshot, cloned := cloneSessionSnapshot(file, path)
 	var copier *snapshotCopier
 	if cloned {
