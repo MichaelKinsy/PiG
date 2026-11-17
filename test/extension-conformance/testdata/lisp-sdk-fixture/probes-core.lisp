@@ -779,6 +779,45 @@
                                           (core-info hctx (format nil "event_field:~A.~A=~A" name field
                                                                   (if (nth-value 1 (gethash field data)) (pig:to-json (gethash field data)) "absent")))
                                           nil)))))
+      ;; event_level_edit_probe: `<event> <top|deep>`, a handler that edits the event in place and returns nothing. `top` assigns a member of the event itself (probeTop); `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text block, else a string content, else a `probe` member. Every edit writes `other-event-edit`.
+      (pig:command ext "event_level_edit_probe" "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (multiple-value-bind (name level) (split-first args)
+                       (let ((edited "other-event-edit"))
+                         (pig:on ext name
+                                 (lambda (hctx data) (declare (ignore hctx))
+                                   (if (equal level "top")
+                                       (setf (gethash "probeTop" data) edited)
+                                       (let* ((messages (gethash "messages" data))
+                                              (target (or (gethash "message" data)
+                                                          (and (vectorp messages) (plusp (length messages))
+                                                               (or (find-if (lambda (m) (and (hash-table-p m) (equal (gethash "role" m) "user"))) messages)
+                                                                   (aref messages 0))))))
+                                         (when (hash-table-p target)
+                                           (let* ((content (gethash "content" target))
+                                                  (first-block (and (vectorp content) (not (stringp content)) (plusp (length content)) (aref content 0))))
+                                             (cond
+                                               ((and (hash-table-p first-block) (equal (gethash "type" first-block) "text")) (setf (gethash "text" first-block) edited))
+                                               ((stringp content) (setf (gethash "content" target) edited))
+                                               (t (setf (gethash "probe" target) edited)))))))
+                                   nil))))))
+      ;; event_member_probe: `<event> <set|delete|once> <member> [json]`, a handler that assigns the member the JSON, deletes it, or (once) assigns it in its first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there.
+      (pig:command ext "event_member_probe" "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event"
+                   (lambda (ctx args) (declare (ignore ctx))
+                     (multiple-value-bind (name rest) (split-first args)
+                       (multiple-value-bind (op rest) (split-first rest)
+                         (multiple-value-bind (member raw) (split-first rest)
+                           (let ((value (if (plusp (length (string-trim '(#\Space #\Newline #\Tab) (or raw "")))) (pig:from-json raw) nil))
+                                 (calls 0))
+                             (pig:on ext name
+                                     (lambda (hctx data)
+                                       (incf calls)
+                                       (cond ((equal op "delete") (remhash member data))
+                                             ((and (equal op "once") (> calls 1))
+                                              (core-info hctx (format nil "member_probe_stale:~A:~A" name
+                                                                      (if (and (nth-value 1 (gethash member data)) (equal (pig:to-json (gethash member data)) (pig:to-json value))) "true" "false"))))
+                                             (t (setf (gethash member data) value)))
+                                       nil))))))))
       (pig:command ext "event_probe_result" "Queue the JSON result the next event_probe_on handler call of an event returns"
                    (lambda (ctx args) (declare (ignore ctx))
                      (multiple-value-bind (name raw) (split-first args)

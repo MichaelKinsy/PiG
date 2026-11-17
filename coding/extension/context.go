@@ -44,6 +44,9 @@ type Context struct {
 	//
 	// upstream: runner.ts:567 (createContext closes over runner.<field>)
 	actions ContextActions
+
+	// eventMembers are the members of the dispatch's event the handlers added, reassigned or deleted and the event's Go value has no field for (see EventMember). nil unless a handler of the dispatch edited one.
+	eventMembers []EventMember
 }
 
 // CWD returns the working directory captured at Runner construction.

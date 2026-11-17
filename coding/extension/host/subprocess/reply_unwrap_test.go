@@ -25,7 +25,7 @@ var noEditReplies = []struct {
 
 func TestNoEditReplyIsUnwrappedWithoutAllocation(t *testing.T) {
 	for _, event := range []string{"tool_result", "message_end"} {
-		member := map[string]string{"tool_result": "_pigToolResultResult", "message_end": "_pigMessageEndResult"}[event]
+		member := map[string]string{"tool_result": "_pigToolResultResult", "message_end": "_pigEventResult"}[event]
 		for _, tc := range noEditReplies {
 			raw := json.RawMessage(bytes.ReplaceAll([]byte(tc.reply), []byte("_pigX"), []byte(member)))
 			// The host holds the event as an any already: boxing it is not the unwrap's cost.
@@ -37,7 +37,7 @@ func TestNoEditReplyIsUnwrappedWithoutAllocation(t *testing.T) {
 				if event == "tool_result" {
 					_, err = unwrapToolResultReply(toolResultEvent, raw)
 				} else {
-					_, err = unwrapMessageEndReply(messageEndEvent, raw)
+					_, err = unwrapEventReply(noDispatch(), "message_end", messageEndEvent, raw)
 				}
 				if err != nil {
 					t.Fatal(err)
@@ -53,29 +53,32 @@ func TestNoEditReplyIsUnwrappedWithoutAllocation(t *testing.T) {
 // Whatever the shortcut does, the result is the one the strict decode of the wrapper gives, and a reply the strict decode refuses is refused.
 func TestReplyUnwrapAgreesWithTheStrictDecode(t *testing.T) {
 	replies := []string{
-		`null`, `{}`, ` { } `, `{"_pigMessageEndResult":null}`, `{"_pigMessageEndResult": {"message": {"role":"user"}} }`, "\n{\"_pigMessageEndResult\"\t:\r\n1}\n",
-		`{"_pigMessageEndResult":1,"_pigMessageEndResult":2}`, `{"_pigMessageEndResult":1,"other":2}`, `{"other":2}`, `{"_pigMessageEndResult":1,"_pigMessageEndMessage":null}`,
-		`{"_pigMessageEndMessage":null,"_pigMessageEndResult":1}`, `{"\u005fpigMessageEndResult":1}`, `{"_pigMessageEndResult":}`, `{"_pigMessageEndResult"}`, `{"_pigMessageEndResult":1`,
-		`[]`, `"x"`, `{"_pigMessageEndResultX":1}`, `{"_pigMessageEndResul":1}`,
+		`null`, `{}`, ` { } `, `{"_pigEventResult":null}`, `{"_pigEventResult": {"message": {"role":"user"}} }`, "\n{\"_pigEventResult\"\t:\r\n1}\n",
+		`{"_pigEventResult":1,"_pigEventResult":2}`, `{"_pigEventResult":1,"other":2}`, `{"other":2}`, `{"_pigEventResult":1,"_pigEventEdits":null}`,
+		`{"_pigEventEdits":null,"_pigEventResult":1}`, `{"\u005fpigEventResult":1}`, `{"_pigEventResult":}`, `{"_pigEventResult"}`, `{"_pigEventResult":1`,
+		`[]`, `"x"`, `{"_pigEventResultX":1}`, `{"_pigMessageEndResul":1}`,
+		`{"_pigEventEdits":[],"_pigEventResult":1}`, `{"_pigEventEdits":{},"_pigEventResult":1}`, `{"_pigEventEdits":[{"at":0}]}`, `{"_pigEventEdits":[{"message":{"role":"user"}}]}`, `{"_pigEventEdits":[{"at":0,"message":null}]}`,
+		`{"_pigEventEdits":[{"at":0,"message":"x"}]}`, `{"_pigEventEdits":[{"at":"0","message":{}}]}`, `{"_pigEventEdits":[{"at":0,"message":{},"x":1}]}`, `{"_pigEventEdits":[null]}`, `{"_pigEventEdits":[1]}`,
+		`{"_pigEventEdits":"x"}`, `{"_pigMessageEndMessage":{},"_pigEventResult":1}`, `{"_pigMessageEndResult":1}`,
 		`{"_pigToolResultResult":null}`, `{"_pigToolResultResult":"a"}`, `{"_pigToolResultResult":[1,{"a":"}"}]}`, `{"_pigToolResultEdits":null,"_pigToolResultResult":1}`,
 		`{"_pigToolResultEdits":{"members":{"isError":true},"changed":["isError"],"shared":[]},"_pigToolResultResult":null}`, `{"_pigToolResultEdits":{"unknown":1},"_pigToolResultResult":1}`,
 		`{"_pigToolResultResult":1,"_pigToolResultEdits":{"members":{},"changed":[],"shared":[]}}`, `{"_pigToolResultResult":1,"x":2}`, `{"_pigToolResultResult":1,}`,
 	}
 	for _, raw := range replies {
-		var messageEnd MessageEndResponsePayload
+		var messageEnd EventResponsePayload
 		wantME := json.Unmarshal([]byte(raw), &messageEnd)
 		var toolResult ToolResultResponsePayload
 		wantTR := json.Unmarshal([]byte(raw), &toolResult)
 		if !json.Valid([]byte(raw)) {
 			continue
 		}
-		if wantME == nil && len(messageEnd.Message) == 0 {
-			got, err := unwrapMessageEndReply(extension.MessageEndEvent{Type: "message_end"}, json.RawMessage(raw))
+		if wantME == nil && len(messageEnd.Edits) == 0 {
+			got, err := unwrapEventReply(noDispatch(), "message_end", extension.MessageEndEvent{Type: "message_end"}, json.RawMessage(raw))
 			if err != nil || !bytes.Equal(got, messageEnd.Result) {
 				t.Errorf("message_end reply %q: unwrapped %q, %v; the strict decode gives %q", raw, got, err, messageEnd.Result)
 			}
 		} else if wantME != nil {
-			if _, err := unwrapMessageEndReply(extension.MessageEndEvent{Type: "message_end"}, json.RawMessage(raw)); err == nil {
+			if _, err := unwrapEventReply(noDispatch(), "message_end", extension.MessageEndEvent{Type: "message_end"}, json.RawMessage(raw)); err == nil {
 				t.Errorf("message_end reply %q: unwrapped without an error; the strict decode says %v", raw, wantME)
 			}
 		}
@@ -109,8 +112,8 @@ func TestToolResultReplyWithEditsReachesTheSink(t *testing.T) {
 
 func TestMessageEndReplyWithAMessageEditsTheEventsMessage(t *testing.T) {
 	message := agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserText("hello"), Timestamp: 1}}
-	raw := `{"_pigMessageEndMessage":{"role":"user","content":"changed","timestamp":1},"_pigMessageEndResult":null}`
-	got, err := unwrapMessageEndReply(extension.MessageEndEvent{Type: "message_end", Message: message}, json.RawMessage(raw))
+	raw := `{"_pigEventEdits":[{"at":0,"message":{"role":"user","content":"changed","timestamp":1}}],"_pigEventResult":null}`
+	got, err := unwrapEventReply(noDispatch(), "message_end", extension.MessageEndEvent{Type: "message_end", Message: message}, json.RawMessage(raw))
 	if err != nil || string(got) != "null" {
 		t.Fatalf("result %q, %v; want null", got, err)
 	}
@@ -124,7 +127,7 @@ func TestResultMemberNamesAreTheWrappersJSONTags(t *testing.T) {
 		wrapper any
 		member  string
 	}{
-		{MessageEndResponsePayload{}, messageEndResultMember},
+		{EventResponsePayload{}, eventResultMember},
 		{ToolResultResponsePayload{}, toolResultResultMember},
 	} {
 		field, ok := reflect.TypeOf(tc.wrapper).FieldByName("Result")
@@ -143,5 +146,27 @@ func TestSoleMemberRefusesTextThatIsNotOneObject(t *testing.T) {
 	}
 	if got, ok := soleMember([]byte(` { "k" : [1, 2] } `), "k"); !ok || string(got) != "[1, 2]" {
 		t.Errorf("soleMember of a spaced object = %q, %v; want [1, 2], true", got, ok)
+	}
+}
+
+// Edits are validated before any is applied: a reply with one edit that cannot be applied changes nothing, and is refused.
+func TestEventReplyRefusesEditsThatDoNotFitTheEventAndAppliesNone(t *testing.T) {
+	user := func() agent.AgentMessage {
+		return agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserText("hello"), Timestamp: 1}}
+	}
+	for name, raw := range map[string]string{
+		"position past the list":    `{"_pigEventEdits":[{"at":1,"message":{"role":"user","content":"changed","timestamp":1}}],"_pigEventResult":null}`,
+		"negative position":         `{"_pigEventEdits":[{"at":-1,"message":{"role":"user","content":"changed","timestamp":1}}]}`,
+		"another role":              `{"_pigEventEdits":[{"at":0,"message":{"role":"toolResult","toolCallId":"c","toolName":"t","content":[],"isError":false,"timestamp":1}}]}`,
+		"named twice":               `{"_pigEventEdits":[{"at":0,"message":{"role":"user","content":"a","timestamp":1}},{"at":0,"message":{"role":"user","content":"b","timestamp":1}}]}`,
+		"a good edit and a bad one": `{"_pigEventEdits":[{"at":0,"message":{"role":"user","content":"changed","timestamp":1}},{"at":3,"message":{"role":"user","content":"x","timestamp":1}}]}`,
+	} {
+		message := user()
+		if _, err := unwrapEventReply(noDispatch(), "message_end", extension.MessageEndEvent{Type: "message_end", Message: message}, json.RawMessage(raw)); err == nil {
+			t.Errorf("%s: the reply %s was not refused", name, raw)
+		}
+		if text, err := json.Marshal(message.User.Content); err != nil || string(text) != `"hello"` {
+			t.Errorf("%s: the message holds %s, %v after a refused reply; want it unchanged", name, text, err)
+		}
 	}
 }

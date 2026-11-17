@@ -177,6 +177,21 @@ func (m AgentMessage) Identity() any {
 	return nil
 }
 
+// Original is the message m's envelope was copied from (startEventMessage), as a message of its own shape over the object the transcript and the saved entry hold, and reports whether m is such an envelope whose original is reachable. A system, user, assistant or tool result message has one; a custom message's copy does not (its original is a map Identity only names).
+func (m AgentMessage) Original() (AgentMessage, bool) {
+	switch origin := m.origin.(type) {
+	case *ai.SystemMessage:
+		return AgentMessage{System: origin}, true
+	case *UserMessage:
+		return AgentMessage{User: origin}, true
+	case *AssistantMessage:
+		return AgentMessage{Assistant: origin}, true
+	case *ToolResultMessage:
+		return AgentMessage{ToolResult: origin}, true
+	}
+	return AgentMessage{}, false
+}
+
 // messageSource is the JSON.stringify text of the object a message was decoded from.
 type messageSource struct {
 	text []byte

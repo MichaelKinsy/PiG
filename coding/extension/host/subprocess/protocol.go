@@ -792,22 +792,45 @@ func (p *ToolCallResponsePayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MessageEndResponsePayload is the result of an extension's message_end handler, from every SDK. Message is the event's message when the handler left it different from the one it received (an in-place edit, which Pi's later handlers, turn_end, agent_end and the stored entry all hold); an omitted Message means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
-type MessageEndResponsePayload struct {
-	Message json.RawMessage `json:"_pigMessageEndMessage"`
-	Result  json.RawMessage `json:"_pigMessageEndResult"`
+// EventResponsePayload is the result of an extension's message_start, message_end, turn_end or agent_end handler, from every SDK (turn_end's reply carries it beside its boundary members). Edits are the messages of the event the handler left different from the ones it received (an in-place edit, which Pi's later handlers, the saved entry and the next provider request all hold), each at its position in the event's list of messages; an omitted Edits means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
+type EventResponsePayload struct {
+	Edits  []EventEdit     `json:"_pigEventEdits"`
+	Result json.RawMessage `json:"_pigEventResult"`
 }
 
-func (p *MessageEndResponsePayload) UnmarshalJSON(data []byte) error {
-	type messageEndResponsePayload MessageEndResponsePayload
+func (p *EventResponsePayload) UnmarshalJSON(data []byte) error {
+	type eventResponsePayload EventResponsePayload
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
-	var decoded messageEndResponsePayload
+	var decoded eventResponsePayload
 	if err := decoder.Decode(&decoded); err != nil {
 		return err
 	}
-	*p = MessageEndResponsePayload(decoded)
+	*p = EventResponsePayload(decoded)
 	return nil
+}
+
+// EventEdit is one message of an event as a handler left it: At is its position in the messages the event holds (message_start and message_end: 0; turn_end: 0 for the assistant message, then the tool results; agent_end: the index in messages) and Message the message. It has no decoder of its own: the reply's strict decode reaches its members, and applyEventEdits refuses an entry that names no position or no message object.
+//
+// The second form names a member of the event itself: {"member":"note","value":<json>} assigns it and {"member":"note","deleted":true} removes it (a top-level member of message_start, message_update, turn_start, agent_start or agent_end that a handler added, reassigned or deleted; see [extension.EventMember]). An entry is of one form: an entry with At or Message and Member, Value or Deleted is refused.
+type EventEdit struct {
+	At      *int            `json:"at"`
+	Message json.RawMessage `json:"message"`
+	Member  string          `json:"member"`
+	Value   json.RawMessage `json:"value"`
+	Deleted bool            `json:"deleted"`
+}
+
+// isMemberEntry tells whether the entry is of the second form (it names a member, or carries a member's value or deletion).
+func (e EventEdit) isMemberEntry() bool { return e.Member != "" || len(e.Value) > 0 || e.Deleted }
+
+// memberEvent tells whether a handler's edit of a top-level member of the event is carried: the events a Pi handler shares one object across handlers for (runner.ts emit) whose own members are not messages the entry holds.
+func memberEvent(event string) bool {
+	switch event {
+	case "message_start", "message_update", "turn_start", "agent_start", "agent_end":
+		return true
+	}
+	return false
 }
 
 // ToolResultResponsePayload is the result of an extension's tool_result handler, from every SDK. Edits names the members of the event the handler left different from the ones it received and, of those, the ones it edited in the object it received (see [extension.ToolResultEdits]); an omitted Edits means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.

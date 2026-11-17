@@ -5207,6 +5207,94 @@ fn main() {
             CommandResult::Ok
         },
     );
+    let event_level_subscriber = ext.event_subscriber();
+    let event_level_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    // event_level_edit_probe `<event> <top|deep>`: a handler that edits the event in place and returns nothing. `top` assigns a member of the event itself (probeTop); `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text block, else a string content, else a `probe` member. Every edit writes `other-event-edit`.
+    ext.command(
+        "event_level_edit_probe",
+        "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place",
+        move |_ctx, args| {
+            let mut words = args.split_whitespace();
+            let name = words.next().unwrap_or("").to_string();
+            let top = words.next() == Some("top");
+            let subscription = subscribe(&event_level_subscriber, &name, move |_ctx, data| {
+                let edited = Value::from("other-event-edit");
+                if top {
+                    data["probeTop"] = edited;
+                    return Ok(None);
+                }
+                let target: Option<&mut Value> = if data.get("message").is_some() {
+                    data.get_mut("message")
+                } else if let Some(list) = data.get_mut("messages").and_then(|v| v.as_array_mut()) {
+                    let at = list
+                        .iter()
+                        .position(|m| m.get("role").and_then(|r| r.as_str()) == Some("user"))
+                        .unwrap_or(0);
+                    list.get_mut(at)
+                } else {
+                    None
+                };
+                let Some(target) = target.filter(|t| t.is_object()) else {
+                    return Ok(None);
+                };
+                let first_is_text = target
+                    .get("content")
+                    .and_then(|c| c.as_array())
+                    .and_then(|c| c.first())
+                    .is_some_and(|b| b.get("type").and_then(|t| t.as_str()) == Some("text"));
+                if first_is_text {
+                    target["content"][0]["text"] = edited;
+                } else if target.get("content").is_some_and(|c| c.is_string()) {
+                    target["content"] = edited;
+                } else {
+                    target["probe"] = edited;
+                }
+                Ok(None)
+            });
+            event_level_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    let event_member_subscriber = ext.event_subscriber();
+    let event_member_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    // event_member_probe `<event> <set|delete|once> <member> [json]`: a handler that assigns the member the JSON, deletes it, or (once) assigns it in its first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there.
+    ext.command(
+        "event_member_probe",
+        "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event",
+        move |_ctx, args| {
+            let mut words = args.trim().splitn(4, char::is_whitespace);
+            let name = words.next().unwrap_or("").to_string();
+            let op = words.next().unwrap_or("").to_string();
+            let member = words.next().unwrap_or("").to_string();
+            let value: Value = match words.next().map(str::trim) {
+                Some(raw) if !raw.is_empty() => match serde_json::from_str(raw) {
+                    Ok(value) => value,
+                    Err(err) => return CommandResult::Error(err.to_string()),
+                },
+                _ => Value::Null,
+            };
+            let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+            let reported = name.clone();
+            let subscription = subscribe(&event_member_subscriber, &name, move |ctx, data| {
+                let call = calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+                if op == "delete" {
+                    if let Some(object) = data.as_object_mut() {
+                        object.remove(&member);
+                    }
+                } else if op == "once" && call > 1 {
+                    let stale = data.get(member.as_str()) == Some(&value);
+                    ctx.notify(&format!("member_probe_stale:{}:{}", reported, stale), "info");
+                } else {
+                    data[member.as_str()] = value.clone();
+                }
+                Ok(None)
+            });
+            event_member_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     ext.command(
         "host_state_probe",
         "Report the thinking level and the session commands",

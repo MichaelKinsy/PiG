@@ -245,6 +245,48 @@ function replaceMessageInPlace(target, source) {
   Object.assign(target, source);
 }
 
+// eventEditMessages are the message objects of an event a handler may edit in place, by the position the reply names them at (_pigEventEdits): message_end has one. The reply is about these objects, so a handler that assigns another message to the event changes nothing, as in Pi (the event is made for each handler).
+function eventEditMessages(name, event) {
+  if (name === "message_start" || name === "message_end") return [event.message];
+  if (name === "agent_end") return Array.isArray(event.messages) ? event.messages : [];
+  if (name === "turn_end") return [event.message, ...(Array.isArray(event.toolResults) ? event.toolResults : [])];
+  return [];
+}
+
+// snapshotEventMessages is the JSON text of each message as the handler received it, or undefined for a value that is no object.
+function snapshotEventMessages(messages) {
+  return messages.map((message) => (message && typeof message === "object" ? JSON.stringify(message) : undefined));
+}
+
+// eventMessageEdits names the messages whose JSON text the handler changed, with the message as it left it, or is undefined when it changed none.
+function eventMessageEdits(messages, before) {
+  const edits = [];
+  for (let at = 0; at < messages.length; at++) {
+    if (before[at] !== undefined && JSON.stringify(messages[at]) !== before[at]) edits.push({ at, message: messages[at] });
+  }
+  return edits.length > 0 ? edits : undefined;
+}
+
+// MEMBER_EVENTS are the events whose own members a handler may assign, reassign or delete for the later handlers of the dispatch: Pi hands every handler of an emit the one event object (runner.ts emit).
+const MEMBER_EVENTS = new Set(["message_start", "message_update", "turn_start", "agent_start", "agent_end"]);
+
+// eventMemberEdits names the members the handler left different from the ones it received, as the second form of the reply's entries: {member, value} for one it added or whose value is another object or primitive (identity), {member, deleted: true} for one it deleted or set to undefined. It is undefined when the handler changed none. The event is the handler's own copy of the payload, so a member another handler left is already in `before`.
+function eventMemberEdits(event, before) {
+  let edits;
+  for (const name of Object.keys(before)) {
+    if (!Object.hasOwn(event, name)) (edits ??= []).push({ member: name, deleted: true });
+    else if (event[name] !== before[name]) (edits ??= []).push(memberEdit(name, event[name]));
+  }
+  for (const name of Object.keys(event)) {
+    if (!Object.hasOwn(before, name)) (edits ??= []).push(memberEdit(name, event[name]));
+  }
+  return edits;
+}
+
+function memberEdit(name, value) {
+  return JSON.stringify(value) === undefined ? { member: name, deleted: true } : { member: name, value };
+}
+
 // messageNumbers is the number the host gave each message object this process holds: an object that crosses to another process (pi.events, xref) names its message by it, and the receiving process resolves the number to its own object (resolveMessage), so the message is === the receiver's own payload message, as in Pi's one realm.
 const messageNumbers = new WeakMap();
 
@@ -5658,9 +5700,11 @@ export class Runtime {
           if (fileOps) {
             for (const key of ["read", "written", "edited"]) fileOps[key] = new Set(fileOps[key] ?? []);
           }
-          // pig additive (D19): preserve boundary mutations alongside handler errors.
+          // pig additive (D19): preserve boundary mutations alongside handler errors. A turn_end handler also edits the turn's messages in place (Pi hands every handler the turn's message objects, agent-session.ts _dispatchTurnEndBoundary): the reply carries the ones it left different, beside the boundary members.
           if (request.event === "agent_before_settle" || request.event === "turn_end") {
             const entries = event.entries;
+            const messages = eventEditMessages(request.event, event);
+            const before = snapshotEventMessages(messages);
             let result;
             let error;
             try {
@@ -5670,7 +5714,8 @@ export class Runtime {
             } catch (err) {
               error = err instanceof Error ? err : new Error(String(err));
             }
-            await this.respond(id, { _pigBoundaryEntries: entries, _pigBoundaryResult: result }, error);
+            const edits = eventMessageEdits(messages, before);
+            await this.respond(id, { _pigBoundaryEntries: entries, _pigBoundaryResult: result, ...(edits ? { _pigEventEdits: edits } : {}) }, error);
             return;
           }
           // Pi hands every tool_call handler the one event object, and a handler edits event.input in place (runner.ts emitToolCall). The host cannot share the object, so the reply carries the input the handler left, when it differs from the one it received, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so a handler that assigns a new object to event.input changes nothing the tool receives.
@@ -5722,9 +5767,10 @@ export class Runtime {
             return;
           }
           // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, turn_end, agent_end and the entry hold. The host cannot share the object, so the reply carries the message the handler left, when it differs from the one it received, even if the handler failed (the host writes it into the message, as it does a tool_call's edited input).
-          if (request.event === "message_end") {
-            const message = event.message;
-            const before = message && typeof message === "object" ? JSON.stringify(message) : undefined;
+          if (request.event === "message_start" || request.event === "message_end" || request.event === "agent_end") {
+            const messages = eventEditMessages(request.event, event);
+            const before = snapshotEventMessages(messages);
+            const membersBefore = MEMBER_EVENTS.has(request.event) ? { ...event } : undefined;
             let result;
             let error;
             try {
@@ -5736,8 +5782,10 @@ export class Runtime {
             } catch (err) {
               error = err instanceof Error ? err : new Error(String(err));
             }
-            const edited = before !== undefined && JSON.stringify(message) !== before;
-            await this.respond(id, { ...(edited ? { _pigMessageEndMessage: message } : {}), _pigMessageEndResult: result }, error);
+            const messageEdits = eventMessageEdits(messages, before);
+            const memberEdits = membersBefore ? eventMemberEdits(event, membersBefore) : undefined;
+            const edits = messageEdits || memberEdits ? [...(messageEdits ?? []), ...(memberEdits ?? [])] : undefined;
+            await this.respond(id, { ...(edits ? { _pigEventEdits: edits } : {}), _pigEventResult: result }, error);
             return;
           }
           // Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the event, so the reply names the members the handler left different from the ones it received, with their new values, and, of those, the ones it edited in the very object it received instead of replacing; the reply carries them also when the handler threw.
@@ -5794,6 +5842,8 @@ export class Runtime {
           }
           const messages = event.messages;
           const snapshot = Array.isArray(messages) ? messages.slice() : undefined;
+          // message_update, turn_start and agent_start (message_start and agent_end replied above): a member a handler assigns, reassigns or deletes is what the later handlers of the dispatch see (runner.ts emit), so the reply carries the members it left different, also from a handler that threw.
+          const membersBefore = MEMBER_EVENTS.has(request.event) ? { ...event } : undefined;
           // A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
           const encodedBefore = snapshot && (request.event === "context" || request.event === "context_with_system") ? contextMessagesEncoding(messages) : undefined;
           let pending;
@@ -5801,6 +5851,13 @@ export class Runtime {
             pending = selected.handler(event, ctx);
           } catch (err) {
             // A context handler that throws before its first await fails as one that rejects: its edit of a message is kept.
+            if (membersBefore) {
+              const memberEdits = eventMemberEdits(event, membersBefore);
+              if (memberEdits) {
+                await this.respond(id, { _pigEventEdits: memberEdits }, err instanceof Error ? err : new Error(String(err)));
+                return;
+              }
+            }
             if (request.event !== "context" || !snapshot) throw err;
             pending = Promise.reject(err);
           }
@@ -5820,6 +5877,13 @@ export class Runtime {
           try {
             result = await pending;
           } catch (err) {
+            if (membersBefore) {
+              const memberEdits = eventMemberEdits(event, membersBefore);
+              if (memberEdits) {
+                await this.respond(id, { _pigEventEdits: memberEdits }, err instanceof Error ? err : new Error(String(err)));
+                return;
+              }
+            }
             if (request.event !== "context" || !snapshot) throw err;
             // Pi hands a context handler a filtered copy of the list over the one set of message objects (runner.ts emitContext): an edit to a message stays after a throw and a change to the list does not, so the reply of a failed handler carries the messages it was handed, as it left them.
             await this.respond(id, { messages: snapshot, _pigContextUnchanged: true }, err instanceof Error ? err : new Error(String(err)));
@@ -5841,7 +5905,8 @@ export class Runtime {
               result = { operations: { handle } };
             }
           }
-          await this.respond(id, result);
+          const memberEdits = membersBefore ? eventMemberEdits(event, membersBefore) : undefined;
+          await this.respond(id, memberEdits ? { _pigEventEdits: memberEdits, _pigEventResult: result } : result);
           return;
         }
         case "ui.view.intent": {

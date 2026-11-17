@@ -4854,6 +4854,14 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			update = streamedMessageUpdate(event, args[0], boundaryWire)
 			toolUpdate = streamedToolUpdate(event, args[0], boundaryWire)
 		}
+		// A member an earlier handler of the dispatch left on the event is written over this request's payload. A message_update request that carries members is sent whole, outside the delta stream, and the extension's next delta is a keyframe (message_update_delta.go: a request the stream cannot carry leaves the extension's copy as it is).
+		var members []extension.EventMember
+		if memberEvent(event) {
+			if members = extension.EventMembers(parent); members != nil && update != nil {
+				update = nil
+				me.messageUpdates.invalidate()
+			}
+		}
 		streamed := update != nil || toolUpdate != nil
 		// The dispatch's event, unchanged since an earlier handler encoded it, has that handler's encoding.
 		var eventWire *eventwire.Dispatch
@@ -4868,6 +4876,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			var err error
 			argsJSON, err = marshalEventWireIn(parent, boundaryEventWire(wireEventPayload(args[0]), boundaryWire))
 			if err != nil {
+				return nil, fmt.Errorf("marshal event args: %w", err)
+			}
+		}
+		if members != nil && len(args) > 0 {
+			var err error
+			if argsJSON, err = applyEventMembers(argsJSON, members); err != nil {
 				return nil, fmt.Errorf("marshal event args: %w", err)
 			}
 		}
@@ -5042,11 +5056,23 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				}
 				resp.Response.Result = reply.Result
 			}
-			// upstream: runner.ts emitMessageEnd hands every handler the one event.message and agent-session.ts stores that object, so a handler's in-place edit of it is the message the later handlers, turn_end, agent_end and the saved entry hold. An extension process cannot share the object: every SDK's reply carries the message it left, when that differs from the one it received, even if the handler failed.
-			if event == "message_end" && len(args) > 0 && len(resp.Response.Result) > 0 {
-				result, err := unwrapMessageEndReply(args[0], resp.Response.Result)
+			// upstream: runner.ts emit hands every message_start, message_end and agent_end handler the one event, and emitMessageEnd the one event.message, and agent-session.ts stores those objects, so a handler's in-place edit of a message is what the later handlers, turn_end, agent_end, the saved entry and the next request hold. An extension process cannot share the object: every SDK's reply carries the messages it left, when they differ from the ones it received, even if the handler failed.
+			if (event == "message_start" || event == "message_end" || event == "agent_end") && len(args) > 0 && len(resp.Response.Result) > 0 {
+				result, err := unwrapEventReply(parent, event, args[0], resp.Response.Result)
 				if err != nil {
 					return nil, err
+				}
+				resp.Response.Result = result
+			}
+			// pig divergence (D541): a message_update handler's in-place edit of the partial's content is not looked for (a snapshot and a compare per delta cost 11 to 24 % per delta); only an assigned member of the event is read.
+			// The reply of a message_update, turn_start or agent_start handler is read only when it carries edits of members: another reply of these events is a result nobody reads. An edit from a handler on the delta stream leaves the extension's copy of the stream as the handler saw it, so its next delta is a keyframe.
+			if (event == "message_update" || event == "turn_start" || event == "agent_start") && len(args) > 0 && len(resp.Response.Result) > 0 && bytes.Contains(resp.Response.Result, eventEditsMember) {
+				result, err := unwrapEventReply(parent, event, args[0], resp.Response.Result)
+				if err != nil {
+					return nil, err
+				}
+				if update != nil {
+					me.messageUpdates.invalidate()
 				}
 				resp.Response.Result = result
 			}
@@ -5063,9 +5089,21 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				var boundary struct {
 					Entries []extension.SessionBoundaryDraft `json:"_pigBoundaryEntries"`
 					Result  json.RawMessage                  `json:"_pigBoundaryResult"`
+					// Edits are the messages a turn_end handler edited in place (agent-session.ts _dispatchTurnEndBoundary hands the turn's message objects to every handler), by position in [assistant message, ...tool results]. A malformed member is a refused reply, as in any other event's reply.
+					Edits []EventEdit `json:"_pigEventEdits"`
 				}
 				if err := json.Unmarshal(resp.Response.Result, &boundary); err != nil {
 					return nil, fmt.Errorf("decode boundary response: %w", err)
+				}
+				if event == "turn_end" {
+					if len(boundary.Edits) > 0 {
+						if err := decodeBoundaryEditsStrictly(resp.Response.Result); err != nil {
+							return nil, fmt.Errorf("decode boundary response: %w", err)
+						}
+					}
+					if err := applyEventEdits(parent, args[0], boundary.Edits); err != nil {
+						return nil, fmt.Errorf("apply turn_end response: %w", err)
+					}
 				}
 				switch target := args[0].(type) {
 				case *extension.AgentBeforeSettleEvent:
