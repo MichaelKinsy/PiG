@@ -133,8 +133,10 @@ func modelAfterReplacementServer(t *testing.T) string {
 	return server.URL + "/v1"
 }
 
-// expectModelSelected runs trigger, which selects spec, and expects the extension to see the registered model of spec, at the thinking level of the shape, and, when footer is set, the footer to show its window.
-func expectModelSelected(t *testing.T, p *interactivePig, shape modelAfterReplacementShape, spec string, footer bool, trigger func()) {
+// expectModelSelected runs trigger, which selects spec, and expects the extension to see the registered model of spec, at the thinking level of the shape, and the footer to show its window.
+// Pi redraws the footer when the terminal next renders, not when an extension's setModel returns (parity scenario 109 shows both programs keep the old window until then), so a selection
+// that does not draw by itself passes key, a keystroke that is the next render, once the extension has seen the event.
+func expectModelSelected(t *testing.T, p *interactivePig, shape modelAfterReplacementShape, spec string, key string, trigger func()) {
 	t.Helper()
 	before := len(readModelAfterReplacementRecords(t, p.log))
 	mark := p.output.mark()
@@ -151,8 +153,8 @@ func expectModelSelected(t *testing.T, p *interactivePig, shape modelAfterReplac
 	if shape.thinking != "" && got.Thinking != shape.thinking {
 		t.Errorf("selecting %s left the thinking level %q, want %s", spec, got.Thinking, shape.thinking)
 	}
-	if !footer {
-		return
+	if key != "" {
+		p.send(key)
 	}
 	// The footer reads "0.0%/777k (auto)": the used share, then the window.
 	window := "/" + strconv.Itoa(want.ContextWindow/1000) + "k"
@@ -189,7 +191,7 @@ func runModelAfterReplacement(t *testing.T, fixture string, shape modelAfterRepl
 		time.Sleep(700 * time.Millisecond)
 	}
 	for _, spec := range []string{"metaprov/model-b", "metaprov/model-a"} {
-		expectModelSelected(t, p, shape, spec, true, func() { p.selectModel(spec) })
+		expectModelSelected(t, p, shape, spec, "", func() { p.selectModel(spec) })
 	}
 	// The next turn runs on the selected model, and its window decides when the Session compacts (shouldCompact: tokens > window - reserve): a window of 0 puts every reply over the threshold.
 	mark := p.output.mark()
@@ -277,7 +279,7 @@ func TestInteractiveExtensionSetModelAfterNewKeepsRegisteredMetadata(t *testing.
 				})
 				time.Sleep(700 * time.Millisecond)
 			}
-			expectModelSelected(t, p, shapeAPIKey, "metaprov/model-b", false, func() { p.command("\x15/pick") })
+			expectModelSelected(t, p, shapeAPIKey, "metaprov/model-b", "x", func() { p.command("\x15/pick") })
 			p.quit()
 		})
 	}
