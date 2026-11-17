@@ -16,8 +16,9 @@ import (
 // host. While a registerTool of any runtime of the process waits, or the process waits on a synchronous call while a setActiveTools
 // is unfinished, the request now starts nested in that wait: the notifications sent before it apply first, those already handed to
 // the serve loop's waiter included (once), inside the hook's own request, so a host call made there or in the hook is filed under
-// that request; it does not wait for onLoaded handlers, and it answers without waiting for its fire-and-forget calls. Where the
-// order cannot be kept (a request queued or handed ahead, frames held for a turn) it is refused at once. Otherwise the serve loop's
+// that request; it does not wait for onLoaded handlers, and it answers without waiting for its fire-and-forget calls. A request
+// that waits unstarted ahead of it (queued, or handed to the serve loop's waiter) or frames held for a turn do not hold it back, as
+// Pi's hook runs inside the call whatever else waits: they stay for the serve loop, in order. Outside those waits the serve loop's
 // order holds. The host's call is a synchronous stub inside the real wait, so no microtask runs before the answer must be out.
 func TestNodeRuntimeStartsPrepareLoadoutNestedInARefreshItWaitsOn(t *testing.T) {
 	path, err := filepath.Abs("runtime-node/runtime.mjs")
@@ -112,10 +113,12 @@ assert.equal(seen[1].model, "after", "the state push queued ahead applied first"
 assert.deepEqual(parents.filter(([method]) => method === "getActiveTools"), [["getActiveTools", "a1"], ["getActiveTools", "b1"]], "each hook's host call is filed under its own request");
 assert.deepEqual(b.conn.queue, []);
 
-// A request queued ahead, or frames held for a turn: refused at once, the hook does not run, what waits stays.
+// A request waits unstarted ahead of the hook, a notification behind it, and frames are held for a turn: the hook still runs inside
+// the call, as Pi's does, and what waits stays for the serve loop, in order.
 const ran = seen.length;
 const earlier = { type: "request", id: "earlier", request: { method: "event", event: "x" } };
-b.conn.queue.push(earlier);
+const behind = { type: "notify", notify: { method: "state_update", args: { model: { id: "behind", provider: "p" } } } };
+b.conn.queue.push(earlier, behind);
 const held = { type: "notify", notify: { method: "state_update", args: { model: { id: "held", provider: "p" } } } };
 a.conn.held.push(held);
 onRegister = () => {
@@ -124,9 +127,10 @@ onRegister = () => {
   answeredDuringTheCall.push(b.response("b2"), a.response("a2"));
 };
 registerLate();
-for (const answer of answeredDuringTheCall.slice(-2)) assert.match(answer?.error?.message ?? "", /refusing it rather than answering it out of order/);
-assert.equal(seen.length, ran, "a refused hook does not run");
-assert.deepEqual(b.conn.queue, [earlier]);
+assert.deepEqual(answeredDuringTheCall.slice(-2), [{ result: { descriptions: { hooked: "b" } } }, { result: { descriptions: { hooked: "a" } } }]);
+assert.equal(seen.length, ran + 2, "both hooks ran");
+assert.equal(seen.at(-2).model, "after", "a notification behind a waiting request does not apply before it");
+assert.deepEqual(b.conn.queue, [earlier, behind]);
 assert.deepEqual(a.conn.held, [held]);
 b.conn.queue.length = 0;
 a.conn.held.length = 0;
@@ -203,14 +207,14 @@ assert.deepEqual(cSeen, ["handed"], "the frame handed to the serve loop applied 
 assert.deepEqual(parents.at(-1), ["probe", "c1"], "a notification applied first runs under the hook's request");
 await new Promise((resolve) => setImmediate(resolve));
 assert.deepEqual(applied, ["handed"], "the serve loop does not apply it again");
-// A request handed to the waiter is work the loop has not started: the hook is refused, and the loop still runs that request.
+// A request handed to the waiter is work the loop has not started: the hook still runs, and the loop still runs that request.
 onRegister = () => {
   c.socket.emit("envelope", { type: "request", id: "c-earlier", request: { method: "event", event: "x" } });
   c.ask("c2");
   answeredDuringTheCall.push(c.response("c2"));
 };
 registerLate();
-assert.match(answeredDuringTheCall.at(-1)?.error?.message ?? "", /refusing it rather than answering it out of order/);
+assert.deepEqual(answeredDuringTheCall.at(-1), { result: { descriptions: { hooked: "c" } } });
 for (let i = 0; i < 5 && !c.response("c-earlier"); i++) await new Promise((resolve) => setImmediate(resolve));
 assert.ok(c.response("c-earlier"), "the loop ran the request it was handed");
 `, fileURL(path), fileURL(filepath.Join(filepath.Dir(path), "provider-socket.mjs")))

@@ -1372,6 +1372,12 @@ export class Connection {
     } else this.queue.push(env);
   }
 
+  // markRead records that the serve loop has read env, and reports whether a request nested in a synchronous wait applied it already.
+  markRead(env) {
+    if (this.handed[0] === env) this.handed.shift();
+    return this.appliedEarly.delete(env);
+  }
+
   releaseHeld() {
     for (const env of this.held.splice(0)) this.deliver(env);
   }
@@ -2958,12 +2964,30 @@ export class Runtime {
     liveRuntimes.delete(this);
   }
 
-  // Applies what waits in the connection's queue, after the given frames, notifications and call results only, in order, as the
-  // serve loop would.
-  applyQueued(conn, before = []) {
-    for (const queued of [...before, ...conn.queue.splice(0)]) {
+  // Applies what waits in the connection's queue, notifications and call results only, in order, as the serve loop would.
+  applyQueued(conn) {
+    for (const queued of conn.queue.splice(0)) {
       if (queued.type === "call_result") conn.resolveCall(queued);
       else if (queued.notify) this.handleNotify(queued.notify);
+    }
+  }
+
+  // Applies the notifications and call results the serve loop has not read yet and that arrived before the first request among them:
+  // the frame its waiter holds, then the queue, in order. That request and what follows it stay for the loop, which starts them once
+  // the wait ends, as Pi's later handlers run after the call that made the process wait.
+  applyUnreadPrefix(conn) {
+    const applied = [];
+    for (const frames of [conn.handed, conn.queue]) {
+      while (frames.length > 0 && (frames[0].type === "call_result" || frames[0].type === "notify")) {
+        const frame = frames.shift();
+        if (frames === conn.handed) conn.appliedEarly.add(frame);
+        applied.push(frame);
+      }
+      if (frames.length > 0) break;
+    }
+    for (const frame of applied) {
+      if (frame.type === "call_result") conn.resolveCall(frame);
+      else if (frame.notify) this.handleNotify(frame.notify);
     }
   }
 
@@ -2980,25 +3004,14 @@ export class Runtime {
       return true;
     };
     // A request whose handler runs synchronously starts nested in a synchronous call: left to the serve loop it would wait behind
-    // the very call that waits for it. The notifications the host sent before it and the results of earlier calls apply first,
-    // as the serve loop would apply them. When the order cannot be kept (a request queued ahead, frames held for a turn), the
-    // request is refused at once, so the call waiting on it fails instead of hanging. The handler runs as its own request, so a
-    // host call it makes is filed under that request and not behind the call being waited on.
+    // the very call that waits for it. The notifications the host sent before it and the results of earlier calls apply first, as the
+    // serve loop would apply them, up to a request that waits unstarted: that request and the frames behind it stay for the loop, as
+    // Pi's handlers that have not started yet run after the call. The handler runs as its own request, so a host call it makes is
+    // filed under that request and not behind the call being waited on.
     conn.nestedRequest = (env) => {
-      if (conn.held.length > 0 || [...conn.handed, ...conn.queue].some((queued) => queued.type !== "notify" && queued.type !== "call_result")) {
-        conn.respond(env.id, null, new Error(`${env.request.method} arrived behind work this process has not started while it waits on a synchronous host call; refusing it rather than answering it out of order`));
-        return true;
-      }
       // They apply once the request is active, so a host call a notification's handler makes is filed under it, not behind the
-      // call being waited on. The frames the serve loop's waiter holds come first: they arrived before the queued ones.
-      this.startRequest(env, {
-        nested: true,
-        before: () => {
-          const handed = conn.handed.splice(0);
-          for (const frame of handed) conn.appliedEarly.add(frame);
-          this.applyQueued(conn, handed);
-        },
-      });
+      // call being waited on.
+      this.startRequest(env, { nested: true, before: () => this.applyUnreadPrefix(conn) });
       return true;
     };
     liveRuntimes.add(this);
@@ -3146,8 +3159,8 @@ export class Runtime {
       while (true) {
         const env = await this.conn.next();
         if (!env) return;
-        if (this.conn.handed[0] === env) this.conn.handed.shift();
-        if (this.conn.appliedEarly.delete(env)) continue;
+        // The frame leaves the connection's record of what the loop has not read, and one a nested request applied is not applied again (a stand-in connection keeps no record).
+        if (this.conn.markRead?.(env)) continue;
         if (env.type === "call_result") {
           // Apply earlier state and stream notifications before an awaited call resumes its handler.
           this.conn.resolveCall(env);
