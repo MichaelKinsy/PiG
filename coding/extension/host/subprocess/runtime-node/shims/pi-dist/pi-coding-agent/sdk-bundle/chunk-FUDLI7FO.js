@@ -11868,9 +11868,10 @@ var defaultModelPerProvider = {
   "amazon-bedrock": "us.anthropic.claude-opus-5-5",
   "ant-ling": "Ring-2.6-1T",
   anthropic: "claude-opus-5-5",
-  openai: "gpt-6.1-sol",
-  azure: "gpt-6.1-sol",
-  "openai-codex": "gpt-6.1-sol",
+  // Pi e56d35ce5ece (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+  openai: "gpt-6.2-sol",
+  azure: "gpt-6.2-sol",
+  "openai-codex": "gpt-6.2-sol",
   radius: "balanced",
   nvidia: "nvidia/nemotron-3.5-super-vl-120b-a12b",
   deepseek: "deepseek-v4-pro",

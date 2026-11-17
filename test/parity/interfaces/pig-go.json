@@ -34217,9 +34217,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[1663]catalogBaseline"
+        "type": "[1669]catalogBaseline"
       },
-      "shapeHash": "sha256:7dd23ea41e791a7573bacedebdd1701cca63bb393996a145cfacc4948df138e3"
+      "shapeHash": "sha256:0dde5cf2816d315cba5d4da25d64d593d84a9300b3d70892ce23c08a1adcead6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordChunk",
@@ -43094,9 +43094,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[1663]GeneratedModel"
+        "type": "[1669]GeneratedModel"
       },
-      "shapeHash": "sha256:935bf0bb60fa598e65df2bde0022434e6b717212ff02d0c13af5469f12f5e840"
+      "shapeHash": "sha256:33cb065f6d243750b225ee0e52885d97e2a7ad84563c5e468dda7ca117d49ee9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedStrings",
@@ -43138,9 +43138,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[911]generatedMapRef"
+        "type": "[917]generatedMapRef"
       },
-      "shapeHash": "sha256:4038119c8e6a4a7939a275cc5c4c58d9bf72e19c49b259962a4bd339430de8c6"
+      "shapeHash": "sha256:10000507de03086bd40f42e79e02ee02c3ad3d086f6d4faa2109b2b092720ab4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedToolCallID",
@@ -59913,9 +59913,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[26]recordChunk"
+        "type": "[27]recordChunk"
       },
-      "shapeHash": "sha256:e3ed795c977a4cad29d2a1b30e7e40581009b826667f33b4e1b493dd71ef5ec4"
+      "shapeHash": "sha256:64a6f813efb633e5cf102ffd516bb433f4caf5a7cf5b74f58d79b8b125d58f72"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#recordCodexWebSocketFailure",

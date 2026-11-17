@@ -223,7 +223,7 @@
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-resolver.js",
-      "sha256": "cb3f6ee4d1c21c990d498a660bc26f90441ed229025c290c4e485f7345e5b494"
+      "sha256": "c892e3bf4eccd79e01e206848d855cd28fe2ceb3083cb731c27aeff3f9630489"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/model-runtime.js",

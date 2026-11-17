@@ -123,7 +123,7 @@ import {
   wrapRegisteredTools,
   writeBugReportArchive,
   writeRawStdout
-} from "./chunk-SXPUKCSG.js";
+} from "./chunk-FUDLI7FO.js";
 import {
   CredentialSynchronizationError,
   InMemoryCodingAgentModelsStore,
