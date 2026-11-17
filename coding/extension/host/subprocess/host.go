@@ -3960,6 +3960,10 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		}
 	}
 	me.supervisor.RecordSuccess()
+	if isRestart && h.uiBridge != nil {
+		// The ready frame of this restart carried the catalog of the previous generation (the live registry, which the adoption above replaced after the frame was built), and the adoption bumps neither hostStateEpoch nor runtimeStateGen: push the state now so the extension's replica holds the adopted catalog. The connection holds no cache yet, so the push is the full snapshot. A packed cell's member is started again as a new managed extension, so it has no such window. A failed push is the crash path's business, as for the other fire-and-forget pushers.
+		_ = h.pushStateTo(ctx, me, conn)
+	}
 
 	return ext, nil
 }

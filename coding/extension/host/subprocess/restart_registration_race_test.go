@@ -160,8 +160,9 @@ export default function(pi) {
 }
 
 // generationServe is the process half of a fused extension that registers the generation it is on ("gen 1", "gen 2", ...) in its "probe" command, its
-// "probe-flag" default and its "greet" tool, as the other rigs do, and answers every request. crash ends its connection as a process crash does.
-func generationServe(name string) (serve func(net.Conn) error, crash func()) {
+// "probe-flag" default and its "greet" tool, as the other rigs do, and answers every request. crash ends its connection as a process crash does. onState,
+// when it is not nil, is called with the state of every state_update the extension receives.
+func generationServe(name string, onState func(*StatePayload)) (serve func(net.Conn) error, crash func()) {
 	var starts atomic.Int32
 	var current atomic.Pointer[net.Conn]
 	serve = func(conn net.Conn) error {
@@ -189,6 +190,15 @@ func generationServe(name string) (serve func(net.Conn) error, crash func()) {
 				}
 			case MsgRequest:
 				_ = writeEnvelopeTo(conn, &Envelope{Type: MsgResponse, ID: env.ID, Response: &ResponsePayload{}})
+			case MsgNotify:
+				if onState != nil && env.Notify != nil && env.Notify.Method == "state_update" {
+					var update struct {
+						State StatePayload `json:"state"`
+					}
+					if json.Unmarshal(env.Notify.Args, &update) == nil {
+						onState(&update.State)
+					}
+				}
 			}
 		}
 	}
@@ -207,7 +217,7 @@ func newFusedRestartRig(t *testing.T) *restartRig {
 	h.SetUIBridge(newTestBridge(&mockUIContext{}))
 	t.Cleanup(func() { h.Shutdown("test done") })
 	recordCrashNotices(t, h)
-	serve, crash := generationServe("fused")
+	serve, crash := generationServe("fused", nil)
 	cfg := ExtConfig{Name: "fused", Enabled: true, SupervisorConfig: restartSupervisor}
 	if _, err := h.LoadInProcess(t.Context(), cfg, serve); err != nil {
 		t.Fatal(err)
