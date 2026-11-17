@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // pi.getSettings(), ctx.tools and ctx.executeTool() (.upstream/v0.99.1/packages/coding-agent/src/core/agent-session.ts:3339, 3382-3383 bind them to every extension runner in every mode) reach a subprocess extension only through the mode's bridge wiring. These tests run the real binary in each mode with a Node and a Go extension and read what the extension saw from inside its tool: the settings value the agent directory holds, the tools the session lets a tool call, and the outcome of a nested call.
@@ -246,6 +247,7 @@ func writeWiredExtension(t *testing.T, language string) string {
 func wiredEnvironment(t *testing.T) (env []string, cwd, sessionDir string) {
 	t.Helper()
 	home, cwd, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()
+	testenv.DisableGoTelemetryForChild(t, home)
 	agentDir := filepath.Join(home, "pig")
 	if err := os.MkdirAll(agentDir, 0o755); err != nil {
 		t.Fatal(err)
