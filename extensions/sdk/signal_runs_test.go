@@ -25,7 +25,8 @@ func runOf(t *testing.T, answer any) (run uint64, aborted, ended bool) {
 // The wire answer names the run by the signal object (Pi: one AbortController per run): one token for one object however often it is read, a new token for another object, endedAborted when the object that was answered last had aborted.
 func TestSignalRunsTokenFollowsTheSignalObject(t *testing.T) {
 	var runs signalRuns
-	if got := runs.wire(nil); got != nil {
+	var none context.Context
+	if got := runs.wire(none); got != nil {
 		t.Fatalf("no signal: %#v, want nil", got)
 	}
 	first, cancelFirst := context.WithCancel(t.Context())

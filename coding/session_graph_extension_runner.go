@@ -240,7 +240,7 @@ func (s *graphSignal) read(ask func() (*graphSignalState, error)) context.Contex
 		return nil
 	}
 	if state.Run != nil {
-		if s.run != nil && s.hasToken && *state.Run != s.token && !(state.Aborted && s.run.Err() != nil) {
+		if s.run != nil && s.hasToken && *state.Run != s.token && (!state.Aborted || s.run.Err() == nil) {
 			if state.EndedAborted {
 				s.cancel()
 			}

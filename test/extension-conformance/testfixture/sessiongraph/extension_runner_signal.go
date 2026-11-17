@@ -24,7 +24,6 @@ func extensionRunnerSignalScript(ctx sdk.Context, args map[string]any) map[strin
 		current = run
 	}
 	newRun := func() (context.Context, context.CancelFunc) {
-		//nolint:gosec // G118: every run's cancel is called by the sequence that makes it (or the run ends live, as in Pi)
 		return context.WithCancel(context.Background())
 	}
 
