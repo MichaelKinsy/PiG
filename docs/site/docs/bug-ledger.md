@@ -2120,6 +2120,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e8a5d2e](#bf-e8a5d2e) | The model catalog generator gives OpenCode Zen and Go Claude 5.5 models, Opus 5 and Fable 5.1 per-message… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-e8c1e17](#bf-e8c1e17) | Chord: a list over another owner's set could lose the rows of a page for good when the first read of its… | PiG's own defect | All platforms | Unreleased |
 | [BF-e90ac19](#bf-e90ac19) | Very long streamed answers no longer slow down with their length: each streamed frame renders only the last… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-e90cd5f](#bf-e90cd5f) | Importing an archive that Pi made now keeps the file index: a worker's files of an archive Pi exported arrive… | PiG's own defect | All platforms | Unreleased |
 | [BF-e90f6c8](#bf-e90f6c8) | Windows paths are compared case-insensitively | A fix Pi shipped that PiG ported | Windows | 0.7.0 |
 | [BF-e90f6c8-2](#bf-e90f6c8-2) | Paths under a directory whose name merely starts with the home directory's (`/users/bob2/x` with home… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-e9332c8](#bf-e9332c8) | fix(codingagent): session search re: reads patterns as V8 does | PiG's own defect | All platforms | Unreleased |
@@ -31488,6 +31489,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `06f40b8ca1` (2026-10-10), `136e3703be` (2026-10-10), `79eadcf623` (2026-10-10), `8693d2dfa9` (2026-10-10), `9f76da76d0` (2026-10-10), `ab5be97bbe` (2026-10-10), `c4fef6c21a` (2026-10-10), `e892003a81` (2026-10-10), `e90ac19595` (2026-10-10)
 - **Tests:** `internal/codingagent/complexity_scaling_mermaid_norace_test.go::TestScalingMermaidTransformOfAStreamedMessage`, `internal/codingagent/mermaid_word_test.go::TestMermaidTransformSkipsOnlyMessagesWithoutTheWord`, `internal/testscaling/testscaling_test.go::TestBytesBoundSeparatesTheByteSlope`, `tui/complexity_scaling_norace_test.go::TestScalingBashOutputFrame`, `tui/complexity_scaling_norace_test.go::TestScalingMainScreenFrames`, `tui/complexity_scaling_norace_test.go::TestScalingStreamingMessage`, `tui/container_render_cache_test.go::TestMainScreenCursorExtractionDoesNotMutateBorrowedContainerLines`, `tui/highlight_cache_bound_test.go::TestHighlightMemoKeepsOnlyTheNewestPrefixOfAStreamedBlock` and 11 more in docs/bug-ledger.json
 - **Release note:** Very long streamed answers no longer slow down with their length: each streamed frame renders only the last blocks of the message that can still change instead of lexing, wrapping and laying out all of it, so a 60,000-character answer costs about 5% of the CPU it did, with the same output.
+
+### BF-e90cd5f
+
+**Importing an archive that Pi made now keeps the file index: a worker's files of an archive Pi exported arrive…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Importing an archive that Pi made now keeps the file index: a worker's files of an archive Pi exported arrive with their versions, folders and summary, where only the file bytes came before and the Go `Files` facet listed nothing.
+- **Root cause:** PiG keeps the kit's Files tables in a second store beside the plugins' but imported Pi's single store archive whole into the plugins' store, and no test ran an archive Pi itself made through the import
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e90cd5ff37` (2026-11-17)
+- **Tests:** `chord/nextnode/app/archive_pi_files_tables_test.go::TestGoFilesTablesAreIdenticalToPis`, `chord/nextnode/app/archive_split_test.go::TestUnpackStagingRefusesAKitStoreInTwoPlaces`, `chord/nextnode/app/archive_split_test.go::TestUnpackStagingRefusesASplitArchiveWhoseHalvesWouldShareADocumentIdOrMiscount`, `chord/nextnode/app/archive_split_test.go::TestUnpackStagingRoutesAStoreArchiveByOwnerKitPartsToKitSqlite`, `chord/nextnode/app/archive_upstream_test.go::TestRoundTripsAHostDirectorysStoreAndFilesWithoutUploadsUnderWay`, `chord/nextnode/app/files_copy_test.go::TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore`, `chord/nextnode/app/files_example_test.go::TestExample65Files`
+- **Release note:** Importing an archive that Pi made now keeps the file index: a worker's files of an archive Pi exported arrive with their versions, folders and summary, where only the file bytes came before and the Go `Files` facet listed nothing. `CopyFiles` writes its copy's index where the `Files` facet reads it.
 
 ### BF-e90f6c8
 

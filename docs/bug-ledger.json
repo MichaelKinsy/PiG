@@ -59062,6 +59062,34 @@
       ]
     },
     {
+      "id": "BF-e90cd5f",
+      "title": "Importing an archive that Pi made now keeps the file index: a worker's files of an archive Pi exported arrive…",
+      "symptom": "Importing an archive that Pi made now keeps the file index: a worker's files of an archive Pi exported arrive with their versions, folders and summary, where only the file bytes came before and the Go `Files` facet listed nothing.",
+      "rootCause": "PiG keeps the kit's Files tables in a second store beside the plugins' but imported Pi's single store archive whole into the plugins' store, and no test ran an archive Pi itself made through the import",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Importing an archive that Pi made now keeps the file index: a worker's files of an archive Pi exported arrive with their versions, folders and summary, where only the file bytes came before and the Go `Files` facet listed nothing. `CopyFiles` writes its copy's index where the `Files` facet reads it.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e90cd5ff37",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/archive_pi_files_tables_test.go::TestGoFilesTablesAreIdenticalToPis",
+        "chord/nextnode/app/archive_split_test.go::TestUnpackStagingRefusesAKitStoreInTwoPlaces",
+        "chord/nextnode/app/archive_split_test.go::TestUnpackStagingRefusesASplitArchiveWhoseHalvesWouldShareADocumentIdOrMiscount",
+        "chord/nextnode/app/archive_split_test.go::TestUnpackStagingRoutesAStoreArchiveByOwnerKitPartsToKitSqlite",
+        "chord/nextnode/app/archive_upstream_test.go::TestRoundTripsAHostDirectorysStoreAndFilesWithoutUploadsUnderWay",
+        "chord/nextnode/app/files_copy_test.go::TestCopyCopiesARunningHostsIndexAndBlobsAndNothingElseOfItsStore",
+        "chord/nextnode/app/files_example_test.go::TestExample65Files"
+      ]
+    },
+    {
       "id": "BF-e90f6c8",
       "title": "Windows paths are compared case-insensitively",
       "symptom": "Windows paths are compared case-insensitively.",
