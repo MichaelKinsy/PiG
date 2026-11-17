@@ -54,8 +54,12 @@ type Store interface {
 	Export(ctx context.Context) (*StoreExport, error)
 	// OnCommitted calls listener with the new LastSeq after commits are durable and adopted (a commit, a group, a series,
 	// an applied batch): on a goroutine the store owns, never inside a commit or under the store's lock, once for however
-	// many commits it covers, one call at a time and in order. A listener that panics is removed and its panic handed to
-	// onError as an error, never to the commit. Commits a listener makes are announced like any other. Close waits for
+	// many commits it covers, one call at a time and in order. The call is not ordered before the return of the commit's
+	// caller: Pi queues its announcement as a microtask in the turn that settles the commit, so it has run when the `await`
+	// of a write through the host returns, and a commit made after it is announced alone; here the caller may return first,
+	// and a commit made meanwhile is announced with it, one call for both. A consumer that needs Pi's order waits until a
+	// call reported the store's LastSeq (the tiling test's `group`). A listener that panics is removed and its panic handed
+	// to onError as an error, never to the commit. Commits a listener makes are announced like any other. Close waits for
 	// the announcement of the last commit before it closes the backend: no listener is called once Close returned, and
 	// a listener must not wait for Close. It returns its removal.
 	OnCommitted(listener func(lastSeq int64), onError func(error)) (remove func())
@@ -364,8 +368,9 @@ func (store *ChordStore) OnCommitted(listener func(lastSeq int64), onError func(
 }
 
 // committed announces the new lastSeq to the OnCommitted listeners in one delivery, however many commits it covers
-// (Pi's one microtask, `queueMicrotask` in `#committed`): a goroutine of the store's announcements, which finishClose
-// waits for. It must run without mu held, after the commit's memory was taken.
+// (Pi's one microtask, `queueMicrotask` in `#committed`, which here is not ordered before the commit's caller returns: see
+// OnCommitted): a goroutine of the store's announcements, which finishClose waits for. It must run without mu held, after
+// the commit's memory was taken.
 func (store *ChordStore) committed() {
 	store.mu.Lock()
 	if store.announcing || len(store.committedListeners) == 0 {
