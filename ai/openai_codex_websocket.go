@@ -937,6 +937,8 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 			if !mapped.skip {
 				if mapped.terminal {
 					markCodexWebSocketFinishing(acquired.entry)
+					// The terminal frame ends the request: from here a cancelled context must not close the connection, which release keeps for the session next request.
+					stopCancel()
 				}
 				if _, err := fmt.Fprintf(writer, "data: %s\n\n", mapped.data); err != nil {
 					return
