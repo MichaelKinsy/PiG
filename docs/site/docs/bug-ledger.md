@@ -606,6 +606,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4a33ec6-2](#bf-4a33ec6-2) | The Chord terminal launcher holds the sandbox's frames from the moment a request that asks the user arrives… | PiG's own defect | All platforms | Unreleased |
 | [BF-4a70ed5](#bf-4a70ed5) | `coding/extension/host/subprocess`: in a Host with two or more extension connections (a packed runtime cell… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-4aaa810](#bf-4aaa810) | fix: go fix the five test and testenv files; the v3 differential corpus counts its 40th file document | PiG's own defect | All platforms | Unreleased |
+| [BF-4aba0cf](#bf-4aba0cf) | fix: report a Node pi.events handler error of a packed member before its ready frame | PiG's own defect | All platforms | Unreleased |
 | [BF-4ac21c8](#bf-4ac21c8) | fix(jsloop): run a tick whose tool call already ended at once, though no wait is open | PiG's own defect | All platforms | Unreleased |
 | [BF-4afdbac](#bf-4afdbac) | `ProjectTrustStore` reads entries in JavaScript order: `readTrustFile` named whichever invalid value Go's map… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-4b6e822](#bf-4b6e822) | MCP tools loaded by `tool_search` are no longer dropped on resume and `/reload` when an extension deactivates… | PiG's own defect | All platforms | Unreleased |
@@ -667,6 +668,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5291c92-2](#bf-5291c92-2) | `StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at… | PiG's own defect | All platforms | Unreleased |
 | [BF-5291c92-3](#bf-5291c92-3) | A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes | PiG's own defect | All platforms | Unreleased |
 | [BF-5291c92-4](#bf-5291c92-4) | The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends… | PiG's own defect | All platforms | Unreleased |
+| [BF-52a25ee](#bf-52a25ee) | Follows Pi 18e99051be24: an extension's `pi.events` handler that threw was printed on the terminal behind the… | PiG's own defect | All platforms | Unreleased |
 | [BF-530bf3e](#bf-530bf3e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-532a009](#bf-532a009) | Accepting an autocomplete suggestion after the cursor moved off the typed text (a word move, Home or End)… | PiG's own defect | All platforms | Unreleased |
 | [BF-53312d8](#bf-53312d8) | `pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -10407,6 +10409,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4aaa8104e5` (2026-11-08)
 - **Tests:** `coding/extension/host/tsruntime/digestcache_test.go::TestConcurrentStartsLeaveOneWholeRecord`, `coding/extension/host/tsruntime/executable_linux_test.go::TestConcurrentExecLinksDoNotCollide`, `coding/piglet/schema_test.go::TestValidateAgainstSchemaNamesTheRootAndNestedPaths`
 
+### BF-4aba0cf
+
+**fix: report a Node pi.events handler error of a packed member before its ready frame**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix: report a Node pi.events handler error of a packed member before its ready frame
+- **Root cause:** The Node runtime dropped the report_error of a handler that failed before the host applied its ready frame; in a packed cell that is the first emit after the load. The host already ignores a notification that arrives before the register frame, so the runtime only drops a report once it is invalidated.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4aba0cfb13` (2026-11-16)
+- **Tests:** None recorded.
+
 ### BF-4ac21c8
 
 **fix(jsloop): run a tick whose tool call already ended at once, though no wait is open**
@@ -11251,6 +11266,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5291c9268f` (2026-11-08)
 - **Tests:** `chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened`, `chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared`, `chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport`, `chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything`, `chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver`, `chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd`, `chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten`, `chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds` and 1 more in docs/bug-ledger.json
 - **Release note:** The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends when the workers component forgets the address.
+
+### BF-52a25ee
+
+**Follows Pi 18e99051be24: an extension's `pi.events` handler that threw was printed on the terminal behind the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Follows Pi 18e99051be24: an extension's `pi.events` handler that threw was printed on the terminal behind the TUI (`Event handler error (<channel>)`), which corrupted the interactive screen.
+- **Root cause:** A native SDK listener (Go, Python, Rust, Lisp) runs inside the host events dispatch request, so its failure is the response error and the host reports it. The Node runtime wraps the handler as Pi does and sends the new report_error notification, because one routed request holds several listeners and an awaited rejection comes after the response. The runner binds the action in NewRunner; the D107 view rejection reporter stays bound in BindCore with no stale guard.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `52a25ee066` (2026-11-16)
+- **Tests:** `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsBusKeepsItsOwnReportForADirectSubscriber`, `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed`, `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsDropsAnErrorFromTheInstanceAFailedReloadLeftStale`, `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsHandlerErrorDoesNotStopOtherSubscribers`, `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsReportsAThrowingHandlerToTheExtensionErrorListenerInsteadOfStderr`, `coding/extension/factoryload/events_handler_errors_upstream_test.go::TestPiEventsReportsOnceTheRunnerExistsAndDropsBefore`, `coding/extension/host/subprocess/report_error_wire_test.go::TestMalformedReportErrorNotifyIsDroppedAndTheConnectionGoesOn`, `coding/extension/host/subprocess/report_error_wire_test.go::TestReportErrorNotifyAfterTheConnectionEndedReportsNothing` and 12 more in docs/bug-ledger.json
+- **Release note:** Follows Pi 18e99051be24: an extension's `pi.events` handler that threw was printed on the terminal behind the TUI (`Event handler error (<channel>)`), which corrupted the interactive screen. It is now reported like the error of a `pi.on` handler, in every SDK: in the chat in interactive mode, as `extension_error` in RPC mode and as `Extension error (...)` in print mode, with the extension's path, the event `events:<channel>`, the message and the stack. The error of a handler that fails after its session was replaced, or after a failed reload left its runner stale, is dropped, as is one that fails before the mode attaches its error listener. Every release since 0.7.0 has the fault.
 
 ### BF-530bf3e
 
