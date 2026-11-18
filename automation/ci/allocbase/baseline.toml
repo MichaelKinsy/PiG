@@ -1445,8 +1445,13 @@ allocs = 21
 
 [[benchmark]]
 package = "./coding"
-benchmark = "BenchmarkCatalogModelAuth"
-allocs = 460
+benchmark = "BenchmarkCatalogModelAuth/per-1000-entries"
+allocs = 10720
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkCatalogModelAuthCustomProvider"
+allocs = 161
 
 [[benchmark]]
 package = "./coding"
@@ -1480,8 +1485,8 @@ allocs = 707
 
 [[benchmark]]
 package = "./coding"
-benchmark = "BenchmarkInjectedCredentialAvailability"
-allocs = 352
+benchmark = "BenchmarkInjectedCredentialAvailability/per-1000-entries"
+allocs = 19877
 
 [[benchmark]]
 package = "./coding"
@@ -3030,13 +3035,13 @@ allocs = 1
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkExtensionCatalogEncoding/cached"
-allocs = 41805
+benchmark = "BenchmarkExtensionCatalogEncoding/cached/per-1000-entries"
+allocs = 16883
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkExtensionCatalogEncoding/uncached"
-allocs = 48095
+benchmark = "BenchmarkExtensionCatalogEncoding/uncached/per-1000-entries"
+allocs = 19434
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3205,13 +3210,23 @@ allocs = 3177
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkModelPickerScopedReopen"
-allocs = 5394
+benchmark = "BenchmarkModelPickerScopedReopen/per-1000-entries"
+allocs = 80017
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkModelPickerSnapshotAndRender"
-allocs = 1440
+benchmark = "BenchmarkModelPickerScopedReopenCustomProvider"
+allocs = 820136
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkModelPickerSnapshotAndRender/per-1000-entries"
+allocs = 21291
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkModelPickerSnapshotAndRenderCustomProvider"
+allocs = 12274
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3665,13 +3680,13 @@ allocs = 110
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkWireModelCatalogBinding/encoded"
-allocs = 94938
+benchmark = "BenchmarkWireModelCatalogBinding/encoded/per-1000-entries"
+allocs = 38365
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkWireModelCatalogBinding/legacy"
-allocs = 99132
+benchmark = "BenchmarkWireModelCatalogBinding/legacy/per-1000-entries"
+allocs = 39824
 
 [[benchmark]]
 package = "./internal/codingagent"
