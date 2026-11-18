@@ -361555,9 +361555,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func() (earlierLookupsDiffer bool)"
+        "type": "func()"
       },
-      "shapeHash": "sha256:27f4607538b8ed20f04889ccf2e5f8ea21dc078e14214864b3eb28e940f41950"
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#LoadBuiltinTheme",
@@ -415818,9 +415818,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func() (earlierLookupsDiffer bool)"
+        "type": "func()"
       },
-      "shapeHash": "sha256:27f4607538b8ed20f04889ccf2e5f8ea21dc078e14214864b3eb28e940f41950"
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.SupportsLanguage",

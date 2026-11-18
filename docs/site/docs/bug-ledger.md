@@ -1519,7 +1519,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D540](#bf-d540) | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D601](#bf-d601) | The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D605](#bf-d605) | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D618](#bf-d618) | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D619](#bf-d619) | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D624](#bf-d624) | An opt-in screen writer sends the terminal only what changes the screen in fullscreen mode, where Pi sends… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D626](#bf-d626) | A model object an extension set is replaced by the registry's model only when the registry's entry for its… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -1670,6 +1669,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b22120f](#bf-b22120f) | A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into | PiG's own defect | All platforms | 0.7.0 |
 | [BF-b2b0c63](#bf-b2b0c63) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-b2c219f](#bf-b2c219f) | fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes | PiG's own defect | All platforms | Unreleased |
+| [BF-b2d5d74](#bf-b2d5d74) | fix(codingagent): the grammar load always requests its render, as Pi does; only the invalidation is skipped… | PiG's own defect | All platforms | Unreleased |
 | [BF-b30b8aa](#bf-b30b8aa) | After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in… | PiG's own defect | All platforms | Unreleased |
 | [BF-b341a82](#bf-b341a82) | `go install github.com/MichaelKinsy/PiG/cmd/pig@latest` works again | PiG's own defect | All platforms | 0.5.2 |
 | [BF-b3543f8](#bf-b3543f8) | Fixed MCP stdio servers staying alive after PiG exited because the terminal closed, it crashed, or it… | PiG's own defect | All platforms | 0.5.0 |
@@ -23165,21 +23165,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `612e5b6ab7` (2026-11-07), `6871fcf20e` (2026-11-07), `70b2b7bf42` (2026-11-07), `23978e4efb` (2026-11-08), `595c3b4930` (2026-11-08), `981a62878f` (2026-11-08)
 - **Tests:** `chord/next/host/host_delegate_test.go::TestDelegateAHoldMadeWhileItIsDownWaitsOnTheResolvesErrorAndBindsOnceItIsBack`, `chord/next/host/host_delegate_test.go::TestDelegateWhatTheDelegatesOwnLinkAsksForAndNothingServesIsNotSentBackToIt`, `chord/next/host/host_delegate_test.go::TestDelegateWhenItIsDownItsTypesWaitAndTheHostsOwnAreUntouched`, `chord/next/host/host_delegate_test.go::TestHostServesTheTypesOfItsPublishedTableAndNoOtherName`, `chord/nextnode/app/app_delegate_test.go::TestAServerPluginsObjectHoldsTheTypesTheGoServerServesOverTheNodeHostsLinkAsTheServer`
 
-### BF-D618
-
-**A start repaints after the highlight grammar load only when a highlight lookup made before it could have…**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D618)
-- **Symptom:** none; Pi's repaint after the load is intended. (Pi-Bolt omits the frame too.)
-- **Root cause:** the frame carries no row, yet it restarts any consumer's output-quiet wait, and it costs a render pass on the pinned core right after start. Measured on xd670 (core 103, interactive session, 15 rounds): wall 519 ms to 483 ms with CPU unchanged (Pi-Bolt 500 ms). The bytes PiG omits are bytes that do not change the terminal's state: the cursor is already at that row and hidden.
-- **User impact:** Wrong display
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** Pi's renderer writes nothing for a render request that changes no row and moves no cursor, or the owner withdraws the approval.
-- **Fix commits:** `a726a597cc` (2026-11-11), `e7a2839b83` (2026-11-11)
-- **Tests:** `internal/codingagent/highlight_languages_load_test.go::TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop`, `tui/internal/hljs/load_reports_test.go::TestLoadAllLanguagesReportsEarlierLookupsThatDiffer`
-
 ### BF-D619
 
 **A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are…**
@@ -25263,6 +25248,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `b2c219f432` (2026-10-20)
 - **Tests:** `coding/extension/host/subprocess/sdk_fingerprint_marker_test.go::TestBuilderRecordsTheSDKFingerprintByReplacingTheMarker`
+
+### BF-b2d5d74
+
+**fix(codingagent): the grammar load always requests its render, as Pi does; only the invalidation is skipped…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codingagent): the grammar load always requests its render, as Pi does; only the invalidation is skipped when no lookup differs
+- **Root cause:** the one cursor-only frame scenario 69 pinned for PiG was the post-bind render, not the grammar load: D618 had removed the load's own frame and the count stayed right by accident, so removing the post-bind render exposed the difference.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `b2d5d747c8` (2026-11-17)
+- **Tests:** None recorded.
 
 ### BF-b30b8aa
 
@@ -34803,7 +34801,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D615 | The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider… | deliberate difference |
 | D616 | An npm tarball is extracted with `tar` told the archive and the destination relative to the pack directory… | [BF-5043738](#bf-5043738) |
 | D617 | A command-only session action called through a context that is not a command context is a method that refuses… | [BF-105a93f](#bf-105a93f) |
-| D618 | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | [BF-D618](#bf-d618) |
 | D619 | A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are… | [BF-D619](#bf-d619) |
 | D624 | An opt-in screen writer sends the terminal only what changes the screen in fullscreen mode, where Pi sends… | [BF-D624](#bf-d624) |
 | D626 | A model object an extension set is replaced by the registry's model only when the registry's entry for its… | [BF-D626](#bf-d626) |
