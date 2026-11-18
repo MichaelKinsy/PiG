@@ -16496,6 +16496,100 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:gpt-6.2-astra": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+compat: {
+supportsOpenAIGrammarTools: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gpt-6.2-sol": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+compat: {
+supportsOpenAIGrammarTools: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 "chat:gpt-daybreak-blue-latest": {
 id: string;
 name: string;
@@ -30742,6 +30836,106 @@ jpegQuality: number;
 };
 type: string;
 };
+"chat:gpt-6.2-astra": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: string;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+compat: {
+supportsOpenAIGrammarTools: boolean;
+supportsAdditionalTools: boolean;
+supportsToolSearch: boolean;
+supportsMidConvoSystemMessages: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gpt-6.2-sol": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: string;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+compat: {
+supportsOpenAIGrammarTools: boolean;
+supportsAdditionalTools: boolean;
+supportsToolSearch: boolean;
+supportsMidConvoSystemMessages: boolean;
+};
+inputLimits: {
+images: {
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
 };
 };
 export default value;
@@ -32334,6 +32528,116 @@ contextWindow: number;
 maxTokens: number;
 thinkingLevelMap: {
 off: string;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+compat: {
+supportsStrictMode: boolean;
+supportsOpenAIGrammarTools: boolean;
+supportsAdditionalTools: boolean;
+supportsToolSearch: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsExplicitPromptCacheMode: boolean;
+supportsMidConvoEffort: boolean;
+};
+inputLimits: {
+maxRequestBytes: number;
+images: {
+maxPerRequest: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gpt-6.2-astra": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
+minimal: null;
+low: string;
+medium: string;
+high: string;
+xhigh: string;
+max: string;
+};
+compat: {
+supportsStrictMode: boolean;
+supportsOpenAIGrammarTools: boolean;
+supportsAdditionalTools: boolean;
+supportsToolSearch: boolean;
+supportsMidConvoSystemMessages: boolean;
+supportsExplicitPromptCacheMode: boolean;
+supportsMidConvoEffort: boolean;
+};
+inputLimits: {
+maxRequestBytes: number;
+images: {
+maxPerRequest: number;
+resize: {
+maxWidth: number;
+maxHeight: number;
+maxBytes: number;
+jpegQuality: number;
+};
+};
+};
+type: string;
+};
+"chat:gpt-6.2-sol": {
+id: string;
+name: string;
+api: string;
+provider: string;
+baseUrl: string;
+reasoning: boolean;
+input: string[];
+cost: {
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+tiers: {
+inputTokensAbove: number;
+input: number;
+output: number;
+cacheRead: number;
+cacheWrite: number;
+}[];
+};
+contextWindow: number;
+maxTokens: number;
+thinkingLevelMap: {
+off: null;
 minimal: null;
 low: string;
 medium: string;
