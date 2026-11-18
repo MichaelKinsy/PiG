@@ -164,8 +164,7 @@ func TestCapturedCommandThatCannotStartReportsTheStartError(t *testing.T) {
 	if err == nil {
 		t.Fatal("a missing command succeeded")
 	}
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
+	if _, ok := errors.AsType[*exec.ExitError](err); ok {
 		t.Fatalf("error = %v, want a start error, not an exit status", err)
 	}
 }

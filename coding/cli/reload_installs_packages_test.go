@@ -139,7 +139,7 @@ func TestEveryResourceLoadInstallsPackages(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, name := range []string{"installPackagesForLoad", "reloadResourceSnapshotProvider", "buildResources"} {
-			for _, line := range strings.Split(string(data), "\n") {
+			for line := range strings.SplitSeq(string(data), "\n") {
 				trimmed := strings.TrimSpace(line)
 				if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "func ") {
 					continue
