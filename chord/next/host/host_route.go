@@ -24,9 +24,11 @@ import (
 // result in a later microtask: the Go call is lent that section like a method handler (Loop.Lend, DESIGN-go-layout.md
 // section 10): its synchronous part runs inside the section, which goes on once `Resolve` returned or suspended
 // (`chordctx.Suspend(ctx)`, or a host primitive that waits), and everything Pi writes after the `await` runs as one section
-// (Loop.Run) afterwards, so a `resolve` whose holds were all released meanwhile finishes and its result is handled as Pi's. A
-// `retry` that finds the `resolve` running is remembered for its rejection (retry, resolved): Pi's rejection and the handling of it
-// are one chain of microtasks that no observer's `retry` enters, but a Go `resolve` returns to a section of its own that one can precede.
+// (Loop.Run) afterwards, so a `resolve` whose holds were all released meanwhile finishes and its result is handled as Pi's. Pi's
+// rejection of a `resolve` and the handling of it are one chain of microtasks that no observer's `retry` enters, but a Go `resolve`
+// returns to a section of its own that one can precede: a rejection that only reports a failure the `retry` has just ended says so
+// (supersedable), and the address then resolves once more after the rejection is handled; any other rejection takes the `retry` with
+// it, as Pi's.
 // `authorize` and `resolve` may throw in Pi: they return the error. The route calls the host's own `*path`, `*hostLink` and
 // `*chordHost` directly, as Pi's classes do. A `Link` of `link` and its `Codec` and `PartLimits` are the package's own.
 
@@ -89,10 +91,11 @@ type RouteHandle struct {
 	// (held, no link, none running): Pi's caller reads what its synchronous `resolve` recorded, which is one event loop's
 	// state, so a Go caller that reads its own state in a later section cannot tell from it whether this call started the
 	// resolve it finds there. The workers' rollout does not ask; as in Pi it lists the start its address has, whoever began it.
-	// A Retry that finds the address's `Resolve` running starts none and returns false, as Pi's; if that `Resolve` rejects, the
-	// rejection is handled as usual (reported, its holders failed) and the address resolves once more after it, so the retry is not lost
-	// to a rejection that was already on its way (Pi's chain of microtasks leaves no turn for it; a Go `Resolve` returns to a section of
-	// its own). A `Resolve` that succeeds takes the retry with it.
+	// A Retry that finds the address's `Resolve` running starts none and returns false, as Pi's, and is gone with that `Resolve`'s
+	// rejection, as Pi's (route.ts #resolveIfHeld). The one exception is inside this module: the Chord node workers' rejection of a failure
+	// they recorded, which that Retry (through Workers.Retry or a rollout) has just ended, says so, and the address then resolves once more
+	// after the rejection is handled (supersedable). Pi's chain of microtasks gives such a retry no turn between a rejection and its
+	// handling; a Go `Resolve` returns to a section of its own that a Retry can precede.
 	//
 	// Lock order (Pi has one event loop, so it states none): do not call Retry or Suspend while holding another loop or
 	// lock that `Resolve` (before its `chordctx.Suspend`) enters, nor one that a Link's Close enters (the host closes links
@@ -109,7 +112,8 @@ type routed struct {
 	address   contracts.Address
 	path      *path
 	resolving bool
-	// retried is whether a `retry` entered while the running `resolve` ran (see retry): if that resolve rejects, the address resolves once more.
+	// retried is whether a `retry` entered while the running `resolve` ran (see retry): it matters only to a rejection that says it is
+	// superseded (supersedable).
 	retried bool
 	// failure is a rejected `resolve`, or a link closed before its handshake: its holders fail with it until the next resolve.
 	failure *data.ChordError
@@ -196,11 +200,8 @@ func (r *route) path(params any, principal data.Principal, ctx context.Context) 
 }
 
 // retry is `RouteHandle.retry`: the address's failure and suspension end; it resolves now if held and unlinked. One that finds the
-// address's resolve running starts none, as Pi's (route.ts #resolveIfHeld), but is remembered for that resolve's rejection (resolved):
-// Pi's resolve that rejects and the handling of its rejection are one chain of microtasks, so no observer's retry can enter between
-// them, and a retry before that chain starts the resolve that is running on (a start that reads no failure, workers.ts #start :486)
-// while one after it finds no resolve. A Go resolve returns to a section of its own, so a retry can enter between its rejection and
-// its handling, and would then be lost with the failure it just ended.
+// address's resolve running starts none, as Pi's (route.ts #resolveIfHeld :237), and is gone with that resolve's rejection (:265-273),
+// as Pi's, unless the rejection says it is superseded (resolved): it is marked for that.
 func (r *route) retry(key string) bool {
 	routed := r.addresses[key]
 	if routed == nil {
@@ -375,6 +376,23 @@ func resolvePlugin(resolve func(contracts.Address, context.Context) (ResolvedLin
 	return resolve(address, ctx)
 }
 
+// supersedable is a rejection of `resolve` that only reports a failure its resolver recorded and that a `retry` ends: the Chord node
+// workers' crash that a start finds and the failure a failed address answers at once (`Workers.Retry` and a rollout clear that failure
+// before they call `RouteHandle.Retry`). It is the error `resolve` returns in place of the error it carries: Unwrap is that error, which
+// the route reports and fails the holders with as for any rejection, and Superseded reports whether the failure has ended since the
+// resolver read it. The route asks it once, in the section that handles the rejection and only when a `retry` entered while the
+// `resolve` ran, and nothing else of it. The interface is unexported: a type of another package satisfies it by its method names.
+//
+// Why a remembered retry cannot be lost or misapplied. The resolver ends its failure before it calls the route, so a retry the route
+// saw (`retried`) was preceded by the end of the failure, and the answer, given later in the handling's section, is that it ended; a
+// retry that reaches the route after that section finds no `resolve` running and takes the plain path. A resolver whose own failure
+// the retry did not end (the application's start that failed, a call of the route's own `retry`) answers false, or is no supersedable.
+type supersedable interface {
+	error
+	Unwrap() error
+	Superseded() bool
+}
+
 // resolved is what `#resolve` does once `resolve` settled, in one section.
 func (r *route) resolved(routed *routed, resolved ResolvedLink, err error, span *chordtelemetry.OpenSpan) {
 	key := routed.address.Key
@@ -383,14 +401,21 @@ func (r *route) resolved(routed *routed, resolved ResolvedLink, err error, span 
 	routed.resolving = false
 	routed.span = nil
 	if err != nil {
+		// What a rejection that can be superseded carries is what is ended, reported and settled, as if `resolve` had returned it.
+		rejection, ok := err.(supersedable) //nolint:errorlint // the error `resolve` returned itself, not one that wraps it
+		if ok {
+			err = rejection.Unwrap()
+		}
 		resolveEnded(span, err)
 		if r.host.closing() {
 			return
 		}
 		r.host.report(HostError{Kind: ErrResolveFailed, Address: key, Error: err})
 		r.settle(routed, data.AsChordError(err, key))
-		if retried && !routed.suspended {
-			// The rejection is handled as usual; the retry that entered while it was pending follows it, as a retry after it would.
+		// A retry that entered while the resolve ran is gone with the rejection (route.ts #resolveIfHeld :237), unless the rejection
+		// reports a failure that retry ended: it follows the rejection then, as a retry after the rejection was handled would. The
+		// question is asked here, in this section, not when the resolve read its failure.
+		if retried && ok && !routed.suspended && rejection.Superseded() {
 			routed.failure = nil
 			r.resolveIfHeld(routed)
 		}

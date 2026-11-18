@@ -653,7 +653,7 @@ func (c *Workers) resolve(address contracts.Address, routing context.Context) (h
 		}
 		record = c.routedOf(address)
 		if record.failure != nil {
-			immediate = uncrossed(record.failure.err)
+			immediate = c.rejection(record, record.failure)
 			return
 		}
 		if c.isClosing() {
@@ -671,6 +671,46 @@ func (c *Workers) resolve(address contracts.Address, routing context.Context) (h
 	// The synchronous part is done: what follows waits for a worker, not for a section.
 	chordctx.Suspend(routing)
 	return started.wait()
+}
+
+// recordedRejection is what a `resolve` rejects with when it reports a failure its address recorded (workers.ts #resolve :370, and #start
+// :486-487): the failure's public error, and the answer to the question the route asks when a `retry` entered while the resolve ran (the
+// unexported `supersedable` of chord/next/host, which a type of this package satisfies by its method names): has that failure ended since
+// the resolve read it? `Retry` and `Rollout` end it BEFORE they call the route, so a retry the route saw was preceded by the end of the
+// failure and the answer, given in the route's section that handles the rejection, is that it ended; a retry that reaches the route
+// after that section finds no resolve running and takes the route's plain path. A call of the route's own `retry` that the workers did
+// not make ends no failure of theirs: the answer is false and the retry is gone with the rejection, as in Pi.
+type recordedRejection struct {
+	// error is the failure's public error, as `uncrossed` made it: what the route reports and fails its holders with.
+	error
+	workers  *Workers
+	record   *routed
+	recorded *failure
+}
+
+// rejection is the rejection of a `resolve` that read the failure recorded of record.
+func (c *Workers) rejection(record *routed, recorded *failure) error {
+	return &recordedRejection{error: uncrossed(recorded.err), workers: c, record: record, recorded: recorded}
+}
+
+// Unwrap is the public error of the failure.
+func (r *recordedRejection) Unwrap() error { return r.error }
+
+// Superseded reports whether the address's failure is no longer the one this rejection reports: a retry or a rollout ended it (or a
+// later failure replaced it). It enters the workers' loop from the route's section, as the route's `resolve` does (the host's loop is
+// held first, the workers' second, as for every call the route makes into the workers).
+func (r *recordedRejection) Superseded() bool {
+	var ended bool
+	r.workers.loop.Run(func() { ended = r.record.failure != r.recorded })
+	return ended
+}
+
+// unrejected is err as the start returned it: the error a recorded rejection carries, for a caller that is not the route.
+func unrejected(err error) error {
+	if rejection, ok := errors.AsType[*recordedRejection](err); ok {
+		return rejection.error
+	}
+	return err
 }
 
 // Stop suspends address while it has holders (`RouteHandle.Suspend`), then stops its worker.
@@ -880,7 +920,7 @@ func (c *Workers) start(record *routed, routing context.Context) (host.ResolvedL
 	var closing bool
 	c.loop.Run(func() { crashed, closing = record.failure, c.isClosing() })
 	if crashed != nil {
-		return host.ResolvedLink{}, uncrossed(crashed.err)
+		return host.ResolvedLink{}, c.rejection(record, crashed)
 	}
 	if closing {
 		return host.ResolvedLink{}, closed()
@@ -1426,7 +1466,7 @@ func (c *Workers) retried(record *routed, started *outcome[host.ResolvedLink]) *
 	hostName := record.address.Key
 	c.task(func() {
 		if _, err := started.wait(); err != nil {
-			entry.resolve(plugins.RolloutHost{Kind: plugins.RolloutErrored, Host: hostName, Error: err})
+			entry.resolve(plugins.RolloutHost{Kind: plugins.RolloutErrored, Host: hostName, Error: unrejected(err)})
 			return
 		}
 		var ready *outcome[CrossedReport]
