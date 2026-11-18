@@ -68,11 +68,9 @@ func TestToolPrepareArgumentsRunsBeforeValidationAcrossSDKs(t *testing.T) {
 }
 
 // startOrderStrict says whether the SDK runtime orders the first statements of a batch's handlers, not only their invocation. Node runs the
-// handlers on one thread, so it matches Pi. Python is held strict because it measured 100 of 100 under pressure in this row (and 900 of 900 in
-// its start-order tests, pinned to one cpu with busy loops): in practice the interpreter keeps the thread that handed its place on running. The
-// SDK's contract is the invocation order (D658); a handler that yields before its first statement can still be overtaken. A Go or Rust handler
-// runs on a thread the operating system can preempt between the hand-off and the handler's first statement, so the SDK guarantees the
-// invocation order (the SDK gate tests) and a saturated machine can still let a later handler's first statement run first.
+// handlers on one thread and Python's GIL keeps a thread that just handed its place on running, so both match Pi. A Go or Rust handler runs on
+// a thread the operating system can preempt between the hand-off and the handler's first statement, so the SDK guarantees the invocation order
+// (the SDK gate tests) and a saturated machine can still let a later handler's first statement run first.
 func startOrderStrict(name string) bool {
 	switch name {
 	case "subprocess-node", "subprocess-node-packed", "subprocess-python":
