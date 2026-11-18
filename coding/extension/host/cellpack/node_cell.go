@@ -48,10 +48,14 @@ func archiveStream(source archiveSource) *io.SectionReader {
 	return io.NewSectionReader(source, 0, source.Size())
 }
 
+// archiveDigestChunk is the size of the pieces the archive is hashed in: small enough that a cell of a few files allocates less
+// than the copy of its archive a start used to make, large enough that a 29 MB archive is read in 3,600 calls.
+const archiveDigestChunk = 8 << 10
+
 // archiveDigest is the SHA-256 of the archive, read in chunks.
 func archiveDigest(source archiveSource) (string, error) {
 	hash := sha256.New()
-	if _, err := io.Copy(hash, archiveStream(source)); err != nil {
+	if _, err := io.CopyBuffer(hash, archiveStream(source), make([]byte, archiveDigestChunk)); err != nil {
 		return "", fmt.Errorf("read the Node cell archive: %w", err)
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
