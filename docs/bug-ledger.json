@@ -42550,7 +42550,7 @@
       "id": "BF-D658",
       "title": "The Go, Rust, Python and Lisp SDKs invoke handlers in request arrival order, but a descheduled thread can run…",
       "symptom": "none.",
-      "rootCause": "",
+      "rootCause": "the order Pi keeps is a property of one thread running each handler to its first await; a runtime with one thread per request cannot hand the place on at the handler's first statement, because it does not know where that is. It is not made faithful now: holding the place until the handler's first host call was tried and rejected, because it stalls every later handler behind a handler that never calls the host and can deadlock when that handler waits for a later request.",
       "rootCauseSource": "divergence record",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",

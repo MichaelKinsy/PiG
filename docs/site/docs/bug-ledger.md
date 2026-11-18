@@ -23895,7 +23895,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** A Pi defect that PiG fixed first (divergence D658)
 - **Symptom:** none.
-- **Root cause:** Not recorded.
+- **Root cause:** the order Pi keeps is a property of one thread running each handler to its first await; a runtime with one thread per request cannot hand the place on at the handler's first statement, because it does not know where that is. It is not made faithful now: holding the place until the handler's first host call was tried and rejected, because it stalls every later handler behind a handler that never calls the host and can deadlock when that handler waits for a later request.
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
