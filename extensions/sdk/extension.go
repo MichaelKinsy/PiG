@@ -178,6 +178,8 @@ type Extension struct {
 	toolBatches      toolBatchOrders
 	// requestStarts keeps the handlers of the requests that run extension code (startsInArrivalOrder) starting in the order the requests arrive: the tool_call requests of a parallel batch (agent-loop.ts:619-647, 820-837) and the event and command requests of concurrent emits (runner.ts:1096-1125).
 	requestStarts jsloop.Lane
+	// startObserver is set by tests of this package before the extension serves, never while it runs. It is called with the method and id of each request that takes a place, after the earlier places were released and before this one is.
+	startObserver func(method, id string)
 	// children are the child agent sessions this extension created and has not disposed (child_session.go).
 	children           childSessions
 	commandFuncs       map[string]CommandFunc
@@ -1404,6 +1406,15 @@ func startsInArrivalOrder(req *requestMsg) bool {
 	return false
 }
 
+// passStart waits until the handler of every earlier request was invoked or its request ended without one, then lets startObserver see that this request's handler is next and hands the place on. The order it keeps is the order of invocation: what a handler runs first is up to the scheduler.
+func (e *Extension) passStart(id, method string, place *jsloop.Place) {
+	place.Wait()
+	if e.startObserver != nil {
+		e.startObserver(method, id)
+	}
+	place.Release()
+}
+
 func (e *Extension) stopRequests() error {
 	e.stopWidthDeliveries()
 	e.themeFeed.stop()
@@ -1621,7 +1632,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 		}
 		// agent-loop.ts:619-647: the handlers of a batch start in source order.
-		ctx.place.Pass()
+		e.passStart(id, "tool_call", ctx.place)
 		ctx.start.begin()
 		result, err := handler(ctx, params)
 		// A handler whose dialog was answered before another's responds after it, as Pi's continuations run in the order of the answers.
@@ -1667,7 +1678,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			_ = unmarshalFrameMember(req.Args, &args)
 		}
 		// runner.ts:1096-1125: the handlers of concurrent requests start in arrival order.
-		ctx.place.Pass()
+		e.passStart(id, "command", ctx.place)
 		err := handler(ctx, args)
 		_ = e.conn.respond(id, nil, err)
 
@@ -1759,7 +1770,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		}
 		// The member order of the objects of the event came with the decode, so no object has to be captured before the handler runs.
 		// runner.ts:1096-1125: the handlers of concurrent emits start in arrival order.
-		ctx.place.Pass()
+		e.passStart(id, "event", ctx.place)
 		result, err := handler(ctx, data)
 		if req.Event == "user_bash" && err == nil {
 			result, err = e.userBashEventResult(result)
