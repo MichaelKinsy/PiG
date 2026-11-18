@@ -136060,6 +136060,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.takesCalls",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.takesCalls",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.turns",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.turns",
@@ -148532,6 +148543,39 @@
         "type": "abortForwards"
       },
       "shapeHash": "sha256:a858f12363df3c5f0b142f363120388e7319597e8fd01de56daffd189e23b98a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#abortedCallSend",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "abortedCallSend",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) (sent context.Context, ok bool)"
+      },
+      "shapeHash": "sha256:413e3785f867791d57205bf08722f51df2edc3598b7f27a3687fb66a9d5d25da"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#abortedCallSendContext",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "abortedCallSendContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context) (context.Context, context.CancelFunc)"
+      },
+      "shapeHash": "sha256:85bc6ce39c4ca6b4fe2929b252e71d812591ee465c969bc30a7580e1e14f9869"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#abortedCallSendKey",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "abortedCallSendKey",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "abortedCallSendKey"
+      },
+      "shapeHash": "sha256:ff129d0c2217177e8419210943071c28ca3c6a91ae4c59446d13c424fbfe251b"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#acceptCancelled",
@@ -171775,6 +171819,17 @@
         "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model) any"
       },
       "shapeHash": "sha256:e7d00776ce129b1af0b58c2f89c969218c9d08afdebc089259adf012f8dc3b48"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#withAbortedCallSend",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "withAbortedCallSend",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, sent context.Context) context.Context"
+      },
+      "shapeHash": "sha256:762471622882596a5ae428cd53139a78258687cc0a45696706ced91f96d74da3"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#withAckHold",

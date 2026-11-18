@@ -60,6 +60,14 @@ const (
 //
 // Go carries the upstream abort signal and extension values through one
 // context.Context. Use [FromContext] to access the extension context.
+//
+// A ctx that has already ended when the call reaches the host does not stop the
+// call: an extension tool of the subprocess host is entered with its signal
+// aborted, as Pi runs tool.execute with an aborted signal (pig divergence
+// D111: an agent-loop call never reaches this point aborted, because the loop
+// answers "Operation aborted" first, as Pi's does). The tool's host calls are
+// answered, and a tool that has not settled ToolAbortGrace after the abort
+// ends as "Operation aborted".
 type ToolExecuteFunc = func(
 	ctx context.Context,
 	toolCallID string,

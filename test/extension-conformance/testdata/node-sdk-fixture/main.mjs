@@ -494,6 +494,18 @@ export default function (pi) {
       return { content: [{ type: "text", text: `tool_signal:${aborted}:${first}:${second}` }] };
     },
   });
+  // aborted_entry_probe is called with its run already aborted (TestConformance_ToolCalledAbortedEntersWithItsSignalAborted): Pi runs tool.execute with an aborted signal. It echoes the nonce it was given, reports whether its signal was aborted on its first line, and makes a host call after that, which the host answers.
+  pi.registerTool({
+    name: "aborted_entry_probe",
+    description: "Report the signal a tool starts with",
+    parameters: { type: "object", properties: {} },
+    async execute(_id, params, signal, _onUpdate, ctx) {
+      const aborted = signal.aborted;
+      let answer;
+      try { answer = await ctx.ui.input(`aborted_entry:${params.nonce}`, "p"); } catch (error) { answer = `failed: ${error?.message ?? error}`; }
+      return { content: [{ type: "text", text: `aborted_entry:${params.nonce}:${aborted}:${answer}` }] };
+    },
+  });
   // signal_nested_probe runs abort_tool as a nested call: the host keeps answering a tool's host calls after the abort, as Pi's in-process calls are.
   pi.registerTool({
     name: "signal_nested_probe",

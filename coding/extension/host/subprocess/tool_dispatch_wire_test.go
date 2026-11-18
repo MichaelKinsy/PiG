@@ -3,11 +3,14 @@ package subprocess
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
@@ -108,16 +111,20 @@ func TestSubprocessToolCallsLeaveTheHostInCallOrder(t *testing.T) {
 	}
 }
 
-// A reservation that never sends its request must not strand the calls behind it: the call's own context may end first
-// (agent-loop.ts:622-629 answers "Operation aborted" without calling execute), and a request that fails to write ends the call.
-func TestSubprocessToolCallOrderIsReleasedWhenACallEndsBeforeItsRequest(t *testing.T) {
+// toolCallOrderProbe loads an extension whose tool answers every call with "ok-<n>", n being the argument the call carries.
+func toolCallOrderProbe(t *testing.T) (*wireExt, extension.ToolDefinition) {
+	t.Helper()
 	host := newWireHost(t)
 	w := newWireExt(t)
 	w.respond = func(env *Envelope) *ResponsePayload {
 		if env.Request.Method != "tool_call" {
 			return nil
 		}
-		return &ResponsePayload{Result: json.RawMessage(`{"content":"ok"}`)}
+		var args struct {
+			N int `json:"n"`
+		}
+		_ = json.Unmarshal(env.Request.Args, &args)
+		return &ResponsePayload{Result: json.RawMessage(fmt.Sprintf(`{"content":[{"type":"text","text":"ok-%d"}]}`, args.N))}
 	}
 	ext, err := loadWireExt(t, host, w, &RegisterPayload{Name: "release", Tools: []ToolDecl{
 		{Name: "probe", Description: "Probe", Parameters: json.RawMessage(`{"type":"object"}`)},
@@ -129,25 +136,104 @@ func TestSubprocessToolCallOrderIsReleasedWhenACallEndsBeforeItsRequest(t *testi
 	if probe.ReserveCallOrder == nil {
 		t.Fatal("a subprocess tool keeps no call order")
 	}
+	return w, probe
+}
+
+func toolResultText(result extension.AgentToolResult) string {
+	var parts []string
+	for _, block := range result.Content {
+		if text, ok := block.(ai.TextContent); ok {
+			parts = append(parts, text.Text)
+		}
+	}
+	return strings.Join(parts, "\n")
+}
+
+// A reservation that never sends its request must not strand the calls behind it. A call whose request cannot be written ends before it
+// (here its frame is larger than a frame may be: the encoder refuses it, Conn.encodeEnvelope), and hands its place on as it ends; the next call
+// then writes its request and gets its answer. The other ways a call ends before its request (a connection that is closing or closed, a failed
+// write, a state push that fails, the grace period ending while a stuck writer holds the call) end in the same deferred release.
+func TestSubprocessToolCallOrderIsReleasedWhenACallEndsBeforeItsRequest(t *testing.T) {
+	w, probe := toolCallOrderProbe(t)
 	first := probe.ReserveCallOrder(json.RawMessage(`{}`))
 	second := probe.ReserveCallOrder(json.RawMessage(`{}`))
-	cancelled, cancel := context.WithCancel(t.Context())
-	cancel()
-	if _, err := probe.Execute(extension.WithCallOrder(cancelled, first), "call-1", json.RawMessage(`{}`), nil); err == nil {
-		t.Fatal("a call with a cancelled context succeeded")
+	tooLarge := json.RawMessage(`"` + strings.Repeat("a", MaxFrameSize) + `"`)
+	_, err := probe.Execute(extension.WithCallOrder(t.Context(), first), "call-1", tooLarge, nil)
+	if _, ok := errors.AsType[*FrameTooLargeError](err); !ok {
+		t.Fatalf("a call whose request cannot be written = %v, want its frame-too-large error", err)
 	}
-	done := make(chan error, 1)
+	type outcome struct {
+		result extension.AgentToolResult
+		err    error
+	}
+	done := make(chan outcome, 1)
 	go func() {
-		_, err := probe.Execute(extension.WithCallOrder(t.Context(), second), "call-2", json.RawMessage(`{}`), nil)
-		done <- err
+		result, err := probe.Execute(extension.WithCallOrder(t.Context(), second), "call-2", json.RawMessage(`{"n":2}`), nil)
+		done <- outcome{result, err}
 	}()
 	select {
-	case err := <-done:
-		if err != nil {
-			t.Fatal(err)
+	case got := <-done:
+		if got.err != nil || toolResultText(got.result) != "ok-2" {
+			t.Fatalf("the second call = %q, %v; want the extension's answer", toolResultText(got.result), got.err)
 		}
 	case <-time.After(10 * time.Second):
 		t.Fatal("the second call never sent its request: the first call kept its place after it ended")
+	}
+	if env := w.request("tool_call"); string(env.Request.Args) != `{"n":2}` {
+		t.Fatalf("the first request on the wire carries %s: the call that could not be written was sent", env.Request.Args)
+	}
+}
+
+// agent-loop.ts:831-853 (executePreparedToolCall) calls tool.execute with the run's signal as it is, and the extension tool wrapper adds no abort check
+// (tool-definition-wrapper.ts:40-48): a call of a run that had already aborted, which the loop's own gates (agent-loop.ts:623-635, 751, 770) do not stop,
+// is the tool's to answer. Such a call keeps the place it reserved: its request is written after the requests of the earlier reservations and before
+// those of the later ones, it carries the aborted signal, and its result is what the extension returned.
+func TestSubprocessAbortedToolCallTakesItsTurnInOrder(t *testing.T) {
+	w, probe := toolCallOrderProbe(t)
+	live := probe.ReserveCallOrder(json.RawMessage(`{}`))
+	aborted := probe.ReserveCallOrder(json.RawMessage(`{}`))
+	ended, cancel := context.WithCancel(t.Context())
+	cancel()
+	type outcome struct {
+		result extension.AgentToolResult
+		err    error
+	}
+	liveDone, abortedDone := make(chan outcome, 1), make(chan outcome, 1)
+	// The aborted call, which holds the later place, starts first: it must wait for the earlier place all the same.
+	go func() {
+		result, err := probe.Execute(extension.WithCallOrder(ended, aborted), "call-2", json.RawMessage(`{"n":2}`), nil)
+		abortedDone <- outcome{result, err}
+	}()
+	select {
+	case env := <-w.requests:
+		t.Fatalf("a request was written before the earlier reservation's: %s %s", env.Request.Method, env.Request.Args)
+	case <-time.After(200 * time.Millisecond):
+	}
+	go func() {
+		result, err := probe.Execute(extension.WithCallOrder(t.Context(), live), "call-1", json.RawMessage(`{"n":1}`), nil)
+		liveDone <- outcome{result, err}
+	}()
+	firstRequest := w.request("tool_call")
+	secondRequest := w.request("tool_call")
+	if string(firstRequest.Request.Args) != `{"n":1}` || string(secondRequest.Request.Args) != `{"n":2}` {
+		t.Fatalf("requests written as %s then %s, want call-1's then call-2's", firstRequest.Request.Args, secondRequest.Request.Args)
+	}
+	if firstRequest.Request.SignalAborted {
+		t.Fatal("the live call's request carries an aborted signal")
+	}
+	if !secondRequest.Request.SignalAborted {
+		t.Fatal("the aborted run's request does not carry the aborted signal")
+	}
+	for name, done := range map[string]chan outcome{"live": liveDone, "aborted": abortedDone} {
+		select {
+		case got := <-done:
+			want := map[string]string{"live": "ok-1", "aborted": "ok-2"}[name]
+			if got.err != nil || toolResultText(got.result) != want {
+				t.Fatalf("the %s call = %q, %v; want the extension's answer %q", name, toolResultText(got.result), got.err, want)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatalf("the %s call never ended", name)
+		}
 	}
 }
 

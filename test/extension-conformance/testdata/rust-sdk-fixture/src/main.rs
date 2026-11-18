@@ -3177,6 +3177,21 @@ fn main() {
             ToolResult::text(format!("tool_signal:{aborted}:{first}:{second}"))
         },
     );
+    // aborted_entry_probe: called with its run already aborted, it echoes the nonce, reports whether its signal was aborted on its first line, and makes a host call after that, which the host answers (TestConformance_ToolCalledAbortedEntersWithItsSignalAborted).
+    ext.tool(
+        "aborted_entry_probe",
+        "Report the signal a tool starts with",
+        json!({"type": "object", "properties": {}}),
+        |ctx, params: Value| {
+            let aborted = ctx.is_cancelled();
+            let nonce = params["nonce"].as_str().unwrap_or("").to_string();
+            let answer = match ctx.input(&format!("aborted_entry:{nonce}"), "p") {
+                Ok((value, _)) => value.as_str().unwrap_or("").to_string(),
+                Err(error) => format!("failed: {error}"),
+            };
+            ToolResult::text(format!("aborted_entry:{nonce}:{aborted}:{answer}"))
+        },
+    );
     // signal_nested_probe: a nested tool call keeps working after the abort, as Pi's in-process calls do.
     ext.tool(
         "signal_nested_probe",

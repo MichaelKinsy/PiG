@@ -43945,6 +43945,31 @@
       ]
     },
     {
+      "id": "BF-a91bfc0",
+      "title": "A tool call whose run had already aborted when it reached an extension, a direct call of the tool or an abort…",
+      "symptom": "A tool call whose run had already aborted when it reached an extension, a direct call of the tool or an abort that landed after the agent's gate, failed with `context canceled` without the extension ever seeing it.",
+      "rootCause": "the host treated an ended context as a reason not to enter the tool, so the tool_call request failed with the context's error, where Pi runs tool.execute with an aborted signal and only the agent loop's own gates skip the call",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A tool call whose run had already aborted when it reached an extension, a direct call of the tool or an abort that landed after the agent's gate, failed with `context canceled` without the extension ever seeing it. It now reaches the tool with its signal already aborted, as it does in Pi, so a tool that checks `signal.aborted` first (the subagent example returns its five aborted task results) answers for itself, in the Go, Node, Python, Rust and Lisp SDKs, isolated, packed and fused. The tool's host calls are answered, the 3 s grace period of an aborted call runs from the call's start, and a tool that does not settle still ends as `Operation aborted`; a connection that is closing or closed takes no call. A call whose frames cannot be queued within that period (the writer's queue stays full) ends as `Operation aborted`; a frame already queued waits for its write as every request does and ends with the connection's heartbeat failure when the peer stops reading.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a91bfc0eb4",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/subagent_extension_upstream_test.go::TestSubagentExampleChildLifecycle",
+        "coding/extension/host/subprocess/tool_call_ended_context_test.go::TestEndedToolCallDoesNotLengthenShutdownOrReplacement",
+        "coding/extension/host/subprocess/tool_call_ended_context_test.go::TestEndedToolCallReachesTheExtensionWithItsSignalAborted",
+        "test/extension-conformance/tool_aborted_entry_test.go::TestConformance_ToolCalledAbortedEntersWithItsSignalAborted"
+      ]
+    },
+    {
       "id": "BF-a9264aa",
       "title": "A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the…",
       "symptom": "A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the Harness clock (`HarnessOptions.now`, the wall clock when none is given), which throws once the tool call's invocation has ended, as Pi 1.4's `ToolExecutionApi.now` does.",

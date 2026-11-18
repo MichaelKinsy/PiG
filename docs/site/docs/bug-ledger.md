@@ -1617,6 +1617,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a8f5413](#bf-a8f5413) | Fix the lint findings of the JPEG port | PiG's own defect | All platforms | Unreleased |
 | [BF-a8ff0c7](#bf-a8ff0c7) | The anthropic-messages and google-generative-ai requests build their URL as @anthropic-ai/sdk and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a901509](#bf-a901509) | OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's… | PiG's own defect | All platforms | 0.5.3 |
+| [BF-a91bfc0](#bf-a91bfc0) | A tool call whose run had already aborted when it reached an extension, a direct call of the tool or an abort… | PiG's own defect | All platforms | Unreleased |
 | [BF-a9264aa](#bf-a9264aa) | A tool running under the Durable core's Cloudflare host and `pi-durable` facade now has `api.now()`, the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a94455c](#bf-a94455c) | The durable code mode joins the text items of a script's output in linear time (Pi f11e50f7… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a94c58f](#bf-a94c58f) | RPC mode: a Go, Rust, Python or Lisp extension's `agent_settled` or `agent_before_settle` handler, command or… | PiG's own defect | All platforms | Unreleased |
@@ -24557,6 +24558,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a9015090a5` (2026-10-22)
 - **Tests:** `ai/openrouter_cost_test.go::TestAnthropicMessagesUsesOpenRouterReportedCost`, `ai/openrouter_cost_test.go::TestApplyOpenRouterReportedCost`, `ai/openrouter_cost_test.go::TestOpenAICompletionsOpenRouterReportedTotalWithoutCatalogRates`, `ai/openrouter_cost_test.go::TestOpenAICompletionsUsesOpenRouterReportedCost`, `internal/codingagent/export/upstream_test.go::TestExportHTMLPinnedAssets`
 - **Release note:** OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's reported total as `usage.cost.total` for OpenAI Completions and Anthropic Messages streams, plus the upstream inference cost for a BYOK request, instead of the catalog estimate, and mark it provider-reported. The export HTML header uses the recorded total. Replaces PiG's earlier D124 form of this fix with Pi's.
+
+### BF-a91bfc0
+
+**A tool call whose run had already aborted when it reached an extension, a direct call of the tool or an abort…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A tool call whose run had already aborted when it reached an extension, a direct call of the tool or an abort that landed after the agent's gate, failed with `context canceled` without the extension ever seeing it.
+- **Root cause:** the host treated an ended context as a reason not to enter the tool, so the tool_call request failed with the context's error, where Pi runs tool.execute with an aborted signal and only the agent loop's own gates skip the call
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a91bfc0eb4` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/subagent_extension_upstream_test.go::TestSubagentExampleChildLifecycle`, `coding/extension/host/subprocess/tool_call_ended_context_test.go::TestEndedToolCallDoesNotLengthenShutdownOrReplacement`, `coding/extension/host/subprocess/tool_call_ended_context_test.go::TestEndedToolCallReachesTheExtensionWithItsSignalAborted`, `test/extension-conformance/tool_aborted_entry_test.go::TestConformance_ToolCalledAbortedEntersWithItsSignalAborted`
+- **Release note:** A tool call whose run had already aborted when it reached an extension, a direct call of the tool or an abort that landed after the agent's gate, failed with `context canceled` without the extension ever seeing it. It now reaches the tool with its signal already aborted, as it does in Pi, so a tool that checks `signal.aborted` first (the subagent example returns its five aborted task results) answers for itself, in the Go, Node, Python, Rust and Lisp SDKs, isolated, packed and fused. The tool's host calls are answered, the 3 s grace period of an aborted call runs from the call's start, and a tool that does not settle still ends as `Operation aborted`; a connection that is closing or closed takes no call. A call whose frames cannot be queued within that period (the writer's queue stays full) ends as `Operation aborted`; a frame already queued waits for its write as every request does and ends with the connection's heartbeat failure when the peer stops reading.
 
 ### BF-a9264aa
 

@@ -2018,6 +2018,15 @@ def new_extension() -> pig_sdk.Extension:
         second = ask("tool_signal:later")
         return {"content": "tool_signal:%s:%s:%s" % (aborted, first, second)}
 
+    # aborted_entry_probe is called with its run already aborted: it echoes the nonce, reports whether its signal was aborted on its first line, and makes a host call after that, which the host answers (TestConformance_ToolCalledAbortedEntersWithItsSignalAborted).
+    def aborted_entry_probe(ctx, params):
+        aborted = str(ctx.is_cancelled()).lower()
+        try:
+            answer = ctx.input("aborted_entry:%s" % params["nonce"], "p")[0]
+        except Exception as error:
+            answer = "failed: %s" % error
+        return {"content": "aborted_entry:%s:%s:%s" % (params["nonce"], aborted, answer)}
+
     # signal_nested_probe shows that the host keeps answering a nested tool call's host calls after the abort, as Pi's in-process calls are.
     def signal_nested_probe(ctx, _params):
         try:
@@ -2038,6 +2047,7 @@ def new_extension() -> pig_sdk.Extension:
     ext.tool("abort_tool", "Wait for the abort signal", {"type": "object", "properties": {}}, abort_tool)
     ext.tool("hang_tool", "Ignore the abort signal", {"type": "object", "properties": {}}, hang_tool)
     ext.tool("signal_host_probe", "Await host dialogs across the abort", {"type": "object", "properties": {}}, signal_host_probe)
+    ext.tool("aborted_entry_probe", "Report the signal a tool starts with", {"type": "object", "properties": {}}, aborted_entry_probe)
     ext.tool("signal_nested_probe", "Run abort_tool as a nested tool call", {"type": "object", "properties": {}}, signal_nested_probe)
     ext.command(
         "abort_probe",
