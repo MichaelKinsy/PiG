@@ -2,11 +2,12 @@ package subprocess
 
 import "fmt"
 
-// commandOnlyCall reports whether method is a session-changing action that only Pi's command context has (runner.ts createCommandContext, v1.5.2 :1004-1038). Pi's
-// createContext() object, which every event, tool and shortcut handler receives, has no such member.
+// commandOnlyCall reports whether method is an action that only Pi's command context has (runner.ts createCommandContext, v1.5.2 :1004-1038): waitForIdle and the session-changing
+// actions. Pi's createContext() object, which every event, tool and shortcut handler receives, has no such member. A handler that waited for the run through that object would wait
+// for the run that waits for it, so the refusal is also what keeps such a run from hanging.
 func commandOnlyCall(method string) bool {
 	switch method {
-	case "newSession", "fork", "navigateTree", "switchSession", "reload":
+	case "waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload":
 		return true
 	}
 	return false

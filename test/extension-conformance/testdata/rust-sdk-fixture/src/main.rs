@@ -2447,6 +2447,7 @@ fn main() {
             Err(err) => format!("{name}=error:{err}"),
         };
         [
+            describe("wait", ctx.wait_for_idle().map(|()| None)),
             describe("new", ctx.new_session(serde_json::json!({}))),
             describe("fork", ctx.fork("entry", serde_json::json!({}))),
             describe(
@@ -2528,6 +2529,45 @@ fn main() {
                 .lock()
                 .unwrap()
                 .push(subscription);
+            CommandResult::Ok
+        },
+    );
+    // session_actions_tool makes the same calls, and the wait, through the context of a tool's execute: Pi's createContext() object, so every one is refused.
+    ext.tool(
+        "session_actions_tool",
+        "Call the session actions through the tool's context",
+        json!({"type": "object", "properties": {}}),
+        move |ctx, _| ToolResult::text(format!("tool_actions:{}", report_session_actions(ctx))),
+    );
+    // wait_idle_command waits for the run from a command context (runner.ts createCommandContext); wait_idle_with_session from a withSession callback's context.
+    ext.command(
+        "wait_idle_command",
+        "Wait for the run from a command",
+        |ctx, _| {
+            let text = match ctx.wait_for_idle() {
+                Ok(()) => "done".to_string(),
+                Err(err) => format!("error:{err}"),
+            };
+            ctx.notify(&format!("wait_idle:{text}"), "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "wait_idle_with_session",
+        "Wait for the run from a withSession callback",
+        |ctx, _| {
+            // The callback runs while this command's switch_session call is in flight, so the notice is sent once the call returned.
+            let text = Arc::new(Mutex::new("never ran".to_string()));
+            let callback_text = text.clone();
+            let _ = ctx.switch_session_with("/s.jsonl", serde_json::json!({}), move |replaced| {
+                *callback_text.lock().unwrap() = match replaced.wait_for_idle() {
+                    Ok(()) => "done".to_string(),
+                    Err(err) => format!("error:{err}"),
+                };
+                Ok(())
+            });
+            let text = text.lock().unwrap().clone();
+            ctx.notify(&format!("with_session_wait:{text}"), "info");
             CommandResult::Ok
         },
     );

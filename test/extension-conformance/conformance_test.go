@@ -1509,6 +1509,21 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			// session_actions_tool exists here only so the transports' tool lists match this reference. The SDK fixtures call the command-only session actions through the tool's context
+			// and report the refusals. An in-process tool's context is *extension.Context (FromContext, coding/extension/context.go:413), which has no such member: WaitForIdle, NewSession,
+			// Fork, NavigateTree, SwitchSession and Reload are methods of *CommandContext only (context.go:492-566), so the probe cannot be written here. The tool answers with an error that
+			// says so, and never with an empty success that a row could take for a report.
+			"session_actions_tool": {
+				Definition: extension.ToolDefinition{
+					Name:        "session_actions_tool",
+					Description: "Call the session actions through the tool's context",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{}, errors.New("session_actions_tool: the in-process fixture does not implement the probe; it is registered only so the transports' tool lists match")
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"signal_nested_probe": {
 				Definition: extension.ToolDefinition{
 					Name:        "signal_nested_probe",
