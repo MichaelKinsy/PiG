@@ -152076,6 +152076,17 @@
       "shapeHash": "sha256:ca9b5fb7a7b2ea0f48cf5cd6c3c523af428421503cbc83903101404c2b03fede"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#detachToolCallInput",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "detachToolCallInput",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event any, input encoding/json.RawMessage) (*github.com/MichaelKinsy/PiG/coding/extension.CustomToolCallEvent, error)"
+      },
+      "shapeHash": "sha256:cd4a855a89ee7f47ab3193abfaffcfc12e8493aa5f069dbdda13134c30f01606"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#detectBuildType",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "detectBuildType",
@@ -233141,9 +233152,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(input any, source github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) *toolCallInput"
+        "type": "func(event map[string]any, source github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage) *toolCallInput"
       },
-      "shapeHash": "sha256:9fb4d7fe02e06df507d3de5f0f44622d4552f228a4cb8bc3caa6de896bbd2160"
+      "shapeHash": "sha256:e6f599663b104d09ee1fef9a8130ef530a8350b9985d2ef39814268783c7b086"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#nonOverflowPatterns",
@@ -236554,6 +236565,17 @@
         "type": "toolCallInput"
       },
       "shapeHash": "sha256:e747366639b1a4002330a916271a7e332137cc5989ac80723f8a11d768461e03"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolCallInput.assigned",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "toolCallInput.assigned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() (any, bool)"
+      },
+      "shapeHash": "sha256:b0494f57e0cb502ab76a7fd1c821a788bc52023e0f49470511707de6de49e3b8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#toolCallInput.edit",

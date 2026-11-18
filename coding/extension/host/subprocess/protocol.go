@@ -776,8 +776,10 @@ type BeforeAgentStartResponsePayload struct {
 
 // ToolCallResponsePayload is the result of a tool_call handler. Input is the event's input when the handler left it different from the one it received; an omitted Input means the handler made no edit. Result is the handler's ordinary block result. Any other member is an error: a reply in another shape would otherwise decode as no result and lose a block.
 type ToolCallResponsePayload struct {
-	Input  json.RawMessage `json:"_pigToolCallInput"`
-	Result json.RawMessage `json:"_pigToolCallResult"`
+	Input json.RawMessage `json:"_pigToolCallInput"`
+	// EventInput is event.input when the handler assigned a new object to it instead of editing the one it received; the next handlers receive it and the tool does not.
+	EventInput json.RawMessage `json:"_pigToolCallEventInput"`
+	Result     json.RawMessage `json:"_pigToolCallResult"`
 }
 
 func (p *ToolCallResponsePayload) UnmarshalJSON(data []byte) error {

@@ -47,6 +47,30 @@ func wireModel(model *ai.Model) any {
 	return extension.ModelValue{Model: model}
 }
 
+// detachToolCallInput returns a copy of a tool_call event whose input is the object an extension's handler assigned to event.input, with its own Input map and wire bytes: nothing a later handler does to it reaches the call's input. A value that is not an object is no input a tool accepts, and the dispatch keeps the event it has (nil).
+func detachToolCallInput(event any, input json.RawMessage) (*extension.CustomToolCallEvent, error) {
+	custom, ok := event.(extension.CustomToolCallEvent)
+	if !ok || custom.Input == nil {
+		return nil, nil
+	}
+	var assigned any
+	if err := jsstring.UnmarshalKeepingSurrogates(input, &assigned); err != nil {
+		return nil, err
+	}
+	members, ok := assigned.(map[string]any)
+	if !ok {
+		return nil, nil
+	}
+	canonical, err := jsonstringify.Canonicalize(input)
+	if err != nil {
+		return nil, err
+	}
+	custom.Input = members
+	wire := json.RawMessage(canonical)
+	custom.WireInput = &wire
+	return &custom, nil
+}
+
 // applyToolCallInput replaces the members of a tool_call event's input with the input an extension's handler left, in the order it left them (JSON.stringify of the edited object). The event's Input map and the wire bytes it points at are what the agent loop reads after the handlers ran (coding/session_extension_hooks.go), so both change in place and the next handler and the tool see the edit. A value that is not an object cannot be an input a tool accepts, and the event keeps its own.
 func applyToolCallInput(event any, input json.RawMessage) error {
 	custom, ok := event.(extension.CustomToolCallEvent)

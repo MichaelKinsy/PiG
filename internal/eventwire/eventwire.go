@@ -30,6 +30,28 @@ type Dispatch struct {
 	result       json.RawMessage
 	replyVersion uint64
 	hasReply     bool
+	// detached is the event the handlers after an assignment of event.input receive; nil until a handler assigns it.
+	detached any
+}
+
+// Detach keeps event as the event the handlers that follow receive, in place of the dispatch's own.
+func (d *Dispatch) Detach(event any) {
+	if d == nil {
+		return
+	}
+	d.mu.Lock()
+	d.detached = event
+	d.mu.Unlock()
+}
+
+// Detached returns the event kept by Detach, or nil.
+func (d *Dispatch) Detached() any {
+	if d == nil {
+		return nil
+	}
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.detached
 }
 
 type dispatchContextKey struct{}

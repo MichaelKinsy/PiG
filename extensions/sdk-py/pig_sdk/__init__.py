@@ -6659,7 +6659,6 @@ class Extension:
                 data = req.get("args") or {}
                 # pig additive (D19): preserve boundary mutations alongside handler errors. A turn_end handler also edits the turn's messages in place (Pi hands every handler the turn's message objects): the reply carries the ones it left different, beside the boundary members.
                 if req.get("event") in ("agent_before_settle", "turn_end"):
-                    entries = data.get("entries", [])
                     event_messages = _event_edit_messages(req["event"], data)
                     before = _snapshot_event_messages(event_messages)
                     result = None
@@ -6670,7 +6669,8 @@ class Extension:
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve mutations and report the handler error.
                         error = {"message": str(exc)}
-                    reply = {"_pigBoundaryEntries": entries, "_pigBoundaryResult": result}
+                    # The entries the handler left in data["entries"], assigned or edited in place, as the Go, Rust and Lisp SDKs carry them (v0.3.0, v0.7.0); the Node runtime follows Pi, which does not (runner.ts emitBoundary).
+                    reply = {"_pigBoundaryEntries": data.get("entries", []), "_pigBoundaryResult": result}
                     try:
                         edits = _event_message_edits(event_messages, before)
                         if edits:
@@ -6694,6 +6694,9 @@ class Extension:
                     reply: dict[str, Any] = {"_pigToolCallResult": result}
                     if _json_text(tool_input) != before:
                         reply["_pigToolCallInput"] = tool_input
+                    # A new dict assigned to data["input"] is the input the next handlers read (runner.ts emitToolCall hands them the one event); the tool keeps the dict it carried.
+                    if data.get("input") is not tool_input:
+                        reply["_pigToolCallEventInput"] = data.get("input")
                     self._respond(req_id, reply, error)
                     return
                 # Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, turn_end, agent_end, the entry and the next request hold, even when it fails afterwards. The host cannot share the dict, so the reply carries the message the handler left when its JSON text differs from the one it received (member order included). Assigning a new dict to data["message"] changes nothing, as assigning event.message changes nothing in Pi.
@@ -6838,6 +6841,9 @@ class Extension:
                     result = _user_bash_operations_reply(self._bash_operations, result) or _user_bash_event_result(result)
                 if req.get("event") in {"context", "context_with_system"} and snapshot is not None:
                     returned = result.get("messages") if isinstance(result, dict) else None
+                    if returned is None:
+                        # The list the handler assigned to data["messages"] is carried, as the Go and Rust SDKs carry it (v0.2.0, v0.3.0); the Node runtime follows Pi, which does not (runner.ts emitContext).
+                        returned = data.get("messages")
                     if returned is None:
                         returned = messages
                     unchanged = len(returned) == len(snapshot) and all(a is b for a, b in zip(returned, snapshot))

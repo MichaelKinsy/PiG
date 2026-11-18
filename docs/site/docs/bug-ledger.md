@@ -674,6 +674,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-4feaeb9](#bf-4feaeb9) | Windows: a Chord worker process now waits for its parent to accept the connection on its IPC pipe instead of… | PiG's own defect | Windows | Unreleased |
 | [BF-4ff1a44](#bf-4ff1a44) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-4ffcd59](#bf-4ffcd59) | An extension autocomplete provider that watches its abort signal no longer sees it fire when the user types a… | PiG's own defect | All platforms | Unreleased |
+| [BF-5003f90](#bf-5003f90) | The Python SDK now carries an event.messages list a `context` or `context_with_system` handler assigns, and… | PiG's own defect | All platforms | Unreleased |
 | [BF-50233fd](#bf-50233fd) | An `env` SSH command that runs past its timeout now receives SIGTERM, as in Pi, instead of SIGKILL, and the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5043738](#bf-5043738) | Windows: installing a plugin from npm extracts the packed tarball with a relative archive name, so the `tar`… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-504869b](#bf-504869b) | The MCP client uses JavaScript's `trim()` and `\s` where Pi does: in stdio and Streamable HTTP blank-line and… | PiG's own defect | All platforms | 0.5.0 |
@@ -1234,6 +1235,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-852f029](#bf-852f029) | Durable document, conversation-view and task-graph states report failing state listeners to the Session's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-854c355](#bf-854c355) | fix(durable/core): the facade Session reads persistWithinMs and documentRetentionMs live, not once through a… | PiG's own defect | All platforms | Unreleased |
 | [BF-85618d9](#bf-85618d9) | fix(rpc): a failed switch_session answers before the replacement ahead of it; prompt compaction checks… | PiG's own defect | All platforms | Unreleased |
+| [BF-85791f8](#bf-85791f8) | A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the… | PiG's own defect | All platforms | Unreleased |
 | [BF-85908ae](#bf-85908ae) | A `/tree` branch summary the provider refuses as too long is retried with the newest half of the request… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-85a7b01](#bf-85a7b01) | A prompt now fails with Pi's error when the Session's history holds a system message whose `content` is a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-85c4c8f](#bf-85c4c8f) | `pig login <provider>` now prints what Pi's `packages/ai/src/cli.ts` prints and keeps `auth.json` private | PiG's own defect | All platforms | 0.7.0 |
@@ -1447,6 +1449,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9624fc4-2](#bf-9624fc4-2) | Anthropic and Bedrock no longer send `strict: "prefer"` tools strict again on every request after Claude… | PiG's own defect | All platforms | Unreleased |
 | [BF-967def6](#bf-967def6) | Tool arguments for a `bigint` or `undefined` parameter are converted, not rejected: a JSON `"42"` or `42` for… | PiG's own defect | All platforms | Unreleased |
 | [BF-9721c48](#bf-9721c48) | An auto, manual or overflow compaction status shown in the editor's top border now takes the editor border… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9730d0a](#bf-9730d0a) | fix(extension-sdk-py): a turn_end event without entries keeps the empty list the SDK answered before | PiG's own defect | All platforms | Unreleased |
 | [BF-9740507](#bf-9740507) | `pig extension upgrade` now rewrites a `Context.ConfigHome()` call in an `if` or `switch` init statement and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9740507-2](#bf-9740507-2) | `pig extension upgrade` no longer discards the error of `Context.ConfigHome` with `home, _ :=… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9740507-3](#bf-9740507-3) | `pig extension upgrade` is all or nothing | PiG's own defect | All platforms | 0.5.0 |
@@ -11419,6 +11422,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/editor_async_provider_test.go::TestForcedAutocompleteQueryDoesNotHoldInput`, `tui/editor_file_search_noloop_test.go::TestFileAnswerOfAnOlderSearchNeverReplacesALaterOne`, `tui/editor_file_search_noloop_test.go::TestFileSearchOfAnEditorWithNoLoopIsPublishedByTheCallersGoroutine`, `tui/editor_typed_race_oracle_test.go::TestEditorTypedKeysThatTriggerNothingLeaveAPendingRequestAloneLikePi`
 - **Release note:** An extension autocomplete provider that watches its abort signal no longer sees it fire when the user types a character that triggers no request (a space, `é` or `/` after `@al`, `x` after Tab): as in Pi, the request in flight finishes and its answer is dropped, and only a new request or a cancel aborts it.
 
+### BF-5003f90
+
+**The Python SDK now carries an event.messages list a `context` or `context_with_system` handler assigns, and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Python SDK now carries an event.messages list a `context` or `context_with_system` handler assigns, and an event.entries list a `turn_end` handler assigns, and the Lisp SDK the context list, as the Go and Rust SDKs already do (they have carried an assigned context list since v0.2.0 / v0.3.0 and turn_end entries since v0.3.0, Lisp since v0.7.0, so the behaviour stays and the other SDKs follow it); the Node runtime still follows Pi, which carries neither.
+- **Root cause:** each native SDK was written alone: Go and Rust re-read the member after the handler, Python and Lisp kept the list captured before it, and no conformance row compared an assignment across SDKs
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5003f90812` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** The Python SDK now carries an event.messages list a `context` or `context_with_system` handler assigns, and an event.entries list a `turn_end` handler assigns, and the Lisp SDK the context list, as the Go and Rust SDKs already do (they have carried an assigned context list since v0.2.0 / v0.3.0 and turn_end entries since v0.3.0, Lisp since v0.7.0, so the behaviour stays and the other SDKs follow it); the Node runtime still follows Pi, which carries neither. A handler that assigns a bad list leaves what the same value returned leaves.
+
 ### BF-50233fd
 
 **An `env` SSH command that runs past its timeout now receives SIGTERM, as in Pi, instead of SIGKILL, and the…**
@@ -19187,6 +19204,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `85618d9a25` (2026-10-10)
 - **Tests:** `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsWithDueCompactionsAnswerInRequestOrder`, `coding/cli/rpc_replacement_order_test.go::TestRPCEarlyReplacementErrorFollowsTheCompactionStart`, `coding/cli/rpc_replacement_order_test.go::TestRPCFailedSwitchSessionAnswersBeforeTheReplacementAheadOfIt`, `coding/session_prompt_compaction_check_test.go::TestBeginPromptCompactionCheckReturnsOnlyADueCompaction`, `coding/session_prompt_compaction_check_test.go::TestPromptCompactionCheckReplaysAnOverflowedResponse`
 
+### BF-85791f8
+
+**A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input (in Node, Go and Python from v0.5.0 to v0.7.0, and in Lisp in v0.7.0).
+- **Root cause:** the reply protocol had one member for the input, meant for in-place edits the tool must receive, so an assigned input had no way across the process boundary and was dropped as no edit
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `85791f823c` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/tool_call_assigned_input_test.go::TestToolCallAssignedInputReachesOnlyTheNextHandlers`
+- **Release note:** A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input (in Node, Go and Python from v0.5.0 to v0.7.0, and in Lisp in v0.7.0). The call itself still runs with the input it carried, as in Pi, so nothing a released extension could rely on is lost; a Rust handler keeps its own behaviour, which is unchanged in every released version: the Rust SDK holds the event as one value, so assigning the input and editing it in place are the same edit and the tool runs with what the handler left.
+
 ### BF-85908ae
 
 **A `/tree` branch summary the provider refuses as too long is retried with the newest half of the request…**
@@ -22156,6 +22187,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9721c489d0` (2026-10-13)
 - **Tests:** `tui/editor_status_test.go::TestEmbeddedCompactionStatusTakesTheEditorBorderColorLikeWorking`
 - **Release note:** An auto, manual or overflow compaction status shown in the editor's top border now takes the editor border color, like the working status, as in Pi 1.2.0; it used to keep the accent spinner and muted label.
+
+### BF-9730d0a
+
+**fix(extension-sdk-py): a turn_end event without entries keeps the empty list the SDK answered before**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extension-sdk-py): a turn_end event without entries keeps the empty list the SDK answered before
+- **Root cause:** The read of the entries a turn_end handler left defaults an absent member to an empty list, as it did before the entries began to be read after the handler.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9730d0a546` (2026-11-17)
+- **Tests:** None recorded.
 
 ### BF-9740507
 
