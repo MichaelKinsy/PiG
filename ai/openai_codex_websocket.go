@@ -718,6 +718,11 @@ func joinJSONArray(items []json.RawMessage) json.RawMessage {
 	return append(out, ']')
 }
 
+// codexUsesCachedContext decides whether a request continues from the context its connection holds. Empty transport has upstream's default "auto" behavior, including cached continuation when a cache session id is available.
+func codexUsesCachedContext(transport Transport) bool {
+	return transport == TransportWebSocketCached || transport == TransportAuto || transport == ""
+}
+
 // startCodexWebSocket streams the request over the Codex WebSocket. A nil stream with a nil error falls back to SSE; fallback is the transport failure that caused it, or nil when the session's WebSocket is already disabled.
 func (p *openAIResponsesProvider) startCodexWebSocket(ctx context.Context, endpoint string, body []byte, apiKey, accountID, cacheSessionID string, grammarProps map[string]string, opts StreamOptions) (stream *AssistantMessageEventStream, fallback, err error) {
 	return p.startCodexWebSocketAttempt(ctx, endpoint, body, apiKey, accountID, cacheSessionID, grammarProps, opts, true, true)
@@ -757,9 +762,7 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 		recordCodexWebSocketSSEFallback(cacheSessionID)
 		return nil, err, nil
 	}
-	// Empty transport has upstream's default "auto" behavior, including cached
-	// continuation when a cache session id is available.
-	useCachedContext := opts.Transport == TransportWebSocketCached || opts.Transport == TransportAuto || opts.Transport == ""
+	useCachedContext := codexUsesCachedContext(opts.Transport)
 	var delta *codexDelta
 	if useCachedContext {
 		delta = cachedCodexDelta(acquired.entry, request)
@@ -953,7 +956,12 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 					}
 					markCodexWebSocketFinishing(acquired.entry)
 					// The terminal frame ends the request: from here a cancelled context must not close the connection, which release keeps for the session's next request.
-					stopCancel()
+					if !stopCancel() {
+						// The abort close has already started, so the connection is closed (or closing) and the cancel came before the terminal event was consumed: Pi's loop-top signal check throws "Request was aborted"
+						// before it yields a queued event (openai-codex-responses.ts:1404-1406), and the connection is not kept (:1584-1586). The stream ends aborted and release drops the entry; it is not kept as a closed connection.
+						_ = writer.CloseWithError(ctx.Err())
+						return
+					}
 				}
 				if _, err := fmt.Fprintf(writer, "data: %s\n\n", mapped.data); err != nil {
 					return

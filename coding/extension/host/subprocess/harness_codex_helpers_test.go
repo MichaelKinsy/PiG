@@ -33,6 +33,7 @@ type codexE2EServer struct {
 	upgrades, messages, posts atomic.Int32
 	mu                        sync.Mutex
 	mode                      string
+	frames                    []string
 	release                   chan struct{}
 }
 
@@ -43,6 +44,7 @@ func (s *codexE2EServer) reset() {
 	s.posts.Store(0)
 	s.mu.Lock()
 	s.mode = "ok"
+	s.frames = nil
 	s.mu.Unlock()
 	for len(s.release) > 0 {
 		<-s.release
@@ -66,6 +68,13 @@ func newCodexE2EServer(t *testing.T) *codexE2EServer {
 		case r.URL.Path == "/_counts":
 			_ = json.NewEncoder(w).Encode(map[string]int32{"upgrades": server.upgrades.Load(), "messages": server.messages.Load(), "posts": server.posts.Load()})
 			return
+		case r.URL.Path == "/_frames":
+			server.mu.Lock()
+			taken := append([]string{}, server.frames...)
+			server.frames = nil
+			server.mu.Unlock()
+			_ = json.NewEncoder(w).Encode(taken)
+			return
 		case r.URL.Path == "/_mode":
 			server.mu.Lock()
 			server.mode = r.URL.Query().Get("m")
@@ -87,9 +96,13 @@ func newCodexE2EServer(t *testing.T) *codexE2EServer {
 		server.upgrades.Add(1)
 		defer func() { _ = conn.Close() }()
 		for {
-			if _, _, err := conn.ReadMessage(); err != nil {
+			_, data, err := conn.ReadMessage()
+			if err != nil {
 				return
 			}
+			server.mu.Lock()
+			server.frames = append(server.frames, string(data))
+			server.mu.Unlock()
 			server.messages.Add(1)
 			server.mu.Lock()
 			mode := server.mode
@@ -144,7 +157,7 @@ const describe = (stats) => {
 };
 const log = [];
 const note = async (step, ...sessions) => log.push({ step, stats: sessions.map((s) => describe(get(s))), counts: await counts() });
-// transport "auto" is named: with no transport Pi's request path does not count a cached-context request and the Go provider does (a difference of the provider, not of these helpers; reported separately).
+// transport "auto" is named, as Pi's coding agent always names one; the requests with no transport and with each other value are compared by the "transport" subtest.
 const run = async (session, text, onEvent) => {
   const stream = mod.streamSimple(model, context(text), { apiKey, sessionId: session, transport: "auto" });
   const types = [];
@@ -186,11 +199,11 @@ process.stdout.write(JSON.stringify(log), () => process.exit(0));
 `
 
 // runCodexScenario runs the scenario in dir: Pi's own layout (the pinned package in node_modules) or the harness directory of the extracted runtime, against the one server.
-func runCodexScenario(t *testing.T, server *codexE2EServer, node, dir, pigBinary string) []json.RawMessage {
+func runCodexScenario(t *testing.T, server *codexE2EServer, node, dir, pigBinary, script string) []json.RawMessage {
 	t.Helper()
 	server.reset()
 	file := filepath.Join(dir, "codex-scenario.mjs")
-	if err := os.WriteFile(file, []byte(codexScenario), 0o600); err != nil {
+	if err := os.WriteFile(file, []byte(script), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	scratch := t.TempDir()
@@ -267,8 +280,8 @@ func TestCodexWebSocketHelpersOfTheHarnessPeerActAsUnderPi(t *testing.T) {
 
 	t.Run("scenario", func(t *testing.T) {
 		server := newCodexE2EServer(t)
-		pi := runCodexScenario(t, server, node, piDir, "")
-		pig := runCodexScenario(t, server, node, harnessDir, pigBinary)
+		pi := runCodexScenario(t, server, node, piDir, "", codexScenario)
+		pig := runCodexScenario(t, server, node, harnessDir, pigBinary, codexScenario)
 		if len(pi) != len(pig) || len(pi) < 20 {
 			t.Fatalf("Pi logged %d observations, PiG %d, want the same count of at least 20", len(pi), len(pig))
 		}
@@ -277,6 +290,15 @@ func TestCodexWebSocketHelpersOfTheHarnessPeerActAsUnderPi(t *testing.T) {
 				t.Errorf("observation %d differs\n Pi : %s\n PiG: %s", i, pi[i], pig[i])
 			}
 		}
+	})
+
+	// The request path with the transport named or not: two turns of one session per transport value against one server, the request frames Pi and the harness peer sent compared byte for byte, and the session's stats. An unset
+	// transport is none of "auto" and "websocket-cached", so Pi's second request sends the full context (openai-codex-responses.ts:1539), where the transport "auto" sends the delta.
+	t.Run("transport", func(t *testing.T) {
+		server := newCodexE2EServer(t)
+		pi := runCodexScenario(t, server, node, piDir, "", codexTransportScenario)
+		pig := runCodexScenario(t, server, node, harnessDir, pigBinary, codexTransportScenario)
+		compareCodexTransportObservations(t, pi, pig)
 	})
 
 	// The cleanup Pi registers at module load and the helpers called with no stream never start a bridge child; a close line written just before the helper exits leaves no child behind.
