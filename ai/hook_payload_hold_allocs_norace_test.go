@@ -25,6 +25,10 @@ func hookedRequestAllocs(t *testing.T, provider Provider) float64 {
 func TestHookedRequestHoldsThePayloadOrderWithoutAllocating(t *testing.T) {
 	providers := hookedProviders()
 	for name, want := range map[string]float64{"google": 59, "vertex": 72, "pi-messages": 9} {
+		if name == "vertex" && !BuiltAPI(APIGoogleVertex) {
+			// A build with pig_strip_google_vertex has no Vertex provider (hookedProviders leaves its row out).
+			continue
+		}
 		t.Run(name, func(t *testing.T) {
 			if got := hookedRequestAllocs(t, providers[name]); got > want {
 				t.Fatalf("a request that stops in its hook allocates %v, want at most %v", got, want)

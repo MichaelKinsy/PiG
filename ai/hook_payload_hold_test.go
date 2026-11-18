@@ -9,14 +9,17 @@ import (
 )
 
 // hookedProviders are the providers that hand a before_provider_request hook a map payload and so hold its member order: Google and Vertex (one request path)
-// and pi-messages. Only a request with a hook registered reaches the hold.
+// and pi-messages. Only a request with a hook registered reaches the hold. A build with pig_strip_google_vertex has no Vertex provider and leaves its row out.
 func hookedProviders() map[string]Provider {
 	mapping := ThinkingLevelMap{ThinkingOff: nil, ThinkingMinimal: nil, ThinkingLow: new("low"), ThinkingMedium: new("medium"), ThinkingHigh: new("high")}
-	return map[string]Provider{
+	providers := map[string]Provider{
 		"google":      NewGoogleProvider(GoogleConfig{APIKey: "test", Model: "gemini-3.8-flash", ProviderID: "test-google", ThinkingLevelMap: mapping}),
-		"vertex":      NewGoogleVertexProvider(GoogleVertexConfig{APIKey: "test", Model: "gemini-3.8-flash", ProviderID: "test-vertex", BaseURL: "https://example.invalid/v1", ThinkingLevelMap: mapping}),
 		"pi-messages": NewPiMessagesProvider(PiMessagesConfig{BaseURL: "https://example.invalid", APIKey: "test", Model: "auto", ProviderID: "radius"}),
 	}
+	if BuiltAPI(APIGoogleVertex) {
+		providers["vertex"] = newGoogleVertexTestProvider(GoogleVertexConfig{APIKey: "test", Model: "gemini-3.8-flash", ProviderID: "test-vertex", BaseURL: "https://example.invalid/v1", ThinkingLevelMap: mapping}, nil)
+	}
+	return providers
 }
 
 // requestToHook builds the request of provider up to its onPayload hook and returns what the request returned there. Google builds it before Stream returns;
@@ -45,8 +48,6 @@ func benchmarkHookedRequest(b *testing.B, name string) {
 		}
 	}
 }
-
-func BenchmarkGoogleVertexHookedRequest(b *testing.B) { benchmarkHookedRequest(b, "vertex") }
 
 func BenchmarkPiMessagesHookedRequest(b *testing.B) { benchmarkHookedRequest(b, "pi-messages") }
 
