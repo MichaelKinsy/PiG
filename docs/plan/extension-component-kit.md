@@ -578,7 +578,7 @@ signature is unchanged. A line-returning author keeps today's wire exactly.
   `Markdown`, `Spacer`, `SelectList`, `SettingsList`, `Image`, `HStack`,
   `VStack`, coding-agent `DynamicBorder`), or `Loader.prototype.render` for
   `loader`. A subclass that overrides `render`, and any other component, is
-  a `lines` range. Its rows come from the parent's `mouseLayout` (Container,
+  a `lines` range. Its rows come from the parent's `childLines` (Container,
   Box) or from rendering it again only when no layout exists.
 - A style closure maps to a token only when its output on a probe string
   equals `theme.fg(token, probe)`/`theme.bg(token, probe)` of the current

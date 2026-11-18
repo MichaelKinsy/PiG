@@ -7,7 +7,7 @@
 // A component maps to a kind only when its render is exactly the pinned base
 // class's render, or, for Pi's conversation components, when it is exactly an
 // instance of the pinned class (§2.1). Anything else becomes a `lines` range:
-// its rows come from the parent's mouseLayout (Container, Box), or from
+// its rows come from the parent's childLines (Container, Box), or from
 // rendering it again only when no layout exists. Style closures map to theme
 // token names by probing.
 // The walk reads fields pi-tui marks private; runtime_node_view_pin_test.go
@@ -49,8 +49,8 @@ export function surfaceTheme(component) {
 // The fields the walk reads, by pinned class. The pin test constructs each
 // class and checks every field exists, so an upstream rename fails it.
 export const VIEW_WALK_FIELDS = Object.freeze({
-  Container: ["children", "mouseLayout"],
-  Box: ["children", "paddingX", "paddingY", "bgFn", "cache", "mouseLayout"],
+  Container: ["children", "childLines"],
+  Box: ["children", "paddingX", "paddingY", "bgFn", "childLines"],
   Text: ["text", "paddingX", "paddingY", "customBgFn"],
   TruncatedText: ["text", "paddingX", "paddingY"],
   Markdown: ["text", "paddingX", "paddingY", "theme", "defaultTextStyle", "options"],
@@ -375,24 +375,27 @@ function linesNode(rows) {
   return rows.length > 0 ? { kind: "lines", content: rows.map(String) } : { kind: "lines" };
 }
 
-// layoutRows slices a parent's child rows by its mouseLayout, the layout
-// Container and Box record during the render that produced them.
+// layoutRows slices a parent's child rows by its childLines, the layout
+// (children, each one's rows as parts, and their concatenation as lines)
+// Container and Box record during the render that produced them. A child's
+// height is its part's length, as Pi's dispatchMouseToChildLines reads it.
 function layoutRows(layout, children, width, source) {
-  if (!source || !layout || layout.width !== width || !Array.isArray(layout.children) || layout.children.length !== children.length) return undefined;
+  if (!source || !layout || layout.width !== width || !Array.isArray(layout.children) || !Array.isArray(layout.parts)) return undefined;
+  if (layout.children.length !== children.length || layout.parts.length !== children.length) return undefined;
   const slices = [];
   let y = 0;
   for (let i = 0; i < children.length; i++) {
-    const entry = layout.children[i];
-    if (entry?.component !== children[i] || !isInt(entry.height)) return undefined;
-    slices.push(source.slice(y, y + entry.height));
-    y += entry.height;
+    const part = layout.parts[i];
+    if (layout.children[i] !== children[i] || !Array.isArray(part)) return undefined;
+    slices.push(source.slice(y, y + part.length));
+    y += part.length;
   }
   return y === source.length ? slices : undefined;
 }
 
 function walkContainer(walk, c, rows, width, path, depth) {
   if (!Array.isArray(c.children)) return undefined;
-  const childRows = layoutRows(c.mouseLayout, c.children, width, rows);
+  const childRows = layoutRows(c.childLines, c.children, width, rows);
   const children = walk.children(c.children, childRows, width, path, depth);
   if (!children) return undefined;
   return children.length > 0 ? { kind: "container", children } : { kind: "container" };
@@ -405,12 +408,10 @@ function walkBox(walk, c, rows, width, path, depth) {
   const inner = width === undefined ? undefined : Math.max(1, width - c.paddingX * 2);
   let childRows;
   if (rows) {
-    const heights = c.mouseLayout?.children;
-    // Box keeps the children's rows of its last render in its cache, except
-    // when they were empty (it then returns early).
-    const empty = Array.isArray(heights) && heights.every((entry) => entry?.height === 0);
-    const source = empty ? [] : c.cache?.width === width ? c.cache.childLines : undefined;
-    childRows = layoutRows(c.mouseLayout, c.children, inner, source);
+    // Box keeps the children's rows of its last render as childLines.lines
+    // (empty when the children drew none; with no children it returns early
+    // and has no layout).
+    childRows = layoutRows(c.childLines, c.children, inner, c.childLines?.lines);
   }
   const children = walk.children(c.children, childRows, inner, path, depth);
   if (!children) return undefined;

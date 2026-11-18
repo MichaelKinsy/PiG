@@ -83,19 +83,24 @@ export function mouseRegions(component, width, height) {
   // at is where the component's event coordinates start (x, y) and the width dispatch hands it (w), with the cells that reach it as the rectangle
   // [x0, x1) x [y0, y1) in the root's coordinates; the height dispatch hands a component is the rows its parent's layout gave it, which the reach
   // already holds. It is undefined when no cell needs to be found there: none reaches the component, or a MouseRegion above answers for all of them.
+  // layoutOf is the layout Pi's Container and Box dispatch through: the childLines record the component's own render left ({ width, children, parts },
+  // part i being child i's rows, the height of a child its part's length) when it is for this width, and otherwise the children rendered again, as
+  // Pi's renderChildLines(children, width, undefined) does for dispatch.
   const layoutOf = (c, contentWidth) =>
-    c.mouseLayout?.width === contentWidth ? c.mouseLayout.children : c.children.map((child) => ({ component: child, height: child.render(contentWidth).length }));
+    c.childLines?.width === contentWidth ? c.childLines : { children: [...c.children], parts: c.children.map((child) => child.render(contentWidth)) };
   const walkLayout = (c, layout, at, depth) => {
     let childY = at.y;
-    for (const { component: child, height: childHeight } of layout) {
+    for (let i = 0; i < layout.children.length; i++) {
+      const child = layout.children[i];
+      const childHeight = layout.parts[i].length;
       const y0 = Math.max(at.y0, childY);
       const y1 = Math.min(at.y1, childY + childHeight);
       walk(child, y0 < y1 && at.x0 < at.x1 ? { x: at.x, y: childY, w: at.w, x0: at.x0, x1: at.x1, y0, y1 } : undefined, depth + 1);
       childY += childHeight;
     }
     // A child the layout does not hold (it changed since the last render) is not reached by dispatch, but it may handle the mouse itself.
-    if (layout.length !== c.children.length || layout.some((entry, i) => entry.component !== c.children[i])) {
-      const laid = new Set(layout.map((entry) => entry.component));
+    if (layout.children.length !== c.children.length || layout.children.some((laidChild, i) => laidChild !== c.children[i])) {
+      const laid = new Set(layout.children);
       for (const child of c.children) if (!laid.has(child)) walk(child, undefined, depth + 1);
     }
   };

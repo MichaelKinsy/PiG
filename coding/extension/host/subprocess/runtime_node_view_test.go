@@ -433,7 +433,7 @@ const markdownTheme = getMarkdownTheme();
 }
 
 // A component whose render is not exactly a pinned base class's render is a
-// lines range. Its rows come from the parent's mouseLayout without a second
+// lines range. Its rows come from the parent's childLines without a second
 // render; only where no layout exists (a vstack child) is it rendered again.
 // Under an hstack a lines range cannot stand in for a width-dependent child,
 // so the hstack itself becomes the range.
@@ -450,7 +450,7 @@ class Plain extends Text {}
     { kind: "lines", content: ["*hi*"] },
     { kind: "text", text: "plain", paddingX: 0, paddingY: 0 },
     { kind: "lines", content: ["c:30", "C"] }] });
-  assert.equal(custom.renders, 1, "rows from mouseLayout, not a second render");
+  assert.equal(custom.renders, 1, "rows from childLines, not a second render");
 }
 {
   const custom = opaque("b");
@@ -459,7 +459,7 @@ class Plain extends Text {}
   const { view } = derive(outer, 30);
   assert.deepEqual(view.root.children[0], { kind: "box", paddingX: 3, children: [{ kind: "text", text: "x", paddingX: 0, paddingY: 0 }, { kind: "lines", content: ["b:24", "B"] }] });
   assert.deepEqual(view.root.children[1], { kind: "container", children: [{ kind: "lines", content: ["n:30", "N"] }] });
-  assert.equal(custom.renders, 1, "box rows from its cache and mouseLayout");
+  assert.equal(custom.renders, 1, "box rows from its childLines");
   // A steady second render serves the Box from its cache; the rows still come from it.
   derive(outer, 30);
   assert.equal(custom.renders, 2);
@@ -964,11 +964,16 @@ for (const [name, fields] of Object.entries(VIEW_WALK_FIELDS)) {
   for (const field of fields) assert.ok(Object.hasOwn(instances[name], field), name + "." + field);
 }
 box.render(10);
-assert.deepEqual(Object.keys(box.mouseLayout), ["width", "children"]);
-assert.deepEqual(Object.keys(box.mouseLayout.children[0]), ["component", "height"]);
-assert.ok(Array.isArray(box.cache.childLines) && box.cache.width === 10);
+// Pi's renderChildLines record: the width the render got (a Box: its content width), the children, each one's rows and their concatenation.
+assert.deepEqual(Object.keys(box.childLines), ["width", "children", "parts", "lines"]);
+assert.equal(box.childLines.width, 8);
+assert.deepEqual(box.childLines.children, box.children);
+assert.ok(box.childLines.parts.length === box.children.length && box.childLines.parts.every(Array.isArray));
+assert.deepEqual(box.childLines.lines, box.childLines.parts.flat());
 const container = new Container(); container.addChild(new Text("x")); container.render(10);
-assert.deepEqual(container.mouseLayout, { width: 10, children: [{ component: container.children[0], height: 3 }] });
+const rows = container.children[0].render(10);
+assert.equal(rows.length, 3);
+assert.deepEqual(container.childLines, { width: 10, children: [container.children[0]], parts: [rows], lines: rows });
 const stack = new VStack([{ component: new Text("x"), grow: 1, basis: 2, visible: () => true }]);
 assert.deepEqual(Object.keys(stack.entries[0]).sort(), ["basis", "component", "grow", "visible"]);
 assert.equal(typeof new SettingsList([], 1, getSettingsListTheme(), () => {}, () => {}, { enableSearch: true }).searchInput.value, "string");
