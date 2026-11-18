@@ -18890,6 +18890,29 @@
       ]
     },
     {
+      "id": "BF-52f2927",
+      "title": "When `/new`, `/fork`, `/resume` or `/reload` ends in a fatal error (\"Failed to create session\" and its kin…",
+      "symptom": "They used to be left to end on their own for a moment after `pig` had gone (since v0.5.0), so a script or a test that removed `pig`'s home directory right after the exit could fail with \"directory not empty\": a Node extension writes its compile cache when its process ends.",
+      "rootCause": "the exit that follows a fatal runtime error released only the startup extension host, so the processes of a replacement session's host, started later by the session factory, were never ended by it.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When `/new`, `/fork`, `/resume` or `/reload` ends in a fatal error (\"Failed to create session\" and its kin, exit status 1), `pig` now ends the replacement session's extension processes before it exits, as its signal and RPC exits already did. They used to be left to end on their own for a moment after `pig` had gone (since v0.5.0), so a script or a test that removed `pig`'s home directory right after the exit could fail with \"directory not empty\": a Node extension writes its compile cache when its process ends.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "52f29278c2",
+          "date": "2026-11-18"
+        }
+      ],
+      "tests": [
+        "coding/cli/exit_session_extensions_test.go::TestExitProcessEndsTheSessionExtensionProcessesAfterTheStartupHost",
+        "coding/cli/fatal_exit_extension_processes_linux_test.go::TestInteractiveFatalReplacementExitLeavesNoExtensionProcess"
+      ]
+    },
+    {
       "id": "BF-530bf3e",
       "title": "Fix in shipped code",
       "symptom": "Fix in shipped code",

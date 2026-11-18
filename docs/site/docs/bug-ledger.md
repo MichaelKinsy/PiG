@@ -698,6 +698,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5291c92-2](#bf-5291c92-2) | `StartServer` refuses a worker kind without `Authorize` or `Start` with a start error instead of panicking at… | PiG's own defect | All platforms | Unreleased |
 | [BF-5291c92-3](#bf-5291c92-3) | A worker's `.host-data.mjs`, which holds the start's secret token, is removed when the worker closes | PiG's own defect | All platforms | Unreleased |
 | [BF-5291c92-4](#bf-5291c92-4) | The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends… | PiG's own defect | All platforms | Unreleased |
+| [BF-52f2927](#bf-52f2927) | When `/new`, `/fork`, `/resume` or `/reload` ends in a fatal error ("Failed to create session" and its kin… | PiG's own defect | All platforms | Unreleased |
 | [BF-530bf3e](#bf-530bf3e) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-532a009](#bf-532a009) | Accepting an autocomplete suggestion after the cursor moved off the typed text (a word move, Home or End)… | PiG's own defect | All platforms | Unreleased |
 | [BF-53312d8](#bf-53312d8) | `pi.exec()` no longer buffers a command's output without limit, which exhausted memory when a command printed… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -11771,6 +11772,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `5291c9268f` (2026-11-08)
 - **Tests:** `chord/nextnode/app/app_executable_test.go::TestAppReportsAnExecutableThatIsNoRegularFileOrCannotBeOpened`, `chord/nextnode/app/app_executable_test.go::TestAppStartsWhenItsExecutableCannotBeReadReportedNotCompared`, `chord/nextnode/app/app_export_test.go::TestAppLeavesAFailedAddressFailedAfterAnExport`, `chord/nextnode/app/app_test.go::TestAppRefusesAWorkerKindWithoutAuthorizeOrStartBeforeItOpensAnything`, `chord/nextnode/app/app_test.go::TestWorkerHostsForgetsAnAddressesEntryButNotOneAnotherAddressTookOver`, `chord/nextnode/app/app_workers_test.go::TestAppAWorkersHostDataModuleHoldingItsTokenIsPrivateWhileItRunsAndGoneAfterItsEnd`, `chord/nextnode/app/data_export_test.go::TestPackRunningExportsBothStoresAtOnePointWhileTheyAreWritten`, `chord/nextnode/workers/workers_workers_test.go::TestForgottenDoesNotRunForAnAddressThatFailedUntilItsFailureEnds` and 1 more in docs/bug-ledger.json
 - **Release note:** The server no longer keeps a worker's telemetry host entry for every address it ever started: the entry ends when the workers component forgets the address.
+
+### BF-52f2927
+
+**When `/new`, `/fork`, `/resume` or `/reload` ends in a fatal error ("Failed to create session" and its kin…**
+
+- **Source:** PiG's own defect
+- **Symptom:** They used to be left to end on their own for a moment after `pig` had gone (since v0.5.0), so a script or a test that removed `pig`'s home directory right after the exit could fail with "directory not empty": a Node extension writes its compile cache when its process ends.
+- **Root cause:** the exit that follows a fatal runtime error released only the startup extension host, so the processes of a replacement session's host, started later by the session factory, were never ended by it.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `52f29278c2` (2026-11-18)
+- **Tests:** `coding/cli/exit_session_extensions_test.go::TestExitProcessEndsTheSessionExtensionProcessesAfterTheStartupHost`, `coding/cli/fatal_exit_extension_processes_linux_test.go::TestInteractiveFatalReplacementExitLeavesNoExtensionProcess`
+- **Release note:** When `/new`, `/fork`, `/resume` or `/reload` ends in a fatal error ("Failed to create session" and its kin, exit status 1), `pig` now ends the replacement session's extension processes before it exits, as its signal and RPC exits already did. They used to be left to end on their own for a moment after `pig` had gone (since v0.5.0), so a script or a test that removed `pig`'s home directory right after the exit could fail with "directory not empty": a Node extension writes its compile cache when its process ends.
 
 ### BF-530bf3e
 
