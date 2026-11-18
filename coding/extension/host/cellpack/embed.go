@@ -165,6 +165,7 @@ func extract(fsys fs.FS, m Manifest, dest string, warn io.Writer) error {
 
 // extractEmbeddedNodeCell is extractNodeCell for the archive embedded at cells/<Binary>, which it reads in place.
 func extractEmbeddedNodeCell(fsys fs.FS, c CellEntry, dest string, warn io.Writer) error {
+	//portlint:allow pathseparators the name is an io/fs path into the embedded cells folder: a slash path on every OS, not a host path
 	archive, closeArchive, err := openNodeArchive(fsys, path.Join("cells", c.Binary))
 	if err != nil {
 		return fmt.Errorf("read embedded cell %s: %w", c.Binary, err)
