@@ -1427,7 +1427,8 @@
         "call:agent/agent.go#Agent.Transport"
       ],
       "evidence": [
-        "test:agent/agent_public_properties_test.go#TestAgent_PropertiesAssignedBetweenRunsApplyToTheNextRun"
+        "test:agent/agent_public_properties_test.go#TestAgent_PropertiesAssignedBetweenRunsApplyToTheNextRun",
+        "test:agent/agent_transport_default_test.go#TestNewAgentDefaultsTheTransportToAuto"
       ]
     },
     {
@@ -3256,7 +3257,7 @@
       "id": "pkg:agent/.#AgentOptions::property:transport",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:42220abc493a86830a6703e135adfb333488850db0b163c035fc4e469f1523ae",
-      "rationale": "Derived by the interface gap detector: AgentOptions::property:transport is Go agent/agent.go#AgentOptions.Transport (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: AgentOptions::property:transport is Go agent/agent.go#AgentOptions.Transport (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "agent/agent.go#AgentOptions.Transport"
       ],
@@ -3269,7 +3270,7 @@
         "call:agent/agent.go#Agent.SetTransport"
       ],
       "evidence": [
-        "reach:agent/agent.go#Agent.SetTransport"
+        "test:agent/agent_transport_default_test.go#TestNewAgentDefaultsTheTransportToAuto"
       ]
     },
     {
@@ -26905,7 +26906,8 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
-        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport"
+        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
+        "test:ai/openai_codex_cached_context_test.go#TestCodexSecondRequestOfASessionFollowsTheRawTransport"
       ]
     },
     {
@@ -26969,6 +26971,7 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_cached_context_test.go#TestCodexSecondRequestOfASessionFollowsTheRawTransport",
         "test:ai/openai_codex_websocket_test.go#TestOpenAICodexResponses_AutoReusesWebSocketWithInputDelta"
       ]
     },
@@ -26991,7 +26994,7 @@
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
         "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
-        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
+        "test:ai/openai_codex_cached_context_test.go#TestCodexSecondRequestOfASessionFollowsTheRawTransport"
       ]
     },
     {
@@ -27093,6 +27096,7 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_cached_context_test.go#TestTheTransportValueChangesOnlyTheCodexCachedContextDecision",
         "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },
@@ -44914,7 +44918,8 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
-        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport"
+        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
+        "test:ai/openai_codex_cached_context_test.go#TestCodexSecondRequestOfASessionFollowsTheRawTransport"
       ]
     },
     {
@@ -44978,6 +44983,7 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_cached_context_test.go#TestCodexSecondRequestOfASessionFollowsTheRawTransport",
         "test:ai/openai_codex_websocket_test.go#TestOpenAICodexResponses_AutoReusesWebSocketWithInputDelta"
       ]
     },
@@ -45000,7 +45006,7 @@
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
         "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
-        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
+        "test:ai/openai_codex_cached_context_test.go#TestCodexSecondRequestOfASessionFollowsTheRawTransport"
       ]
     },
     {
@@ -45102,6 +45108,7 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_cached_context_test.go#TestTheTransportValueChangesOnlyTheCodexCachedContextDecision",
         "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },
@@ -72619,7 +72626,8 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
-        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport"
+        "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
+        "test:ai/openai_codex_cached_context_test.go#TestCodexSecondRequestOfASessionFollowsTheRawTransport"
       ]
     },
     {
@@ -72683,6 +72691,7 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_cached_context_test.go#TestCodexSecondRequestOfASessionFollowsTheRawTransport",
         "test:ai/openai_codex_websocket_test.go#TestOpenAICodexResponses_AutoReusesWebSocketWithInputDelta"
       ]
     },
@@ -72705,7 +72714,7 @@
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
         "test:coding/codex_stream_upstream_test.go#TestModelRuntimeCodexSimpleThinkingAndAutoTransport",
-        "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
+        "test:ai/openai_codex_cached_context_test.go#TestCodexSecondRequestOfASessionFollowsTheRawTransport"
       ]
     },
     {
@@ -72807,6 +72816,7 @@
       ],
       "evidence": [
         "test:ai/openai_codex_ws_upstream_test.go#TestCodexWebSocketUpstream",
+        "test:ai/openai_codex_cached_context_test.go#TestTheTransportValueChangesOnlyTheCodexCachedContextDecision",
         "test:ai/openai_codex_stats_observer_test.go#TestCodexStatsObserverIsToldWhenARequestIsCounted"
       ]
     },

@@ -36554,6 +36554,17 @@
       "shapeHash": "sha256:48d6fec6945366db651b1d044218cf8f10dc179edbd193a495136aafd43ae933"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#codexUsesCachedContext",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "codexUsesCachedContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(transport Transport) bool"
+      },
+      "shapeHash": "sha256:0b314108622433444c2dcdfcac24134683c765232f7ba30d529eb5154cf06e16"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#codexWebSocketBeta",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "codexWebSocketBeta",
@@ -37124,6 +37135,61 @@
         "type": "func() *crypto/tls.Config"
       },
       "shapeHash": "sha256:aaafd3e474fbad53b9b11ea4c9827312e12c0837740509c9faa5913db7653b32"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#codexWebSocketTerminalSeam",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "codexWebSocketTerminalSeam",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Pointer[func(sessionID string)]"
+      },
+      "shapeHash": "sha256:7a43e52577b4f9a749e275e84b447c4be7a5b3db27e7fda53e496781c23add8a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#codexWebSocketTerminalSeam.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "codexWebSocketTerminalSeam.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old *func(sessionID string), new *func(sessionID string)) (swapped bool)"
+      },
+      "shapeHash": "sha256:b63fec77221906fbedeae206e7395dac6b9780e481496a850b7ae0372238308b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#codexWebSocketTerminalSeam.Load",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "codexWebSocketTerminalSeam.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() *func(sessionID string)"
+      },
+      "shapeHash": "sha256:42d18b76cb186b53fd9ae352c11445a7f0db80ec6690ecd7f460d7fb03a68641"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#codexWebSocketTerminalSeam.Store",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "codexWebSocketTerminalSeam.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val *func(sessionID string))"
+      },
+      "shapeHash": "sha256:fd3b6c99a7bc2759ee55b095995cc1451871dc2a13f7d87f6d56f2ca82f22633"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#codexWebSocketTerminalSeam.Swap",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "codexWebSocketTerminalSeam.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new *func(sessionID string)) (old *func(sessionID string))"
+      },
+      "shapeHash": "sha256:32f4c4acd5288e5eac8f7b4e2e68c8f8049296c93b94888f52f336c38a31adfd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#codexWebSocketTransportFailure",
@@ -104903,9 +104969,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(in io.Reader, out io.Writer, transport github.com/MichaelKinsy/PiG/ai.Transport) int"
+        "type": "func(in io.Reader, out io.Writer) int"
       },
-      "shapeHash": "sha256:73415e6ffdad6d2ffcb3ccd9f32fa5f40768bfe4bf2077f1c21853d5e0309c84"
+      "shapeHash": "sha256:f4e208da323fb68a0ae35b5a6de3defe9f567daf7ad773eb94027bb3b156b895"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runRPCListen",
@@ -105475,9 +105541,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, request providerBridgeRequest, transport github.com/MichaelKinsy/PiG/ai.Transport, send func(providerBridgeReply) bool, callbacks *bridgeCallbacks)"
+        "type": "func(ctx context.Context, request providerBridgeRequest, send func(providerBridgeReply) bool, callbacks *bridgeCallbacks)"
       },
-      "shapeHash": "sha256:cdea277890075383f3183e15921256d33ca107b189b1befd19c63e55407175a9"
+      "shapeHash": "sha256:f9e17017a1330dd460c9b359b3a6c1c0bd94a557ae1e0f22f9d61bd60258c7b1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#serveRPCMode",
@@ -261477,9 +261543,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(transport github.com/MichaelKinsy/PiG/ai.Transport) func(context.Context, map[string]any, map[string]any) (*github.com/MichaelKinsy/PiG/ai.AssistantMessageEventStream, error)"
+        "type": "func() func(context.Context, map[string]any, map[string]any) (*github.com/MichaelKinsy/PiG/ai.AssistantMessageEventStream, error)"
       },
-      "shapeHash": "sha256:75bcaef3d1ef750399a8cd279d7ad48cd3e0782eebd63032bce8a8f4b3b75313"
+      "shapeHash": "sha256:f48bdf644607170242279a5d7adb60b558473094eef7cf2c681e43771df60357"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#EndSessionMarker",
@@ -289186,9 +289252,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(ctx context.Context, simple bool, model map[string]any, request map[string]any, transport github.com/MichaelKinsy/PiG/ai.Transport, callbacks github.com/MichaelKinsy/PiG/coding/extension.ModelStreamRequest) (*github.com/MichaelKinsy/PiG/ai.AssistantMessageEventStream, error)"
+        "type": "func(ctx context.Context, simple bool, model map[string]any, request map[string]any, callbacks github.com/MichaelKinsy/PiG/coding/extension.ModelStreamRequest) (*github.com/MichaelKinsy/PiG/ai.AssistantMessageEventStream, error)"
       },
-      "shapeHash": "sha256:960f50072c3ae13a0687e6683a61508beab43f13b249caa2536b2d1da0239573"
+      "shapeHash": "sha256:5d93920dca54dedc154adc9e4af393b2d7944797bc9189ac1e54500f5358c5db"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SubprocessHost",
@@ -291166,9 +291232,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(bridge ModelOperationBridge, transport github.com/MichaelKinsy/PiG/ai.Transport)"
+        "type": "func(bridge ModelOperationBridge)"
       },
-      "shapeHash": "sha256:2a74b7d4433913a1c7586628966dadccbde80e9531fe436156075bf3767a4bb9"
+      "shapeHash": "sha256:a13ec66fa46e4e7dcf11cc28eb4244a9cd878a9789f47451bdd81a213affbb1e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#WireModelOperations",
@@ -298162,9 +298228,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, llmModel *github.com/MichaelKinsy/PiG/ai.Model, request map[string]any, transport github.com/MichaelKinsy/PiG/ai.Transport, bridgeRequest github.com/MichaelKinsy/PiG/coding/extension.ModelStreamRequest) (context.Context, github.com/MichaelKinsy/PiG/ai.Context, github.com/MichaelKinsy/PiG/ai.StreamOptions, error)"
+        "type": "func(ctx context.Context, llmModel *github.com/MichaelKinsy/PiG/ai.Model, request map[string]any, bridgeRequest github.com/MichaelKinsy/PiG/coding/extension.ModelStreamRequest) (context.Context, github.com/MichaelKinsy/PiG/ai.Context, github.com/MichaelKinsy/PiG/ai.StreamOptions, error)"
       },
-      "shapeHash": "sha256:0f360b57654f78255e9b0eab1c394034819165875a4abf48710a8e5c909811d3"
+      "shapeHash": "sha256:9a2f5045ecd01f37dcdc0e3b24a164743f97fefdb19f54289011428b07d5d64f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#decodeTreeFacts",
