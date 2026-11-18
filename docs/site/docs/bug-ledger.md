@@ -714,6 +714,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-54660cf](#bf-54660cf) | A custom message renderer is called once, not twice, when a message is drawn | PiG's own defect | All platforms | Unreleased |
 | [BF-549df80](#bf-549df80) | A `tool_result` handler that edits the event in place now has the edit seen by the next handler of the chain… | PiG's own defect | All platforms | Unreleased |
 | [BF-54a5bf6](#bf-54a5bf6) | The host answers a parsed frontmatter with `<`, `>`, `&` and U+2028 as they are (as `JSON.stringify` writes… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-54b0e6d](#bf-54b0e6d) | fix(coding): a provider re-registration with insecure false turns the TLS opt-in off | PiG's own defect | All platforms | Unreleased |
 | [BF-54bf1a5](#bf-54bf1a5) | Two clients that a mount's content does not fit, one shown the fallback and one shown no view, were sent the… | PiG's own defect | All platforms | Unreleased |
 | [BF-54c4ee3](#bf-54c4ee3) | fix(chord): the platform locale is the first set variable of LC_ALL, LC_MESSAGES, LANG (C and POSIX are… | PiG's own defect | All platforms | Unreleased |
 | [BF-54dc372](#bf-54dc372) | fix(release): carry main's PigVersion 0.5.3 and the post-bump goldens and pins | PiG's own defect | All platforms | Unreleased |
@@ -735,6 +736,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-56e30a4-2](#bf-56e30a4-2) | A selected session row with no text no longer draws an empty bold span | PiG's own defect | All platforms | Unreleased |
 | [BF-56f1d3c](#bf-56f1d3c) | A family document member accepts a typed Go value as its seed, as `CreateTask` input and snapshots already do | PiG's own defect | All platforms | 0.5.0 |
 | [BF-56f1d3c-2](#bf-56f1d3c-2) | `Submission.Wait`, `WaitForTask` and the idle waits return after every commit subscriber has run for the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-56fcfdc](#bf-56fcfdc) | fix(coding): one rule decides the TLS opt-in of a models.json entry and a registration on every request route | PiG's own defect | All platforms | Unreleased |
 | [BF-570c037](#bf-570c037) | `pig install <path> --validate-only` called a `.mjs` file, or a directory with only `index.mjs`, a valid… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-570f857](#bf-570f857) | Fixed interactive sessions leaving extension prompt sections, such as the MCP `mcp_servers` list, out of the… | A fix Pi shipped that PiG ported | All platforms | 0.5.0 |
 | [BF-5732479](#bf-5732479) | `auth.json` keeps each credential's properties in the order they were read or returned by an extension's… | PiG's own defect | All platforms | 0.5.0 |
@@ -11995,6 +11997,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `agent/message_json_number_spelling_test.go::TestAgentMessageDecodeKeepsANonNumberWhereAnIntegerIsExpected`, `agent/message_json_test.go::TestAgentMessageJSONRejectsInvalidUnion`, `agent/message_type_mismatch_test.go::TestDecodedMessageKeepsMembersOfAnyType`, `agent/provider_content_block_decode_test.go::TestUnknownContentBlockCostsOnlyThatBlock`, `coding/extension/host/subprocess/host_helpers_quote_test.go::TestParseFrontmatterResultKeepsMarkupAndLineSeparatorsLiteral`, `extensions/sdk-py/tests/test_compaction_estimate.py`, `extensions/sdk-py/tests/test_helper_running.py`, `extensions/sdk-py/tests/test_serialize_conversation_surrogates.py` and 13 more in docs/bug-ledger.json
 - **Release note:** The host answers a parsed frontmatter with `<`, `>`, `&` and U+2028 as they are (as `JSON.stringify` writes them) instead of `\u003c`-style escapes, and a packed cell's helper without a `Context` keeps a live connection when the first extension to start has stopped (Go, Rust and Python SDKs).
 
+### BF-54b0e6d
+
+**fix(coding): a provider re-registration with insecure false turns the TLS opt-in off**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(coding): a provider re-registration with insecure false turns the TLS opt-in off
+- **Root cause:** Owner decision 2026-11-17 (decision 27). A re-registration that sets insecure to false now verifies certificates again; one that omits insecure keeps the earlier value, as Pi's registerProvider merge keeps an undefined value (model-runtime.ts:970-977). Before, only unregisterProvider cleared the opt-in, because Go's zero value stood for the omitted value; that rule shipped in 0.5.0.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `54b0e6dffd` (2026-11-17)
+- **Tests:** `coding/extension/provider_insecure_test.go::TestProviderConfigInputInsecureSetting`, `coding/extension/provider_insecure_test.go::TestProviderConfigInsecureKeepsThreeStatesOnTheWire`, `coding/provider_insecure_wiring_test.go::TestRegisteredProviderInsecureReachesTheRequestWithRefreshModels`, `internal/codingagent/provider_insecure_tristate_test.go::TestRegisteredProviderInsecureFalseIsReadBack`, `internal/codingagent/provider_insecure_tristate_test.go::TestRegisteredProviderInsecureHasThreeStates`, `internal/codingagent/provider_insecure_tristate_test.go::TestUnregisterProviderClearsInsecure`, `test/extension-conformance/insecure_provider_test.go::TestProviderInsecureFalseReachesTheHostAcrossSDKs`
+
 ### BF-54bf1a5
 
 **Two clients that a mount's content does not fit, one shown the fallback and one shown no view, were sent the…**
@@ -12283,6 +12298,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Commit that wrote the release note (the fix commit is not identified):** `56f1d3c23a` (2026-10-05)
 - **Tests:** `durable/examples/pocket_dropin_test.go::TestPocketCommitSubscriberTracksBusySpendAndSubmissions`, `durable/examples/pocket_dropin_test.go::TestPocketForkInitCopiesAndTrimsDocuments`, `durable/examples/pocket_dropin_test.go::TestPocketOpenCreatesDocumentsAndSurvivesReopen`, `durable/examples/pocket_dropin_test.go::TestPocketToolHooksAreIntrospectableAndCallableFromATool`, `durable/session/watch_doc_typed_test.go::TestDeferUntilPublishedRunsAfterEveryListener`, `durable/session/watch_doc_typed_test.go::TestFamilyDocSeedAcceptsATypedGoValue`
 - **Release note:** `Submission.Wait`, `WaitForTask` and the idle waits return after every commit subscriber has run for the commit that settled them, as Pi's promise continuations do.
+
+### BF-56fcfdc
+
+**fix(coding): one rule decides the TLS opt-in of a models.json entry and a registration on every request route**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(coding): one rule decides the TLS opt-in of a models.json entry and a registration on every request route
+- **Root cause:** Owner decision 2026-11-18 (decision 29, rule R2). Root cause: the places that build a request read the raw insecure setting of different layers with local expressions, so a provider that models.json marks insecure and an extension registers again got two answers. The model runtime route (ProviderInsecure) dropped the file opt-in whenever the provider was registered, since 0.3.0. The route of a provider built straight from a model entry (BuildModel, used by the CLI --model, the interactive model picker and an extension model switch for a provider without a native stream function) kept the file opt-in with an or and never saw a registration false, since 0.2.0, so the explicit false of…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `56fcfdc682` (2026-11-17)
+- **Tests:** `coding/provider_insecure_file_layer_test.go::TestFileInsecureAndRegistrationReachTheRequest`, `internal/codingagent/provider_tls_optin_test.go::TestProviderTLSOptIn`
 
 ### BF-570c037
 

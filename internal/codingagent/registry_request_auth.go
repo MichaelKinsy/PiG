@@ -220,23 +220,14 @@ func (r *ModelRegistry) ResolveCompatibilityModelAuth(ctx context.Context, model
 	return resolution, nil
 }
 
-// ProviderInsecure returns the configured transport flag without resolving credentials or headers.
+// ProviderInsecure returns whether the provider skips TLS certificate verification (providerTLSOptIn), without resolving credentials or headers.
 func (r *ModelRegistry) ProviderInsecure(providerID string) bool {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	if dynamic, ok := r.dynamic[providerID]; ok {
-		return dynamic.Insecure
-	}
 	r.nativeMu.Lock()
 	composed := r.nativeInputs[providerID]
 	r.nativeMu.Unlock()
-	if composed != nil {
-		return composed.Insecure
-	}
-	if r.config != nil {
-		return r.config.Providers[providerID].Insecure
-	}
-	return false
+	return r.providerTLSOptInLocked(providerID, composed)
 }
 
 // RequestAuthHeaders folds configured HTTP header names in declaration order while compatibility auth results retain their original keys and null values.

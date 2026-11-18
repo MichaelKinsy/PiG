@@ -21,7 +21,8 @@ func carrierModelInput(id string, config providerConfig) ProviderConfigInput {
 
 // providerModelInput is the model-bearing part of a registered provider: its name, endpoint, api, models of every type and the implementations of its image and classifier models. Callback and credential fields are added by legacyProviderInput.
 func providerModelInput(id string, config providerConfig) ProviderConfigInput {
-	input := ProviderConfigInput{Name: config.Name, BaseURL: config.BaseURL, API: ai.API(config.API), Images: config.Images, Classifiers: config.Classifiers, Insecure: config.Insecure}
+	input := ProviderConfigInput{Name: config.Name, BaseURL: config.BaseURL, API: ai.API(config.API), Images: config.Images, Classifiers: config.Classifiers}
+	input.SetInsecureSetting(config.Insecure)
 	if config.Models != nil {
 		input.Models = make([]ai.AnyModel, 0, len(config.Models))
 		for _, model := range config.Models {

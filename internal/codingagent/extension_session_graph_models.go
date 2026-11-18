@@ -58,8 +58,8 @@ func GraphProviderConfig(input *ProviderConfigInput) (map[string]any, error) {
 	if input.AuthHeader != nil {
 		out["authHeader"] = *input.AuthHeader
 	}
-	if input.Insecure {
-		out["insecure"] = true
+	if setting := input.InsecureSetting(); setting != nil {
+		out["insecure"] = *setting
 	}
 	if input.Models != nil {
 		models, err := nativeModelConfigs(input.Models)

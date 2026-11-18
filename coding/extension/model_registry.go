@@ -115,4 +115,17 @@ type ProviderConfigInput struct {
 	// Insecure skips TLS certificate verification for this provider's endpoint.
 	// pig additive (D36): carries ProviderConfig.Insecure through a registration composed in the native collection.
 	Insecure bool
+	// insecureOff is an explicit false: a registration that sets it turns an earlier opt-in off, where the zero Insecure is the omitted value that keeps it.
+	insecureOff bool
+}
+
+// InsecureSetting is the TLS opt-in the registration states: nil when it leaves insecure out, otherwise true or false (D36).
+func (input ProviderConfigInput) InsecureSetting() *bool {
+	return insecureSetting(input.Insecure, input.insecureOff)
+}
+
+// SetInsecureSetting states the TLS opt-in: nil leaves it out, true opts in and false turns an earlier opt-in off when the registration is merged.
+func (input *ProviderConfigInput) SetInsecureSetting(setting *bool) {
+	input.Insecure = setting != nil && *setting
+	input.insecureOff = setting != nil && !*setting
 }

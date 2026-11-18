@@ -111,9 +111,13 @@ type providerConfig struct {
 	oauthCallbacks *extension.ProviderOAuth
 	// Insecure skips TLS verification for this provider's endpoint. Opt-in,
 	// for self-signed/internal-CA on-prem gateways.
-	// pig additive (D36): additive optional field; no upstream equivalent.
-	Insecure bool `json:"insecure,omitempty"`
+	// pig additive (D36): additive optional field; no upstream equivalent. It has three states: nil (omitted), false and true. A re-registration's
+	// defined value replaces the earlier one and an omitted value keeps it, as Pi's registerProvider merges a re-registration (model-runtime.ts:970-977).
+	Insecure *bool `json:"insecure,omitempty"`
 }
+
+// optedIn is whether a layer's three-state insecure setting opts in: an omitted or false setting verifies certificates.
+func optedIn(setting *bool) bool { return setting != nil && *setting }
 
 // oauthProviderConfig contains serializable OAuth discovery/filtering metadata. Callback values are retained separately.
 type oauthProviderConfig struct {
@@ -766,7 +770,7 @@ func (r *ModelRegistry) layerCatalogEntry(providerID, modelID string, entry Mode
 			if dynamic.APIKey != "" {
 				entry.APIKey = configvalue.Resolve(dynamic.APIKey, r.providerEnv(providerID))
 			}
-			entry.Insecure = dynamic.Insecure
+			entry.Insecure = r.providerTLSOptInLocked(providerID, nil)
 		}
 	}
 	if configured != nil {
@@ -843,7 +847,7 @@ func (r *ModelRegistry) resolveGeneratedModelLocked(entry ModelEntry, provider p
 	entry.BaseURL = firstModelValue(provider.BaseURL, entry.BaseURL)
 	entry.Headers = mergeHeadersOrdered(entry.Headers, provider.Headers, provider.headerEntries, r.providerEnv(entry.ProviderID))
 	entry.Compat = mergeCompat((*providerCompat)(entry.Compat), provider.Compat)
-	entry.Insecure = provider.Insecure
+	entry.Insecure = r.providerTLSOptInLocked(entry.ProviderID, nil)
 	entry.AuthHeader = provider.AuthHeader != nil && *provider.AuthHeader
 	entry.APIKey = configvalue.Resolve(provider.APIKey, r.providerEnv(entry.ProviderID))
 	if entry.APIKey == "" {
@@ -881,7 +885,7 @@ func (r *ModelRegistry) mergeProviderDefaultsLocked(entry ModelEntry, provider p
 	if provider.AuthHeader != nil {
 		entry.AuthHeader = *provider.AuthHeader
 	}
-	entry.Insecure = entry.Insecure || provider.Insecure
+	entry.Insecure = r.providerTLSOptInLocked(entry.ProviderID, nil)
 	return entry
 }
 
@@ -1125,8 +1129,10 @@ func (r *ModelRegistry) upsertRegisteredProviderLocked(name string, incoming pro
 	if incoming.AuthHeader != nil {
 		existing.AuthHeader = incoming.AuthHeader
 	}
-	// pig additive (D36): Pi merges a re-registration's defined values and keeps the undefined ones (model-runtime.ts:921-933); an opt-in sets it, an omitted (false) one keeps the earlier value.
-	existing.Insecure = existing.Insecure || incoming.Insecure
+	// pig additive (D36): Pi merges a re-registration's defined values over the previous registration and keeps the undefined ones (model-runtime.ts:970-977), so an explicit false turns an earlier opt-in off and an omitted value keeps it.
+	if incoming.Insecure != nil {
+		existing.Insecure = incoming.Insecure
+	}
 	if incoming.Models != nil {
 		existing.Models = incoming.Models
 	}
@@ -1823,6 +1829,7 @@ func (r *ModelRegistry) resolveModelDef(providerID string, prov providerConfig, 
 	providerHeaders := mergeHeadersOrdered(nil, prov.Headers, prov.headerEntries, env)
 	entry.Headers = mergeHeadersOrdered(providerHeaders, md.Headers, md.headerEntries, env)
 	entry.Env = env
+	entry.Insecure = r.providerTLSOptInLocked(providerID, nil)
 	return entry
 }
 
@@ -1846,7 +1853,7 @@ func (r *ModelRegistry) resolveProviderDefaults(providerID string, prov provider
 		Env:        env,
 		AuthHeader: authHeader,
 		Compat:     mergeCompat(prov.Compat, nil),
-		Insecure:   prov.Insecure,
+		Insecure:   r.providerTLSOptInLocked(providerID, nil),
 	}
 }
 

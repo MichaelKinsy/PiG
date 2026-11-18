@@ -48,3 +48,25 @@ func registerLateProbe(e *sdk.Extension) {
 		},
 	})
 }
+
+// registerInsecureProbe is the insecure_provider tool: four registrations of one provider after the factory finished, the second with an explicit
+// `insecure: false`, the third leaving insecure out and the fourth opting in again (D36; Pi merges defined values, model-runtime.ts:970-977).
+func registerInsecureProbe(e *sdk.Extension) {
+	e.RegisterTool(sdk.ToolDefinition{
+		Name: "insecure_provider", Label: "insecure_provider", Description: "Registers a provider four times with insecure true, false, omitted and true.", Parameters: sdk.Schema{"type": "object"},
+		Execute: func(ctx sdk.Context, _ map[string]any) (any, error) {
+			registry := ctx.ModelRegistry()
+			for _, config := range []sdk.ProviderConfig{
+				{"baseUrl": "https://tls.test/v1", "insecure": true},
+				{"insecure": false},
+				{"baseUrl": "https://tls.test/v2"},
+				{"insecure": true},
+			} {
+				if err := registry.RegisterProvider("tls", config); err != nil {
+					return nil, err
+				}
+			}
+			return text(map[string]any{"registered": 4})
+		},
+	})
+}

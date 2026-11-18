@@ -43,8 +43,13 @@ type ProviderConfig struct {
 	OAuth         *ProviderOAuth        `json:"oauth,omitempty"`
 	// Insecure skips TLS certificate verification for this provider's
 	// endpoint. Opt-in only, for self-signed/internal-CA on-prem gateways.
-	// pig additive (D36): additive optional field; no upstream per-provider TLS-skip.
+	// pig additive (D36): additive optional field; no upstream per-provider TLS-skip. True is on; the zero value is the omitted value, so a
+	// re-registration that leaves it out keeps the earlier opt-in. A decoded `"insecure": false` is a defined value that turns it off: InsecureSetting
+	// returns the three states. Against a `models.json` entry of the same provider an explicit value wins; an omitted one keeps the entry's opt-in only
+	// while the registration keeps the entry's endpoint (providerTLSOptIn in internal/codingagent).
 	Insecure bool `json:"insecure,omitempty"`
+	// insecureOff is a decoded `"insecure": false`.
+	insecureOff bool
 }
 
 // RefreshModelsContext is the context a RefreshModels callback receives: the credential and stored catalog, whether the
@@ -125,7 +130,29 @@ type providerHeaderEntry struct {
 	Value string
 }
 
-type providerConfigJSON ProviderConfig
+// providerConfigFields is ProviderConfig without its methods, so decoding it does not call ProviderConfig.UnmarshalJSON.
+type providerConfigFields ProviderConfig
+
+// providerConfigJSON is the JSON form of ProviderConfig. Its Insecure member has the three states of the member: absent, false and true.
+type providerConfigJSON struct {
+	providerConfigFields
+	Insecure *bool `json:"insecure,omitempty"`
+}
+
+// InsecureSetting is the TLS opt-in the registration states: nil when it leaves insecure out, otherwise true or false (D36).
+func (config ProviderConfig) InsecureSetting() *bool {
+	return insecureSetting(config.Insecure, config.insecureOff)
+}
+
+func insecureSetting(on, off bool) *bool {
+	switch {
+	case on:
+		return new(true)
+	case off:
+		return new(false)
+	}
+	return nil
+}
 
 type providerModelConfigJSON ProviderModelConfig
 
@@ -134,7 +161,9 @@ func (config *ProviderConfig) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		return err
 	}
-	*config = ProviderConfig(decoded)
+	*config = ProviderConfig(decoded.providerConfigFields)
+	config.Insecure = decoded.Insecure != nil && *decoded.Insecure
+	config.insecureOff = decoded.Insecure != nil && !*decoded.Insecure
 	entries, err := decodeProviderHeaderEntries(data)
 	if err != nil {
 		return err
@@ -144,7 +173,8 @@ func (config *ProviderConfig) UnmarshalJSON(data []byte) error {
 }
 
 func (config ProviderConfig) MarshalJSON() ([]byte, error) {
-	data, err := json.Marshal(providerConfigJSON(config))
+	//perf:ok once per provider registration, not per delta: the wrapper embeds providerConfigFields, which has no MarshalJSON, so it cannot recurse
+	data, err := json.Marshal(providerConfigJSON{providerConfigFields: providerConfigFields(config), Insecure: config.InsecureSetting()})
 	if err != nil || config.headerEntries == nil {
 		return data, err
 	}
