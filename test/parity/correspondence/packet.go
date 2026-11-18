@@ -260,7 +260,10 @@ var settingRuntimeEffectConcepts = map[string][]runtimeEffectConcept{
 		{sourceAny: []string{"child.setImageWidthCells"}, targetAny: []string{"comp.SetImageWidthCells"}},
 	},
 	"skill-commands": {
-		{sourceAny: []string{"this.setupAutocompleteProvider"}, targetAny: []string{"m.editor.SetAutocomplete"}},
+		// Pi's onEnableSkillCommandsChange (interactive-mode.ts:5175-5178) runs this.setupAutocompleteProvider() after setEnableSkillCommands. Pig's OnSettingApplied
+		// case calls m.setAutocompleteUncaught (internal/codingagent/autocomplete_wrappers.go:131), which reaches m.editor.SetAutocomplete through
+		// setAutocompleteAwaiting (autocomplete_wrappers.go:118) and leaves a rebuild failure uncaught, as the same throw is uncaught in Pi's input handler.
+		{sourceAny: []string{"this.setupAutocompleteProvider"}, targetAny: []string{"m.setAutocompleteUncaught"}},
 	},
 	"show-hardware-cursor": {
 		{sourceAny: []string{"this.ui.setShowHardwareCursor"}, targetAny: []string{"m.tuiInst.SetShowHardwareCursor"}},
