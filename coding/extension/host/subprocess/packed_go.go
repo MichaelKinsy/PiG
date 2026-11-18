@@ -416,7 +416,9 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 		config.selectedPath = h.configuredSelectedPath(desc.Name)
 		recoveryConfigs = append(recoveryConfigs, config)
 		config.Path = cell.BinaryPath
-		me := &managedExt{config: config, nodeEntry: desc.Root, host: h, parentCtx: runtimeParent(ctx), supervisor: NewSupervisor(config.SupervisorConfig), sockPath: sockPath, packedCellKey: cell.Key}
+		me := &managedExt{config: config, nodeEntry: desc.Root, host: h, supervisor: NewSupervisor(config.SupervisorConfig), sockPath: sockPath, packedCellKey: cell.Key}
+		// As for an isolated extension (startExt), an exit after the owner cancelled ctx is teardown, not a crash.
+		me.setStartContext(nil, runtimeParent(ctx))
 		pendingExts = append(pendingExts, packedPendingExt{desc: desc, me: me, ln: ln, address: sockPath})
 		env = append(env, fmt.Sprintf("%s=%s", runtimecell.SocketEnvName(desc.Name), sockPath))
 	}
@@ -470,9 +472,6 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 	h.mu.Unlock()
 	for i := range pendingExts {
 		pendingExts[i].me.packedProcess = processState
-		// As for an isolated extension (startExt), an exit after the owner
-		// cancelled ctx is teardown, not a crash.
-		pendingExts[i].me.parentCtx = runtimeParent(ctx)
 	}
 	started := false
 	defer func() {
@@ -486,7 +485,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 	}
 	if nodeRuntime {
 		for _, pending := range pendingExts {
-			pending.me.nodeRealm = true
+			pending.me.setNodeRealm()
 		}
 		h.noteNodeRealm(pendingExts[0].me, busRouted)
 	}
@@ -507,7 +506,7 @@ func (h *Host) startGoPackedCellOnce(ctx context.Context, cell *runtimecell.GoPa
 		if processState.cmd != nil {
 			pendingExts[i].me.setProcess(processState.cmd.Process)
 		}
-		pendingExts[i].me.cancel = processState.cancel
+		pendingExts[i].me.setStartContext(processState.cancel, runtimeParent(ctx))
 		if processState.stderrLog != nil {
 			pendingExts[i].me.stderrLogPath = processState.stderrLog.path
 		}
@@ -899,19 +898,14 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
 	}
-	me.flagNames = make([]string, 0, len(reg.Flags))
-	me.wantsSessionLog = reg.WantsSessionLog
-	me.wantsModelRegistry = reg.WantsModelRegistry
-	for _, f := range reg.Flags {
-		me.flagNames = append(me.flagNames, f.Name)
-	}
 	if err := validateRegisterPayload(me.config.Name, reg); err != nil {
 		_ = conn.Close("invalid registration")
 		loadErr := newLoadError(me.config.Name, "register", "invalid_registration", err)
 		loadErr.StderrLog = me.stderrLogPath
 		return nil, loadErr
 	}
-	me.flagDefaults = reg.flagDefaults
+	registered := newRegisteredState(reg)
+	me.setRegistration(registered)
 	h.joinRoutedBus(ctx, me)
 	// sendReady, or activateNode for a deferred Node payload, fills the geometry.
 	readyPayload := &ReadyPayload{Cwd: h.cwd, Mode: h.mode, SourceInfo: h.readySourceInfo(me)}
@@ -920,7 +914,7 @@ func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Liste
 		// whole log once, then only what is new.
 		me.entryCursorMu.Lock()
 		me.entryCursor = 0
-		readyPayload.State = h.uiBridge.Snapshot(me.flagNames, 0, h.subscribedToSessionLog(me.config.Name))
+		readyPayload.State = h.uiBridge.Snapshot(registered.flagNames, 0, h.subscribedToSessionLog(me.config.Name))
 		if readyPayload.State.Session != nil {
 			me.entryCursor = readyPayload.State.Session.EntryCount
 		}

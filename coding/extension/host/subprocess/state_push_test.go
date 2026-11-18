@@ -180,7 +180,7 @@ func TestPushStateToSkipsIdenticalAndOmitsUnchangedCatalogs(t *testing.T) {
 	for _, state := range []map[string]json.RawMessage{first, second, third, fourth} {
 		maps.Copy(merged, state)
 	}
-	full, err := json.Marshal(map[string]any{"state": rig.bridge.Snapshot(rig.me.flagNames, 0, false)})
+	full, err := json.Marshal(map[string]any{"state": rig.bridge.Snapshot(registrationOf(rig.me).flagNames, 0, false)})
 	if err != nil {
 		t.Fatal(err)
 	}

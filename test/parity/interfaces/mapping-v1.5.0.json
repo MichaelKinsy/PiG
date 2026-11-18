@@ -153088,9 +153088,9 @@
         "call:internal/codingagent/tools/ext_details.go#BashDetails.ToolResultDetails"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -166055,9 +166055,9 @@
         "call:coding/extension/keybinding_hints.go#EntryRenderOptions.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -166077,9 +166077,9 @@
         "call:coding/extension/keybinding_hints.go#EntryRenderOptions.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -166099,9 +166099,9 @@
         "call:coding/extension/keybinding_hints.go#EntryRenderOptions.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -166121,9 +166121,9 @@
         "call:coding/extension/keybinding_hints.go#EntryRenderOptions.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -166886,7 +166886,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+        "call:coding/extension/declaration_registry.go#Extension.RegisteredMarkdownTransformer"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
@@ -178516,7 +178516,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_EachDialogReportsStartAndEnd",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -178539,7 +178539,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/ui_prompt_test.go#TestUIPrompt_EachDialogReportsStartAndEnd",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -178727,8 +178727,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -178749,8 +178749,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -178771,8 +178771,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -178793,8 +178793,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -179234,7 +179234,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/ui_unset_members_test.go#TestUIPrompt_UnsetMemberFormsReachTheBoundUI",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError"
       ]
     },
     {
@@ -179256,7 +179256,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/ui_unset_members_test.go#TestUIPrompt_UnsetMemberFormsReachTheBoundUI",
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError"
       ]
     },
     {
@@ -179277,8 +179277,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -179299,8 +179299,8 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
-        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
+        "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs"
       ]
     },
     {
@@ -183281,9 +183281,9 @@
         "call:internal/codingagent/interactive.go#NewInteractiveMode"
       ],
       "evidence": [
+        "test:internal/codingagent/autocomplete_sync_error_caller_test.go#TestReloadWhoseInstalledEditorRefusesTheProviderIsReloadFailed",
         "test:internal/codingagent/reload_notices_caller_test.go#TestExtensionReloadFailureIsShownAndResolves",
-        "test:internal/codingagent/reload_notices_caller_test.go#TestExtensionReloadShowsTheReloadStatus",
-        "test:internal/codingagent/reload_notices_caller_test.go#TestExtensionReloadWhileStreamingWarnsAndResolves"
+        "test:internal/codingagent/reload_notices_caller_test.go#TestExtensionReloadShowsTheReloadStatus"
       ]
     },
     {
@@ -184117,9 +184117,9 @@
         "call:coding/extension/keybinding_hints.go#ToolRenderContext.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -184139,9 +184139,9 @@
         "call:coding/extension/keybinding_hints.go#ToolRenderContext.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -184161,9 +184161,9 @@
         "call:coding/extension/keybinding_hints.go#ToolRenderContext.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -184183,9 +184183,9 @@
         "call:coding/extension/keybinding_hints.go#ToolRenderContext.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -186614,7 +186614,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+        "call:coding/extension/declaration_registry.go#Extension.RegisteredMarkdownTransformer"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
@@ -186636,7 +186636,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/api.go#api.RegisterMarkdownTransformer"
+        "call:coding/extension/declaration_registry.go#Extension.RegisteredMarkdownTransformer"
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_markdown_collection_test.go#TestRunnerMarkdownTransformerCollectionOrder",
@@ -187304,9 +187304,9 @@
         "call:coding/extension/keybinding_hints.go#MessageRenderOptions.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -187326,9 +187326,9 @@
         "call:coding/extension/keybinding_hints.go#MessageRenderOptions.KeyHint"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -187348,9 +187348,9 @@
         "call:coding/extension/keybinding_hints.go#MessageRenderOptions.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {
@@ -187370,9 +187370,9 @@
         "call:coding/extension/keybinding_hints.go#MessageRenderOptions.KeyText"
       ],
       "evidence": [
+        "test:test/extension-conformance/autocomplete_sync_error_test.go#TestInstalledEditorSyncErrorIsAnExtensionError",
         "test:test/extension-conformance/autocomplete_test.go#TestAutocompleteFactoriesAcrossSDKs",
-        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs",
-        "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitRendersPiComponents"
+        "test:test/extension-conformance/cache_warming_test.go#TestCacheWarmingDecisionAcrossSDKs"
       ]
     },
     {

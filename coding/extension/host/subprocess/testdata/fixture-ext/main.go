@@ -94,7 +94,7 @@ func main() {
 
 	// Event loop: read requests and respond.
 	for {
-		env := readFrame(conn)
+		env := nextFrame(conn)
 		if env == nil {
 			return
 		}
@@ -131,7 +131,7 @@ func main() {
 					},
 				})
 				// Read call_result (don't block indefinitely).
-				_ = readFrame(conn)
+				readCallResult(conn)
 
 				// Push widget update.
 				writeFrame(conn, map[string]any{
@@ -197,6 +197,33 @@ func writeFrame(conn net.Conn, msg any) {
 	binary.BigEndian.PutUint32(lenBuf[:], uint32(len(data)))
 	_, _ = conn.Write(lenBuf[:])
 	_, _ = conn.Write(data)
+}
+
+// pending holds the requests that arrived while a tool call waited for its call_result: the host sends requests concurrently, and a request taken for the result would never be answered.
+var pending []map[string]any
+
+// nextFrame returns the requests set aside first, then the next frame of the connection.
+func nextFrame(conn net.Conn) map[string]any {
+	if len(pending) > 0 {
+		env := pending[0]
+		pending = pending[1:]
+		return env
+	}
+	return readFrame(conn)
+}
+
+// readCallResult reads up to the call_result of a call this process made, setting every other frame aside for the event loop.
+func readCallResult(conn net.Conn) {
+	for {
+		env := readFrame(conn)
+		if env == nil {
+			return
+		}
+		if typ, _ := env["type"].(string); typ == "call_result" {
+			return
+		}
+		pending = append(pending, env)
+	}
 }
 
 func readFrame(conn net.Conn) map[string]any {

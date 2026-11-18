@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "4b7eed1be1404cde27155939a2b82389fb8cc8cc91a72f51280ac4461a104991",
+      "sha256": "11d55a930bbf7b3c7cc6a7293ddee03b8a42fcc25fb3dac7ad541c7dc58bba58",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -32,7 +32,7 @@
     },
     {
       "source": "test/parity/runner/driver_tmux.go",
-      "sha256": "404f1fb90381f12f1a45fe3bd248ad25305f25af661a3d369f74d217c2642a4d",
+      "sha256": "4df4016737118a298ae35e6cce00352d37b06da2c0626814a201c732d8c09142",
       "reason": "Terminal state capture is not a byte-stream assertion. A scenario explicitly selects viewport or retained history and its crop. History capture uses session-local maximum retention without changing pane size or shared defaults; required anchors and source-derived assertions reject incomplete history. Readiness and new-output barriers are synchronization, not behavioral coverage. The final capture is taken only from a still screen (the plain captures around the escaped one are equal, within the last step budget), and a capture_start absent from a capture a comparator reads, still absent when that budget ends, fails the run instead of comparing the whole screen. A capture no comparator reads is kept whole, not cropped."
     },
     {
@@ -323,6 +323,113 @@
             "capture_end": "pages/[id].tsx"
           },
           "reason": "Owned visible surface: Typing @[id lists exactly pages/[id].tsx.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/14-custom-editor-installed-at-session-start.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Editor autocomplete",
+            "capture_end": "escape/ctrl+c cancel"
+          },
+          "reason": "Owned visible surface: An editor installed from session_start holds a working autocomplete provider after startup and after /reload.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/15-editor-sync-error-add-provider.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "armed",
+            "capture_end": "pong"
+          },
+          "reason": "Owned visible surface: An extension adding an autocomplete provider while its editor refuses the rebuilt one shows the extension's error and the session goes on.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/16-editor-sync-error-install-editor.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "armed",
+            "capture_end": "pong"
+          },
+          "reason": "Owned visible surface: An extension installing an editor that refuses the provider it is handed shows the extension's error and the session goes on.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/17-editor-sync-error-reload.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: Reload failed"
+          },
+          "reason": "Owned visible surface: A /reload whose editor refuses the rebuilt provider fails with Pi's Reload failed line and the process lives.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/18-editor-sync-error-new-session.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "Error: Failed to create session",
+            "capture_end": "automatically."
+          },
+          "reason": "Owned visible surface: A /new whose editor refuses the provider ends both binaries with Pi's fatal Failed to create session report and exit status 1.",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/autocomplete/19-editor-sync-calls.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "calls=",
+            "capture_end": "|D|"
+          },
+          "reason": "Owned visible surface: The number of setAutocompleteProvider calls an installed editor receives at startup, after an add, after /reload and after /new equals Pi's.",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
         {
@@ -1089,6 +1196,42 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/108-model-after-new-extension-provider.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "MODEL AFTER NEW PROBE",
+            "capture_end": "(auto)"
+          },
+          "reason": "Owned visible surface: After /new, /model selects a model of an extension provider with the window, costs and thinking its registration declared",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/109-extension-set-model-footer.toml",
+      "transforms": [
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "SET MODEL FOOTER PROBE",
+            "capture_end": "(auto)"
+          },
+          "reason": "Owned visible surface: After an extension's pi.setModel both programs show the new model's context window in the footer at the next render",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
       "transforms": [
         {
@@ -1100,6 +1243,15 @@
           "reason": "Owned visible surface: Subprocess extension tool opens Select, Input, and Editor and receives submitted values",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
         },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/113-fork-while-session-start-held.toml",
+      "transforms": [
         {
           "kind": "cwd_snapshot_digits",
           "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."

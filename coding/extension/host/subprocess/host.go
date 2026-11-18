@@ -643,22 +643,24 @@ type managedExt struct {
 	supervisor            *Supervisor
 	// conn is the current connection. Only setConnLocked stores it, and only while holding Host.mu, so a Host.mu holder reads a stable value; every other reader loads it once through connection() and keeps that snapshot for the whole operation.
 	conn atomic.Pointer[Conn]
-	// procMu guards the process handle: proc, processTree, cmd and exitedCh. An automatic restart replaces them in startExt while a stop, a crash handler or a status reader can run; it is a leaf lock, never held while calling out.
-	procMu          sync.Mutex
-	proc            *os.Process
-	processTree     *processTree
-	cmd             *exec.Cmd // Retained so cmd.Wait() can be called during cleanup to avoid goroutine leaks
-	cancel          context.CancelFunc
-	parentCtx       context.Context      // Context the extension was started under; if cancelled, an exit is intentional teardown, not a crash
-	exitedCh        <-chan struct{}      // Closed by the process reaper when cmd.Wait returns
-	waitErr         error                // Process exit status; read only after <-exitedCh (channel close synchronizes)
-	ext             *extension.Extension // Populated after successful register; written under Host.mu once me is in Host.exts
-	flagNames       []string
-	flagDefaults    map[string]any
-	wantsSessionLog bool
-	// wantsModelRegistry records RegisterPayload.WantsModelRegistry: only such a runtime is sent model-registry snapshots.
-	wantsModelRegistry bool
-	nodeRuntime        bool // isolated extension hosted by the Node runtime; a packed one reports through packedProcess.node
+	// procMu guards the process handle, the context the process was started under, the link to the process the extension runs in and the kind of that process: proc, processTree, cmd, exitedCh, cancel, parentCtx, share, procOwner, nodeRuntime and nodeRealm. An automatic restart replaces them in startExt while a stop, a crash handler, a status reader, a flag or state reader or a handler call that asks whether the host stopped the extension (stoppedByOwner) can run. cancel and parentCtx change together (setStartContext) and are used only through setStartContext, ownerContext, ownerEnded, cancelStart and releaseStart; the handle and the link are cleared together (clearProcess) and joined together (joinProcess). It is a leaf lock, never held while calling out: a reader copies the value under it and uses the copy after.
+	procMu      sync.Mutex
+	proc        *os.Process
+	processTree *processTree
+	cmd         *exec.Cmd // Retained so cmd.Wait() can be called during cleanup to avoid goroutine leaks
+	cancel      context.CancelFunc
+	parentCtx   context.Context // Context the extension was started under; if cancelled, an exit is intentional teardown, not a crash
+	exitedCh    <-chan struct{} // Closed by the process reaper when cmd.Wait returns
+	// share counts the extensions hosted by this isolated Node process, which Pi's loader re-invokes factories in across reloads. procOwner is the extension that spawned that process, nil when me spawned it or runs alone.
+	share     *processShare
+	procOwner *managedExt
+	// nodeRuntime reports an isolated extension hosted by the Node runtime; a packed one reports through packedProcess.node. nodeRealm reports that its process is one xref realm.
+	nodeRuntime bool
+	nodeRealm   bool
+	waitErr     error                // Process exit status; read only after <-exitedCh (channel close synchronizes)
+	ext         *extension.Extension // Set by the first registration, under Host.mu, before the extension is published; a restart adopts into it (adoptRestartedExtension) and never stores it again
+	// registered is the registration the extension's process last sent. Every adoption replaces it whole (setRegistration); readers go through registration.
+	registered atomic.Pointer[registeredState]
 	// commands counts the command requests running on this generation, so a reload that replaces it waits for them (retireGeneration).
 	commands commandGate
 	// replaced is set when a commit replaces or removes this generation; its later host calls fail as stale (runCall).
@@ -694,15 +696,13 @@ type managedExt struct {
 	packedProcess      *packedProcessState  // Shared process authority for packed-member sockets.
 	shuttingDown       atomic.Bool          // True when graceful shutdown was initiated
 	inProcServe        func(net.Conn) error // Non-nil for a fused in-process extension (D31)
-	nodeRealm          bool                 // Hosted by a Node process, which is one xref realm
 	releaseLiveness    func()               // Releases heartbeat ownership for live provider state.
 	livenessOwnerMu    sync.Mutex
 	cacheLease         *runtimecell.UsageLease
-	// share counts the extensions hosted by this isolated Node process, which Pi's loader re-invokes factories in across reloads. procOwner is the extension that spawned it, and retainedFrom the process a pending start will re-invoke its factory in.
-	share         *processShare
+	// shareReleased is set once me gave back the reference it holds on its process share (releaseShare).
 	shareReleased atomic.Bool
-	procOwner     *managedExt
-	retainedFrom  *processShare
+	// retainedFrom is the process a pending start will re-invoke its factory in. Only a start reads or clears it, and the starts of one extension are serialized by transitionMu.
+	retainedFrom *processShare
 
 	// toolRendererResolvers is the extension's pi.registerToolRenderer state.
 	toolRendererResolvers toolRendererResolvers
@@ -739,6 +739,39 @@ func (me *managedExt) releaseLivenessOwner() {
 		release()
 	}
 }
+
+// registeredState is what an extension's register payload sets on the host's side of it: the names and defaults of its flags and what it asks the host to send it. It is immutable once built. A restart builds a new one and swaps it in whole, so a reader that loads it once sees one registration and never a mix of two.
+type registeredState struct {
+	flagNames []string
+	// flagDefaults maps a flag's name to its first default. Nothing writes it once newRegisteredState returned.
+	flagDefaults    map[string]any
+	wantsSessionLog bool
+	// wantsModelRegistry records RegisterPayload.WantsModelRegistry: only such a runtime is sent model-registry snapshots.
+	wantsModelRegistry bool
+}
+
+// noRegistration is the registration of an extension that has not registered.
+var noRegistration registeredState
+
+// newRegisteredState reads a validated payload: validateRegisterPayload filled reg.flagDefaults and removed repeated flags.
+func newRegisteredState(reg *RegisterPayload) *registeredState {
+	names := make([]string, 0, len(reg.Flags))
+	for _, f := range reg.Flags {
+		names = append(names, f.Name)
+	}
+	return &registeredState{flagNames: names, flagDefaults: reg.flagDefaults, wantsSessionLog: reg.WantsSessionLog, wantsModelRegistry: reg.WantsModelRegistry}
+}
+
+// registration returns the registration the extension's process last sent. A reader loads it once and keeps that value for the whole operation; it never changes it.
+func (me *managedExt) registration() *registeredState {
+	if state := me.registered.Load(); state != nil {
+		return state
+	}
+	return &noRegistration
+}
+
+// setRegistration replaces the registration whole.
+func (me *managedExt) setRegistration(state *registeredState) { me.registered.Store(state) }
 
 type stagedManagedExt struct {
 	name string
@@ -866,7 +899,7 @@ func (h *Host) notifyReloadStarted() {
 	h.mu.Lock()
 	conns := make([]*Conn, 0, len(h.exts))
 	for _, me := range h.exts {
-		if conn := me.connection(); conn != nil && me.nodeRealm {
+		if conn := me.connection(); conn != nil && me.inNodeRealm() {
 			conns = append(conns, conn)
 		}
 	}
@@ -921,6 +954,7 @@ func (h *Host) SetUIBridge(bridge *UIBridge) {
 		bridge.OnRunSignalChanged = h.runSignalChanged
 		bridge.OnHostStateChanged = h.hostStateChanged
 		bridge.resolveFlag = h.resolveFlagValue
+		bridge.extensionPath = h.extensionPathOf
 		bridge.withSession = h.withSessionCallback
 		bridge.setup = h.setupCallback
 		bridge.mu.Lock()
@@ -1756,15 +1790,16 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) erro
 		gen := me.runtimeStateGen.Load()
 		subscribed := h.subscribedToSessionLog(me.config.Name)
 		includeEntries := subscribed && !me.sessionTransferActive
-		state := h.uiBridge.Snapshot(me.flagNames, me.entryCursor, includeEntries)
+		registered := me.registration()
+		state := h.uiBridge.Snapshot(registered.flagNames, me.entryCursor, includeEntries)
 		if state.Session != nil && state.Session.SessionID != me.entrySessionID {
 			me.entrySessionID = state.Session.SessionID
 			me.entryCursor = 0
 			me.sessionTransferActive = false
 			includeEntries = subscribed
-			state = h.uiBridge.Snapshot(me.flagNames, 0, includeEntries)
+			state = h.uiBridge.Snapshot(registered.flagNames, 0, includeEntries)
 		}
-		if !subscribed && !me.sessionTransferActive && me.wantsSessionLog && state.Session != nil && !readableSessionFile(state.Session.SessionFile) {
+		if !subscribed && !me.sessionTransferActive && registered.wantsSessionLog && state.Session != nil && !readableSessionFile(state.Session.SessionFile) {
 			h.mu.Lock()
 			if h.sessionLogSubs == nil {
 				h.sessionLogSubs = make(map[string]struct{})
@@ -1772,7 +1807,7 @@ func (h *Host) pushStateTo(ctx context.Context, me *managedExt, conn *Conn) erro
 			h.sessionLogSubs[me.config.Name] = struct{}{}
 			h.mu.Unlock()
 			includeEntries = true
-			state = h.uiBridge.Snapshot(me.flagNames, me.entryCursor, includeEntries)
+			state = h.uiBridge.Snapshot(registered.flagNames, me.entryCursor, includeEntries)
 		}
 		// Omit catalog and presentation fields the recipient already holds. The
 		// runtime's applyState retains keys a state_update leaves out, so the
@@ -1886,6 +1921,17 @@ func (h *Host) OAuthProviderNames(extName string) []string {
 	return append([]string(nil), me.oauthProviderNames...)
 }
 
+// extensionPathOf is the path the named extension was selected from, which ExtensionError shows; an unknown name is its own path.
+func (h *Host) extensionPathOf(name string) string {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if me := h.exts[name]; me != nil {
+		path, _ := extensionSourcePaths(me.config)
+		return path
+	}
+	return name
+}
+
 // FlagDefault returns the first committed default for a flag registered by the named extension.
 func (h *Host) FlagDefault(extName, flagName string) any {
 	return h.resolveFlagValue(extName, flagName, nil)
@@ -1913,7 +1959,7 @@ func (h *Host) resolveFlagValue(extName, flagName string, override any) any {
 		if me.ext == nil {
 			continue
 		}
-		candidate, exists := me.flagDefaults[flagName]
+		candidate, exists := me.registration().flagDefaults[flagName]
 		if !exists {
 			continue
 		}
@@ -2131,6 +2177,8 @@ func (me *managedExt) hostsNodeRuntime() bool {
 	if me.packedProcess != nil {
 		return me.packedProcess.node
 	}
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
 	return me.nodeRuntime
 }
 
@@ -2462,7 +2510,7 @@ func (h *Host) EndInput() {
 	h.mu.Lock()
 	var connections []*Conn
 	for _, me := range h.exts {
-		if me.nodeRealm {
+		if me.inNodeRealm() {
 			connections = append(connections, me.connection())
 		}
 	}
@@ -2690,7 +2738,7 @@ func (me *managedExt) reap() {
 		}
 		return
 	}
-	if me.share != nil && me.share.alive() && !me.share.exited() {
+	if share := me.processShare(); share != nil && share.alive() && !share.exited() {
 		// Another extension still runs in this process.
 		return
 	}
@@ -2712,8 +2760,8 @@ func (me *managedExt) processFileMutations() *fileMutationTurns {
 
 // releaseShare gives back the reference me holds on its process, once per process. The process ends with its last reference.
 func (me *managedExt) releaseShare() {
-	if me.share != nil && me.shareReleased.CompareAndSwap(false, true) {
-		me.share.release()
+	if share := me.processShare(); share != nil && me.shareReleased.CompareAndSwap(false, true) {
+		share.release()
 	}
 }
 
@@ -2723,6 +2771,7 @@ func (h *Host) stopManaged(me *managedExt, reason string) {
 
 // processSurvivesStop reports whether the process hosting me keeps running after me stops, because another generation or a parked reference holds it.
 func (me *managedExt) processSurvivesStop() bool {
+	share := me.processShare()
 	switch {
 	case me.packedProcess != nil && me.packedProcess.share != nil:
 		own := int32(0)
@@ -2730,12 +2779,12 @@ func (me *managedExt) processSurvivesStop() bool {
 			own = 1
 		}
 		return me.packedProcess.share.refs.Load()-own > 0
-	case me.share != nil:
+	case share != nil:
 		own := int32(0)
 		if !me.shareReleased.Load() {
 			own = 1
 		}
-		return me.share.refs.Load()-own > 0
+		return share.refs.Load()-own > 0
 	}
 	return false
 }
@@ -2760,19 +2809,18 @@ func (h *Host) stopManagedSkippingProviders(me *managedExt, reason string, keepP
 			_ = conn.Close(reason)
 		}
 	}
+	share, owner := me.processLink()
 	switch {
 	case me.packedProcess != nil:
 		me.packedProcess.stop()
-	case me.share != nil:
+	case share != nil:
 		// The process ends with its last extension; a spawner's own context is the process's and is cancelled with it.
 		me.releaseShare()
-		if me.procOwner != nil && me.cancel != nil {
-			me.cancel()
+		if owner != nil {
+			me.cancelStart()
 		}
 	default:
-		if me.cancel != nil {
-			me.cancel()
-		}
+		me.cancelStart()
 		me.killProcess()
 	}
 	if me.sockPath != "" {
@@ -3080,9 +3128,9 @@ func (h *Host) startExt(ctx context.Context, me *managedExt, isRestart bool) (*e
 
 func (h *Host) startExtOnce(ctx context.Context, me *managedExt, isRestart bool) (_ *extension.Extension, err error) {
 	me.stderrLog, me.stderrLogPath = nil, ""
-	me.setProcessHandle(nil, nil, nil, nil)
+	me.clearProcess()
 	retainedFrom := me.retainedFrom
-	me.retainedFrom, me.share, me.procOwner = nil, nil, nil
+	me.retainedFrom = nil
 	me.shareReleased.Store(false)
 	if retainedFrom != nil {
 		if err := me.adoptProcess(retainedFrom); err != nil {
@@ -3090,8 +3138,7 @@ func (h *Host) startExtOnce(ctx context.Context, me *managedExt, isRestart bool)
 		}
 	}
 	extCtx, cancel := context.WithCancel(runtimeParent(ctx))
-	me.cancel = cancel
-	me.parentCtx = runtimeParent(ctx)
+	me.setStartContext(cancel, runtimeParent(ctx))
 	defer func() {
 		if err == nil {
 			return
@@ -3105,7 +3152,7 @@ func (h *Host) startExtOnce(ctx context.Context, me *managedExt, isRestart bool)
 		}
 		cancel()
 		// A claimed process belongs to its spawner and ends with its last reference, which releaseShare gives back below.
-		if _, tree := me.processHandle(); tree != nil && me.procOwner == nil {
+		if _, tree := me.processHandle(); tree != nil && me.processOwner() == nil {
 			_ = tree.Kill()
 		}
 		// Give back the reference this start holds, or reap sees a process still shared and returns before it exits.
@@ -3173,9 +3220,10 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	if !filepath.IsAbs(binPath) {
 		binPath = filepath.Join(h.socketDir, "..", "extensions", binPath)
 	}
-	me.nodeRuntime = usesNodeRuntime(binPath, me.config.RuntimeLanguage)
+	nodeRuntime := usesNodeRuntime(binPath, me.config.RuntimeLanguage)
+	me.setNodeRuntime(nodeRuntime)
 	tsSelection, tsSet := nodeSelection, tsruntime.Set{}
-	if me.nodeRuntime {
+	if nodeRuntime {
 		var err error
 		if set, ok := nodeLauncherSet(binPath, me.config.Name); ok {
 			tsSet = set
@@ -3205,10 +3253,10 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	}
 	defer func() { _ = listener.Close() }()
 
-	if me.procOwner != nil {
+	if share, owner := me.processLink(); owner != nil {
 		// pig additive (D20): the process that already holds this extension's modules re-invokes the factory, as Pi's loader does inside one runtime.
 		entry, _ := nodeLauncherEntry(binPath)
-		if err := me.share.send(factoryAdmission{Name: me.config.Name, Entry: entry, Socket: address, ReloadPass: reloadPass(ctx), Cwd: h.cwd}); err != nil {
+		if err := share.send(factoryAdmission{Name: me.config.Name, Entry: entry, Socket: address, ReloadPass: reloadPass(ctx), Cwd: h.cwd}); err != nil {
 			return nil, newLoadError(me.config.Name, "spawn", "admit_failed", fmt.Errorf("admit %s to the running extension process: %w", me.config.Name, err))
 		}
 		return h.acceptExtConn(ctx, cancel, me, listener)
@@ -3236,7 +3284,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	cmd.Env = append(cmd.Env, h.hostInfoEnv()...)
 	cmd.Env = append(cmd.Env, typeScriptRuntimeEnv(tsSelection, tsSet)...)
 	if nodeOutput {
-		me.nodeRealm = true
+		me.setNodeRealm()
 		busRouted := h.busRoutedForSpawn()
 		if busRouted {
 			cmd.Env = append(cmd.Env, eventBusRoutedEnv)
@@ -3329,7 +3377,7 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	}()
 	// The share becomes claimable by concurrent starts only once every process field it exposes is set.
 	if admissionWriter != nil {
-		me.share = newProcessShare("node-extension:"+me.config.Name+"\x00"+entry, me, exitedCh, admissionWriter, func() {
+		share := newProcessShare("node-extension:"+me.config.Name+"\x00"+entry, me, exitedCh, admissionWriter, func() {
 			cancel()
 			if processTree != nil {
 				_ = processTree.Kill()
@@ -3337,9 +3385,10 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 				_ = cmd.Process.Kill()
 			}
 		})
-		me.share.node = true
-		me.share.tier = tierOf(tsSelection)
-		h.retention().register(me.share)
+		share.node = true
+		share.tier = tierOf(tsSelection)
+		me.setProcessShare(share)
+		h.retention().register(share)
 	}
 
 	return h.acceptExtConn(ctx, cancel, me, listener)
@@ -3352,19 +3401,18 @@ func (me *managedExt) adoptProcess(share *processShare) error {
 		share.release()
 		return errors.New("retained process does not host an isolated extension")
 	}
-	me.share, me.procOwner = share, origin
 	origin.procMu.Lock()
 	proc, tree, cmd := origin.proc, origin.processTree, origin.cmd
 	origin.procMu.Unlock()
-	me.setProcessHandle(proc, tree, cmd, share.exitCh)
+	me.joinProcess(share, origin, proc, tree, cmd, share.exitCh)
 	me.stderrLog, me.stderrLogPath = origin.stderrLog, origin.stderrLogPath
 	return nil
 }
 
 // exitErr is the exit status of the extension's process, valid once it has exited.
 func (me *managedExt) exitErr() error {
-	if me.procOwner != nil {
-		return me.procOwner.waitErr
+	if owner := me.processOwner(); owner != nil {
+		return owner.waitErr
 	}
 	return me.waitErr
 }
@@ -3458,13 +3506,6 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		return nil, loadErr
 	}
 
-	me.flagNames = make([]string, 0, len(reg.Flags))
-	me.wantsSessionLog = reg.WantsSessionLog
-	me.wantsModelRegistry = reg.WantsModelRegistry
-	for _, f := range reg.Flags {
-		me.flagNames = append(me.flagNames, f.Name)
-	}
-
 	if err := validateRegisterPayload(me.config.Name, reg); err != nil {
 		_ = conn.Close("invalid registration")
 		cancel()
@@ -3473,7 +3514,8 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		return nil, loadErr
 	}
 
-	me.flagDefaults = reg.flagDefaults
+	registered := newRegisteredState(reg)
+	me.setRegistration(registered)
 	h.joinRoutedBus(ctx, me)
 
 	// Send ready. sendReady fills the geometry.
@@ -3483,17 +3525,13 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		SourceInfo: h.readySourceInfo(me),
 	}
 	if h.uiBridge != nil {
-		flagNames := make([]string, 0, len(reg.Flags))
-		for _, f := range reg.Flags {
-			flagNames = append(flagNames, f.Name)
-		}
 		// Node's synchronous session API can read a persisted session directly.
 		// Keep it unsubscribed until first use, then enroll at the local cursor.
 		// A session with no file cannot be loaded locally, so send it in bounded
 		// pages before the runtime handles requests.
 		me.entryCursorMu.Lock()
 		me.entryCursor = 0
-		readyPayload.State = h.uiBridge.Snapshot(flagNames, 0, false)
+		readyPayload.State = h.uiBridge.Snapshot(registered.flagNames, 0, false)
 		if reg.WantsModelRegistry {
 			readyPayload.Models = h.uiBridge.ModelCatalog()
 		}
@@ -3504,7 +3542,7 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 			}
 			h.sessionLogSubs[me.config.Name] = struct{}{}
 			h.mu.Unlock()
-			readyPayload.State = h.uiBridge.Snapshot(flagNames, 0, true)
+			readyPayload.State = h.uiBridge.Snapshot(registered.flagNames, 0, true)
 		}
 		if readyPayload.State.Session != nil {
 			me.entryCursor = readyPayload.State.Session.EntryCount
@@ -3528,7 +3566,14 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 			return nil, loadErr
 		}
 	}
-
+	// A restarted extension is already in h.exts, where Extensions and the flag readers copy *me.ext under Host.mu, so adoption (which rewrites the held Extension's registries) holds it. A restart adopts into the Extension it holds and never stores it again, and it adopts before the call loop starts: a registerDeclaration, registerTool, event.subscribe or ownThinkingRuns call the new process makes right after its ready lands after the replace.
+	ext := h.buildExtension(me, reg)
+	h.mu.Lock()
+	adopted := isRestart && me.ext != nil
+	if adopted {
+		ext = adoptRestartedExtension(me.ext, ext)
+	}
+	h.mu.Unlock()
 	// Reverse provider callbacks may call the host while registering.
 	h.goHandleIncoming(me, conn)
 	// On a crash restart the providers are already registered and their
@@ -3581,21 +3626,23 @@ func (h *Host) adoptConn(ctx context.Context, me *managedExt, rawConn net.Conn, 
 		h.uiBridge.RegisterExtConn(me.config.Name, conn, reg.WantsModelRegistry)
 	}
 
-	ext := h.buildExtension(me, reg)
 	me.resetToolRenderers(reg.ToolRenderers)
-	// A restarted extension is already in h.exts, where Extensions and the flag readers copy *me.ext under Host.mu, so adoption (which rewrites the held Extension's registries) and publication hold it too.
-	h.mu.Lock()
-	if isRestart && me.ext != nil {
-		ext = adoptRestartedExtension(me.ext, ext)
-	}
-	me.ext = ext
-	early := me.earlyOwnsThinkingRuns
-	me.earlyOwnsThinkingRuns = nil
-	h.mu.Unlock()
-	if early != nil {
-		ext.SetOwnsThinkingRuns(*early) // pig additive (D214): a call that arrived before the registration was applied
+	if !adopted {
+		// The first registration stores the pointer before the extension is published. The call loop already runs, so a call that needs the Extension can find it not yet built.
+		h.mu.Lock()
+		me.ext = ext
+		early := me.earlyOwnsThinkingRuns
+		me.earlyOwnsThinkingRuns = nil
+		h.mu.Unlock()
+		if early != nil {
+			ext.SetOwnsThinkingRuns(*early) // pig additive (D214): a call that arrived before the registration was applied
+		}
 	}
 	me.supervisor.RecordSuccess()
+	if isRestart && h.uiBridge != nil {
+		// The ready frame of this restart carried the catalog of the previous generation (the live registry, which the adoption above replaced after the frame was built), and the adoption bumps neither hostStateEpoch nor runtimeStateGeneration: push the state again now that the registry is the new one.
+		_ = h.pushStateTo(ctx, me, conn)
+	}
 
 	return ext, nil
 }
@@ -3776,7 +3823,7 @@ func lastRegistrationWins[T any](kind string, values []T, nameOf func(T) string)
 	return out, nil
 }
 
-// adoptRestartedExtension keeps the Extension a runner already holds for a restarted extension. Its handlers, tools, commands, flags, shortcuts and message and entry renderers become exactly the new registration, so what the new process registers reaches dispatch and what only the old process registered does not. An isolated restart and a packed cell's recovery adopt the same way.
+// adoptRestartedExtension keeps the Extension a runner already holds for a restarted extension. Its handlers, tools, commands, flags, shortcuts, message and entry renderers and Markdown transformer become exactly the new registration, so what the new process registers reaches dispatch and what only the old process registered does not. An isolated restart and a packed cell's recovery adopt the same way.
 func adoptRestartedExtension(previous, built *extension.Extension) *extension.Extension {
 	previous.ReplaceEventHandlers(built)
 	previous.ReplaceRegisteredTools(built)
@@ -4161,7 +4208,7 @@ func (h *Host) makeToolPrepareArguments(me *managedExt, toolName string) extensi
 		if conn == nil {
 			return nil, errors.New("extension not connected")
 		}
-		ctx := me.parentCtx
+		ctx := me.ownerContext()
 		if ctx == nil {
 			ctx = context.Background()
 		}
@@ -4189,7 +4236,7 @@ func (h *Host) makeToolReachesTools(me *managedExt, toolName string) extension.T
 		if conn == nil {
 			return extension.ToolReach{}
 		}
-		ctx := me.parentCtx
+		ctx := me.ownerContext()
 		if ctx == nil {
 			//portlint:allow ctxbackground Pi's reachesTools is synchronous and takes no signal (types.ts:621); an extension with no load context has nothing to bound the call
 			ctx = context.Background()
@@ -4313,7 +4360,7 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 			}
 		}
 		if resp.Response != nil && resp.Response.Error != nil {
-			return resp.Response.Error.ToError()
+			return me.answerError(resp.Response.Error)
 		}
 
 		return nil
@@ -4382,7 +4429,7 @@ func (h *Host) makeShortcutHandler(me *managedExt, key string) extension.Shortcu
 		}
 
 		if resp.Response != nil && resp.Response.Error != nil {
-			return resp.Response.Error.ToError()
+			return me.answerError(resp.Response.Error)
 		}
 
 		return nil
@@ -4506,6 +4553,8 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 
 		var resp *Envelope
 		var err error
+		// dispatched closes once the host dispatched the frames the handler sent before its reply (see the session_start case below).
+		var dispatched <-chan struct{}
 		request := func() error {
 			payload := &RequestPayload{
 				Method:      "event",
@@ -4526,6 +4575,12 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 					// The request is the handler's start: the process runs requests in the order they arrive.
 					requestCtx = withRequestIssued(parent, started)
 				}
+				if event == "session_start" {
+					// Pi's emit returns once the handler has run, and what it did synchronously (an editor it installed with setEditorComponent) is in place. The editor's
+					// install is a notice, which the read loop passes to the dispatcher in order but the reply does not wait for: the reply holds until the notices
+					// the handler sent before it are dispatched, so the bind that follows the emit finds the editor installed.
+					requestCtx = withRequestArrived(requestCtx, func() { dispatched = conn.dispatchBarrier(parent) })
+				}
 				resp, err = conn.Request(requestCtx, envelope)
 			}
 			return nil
@@ -4536,6 +4591,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 		} else {
 			_ = request()
 		}
+		awaitReplyDispatch(conn, dispatched)
 		if streamed && (err != nil || resp.Response == nil || resp.Response.Error != nil) {
 			// The runtime may not hold the payload this frame carried: the next one is a keyframe.
 			if update != nil {
@@ -4612,7 +4668,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 				resp.Response.Result = boundary.Result
 			}
 			if resp.Response.Error != nil {
-				return nil, resp.Response.Error.ToError()
+				return nil, me.answerError(resp.Response.Error)
 			}
 			// A user_bash reply that names a BashOperations object the extension holds becomes the object Pi's runner holds.
 			if event == "user_bash" && len(resp.Response.Result) > 0 {
@@ -4863,7 +4919,7 @@ func (h *Host) handleIncoming(me *managedExt, conn *Conn) {
 	// If the context the extension was started under is cancelled, the owner
 	// (app shutdown, /reload, or a test tearing down) initiated the exit. That
 	// is intentional teardown, not a crash, so do not record or restart.
-	if me.parentCtx != nil && me.parentCtx.Err() != nil {
+	if me.ownerEnded() {
 		return
 	}
 	if me.packedProcess != nil && me.packedProcess.stopping.Load() {
@@ -5014,9 +5070,7 @@ func (h *Host) handleUnresponsiveExtension(me *managedExt, failure *ExtensionUnr
 		h.disablePackedMember(me, reason)
 		return
 	}
-	if me.cancel != nil {
-		me.cancel()
-	}
+	me.cancelStart()
 	me.killProcess()
 	if me.supervisor == nil || me.supervisor.IsDisabled() {
 		return
@@ -5074,10 +5128,7 @@ func (h *Host) attemptRestart(me *managedExt) {
 
 	// Release the dead process's context before spawning a fresh one so the
 	// old cancel func and its watcher goroutine don't leak.
-	if me.cancel != nil {
-		me.cancel()
-		me.cancel = nil
-	}
+	me.releaseStart()
 
 	// Shutdown waits for transitionMu after it cancels the recovery context, so a start waiting on a process that never connects ends; the restarted process runs under the same context and ends with the Host.
 	if _, err := h.startExt(h.recoveryContext, me, true); err != nil {
@@ -5216,7 +5267,7 @@ func buildExtCommandSelected(
 func (me *managedExt) stoppedByOwner() bool {
 	return me.shuttingDown.Load() ||
 		(me.host != nil && me.host.shuttingDown.Load()) ||
-		(me.parentCtx != nil && me.parentCtx.Err() != nil) ||
+		me.ownerEnded() ||
 		(me.packedProcess != nil && me.packedProcess.stopping.Load())
 }
 
@@ -5226,6 +5277,15 @@ func (me *managedExt) stoppedByOwner() bool {
 func (me *managedExt) dispatchError(err error) error {
 	if err != nil && me.stoppedByOwner() {
 		return fmt.Errorf("%w: %w", extension.ErrHandlerStopped, err)
+	}
+	return err
+}
+
+// answerError is the error an extension's error answer stands for. An answer the connection made up because the host closed it while the request was pending (ErrorInfo.closedByHost) is no failure of the handler: for a call whose transport failure dispatchError already classifies, it is marked as cut short by the host when the host stopped the extension, as that transport failure is, so the runner does not report it. The extension's own error answer, whatever its text, is returned as it is.
+func (me *managedExt) answerError(info *ErrorInfo) error {
+	err := info.ToError()
+	if info.closedByHost {
+		return me.dispatchError(err)
 	}
 	return err
 }
@@ -5248,6 +5308,112 @@ func (me *managedExt) setProcessHandle(proc *os.Process, tree *processTree, cmd 
 	me.procMu.Lock()
 	defer me.procMu.Unlock()
 	me.proc, me.processTree, me.cmd, me.exitedCh = proc, tree, cmd, exited
+}
+
+// clearProcess forgets the process handle and the link to the process me ran in, in one critical section, so a reader never pairs the handle of the process that ended with the link its successor makes.
+func (me *managedExt) clearProcess() {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	me.proc, me.processTree, me.cmd, me.exitedCh = nil, nil, nil, nil
+	me.share, me.procOwner = nil, nil
+}
+
+// joinProcess records that me runs in the process share of origin, the extension that spawned it, with that process's handle, in one critical section.
+func (me *managedExt) joinProcess(share *processShare, origin *managedExt, proc *os.Process, tree *processTree, cmd *exec.Cmd, exited <-chan struct{}) {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	me.proc, me.processTree, me.cmd, me.exitedCh = proc, tree, cmd, exited
+	me.share, me.procOwner = share, origin
+}
+
+// setProcessShare records the share of the process me spawned.
+func (me *managedExt) setProcessShare(share *processShare) {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	me.share = share
+}
+
+// processShare returns the share of the process me runs in, or nil when it runs alone.
+func (me *managedExt) processShare() *processShare {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	return me.share
+}
+
+// processOwner returns the extension that spawned the process me runs in, or nil when me spawned it or runs alone.
+func (me *managedExt) processOwner() *managedExt {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	return me.procOwner
+}
+
+// processLink returns the share and the spawner as one pair, for a reader that needs both.
+func (me *managedExt) processLink() (share *processShare, owner *managedExt) {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	return me.share, me.procOwner
+}
+
+// setNodeRuntime records whether the isolated extension's process is the Node runtime.
+func (me *managedExt) setNodeRuntime(node bool) {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	me.nodeRuntime = node
+}
+
+// setNodeRealm records that me's Node process is one xref realm.
+func (me *managedExt) setNodeRealm() {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	me.nodeRealm = true
+}
+
+// inNodeRealm reports whether me's process is a Node realm.
+func (me *managedExt) inNodeRealm() bool {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	return me.nodeRealm
+}
+
+// setStartContext records the contexts a start gives the process: cancel ends the one it runs under, and owner is the context whose end means the host stopped the extension, so the process's exit is not a crash. The pair changes in one critical section, so a reader never pairs the new cancel with the old owner.
+func (me *managedExt) setStartContext(cancel context.CancelFunc, owner context.Context) {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	me.cancel, me.parentCtx = cancel, owner
+}
+
+// ownerContext returns the context the extension was started under, or nil when it has none.
+func (me *managedExt) ownerContext() context.Context {
+	me.procMu.Lock()
+	defer me.procMu.Unlock()
+	return me.parentCtx
+}
+
+// ownerEnded reports whether the context the extension was started under has ended: its owner stopped it. The context is read under procMu and asked after it is released.
+func (me *managedExt) ownerEnded() bool {
+	owner := me.ownerContext()
+	return owner != nil && owner.Err() != nil
+}
+
+// cancelStart ends the context the process runs under. The function is read under procMu and called after it is released.
+func (me *managedExt) cancelStart() {
+	me.procMu.Lock()
+	cancel := me.cancel
+	me.procMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
+
+// releaseStart ends the context the process runs under and forgets it, so a restart's start finds none left to leak.
+func (me *managedExt) releaseStart() {
+	me.procMu.Lock()
+	cancel := me.cancel
+	me.cancel = nil
+	me.procMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
 }
 
 // killProcess kills the process tree, or the process when it has no tree.

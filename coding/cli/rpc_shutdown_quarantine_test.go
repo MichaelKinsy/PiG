@@ -14,7 +14,10 @@ import (
 	"time"
 )
 
-// nodeRuntimeChildren counts the Node runtime processes the pig process at pid runs. Only Linux exposes the process tree without another tool; the children of every thread count, because Go starts a process from any thread.
+// nodeRuntimeEnvName is the environment variable the host sets in every Node runtime process it starts, an isolated process and a packed cell alike (terminal_capabilities_env.go withNodeRuntimeEnv, D26). It identifies a Node runtime process by what the host promises about it. The command line does not: Node starts the runtime through the host's bootstrap entry file (node-cli.mjs, node-cell.mjs) and the argument list holds no loader, so no word of it is a contract of the runtime.
+const nodeRuntimeEnvName = "PIG_PRODUCT_VERSION"
+
+// nodeRuntimeChildren counts the Node runtime processes the pig process at pid runs: its children whose environment holds nodeRuntimeEnvName. Only Linux exposes the process tree and a child's environment (/proc/<pid>/children, /proc/<pid>/environ) without another tool, so the caller skips the count on macOS; Windows has no unix build. The children of every thread count, because Go starts a process from any thread.
 func nodeRuntimeChildren(t *testing.T, pid int) int {
 	t.Helper()
 	tasks, err := filepath.Glob(filepath.Join("/proc", strconv.Itoa(pid), "task", "*", "children"))
@@ -28,13 +31,23 @@ func nodeRuntimeChildren(t *testing.T, pid int) int {
 			continue
 		}
 		for child := range strings.FieldsSeq(string(children)) {
-			cmdline, err := os.ReadFile(filepath.Join("/proc", child, "cmdline"))
-			if err == nil && strings.Contains(string(cmdline), "register-loader.mjs") {
+			environ, err := os.ReadFile(filepath.Join("/proc", child, "environ"))
+			if err == nil && hasEnvEntry(string(environ), nodeRuntimeEnvName) {
 				count++
 			}
 		}
 	}
 	return count
+}
+
+// hasEnvEntry reports whether environ, a /proc/<pid>/environ block of NUL-ended NAME=value entries, sets name.
+func hasEnvEntry(environ, name string) bool {
+	for entry := range strings.SplitSeq(environ, "\x00") {
+		if strings.HasPrefix(entry, name+"=") {
+			return true
+		}
+	}
+	return false
 }
 
 // runQuarantinedCommand loads rpc-shutdown.mjs, whose quit session_shutdown handler never settles, and rpc-shutdown-quarantine.mjs, sends the commands with the ids c, c1, c2, ... and ends stdin. Under pig the second extension crashed the shared Node process once, so the host runs it in a Node process of its own (node_recovery.go recoverNodeProcess, cell_plan.go PlanCells); Pi runs both in one process.

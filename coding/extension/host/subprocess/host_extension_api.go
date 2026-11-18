@@ -642,7 +642,7 @@ func (h *Host) makeToolPrepareLoadout(me *managedExt, toolName string) extension
 		if err != nil {
 			return nil
 		}
-		ctx := me.parentCtx
+		ctx := me.ownerContext()
 		if ctx == nil {
 			ctx = context.Background()
 		}

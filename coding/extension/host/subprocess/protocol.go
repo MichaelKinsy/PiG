@@ -12,7 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
 )
 
-// pig additive (D19): autocomplete callback handles stay on their owner connection. ui.addAutocompleteProvider names a factoryId; autocomplete.sync wraps it around current or invokes apply/trigger, while autocomplete.suggest awaits getSuggestions. Captured references use ui.autocomplete.invoke and one-way release notifications. Columns are UTF-16. Parent cancellation owns handler calls; queryId also cancels editor-owned calls without a parent.
+// pig additive (D19): autocomplete callback handles stay on their owner connection. ui.addAutocompleteProvider names a factoryId; autocomplete.sync wraps it around current, invokes apply/trigger, or tells an installed editor's runtime that the host rebuilt the provider chain (operation "changed", current the new descriptor, answered with no result; Pi's setupAutocompleteProvider calls setAutocompleteProvider on the installed editor after every rebuild), while autocomplete.suggest awaits getSuggestions. Captured references use ui.autocomplete.invoke and one-way release notifications. Columns are UTF-16. Parent cancellation owns handler calls; queryId also cancels editor-owned calls without a parent.
 type autocompleteDescriptor struct {
 	ID                string   `json:"id"`
 	LocalID           string   `json:"localId,omitempty"`
@@ -766,6 +766,8 @@ type ErrorInfo struct {
 	// one (a JavaScript `err.stack`). Hosts report it as upstream reports
 	// `ExtensionError.stack`.
 	Stack string `json:"stack,omitempty"`
+	// closedByHost is set only on the answer a Conn makes up for a request still pending when the host closed the connection (Close, Retire): the extension did not give it, so it is no failure of the handler. It is neither sent nor read on the wire, and a copy of the value outside this process loses it, which is right: only the host's callers classify it (managedExt.answerError).
+	closedByHost bool
 }
 
 func (e *ErrorInfo) ToError() error {

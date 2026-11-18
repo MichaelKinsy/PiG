@@ -1955,6 +1955,11 @@ allocs = 8941
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkFusedToolCall"
+allocs = 136
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkHostShutdownProviderCatalog/0"
 allocs = 2
 
@@ -2122,6 +2127,26 @@ allocs = 5
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkRegisteredFlagSnapshot"
 allocs = 12
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRegistrationReaders/flag_resolution"
+allocs = 0
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRegistrationReaders/node_runtime"
+allocs = 0
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRegistrationReaders/parallel_node_runtime"
+allocs = 1
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRegistrationReaders/stopped_by_owner"
+allocs = 0
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2401,12 +2426,12 @@ allocs = 1
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionCatalogEncoding/cached"
-allocs = 50335
+allocs = 41960
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkExtensionCatalogEncoding/uncached"
-allocs = 98837
+allocs = 58341
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2951,12 +2976,12 @@ allocs = 110
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWireModelCatalogBinding/encoded"
-allocs = 142940
+allocs = 102226
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkWireModelCatalogBinding/legacy"
-allocs = 156479
+allocs = 103670
 
 [[benchmark]]
 package = "./internal/codingagent"

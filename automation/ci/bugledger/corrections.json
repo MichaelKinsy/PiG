@@ -1,0 +1,8 @@
+[
+  {
+    "id": "BF-9cfcd03",
+    "rootCause": "Node started an extension as `node --import register-loader.mjs cli.mjs`, so process.execArgv in the extension held PiG's loader path. A child forked with the default execArgv, or with [...process.execArgv, ...], started with that loader too, and under --permission with only the child directory readable it died with ERR_ACCESS_DENIED before running.",
+    "decidedBy": "release coordinator (Main), issue 517 close-out",
+    "reason": "The fix commit message lost the backticked command in its first sentence (a shell ate it), so the derived text reads 'started an extension as , so'; a commit message is immutable, and the corrected text restores the command and is otherwise the commit's own paragraph."
+  }
+]

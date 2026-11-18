@@ -4306,6 +4306,33 @@
       ]
     },
     {
+      "id": "BF-21a89d2",
+      "title": "After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with…",
+      "symptom": "After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with `/model` (or switching to it from the extension) no longer gives a model without its metadata: the footer showed `0.0%/0 (auto)`, Shift+Tab said \"Current model does not support thinking\", and the Session recorded a thinking level change to off with the model change.",
+      "rootCause": "coding/cli/interactive_model_after_replacement_pty_test.go starts the real pig on a pseudo-terminal with an extension provider whose models carry a window, an output limit, costs, an image input and reasoning that no default produces, replaces the Session, selects each of its models with /model (and with the extension's setModel) and expects the extension to see the registered model, the footer to show its window, the thinking level to stay at medium, and no compaction or thinking_level_change to off. Rows: startup, /new, /resume, /clone, /fork, /reload; an OAuth provider and a provider the Session did not start on; the Go, Rust, Python and Lisp SDKs registering the provider.…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "After `/new`, `/resume`, `/clone` or `/fork`, picking a model of a provider that an extension registers with `/model` (or switching to it from the extension) no longer gives a model without its metadata: the footer showed `0.0%/0 (auto)`, Shift+Tab said \"Current model does not support thinking\", and the Session recorded a thinking level change to off with the model change. The mode built the model from the services of the Session it was started with, which do not hold a provider that the replacement Session's extension registers. It now builds from the running Session's services, as Pi selects from the Session's model runtime.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "21a89d274c",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveExtensionSetModelAfterNewKeepsRegisteredMetadata",
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterNewAcrossSDKs",
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementKeepsRegisteredMetadata",
+        "coding/cli/interactive_model_after_replacement_pty_test.go::TestInteractiveModelAfterSessionReplacementProviderShapes",
+        "coding/cli/rpc_model_after_new_test.go::TestRPCSetModelAfterNewSessionKeepsRegisteredMetadata",
+        "test/parity/scenarios/extensions-runtime/108-model-after-new-extension-provider.toml"
+      ]
+    },
+    {
       "id": "BF-21c27bf",
       "title": "A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog…",
       "symptom": "A user message, a branch or compaction summary, a custom message, a skill invocation, the startup changelog, the `/hotkeys` block, the text a slash command appends and an extension's Markdown view no longer keep the memos a streamed Markdown holds for its next delta.",
@@ -9060,6 +9087,30 @@
       ]
     },
     {
+      "id": "BF-41aa7df",
+      "title": "Ordering `/fork`, `/new` or `/resume` while an extension's `session_start` handler (or any other event…",
+      "symptom": "Ordering `/fork`, `/new` or `/resume` while an extension's `session_start` handler (or any other event, command or shortcut handler of a subprocess extension) has not returned no longer shows `Extension \"\u003cpath\u003e\" error: connection closed`.",
+      "rootCause": "Conn.Close and Retire answer every request still pending with a made-up response, \"connection closed\" with no code. Request returns only a transport failure as an error, so the answer reached the callers as the extension's own error answer, and the three kinds of call whose transport failure the host already classifies (event, command, shortcut: dispatchError marks it ErrHandlerStopped when the host stopped the extension, which the runner does not report) returned it unclassified.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Ordering `/fork`, `/new` or `/resume` while an extension's `session_start` handler (or any other event, command or shortcut handler of a subprocess extension) has not returned no longer shows `Extension \"\u003cpath\u003e\" error: connection closed`. The swap stops the old extension process, and the connection answered the call still pending with its own \"connection closed\"; the host returned that answer as the handler's failure, so the runner reported it. It is now marked as cut short by the host, as the same call ended by a transport error already was, and nothing is shown, as in Pi, whose handler finishes. An error the extension answers itself, whatever its text, and a crash are still reported as before. The old process is stopped, so a handler in flight does not finish as it does in Pi. \u003c!-- cause: Conn.Close answered the requests still pending with a made-up response that Request returns as a plain response, and the response branches of the event, command and shortcut calls returned it without the classification their transport-error branches apply, and no test held a handler across a stop of its extension --\u003e \u003c!-- tests: TestAHandlerPendingWhenTheHostStopsItsExtensionIsNotItsFailure, TestAHostCloseAnswersPendingRequestsWithTheMark --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "41aa7df469",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/conn_closed_by_host_test.go::TestAHostCloseAnswersPendingRequestsWithTheMark",
+        "coding/extension/host/subprocess/conn_closed_by_host_test.go::TestATransportFailureEndsAPendingRequestWithAnErrorNotAMarkedAnswer",
+        "coding/extension/host/subprocess/conn_closed_by_host_test.go::TestTheClosedByHostMarkIsNoWireField"
+      ]
+    },
+    {
       "id": "BF-41b305d",
       "title": "Codemode rejects a `// @options:` line that is not the first line of the script with an error before the…",
       "symptom": "The line used to be ignored, so its `timeout_ms` never applied and the script ran without a deadline (Pi #10631).",
@@ -10924,6 +10975,27 @@
       ],
       "tests": [
         "ai/classifier_shared_exports_test.go::TestParseClassifierUsagePricesTheModelCatalog"
+      ]
+    },
+    {
+      "id": "BF-4ce10d3",
+      "title": "fix(subprocess): the session_start reply waits for the notices the handler sent before it",
+      "symptom": "fix(subprocess): the session_start reply waits for the notices the handler sent before it",
+      "rootCause": "Pi applies an editor a session_start handler installed before the emit returns. The host accepted the handler reply from the read loop while the install notice was still queued for the dispatcher, so the bind after the emit could rebuild the autocomplete provider with no editor installed (parity scenarios 14 and 19 red under load). The reply now holds until the host dispatched the frames the handler sent before it (Conn.dispatchBarrier), as the tool result already does. Other event kinds and commands keep the unordered reply.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "4ce10d30b5",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestSessionStartReplyWaitsForTheEditorInstallNotice"
       ]
     },
     {
@@ -13326,6 +13398,28 @@
       ]
     },
     {
+      "id": "BF-59aa6f6",
+      "title": "`/logout` of a provider no longer erases the terminal's scrollback",
+      "symptom": "`/logout` of a provider no longer erases the terminal's scrollback.",
+      "rootCause": "/logout of a provider changes no transcript row. Pi runs the logout and shows the status, which requests an ordinary render (interactive-mode.ts:6141-6150); PiG forced a destructive full redraw after it, which wrote ESC[2J ESC[H ESC[3J and replayed the page, so the lines above the TUI were erased.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/logout` of a provider no longer erases the terminal's scrollback. It changes no transcript row, and Pi asks for an ordinary render after it. \u003c!-- cause: runOAuthLogout called ForceFullRender after the logout, where Pi's logout shows its status and requests an ordinary render --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "59aa6f6818",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/provider_logout_scrollback_test.go::TestLogoutKeepsTheTerminalScrollback"
+      ]
+    },
+    {
       "id": "BF-59b5dae",
       "title": "OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base…",
       "symptom": "OpenCode and OpenCode Go requests go to the protocol-specific endpoints instead of the shared base: OpenAI-compatible models at `/inference/openai/v1`, Anthropic models at `/inference/anthropic`, Google models at `/inference/google/v1beta` and Jev at `/inference/systemone/v1` (the same paths under `/inference/go` for OpenCode Go).",
@@ -15201,6 +15295,26 @@
         "extensions/sdk/upgrade/rules_test.go::TestGetterSpreadIntoAVariadicCallIsRewritten",
         "extensions/sdk/upgrade/rules_test.go::TestListedUsesNameTheirLineBeforeTheRewrite"
       ]
+    },
+    {
+      "id": "BF-642d4fc",
+      "title": "An extension that is restarted automatically after a crash could lose a registration its new process made…",
+      "symptom": "An extension that is restarted automatically after a crash could lose a registration its new process made right after it was ready.",
+      "rootCause": "The call was answered with success and the registration was not served: the command did not run, the tool or the handler was never called, for as long as that process ran.",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that is restarted automatically after a crash could lose a registration its new process made right after it was ready. The host started the loop that serves the new process's calls before it adopted the new registration into the extension its runner holds, so a command, shortcut, flag or renderer registered late (`registerDeclaration`), a tool registered late (`registerTool`), an event handler subscribed late (`event.subscribe`) or the claim to own thinking runs (`ownThinkingRuns`) was written into the held extension and then replaced by the registration the new process had sent before its ready. The call was answered with success and the registration was not served: the command did not run, the tool or the handler was never called, for as long as that process ran. The restart now adopts the registration before the loop starts, so every call the new process makes after its ready is applied on top of it. The first load of an extension is not changed. No report of this was received; a test holds the adoption and shows each of the four calls lost. The restart adoption that rewrites the held extension dates from v0.7.0 (`6af0806f7a`). \u003c!-- cause: adoptConn started the loop that serves the connection's calls before it adopted the restarted registration into the held extension, so a call made after the ready was written into the registries the adoption then replaced, and no test made a registration between the ready and the adoption --\u003e \u003c!-- tests: TestRestartKeepsWhatTheNewProcessRegistersAfterItsReady --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "642d4fc629",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-6445df7",
@@ -21584,6 +21698,38 @@
       ]
     },
     {
+      "id": "BF-77778f9",
+      "title": "An extension editor that fails to take the autocomplete provider no longer ends the session",
+      "symptom": "An extension editor that fails to take the autocomplete provider no longer ends the session.",
+      "rootCause": "- add-provider, setEditorComponent and /reload report an extension error; /new fails with Failed to create session; settings change and startup raise as in Pi - awaitReloadStep runs the queued UI tasks before it returns",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension editor that fails to take the autocomplete provider no longer ends the session. When the editor installed with `setEditorComponent` throws from `setAutocompleteProvider`, pig now does what Pi does on each path: adding a provider, installing an editor and `/reload` show an extension error (`/reload` shows `Error: Reload failed: \u003cmessage\u003e` and hands the input back to the previous editor) and the session continues, a settings change raises the uncaught exception, `/new` reports `Error: Failed to create session: \u003cmessage\u003e` and exits with status 1, and the startup raises the uncaught exception; a bind or a reload now also waits until the editor a `session_start` handler installed is in place, so that editor hears the provider exactly as often as in Pi. Present since 0.3.0, the release in which the host first sent the provider to an installed editor.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "302d225a92",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "77778f9ac0",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor",
+        "internal/codingagent/autocomplete_sync_error_caller_test.go::TestRebindWhoseInstalledEditorRefusesTheProviderFailsTheBind",
+        "internal/codingagent/autocomplete_sync_error_caller_test.go::TestReloadWhoseInstalledEditorRefusesTheProviderIsReloadFailed",
+        "internal/codingagent/autocomplete_sync_error_test.go::TestRefusedProviderAfterASettingsChangeEndsTheSession",
+        "internal/codingagent/autocomplete_sync_error_test.go::TestRefusedProviderIsAnExtensionErrorWhereNoCallerCarriesIt",
+        "internal/codingagent/crash_log_test.go::TestHandleFatalRuntimeErrorNotesSitUnderTheErrorAtTheOutputPadding",
+        "internal/codingagent/reload_step_runs_queued_ui_test.go::TestReloadStepRunsTheUITasksItsHandlersQueued"
+      ]
+    },
+    {
       "id": "BF-779318a",
       "title": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now…",
       "symptom": "OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now place the thinking block before the text.",
@@ -23347,6 +23493,30 @@
       "tests": []
     },
     {
+      "id": "BF-8482ee1",
+      "title": "The footer of the interactive mode now follows an extension's `pi.setModel` at the moment the session's model…",
+      "symptom": "A change made by an extension with a `model_select` handler used to push the footer only after the handlers had replied, so a frame drawn while a handler was pending (a key press, a stream tick) came from the footer's cache with the previous model's context window, and nothing drew again: the old window stayed until the next keystroke.",
+      "rootCause": "An extension's pi.setModel ran Session.ExtensionSetModel off the interactive owner loop. It awaited the model_select handlers first and only then pushed the footer (statusLine.SetModel, which invalidates and requests no render). A frame drawn in between (a key press, a stream tick) came from the cached footer with the previous model's context window, and no render followed.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The footer of the interactive mode now follows an extension's `pi.setModel` at the moment the session's model changes, as in Pi, where the footer reads the session's model on every frame. A change made by an extension with a `model_select` handler used to push the footer only after the handlers had replied, so a frame drawn while a handler was pending (a key press, a stream tick) came from the footer's cache with the previous model's context window, and nothing drew again: the old window stayed until the next keystroke. The session's model and the footer now change in one owner-loop unit, and the owner loop never waits on an extension: the handlers are awaited off the loop. PiG 0.7.0 has the defect. \u003c!-- cause: the extension's setModel ran Session.ExtensionSetModel off the owner loop, awaited the model_select handlers inside it, and pushed the footer (statusLine.SetModel, which invalidates and requests no render) only after it returned, while /model and cycling already pushed it in the same owner-loop unit as the session's mutation --\u003e \u003c!-- tests: internal/codingagent/interactive_extension_set_model_footer_test.go::TestInteractiveExtensionSetModelShowsTheNewWindowWhileItsHandlersAreStillReplying, coding/session_extension_set_model_on_main_test.go::TestExtensionSetModelOnMainMutatesInsideTheDispatcherAndAwaitsTheHandlersAfterIt --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8482ee1d09",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/session_extension_set_model_on_main_test.go::TestExtensionSetModelOnMainMutatesInsideTheDispatcherAndAwaitsTheHandlersAfterIt",
+        "internal/codingagent/interactive_extension_set_model_footer_test.go::TestInteractiveExtensionSetModelShowsTheNewWindowWhileItsHandlersAreStillReplying",
+        "internal/codingagent/interactive_model_select_events_test.go::TestInteractiveExtensionSetModelEmitsNoModelSelectOfItsOwn"
+      ]
+    },
+    {
       "id": "BF-848836a",
       "title": "fix(frontmatter): header starts one UTF-16 unit after the fence",
       "symptom": "fix(frontmatter): header starts one UTF-16 unit after the fence",
@@ -23766,6 +23936,26 @@
         "coding/cli/rpc_prompt_order_test.go::TestRPCPromptsOfOneBatchAnswerInRequestOrder",
         "coding/session_prompt_compaction_check_test.go::TestBeginPromptCompactionCheckReturnsOnlyADueCompaction"
       ]
+    },
+    {
+      "id": "BF-8682e68",
+      "title": "A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses…",
+      "symptom": "A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses the tool's `prepare_loadout` and `reaches_tools` hooks: the host asked for hooks the extension had dropped and kept the registered description, and the tool's `reaches_tools` calls failed.",
+      "rootCause": "tool_renderers registers the tool again with its renderers and passed only the prepare_arguments handler along, so the registration dropped the prepare_loadout and reaches_tools handlers of the tool while its declaration still asked the host for them. The host asked for a hook the extension no longer had and kept the registered description.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Python extension that sets renderers on a tool with `tool_renderers` after registering it no longer loses the tool's `prepare_loadout` and `reaches_tools` hooks: the host asked for hooks the extension had dropped and kept the registered description, and the tool's `reaches_tools` calls failed. \u003c!-- cause: tool_renderers registered the tool again with its renderers and passed only the prepare_arguments handler along, so the registration dropped the tool's prepare_loadout and reaches_tools handlers while its declaration still asked the host for them; the fault is in tag v0.7.0 --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8682e68e2b",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-869cef8",
@@ -25124,6 +25314,29 @@
         "chord/nextnode/plugins/plugins_watcher_test.go::TestTheWatcherAfterCloseOnlyAPluginLinkedFromOutsideGetsItsWatchAgain",
         "chord/nextnode/plugins/plugins_watcher_unix_test.go::TestTheWatcherReportsAFailureToWatchOnceAndStopsWatching",
         "chord/nextnode/workers/workers_main_test.go::TestTheWorkersIdleStateReadsTheNodeHostsActivityThroughItsReports"
+      ]
+    },
+    {
+      "id": "BF-904c733",
+      "title": "The frame that a key press requested before an awaited `/new`, `/resume`, `/fork` or `/clone` is painted…",
+      "symptom": "The frame that a key press requested before an awaited `/new`, `/resume`, `/fork` or `/clone` is painted before the session operation begins, as in Pi, instead of only when the operation outlasts the 16 ms frame throttle.",
+      "rootCause": "Pi paints the frame the key press requested inside the awaited /fork, /resume, /clone and /new (tui.ts:1033-1041 requestRender on the next tick; interactive-mode.ts:5614-5618 closes the picker, then awaits the runtime), so the old transcript with the picker gone is on screen before the swap. PiG painted it only when the swap outlasted the 16 ms throttle, which left the footer of a long forked session in a different row. replaceSessionFromCommand now paints first.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The frame that a key press requested before an awaited `/new`, `/resume`, `/fork` or `/clone` is painted before the session operation begins, as in Pi, instead of only when the operation outlasts the 16 ms frame throttle. The footer of a long forked session now ends in the row where Pi's does. \u003c!-- cause: replaceSessionFromCommand began the awaited swap with the frame the closed picker had requested still waiting behind the throttle, where Pi's frame runs on the next tick inside the await --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "904c7332f1",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_swap_frame_test.go::TestFrameRequestedBeforeAwaitedSwapIsPaintedFirst",
+        "internal/codingagent/session_swap_held_hook_test.go::TestForkOfALongTranscriptWithAHeldBeforeHook"
       ]
     },
     {
@@ -28833,6 +29046,32 @@
       ]
     },
     {
+      "id": "BF-9cfcd03",
+      "title": "A Node extension no longer sees PiG's own loader in `process.execArgv`",
+      "symptom": "A Node extension no longer sees PiG's own loader in `process.execArgv`.",
+      "rootCause": "Node started an extension as `node --import register-loader.mjs cli.mjs`, so process.execArgv in the extension held PiG's loader path. A child forked with the default execArgv, or with [...process.execArgv, ...], started with that loader too, and under --permission with only the child directory readable it died with ERR_ACCESS_DENIED before running.",
+      "rootCauseSource": "correction",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Node extension no longer sees PiG's own loader in `process.execArgv`. It held `[\"--import\", \"file:///…/runtime/register-loader.mjs\"]`, where Pi's is the empty list Node was started with, so a child the extension forked with the default `execArgv` or with `[...process.execArgv, …]` started with PiG's loader too. Under Node's restricted-access mode (`--allow-fs-read` with only the child's own directory readable) that child died before it ran with `ERR_ACCESS_DENIED`, which is how every workflow of pi-extensible-workflows failed with `Workflow child exited with code 1`. PiG now starts the extension's process with a small bootstrap file (`node-cli.mjs`, `node-cell.mjs`) that registers the loader inside the process and then loads the runtime, so `process.execArgv` stays empty in an isolated extension and in a packed cell, and a forked child, a spawned `process.execPath` and a worker thread start as they do under Pi; none of them gets PiG's module hooks (the `@earendil-works/pi-*` specifiers resolve in the extension's process only, as they do under Pi). What the extension itself loads, and every other property it reads from `process` (`argv`, `execPath`, `title`, `NODE_OPTIONS`, `cwd()`), are unchanged. The cache of built Node launchers and cells is rebuilt once after the update.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "9cfcd03b22",
+          "date": "2026-11-16",
+          "pr": "517"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/node_launch_test.go::TestNodeBootstrapStartsInADirectoryWithURLSpecials",
+        "coding/extension/host/subprocess/node_launch_test.go::TestNodeLauncherSpawnsNodeDirectlyWithLauncherArguments",
+        "coding/extension/host/subprocess/packed_node_platform_test.go::TestPackedNodeLauncherUsesDirectNodeOnEveryPlatform",
+        "coding/extension/host/subprocess/ts_runtime_test.go::TestTypeScriptRuntimeCommandShapes"
+      ]
+    },
+    {
       "id": "BF-9d02a48",
       "title": "Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where…",
       "symptom": "Gemini tool schemas send string and number `const` values as single-value `enum`s, which Gemini honors where it ignores `const`; literal data such as `default` and `examples` is left as written.",
@@ -29077,6 +29316,31 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-9f9f622",
+      "title": "fix(codingagent): two session snapshots made in one clock tick no longer take one file name",
+      "symptom": "fix(codingagent): two session snapshots made in one clock tick no longer take one file name",
+      "rootCause": "A snapshot file was named from the wall clock (nanoseconds) and the process id, created with CREATE_NEW on Windows and clonefile on macOS. A Windows clock ticks every half to fifteen milliseconds, so two loads that started in one tick took the same name; the one that came second found the first snapshot still open, was refused as \"file exists\", and its fallback took the same name again, so it had no snapshot (TestParallelIndexStopsAsTheSerialLoadDoes failed on Windows only, on the \"header alone\" row, the one row whose serial load keeps its snapshot while the parallel load starts).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9f9f62282c",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_index_parallel_test.go::TestParallelIndexStopsAsTheSerialLoadDoes",
+        "internal/codingagent/session_snapshot_name_test.go::TestSnapshotFileSkipsANameAnotherFileHolds",
+        "internal/codingagent/session_snapshot_name_test.go::TestSnapshotFileStopsOnAnyOtherError",
+        "internal/codingagent/session_snapshot_name_test.go::TestSnapshotFilesTakenAtOnceAllSucceedWithNamesOfTheirOwn",
+        "internal/codingagent/session_snapshot_name_test.go::TestSnapshotsOfSmallFilesTakenAtOnceAllSucceed"
+      ]
     },
     {
       "id": "BF-9faf2de",
@@ -33070,6 +33334,26 @@
       ]
     },
     {
+      "id": "BF-b6f71d4",
+      "title": "A restarted extension kept the Markdown transformer its first process registered",
+      "symptom": "A restarted extension kept the Markdown transformer its first process registered.",
+      "rootCause": "adoptRestartedExtension replaced handlers, tools and declarations but kept the first registration's Markdown transformer, so a restarted process that registered one the first did not had no transform and one that dropped it kept being asked. ReplaceDeclarations now swaps it under the declaration registry lock and the runner reads it through RegisteredMarkdownTransformer. Tool renderers need no change: the resolver asks the managedExt the supervisor restarted, whose resolution state each registration resets.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A restarted extension kept the Markdown transformer its first process registered. After an automatic restart a transformer that only the new process registered did nothing, one the new process no longer registered went on being asked, and the surfaces the new process listed were ignored in favour of the old list. The restart now replaces the transformer with the new registration, as it does for commands and renderers. Tool renderers were already correct: a restarted extension resolves them from its new process. The restart adoption that left the transformer behind dates from v0.7.0 (`6af0806f7a`). \u003c!-- cause: adoptRestartedExtension did not adopt Extension.MarkdownTransformer, so the first registration stayed --\u003e \u003c!-- tests: TestRestartedExtensionTakesItsNewMarkdownTransformer, TestRestartedExtensionResolvesToolRenderersFromItsNewProcess --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b6f71d46a7",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-b730205",
       "title": "OpenRouter image models that only the Images API serves (for example `openai/gpt-image-2.5-flare`) now…",
       "symptom": "OpenRouter image models that only the Images API serves (for example `openai/gpt-image-2.5-flare`) now generate: when `chat/completions` refuses the model, PiG retries through `/images` (D128, pi-mono #10652).",
@@ -33135,6 +33419,26 @@
         "coding/session_extend_resources_test.go::TestSessionExtendsItsLoaderFromResourcesDiscover",
         "coding/session_extend_resources_test.go::TestSessionWithNoResourcesDoesNotEmitResourcesDiscover"
       ]
+    },
+    {
+      "id": "BF-b786804",
+      "title": "An extension that is restarted automatically after a crash could keep a stale list of the host's commands…",
+      "symptom": "An extension that is restarted automatically after a crash could keep a stale list of the host's commands until its next call.",
+      "rootCause": "The ready frame of an automatic restart is built before adoptRestartedExtension replaces the registry, so its command catalog is the previous generation's while its flags are the new one's. The adoption bumps neither hostStateEpoch nor runtimeStateGeneration, so no push followed it and a Node SDK's synchronous getCommands() kept the previous catalog until the next dispatch. A restart now pushes the state once the registration is adopted.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that is restarted automatically after a crash could keep a stale list of the host's commands until its next call. The restart's ready frame is built before the host adopts the new process's registration, so it carried the command catalog of the process that crashed beside the new process's flags, and nothing pushed the state again after the adoption. The host now pushes the state on the new connection once the adoption is done. A packed cell's member is started again as a new extension and was never affected. The ready frame and the automatic restart date from v0.2.0. \u003c!-- cause: the restart adopted the new registration after its ready frame was built and bumped neither state counter, so no push followed the adoption, and no test read the state an extension holds after its restart --\u003e \u003c!-- tests: TestRestartPushesTheStateOnceItIsAdopted --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "b7868046ed",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-b78cdae",
@@ -34776,6 +35080,35 @@
         "tui/markdown_unicode_space_oracle_test.go::TestMarkdownUnicodeSpaceLinesMatchPi",
         "tui/model_selector_oracle_test.go::TestModelSelectorInputMatchesPi",
         "tui/user_message_render_oracle_test.go::TestUserMessageComponentRenderMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-c3c2260",
+      "title": "fix(subprocess): the wait for the installed editor follows a replacing install and prefers a bound editor to…",
+      "symptom": "fix(subprocess): the wait for the installed editor follows a replacing install and prefers a bound editor to an ended context",
+      "rootCause": "- AwaitEditorInstalled waits again on the editor that replaced the one it waited for - an editor that is bound is in place whatever the state of the context - tests: no editor (no wait), the extension ends while the bind is pending, the context ends, a replacing install, a busy owner loop at the install, shutdown while the editor is not bound, and the rebind and reload steps make the wait",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c3c2260ce7",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledDoesNotWaitWithoutAnEditor",
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledReturnsTheCauseOfItsContext",
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledReturnsWhenTheExtensionEndsWhileTheBindIsPending",
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheEditorThatReplacedTheOne",
+        "coding/extension/host/subprocess/autocomplete_sync_error_test.go::TestAwaitEditorInstalledWaitsForTheHostToBindTheEditor",
+        "internal/codingagent/autocomplete_editor_await_test.go::TestInstalledEditorIsBoundWhileTheOwnerLoopIsBusyAtTheInstall",
+        "internal/codingagent/autocomplete_editor_await_test.go::TestShutdownWhileTheInstalledEditorIsNotBoundEndsTheWait",
+        "internal/codingagent/autocomplete_sync_error_caller_test.go::TestRebindWhoseInstalledEditorRefusesTheProviderFailsTheBind",
+        "internal/codingagent/autocomplete_sync_error_caller_test.go::TestReloadWhoseInstalledEditorRefusesTheProviderIsReloadFailed"
       ]
     },
     {
@@ -36871,6 +37204,32 @@
       "tests": [
         "codemode/deterministic_test.go::TestAVMThatIsToldTheSameResultNumberTwiceCrashes",
         "codemode/wire_oracle_test.go::TestWireBehaviorMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-d1be20b",
+      "title": "Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package…",
+      "symptom": "Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package extension back under Pi's (the Startup latency check had it at 1.157 of Pi against a budget of 1.15).",
+      "rootCause": "The extension host's first model catalog frame encoded every model of the catalog (about 2,500 with the D199 routing variants) by encoding its typed record, decoding its catalog record and encoding that too, only to learn that the model was unchanged and its encoding is the record. Since (first tagged in v0.7.0) this was about 42 ms of the median package-warm start (50 interleaved runs).",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting PiG with a packaged extension is about 40 ms faster, which brings the warm start of a package extension back under Pi's (the Startup latency check had it at 1.157 of Pi against a budget of 1.15). Since v0.7.0 each start encoded the whole model catalog for the extension host (about 2,500 models with the OpenRouter routing variants) by decoding every model's catalog record and encoding it twice just to learn that the model was unchanged; an unchanged built-in model is now recognized by comparing it with its catalog entry, and what the extension receives is unchanged. \u003c!-- cause: the D199 routing variants added about a thousand models whose derived records were never in the baseline cache, and the check that a built-in model is unchanged encoded the model and decoded and encoded its record for each model at each start --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d1be20b36a",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "ai/catalog_record_cache_test.go::TestCatalogRecordShapeCacheHoldsOnlyBuiltinRecords",
+        "ai/catalog_unchanged_cost_test.go::TestRecognizedCatalogModelCostsTwoAllocations",
+        "ai/catalog_unchanged_entry_test.go::TestCatalogModelDeepEqualErrsTowardTheEncodingPath",
+        "ai/catalog_unchanged_entry_test.go::TestEveryListedCatalogEntryIsRecognizedAndEncodesAsItsRecord",
+        "ai/catalog_unchanged_entry_test.go::TestModelOfNoEntryTakesTheEncodingPath"
       ]
     },
     {
@@ -40746,6 +41105,28 @@
       ]
     },
     {
+      "id": "BF-dcd255a",
+      "title": "An extension that is restarted automatically after a crash could be read half replaced: the host adopts the…",
+      "symptom": "An extension that is restarted automatically after a crash could be read half replaced: the host adopts the restarted process's registration while a state push, a flag lookup, a command, tool or event call or a status reader runs on another goroutine.",
+      "rootCause": "An automatic restart of a published extension adopts the new process's registration on the supervisor's goroutine. It wrote the flag names, the flag defaults, the session-log and model-registry requests, the runtime kind, the process share and its spawner, and the Extension pointer in place with no lock, while the owner loop's state pushes, the host's flag resolution, the runners' calls and the status readers read them from goroutines of their own. Names were written before the registration was validated, so a refused registration also left the new names beside the old defaults.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that is restarted automatically after a crash could be read half replaced: the host adopts the restarted process's registration while a state push, a flag lookup, a command, tool or event call or a status reader runs on another goroutine. The adoption wrote the flag names and defaults, the session-log and model-registry requests, the runtime kind, the process it runs in and the held extension in place with no lock, so a reader could take the new flag names beside the old defaults, or the process of one generation with the link of another, and a registration that failed validation left its flag names behind. The race detector reported each of them in a gate run; no crash was reproduced. The flag names and defaults and the two requests are now one value that the adoption replaces whole once the registration validates, so a reader sees the registration that was running until the new one is adopted and a refused registration replaces nothing; the process fields join the lock that already guards the process handle. The unlocked writes date from v0.2.0 (flag names, the session-log request, the held extension), v0.3.0 (flag defaults, the runtime kind, the process share) and v0.7.0 (the model-registry request). \u003c!-- cause: the restart adopted the new registration field by field with no lock on the supervisor's goroutine, although the readers of those fields run on other goroutines, and no test restarted an extension beside each kind of reader --\u003e \u003c!-- tests: TestRestartReplacesRegistrationBesideEveryReader, TestFailedRegistrationKeepsTheOldRegistration, TestStatePushReadsOneRegistration, TestProcessLinkChangesWithItsHandle --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "dcd255af69",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/state_push_test.go::TestPushStateToSkipsIdenticalAndOmitsUnchangedCatalogs"
+      ]
+    },
+    {
       "id": "BF-ddd4772",
       "title": "fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse",
       "symptom": "fix(ai): a lone surrogate in a content block stays one code unit, as in JSON.parse",
@@ -41658,6 +42039,31 @@
         }
       ],
       "tests": []
+    },
+    {
+      "id": "BF-e0d6be5",
+      "title": "A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with…",
+      "symptom": "A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with `autocomplete provider is no longer available` when the install ran before the autocomplete rebuild that follows `session_start` (and on a later `/reload`).",
+      "rootCause": "The host reports every autocomplete rebuild to the runtime that installed an editor as autocomplete.sync {operation: \"changed\", current}, as Pi's setupAutocompleteProvider calls setAutocompleteProvider on the installed editor. The Node runtime handled it; the Go, Rust, Python and Lisp SDKs looked the descriptor up as a provider id, answered an error, and the host turned that error into an uncaught exception that ended the session whenever the install ran before the rebuild that follows session_start.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A custom editor installed by a Go, Rust, Python or Lisp extension no longer ends the interactive session with `autocomplete provider is no longer available` when the install ran before the autocomplete rebuild that follows `session_start` (and on a later `/reload`). The host reports each rebuild to the editor's runtime, and those SDKs answered the notice with an error that the host raised as an uncaught exception; they now accept it, as the Node runtime always did.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e0d6be53de",
+          "date": "2026-11-16",
+          "pr": "497"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/autocomplete_installed_editor_test.go::TestInstalledSubprocessEditorHearsTheRebuildInEitherOrder",
+        "test/extension-conformance/autocomplete_changed_test.go::TestAutocompleteChangedReachesInstalledNativeEditor",
+        "test/parity/scenarios/autocomplete/14-custom-editor-installed-at-session-start.toml"
+      ]
     },
     {
       "id": "BF-e16cbba",
@@ -42726,6 +43132,31 @@
       ]
     },
     {
+      "id": "BF-e8b66a7",
+      "title": "An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from…",
+      "symptom": "An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from a half-replaced record.",
+      "rootCause": "An automatic restart (startExtOnce) rewrote cancel and parentCtx, the context the extension's process runs under and the owner's context whose end means the host stopped it, on the supervisor's goroutine with no lock, on a managedExt that is already published. The callers of the extension's handlers read parentCtx on their own goroutines: dispatchError (stoppedByOwner) after a failed command, shortcut or event call, and the tool prepareArguments, reachesTools and prepareLoadout hooks.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that is restarted automatically after a crash could be judged stopped by the host, or not, from a half-replaced record. The restart rewrote the context its new process runs under and the owner context whose end means the host stopped the extension, while a failed command, shortcut or event call read the owner context from its own goroutine; the race detector reported the pair once in a gate run. The two now change together under the lock that already guards the process handle, and every reader copies them under it. No failure a user could see was reproduced: the worst outcome of a read at the wrong moment was a failed call at the instant of a restart judged by the old owner. \u003c!-- cause: the restart wrote cancel and parentCtx of a published extension with no lock, although procMu already guarded the process handle beside them, and no test ran a call that reads the owner context while a restart replaces it --\u003e \u003c!-- tests: TestRestartReplacesTheStartContextBesideItsReaders --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e8b66a7037",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/dispatch_stopped_test.go::TestDispatchErrorMarksCallsTheHostStopped",
+        "coding/extension/host/subprocess/restart_context_race_test.go::TestRestartGivesTheGenerationItsNewOwnerWhole",
+        "coding/extension/host/subprocess/restart_context_race_test.go::TestRestartReplacesTheStartContextBesideItsReaders",
+        "coding/extension/host/subprocess/restart_declarations_test.go::TestRestartAdoptsTheNewRegistrationsDeclarations"
+      ]
+    },
+    {
       "id": "BF-e90ac19",
       "title": "Very long streamed answers no longer slow down with their length: each streamed frame renders only the last…",
       "symptom": "Very long streamed answers no longer slow down with their length: each streamed frame renders only the last blocks of the message that can still change instead of lexing, wrapping and laying out all of it, so a 60,000-character answer costs about 5% of the CPU it did, with the same output.",
@@ -43462,6 +43893,34 @@
       ]
     },
     {
+      "id": "BF-ec5350e",
+      "title": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room…",
+      "symptom": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or no right to write the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error, or a prompt that had lost turns.",
+      "rootCause": "A session file is read back by file offset only when the session holds a private snapshot of it. When the snapshot could not be made (no clone, a failed copy, a first write that left none), the load located entries by their lines in the live file, so a change another program made to the file reached later reads: GetBranch, GetEntries, GetTree, the context builders, get_entries, get_tree, the JSONL export and a fork returned other bytes, an error or a prompt with missing turns. Pi reads the whole file into memory and never reads it again.",
+      "rootCauseSource": "commit",
+      "userImpact": "Lost or altered data",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A resumed session that could not make its private copy of the session file (no copy-on-write clone, no room or no right to write the copy, a failed first write) read its entries back from the live file, so a change another program made to the file afterwards reached the session: a branch, a tree, an export, a fork, or the prompt after a /tree switch could show other bytes, an error, or a prompt that had lost turns. Such a session now reads the whole file once and keeps its entries in memory, as Pi does, and never reads the file again. \u003c!-- cause: without a snapshot the entries were located by the file offsets of their lines in the live file, and a load that made no snapshot, a snapshot write that failed and the first write of a new session were all left to read from that file --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ec5350ee94",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_lazy_test.go::TestLazyEntryOfAChangedRecordIsAnError",
+        "internal/codingagent/session_nosnapshot_test.go::TestCreatedSessionWithoutASnapshotReadsAsWrittenAfterItsFileChanges",
+        "internal/codingagent/session_nosnapshot_test.go::TestForkAfterTheFileChangesWithoutASnapshotWritesTheLoadedBranch",
+        "internal/codingagent/session_nosnapshot_test.go::TestLeafMovedAfterTheFileChangesWithoutASnapshotBuildsTheLoadedContext",
+        "internal/codingagent/session_nosnapshot_test.go::TestResumedSessionWithoutASnapshotReadsAsLoadedAfterItsFileChanges",
+        "internal/codingagent/session_nosnapshot_test.go::TestSessionWhoseSnapshotWriteFailsLaterReadsAsLoadedAfterItsFileChanges",
+        "internal/codingagent/session_nosnapshot_test.go::TestSessionWithoutASnapshotKeepsOnlyItsContextTailDecoded"
+      ]
+    },
+    {
       "id": "BF-ecc7b76",
       "title": "fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop",
       "symptom": "fix(tui): an async markdown completion no longer rebuilds the assistant block off the owner loop",
@@ -43819,6 +44278,29 @@
       "tests": [
         "internal/codingagent/code_highlighter_rows_test.go::TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
         "tui/markdown_block_reuse_upstream_test.go::TestMarkdownReusedHighlightingEqualsAFreshRender"
+      ]
+    },
+    {
+      "id": "BF-ee2fc5e",
+      "title": "`/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's…",
+      "symptom": "`/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback.",
+      "rootCause": "/new, /resume, /fork, /clone, /tree and a compaction repainted the transcript with ForceFullRender, which writes ESC[2J ESC[H ESC[3J and replays every row, so the text above the frame (what a package install or a wrapper printed before the TUI started, and older transcript rows) was gone. Pi clears the chat container and requests a normal render; the main screen repaints from the first changed row and sends the clearing redraw only where its own rules ask for it (a size change, a changed row above the viewport, the reload box).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`/new`, `/resume`, `/fork`, `/clone`, `/tree` navigation and a compaction no longer erase the terminal's scrollback. The text above the TUI (the `Installing ...` lines of a package install at startup, or what a wrapper script printed) and the older transcript rows that had scrolled above the frame stayed in Pi and were gone in PiG. The transcript repaint now clears the chat and renders normally, as Pi's does, and the clearing redraw is sent only where Pi sends it: when the first changed row is above the viewport, and once for the box of `/reload`. This has been so since 0.2.0 for the session commands and since 0.3.0 for a compaction. \u003c!-- cause: rebuildChat and renderCompactionResult called ForceFullRender, which writes ESC[2J ESC[H ESC[3J and replays the transcript from the top, where Pi's chatContainer.clear() plus renderInitialMessages() request an ordinary render that repaints only from the first changed row --\u003e",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "ee2fc5ed41",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/session_swap_scrollback_test.go::TestReloadBoxForcesTheRedrawAsPiDoes",
+        "internal/codingagent/session_swap_scrollback_test.go::TestSessionReplacementRepaintsDifferentially"
       ]
     },
     {

@@ -260,7 +260,7 @@ var settingRuntimeEffectConcepts = map[string][]runtimeEffectConcept{
 		{sourceAny: []string{"child.setImageWidthCells"}, targetAny: []string{"comp.SetImageWidthCells"}},
 	},
 	"skill-commands": {
-		{sourceAny: []string{"this.setupAutocompleteProvider"}, targetAny: []string{"m.editor.SetAutocomplete"}},
+		{sourceAny: []string{"this.setupAutocompleteProvider"}, targetAny: []string{"m.setAutocompleteUncaught"}},
 	},
 	"show-hardware-cursor": {
 		{sourceAny: []string{"this.ui.setShowHardwareCursor"}, targetAny: []string{"m.tuiInst.SetShowHardwareCursor"}},

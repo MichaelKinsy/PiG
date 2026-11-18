@@ -75,20 +75,42 @@ func (m *InteractiveMode) setExtensionModel(ctx context.Context, model extension
 }
 
 // switchExtensionModel switches to model for an extension's setModel. A Session answers the action itself: false without configured credentials, and it emits model_select only for a changed model (agent-session.ts:3343-3347, 2372-2384).
+// The host action runs off the owner loop. As for /model and cycling, the Session's model and the footer's change in one owner-loop unit, at the moment the Session's model changes: Pi's footer reads state.model on every frame and
+// sets it before awaiting model_select (footer.ts:107, 160, 220; agent-session.ts:2644-2663), so a frame drawn while a handler is pending shows the new model. The model_select handlers are awaited here, off the loop.
 func (m *InteractiveMode) switchExtensionModel(ctx context.Context, model *ai.Model) (bool, error) {
-	if m.opts.SessionHandle != nil {
-		switched, err := m.opts.SessionHandle.ExtensionSetModel(ctx, model)
-		if err != nil || !switched {
-			return false, err
+	handle := m.opts.SessionHandle
+	if handle == nil {
+		if m.agent != nil {
+			m.agent.SetModel(model)
 		}
-	} else if m.agent != nil {
-		m.agent.SetModel(model)
+		m.opts.Model = model
+		if m.statusLine != nil {
+			m.statusLine.SetModel(model)
+		}
+		// Host actions run off the owner loop, which owns the editor.
+		m.runOnMain(m.runCtx, m.refreshThinkingLevel)
+		return true, nil
 	}
-	m.opts.Model = model
-	if m.statusLine != nil {
-		m.statusLine.SetModel(model)
+	var notify context.Context
+	if err := m.runOnMainAndWait(ctx, func() error { notify = m.modelNotificationContext(ctx); return nil }); err != nil {
+		return false, err
 	}
-	// Host actions run off the owner loop, which owns the editor.
+	switched, err := handle.ExtensionSetModelOnMain(notify, model, func(mutate func() error) error {
+		return m.runOnMainAndWait(ctx, func() error {
+			if err := mutate(); err != nil {
+				return err
+			}
+			// Pi's footer reads the current Session's model.
+			if m.opts.SessionHandle == handle {
+				m.showModel(model)
+			}
+			return nil
+		})
+	})
+	if err != nil || !switched {
+		return false, err
+	}
+	// A handler may have changed the thinking level, and host actions run off the owner loop, which owns the editor.
 	m.runOnMain(m.runCtx, m.refreshThinkingLevel)
 	return true, nil
 }

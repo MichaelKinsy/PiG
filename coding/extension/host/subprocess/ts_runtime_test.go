@@ -179,7 +179,7 @@ func TestTypeScriptRuntimeRunsASlotExecutable(t *testing.T) {
 // The Bun launch reads no bunfig.toml, loads no .env file and installs nothing; a host executable takes the script's name as its mode.
 func TestTypeScriptRuntimeCommandShapes(t *testing.T) {
 	tree := filepath.Join(t.TempDir(), "tree")
-	bun := typeScriptRuntimeCommand(t.Context(), tsruntime.Selection{Runtime: "bun", Kind: tsruntime.KindBun, Executable: "/slot/bun/bun"}, tree, "cell.mjs", "node cell loader", []string{"manifest.json", "/a.ts"})
+	bun := typeScriptRuntimeCommand(t.Context(), tsruntime.Selection{Runtime: "bun", Kind: tsruntime.KindBun, Executable: "/slot/bun/bun"}, tree, "cell.mjs", []string{"manifest.json", "/a.ts"})
 	wantBun := []string{"/slot/bun/bun", "--no-install", "--no-env-file", "--config=" + filepath.Join(tree, "shims", "bunfig.toml"), "--preload", filepath.Join(tree, "register-loader.mjs"), filepath.Join(tree, "cell.mjs"), "manifest.json", "/a.ts"}
 	if !slices.Equal(bun.Args, wantBun) {
 		t.Fatalf("bun args = %q, want %q", bun.Args, wantBun)
@@ -187,7 +187,7 @@ func TestTypeScriptRuntimeCommandShapes(t *testing.T) {
 	if _, err := os.Stat(filepath.Join("runtime-node", "shims", "bunfig.toml")); err != nil {
 		t.Fatalf("the runtime tree has no empty Bun config: %v", err)
 	}
-	exe := typeScriptRuntimeCommand(t.Context(), tsruntime.Selection{Runtime: "aot", Kind: tsruntime.KindExecutable, Executable: "/slot/aot/host"}, tree, "cli.mjs", "node extension loader", []string{"/a.ts"})
+	exe := typeScriptRuntimeCommand(t.Context(), tsruntime.Selection{Runtime: "aot", Kind: tsruntime.KindExecutable, Executable: "/slot/aot/host"}, tree, "cli.mjs", []string{"/a.ts"})
 	if want := []string{"/slot/aot/host", "cli", "/a.ts"}; !slices.Equal(exe.Args, want) {
 		t.Fatalf("executable args = %q, want %q", exe.Args, want)
 	}

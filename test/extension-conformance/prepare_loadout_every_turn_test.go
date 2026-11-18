@@ -24,6 +24,16 @@ const (
 
 // Pi runs every active tool's prepareLoadout hook before each turn of a run (agent-session.ts:899-933 prepareNextTurnWithContext calls _preparePromptAndToolLoadout, which calls _applyToolLoadout at :1747). A hook that reads state the run changed therefore shapes the second request of a run: its description and its hidden declarations. The hook runs in the extension, so each SDK answers it from state of its own process, which the tool changed; the values are distinct from the tool's registered description and from every SDK's fallback, so an SDK whose hook is not asked before the later turn fails.
 func TestPrepareLoadoutRunsBeforeEveryTurnAcrossSDKs(t *testing.T) {
+	runPrepareLoadoutEveryTurnRows(t, false)
+}
+
+// A tool's renderers are set after the tool is registered by a registration path of their own in the Go, Python, Rust and Lisp SDKs (SetToolRenderers, tool_renderers, render_tool_call, tool-renderers) and with the definition in Node, and the tool keeps its prepareLoadout hook through it: Pi's registerTool takes renderCall and prepareLoadout in one definition. The Python SDK's tool_renderers once registered the tool again without the hook, so the host asked for a hook the extension had dropped and the later turns kept the registered description.
+func TestPrepareLoadoutRunsForAToolWithRenderersAcrossSDKs(t *testing.T) {
+	runPrepareLoadoutEveryTurnRows(t, true)
+}
+
+// runPrepareLoadoutEveryTurnRows runs the every-turn rows over the SDKs; renderers sets renderers on the hooked tool.
+func runPrepareLoadoutEveryTurnRows(t *testing.T, renderers bool) {
 	t.Parallel()
 	root := findModuleRoot(t)
 	for _, language := range []string{"go", "python", "rust", "node", "fused-go", "lisp"} {
@@ -38,13 +48,13 @@ func TestPrepareLoadoutRunsBeforeEveryTurnAcrossSDKs(t *testing.T) {
 				h.SetUIBridge(bridge)
 				var loaded []extension.Extension
 				if language == "fused-go" {
-					ext, err := h.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: "loadout", Enabled: true}, loadoutGoExtension().RunWithConn)
+					ext, err := h.LoadInProcess(t.Context(), subprocess.ExtConfig{Name: "loadout", Enabled: true}, loadoutGoExtension(renderers).RunWithConn)
 					if err != nil {
 						t.Fatal(err)
 					}
 					loaded = append(loaded, *ext)
 				} else {
-					configs := []subprocess.ExtConfig{loadoutFactory(t, root, language, "loadout")}
+					configs := []subprocess.ExtConfig{loadoutFactory(t, root, language, "loadout", renderers)}
 					configs[0].Isolation = isolation
 					if isolation == "shared-ok" {
 						configs = append(configs, loadoutSibling(t, root, language))
@@ -130,8 +140,8 @@ func TestPrepareLoadoutRunsBeforeEveryTurnAcrossSDKs(t *testing.T) {
 	}
 }
 
-// loadoutGoExtension is the Go reference of the loadout fixture: a tool whose hook reads whether the tool ran.
-func loadoutGoExtension() *sdk.Extension {
+// loadoutGoExtension is the Go reference of the loadout fixture: a tool whose hook reads whether the tool ran, with renderers set when renderers is true.
+func loadoutGoExtension(renderers bool) *sdk.Extension {
 	e := sdk.New("loadout")
 	executed := false
 	e.RegisterTool(sdk.ToolDefinition{
@@ -145,6 +155,11 @@ func loadoutGoExtension() *sdk.Extension {
 		Execute: func(sdk.Context, map[string]any) (any, error) { executed = true; return "watched", nil },
 	})
 	e.Tool("other", "Other.", sdk.Schema{"type": "object"}, func(sdk.Context, map[string]any) (any, error) { return "other", nil })
+	if renderers {
+		e.SetToolRenderers("watch", sdk.ToolRenderers{Call: func(sdk.Context, map[string]any, sdk.ToolRenderContext, int) ([]string, error) {
+			return []string{"watch"}, nil
+		}})
+	}
 	return e
 }
 
@@ -163,7 +178,25 @@ func loadoutSibling(t *testing.T, root, language string) subprocess.ExtConfig {
 	return cfg
 }
 
-func loadoutFactory(t *testing.T, root, language, name string) subprocess.ExtConfig {
+// loadoutRendererLines sets renderers on the tool `watch` of the loadout fixture of each language: the text to put before the anchor line of the fixture. Node sets them in the definition and the other SDKs after it.
+var loadoutRendererLines = map[string][2]string{
+	"node":   {"execute:async()=>{executed=true", "renderCall:()=>({render:()=>[\"watch\"],invalidate(){}}),\n"},
+	"go":     {"e.Tool(\"other\"", "e.SetToolRenderers(\"watch\",sdk.ToolRenderers{Call:func(sdk.Context,map[string]any,sdk.ToolRenderContext,int)([]string,error){return []string{\"watch\"},nil}})\n"},
+	"python": {" e.tool(\"other\"", " e.tool_renderers(\"watch\",render_call=lambda ctx,args,render,width:[\"watch\"])\n"},
+	"lisp":   {"    (pig:tool e \"other\"", "    (pig:tool-renderers e \"watch\" :render-call (lambda (ctx args render width) (declare (ignore ctx args render width)) (list \"watch\")))\n"},
+	"rust":   {" e.tool(\"other\"", " e.render_tool_call(\"watch\",|_,_,_,_|Ok(vec![\"watch\".to_string()]));\n"},
+}
+
+func withLoadoutRenderers(t *testing.T, language, code string) string {
+	t.Helper()
+	line := loadoutRendererLines[language]
+	if strings.Count(code, line[0]) != 1 {
+		t.Fatalf("the %s loadout fixture has no single %q to put renderers before", language, line[0])
+	}
+	return strings.Replace(code, line[0], line[1]+line[0], 1)
+}
+
+func loadoutFactory(t *testing.T, root, language, name string, renderers bool) subprocess.ExtConfig {
 	t.Helper()
 	if language == "node" {
 		path := filepath.Join(t.TempDir(), name+".mjs")
@@ -175,6 +208,9 @@ execute:async()=>{executed=true;return{content:[{type:"text",text:"watched"}]}}}
 pi.registerTool({name:"other",label:"other",description:"Other.",parameters:{type:"object",properties:{}},execute:async()=>({content:[{type:"text",text:"other"}]})});
 }
 `, loadoutAfter, loadoutBefore)
+		if renderers {
+			code = withLoadoutRenderers(t, language, code)
+		}
 		if err := os.WriteFile(path, []byte(code), 0o600); err != nil {
 			t.Fatal(err)
 		}
@@ -250,6 +286,9 @@ pub fn new_extension()->Extension{
  e.tool("other","Other.","{\"type\":\"object\"}".parse::<Schema>().unwrap(),|_,_|ToolResult::text("other"));
  e
 }`, name, loadoutBefore, loadoutAfter)
+	}
+	if renderers {
+		code = withLoadoutRenderers(t, language, code)
 	}
 	if err := os.WriteFile(path, []byte(code), 0o600); err != nil {
 		t.Fatal(err)

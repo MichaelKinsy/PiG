@@ -76,8 +76,8 @@ func processIdentity(me *managedExt) any {
 	if me.packedProcess != nil {
 		return me.packedProcess.spawner()
 	}
-	if me.procOwner != nil {
-		return me.procOwner
+	if owner := me.processOwner(); owner != nil {
+		return owner
 	}
 	return me
 }
