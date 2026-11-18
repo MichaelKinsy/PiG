@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -893,6 +894,10 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 	return builder.stream, nil, nil
 }
 
+// codexWebSocketTerminalSeam is a test seam, nil outside tests. The feeder calls it with the stream's session id once it holds a terminal frame and before it stops the abort close: the window in which a
+// cancel that lands concurrently has already closed the connection, which a test cannot hit by timing.
+var codexWebSocketTerminalSeam atomic.Pointer[func(sessionID string)]
+
 func markCodexWebSocketFinishing(entry *codexWebSocketEntry) {
 	if entry == nil {
 		return
@@ -943,6 +948,9 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 			}
 			if !mapped.skip {
 				if mapped.terminal {
+					if seam := codexWebSocketTerminalSeam.Load(); seam != nil {
+						(*seam)(acquired.sessionID)
+					}
 					markCodexWebSocketFinishing(acquired.entry)
 					// The terminal frame ends the request: from here a cancelled context must not close the connection, which release keeps for the session's next request.
 					stopCancel()
