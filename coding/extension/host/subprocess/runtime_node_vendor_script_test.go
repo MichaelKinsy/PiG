@@ -4,12 +4,19 @@ import (
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
 // The installed oracle carries the post-release backports (automation/pin/oracle.py), so vendoring from it must verify them, never
 // apply them again: running the generator on the committed tree is a no-op, however many times it runs.
+// What it proves is a property of the committed tree (it is what the generator writes), and the tree is proven on the platforms where generation
+// runs: make generate and vendor-pi-dist-drift are Unix commands. On Windows the bash script gives Node its checkout path in MSYS form
+// (/d/a/PiG/PiG/...), which Node reads as D:\d\a\PiG\PiG\..., so the installed oracle is never found; the Windows jobs do not run the generator.
 func TestVendorPiDistIsIdempotentOnTheCommittedTree(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("vendor-pi-dist.sh hands Node its MSYS checkout path, which Windows Node reads as a drive-letter path that does not exist; the generator runs on Unix, where this test proves the committed tree")
+	}
 	t.Parallel()
 	shims, err := filepath.Abs(filepath.Join("runtime-node", "shims"))
 	if err != nil {
