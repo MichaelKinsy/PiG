@@ -24,7 +24,9 @@ import (
 // result in a later microtask: the Go call is lent that section like a method handler (Loop.Lend, DESIGN-go-layout.md
 // section 10): its synchronous part runs inside the section, which goes on once `Resolve` returned or suspended
 // (`chordctx.Suspend(ctx)`, or a host primitive that waits), and everything Pi writes after the `await` runs as one section
-// (Loop.Run) afterwards, so a `resolve` whose holds were all released meanwhile finishes and its result is handled as Pi's.
+// (Loop.Run) afterwards, so a `resolve` whose holds were all released meanwhile finishes and its result is handled as Pi's. A
+// `retry` that finds the `resolve` running is remembered for its rejection (retry, resolved): Pi's rejection and the handling of it
+// are one chain of microtasks that no observer's `retry` enters, but a Go `resolve` returns to a section of its own that one can precede.
 // `authorize` and `resolve` may throw in Pi: they return the error. The route calls the host's own `*path`, `*hostLink` and
 // `*chordHost` directly, as Pi's classes do. A `Link` of `link` and its `Codec` and `PartLimits` are the package's own.
 
@@ -87,6 +89,10 @@ type RouteHandle struct {
 	// (held, no link, none running): Pi's caller reads what its synchronous `resolve` recorded, which is one event loop's
 	// state, so a Go caller that reads its own state in a later section cannot tell from it whether this call started the
 	// resolve it finds there. The workers' rollout does not ask; as in Pi it lists the start its address has, whoever began it.
+	// A Retry that finds the address's `Resolve` running starts none and returns false, as Pi's; if that `Resolve` rejects, the
+	// rejection is handled as usual (reported, its holders failed) and the address resolves once more after it, so the retry is not lost
+	// to a rejection that was already on its way (Pi's chain of microtasks leaves no turn for it; a Go `Resolve` returns to a section of
+	// its own). A `Resolve` that succeeds takes the retry with it.
 	//
 	// Lock order (Pi has one event loop, so it states none): do not call Retry or Suspend while holding another loop or
 	// lock that `Resolve` (before its `chordctx.Suspend`) enters, nor one that a Link's Close enters (the host closes links
@@ -103,6 +109,8 @@ type routed struct {
 	address   contracts.Address
 	path      *path
 	resolving bool
+	// retried is whether a `retry` entered while the running `resolve` ran (see retry): if that resolve rejects, the address resolves once more.
+	retried bool
 	// failure is a rejected `resolve`, or a link closed before its handshake: its holders fail with it until the next resolve.
 	failure *data.ChordError
 	// suspended is whether the address resolves nothing while held.
@@ -187,7 +195,12 @@ func (r *route) path(params any, principal data.Principal, ctx context.Context) 
 	return existing.path, nil
 }
 
-// retry is `RouteHandle.retry`: the address's failure and suspension end; it resolves now if held and unlinked.
+// retry is `RouteHandle.retry`: the address's failure and suspension end; it resolves now if held and unlinked. One that finds the
+// address's resolve running starts none, as Pi's (route.ts #resolveIfHeld), but is remembered for that resolve's rejection (resolved):
+// Pi's resolve that rejects and the handling of its rejection are one chain of microtasks, so no observer's retry can enter between
+// them, and a retry before that chain starts the resolve that is running on (a start that reads no failure, workers.ts #start :486)
+// while one after it finds no resolve. A Go resolve returns to a section of its own, so a retry can enter between its rejection and
+// its handling, and would then be lost with the failure it just ended.
 func (r *route) retry(key string) bool {
 	routed := r.addresses[key]
 	if routed == nil {
@@ -195,6 +208,10 @@ func (r *route) retry(key string) bool {
 	}
 	routed.failure = nil
 	routed.suspended = false
+	if routed.resolving {
+		routed.retried = true
+		return false
+	}
 	return r.resolveIfHeld(routed)
 }
 
@@ -361,6 +378,8 @@ func resolvePlugin(resolve func(contracts.Address, context.Context) (ResolvedLin
 // resolved is what `#resolve` does once `resolve` settled, in one section.
 func (r *route) resolved(routed *routed, resolved ResolvedLink, err error, span *chordtelemetry.OpenSpan) {
 	key := routed.address.Key
+	retried := routed.retried
+	routed.retried = false
 	routed.resolving = false
 	routed.span = nil
 	if err != nil {
@@ -370,6 +389,11 @@ func (r *route) resolved(routed *routed, resolved ResolvedLink, err error, span 
 		}
 		r.host.report(HostError{Kind: ErrResolveFailed, Address: key, Error: err})
 		r.settle(routed, data.AsChordError(err, key))
+		if retried && !routed.suspended {
+			// The rejection is handled as usual; the retry that entered while it was pending follows it, as a retry after it would.
+			routed.failure = nil
+			r.resolveIfHeld(routed)
+		}
 		return
 	}
 	if r.host.closing() {
