@@ -2526,6 +2526,8 @@ class _ToolStart:
         self._previous = previous
         self.done = threading.Event()
         self._order = order
+        # The id of the request, which ``_ToolBatches.reserve`` sets; only ``_ToolBatches._observer`` reads it.
+        self._request_id = ""
         # Set when the request waits for its first host call and every earlier request passed its place; made only when the request has to wait. It, _dialog_passed, _dialog_opened, _ended and _slot are guarded by the order's lock.
         self._dialog_waiting: threading.Event | None = None
         self._dialog_passed = False
@@ -2537,11 +2539,16 @@ class _ToolStart:
     def begin(self) -> None:
         if self._previous is not None:
             self._previous.wait()
+        batches = self._order._batches
+        if batches is not None and batches._observer is not None:
+            batches._observer("tool_call", self._request_id)
         self.done.set()
 
     def end(self) -> None:
         """Hand the places on when the request's thread ends, also for a request that failed before it reached its handler. Like ``begin`` it waits for the earlier requests first, so a request without a handler cannot let a later handler start before an earlier one. Idempotent."""
-        self.begin()
+        if self._previous is not None:
+            self._previous.wait()
+        self.done.set()
         self._finish()
 
     def release(self) -> None:
@@ -2622,19 +2629,27 @@ class _ToolStart:
 class _RequestStart:
     """One request's place in the order the handlers start (``_starts_in_arrival_order``). ``begin`` returns when every earlier request began its handler or ended without one."""
 
-    def __init__(self, previous: threading.Event | None) -> None:
+    def __init__(self, previous: threading.Event | None, order: "_RequestStartOrder", method: str, request_id: str) -> None:
         self._previous = previous
         self.done = threading.Event()
+        self._order = order
+        self._method = method
+        self._request_id = request_id
 
     # pig divergence (D658): the place is handed on before the handler's first statement runs, so a descheduled thread can be overtaken; Pi runs a handler to its first await in invocation order.
     def begin(self) -> None:
         if self._previous is not None:
             self._previous.wait()
+        observer = self._order._observer
+        if observer is not None:
+            observer(self._method, self._request_id)
         self.done.set()
 
     def end(self) -> None:
         """Hand the place on when the request's thread ends, also for a request that failed before it reached its handler. Like ``begin`` it waits for the earlier requests first, so a request without a handler cannot let a later handler start before an earlier one. Idempotent."""
-        self.begin()
+        if self._previous is not None:
+            self._previous.wait()
+        self.done.set()
 
     def release(self) -> None:
         """Hand the place on at once, for a request whose thread never started. The reader calls it, so it must not wait for the earlier requests. Idempotent."""
@@ -2655,11 +2670,13 @@ class _RequestStartOrder:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._tail: threading.Event | None = None
+        # Set by tests before the extension serves, never while it runs. It is called with the method and id of each request that invokes a handler, after the earlier places were released and before this one is.
+        self._observer: Callable[[str, str], None] | None = None
 
-    def reserve(self) -> _RequestStart:
+    def reserve(self, method: str, request_id: str) -> _RequestStart:
         """Take the next place. The reader calls this in arrival order, before it starts the request's thread."""
         with self._lock:
-            start = _RequestStart(self._tail)
+            start = _RequestStart(self._tail, self, method, request_id)
             self._tail = start.done
             return start
 
@@ -2718,14 +2735,18 @@ class _ToolBatches:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._orders: dict[str, _ToolStartOrder] = {}
+        # Set by tests before the extension serves, never while it runs. It is called with "tool_call" and the id of each request whose handler is invoked, after the earlier places of its batch were released and before this one is.
+        self._observer: Callable[[str, str], None] | None = None
 
-    def reserve(self, batch: str) -> _ToolStart:
+    def reserve(self, batch: str, request_id: str) -> _ToolStart:
         """Take the next place in the batch's order. The reader calls this in arrival order, before it starts the request's thread."""
         with self._lock:
             order = self._orders.get(batch)
             if order is None:
                 order = self._orders[batch] = _ToolStartOrder(self, batch)
-            return order.reserve()
+            start = order.reserve()
+            start._request_id = request_id
+            return start
 
     def _drop(self, batch: str, order: _ToolStartOrder) -> None:
         with self._lock:
@@ -5974,9 +5995,9 @@ class Extension:
         batch = req.get("batch")
         # Only the calls of one parallel batch (the host's `batch` member, the same on each of them) take part in the dialog and continuation orders; any other tool_call is never gated.
         if req.get("method") == "tool_call" and isinstance(batch, str) and batch:
-            ctx._tool_start = self._tool_batches.reserve(batch)
+            ctx._tool_start = self._tool_batches.reserve(batch, env.get("id", ""))
         if _starts_in_arrival_order(req):
-            ctx._request_start = self._request_starts.reserve()
+            ctx._request_start = self._request_starts.reserve(req.get("method", ""), env.get("id", ""))
         self._request_state(env.get("id", ""), "started")
         worker = threading.Thread(
             target=self._handle_request_thread,

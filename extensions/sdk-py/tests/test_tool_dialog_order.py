@@ -272,8 +272,8 @@ def test_dispatch_dialogs_open_in_call_order_and_responses_follow_the_answers():
 
 def test_orders_are_per_batch_and_dropped_when_the_batch_ended():
     batches = pig_sdk._ToolBatches()
-    a1, a2 = batches.reserve("A"), batches.reserve("A")
-    b1 = batches.reserve("B")
+    a1, a2 = batches.reserve("A", "r0"), batches.reserve("A", "r1")
+    b1 = batches.reserve("B", "r2")
     assert a1._order is a2._order and a1._order is not b1._order
     # B's first dialog does not wait for A's requests, which still run.
     b1.before_call()
@@ -287,7 +287,7 @@ def test_orders_are_per_batch_and_dropped_when_the_batch_ended():
     b1.end()  # idempotent: the count of live requests drops once
     assert batches._orders == {}
     # A request that arrives after every earlier one of its batch ended finds a fresh order.
-    assert batches.reserve("A")._order is not order
+    assert batches.reserve("A", "r3")._order is not order
 
 
 def test_dispatch_batches_and_requests_without_a_batch_do_not_gate_each_other():

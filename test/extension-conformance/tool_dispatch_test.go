@@ -67,13 +67,17 @@ func TestToolPrepareArgumentsRunsBeforeValidationAcrossSDKs(t *testing.T) {
 	}
 }
 
-// startOrderStrict says whether the SDK runtime orders the first statements of a batch's handlers, not only their invocation. Node runs the
-// handlers on one thread and Python's GIL keeps a thread that just handed its place on running, so both match Pi. A Go or Rust handler runs on
-// a thread the operating system can preempt between the hand-off and the handler's first statement, so the SDK guarantees the invocation order
-// (the SDK gate tests) and a saturated machine can still let a later handler's first statement run first.
+// startOrderStrict says whether the SDK runtime orders the first statements of a batch's handlers, not only their invocation. The contract of every
+// SDK is the order of invocation (D658): a handler is invoked only after every earlier request's handler was invoked or its request ended without
+// one. Node serves frames on one thread, so its handlers' first statements also run in Pi's order. A Go, Rust, Python or Lisp handler runs on a
+// thread the operating system can preempt between the hand-off and the handler's first statement, so a saturated machine can let a later
+// handler's first statement run first. The invocation order of Go is pinned by the SDK tests (TestToolCallHandlersStartInArrivalOrder,
+// TestEventAndCommandHandlersStartInArrivalOrder, TestOvertakenHandlerKeepsItsInvocationPlace) and that of Python by the sdk-py tests
+// (test_tool_call_handlers_start_in_arrival_order, test_event_and_command_handlers_start_in_arrival_order,
+// test_a_request_thread_that_runs_late_does_not_let_a_later_handler_start_first, test_an_overtaken_handler_keeps_its_invocation_place).
 func startOrderStrict(name string) bool {
 	switch name {
-	case "subprocess-node", "subprocess-node-packed", "subprocess-python":
+	case "subprocess-node", "subprocess-node-packed":
 		return true
 	}
 	return false
