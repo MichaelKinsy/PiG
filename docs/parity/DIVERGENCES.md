@@ -3421,7 +3421,7 @@ Evidence: the kill (a child process of the test binary stopped at a seam and kil
 
 Parity allowance: none needed beyond the evidence above.
 
-SCRUTINIZED:approved 2026-11-18 text-sha256:a200ac8e5ea8855d, amended 2026-11-10 for Pi 1.5.2 host data, amended 2026-11-17 for the final text (two stores, the two commits with the intent, one export point) by principle (owner decision 29), extends OWNER-DECISIONS #19
+SCRUTINIZED:approved 2026-11-18 text-sha256:c802940b9a8e8a1f, first approved 2026-11-08, amended 2026-11-10 for Pi 1.5.2 host data, amended 2026-11-17 for the final text (two stores, the two commits with the intent, one export point) by principle (owner decision 29), extends OWNER-DECISIONS #19
 
 ## D464 FormatNumber and FormatTime take closed option types and return errors (P1-3)
 
