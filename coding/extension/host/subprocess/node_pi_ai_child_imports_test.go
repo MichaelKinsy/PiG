@@ -84,7 +84,7 @@ func TestChildAndWorkerImportsOfPiAiResolveAsUnderPi(t *testing.T) {
 			if err := os.MkdirAll(filepath.Join(dir, "node_modules", "@earendil-works"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			testenv.Symlink(t, aiRoot, filepath.Join(dir, "node_modules", "@earendil-works", "pi-ai"))
+			testenv.RequireDirectoryLink(t, aiRoot, filepath.Join(dir, "node_modules", "@earendil-works", "pi-ai"))
 		}
 		for name, source := range map[string]string{
 			"worker.mjs": `import { parentPort, workerData } from "node:worker_threads";` + childProbeShared + `parentPort.postMessage(await probeAll(workerData));`,

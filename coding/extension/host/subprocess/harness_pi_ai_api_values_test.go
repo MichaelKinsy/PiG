@@ -104,7 +104,7 @@ func TestRestoredAPIValuesBehaveAsUnderPi(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(piDir, "node_modules", "@earendil-works"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	testenv.Symlink(t, aiRoot, filepath.Join(piDir, "node_modules", "@earendil-works", "pi-ai"))
+	testenv.RequireDirectoryLink(t, aiRoot, filepath.Join(piDir, "node_modules", "@earendil-works", "pi-ai"))
 	runtime := t.TempDir()
 	if err := extractNodeRuntime(runtime); err != nil {
 		t.Fatal(err)
