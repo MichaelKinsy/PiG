@@ -92,7 +92,7 @@ function bridged(api, simple) {
     if ((api === "google-generative-ai" || api === "google-vertex") && options?.fetch === globalThis.fetch) {
       options = { ...options, fetch: undefined };
     }
-    // No extension runtime: a detached helper, a forked child or a worker that inherited the loader. Its stream runs in a provider bridge process it owns.
+    // No extension runtime: a detached helper, a forked child or a worker that loads this module from the harness package (the runtime's loader hooks are not passed on to it). Its stream runs in a provider bridge process it owns.
     const runtime = currentRuntime();
     if (!runtime) {
       return bridgeStream(model, context, { ...options, reasoning: (simple ? options?.reasoning : undefined) ?? "off" }, simple, failedStream);
