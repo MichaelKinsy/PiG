@@ -182498,7 +182498,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/context_session_edits_test.go#TestConformance_ContextListEditsInASessionReachTheNextExtension"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -182521,7 +182521,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/context_session_edits_test.go#TestConformance_ContextListEditsInASessionReachTheNextExtension"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -305698,7 +305698,7 @@
       "evidence": [
         "test:internal/codingagent/dead_terminal_shutdown_unix_test.go#TestDeadTerminalShutdownChild",
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
+        "test:tui/screen_writer_log_off_test.go#TestScreenWriterLogWritesNoFileWithTheWriterOff"
       ]
     },
     {
@@ -305720,7 +305720,7 @@
       "evidence": [
         "test:internal/codingagent/dead_terminal_shutdown_unix_test.go#TestDeadTerminalShutdownChild",
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
+        "test:tui/screen_writer_log_off_test.go#TestScreenWriterLogWritesNoFileWithTheWriterOff"
       ]
     },
     {
