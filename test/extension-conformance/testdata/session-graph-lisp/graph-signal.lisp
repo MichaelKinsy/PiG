@@ -44,6 +44,9 @@
         (pig::signal-abort first)
         (let ((next (pig::make-abort-signal)))
           (setf current next)
+          ;; The client drops its own reference to run 1's aborted signal and collects before run 2 is read: the wrapper must hold the signal itself, or it cannot say run 1 had aborted.
+          (setf first nil)
+          (sb-ext:gc :full t)
           (pig:runner-emit runner turn)
           (pig::signal-abort next)
           (pig:runner-emit runner message))

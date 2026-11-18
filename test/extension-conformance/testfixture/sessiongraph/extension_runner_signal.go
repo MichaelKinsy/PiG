@@ -2,6 +2,7 @@ package sessiongraph
 
 import (
 	"context"
+	"runtime"
 	"sync"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
@@ -111,6 +112,9 @@ func extensionRunnerSignalScript(ctx sdk.Context, args map[string]any) map[strin
 	fourth, cancelFourth := newRun()
 	defer cancelFourth()
 	set(fourth)
+	// The client has dropped its own reference to run 1's aborted signal (third, cancelThird: no later use) and collects before run 2 is read: the wrapper must hold the signal itself, or it cannot say run 1 had aborted.
+	runtime.GC()
+	runtime.GC()
 	ok(runner.Emit(turn))
 	cancelFourth()
 	ok(runner.Emit(message))

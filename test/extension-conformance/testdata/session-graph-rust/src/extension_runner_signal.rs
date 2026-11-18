@@ -141,6 +141,8 @@ pub fn extension_runner_signal_script(ctx: &Context, args: &Value) -> io::Result
     third.cancel();
     let fourth = ProviderSignal::new();
     set(&fourth);
+    // The client drops its own handle to run 1's aborted signal before run 2 is read: the wrapper must hold the signal itself, or it cannot say run 1 had aborted. Rust has no collector to force: the last handle frees the signal at once.
+    drop(third);
     rig.runner.emit(turn)?;
     fourth.cancel();
     rig.runner.emit(message)?;

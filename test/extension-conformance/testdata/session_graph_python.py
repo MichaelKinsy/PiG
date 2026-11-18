@@ -1663,6 +1663,9 @@ def extension_runner_signal_script(ctx, args):
     first.set()
     nxt = pig_sdk.ProviderSignal()
     current[0] = nxt
+    # The client drops its own reference to run 1's aborted signal and collects before run 2 is read: the wrapper must hold the signal itself, or it cannot say run 1 had aborted.
+    del first
+    gc.collect()
     runner.emit(turn)
     nxt.set()
     runner.emit(message)

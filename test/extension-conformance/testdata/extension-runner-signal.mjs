@@ -45,6 +45,7 @@ export async function extensionRunnerSignalScript(args) {
   first.abort();
   const next = new AbortController();
   cur = next;
+  // No step drops `first`: this is Pi's own runner, which keeps nothing of the signals (no PiG wrapper holds one); the other cells drop their own reference to run 1's signal here.
   await rig.runner.emit(turn);
   next.abort();
   await rig.runner.emit(message);
