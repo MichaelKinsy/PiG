@@ -85,8 +85,11 @@ func BenchmarkToolsExpansionMountedTranscript(b *testing.B) {
 			terminal.take()
 			b.ReportAllocs()
 			for b.Loop() {
+				// The toggle's status line requests a render (Pi showStatus -> requestRender): the frame that request arms is part of what a toggle costs.
 				m.setAllToolsExpanded(true)
+				m.runRequestedFrame()
 				m.setAllToolsExpanded(false)
+				m.runRequestedFrame()
 				terminal.take()
 			}
 		})
