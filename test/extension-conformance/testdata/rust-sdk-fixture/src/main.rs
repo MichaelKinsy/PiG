@@ -153,6 +153,9 @@ fn io_wait(addr: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+/// The address the session_info_changed handler waits on first; empty when the handler is not armed (io_wait_name).
+static NAME_WAIT_ADDR: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
 /// Subscribes `handler` to the event `name`. A before_agent_start handler registers with `on_before_agent_start` and receives the event as Pi's object (`BeforeAgentStartEvent::snapshot`).
 fn subscribe(
     subscriber: &pig_sdk::EventSubscriber,
@@ -3876,6 +3879,42 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+    ext.command(
+        "io_wait_name",
+        "Make the session_info_changed handler wait on a socket read",
+        |_ctx, args| {
+            *NAME_WAIT_ADDR.lock().unwrap() = args.to_string();
+            CommandResult::Ok
+        },
+    );
+    // io_wait_input and io_wait_start subscribe an input / before_agent_start handler that waits on a socket read first and then notifies "<event>:<text or prompt>".
+    for (command, event, member) in [
+        ("io_wait_input", "input", "text"),
+        ("io_wait_start", "before_agent_start", "prompt"),
+    ] {
+        let subscriber = ext.event_subscriber();
+        ext.command(
+            command,
+            "Make an input or before_agent_start handler wait on a socket read",
+            move |_ctx, args| {
+                let addr = args.to_string();
+                let subscription = subscribe(&subscriber, event, move |ctx, data| {
+                    io_wait(&addr).map_err(|err| err.to_string())?;
+                    ctx.notify(
+                        &format!(
+                            "{event}:{}",
+                            data.get(member).and_then(Value::as_str).unwrap_or("")
+                        ),
+                        "info",
+                    );
+                    Ok(None)
+                });
+                // The handler stays subscribed for the life of the extension.
+                std::mem::forget(subscription);
+                CommandResult::Ok
+            },
+        );
+    }
     let io_wait_subscriber = ext.event_subscriber();
     let io_wait_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));
@@ -7883,6 +7922,11 @@ fn main() {
         None
     });
     ext.on_event("session_info_changed", |ctx, data| {
+        // io_wait_name arms the handler to wait on a socket read first, as a handler that awaits does in Pi.
+        let addr = NAME_WAIT_ADDR.lock().unwrap().clone();
+        if !addr.is_empty() {
+            let _ = io_wait(&addr);
+        }
         let name = data.get("name").and_then(Value::as_str).unwrap_or("");
         ctx.notify(&format!("session_info_changed:{name}"), "info");
         None

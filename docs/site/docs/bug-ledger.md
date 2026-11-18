@@ -1106,6 +1106,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-74e801f](#bf-74e801f) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-74f806c](#bf-74f806c) | fix(agent): end the tool flow at custom user messages after /tree navigation (#203) | PiG's own defect | All platforms | Unreleased |
 | [BF-74fb98c](#bf-74fb98c) | Markdown list items lex their text line by line like Pi: an HTML block starts at any item line, and an item… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-7506dc7](#bf-7506dc7) | An RPC prompt that runs a Node extension command which only chains microtasks (never yielding to the event… | PiG's own defect | All platforms | Unreleased |
 | [BF-752aef5](#bf-752aef5) | A throttled frame whose timer callback had already passed its generation check could still draw once more… | PiG's own defect | All platforms | Unreleased |
 | [BF-75426aa](#bf-75426aa) | The `/login` and `/logout` provider picker and the `/tree` selector show the terminal cursor in their search… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-75426aa-2](#bf-75426aa-2) | A Node extension's `tool_call` handler can edit `event.input` in place and the tool runs with the edit, as in… | PiG's own defect | All platforms | 0.5.0 |
@@ -1132,6 +1133,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-776d60b-2](#bf-776d60b-2) | A model request from a subprocess extension whose integer field is `2^63` or larger is now rejected instead… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7781c92](#bf-7781c92) | A `before_provider_request` handler that adds members to the Google, Vertex or pi-messages request it was… | PiG's own defect | All platforms | Unreleased |
 | [BF-779318a](#bf-779318a) | OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-77a1d72](#bf-77a1d72) | An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed`… | PiG's own defect | All platforms | Unreleased |
 | [BF-77e64cd](#bf-77e64cd) | GitHub Copilot's chat-completions models with effort levels (Gemini 4 Argon, Gemini 3.8 Flash and Kimi K3)… | PiG's own defect | All platforms | Unreleased |
 | [BF-7809364](#bf-7809364) | Schema errors of a `ChordError` of code `invalid` list their members in the order the value arrived in, as… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-7838047](#bf-7838047) | `/resume` no longer selects an unrelated session while its list reloads after a session is deleted or… | PiG's own defect | All platforms | Unreleased |
@@ -1417,6 +1419,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9327bc7](#bf-9327bc7) | A closed Harness or Session no longer stays reachable from Go's timer heap | PiG's own defect | All platforms | 0.7.0 |
 | [BF-93319f4](#bf-93319f4) | The terminal UI worked example now describes the typed `/model` prefix in words | PiG's own defect | All platforms | 0.5.0 |
 | [BF-935b371](#bf-935b371) | A start with a Node extension no longer writes the whole model catalog to the extension once per step of the… | PiG's own defect | All platforms | Unreleased |
+| [BF-9394165](#bf-9394165) | An RPC prompt whose Node `input` handler awaits a timer, I/O or another real wait no longer holds the next… | PiG's own defect | All platforms | Unreleased |
 | [BF-93c09d6](#bf-93c09d6) | A local package source that is a file Node cannot import, such as a packed `.tgz`, fails to load as in Pi… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-93c09d6-2](#bf-93c09d6-2) | `pig install --validate-only` on a Package root validates every extension the Package names in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-93c5def](#bf-93c5def) | A built-in extension named with `-e builtin:<name>` loads before the extensions from settings and the… | PiG's own defect | All platforms | 0.5.0 |
@@ -1751,6 +1754,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bc6c54f](#bf-bc6c54f) | Fix the extension event result type and keep the event fast paths exact | PiG's own defect | All platforms | Unreleased |
 | [BF-bc8d37f](#bf-bc8d37f) | `FileModelsStore` roots and index keys: new live-Pi oracle… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bcc2046](#bf-bcc2046) | A nested list whose last item is empty but for spaces after its marker is followed by an empty row before the… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-bd00797](#bf-bd00797) | The same for a Node `before_agent_start` handler: a `get_state` sent while it awaits I/O is answered at once… | PiG's own defect | All platforms | Unreleased |
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd8849d](#bf-bd8849d) | Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run… | PiG's own defect | All platforms | Unreleased |
@@ -1799,6 +1803,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-c462888](#bf-c462888) | Interactive mode follows Pi's agent events more closely: `agent_end` removes a message that is still… | PiG's own defect | All platforms | Unreleased |
 | [BF-c462888-2](#bf-c462888-2) | A prompt rejected while the messages queued during compaction are flushed (for example no model selected) now… | PiG's own defect | All platforms | Unreleased |
 | [BF-c4734ed](#bf-c4734ed) | fix(durable/core): the span's resume stage is one if, not a one-case switch | PiG's own defect | All platforms | Unreleased |
+| [BF-c485b4e](#bf-c485b4e) | An RPC prompt whose `before_agent_start` handler, written with the Go, Rust, Python or Lisp SDK, awaits I/O… | PiG's own defect | All platforms | Unreleased |
 | [BF-c4ad739](#bf-c4ad739) | Extension shortcut conflict warnings name both extensions ("registered by both A and B | PiG's own defect | All platforms | 0.5.0 |
 | [BF-c4d210a](#bf-c4d210a) | fix(subprocess): the wait for the installed editor follows a replacing install and prefers a bound editor to… | PiG's own defect | All platforms | Unreleased |
 | [BF-c4d51d5](#bf-c4d51d5) | The OpenAI Codex login reads the account id from the access token the way Pi does: the token payload is… | PiG's own defect | All platforms | 0.5.0 |
@@ -17410,6 +17415,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/markdown_list_item_lines_oracle_test.go::TestMarkdownListItemContinuationLinesMatchPi`
 - **Release note:** Markdown list items lex their text line by line like Pi: an HTML block starts at any item line, and an item line indented four or more spaces past the content joins the text before it (so a heading, quote, rule, fence, table or bullet there stays text) and leaves an empty row before the text that follows.
 
+### BF-7506dc7
+
+**An RPC prompt that runs a Node extension command which only chains microtasks (never yielding to the event…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An RPC prompt that runs a Node extension command which only chains microtasks (never yielding to the event loop) no longer lets the next stdin line overtake the command's response: the runtime took any command whose Promise was unsettled one microtask after the call to be waiting, where Pi's loop reads no line during such a command.
+- **Root cause:** acknowledgeInvocation treated "the Promise is unsettled one microtask after the call" as "the handler waits", which holds for a real wait but not for a handler that continues in microtasks; the event-loop window is the exact test and was already armed for commands.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7506dc78b8` (2026-11-17)
+- **Tests:** `coding/cli/rpc_settle_wait_test.go::TestRPCNodeHandlerThatOnlyRunsMicrotasksHoldsStdin`
+- **Release note:** An RPC prompt that runs a Node extension command which only chains microtasks (never yielding to the event loop) no longer lets the next stdin line overtake the command's response: the runtime took any command whose Promise was unsettled one microtask after the call to be waiting, where Pi's loop reads no line during such a command. The report has existed since v0.3.0 and the hold it releases since v0.5.1.
+
 ### BF-752aef5
 
 **A throttled frame whose timer callback had already passed its generation check could still draw once more…**
@@ -17768,6 +17787,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `779318a6ea` (2026-10-14, #10926)
 - **Tests:** `ai/openai_completions_member_type_oracle_test.go::TestOpenAICompletionsMistypedMembersMatchPi`, `ai/openai_reasoning_pending_test.go::TestParseSSE_ReasoningDetailsApplyBeforeNonIterableToolCalls`, `ai/openai_reasoning_pending_test.go::TestParseSSE_ThinkingBeforeTextWhenOneDeltaCarriesBoth`, `ai/openai_tool_choice_stream_upstream_test.go::TestOpenAICompletionsToolChoiceStreamUpstream`
 - **Release note:** OpenAI-compatible streams where one chunk carries reasoning and content (LiteLLM and similar proxies) now place the thinking block before the text. Carried forward from Pi 63035734 (earendil-works/pi#10926), past the 1.2.0+3daa2028 pin.
+
+### BF-77a1d72
+
+**An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed`…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed` or `thinking_level_select` handler written with the Go, Rust, Python or Lisp SDK: Pi replies at once because it does not await that event, but PiG's reply was held until the handler returned, for ever when the handler waited on a socket or a timer and never came back, and now waits at most the 250 ms that already bounds the other handlers a runtime cannot report waiting.
+- **Root cause:** An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed` or `thinking_level_select` handler written with the Go, Rust, Python or Lisp SDK: Pi replies at once because it does not await that event, but PiG's reply was held until the handler returned, for ever when the handler waited on a socket or a timer and never came back, and now waits at most the 250 ms that already bounds the other handlers a runtime cannot report waiting.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `77a1d720d9` (2026-11-16)
+- **Tests:** `coding/cli/rpc_unawaited_event_test.go::TestRPCUnawaitedEventAcrossSDKs`, `test/extension-conformance/unawaited_event_wait_conformance_test.go::TestConformance_UnawaitedEventDoesNotWaitForAWaitingHandler`
+- **Release note:** An RPC `set_session_name` or `set_thinking_level` no longer waits for an extension's `session_info_changed` or `thinking_level_select` handler written with the Go, Rust, Python or Lisp SDK: Pi replies at once because it does not await that event, but PiG's reply was held until the handler returned, for ever when the handler waited on a socket or a timer and never came back, and now waits at most the 250 ms that already bounds the other handlers a runtime cannot report waiting. A handler that computes for longer than that writes its own notification after the reply, where Pi writes it before; the handler's effect is not lost. The wait has been there since v0.7.0 and earlier.
 
 ### BF-77e64cd
 
@@ -21734,6 +21767,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `935b371168` (2026-11-13)
 - **Tests:** `coding/extension/host/subprocess/model_catalog_change_test.go::TestBatchedModelCatalogPublicationKeepsItsKind`, `coding/extension/host/subprocess/model_catalog_change_test.go::TestModelCatalogRecordBelongsToTheConnection`, `coding/extension/host/subprocess/model_catalog_change_test.go::TestModelRegistryUpdateDigestIsOfTheFrame`, `coding/extension/host/subprocess/model_catalog_change_test.go::TestPublishModelCatalogChangeSendsNothingAReplicaHolds`, `coding/extension/host/subprocess/model_catalog_change_test.go::TestRefreshResultEndsTheCatalogRecord`, `internal/codingagent/extension_catalog_refresh_publication_test.go::TestCatalogRefreshSendsAReplicaOnlyAChangedCatalog`
 - **Release note:** A start with a Node extension no longer writes the whole model catalog to the extension once per step of the start-up catalog refresh. The host sent the catalog (about 1.5 MB) when it bound the model operations and again after the refresh reloaded `models.json` and after it refreshed the catalogs, changed or not: three equal frames in interactive mode and two in RPC mode, each decoded and applied by the extension's process on the thread that answers the host. A frame equal to the last one sent on a connection is now left out when a registry notification asks for it; a changed registry and the answer to an extension's own registry write reach the extension as before.
+
+### BF-9394165
+
+**An RPC prompt whose Node `input` handler awaits a timer, I/O or another real wait no longer holds the next…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An RPC prompt whose Node `input` handler awaits a timer, I/O or another real wait no longer holds the next stdin line: `get_state` and every later command are answered while the handler waits, as in Pi, in an isolated and in a packed runtime alike.
+- **Root cause:** the runtime's generic event branch had no call site for the event-loop window report that commands and settle-tail handlers carry, so the host never saw an input handler suspend.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `939416539e` (2026-11-17)
+- **Tests:** `coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringInputHandlerNetworkWaitAnswersAcrossSDKs`, `coding/cli/rpc_settle_wait_test.go::TestRPCNodeInputEndDuringInputHandlerWaitComparedWithPi`, `coding/cli/rpc_settle_wait_test.go::TestRPCNodeInputHandlerWaitSemanticsComparedWithPi`
+- **Release note:** An RPC prompt whose Node `input` handler awaits a timer, I/O or another real wait no longer holds the next stdin line: `get_state` and every later command are answered while the handler waits, as in Pi, in an isolated and in a packed runtime alike. The runtime reported a wait only for commands and the settle tail, so the host held the line until the handler returned. The hold has been there since v0.5.1.
 
 ### BF-93c09d6
 
@@ -26400,6 +26447,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `tui/markdown_render_oracle_test.go::TestMarkdownRenderMatchesPi`
 - **Release note:** A nested list whose last item is empty but for spaces after its marker is followed by an empty row before the item's next text (`- - \n a`).
 
+### BF-bd00797
+
+**The same for a Node `before_agent_start` handler: a `get_state` sent while it awaits I/O is answered at once…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The same for a Node `before_agent_start` handler: a `get_state` sent while it awaits I/O is answered at once, before the run starts, as in Pi.
+- **Root cause:** the before_agent_start branch of the runtime's event dispatch was written as its own case and never given the window report; D86 listed only the input handler as unreported.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `bd00797bde` (2026-11-17)
+- **Tests:** `coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringBeforeAgentStartHandlerNetworkWaitAnswersAcrossSDKs`
+- **Release note:** The same for a Node `before_agent_start` handler: a `get_state` sent while it awaits I/O is answered at once, before the run starts, as in Pi. It has been held since v0.5.1.
+
 ### BF-bd3e8ab
 
 **On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`…**
@@ -27058,6 +27119,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `c4734ed750` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-c485b4e
+
+**An RPC prompt whose `before_agent_start` handler, written with the Go, Rust, Python or Lisp SDK, awaits I/O…**
+
+- **Source:** PiG's own defect
+- **Symptom:** An RPC prompt whose `before_agent_start` handler, written with the Go, Rust, Python or Lisp SDK, awaits I/O no longer holds the next stdin line for the whole wait, for ever when the handler never returns: the line is admitted once the handler outlives the 250 ms quantum that already bounds those runtimes' command, input and settle handlers.
+- **Root cause:** the quantum was written for the settle tail, commands and input handlers; before_agent_start, whose caller waits for the handler's first suspension too, was never listed.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c485b4e675` (2026-11-17)
+- **Tests:** `coding/cli/rpc_settle_wait_test.go::TestRPCCommandDuringBeforeAgentStartHandlerNetworkWaitAnswersAcrossSDKs`
+- **Release note:** An RPC prompt whose `before_agent_start` handler, written with the Go, Rust, Python or Lisp SDK, awaits I/O no longer holds the next stdin line for the whole wait, for ever when the handler never returns: the line is admitted once the handler outlives the 250 ms quantum that already bounds those runtimes' command, input and settle handlers. The hold has been there since v0.5.1.
 
 ### BF-c4ad739
 
