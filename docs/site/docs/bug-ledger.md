@@ -10076,7 +10076,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `4477d23ffb` (2026-11-17)
-- **Tests:** `chord/nextnode/app/app_import_kill_test.go::TestAnIntentThatCannotBeUsedBlocksItsAddressOnly`, `chord/nextnode/app/app_import_kill_test.go::TestTheIntentIsFlushedBeforeTheFirstCommitAndItsRemovalAfterTheSecond`, `internal/atomicfile/syncdir_test.go::TestSyncDirectoryReportsARealFailureAndToleratesAnUnsupportedFlush`
+- **Tests:** `chord/nextnode/app/app_import_kill_test.go::TestAnIntentThatCannotBeUsedBlocksItsAddressOnly`, `chord/nextnode/app/app_import_kill_test.go::TestTheIntentIsFlushedBeforeTheFirstCommitAndItsRemovalAfterTheSecond`
 - **Release note:** A server killed in the middle of importing or deleting the data of one address (an app built with the kit keeps the address's records in two SQLite stores, the plugins' and the server host's, where Pi has one) no longer leaves it partly imported or deleted: the import or delete writes a record of itself, with the address's old data, to `server/imports/` before its first commit and removes it after its second, and the next start undoes an interrupted import (the address is as it was) or completes an interrupted delete before serving anything, and reports it as an app error of kind `interrupted_data_change`. A record that cannot be used blocks only its own address and is reported.
 
 ### BF-448b245
@@ -35513,7 +35513,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 29
+- Follow-up to unreleased work: 30
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 4
 - test-only: 1

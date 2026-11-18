@@ -16,7 +16,6 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/contracts"
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 	"github.com/MichaelKinsy/PiG/chord/next/store"
-	"github.com/MichaelKinsy/PiG/internal/atomicfile"
 )
 
 // The intent of an import or a delete of an address's data (D462).
@@ -88,7 +87,7 @@ var (
 	// syncFile and syncDirectory are how the intent reaches the disk; a test replaces them to see the order of the flushes around the
 	// commits (no kill of a process shows a flush: the page cache survives it).
 	syncFile      = func(file *os.File) error { return file.Sync() }
-	syncDirectory = atomicfile.SyncDirectory
+	syncDirectory = flushDirectory
 )
 
 // resolving tells resolveSeam of a step.
