@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -25,14 +26,15 @@ func buildExtensionViews() error {
 
 // The enables are the process's, so each entry runs in a process of its own: this test binary, started again with the
 // entry's name. There the view builds only because the entry enabled it: the test binary enables nothing itself, which
-// the child checks first. The entries are the two places below Main that create an extension host of the command: the
-// session's host and `pig extension preview-login`, which loads the extension it previews.
+// the child checks first. The entries are Main, which enables the views before it runs any command (a print run with no
+// extensions here, which creates no host of its own), and the two places below Main that create an extension host of the
+// command: the session's host and `pig extension preview-login`, which loads the extension it previews.
 func TestPigEntriesEnableExtensionViews(t *testing.T) {
 	if entry := os.Getenv(viewsEntryEnv); entry != "" {
 		runViewsEntry(t, entry)
 		return
 	}
-	for _, entry := range []string{"host", "preview-login"} {
+	for _, entry := range []string{"main", "host", "preview-login"} {
 		t.Run(entry, func(t *testing.T) {
 			child := exec.CommandContext(t.Context(), os.Args[0], "-test.run=^TestPigEntriesEnableExtensionViews$", "-test.count=1", "-test.v")
 			child.Env = append(os.Environ(), viewsEntryEnv+"="+entry)
@@ -49,6 +51,13 @@ func runViewsEntry(t *testing.T, entry string) {
 	}
 	t.Setenv("PIG_HOME", t.TempDir())
 	switch entry {
+	case "main":
+		home := t.TempDir()
+		t.Setenv("HOME", home)
+		t.Setenv("PIG_CODING_AGENT_DIR", filepath.Join(home, "agent"))
+		t.Setenv("PIG_TEST_FAUX", "1")
+		t.Setenv("PIG_OFFLINE", "1")
+		Main([]string{"--model", "test-faux/faux-1", "--no-extensions", "--no-session", "--offline", "-p", "reply with exactly: ok"}, nil)
 	case "host":
 		host, _ := newSubprocessExtensionHost(t.TempDir(), extension.ModeTUI, nil, nil)
 		t.Cleanup(func() { host.Shutdown("test done") })

@@ -3503,6 +3503,11 @@ func makeSubprocessNodeHarness(t *testing.T) *harness {
 // is to force real packed-cell hosting so the conformance suite's Node cases
 // prove packed and isolated are observationally identical, not just isolated.
 func makeSubprocessNodePackedHarness(t *testing.T) *harness {
+	return makeSubprocessNodePackedHarnessWithPeer(t, "export default function () {}\n")
+}
+
+// makeSubprocessNodePackedHarnessWithPeer is makeSubprocessNodePackedHarness with the source of the peer extension the node-sdk-fixture shares its cell with.
+func makeSubprocessNodePackedHarnessWithPeer(t *testing.T, peerSource string) *harness {
 	t.Helper()
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Fatalf("node is required for SDK conformance: %v", err)
@@ -3511,7 +3516,7 @@ func makeSubprocessNodePackedHarness(t *testing.T) *harness {
 	modRoot := findModuleRoot(t)
 	path := filepath.Join(modRoot, "test", "extension-conformance", "testdata", "node-sdk-fixture", "main.mjs")
 	peer := filepath.Join(t.TempDir(), "node-cell-peer.mjs")
-	if err := os.WriteFile(peer, []byte("export default function () {}\n"), 0o600); err != nil {
+	if err := os.WriteFile(peer, []byte(peerSource), 0o600); err != nil {
 		t.Fatalf("write Node cell peer fixture: %v", err)
 	}
 	notify := &[]string{}

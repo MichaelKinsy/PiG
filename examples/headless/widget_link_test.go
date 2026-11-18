@@ -54,3 +54,28 @@ func TestHeadlessEmbedLinksNoViewWidget(t *testing.T) {
 		})
 	}
 }
+
+// An embedder that mounts widgets calls EnableViewWidgets and still links no editor (D107): the widget builders reach the
+// program, and the builder of the editor, the terminal editor behind it and its word dictionaries do not, since
+// EnableEditorViews is its own call. The program is testdata/widgetembed, the example's host with that one call.
+func TestHeadlessEmbedWithViewWidgetsLinksNoEditor(t *testing.T) {
+	root := testenv.ModuleRoot(t)
+	build := sizereport.Build{Root: root, Package: "./examples/headless/testdata/widgetembed", GOOS: "linux", GOARCH: "amd64"}
+	symbols, err := build.Symbols(t.Context(), t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	editor := regexp.MustCompile(`/coding/extension/host/subprocess\.\(?\*?(buildEditor|viewEditorComponent|viewEditorState|editorSlashCommands)(\W|$)`)
+	widgets := false
+	for _, symbol := range symbols {
+		if strings.HasSuffix(symbol.Name, "/coding/extension/host/subprocess.buildGrid") {
+			widgets = true
+		}
+		if editor.MatchString(symbol.Name) {
+			t.Errorf("a program that enabled only the view widgets links %s (%d bytes)", symbol.Name, symbol.Size)
+		}
+	}
+	if !widgets {
+		t.Fatalf("the symbol table (%d symbols) holds no grid builder: EnableViewWidgets linked no widget", len(symbols))
+	}
+}
