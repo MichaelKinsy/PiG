@@ -1876,7 +1876,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 		m.postUITask(func() { apply(); m.tuiInst.RequestRender() })
 	})
 	m.editor.SetAutocompleteTaskOwner(m.backgroundCtx, m.backgroundTasks.Go, m.reportAutocompleteError)
-	m.editor.SetAutocomplete(m.buildAutocompleteProvider())
+	// No provider yet: Pi's editor has none until bindCurrentSessionExtensions calls setupAutocompleteProvider (interactive-mode.ts:2167); rebindSession installs it.
 	m.applyEditorMaxVisible()
 	m.statusLine = m.newFooter() // timings rebound after agent constructed
 	m.thinkingLevel = m.sessionThinkingLevel()

@@ -21446,7 +21446,6 @@
         }
       ],
       "tests": [
-        "internal/codingagent/autocomplete_installed_editor_test.go::TestInstalledSubprocessEditorHearsTheRebuildInEitherOrder",
         "test/extension-conformance/autocomplete_changed_test.go::TestAutocompleteChangedReachesInstalledNativeEditor",
         "test/parity/scenarios/autocomplete/14-custom-editor-installed-at-session-start.toml"
       ]
@@ -34571,6 +34570,25 @@
       ]
     },
     {
+      "id": "BF-8aab9eb",
+      "title": "fix(codingagent): hand the editor an extension installs the provider that exists when the host installs it",
+      "symptom": "fix(codingagent): hand the editor an extension installs the provider that exists when the host installs it",
+      "rootCause": "the host installs a remote editor later than its process built it, and the provider hand-over of Pi's setCustomEditorComponent was done only at build time (ui.autocomplete.current, answered false before the bind ends) and by rebuilds, so an editor built before the provider existed and installed after it was built heard neither.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8aab9eb314",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-8ab5a89",
       "title": "A long session no longer holds each tool result twice",
       "symptom": "A long session no longer holds each tool result twice.",
@@ -40754,6 +40772,31 @@
       "tests": []
     },
     {
+      "id": "BF-9e8e1f9",
+      "title": "fix(codingagent): an editor built before the bind's setup gets the provider the setup builds, and a provider…",
+      "symptom": "fix(codingagent): an editor built before the bind's setup gets the provider the setup builds, and a provider added before it stands on the base",
+      "rootCause": "Pi's editor has no autocomplete provider until the first setupAutocompleteProvider after the bind, and two paths of that state were still wrong in PiG.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9e8e1f932c",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/autocomplete_pending_sync_test.go::TestSyncPendingAutocompleteReachesOnlyAnEditorBuiltWithoutAProvider",
+        "internal/codingagent/autocomplete_installed_editor_test.go::TestInstalledSubprocessEditorGetsTheProviderInEitherOrder",
+        "internal/codingagent/autocomplete_sync_error_test.go::TestRefusedProviderIsAnExtensionErrorWhereNoCallerCarriesIt",
+        "internal/codingagent/startup_bind_input_pty_test.go::TestAProviderAddedFromSessionStartStandsOnTheBuiltInCommandsBeforeTheBindEnds",
+        "internal/codingagent/startup_bind_input_pty_test.go::TestInitStartupBindChild"
+      ]
+    },
+    {
       "id": "BF-9eda512",
       "title": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…",
       "symptom": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
@@ -43973,6 +44016,27 @@
       ],
       "tests": [
         "chord/nextnode/workers/workers_workers_test.go::TestCloseLandingAtTheEntryOfAStartsForkSectionForksNothingTheStartFailsClosed"
+      ]
+    },
+    {
+      "id": "BF-a8d41a2",
+      "title": "fix(extension): a subprocess editor installs before the host has an autocomplete provider",
+      "symptom": "fix(extension): a subprocess editor installs before the host has an autocomplete provider",
+      "rootCause": "the install guard used the absence of a provider as the signal that the mode has no editor, so it only worked while the provider existed from construction on.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a8d41a2014",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/runtime_node_editor_no_provider_test.go::TestNodeEditorInstallsBeforeTheHostHasAProvider"
       ]
     },
     {
@@ -52214,6 +52278,36 @@
         "internal/codingagent/interactive_initial_messages_contract_test.go::TestRenderInitialMessagesKeepsTheLoadedRowsAndPaintsAnEmptySession",
         "internal/codingagent/interactive_initial_messages_contract_test.go::TestRenderInitialMessagesMatchesPi",
         "internal/codingagent/llama/search_contract_test.go::TestLlamaSearchDirectedKeysMatchPi"
+      ]
+    },
+    {
+      "id": "BF-d016fe9",
+      "title": "Text typed before the extensions are bound (for example while an extension's `session_start` handler is still…",
+      "symptom": "Text typed before the extensions are bound (for example while an extension's `session_start` handler is still running) no longer opens the slash-command or `@` file menu, and Tab no longer completes a path there; the editor gets its completion provider when the bind ends, as in Pi.",
+      "rootCause": "the editor was given its autocomplete provider when it was built, without checking that Pi installs it only after bindExtensions returns, so input read before the bind finished reached completion code Pi has not armed yet; and a remote editor built before the provider existed was installed by the host after the provider was built, a case where nothing handed it the provider",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text typed before the extensions are bound (for example while an extension's `session_start` handler is still running) no longer opens the slash-command or `@` file menu, and Tab no longer completes a path there; the editor gets its completion provider when the bind ends, as in Pi. An editor an extension installs from `session_start` is installed with no provider and gets the provider when the bind ends or, if the host had already built it, when the host installs the editor, as Pi's `setCustomEditorComponent` does. This has been so since 0.2.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "8aab9eb314",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "a8d41a2014",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "d016fe9ce4",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/runtime_node_editor_no_provider_test.go::TestNodeEditorInstallsBeforeTheHostHasAProvider"
       ]
     },
     {

@@ -336,6 +336,8 @@ type autocompletePendingSource interface {
 // the first setupAutocompleteProvider after the bind): null for a UI with no editor, {} for an interactive UI whose first setup has not run, so
 // that an editor installed from the first session_start gets no provider call there, as in Pi, and hears the provider from the setup that follows.
 func (b *UIBridge) handleAutocompleteCurrent(ctx context.Context, name string, owner *Conn, ui extension.UIContext) (*CallResultPayload, error) {
+	// Each answer replaces the last: only {} leaves the editor the process builds from it without a provider.
+	owner.autocompletePending.Store(false)
 	source, ok := ui.(autocompleteProviderSource)
 	if !ok {
 		return &CallResultPayload{Result: json.RawMessage("null")}, nil
@@ -351,6 +353,7 @@ func (b *UIBridge) handleAutocompleteCurrent(ctx context.Context, name string, o
 				return nil, err
 			}
 			if wait {
+				owner.autocompletePending.Store(true)
 				return &CallResultPayload{Result: json.RawMessage("{}")}, nil
 			}
 		}
@@ -369,6 +372,25 @@ func (b *UIBridge) SyncAutocomplete(ctx context.Context, provider *extension.Aut
 	if editor == nil || !editor.live() {
 		return nil
 	}
+	editor.conn.autocompletePending.Store(false)
+	return b.syncEditor(ctx, editor, provider)
+}
+
+// SyncPendingAutocomplete is the provider hand-over of Pi's setCustomEditorComponent (`newEditor.setAutocompleteProvider(this.autocompleteProvider)`,
+// interactive-mode.ts:3015-3017) for an editor whose process was answered {} by ui.autocomplete.current, so was built without one, and which the host
+// installs after the provider exists. An editor that was handed a provider at its build, or that a sync has reached since, is not synced again: Pi calls
+// its setter once at the install, not twice. The editor's own failure is the one [SyncAutocomplete] returns.
+func (b *UIBridge) SyncPendingAutocomplete(ctx context.Context, provider *extension.AutocompleteProvider) error {
+	b.mu.RLock()
+	editor := b.editor
+	b.mu.RUnlock()
+	if editor == nil || !editor.live() || !editor.conn.autocompletePending.CompareAndSwap(true, false) {
+		return nil
+	}
+	return b.syncEditor(ctx, editor, provider)
+}
+
+func (b *UIBridge) syncEditor(ctx context.Context, editor *editorProxy, provider *extension.AutocompleteProvider) error {
 	desc := b.autocompleteReference(editor.ext, editor.conn, provider)
 	err := autocompleteRequest(ctx, editor.conn, "autocomplete.sync", map[string]any{"operation": "changed", "current": desc}, nil)
 	if err == nil || ctx.Err() != nil {
