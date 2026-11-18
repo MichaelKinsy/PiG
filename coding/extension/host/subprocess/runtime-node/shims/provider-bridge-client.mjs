@@ -1,5 +1,5 @@
 // pig divergence (D74): the provider-bridge client. A process that imports pi-ai's builtin APIs but has no extension runtime (a detached helper an extension starts, a forked child or
-// a worker thread that inherited the loader) cannot reach the host over the extension connection. It starts `pig provider-bridge`, a pig process this one owns, and speaks JSON
+// a worker thread that loads this module from the harness package; the runtime's loader hooks are not passed on to it) cannot reach the host over the extension connection. It starts `pig provider-bridge`, a pig process this one owns, and speaks JSON
 // Lines to it: {id, type: "stream", simple, model, request} and {id, type: "cancel"} out; {id, type: "event" | "result" | "error"} back, in provider order, then exactly one of
 // result or error for each id. The bridge's lifetime is this process's: its stdin closes when this process exits and the bridge ends and aborts what is in flight. Nothing of the
 // extension connection (socket, token) is shared. onPayload, onResponse and transformHeaders run in this process: the bridge sends {id, type: "callback", callbackId, callback, value} and waits for

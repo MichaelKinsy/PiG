@@ -6,8 +6,9 @@ import { moduleRegistry } from "./runtime-modules.mjs";
 // Node module hooks for the extension runtime. Extensions load through jiti
 // (jiti-loader.mjs), as in Pi, which serves the specifiers below as virtual
 // modules. This hook serves the same modules to code that Node imports
-// natively instead, such as a worker thread an extension starts or the
-// runtime's own tests.
+// natively instead, such as the runtime's own tests. It is registered
+// inside the extension's own thread (node-cli.mjs, node-cell.mjs): a worker
+// thread or a child process an extension starts gets no hook, as under Pi.
 
 // Pi's CLI discards process warnings (cli/setup.ts). The asynchronous hook thread on older Node releases follows the same policy.
 process.emitWarning = () => {};
