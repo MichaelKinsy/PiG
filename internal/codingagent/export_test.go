@@ -3,6 +3,7 @@ package codingagent
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -390,18 +391,53 @@ func (m *InteractiveMode) EditorAutocompleteOffers(line string) (installed bool,
 	return true, values
 }
 
-// EditorPopupAfterTyping types text into the editor on the owner loop, a key at a time as the terminal delivers it, waits for the completion work the typing
-// started (none when the editor has no provider), and returns the editor's rendered lines, the autocomplete popup among them. ctx bounds the wait.
+// ChainAutocompleteOffers reports the values the provider chain the editors share (Pi's this.autocompleteProvider) offers for line, a slash-command prefix: the
+// chain is taken on the owner loop and asked on the caller's goroutine, as the editor's worker asks it. ctx bounds the wait.
+func (m *InteractiveMode) ChainAutocompleteOffers(ctx context.Context, line string) []string {
+	var provider *extension.AutocompleteProvider
+	_ = m.runOnMainAndWait(ctx, func() error {
+		provider = m.currentAutocompleteProvider()
+		return nil
+	})
+	if provider == nil || provider.GetSuggestions == nil {
+		return nil
+	}
+	suggestions, err := provider.GetSuggestions(ctx, []string{line}, 0, len(line), false)
+	if err != nil || suggestions == nil {
+		return nil
+	}
+	var values []string
+	for _, item := range suggestions.Items {
+		values = append(values, item.Value)
+	}
+	return values
+}
+
+// EditorAutocompleteState reports, on the owner loop, whether the editor holds an autocomplete provider, whether the provider chain the editors share is built,
+// and whether the bind's first setup has run.
+func (m *InteractiveMode) EditorAutocompleteState(ctx context.Context) string {
+	var state string
+	_ = m.runOnMainAndWait(ctx, func() error {
+		state = fmt.Sprintf("editor provider set=%t, chain built=%t, first setup run=%t", m.editor.AutocompleteProvider() != nil, m.autocompleteProvider != nil, m.autocompleteSetUp)
+		return nil
+	})
+	return state
+}
+
+// EditorPopupAfterTyping delivers text to the owner loop as one terminal read, through dispatchTerminalRead as the loop does (it flushes the editor's request
+// after the read), waits for the completion work the read started (none when the editor has no provider), and returns the editor's rendered lines, the
+// autocomplete popup among them. ctx bounds the waits.
 func (m *InteractiveMode) EditorPopupAfterTyping(ctx context.Context, text string) string {
 	var done <-chan struct{}
 	_ = m.runOnMainAndWait(ctx, func() error {
-		for _, key := range text {
-			m.editor.HandleInput(string(key))
-			// The owner's read loop starts the request the read's keys made once the read is handled (dispatchTerminalRead).
-			m.editor.FlushAutocomplete()
+		keys := splitKeys(text)
+		rest := make(chan inputChunk, len(keys))
+		for i, key := range keys[1:] {
+			rest <- inputChunk{data: []byte(key), more: i < len(keys)-2}
 		}
+		err := m.dispatchTerminalRead(ctx, inputChunk{data: []byte(keys[0]), more: len(keys) > 1}, &rest, make(chan error))
 		done = m.autocompletePending
-		return nil
+		return err
 	})
 	if done != nil {
 		select {

@@ -83,13 +83,13 @@ func TestInitInstallsTheAutocompleteProviderWhenTheBindEnds(t *testing.T) {
 	}
 }
 
-// Pi's addAutocompleteProvider runs setupAutocompleteProvider, which builds the base provider itself (interactive-mode.ts:2800-2801, :854), so a provider an
-// extension adds from session_start gives the editor the built-in commands plus its own entries before the bind ends. Text typed then opens a popup of
-// both; with the editor holding no provider until the bind's setup, the chain must not stand on nothing.
+// Pi's addAutocompleteProvider runs setupAutocompleteProvider at once (interactive-mode.ts:2799-2801, :853-868): it builds the base provider itself and sets the
+// chain on the editor, so a provider an extension adds from session_start gives text typed before the bind ends a menu of the built-in commands plus its own
+// entries. The editor holds no provider until the bind's setup otherwise, and the add must install the chain it builds.
 func TestAProviderAddedFromSessionStartStandsOnTheBuiltInCommandsBeforeTheBindEnds(t *testing.T) {
 	report := runStartupBindChildMode(t, "2")
 	if !strings.Contains(report.Popup, "fork") || !strings.Contains(report.Popup, "focus-added") {
-		t.Fatalf("the popup for /fo typed while session_start pends shows:\n%s\nwant the built-in fork and the extension's focus-added", report.Popup)
+		t.Fatalf("the menu for /fo typed while session_start pends shows:\n%s\nwant the built-in fork and the extension's focus-added; the chain offers %q; %s", report.Popup, report.Chain, report.State)
 	}
 }
 
@@ -106,6 +106,8 @@ type startupBindReport struct {
 	BeforeBind      *startupBindProvider
 	AfterBind       *startupBindProvider
 	Popup           string
+	Chain           []string
+	State           string
 }
 
 func runStartupBindChild(t *testing.T, handler bool) startupBindReport {
@@ -247,6 +249,8 @@ func TestInitStartupBindChild(t *testing.T) {
 			}
 			waitCtx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
 			defer cancel()
+			report.State = mode.EditorAutocompleteState(waitCtx)
+			report.Chain = mode.ChainAutocompleteOffers(waitCtx, "/fo")
 			report.Popup = mode.EditorPopupAfterTyping(waitCtx, "/fo")
 			return nil, nil
 		}}
