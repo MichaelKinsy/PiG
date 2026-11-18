@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -347,8 +346,7 @@ func TestWheelBurstFrames(t *testing.T) {
 			time.Sleep(100 * time.Millisecond)
 			*w = burstWriter{}
 			top := r.transcript.ScrollTop()
-			var before syscall.Rusage
-			_ = syscall.Getrusage(syscall.RUSAGE_SELF, &before)
+			cpuStart := processCPU(t)
 			start := time.Now()
 			for i := range 600 {
 				// 50 events up, 50 down: the burst never stops at either end of the transcript.
@@ -357,9 +355,7 @@ func TestWheelBurstFrames(t *testing.T) {
 			}
 			time.Sleep(100 * time.Millisecond)
 			wall := time.Since(start)
-			var after syscall.Rusage
-			_ = syscall.Getrusage(syscall.RUSAGE_SELF, &after)
-			cpu := time.Duration(after.Utime.Nano()-before.Utime.Nano()) + time.Duration(after.Stime.Nano()-before.Stime.Nano())
+			cpu := processCPU(t) - cpuStart
 			t.Logf("%dx%d %s: 600 wheel events: %d frames drawn (%d bytes), wall %v, cpu %v, scroll top %d -> %d", term.columns, term.rows, size.name, w.writes, w.bytes, wall.Round(time.Millisecond), cpu.Round(time.Millisecond), top, r.transcript.ScrollTop())
 		}
 	}

@@ -6,19 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"syscall"
 	"testing"
 	"time"
 )
-
-// processCPU is the CPU time, user and system, the process has used.
-func processCPU(tb testing.TB) time.Duration {
-	var usage syscall.Rusage
-	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &usage); err != nil {
-		tb.Fatal(err)
-	}
-	return time.Duration(usage.Utime.Nano() + usage.Stime.Nano())
-}
 
 // BenchmarkOpenRealSession opens the session file LW_OPEN_SESSION names (for example a `sessionscale gen -profile p1` or `longsession gen`
 // fixture, or a copy of a real session) the way resume does, and reports the CPU time the open used (cpu-ns/op) and the heap the opened
