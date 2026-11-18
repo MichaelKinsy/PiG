@@ -159,8 +159,7 @@ func TestSubprocessToolCallOrderIsReleasedWhenACallEndsBeforeItsRequest(t *testi
 	second := probe.ReserveCallOrder(json.RawMessage(`{}`))
 	tooLarge := json.RawMessage(`"` + strings.Repeat("a", MaxFrameSize) + `"`)
 	_, err := probe.Execute(extension.WithCallOrder(t.Context(), first), "call-1", tooLarge, nil)
-	var frameErr *FrameTooLargeError
-	if !errors.As(err, &frameErr) {
+	if _, ok := errors.AsType[*FrameTooLargeError](err); !ok {
 		t.Fatalf("a call whose request cannot be written = %v, want its frame-too-large error", err)
 	}
 	type outcome struct {
