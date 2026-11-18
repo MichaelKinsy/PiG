@@ -3429,7 +3429,7 @@ What: Pi passes `Intl.NumberFormatOptions` / `Intl.DateTimeFormatOptions` throug
 
 Why: a hand table or x/text would be a different function: x/text is CLDR 32 and half-even (312 differing outputs in the review's probe, 75 with no options), and has no date patterns. The generator derives symbols, affixes, grouping (including minimumGroupingDigits), numbering system digits, hour cycle, padding and day periods from `formatToParts` and refuses to emit unless its renderer reproduces `format()` byte for byte over a corpus (942 number locales x 10 option sets x 59 values; every time locale x every shape x 24 hours x 6 minute/second pairs).
 
-Root data and aliases (RevChordIntl P3-3, P3-4): when neither a tag nor the platform's locale has data, ICU formats in its root locale. The generator observes it in child Nodes under `LANG=xx_<REGION>` and `LC_ALL=` (the process's default locale is read from the environment): the numbers equal en-US's (checked over the same corpus), the times follow the region's hour cycle (221 regions have a row of their own, the rest and no region share another) and a variable set to the empty string is the locale `und` with its own row. Compound legacy aliases (`hy-arevmda` is `hyw`, `zh-hakka` is `hak`, `zh-xiang` is `hsn`) are probed from `Intl.getCanonicalLocales` over language x variant. Not modeled: root data for a platform tag that carries a script or variant with its own cycle, and `-u-` value aliases.
+Root data and aliases (RevChordIntl P3-3, P3-4): when neither a tag nor the platform's locale has data, ICU formats in its root locale. The generator observes it in child Nodes under `LANG=xx_<REGION>` and `LC_ALL=` (the process's default locale is read from the environment; on Windows it is the user's locale, as ICU reads it there): the numbers equal en-US's (checked over the same corpus), the times follow the region's hour cycle (221 regions have a row of their own, the rest and no region share another) and a variable set to the empty string is the locale `und` with its own row. Compound legacy aliases (`hy-arevmda` is `hyw`, `zh-hakka` is `hak`, `zh-xiang` is `hsn`) are probed from `Intl.getCanonicalLocales` over language x variant. Not modeled: root data for a platform tag that carries a script or variant with its own cycle, and `-u-` value aliases.
 
 Scope: `chord/next/surfaces`.
 
@@ -3449,7 +3449,7 @@ SCRUTINIZED:approved 2026-11-08
 
 ## D465 FormatTime takes a time.Time, not `Date`, `number` or `string`
 
-What: Pi's `new Date(at)` accepts a `Date`, epoch milliseconds or an ISO/date string (`new Date(string)`'s parser, with its engine-defined formats). Go takes a `time.Time`; a caller converts milliseconds (`time.UnixMilli`) or parses its own string. The zone is `time.Local` (the process's TZ, as a `Date`'s default is), whatever location `at` carries. An invalid `Date` (a RangeError in Pi) cannot be expressed, and an instant outside the JS Date range (±8.64e15 ms), a RangeError in Pi, is formatted. Zone data: Go reads the system zoneinfo (or the embedded `time/tzdata`), Node uses ICU's bundled tz data with backzone history. Instants before 1970 in zones that tzdata links to another (Europe/Amsterdam before 1937: Go prints Brussels' LMT, Node Amsterdam's) and a host whose tzdata release differs from Node's bundled one can print different clock times (RevChordIntl P3-5: 0 mismatches in 19 other zones around every 2025-2027 transition).
+What: Pi's `new Date(at)` accepts a `Date`, epoch milliseconds or an ISO/date string (`new Date(string)`'s parser, with its engine-defined formats). Go takes a `time.Time`; a caller converts milliseconds (`time.UnixMilli`) or parses its own string. The zone is `time.Local` (the process's TZ, as a `Date`'s default is), whatever location `at` carries. An invalid `Date` (a RangeError in Pi) cannot be expressed. Zone data: Go reads the system zoneinfo (or the embedded `time/tzdata`), Node uses ICU's bundled tz data with backzone history. Instants before 1970 in zones that tzdata links to another (Europe/Amsterdam before 1937: Go prints Brussels' LMT, Node Amsterdam's) and a host whose tzdata release differs from Node's bundled one can print different clock times (RevChordIntl P3-5: 0 mismatches in 19 other zones around every 2025-2027 transition).
 
 Scope: `chord/next/surfaces`.
 
@@ -3495,7 +3495,7 @@ Why: a live JavaScript closure, module instance or `Host` cannot cross the proce
 
 Scope: `TestPlugin`, `TestPluginOptions`, `TestStub`, `TestedPlugin.Host` and `Stubs`; the cases of `testing.test.ts` and example 52 give the same inputs (plugin files, API, contracts) and the same expectations (values read, contributions, names listed, errors) through these forms. Behaviour that is Pi's: a facet that throws while it evaluates rejects with that error as it is (`*NodeError`), and a setup that throws is `testPlugin: setup failed: ...` (`TestTestPluginRejectsAScriptThatThrowsWhileItEvaluatesWithItsOwnError`); the build and its refusals (`failed to build`), the versioned-API check, the root and kind derivation (single-file and checkout plugins, kinds named by files, `*.test.*`/`*.d.ts` naming none), the collecting facet and its fixed point, the wait for activations bounded by `timeouts.ready`, an in-memory store.
 
-Owner decision: approved 2026-11-08 (option (a), port with a Go `TestPlugin`, 2026-11-08 00:36Z; this record is the residue). One two-host effect: a Go stub whose setup fails makes `TestPlugin` fail on the stubs' Go host before the plugin loads, so the error lists only the stub's failure; Pi loads stubs and plugin in one `host.load` and joins both failures in one "setup failed" message.
+Owner decision: approved 2026-11-08 (option (a), port with a Go `TestPlugin`, 2026-11-08 00:36Z; this record is the residue).
 
 Call-site markers: `chord/nextnode/plugins/plugins_testing.go` (`TestStub`, `TestPlugin`), `chord/nextnode/plugins/node/testing.mjs`.
 
@@ -3570,28 +3570,6 @@ Call-site markers: `ai/validate.go` (`appendStringify`, the `*big.Int` case).
 Evidence: `TestValidationProbesMatchPi` and `TestValidateToolArgumentsMatchesPiOnPiProbes` (`ai/validate_probes_upstream_test.go`, `ai/validate_pi_oracle_test.go`): the bigint rows of `ai/testdata/validation-probes.json` run against Pi's recorded outcome and against Pi's own `validateToolArguments`, whose oracle (`ai/testdata/validate_tool_args.mjs`) writes a bigint as `${value}n`.
 
 Parity allowance: the four bigint and undefined rows of `validation-probes.test.ts` are compared by Pi's outcome notation, which PiG's representation matches; a tool that needs the bigint type gets the suffixed string.
-
-## D540 The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for
-
-What: Pi renews the base watches under an entry on the way to base code only when the entry's identity, its inode and birth time (`identityOf`, `watcher.ts`), differs from the one it had when watched. PiG does the same with `statx` (ino, btime) on Linux and Android, `lstat` (ino, birthtimespec) on macOS, FreeBSD and NetBSD, `lstat` (ino, `X__st_birthtim`) on OpenBSD, and the file index and creation time on Windows. On any other Unix (DragonFly, Solaris and illumos, AIX) Go's `syscall.Stat_t` has no birth time, so the identity is the inode alone: a directory removed and made again that is given the same inode number is not seen as replaced there.
-
-Why: the birth time is not in Go's `syscall` on those systems, and nothing in PiG ships for them (the release matrix is Linux, Android, macOS and Windows). Linux file systems with no birth time (tmpfs) give 0 in Pi as well (libuv's `statx`), so they are not part of this record.
-
-Pi bug: Not a Pi bug.
-
-Scope: `chord/nextnode/plugins/plugins_watcher_identity_other.go`, the `base` mark of `pluginWatcher` on DragonFly, Solaris and illumos, and AIX.
-
-Owner decision: approved (owner, 2026-11-13T01:13:59Z: "Proceed with recommendations."; the line of that decision for this record: "D540: confirmed APPROVED; remove the 'sign-off pending' line."). Drafted by the FollowChordPlugins lane on 2026-11-08.
-
-SCRUTINIZED:approved
-
-Remove when: PiG ships for such a system and its `Stat_t` carries a birth time, or Go's `syscall` gives one.
-
-Call-site markers: `chord/nextnode/plugins/plugins_watcher_identity_other.go`.
-
-Evidence: `TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry` states the identity on the systems tested; the build of the file is checked by `GOOS=dragonfly go vet ./chord/nextnode/plugins` (and netbsd, openbsd for the files that read a birth time).
-
-Parity allowance: none needed; no Pi test depends on an inode reused with no birth time.
 
 ## D541 A message object is one per Node process and one per ExtensionRunner call; Pi's extensions and callers all share one realm
 

@@ -172,7 +172,7 @@ func TestPlugin(dir string, options TestPluginOptions, ctx context.Context) (*Te
 	if options.Principal != nil {
 		peerPrincipal = options.Principal
 	}
-	stubs, bridged, err := t.loadStubs(options, peerPrincipal, ctx)
+	stubs, bridged, stubFailed, err := t.loadStubs(options, peerPrincipal, ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -197,8 +197,12 @@ func TestPlugin(dir string, options TestPluginOptions, ctx context.Context) (*Te
 	if nodeHost != nil {
 		t.Host = nodeHost
 	}
+	// testing.ts loads the stubs and the plugin in one `host.load` and throws the report's failures joined (`throwFailed`):
+	// the stubs' first, then the plugin's. A plugin that fails in its evaluation never reaches that host and its own error is thrown first.
 	if err == nil && len(report.Failed) > 0 {
-		err = t.Host.loadFailed(report.Failed, ctx)
+		err = t.Host.loadFailed(stubFailed, report.Failed, ctx)
+	} else if err == nil {
+		err = setupFailed(stubFailed)
 	}
 	if err == nil {
 		_, err = t.Host.collect(ctx)
@@ -210,11 +214,12 @@ func TestPlugin(dir string, options TestPluginOptions, ctx context.Context) (*Te
 	return t, nil
 }
 
-// loadStubs loads the Go stubs on a new Go host and returns it with the bridged facets for the plugin's host.
-func (t *TestedPlugin) loadStubs(options TestPluginOptions, principal data.Principal, ctx context.Context) (host.Host, []BridgedFacet, error) {
+// loadStubs loads the Go stubs on a new Go host and returns it with the bridged facets for the plugin's host and the stubs'
+// setup failures: the plugin is still loaded and the failures are joined with its own (setupFailed), as one `host.load` reports them.
+func (t *TestedPlugin) loadStubs(options TestPluginOptions, principal data.Principal, ctx context.Context) (host.Host, []BridgedFacet, []host.PluginFailure, error) {
 	stubs, err := host.CreateHost(host.HostOptions{Principal: principal, OnError: func(host.HostError) {}})
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	facets := make([]host.HostFacet, len(options.Stubs))
 	bridged := make([]BridgedFacet, len(options.Stubs))
@@ -223,14 +228,11 @@ func (t *TestedPlugin) loadStubs(options TestPluginOptions, principal data.Princ
 		bridged[i] = BridgedFacet{Name: stub.Name, Host: stubs, Contracts: stub.Contracts}
 	}
 	report, err := stubs.Load(facets, ctx)
-	if err == nil {
-		err = setupFailed(report.Failed)
-	}
 	if err != nil {
 		_ = stubs.Close(context.WithoutCancel(ctx))
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
-	return stubs, bridged, nil
+	return stubs, bridged, report.Failed, nil
 }
 
 // setupFailed is the error of a load whose plugins failed: a test of a plugin whose setup (or a stand-in's) failed has nothing to
@@ -249,7 +251,7 @@ func setupFailed(failed []host.PluginFailure) error {
 // loadFailed is the error of the plugin's own load having failed plugins: a plugin that never reached the host failed in its
 // evaluation, and its error is returned as it is, as testing.ts's `evaluateFacet` throws it before the host exists; the others
 // are setups that threw (setupFailed).
-func (h *NodeHost) loadFailed(failed []host.PluginFailure, ctx context.Context) error {
+func (h *NodeHost) loadFailed(stubFailed, failed []host.PluginFailure, ctx context.Context) error {
 	call, err := h.send("testOffered", &offeredRequest{})
 	if err != nil {
 		return err
@@ -269,7 +271,7 @@ func (h *NodeHost) loadFailed(failed []host.PluginFailure, ctx context.Context) 
 			return failure.Error
 		}
 	}
-	return setupFailed(failed)
+	return setupFailed(slices.Concat(stubFailed, failed))
 }
 
 // testSetupError is a failed setup: the plugins' messages, and the first one's error as its cause (testing.ts's `cause`).

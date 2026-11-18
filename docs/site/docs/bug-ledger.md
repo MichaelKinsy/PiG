@@ -26,6 +26,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-00933e5](#bf-00933e5) | `mcp.json` files that start with a UTF-8 BOM, which Windows PowerShell 5.1 adds when it rewrites a file, load… | PiG's own defect | Windows | 0.5.2 |
 | [BF-00d9a1f](#bf-00d9a1f) | fix(tools): the streamed read pools its chunk buffer; guards for grep allocations and the read fuzz; an… | PiG's own defect | All platforms | Unreleased |
 | [BF-016a19a](#bf-016a19a) | A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-018a05a](#bf-018a05a) | fix(chord): NetBSD and OpenBSD identities carry their birth time; D540 narrows to DragonFly, Solaris and AIX… | PiG's own defect | macOS | Unreleased |
 | [BF-01a63b9](#bf-01a63b9) | The `/tree` search line now shows a cursor while the selector is focused (Pi #9157, D248) | PiG's own defect | All platforms | Unreleased |
 | [BF-01c9e0b](#bf-01c9e0b) | The frame that the exit key itself asks for is painted inside the exit's drain now, as Pi paints it, not… | PiG's own defect | All platforms | Unreleased |
 | [BF-01d0835](#bf-01d0835) | fix: a built-in provider is used for an api its catalog lists, any other api goes to the registry and is… | PiG's own defect | All platforms | Unreleased |
@@ -411,6 +412,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-3296eb9](#bf-3296eb9) | fix(durable/core): match the rejected step with errors.AsType | PiG's own defect | All platforms | Unreleased |
 | [BF-32ae04c](#bf-32ae04c) | Durable (Pi 89e5c2c0): a generation waiting on a blocking threshold compaction fails with `model_error`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-32b5367](#bf-32b5367) | A running `!command` that prints a lot, the `/resume` search over many long sessions, and streamed answers… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-32c03fd](#bf-32c03fd) | `FormatNumber`, `FormatTime` and `PlatformLocale` with no language use the Windows user's default locale (the… | A Pi defect that PiG fixed first | Windows | Unreleased |
 | [BF-32ce7ad](#bf-32ce7ad) | The Termux page shows the `[Context]` line as PiG prints it, `~/.pig/agent/AGENTS.md` | PiG's own defect | Android and Termux | 0.5.0 |
 | [BF-32e86a8](#bf-32e86a8) | Go, Python and Rust SDK: `theme.bold`, `italic`, `underline`, `inverse` and `strikethrough` now draw as Pi's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-32fe8c4](#bf-32fe8c4) | The Durable core's Session opens a document watch, a conversation view and the task graph as a job on the… | PiG's own defect | All platforms | 0.7.0 |
@@ -784,6 +786,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5d6bb25](#bf-5d6bb25) | The request-string walk that splices cached strings into a request body finds a cycle by the pointer, map or… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5d8eda1](#bf-5d8eda1) | `pig auth check` and `pig auth print-api-key` no longer reject `--api-key` that another option takes as its… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5dbfed1](#bf-5dbfed1) | A scripted faux response can carry `DurationMs` | PiG's own defect | All platforms | 0.5.0 |
+| [BF-5e00674](#bf-5e00674) | `FormatTime` returns an options error for an instant outside JavaScript's Date range (more than 8.64e15 ms… | PiG's own defect | All platforms | Unreleased |
 | [BF-5e106cc](#bf-5e106cc) | Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the… | PiG's own defect | All platforms | Unreleased |
 | [BF-5e36d87](#bf-5e36d87) | The assistant-message frame encoder no longer re-parses and re-serializes a whole tool call's arguments for… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-5e3e346](#bf-5e3e346) | An explicit `anthropic-beta` header, from a model's `headers` or the request, no longer makes a… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
@@ -1114,6 +1117,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-75426aa-2](#bf-75426aa-2) | A Node extension's `tool_call` handler can edit `event.input` in place and the tool runs with the edit, as in… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-756cac8](#bf-756cac8) | A streaming run no longer hangs, rarely and mostly under load, when a response turn resumes just as the drain… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7570ee8](#bf-7570ee8) | A Durable entry record is written and read as Pi's JSON.stringify and JSON.parse do for every UTF-16 string | PiG's own defect | All platforms | Unreleased |
+| [BF-75a9cac](#bf-75a9cac) | `TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one… | PiG's own defect | All platforms | Unreleased |
 | [BF-75c6ccb](#bf-75c6ccb) | fix(codingagent): context edits leave system messages unchanged | PiG's own defect | All platforms | Unreleased |
 | [BF-75dd64c](#bf-75dd64c) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-760ab0d](#bf-760ab0d) | Two tool calls of one parallel batch that took the file mutation queue after different numbers of host calls… | PiG's own defect | All platforms | Unreleased |
@@ -1531,12 +1535,10 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D430](#bf-d430) | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D460](#bf-d460) | The app kit's facets are Go core facets beside the plugins' Node host | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D462](#bf-d462) | The server and each worker have two stores, not one | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D464](#bf-d464) | FormatNumber and FormatTime take closed option types and return errors (P1-3) | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D465](#bf-d465) | FormatTime takes a time.Time, not `Date`, `number` or `string` | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D466](#bf-d466) | No per-language formatter cache | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D520](#bf-d520) | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D521](#bf-d521) | A bigint in validated tool arguments is the string `<digits>n`, where Pi holds a JavaScript bigint | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D540](#bf-d540) | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D601](#bf-d601) | The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D605](#bf-d605) | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D618](#bf-d618) | A start repaints after the highlight grammar load only when a highlight lookup made before it could have… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -1688,6 +1690,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b1ff77a](#bf-b1ff77a) | The pi-env daemon answers as Pi's daemon does where a differential test found it did not: an error for an… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-b214a4c](#bf-b214a4c) | After `/new`, `/resume`, `/clone` or `/fork` in the interactive mode, the model selector, an extension's… | PiG's own defect | All platforms | Unreleased |
 | [BF-b22120f](#bf-b22120f) | A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into | PiG's own defect | All platforms | 0.7.0 |
+| [BF-b2aac7a](#bf-b2aac7a) | The plugins watcher's directory identity (record D540, now retired) is inode and ctime where Node gives the… | PiG's own defect | Linux, Android and Termux | Unreleased |
 | [BF-b2b0c63](#bf-b2b0c63) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-b2c219f](#bf-b2c219f) | fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes | PiG's own defect | All platforms | Unreleased |
 | [BF-b30b8aa](#bf-b30b8aa) | After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in… | PiG's own defect | All platforms | Unreleased |
@@ -2472,6 +2475,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `016a19ac68` (2026-11-02)
 - **Tests:** `chord/next/host/host_batch_test.go::TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit`
 - **Release note:** A Chord derive that returns a value no JSON has (a channel, a function) now fails its delivery, which the host reports as `delivery_failed` while the later frames of the commit are still delivered, as Pi's batch does when diffing throws. The derive's watchers used to receive the non-JSON frame without any report.
+
+### BF-018a05a
+
+**fix(chord): NetBSD and OpenBSD identities carry their birth time; D540 narrows to DragonFly, Solaris and AIX…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(chord): NetBSD and OpenBSD identities carry their birth time; D540 narrows to DragonFly, Solaris and AIX; macOS unit runs the watcher tests
+- **Root cause:** Go's syscall.Stat_t has Birthtimespec on NetBSD and X__st_birthtim on OpenBSD. The macOS packages unit now runs the plugins watcher's base and identity tests, which exercise the lstat birthtimespec identity and the kqueue watches that end with a renamed directory.
+- **User impact:** Behavior differed from Pi
+- **Platform:** macOS
+- **Fixed in:** Unreleased
+- **Fix commits:** `018a05add9` (2026-11-07)
+- **Tests:** None recorded.
 
 ### BF-01a63b9
 
@@ -7791,6 +7807,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `internal/codingagent/complexity_scaling_mermaid_norace_test.go::TestScalingMermaidTransformOfAStreamedMessage`, `internal/codingagent/complexity_scaling_norace_test.go::TestScalingSessionSearchKeystroke`, `internal/codingagent/mermaid_word_test.go::TestMermaidTransformSkipsOnlyMessagesWithoutTheWord`, `internal/codingagent/session_search_cache_test.go::TestCachedSessionSearchEqualsAFreshSearch`, `internal/codingagent/session_search_cache_test.go::TestCachedSessionSearchReadsAChangedSession`, `tui/complexity_scaling_norace_test.go::TestScalingBashOutputFrame`, `tui/highlight_cache_bound_test.go::TestHighlightMemoKeepsOnlyTheNewestPrefixOfAStreamedBlock`, `tui/markdown_streaming_reuse_test.go::TestStreamedMarkdownEqualsAFreshRender` and 1 more in docs/bug-ledger.json
 - **Release note:** A running `!command` that prints a lot, the `/resume` search over many long sessions, and streamed answers without Mermaid diagrams cost less per frame or keystroke, with the same output.
 
+### BF-32c03fd
+
+**`FormatNumber`, `FormatTime` and `PlatformLocale` with no language use the Windows user's default locale (the…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D464)
+- **Symptom:** `FormatNumber`, `FormatTime` and `PlatformLocale` with no language use the Windows user's default locale (the name `GetLocaleInfoEx` gives, as ICU reads it, so as Node does) and no longer `LC_ALL`, `LC_MESSAGES` and `LANG` there; a Windows user with a non-English locale got English (en-US) numbers and times (D464).
+- **Root cause:** platformLocale was written for the POSIX branch of ICU's default-locale code only and had no Windows branch, so a Windows user, who has none of the variables, always got en-US.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Windows
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Go has an `Intl` with the pinned Node's CLDR, or a Pi call site passes an option outside the closed types (the types then grow and the generator with them).
+- **Fix commits:** `17136820e9` (2026-11-07), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08), `32c03fdaa1` (2026-11-17)
+- **Tests:** `chord/next/surfaces/intl_drift_test.go::TestNumbersMatchNode`, `chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode`, `chord/next/surfaces/intl_fuzz_test.go::FuzzFormatNumber`, `chord/next/surfaces/intl_fuzz_test.go::FuzzFormatTime`, `chord/next/surfaces/intl_platform_tag_test.go::TestWindowsLocaleTagIsWhatICUMakesOfTheUsersLocaleName`, `chord/next/surfaces/intl_platform_test.go::TestPlatformLocaleIsThatOfTheFirstSetVariable`, `chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersInThePlatformsDefaultLocaleOutsideARender`, `chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersLikeTheOracle` and 1 more in docs/bug-ledger.json
+- **Release note:** `FormatNumber`, `FormatTime` and `PlatformLocale` with no language use the Windows user's default locale (the name `GetLocaleInfoEx` gives, as ICU reads it, so as Node does) and no longer `LC_ALL`, `LC_MESSAGES` and `LANG` there; a Windows user with a non-English locale got English (en-US) numbers and times (D464).
+
 ### BF-32ce7ad
 
 **The Termux page shows the `[Context]` line as PiG prints it, `~/.pig/agent/AGENTS.md`**
@@ -12941,6 +12973,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `ai/faux_duration_test.go::TestFauxScriptedDurationMsReachesEveryMessage`, `ai/faux_scripted_fields_oracle_test.go::TestFauxScriptedMessageMembersMatchPi`
 - **Release note:** A scripted faux response can carry `DurationMs`. It stays on every partial and the final message, as in Pi, and the stream measures a duration only when none is scripted.
 
+### BF-5e00674
+
+**`FormatTime` returns an options error for an instant outside JavaScript's Date range (more than 8.64e15 ms…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `FormatTime` returns an options error for an instant outside JavaScript's Date range (more than 8.64e15 ms from the epoch), where Pi's `Intl.DateTimeFormat.format` throws a RangeError; it printed a clock time for it before.
+- **Root cause:** D465 recorded the out-of-range instant as formatted because Go has no invalid Date, but no range check on the time value was ever added.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5e006747d9` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** `FormatTime` returns an options error for an instant outside JavaScript's Date range (more than 8.64e15 ms from the epoch), where Pi's `Intl.DateTimeFormat.format` throws a RangeError; it printed a clock time for it before. The ends of the range are still formatted.
+
 ### BF-5e106cc
 
 **Rewriting a file in a directory that has a default ACL no longer gives it an access ACL it did not have: the…**
@@ -17530,6 +17576,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7570ee804d` (2026-11-08)
 - **Tests:** `durable/entry_utf16_test.go::TestEntryRecordJSONMatchesNodeOnEveryUTF16String`, `durable/storage/sqlite/entry_surrogates_test.go::TestSqliteEntryTextKeepsLoneSurrogatesAtBothSidesOfTheBoundOfLargeRows`, `internal/chord/chordjson/object_test.go::TestObjectWritesAdjacentSurrogateHalvesAsTheirCharacter`
 - **Release note:** A Durable entry record is written and read as Pi's JSON.stringify and JSON.parse do for every UTF-16 string. A lone surrogate in an entry's kind or in a data value that is not an object was written as U+FFFD by `EntryRecord.MarshalJSON` (Pi keeps the escape `\ud83d`); a lone surrogate in a message, kind or data string read back as U+FFFD (Pi reads the unit); a surrogate pair held as two adjacent lone halves was written as two escapes by the Chord `Object` (Pi writes the character). `MarshalJSON` and `AppendStringify` now write the same text, which a Node differential test over random UTF-16 strings (lone, paired and reversed surrogates in the kind, the messages, the edits and every data string and key) compares with JSON.stringify and JSON.parse; the general encoder path (`json.Marshal` of an entry) writes a float -0 as 0, as JSON.stringify does; SQLite stores the escape, so rows of up to and above 8 Ki characters hold the same text.
+
+### BF-75a9cac
+
+**`TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one `testPlugin: setup failed: ...` message, the stub's first, as Pi's one `host.load` does; it returned the stub's alone and never loaded the plugin.
+- **Root cause:** the stubs were loaded on a Go host of their own first and its failure returned at once, so the plugin's own failure was never collected.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `75a9caccf1` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** `TestPlugin` reports a Go stub's setup failure and the tested plugin's own failure together in one `testPlugin: setup failed: ...` message, the stub's first, as Pi's one `host.load` does; it returned the stub's alone and never loaded the plugin.
 
 ### BF-75c6ccb
 
@@ -23345,21 +23405,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `bdaa14582e` (2026-11-07), `d803ffa239` (2026-11-07), `5291c9268f` (2026-11-08), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
 - **Tests:** None recorded.
 
-### BF-D464
-
-**FormatNumber and FormatTime take closed option types and return errors (P1-3)**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D464)
-- **Symptom:** Not a Pi bug.
-- **Root cause:** Not recorded.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** Go has an `Intl` with the pinned Node's CLDR, or a Pi call site passes an option outside the closed types (the types then grow and the generator with them).
-- **Fix commits:** `17136820e9` (2026-11-07), `95f0f0d040` (2026-11-08), `bdcd2b1248` (2026-11-08)
-- **Tests:** `chord/next/surfaces/intl_drift_test.go::TestNumbersMatchNode`, `chord/next/surfaces/intl_drift_test.go::TestTimesMatchNode`, `chord/next/surfaces/intl_fuzz_test.go::FuzzFormatNumber`, `chord/next/surfaces/intl_fuzz_test.go::FuzzFormatTime`, `chord/next/surfaces/surfaces_format_test.go::TestFormatsNumbersLikeTheOracle`
-
 ### BF-D465
 
 **FormatTime takes a time.Time, not `Date`, `number` or `string`**
@@ -23419,21 +23464,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** the tool-argument path carries a typed bigint (for example a JSON extension with a numeric tag) that every reader of the arguments understands.
 - **Fix commits:** `046bae5681` (2026-11-08), `c223217501` (2026-11-08)
 - **Tests:** `ai/validate_pi_oracle_test.go::TestValidateToolArgumentsMatchesPiOnPiProbes`, `ai/validate_probes_upstream_test.go::TestValidationProbesMatchPi`
-
-### BF-D540
-
-**The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D540)
-- **Symptom:** Not a Pi bug.
-- **Root cause:** the birth time is not in Go's `syscall` on those systems, and nothing in PiG ships for them (the release matrix is Linux, Android, macOS and Windows). Linux file systems with no birth time (tmpfs) give 0 in Pi as well (libuv's `statx`), so they are not part of this record.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** PiG ships for such a system and its `Stat_t` carries a birth time, or Go's `syscall` gives one.
-- **Fix commits:** `018a05add9` (2026-11-07), `0bbbe98158` (2026-11-07)
-- **Tests:** `chord/nextnode/plugins/plugins_watcher_identity_test.go::TestIdentityOfADirectoryIsItsInodeAndBirthTimeAndNoneForNoEntry`
 
 ### BF-D601
 
@@ -25537,6 +25567,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9155fc460c` (2026-11-01), `b22120fdb8` (2026-11-01)
 - **Tests:** `coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesKeepsLinksThatStayInsideTheTree`, `coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesRefusesALinkReachedByAnotherSpellingOfItsName`, `coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesRefusesWritesThroughSymbolicLinks`, `coding/pigletbuild/node_cell_test.go::TestBuildNodeCellNamesTheExtensionDirectoryForALinkThatLeavesIt`, `coding/pigletbuild/node_cell_test.go::TestBuildNodeCellRefusesALinkWithAParentStepAfterAName`, `internal/archivepath/archivepath_test.go::TestCheckLink`, `internal/archivepath/archivepath_test.go::TestMember`
 - **Release note:** A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into. The extraction checked link names as text, but the kernel resolves `z/..` through a link `z`, so a link such as `z/../z/../..` passed the check while resolving above the directory, and a later archive member under it was written there. The extraction now writes through `os.Root`, refuses a member whose path passes through a link the archive wrote, and accepts only a link target that climbs (`..`) before it names anything; the check reads the tree on disk, so a file system that folds case cannot reach a link by another spelling, and a link target holding `:` is refused. `pig piglet build` refuses the same links instead of embedding them.
+
+### BF-b2aac7a
+
+**The plugins watcher's directory identity (record D540, now retired) is inode and ctime where Node gives the…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The plugins watcher's directory identity (record D540, now retired) is inode and ctime where Node gives the ctime as the birth time, as Pi's: on Linux and Android when statx is refused, and always on DragonFly, Solaris, illumos and AIX; it was the inode alone, so a directory made again that got the same inode number was not seen as replaced there, and a chmod was not seen as a change.
+- **Root cause:** the divergence record took Go's lack of a birth time for lack of any value, but libuv fills the birth time from the ctime where the kernel gives none.
+- **User impact:** An operation failed or was rejected
+- **Platform:** Linux, Android and Termux
+- **Fixed in:** Unreleased
+- **Fix commits:** `b2aac7a52c` (2026-11-17)
+- **Tests:** None recorded.
+- **Release note:** The plugins watcher's directory identity (record D540, now retired) is inode and ctime where Node gives the ctime as the birth time, as Pi's: on Linux and Android when statx is refused, and always on DragonFly, Solaris, illumos and AIX; it was the inode alone, so a directory made again that got the same inode number was not seen as replaced there, and a chmod was not seen as a change.
 
 ### BF-b2b0c63
 
@@ -35144,14 +35188,13 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D430 | Go callers start a call and await it apart (Reference.Start, PendingCall) and run a handler's blocking… | [BF-D430](#bf-d430) |
 | D460 | The app kit's facets are Go core facets beside the plugins' Node host | [BF-D460](#bf-d460) |
 | D462 | The server and each worker have two stores, not one | [BF-D462](#bf-d462) |
-| D464 | FormatNumber and FormatTime take closed option types and return errors (P1-3) | [BF-D464](#bf-d464) |
+| D464 | FormatNumber and FormatTime take closed option types and return errors (P1-3) | [BF-32c03fd](#bf-32c03fd) |
 | D465 | FormatTime takes a time.Time, not `Date`, `number` or `string` | [BF-D465](#bf-d465) |
 | D466 | No per-language formatter cache | [BF-D466](#bf-d466) |
 | D502 | `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go… | deliberate difference |
 | D503 | `TestPlugin`'s registries are named, its contributions are data, and `root` is `RootPrincipal`: no JavaScript… | deliberate difference |
 | D520 | A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect | [BF-D520](#bf-d520) |
 | D521 | A bigint in validated tool arguments is the string `<digits>n`, where Pi holds a JavaScript bigint | [BF-D521](#bf-d521) |
-| D540 | The plugins watcher's directory identity has no birth time on a system whose stat Go does not expose it for | [BF-D540](#bf-d540) |
 | D541 | A message object is one per Node process and one per ExtensionRunner call; Pi's extensions and callers all… | [BF-e99791b](#bf-e99791b) |
 | D601 | The browser page's and the terminal sandbox's client runtimes, and the React bindings, are Pi's TypeScript… | [BF-D601](#bf-d601) |
 | D605 | The server's two hosts serve one union: `Host.Delegate` one way, the Node host's destination the other | [BF-D605](#bf-d605) |
@@ -35182,7 +35225,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 25
+- Follow-up to unreleased work: 26
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 4
 - test-only: 1

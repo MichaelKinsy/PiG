@@ -172,9 +172,34 @@ func formatClock(lang *Language, at time.Time, options *TimeOptions) (string, er
 		locale = intlTimeLocaleData[li]
 	}
 	pattern := &intlTimePatterns[intlTimeRows[locale.row][column]]
+	// `format(new Date(ms))` throws a RangeError for a time value outside the Date range (D465).
+	if !inDateRange(at) {
+		return "", fmt.Errorf("%w: the time is outside the range of a JavaScript Date (RangeError: Invalid time value)", ErrOption)
+	}
 	hour, minute, second := at.Clock()
 	var buf [64]byte
 	return string(pattern.appendTime(buf[:0], locale.zero, hour, minute, second)), nil
+}
+
+// maxDateSeconds is a Date's range in whole seconds: ±8.64e15 ms from the epoch (ECMAScript's TimeClip).
+const maxDateSeconds = 8_640_000_000_000
+
+// inDateRange is whether at is a valid JavaScript time value once truncated to milliseconds toward zero, as TimeClip does:
+// the ends (±8.64e15 ms) are valid and one millisecond beyond is not.
+func inDateRange(at time.Time) bool {
+	sec, ms := at.Unix(), int64(at.Nanosecond()/1_000_000) //portlint:allow numbers Nanosecond() is in [0, 999999999], so the quotient is the whole milliseconds of a non-negative sub-second part (a truncation, not a float division); JS has no counterpart, the sub-millisecond digits are Go's time.Time only
+	switch {
+	case sec > maxDateSeconds:
+		return false
+	case sec == maxDateSeconds:
+		return ms == 0
+	case sec >= -maxDateSeconds:
+		return true
+	case sec == -maxDateSeconds-1:
+		// Truncation toward zero: -8.64e15 - 1 ms plus a fraction of a millisecond is -8.64e15.
+		return ms == 999 && at.Nanosecond()%1_000_000 != 0
+	}
+	return false
 }
 
 func (p *timePattern) appendTime(dst []byte, zero rune, hour, minute, second int) []byte {

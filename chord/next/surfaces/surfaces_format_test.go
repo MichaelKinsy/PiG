@@ -159,6 +159,7 @@ func TestFormatsRefuseLocalesIntlRefuses(t *testing.T) {
 }
 
 func TestFormatsNumbersInThePlatformsDefaultLocaleOutsideARender(t *testing.T) {
+	useEnvironmentLocale(t)
 	t.Setenv("LC_ALL", "de_DE.UTF-8")
 	if got := mustNumber(FormatNumber(nil, 1234.5, nil)); got != "1.234,5" {
 		t.Errorf("default = %q", got)
@@ -176,6 +177,7 @@ func mustNumber(s string, err error) string {
 }
 
 func TestUnavailableLocaleFallsBackToThePlatformDefault(t *testing.T) {
+	useEnvironmentLocale(t)
 	t.Setenv("LC_ALL", "de_DE.UTF-8")
 	if got := mustNumber(FormatNumber(&Language{Locale: "xx"}, 1234.5, nil)); got != "1.234,5" {
 		t.Errorf("xx = %q, want the default locale's", got)

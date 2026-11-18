@@ -352,9 +352,10 @@ func resolveParts(parts tagParts, available []string, exceptions []localePair) (
 	return bestAvailable(available, parts.aliased().key())
 }
 
-// platformLocale is the platform's default locale (ICU's): the first of LC_ALL, LC_MESSAGES, LANG that is set decides, even when it
-// holds no tag (then en-US); `C` and `POSIX` are en-US; a variable set to the empty string is `und`, whose data is ICU's root.
-func platformLocale() string {
+// posixLocale is the default locale of every system but Windows (ICU's `uprv_getPOSIXIDForCategory`, putil.cpp:1596-1650, for
+// macOS as for Linux: no CFLocale is read): the first of LC_ALL, LC_MESSAGES, LANG that is set decides, even when it holds no tag
+// (then en-US); `C` and `POSIX` are en-US; a variable set to the empty string is `und`, whose data is ICU's root.
+func posixLocale() string {
 	for _, name := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
 		value, set := os.LookupEnv(name)
 		if !set {

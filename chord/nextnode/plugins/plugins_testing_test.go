@@ -231,6 +231,54 @@ func TestTestPluginBuildsAsProductionByDefaultThePerKindCheckActiveAPIRequiredWi
 	}
 }
 
+// tpFailingStub is a stub whose setup throws "stub boom".
+var tpFailingStub = TestStub{
+	Name:  "@acme/notes",
+	Facet: host.DefineFacet(func(host.FacetHost, host.FacetSelf) error { return errors.New("stub boom") }),
+}
+
+// testing.ts:129-131 loads `[...stubs, plugin]` in one `host.load` and `throwFailed` (:192-199) joins the report's failures
+// with "; " in that order, so a stub's failure comes first and the plugin's own after it (host.ts `#load` pushes the failures
+// in the given order); a failure of either alone is the message with that failure only. Go loads the stubs on a host of their
+// own (D502), so it joins the two lists to the same message.
+func TestTestPluginJoinsAGoStubsSetupFailureAndThePluginsOwnAsOneSetupFailed(t *testing.T) {
+	cache := t.TempDir()
+	root := t.TempDir()
+	throwing := writePlugin(t, root, "throwing", "@acme/throwing", map[string]string{
+		"worker.ts": "import { defineFacet } from \"@acme/app/v3\";\nexport default defineFacet(() => { throw new Error(\"no\"); });",
+	}, nil)
+	good := writePlugin(t, root, "good", "@acme/good", map[string]string{
+		"worker.ts": "import { defineFacet } from \"@acme/app/v3\";\nexport default defineFacet(() => {});",
+	}, nil)
+	for _, c := range []struct {
+		name   string
+		dir    string
+		stub   TestStub
+		want   string
+		causeS string
+	}{
+		{"a failing stub and a failing plugin", throwing, tpFailingStub, `testPlugin: setup failed: plugin "@acme/notes": stub boom; plugin "@acme/throwing": no`, "stub boom"},
+		{"a failing stub and a good plugin", good, tpFailingStub, `testPlugin: setup failed: plugin "@acme/notes": stub boom`, "stub boom"},
+		{"a good stub and a failing plugin", throwing, tpNotesStub, `testPlugin: setup failed: plugin "@acme/throwing": no`, "no"},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			options := tpOpts(t, cache)
+			options.Stubs = []TestStub{c.stub}
+			tested, err := TestPlugin(c.dir, options, background)
+			if err == nil {
+				_ = tested.Close(background)
+				t.Fatalf("TestPlugin succeeded, want %q", c.want)
+			}
+			if err.Error() != c.want {
+				t.Fatalf("error %q, want %q", err.Error(), c.want)
+			}
+			if cause := errors.Unwrap(err); cause == nil || !strings.Contains(cause.Error(), c.causeS) {
+				t.Fatalf("cause %v, want the first failure (%s), as testing.ts's `cause: first.error`", cause, c.causeS)
+			}
+		})
+	}
+}
+
 // tpOne is a local contract of no params with one text member.
 func tpOne(name, member string) *contracts.Contract {
 	return mustContract(contracts.Local(name, contracts.LocalDeclaration{
