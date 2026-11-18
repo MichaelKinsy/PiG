@@ -14892,6 +14892,31 @@
       ]
     },
     {
+      "id": "BF-4463d9e",
+      "title": "In the Go Chord v2 workers (`chord/nextnode/workers`), `Workers.Retry` and a plugin rollout no longer leave a…",
+      "symptom": "In the Go Chord v2 workers (`chord/nextnode/workers`), `Workers.Retry` and a plugin rollout no longer leave a crashed worker stopped when they run after the failed automatic resolve of the worker's address has read the crash and before the route has handled its rejection: the route started nothing for the retry because the address was still resolving, then forgot the address with the rejection, and the worker stayed down with no state until the next hold.",
+      "rootCause": "the route treated a retry that found its address resolving as satisfied by that resolve, which holds in Pi where a rejection and its handling are one chain of microtasks no retry can enter, but not in Go where the answer is handled in a later section a retry can precede",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "In the Go Chord v2 workers (`chord/nextnode/workers`), `Workers.Retry` and a plugin rollout no longer leave a crashed worker stopped when they run after the failed automatic resolve of the worker's address has read the crash and before the route has handled its rejection: the route started nothing for the retry because the address was still resolving, then forgot the address with the rejection, and the worker stayed down with no state until the next hold. The route now remembers a retry that finds the address's resolve running and, if that resolve rejects, handles the rejection as usual and resolves the address once more, so the worker starts once; a resolve that succeeds takes the retry with it and a healthy worker is not restarted.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4463d9e40b",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_route_retry_guard_goonly_test.go::TestRouteHandleRetryWhileTheResolveRunsIsNotRememberedOnceTheAddressIsSuspendedAgain",
+        "chord/next/host/host_route_retry_guard_goonly_test.go::TestRouteHandleRetryWhileTheResolveRunsIsNotRememberedOnceTheLastHolderReleasedAndTheAddressIsForgotten",
+        "chord/next/host/host_route_retry_guard_goonly_test.go::TestRouteHandleRetryWhileTheResolveRunsThatSucceedsIsNotRememberedForTheRejectionOfALaterResolve",
+        "chord/nextnode/workers/workers_retry_failing_start_test.go::TestARetryDuringAStartThatThenFailsOnItsOwnResolvesTheAddressOnceMoreAndStartsNothing"
+      ]
+    },
+    {
       "id": "BF-4477a81",
       "title": "A chord app's `Close` kept going after a step failed and joined the errors; it now stops at the first failing…",
       "symptom": "A chord app's `Close` kept going after a step failed and joined the errors; it now stops at the first failing step and returns that error, as Pi's close chain does (the steps after it, the data directory's lock release included, do not run).",
