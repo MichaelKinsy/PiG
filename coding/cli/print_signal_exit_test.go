@@ -286,19 +286,31 @@ func TestPrintModeSignalDisposalRunsLikePisEventLoop(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// A Python handler runs on its own thread and reports no window. Its waitForIdle is a Promise-shaped host call, where
-	// a Node handler would await and Pi's loop would turn, so the run goes on to its end and the call returns. Without the
-	// call's yield the held run never ends and the signal never exits the process.
-	waitsForIdle := filepath.Join(extensions, "waits_for_idle")
-	if err := os.MkdirAll(waitsForIdle, 0o755); err != nil {
+	// A Python handler runs on its own thread and reports no window. The prompt's continuation (it writes the aborted result)
+	// is held until the handler yields, and a handler that waits for it through a host call must not hang the signal exit.
+	// The handler waits through exec, a call every context may make: waitForIdle is a command-context member (Pi
+	// runner.ts:1016), so a handler's call to it is refused. The command ends when the continuation has written the aborted
+	// result to stderr; without the call's yield the continuation never runs, the command times out and the handler raises.
+	waitsForRun := filepath.Join(extensions, "waits_for_run")
+	if err := os.MkdirAll(waitsForRun, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(waitsForIdle, "waits_for_idle.py"), []byte(`import pig_sdk
+	if err := os.WriteFile(filepath.Join(waitsForRun, "waits_for_run.py"), []byte(`import os
+
+import pig_sdk
+
+WAIT = 'until grep -q "This operation was aborted" "$1" 2>/dev/null; do sleep 0.05; done'
+
+
+def wait_for_run(ctx, data):
+    done = ctx.exec("sh", ["-c", WAIT, "sh", os.environ["PIG_TEST_STDERR_FILE"]], timeout=20000)
+    if done.exit_code != 0:
+        raise RuntimeError("the aborted result was not reported while the handler waited")
 
 
 def new_extension() -> pig_sdk.Extension:
-    e = pig_sdk.Extension("waits_for_idle")
-    e.on_event("session_shutdown", lambda ctx, data: ctx.wait_for_idle())
+    e = pig_sdk.Extension("waits_for_run")
+    e.on_event("session_shutdown", wait_for_run)
     return e
 `), 0o600); err != nil {
 		t.Fatal(err)
@@ -311,16 +323,22 @@ def new_extension() -> pig_sdk.Extension:
 		{"throwing handler/text", "text", throwing, "Extension error (" + throwing + "): shutdown boom\nThis operation was aborted\n", true},
 		{"throwing handler/json", "json", throwing, "Extension error (" + throwing + "): shutdown boom\n", true},
 		{"slow handler/text", "text", slow, "This operation was aborted\n", true},
-		{"python handler waiting for idle/text", "text", waitsForIdle, "This operation was aborted\n", true},
+		{"python handler waiting for the run through exec/text", "text", waitsForRun, "This operation was aborted\n", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workDir, agentDir, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()
 			cmd := exec.Command(bin, "--model", "test-faux/faux-1", "--no-extensions", "-e", tc.extension, "--mode", tc.mode, "--session-dir", sessionDir, "-p", "Run: sleep for a while")
 			cmd.Dir = workDir
-			cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_CODING_AGENT_DIR="+agentDir, "PI_CODING_AGENT_DIR="+agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic")
+			stderrFile := filepath.Join(t.TempDir(), "stderr")
+			cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_CODING_AGENT_DIR="+agentDir, "PI_CODING_AGENT_DIR="+agentDir, "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "PIG_TEST_STDERR_FILE="+stderrFile)
 			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-			var stderr strings.Builder
-			cmd.Stderr = &stderr
+			stderrOut, createErr := os.Create(stderrFile)
+			if createErr != nil {
+				t.Fatal(createErr)
+			}
+			defer func() { _ = stderrOut.Close() }()
+			cmd.Stderr = stderrOut
+			stderr := func() string { data, _ := os.ReadFile(stderrFile); return string(data) }
 			if err := cmd.Start(); err != nil {
 				t.Fatalf("start pig: %v", err)
 			}
@@ -347,14 +365,14 @@ def new_extension() -> pig_sdk.Extension:
 			case <-time.After(testbudget.Wait(t)):
 				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 				<-waited
-				t.Fatalf("pig did not exit after SIGTERM; stderr:\n%s", stderr.String())
+				t.Fatalf("pig did not exit after SIGTERM; stderr:\n%s", stderr())
 			}
 			var exitErr *exec.ExitError
 			if !errors.As(err, &exitErr) || exitErr.ExitCode() != 143 {
-				t.Fatalf("wait = %v, want exit status 143; stderr:\n%s", err, stderr.String())
+				t.Fatalf("wait = %v, want exit status 143; stderr:\n%s", err, stderr())
 			}
-			if stderr.String() != tc.wantStderr {
-				t.Fatalf("stderr = %q, want %q", stderr.String(), tc.wantStderr)
+			if got := stderr(); got != tc.wantStderr {
+				t.Fatalf("stderr = %q, want %q", got, tc.wantStderr)
 			}
 			files, _ := filepath.Glob(filepath.Join(sessionDir, "*.jsonl"))
 			if len(files) != 1 {
