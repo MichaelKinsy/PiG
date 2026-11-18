@@ -3,6 +3,7 @@
 package cellpack
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -249,12 +250,12 @@ func TestNodeCellStartRefusesBeforeTouchingATamperedTree(t *testing.T) {
 // A backslash separates folders on Windows, where no file name holds one, and is an ordinary character of a name elsewhere. The check joins the archive's names, slash paths on every system, with the base names a listing returns and never splits those: an entry with a backslash in its name that the archive does not name is an added entry, reported whole, in a folder the archive does name.
 func TestNodeVerifyReportsAnAddedNameWithABackslashWhole(t *testing.T) {
 	f := newNodeFixture(t, false)
-	if err := verifyNodeEntry(f.data, f.entryDir); err != nil {
+	if err := verifyNodeEntry(bytes.NewReader(f.data), f.entryDir); err != nil {
 		t.Fatalf("a clean tree differs: %v", err)
 	}
 	writeAll(t, f.path(`greeter/lib/a\b.ts`), "x")
 	var difference *nodeDifference
-	err := verifyNodeEntry(f.data, f.entryDir)
+	err := verifyNodeEntry(bytes.NewReader(f.data), f.entryDir)
 	if !errors.As(err, &difference) || difference.what != "added" || difference.name != `sources/greeter/lib/a\b.ts` {
 		t.Fatalf("verifyNodeEntry = %v, want added: sources/greeter/lib/a\\b.ts", err)
 	}

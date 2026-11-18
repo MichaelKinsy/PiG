@@ -62,7 +62,7 @@ func (d *nodeDifference) Unwrap() error { return d.err }
 // nodeVerifyChunk is the size of the pieces the extracted files are compared with the archive in.
 const nodeVerifyChunk = 64 << 10
 
-// verifyNodeEntry finds how the extracted Node cell entry at entryDir differs from the archive data, or returns nil.
+// verifyNodeEntry finds how the extracted Node cell entry at entryDir differs from the archive, which it reads where it lies, or returns nil.
 // The entry is what untarNodeSources and the publication make: no link where a folder or file should be (the entry
 // folder, sources, and every path in it), no module-lookup name beside sources, every archive entry present as the same
 // kind with the same size and bytes (a file), the same executable bit and no wider mode than extraction leaves (a file
@@ -72,7 +72,7 @@ const nodeVerifyChunk = 64 << 10
 // bytes on every start, so it uses plain paths: each folder on the way to an entry is confirmed a real folder, nearest to
 // the root first, before anything is read through it. A link swapped in after that is the window between any check and
 // the Node runtime's later imports, which a cell binary has between its comparison and its exec.
-func verifyNodeEntry(data []byte, entryDir string) error {
+func verifyNodeEntry(archive archiveSource, entryDir string) error {
 	v := &nodeVerifier{
 		entryDir: entryDir,
 		root:     filepath.Join(entryDir, nodeSourcesName),
@@ -95,7 +95,7 @@ func verifyNodeEntry(data []byte, entryDir string) error {
 	if err := v.requireFolder(v.root, nodeSourcesName); err != nil {
 		return err
 	}
-	reader := tar.NewReader(bytes.NewReader(data))
+	reader := tar.NewReader(archiveStream(archive))
 	for {
 		header, err := reader.Next()
 		if errors.Is(err, io.EOF) {

@@ -138,18 +138,19 @@ func loadManifest(fsys fs.FS) (Manifest, error) {
 // succeeds. A Node cell's archive is checked against its digest, and its
 // extracted directory (nodeSourcesDir) against the archive at every start, as a
 // cell binary is against its bytes (extractNodeCell); a differing directory is
-// replaced and warn gets one line for it.
+// replaced and warn gets one line for it. A Node cell's archive is read where it
+// lies in fsys and never copied (openNodeArchive).
 func extract(fsys fs.FS, m Manifest, dest string, warn io.Writer) error {
 	for _, c := range m.Cells {
+		if c.Language == nodeLanguage {
+			if err := extractEmbeddedNodeCell(fsys, c, dest, warn); err != nil {
+				return err
+			}
+			continue
+		}
 		data, err := fs.ReadFile(fsys, path.Join("cells", c.Binary))
 		if err != nil {
 			return fmt.Errorf("read embedded cell %s: %w", c.Binary, err)
-		}
-		if c.Language == nodeLanguage {
-			if err := extractNodeCell(data, c, dest, warn); err != nil {
-				return fmt.Errorf("extract Node cell %s: %w", c.Binary, err)
-			}
-			continue
 		}
 		out := extractedBinaryPath(dest, c.Binary)
 		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
@@ -160,6 +161,39 @@ func extract(fsys fs.FS, m Manifest, dest string, warn io.Writer) error {
 		}
 	}
 	return nil
+}
+
+// extractEmbeddedNodeCell is extractNodeCell for the archive embedded at cells/<Binary>, which it reads in place.
+func extractEmbeddedNodeCell(fsys fs.FS, c CellEntry, dest string, warn io.Writer) error {
+	archive, closeArchive, err := openNodeArchive(fsys, path.Join("cells", c.Binary))
+	if err != nil {
+		return fmt.Errorf("read embedded cell %s: %w", c.Binary, err)
+	}
+	defer func() { _ = closeArchive() }()
+	if err := extractNodeCell(archive, c, dest, warn); err != nil {
+		return fmt.Errorf("extract Node cell %s: %w", c.Binary, err)
+	}
+	return nil
+}
+
+// openNodeArchive opens the embedded file name for positioned reads. An embedded file (embed.FS) is read-only data of the
+// executable and implements io.ReaderAt, so the archive is neither copied to the heap nor read whole.
+func openNodeArchive(fsys fs.FS, name string) (*io.SectionReader, func() error, error) {
+	file, err := fsys.Open(name)
+	if err != nil {
+		return nil, nil, err
+	}
+	reader, ok := file.(io.ReaderAt)
+	if !ok {
+		_ = file.Close()
+		return nil, nil, fmt.Errorf("%s cannot be read in place", name)
+	}
+	info, err := file.Stat()
+	if err != nil {
+		_ = file.Close()
+		return nil, nil, err
+	}
+	return io.NewSectionReader(reader, 0, info.Size()), file.Close, nil
 }
 
 // extractedBinaryPath is where the cell binary embedded at cells/<binary> is

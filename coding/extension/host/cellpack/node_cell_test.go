@@ -190,7 +190,7 @@ func TestUntarNodeSourcesRefusesWritesThroughSymbolicLinks(t *testing.T) {
 			if err := os.WriteFile(sentinel, []byte("keep"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			err := untarNodeSources(data, filepath.Join(parent, "sources"))
+			err := untarNodeSources(bytes.NewReader(data), filepath.Join(parent, "sources"))
 			listing, readErr := os.ReadDir(parent)
 			if readErr != nil {
 				t.Fatal(readErr)
@@ -231,7 +231,7 @@ func TestUntarNodeSourcesRefusesALinkReachedByAnotherSpellingOfItsName(t *testin
 		archiveEntry{name: "a/b/z/w", link: "../../../x"},
 	)
 	parent := t.TempDir()
-	err := untarNodeSources(data, filepath.Join(parent, "sources"))
+	err := untarNodeSources(bytes.NewReader(data), filepath.Join(parent, "sources"))
 	if err == nil {
 		t.Error("untarNodeSources accepted a member that passes through a link by another spelling of its name")
 	}
@@ -257,7 +257,7 @@ func TestUntarNodeSourcesKeepsLinksThatStayInsideTheTree(t *testing.T) {
 		archiveEntry{name: "greeter/not-yet/there", body: "x"},
 	)
 	root := filepath.Join(t.TempDir(), "sources")
-	if err := untarNodeSources(data, root); err != nil {
+	if err := untarNodeSources(bytes.NewReader(data), root); err != nil {
 		t.Fatal(err)
 	}
 	for _, link := range []string{"greeter/node_modules/.bin/dep", "greeter/node_modules/alias/index.js", "greeter/later"} {

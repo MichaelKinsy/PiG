@@ -5,6 +5,7 @@ import (
 	"io"
 	"math/rand/v2"
 	"testing"
+	"testing/fstest"
 )
 
 // nodeBenchEntries is a member of files files of about size bytes each, spread over folders, with a node_modules link: the
@@ -25,8 +26,8 @@ func nodeBenchEntries(files, size int) []archiveEntry {
 	return entries
 }
 
-// BenchmarkNodeCellWarmStart is the Node cell's part of a Binary's later start: the archive's digest, then the published entry found
-// ready and, since D18, compared with the archive. small is a cell of a few files, large one of 2,000 files and 20 MB.
+// BenchmarkNodeCellWarmStart is the Node cell's part of a Binary's later start, through extract as a start runs it: the archive's
+// digest, then the published entry found ready and, since D18, compared with the archive, read where it lies. small is a cell of a few files, large one of 2,000 files and 20 MB.
 func BenchmarkNodeCellWarmStart(b *testing.B) {
 	for name, entries := range map[string][]archiveEntry{
 		"small": nodeBenchEntries(4, 2<<10),
@@ -36,14 +37,15 @@ func BenchmarkNodeCellWarmStart(b *testing.B) {
 			data, digest := nodeArchive(b, entries...)
 			m := nodeManifest(digest)
 			dest := b.TempDir()
-			if err := extractNodeCell(data, m.Cells[0], dest, io.Discard); err != nil {
+			fsys := fstest.MapFS{"cells/" + m.Cells[0].Binary: {Data: data}}
+			if err := extract(fsys, m, dest, io.Discard); err != nil {
 				b.Fatal(err)
 			}
 			b.ReportAllocs()
 			b.SetBytes(int64(len(data)))
 			b.ResetTimer()
 			for b.Loop() {
-				if err := extractNodeCell(data, m.Cells[0], dest, io.Discard); err != nil {
+				if err := extract(fsys, m, dest, io.Discard); err != nil {
 					b.Fatal(err)
 				}
 			}
