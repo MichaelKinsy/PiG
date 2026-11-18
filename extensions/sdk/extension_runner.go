@@ -374,11 +374,12 @@ func (r *ExtensionRunner) bindCoreWire(actions ExtensionActions, contextActions 
 var signalRunCounter atomic.Uint64
 
 // signalRuns turns the signals one getSignal function returns into what the host reads: undefined, or `{aborted, run, endedAborted?}`.
-// Pi gives every run its own signal object (agent.ts:518-527), so the object is the run: run is a token that is new whenever the function returns another object than the one of the last answer (it never repeats in this process), and endedAborted says the signal of the previous answer had aborted, which the host cannot see when the next run begins before it reads again. The tracker holds the last signal, so an object that was answered is never collected and reused while its token is the last. A signal whose type is not comparable has no identity to compare: each answer is a new run.
+// Pi gives every run its own signal object (agent.ts:518-527), so the object is the run: run is a token that is new whenever the function returns another object than the one of the last answer (it never repeats in this process), and endedAborted says the signal of the previous answer had aborted, which the host cannot see when the next run begins before it reads again. The token is boxed once per run (an answer is built on every read). The tracker holds the last signal, so an object that was answered is never collected and reused while its token is the last. A signal whose type is not comparable has no identity to compare: each answer is a new run.
 type signalRuns struct {
 	mu           sync.Mutex
 	last         context.Context
 	run          uint64
+	runBox       any
 	endedAborted bool
 }
 
@@ -392,8 +393,9 @@ func (r *signalRuns) wire(signal context.Context) any {
 		r.endedAborted = r.last != nil && r.last.Err() != nil
 		r.run = signalRunCounter.Add(1)
 		r.last = signal
+		r.runBox = r.run
 	}
-	answer := map[string]any{"aborted": signal.Err() != nil, "run": r.run}
+	answer := map[string]any{"aborted": signal.Err() != nil, "run": r.runBox}
 	if r.endedAborted {
 		answer["endedAborted"] = true
 	}

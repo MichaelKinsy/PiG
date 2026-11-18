@@ -370,7 +370,7 @@ func TestGraphGetSignalMalformedRunIsAReadError(t *testing.T) {
 	get := g.contextActions(callbackIDs{"getSignal": "sig"}).GetSignal
 	scope.reply(tokenSignal(1, false, false))
 	first := get()
-	for _, run := range []any{"1", -1, 1.5, true, []any{1}, map[string]any{}} {
+	for _, run := range []any{"1", -1, 1.5, 1e30, true, []any{1}, map[string]any{}} {
 		scope.reply(map[string]any{"aborted": true, "run": run, "endedAborted": true})
 		if got := get(); got != nil {
 			t.Errorf("run %#v: signal = %v, want nil (a read error)", run, got)
@@ -382,6 +382,37 @@ func TestGraphGetSignalMalformedRunIsAReadError(t *testing.T) {
 	scope.reply(tokenSignal(1, false, false))
 	if again := get(); again != first {
 		t.Fatal("run 1 after malformed answers is another context")
+	}
+}
+
+// A Run of zero is no token: a Run is positive, and the host decodes it into a plain uint64, so an explicit zero reads as an answer without one. The old rule applies (a live answer keeps the held run, an aborted one cancels it, a live one after that is a new run) and the token the host holds is not touched.
+func TestGraphGetSignalZeroRunIsNoToken(t *testing.T) {
+	t.Parallel()
+	scope := newGraphTokenScope()
+	g := &GraphExtensionRunner{scope: scope}
+	get := g.contextActions(callbackIDs{"getSignal": "sig"}).GetSignal
+	scope.reply(map[string]any{"aborted": false, "run": 0})
+	first := get()
+	scope.reply(map[string]any{"aborted": false, "run": 0})
+	if again := get(); first == nil || again != first {
+		t.Fatalf("two live answers with run 0: %v then %v, want one context (the old rule)", first, again)
+	}
+	scope.reply(map[string]any{"aborted": true, "run": 0, "endedAborted": true})
+	if aborted := get(); aborted != first || first.Err() == nil {
+		t.Fatalf("an aborted answer with run 0: %v, want the held context, cancelled", aborted)
+	}
+	scope.reply(tokenSignal(1, false, false))
+	next := get()
+	if next == nil || next == first || next.Err() != nil {
+		t.Fatalf("token 1 after the aborted run 0: %v, want a new live context", next)
+	}
+	scope.reply(map[string]any{"aborted": false, "run": 0})
+	if zero := get(); zero != next {
+		t.Fatal("an answer with run 0 after token 1 changed the run")
+	}
+	scope.reply(tokenSignal(1, false, false))
+	if again := get(); again != next {
+		t.Fatal("token 1 after an answer with run 0 is another context: the zero replaced the held token")
 	}
 }
 
@@ -562,9 +593,8 @@ func TestGraphTwoRunsAbortedAtBirthShareOneContext(t *testing.T) {
 // read runs under Host.pushState (//pig:hotpath) for every request, with its lock held: the token compare and the keep of a held run allocate nothing, whether the answer has a token or not. (A new run makes a context, as it always did.)
 func TestGraphSignalReadOfAHeldRunAllocatesNothing(t *testing.T) {
 	var s graphSignal
-	run := uint64(1)
 	for name, state := range map[string]*graphSignalState{
-		"no token": {}, "token": {Run: &run}, "token, aborted": {Aborted: true, Run: &run, EndedAborted: true},
+		"no token": {}, "token": {Run: 1}, "token, aborted": {Aborted: true, Run: 1, EndedAborted: true},
 	} {
 		ask := func() (*graphSignalState, error) { return state, nil }
 		held := s.read(ask)

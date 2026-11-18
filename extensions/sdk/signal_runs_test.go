@@ -73,3 +73,20 @@ func TestSignalRunsUncomparableSignalIsANewRunEachTime(t *testing.T) {
 		t.Fatalf("an uncomparable signal answered the token %d twice", a)
 	}
 }
+
+var answerSink any
+
+// The answer is built on every read, so the token is boxed once per run and not once per answer: a read of a held run allocates what the map of its members costs, and no box for the token.
+func TestSignalRunsBoxTheTokenOncePerRun(t *testing.T) {
+	var runs signalRuns
+	signalRunCounter.Add(1000) // past the small integers Go boxes without allocating
+	signal, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	runs.wire(signal)
+	box := any(uint64(1000))
+	want := testing.AllocsPerRun(100, func() { answerSink = map[string]any{"aborted": false, "run": box} })
+	got := testing.AllocsPerRun(100, func() { answerSink = runs.wire(signal) })
+	if got > want {
+		t.Fatalf("a read of a held run allocates %v times, the answer's map alone %v: the token is boxed again on every read", got, want)
+	}
+}
