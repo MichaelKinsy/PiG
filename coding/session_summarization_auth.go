@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"maps"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -27,9 +28,39 @@ type summarizationRequest struct {
 }
 
 func (s *Session) runDefaultCompaction(ctx context.Context, prep compaction.CompactionPreparation, model *ai.Model, customInstructions, reason string) (compaction.CompactionResult, error) {
+	// pig additive (D238): compaction.summaryModel names the model that writes the summary. Any failure that is not a cancel falls back to the session model below.
+	if summaryModel := s.compactionSummaryModel(model); summaryModel != nil {
+		if result, err := s.summarizeCompaction(ctx, prep, summaryModel, customInstructions, reason, true); err == nil || ctx.Err() != nil {
+			return result, err
+		}
+	}
+	return s.summarizeCompaction(ctx, prep, model, customInstructions, reason, false)
+}
+
+// compactionSummaryModel is the registered model that compaction.summaryModel names, or nil when it is unset, blank, unparsable, unknown or the session model.
+func (s *Session) compactionSummaryModel(model *ai.Model) *ai.Model {
+	settings := s.SettingsManager()
+	if settings == nil || s.modelRegistry == nil {
+		return nil
+	}
+	provider, id, ok := strings.Cut(settings.GetCompactionSummaryModel(), "/")
+	if !ok || provider == "" || id == "" {
+		return nil
+	}
+	if model != nil && model.ProviderID() == provider && model.ID == id {
+		return nil
+	}
+	return s.modelRegistry.Find(provider, id)
+}
+
+// summarizeCompaction is the compaction summary request on one model. clampThinking keeps the session's thinking level inside what that model supports, as SetThinkingLevel does for the session model.
+func (s *Session) summarizeCompaction(ctx context.Context, prep compaction.CompactionPreparation, model *ai.Model, customInstructions, reason string, clampThinking bool) (compaction.CompactionResult, error) {
 	request, err := s.prepareSummarizationRequest(ctx, model)
 	if err != nil {
 		return compaction.CompactionResult{}, err
+	}
+	if clampThinking {
+		request.thinkingLevel = ai.ClampThinkingLevel(request.model, request.thinkingLevel)
 	}
 	retry, retryCallbacks := s.summarizationRetryOptions("compaction", reason)
 	// upstream compact(preparation, model, apiKey, headers, customInstructions, signal, thinkingLevel, this.agent.streamFunction, env, retry, callbacks, sessionId): request.completer holds the Agent's stream function.

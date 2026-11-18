@@ -207,6 +207,7 @@ The dispatcher is exhaustive - every command here is a parity-mirrored upstream 
 | `/clone` | Duplicate session at the current position. |
 | `/tree` | Navigate session tree. |
 | `/compact` | Manually compact the context. |
+| `/compact-cancel` | Cancel the running compaction (D239). [pig] |
 | `/reload` | Reload keybindings, extensions, skills, prompts, themes, and context files. |
 | `/reload --explain` | Same plus a placement/cell report. [pig] |
 | `/export [path]` | Export session (default HTML; specify `.jsonl`). |

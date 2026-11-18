@@ -933,7 +933,8 @@ func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyActi
 	// onEscape only while no autocomplete is showing (custom-editor.ts:106-113),
 	// so Escape over an open autocomplete closes it and compaction continues.
 	if action == actionInterrupt && m.isCompacting && m.branchSummaryCancel == nil && m.opts.SessionHandle != nil {
-		m.opts.SessionHandle.AbortCompaction()
+		// pig divergence (D239): Escape no longer cancels a compaction; /compact-cancel does.
+		m.showStatus("Compaction is running and finishes first. Type /compact-cancel to stop it.")
 		return nil
 	}
 
@@ -1318,6 +1319,19 @@ func (m *InteractiveMode) abortRun(ctx context.Context) {
 		ctx = context.Background()
 	}
 	m.abortCtx, m.abortFn = context.WithCancel(ctx)
+}
+
+// settleReplacedSession is settleActiveRun for callers that replace the session.
+// pig divergence (D239): ending or replacing the session still cancels a running
+// compaction, so the replacement never waits for it; an abort alone does not.
+func (m *InteractiveMode) settleReplacedSession() error {
+	m.queueMu.Lock()
+	session := m.opts.SessionHandle
+	m.queueMu.Unlock()
+	if session != nil {
+		session.AbortCompaction()
+	}
+	return m.settleActiveRun()
 }
 
 // settleActiveRun aborts the active run and waits until it settles, as

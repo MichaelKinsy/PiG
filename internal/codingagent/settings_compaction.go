@@ -36,6 +36,14 @@ func (s *CompactionSettingsJSON) UnmarshalJSON(data []byte) error {
 	*s = CompactionSettingsJSON{extra: fields}
 	s.ReserveTokens = readCompactionNumber(fields, "reserveTokens")
 	s.KeepRecentTokens = readCompactionNumber(fields, "keepRecentTokens")
+	if raw, ok := fields["summaryModel"]; ok {
+		// A non-string value stays in extra so it survives a save unchanged.
+		var summaryModel string
+		if json.Unmarshal(raw, &summaryModel) == nil {
+			s.SummaryModel = &summaryModel
+			delete(fields, "summaryModel")
+		}
+	}
 	if raw, ok := fields["enabled"]; ok {
 		if err := json.Unmarshal(raw, &s.Enabled); err != nil {
 			return err
@@ -77,6 +85,13 @@ func (s CompactionSettingsJSON) MarshalJSON() ([]byte, error) {
 			return nil, e
 		}
 		fields["enabled"] = raw
+	}
+	if s.SummaryModel != nil {
+		raw, e := json.Marshal(*s.SummaryModel)
+		if e != nil {
+			return nil, e
+		}
+		fields["summaryModel"] = raw
 	}
 	if s.ModelOverrides != nil {
 		raw, e := json.Marshal(s.ModelOverrides)
@@ -185,5 +200,17 @@ func mergeCompactionNumber(current **float64, extra map[string]json.RawMessage, 
 	} else if raw, ok := incomingExtra[key]; ok {
 		*current = nil
 		extra[key] = bytes.Clone(raw)
+	}
+}
+
+// mergeCompactionSummaryModel lets the project's summaryModel replace the global one, as the token settings do.
+func mergeCompactionSummaryModel(current, project *CompactionSettingsJSON) {
+	if project.SummaryModel != nil {
+		summaryModel := *project.SummaryModel
+		current.SummaryModel = &summaryModel
+		delete(current.extra, "summaryModel")
+	} else if raw, ok := project.extra["summaryModel"]; ok {
+		current.SummaryModel = nil
+		current.extra["summaryModel"] = bytes.Clone(raw)
 	}
 }

@@ -1632,6 +1632,7 @@ func TestNavigateTreeRejectsStreamingSession(t *testing.T) {
 	}
 }
 
+// D239: a second compaction request is refused with "Already compacting"; the first runs to completion.
 func TestCompactAbortsInFlightManualCompactionAndRestarts(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
 	defer func() { _ = sess.Close() }()
@@ -1643,20 +1644,18 @@ func TestCompactAbortsInFlightManualCompactionAndRestarts(t *testing.T) {
 	firstDone := make(chan error, 1)
 	go func() { _, err := sess.Compact(t.Context(), "first"); firstDone <- err }()
 	<-completer.started
-	secondDone := make(chan error, 1)
-	go func() { _, err := sess.Compact(t.Context(), "second"); secondDone <- err }()
-
-	if err := <-firstDone; !errors.Is(err, errCompactionCancelled) {
+	if _, err := sess.Compact(t.Context(), "second"); !errors.Is(err, errAlreadyCompacting) {
 		close(completer.release)
-		t.Fatalf("first Compact error = %v, want cancellation", err)
+		t.Fatalf("second Compact error = %v, want Already compacting", err)
 	}
 	close(completer.release)
-	if err := <-secondDone; err != nil {
-		t.Fatalf("second Compact: %v", err)
+	if err := <-firstDone; err != nil {
+		t.Fatalf("first Compact: %v", err)
 	}
 	assertRestartedCompaction(t, sess, originalLeafID)
 }
 
+// D239: a manual request during an auto-compaction is refused; the auto-compaction completes.
 func TestCompactAbortsInFlightAutoCompactionAndRestarts(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServicesSmallKeep(t), 3)
 	defer func() { _ = sess.Close() }()
@@ -1674,16 +1673,13 @@ func TestCompactAbortsInFlightAutoCompactionAndRestarts(t *testing.T) {
 		autoDone <- compacted
 	}()
 	<-completer.started
-	manualDone := make(chan error, 1)
-	go func() { _, err := sess.Compact(t.Context(), "manual"); manualDone <- err }()
-
-	if compacted := <-autoDone; compacted {
+	if _, err := sess.Compact(t.Context(), "manual"); !errors.Is(err, errAlreadyCompacting) {
 		close(completer.release)
-		t.Fatal("cancelled auto-compaction reported success")
+		t.Fatalf("manual Compact error = %v, want Already compacting", err)
 	}
 	close(completer.release)
-	if err := <-manualDone; err != nil {
-		t.Fatalf("manual Compact: %v", err)
+	if compacted := <-autoDone; !compacted {
+		t.Fatal("auto-compaction did not complete")
 	}
 	assertRestartedCompaction(t, sess, originalLeafID)
 }
@@ -1695,14 +1691,11 @@ func assertRestartedCompaction(t *testing.T, sess *Session, originalLeafID strin
 	if compactionEntry.Base().Type != "compaction" || compactionEntry.Base().ParentID == nil || *compactionEntry.Base().ParentID != originalLeafID {
 		t.Fatalf("compaction entry = %#v, want parent %q", compactionEntry.Base(), originalLeafID)
 	}
-	var aborted bool
+	// D239: nothing is cancelled, so no compaction_end reports an abort.
 	for _, event := range drainEvents(t, sess) {
 		if end, ok := event.(agent.CompactionEndEvent); ok && end.Aborted {
-			aborted = true
+			t.Fatal("compaction was aborted")
 		}
-	}
-	if !aborted {
-		t.Fatal("missing aborted compaction_end for replaced compaction")
 	}
 }
 

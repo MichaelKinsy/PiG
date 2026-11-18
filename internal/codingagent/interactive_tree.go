@@ -45,7 +45,11 @@ func (m *InteractiveMode) navigateTree(ctx context.Context, targetID string, sum
 	if handle == nil {
 		return NavigateTreeResult{Cancelled: true}, nil
 	}
-	if m.runStreaming() {
+	if m.runStreaming() || m.isCompacting {
+		if m.isCompacting {
+			// D239: /tree does not replace the session, so it waits for a running compaction.
+			m.showStatus("Waiting for the compaction to finish. Type /compact-cancel to stop it.")
+		}
 		m.restoreQueuedMessagesToEditor(false)
 		if err := m.settleActiveRun(); err != nil {
 			return NavigateTreeResult{}, err

@@ -159,6 +159,8 @@ type CompactionSettingsJSON struct {
 	// ReserveTokens and KeepRecentTokens retain JavaScript numbers until getter validation, including zero, fractions, and non-finite runtime overrides.
 	ReserveTokens    *float64 `json:"reserveTokens,omitempty"`
 	KeepRecentTokens *float64 `json:"keepRecentTokens,omitempty"`
+	// SummaryModel is the "provider/modelId" that writes the compaction summary; nil or blank means the session model.
+	SummaryModel *string `json:"summaryModel,omitempty"`
 	// ModelOverrides maps exact "provider/modelId" keys to token settings
 	// that take precedence for that model.
 	ModelOverrides map[string]CompactionModelOverride `json:"modelOverrides,omitempty"`
@@ -813,6 +815,10 @@ func cloneCompactionSettings(v *CompactionSettingsJSON) *CompactionSettingsJSON 
 		extra:            maps.Clone(v.extra),
 		ReserveTokens:    cloneFloatPtr(v.ReserveTokens),
 		KeepRecentTokens: cloneFloatPtr(v.KeepRecentTokens),
+	}
+	if v.SummaryModel != nil {
+		summaryModel := *v.SummaryModel
+		out.SummaryModel = &summaryModel
 	}
 	if v.ModelOverrides != nil {
 		out.ModelOverrides = make(map[string]CompactionModelOverride, len(v.ModelOverrides))
@@ -2134,6 +2140,17 @@ func (sm *SettingsManager) GetCompactionKeepRecentTokens(model ...*ai.Model) (in
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
 	return getCompactionTokenSetting(sm.merged.Compaction, "keepRecentTokens", provider, id)
+}
+
+// GetCompactionSummaryModel is the "provider/modelId" that writes the compaction summary, or "" when unset or blank.
+// pig additive (D238): see runDefaultCompaction.
+func (sm *SettingsManager) GetCompactionSummaryModel() string {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	if sm.merged.Compaction == nil || sm.merged.Compaction.SummaryModel == nil {
+		return ""
+	}
+	return strings.TrimSpace(*sm.merged.Compaction.SummaryModel)
 }
 
 // GetBranchSummarySettings returns branch summary settings, applying any
@@ -3947,6 +3964,7 @@ func mergeSettings(global, project Settings) Settings {
 		maps.Copy(m.Compaction.extra, project.Compaction.extra)
 		mergeCompactionNumber(&m.Compaction.ReserveTokens, m.Compaction.extra, "reserveTokens", project.Compaction.ReserveTokens, project.Compaction.extra)
 		mergeCompactionNumber(&m.Compaction.KeepRecentTokens, m.Compaction.extra, "keepRecentTokens", project.Compaction.KeepRecentTokens, project.Compaction.extra)
+		mergeCompactionSummaryModel(m.Compaction, project.Compaction)
 		mergeCompactionModelOverrides(m.Compaction, project.Compaction.ModelOverrides)
 	}
 	if project.Retry != nil {

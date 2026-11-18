@@ -745,14 +745,14 @@ func TestFormatNumber(t *testing.T) {
 
 // The visible builtin order is BUILTIN_SLASH_COMMANDS in
 // packages/coding-agent/src/core/slash-commands.ts:19-44 (0.87.1 moved tree
-// after model): 24 entries. /llama is not one of them; the built-in llama.cpp
+// after model): 24 entries (plus pig's /compact-cancel, D239). /llama is not one of them; the built-in llama.cpp
 // extension registers it (extensions/llama/index.ts), so it is an extension
 // command that exists only while that extension is loaded.
 func TestBuiltinSlashCommandsFollowUpstreamOrder(t *testing.T) {
 	want := []string{
 		"settings", "model", "tree", "thinking", "scoped-models", "export", "import", "share", "bug",
 		"copy", "name", "session", "changelog", "hotkeys", "fork", "clone", "trust", "login", "logout",
-		"new", "compact", "resume", "reload", "quit",
+		"new", "compact", "compact-cancel", "resume", "reload", "quit",
 	}
 	var got []string
 	for _, cmd := range BuiltinSlashCommands() {

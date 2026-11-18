@@ -146,7 +146,7 @@ func (s *Session) requestAbort(discardDeferred bool) {
 	default:
 	}
 	s.AbortRetry()
-	s.AbortCompaction()
+	// pig divergence (D239): an abort ends the turn only; a running compaction finishes (/compact-cancel stops it).
 	s.AbortBranchSummary()
 	if s.agent != nil && s.agent.IsStreaming() {
 		s.agent.Abort()

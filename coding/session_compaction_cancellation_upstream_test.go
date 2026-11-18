@@ -112,9 +112,8 @@ func TestAutomaticCompactionCancellationUpstream(t *testing.T) {
 			t.Fatalf("compaction ended before auth: %v", result)
 		}
 		started, wasCompacting := starts.Load(), s.IsCompacting()
-		if err := s.Abort(t.Context()); err != nil {
-			t.Fatal(err)
-		}
+		// D239: an abort no longer cancels a compaction (and an awaited Abort would wait for it); AbortCompaction, the /compact-cancel path, does.
+		s.AbortCompaction()
 		<-done
 		if started != 1 || !wasCompacting || !errors.Is(authContext.Err(), context.Canceled) {
 			t.Fatalf("started=%d compacting=%v authErr=%v", started, wasCompacting, authContext.Err())

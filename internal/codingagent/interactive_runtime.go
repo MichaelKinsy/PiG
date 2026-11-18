@@ -88,7 +88,7 @@ func (m *InteractiveMode) installRuntimeHooks() {
 		return
 	}
 	rt.SetBeforeSessionReplacement(func(ctx context.Context) error {
-		return m.runOnMainAndWait(ctx, m.settleActiveRun)
+		return m.runOnMainAndWait(ctx, m.settleReplacedSession) // D239
 	})
 	rt.SetBeforeSessionInvalidate(m.resetExtensionUIForReplacement)
 	rt.SetRebindSession(m.rebindFromRuntime)

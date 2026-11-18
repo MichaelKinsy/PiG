@@ -1006,21 +1006,60 @@ func TestInteractiveMode_EscAbortFreezesRunningTool(t *testing.T) {
 	}
 }
 
-func TestInteractiveMode_EscCancelsCompactionWhileAgentIsIdle(t *testing.T) {
+// R2 (D239): Escape with only a compaction showing leaves it running and shows the status line; /compact-cancel stops it.
+func TestInteractiveMode_EscDoesNotCancelCompactionWhileAgentIsIdle(t *testing.T) {
 	handle := &recordingCompactHandle{}
+	chat := tui.NewContainer()
 	m := &InteractiveMode{
-		tuiInst:      tui.NewWithOutput(io.Discard, 120, 40),
-		editor:       tui.NewEditor(),
-		keybindings:  DefaultKeybindingsManager(),
-		isIdle:       true,
-		isCompacting: true,
-		opts:         InteractiveModeOptions{SessionHandle: handle},
+		chatContainer: chat,
+		tuiInst:       tui.NewWithOutput(io.Discard, 120, 40),
+		editor:        tui.NewEditor(),
+		keybindings:   DefaultKeybindingsManager(),
+		isIdle:        true,
+		isCompacting:  true,
+		opts:          InteractiveModeOptions{SessionHandle: handle},
 	}
 	if err := m.dispatchKey(context.Background(), "\x1b"); err != nil {
 		t.Fatal(err)
 	}
+	if handle.abortCompactionCount != 0 {
+		t.Fatalf("AbortCompaction calls = %d, want 0", handle.abortCompactionCount)
+	}
+	if got := strings.Join(chat.Render(120), "\n"); !strings.Contains(got, "Compaction is running and finishes first. Type /compact-cancel to stop it.") {
+		t.Fatalf("status line missing: %q", got)
+	}
+}
+
+// R4 (D239): /compact-cancel cancels a running compaction; with none running it says so; no key is bound to it.
+func TestCompactCancelCommandCancelsOnlyARunningCompaction(t *testing.T) {
+	handle := &recordingCompactHandle{}
+	chat := tui.NewContainer()
+	m := &InteractiveMode{
+		chatContainer: chat,
+		tuiInst:       tui.NewWithOutput(io.Discard, 120, 40),
+		keybindings:   DefaultKeybindingsManager(),
+		opts:          InteractiveModeOptions{SessionHandle: handle},
+	}
+	run := func() {
+		t.Helper()
+		sc := m.buildSlashContext(t.Context())
+		if err := NewSlashRegistry().Dispatch(sc, "/compact-cancel", nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	run()
+	if handle.abortCompactionCount != 0 || !strings.Contains(strings.Join(chat.Render(120), "\n"), "No compaction is running.") {
+		t.Fatalf("idle: aborts = %d, chat = %q", handle.abortCompactionCount, strings.Join(chat.Render(120), "\n"))
+	}
+	m.isCompacting = true
+	run()
 	if handle.abortCompactionCount != 1 {
-		t.Fatalf("AbortCompaction calls = %d, want 1", handle.abortCompactionCount)
+		t.Fatalf("running: AbortCompaction calls = %d, want 1", handle.abortCompactionCount)
+	}
+	for _, id := range DefaultKeybindingsManager().KeybindingIDs() {
+		if strings.Contains(id, "compact") {
+			t.Fatalf("unexpected key binding %q for compaction", id)
+		}
 	}
 }
 
@@ -1053,8 +1092,9 @@ func TestInteractiveMode_EscapeClosesAutocompleteDuringCompactionWithoutAborting
 	if err := m.dispatchKey(context.Background(), "\x1b"); err != nil {
 		t.Fatal(err)
 	}
-	if handle.abortCompactionCount != 1 {
-		t.Fatalf("Escape with no autocomplete: AbortCompaction calls = %d, want 1", handle.abortCompactionCount)
+	// D239: Escape no longer cancels the compaction.
+	if handle.abortCompactionCount != 0 {
+		t.Fatalf("Escape with no autocomplete: AbortCompaction calls = %d, want 0", handle.abortCompactionCount)
 	}
 }
 
@@ -1085,13 +1125,14 @@ func TestInteractiveMode_EscapeAbortsCompactionOnlyBetweenStartAndEnd(t *testing
 	}
 	m.handleAgentEvent(agent.CompactionStartEvent{Reason: "manual"})
 	escape()
-	if handle.abortCompactionCount != 1 {
-		t.Fatalf("Escape during compaction: AbortCompaction calls = %d, want 1", handle.abortCompactionCount)
+	// D239: Escape during compaction shows a status line and never cancels it.
+	if handle.abortCompactionCount != 0 {
+		t.Fatalf("Escape during compaction: AbortCompaction calls = %d, want 0", handle.abortCompactionCount)
 	}
 	m.handleAgentEvent(agent.CompactionEndEvent{Reason: "manual", Aborted: true})
 	escape()
-	if handle.abortCompactionCount != 1 {
-		t.Fatalf("Escape after compaction_end aborted again: %d calls", handle.abortCompactionCount)
+	if handle.abortCompactionCount != 0 {
+		t.Fatalf("Escape after compaction_end aborted: %d calls", handle.abortCompactionCount)
 	}
 }
 
@@ -1578,6 +1619,7 @@ type recordingCompactHandle struct {
 	inner                *Session
 	compactCount         int
 	abortCompactionCount int
+	compactErr           error
 	abortRetryCount      int
 	retryAttempt         int
 	cacheWarming         *CacheWarmingStatus
@@ -1760,6 +1802,9 @@ func (h *recordingCompactHandle) NavigateTreeHandle(_ context.Context, _ string,
 }
 func (h *recordingCompactHandle) Compact(_ context.Context, _ string) (*CompactionResult, error) {
 	h.compactCount++
+	if h.compactErr != nil {
+		return nil, h.compactErr
+	}
 	return &CompactionResult{}, nil
 }
 

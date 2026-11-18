@@ -289,6 +289,7 @@
         "/changelog",
         "/clone",
         "/compact",
+        "/compact-cancel",
         "/copy",
         "/debug",
         "/export",
