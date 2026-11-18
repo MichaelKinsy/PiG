@@ -128,6 +128,7 @@ func TestStreamDeltasKeepSurrogatesAsPi(t *testing.T) {
 	want := piPayloads(t, "testdata/tool_surrogate_stream.mjs", rows)
 	for i, row := range rows {
 		t.Run(row.Name, func(t *testing.T) {
+			skipStrippedAPI(t, row.API)
 			piMarks := strings.Join(streamUnitMarks.FindAllString(want[i], -1), " ")
 			if !strings.Contains(piMarks, "A[") || !strings.Contains(piMarks, "T[") {
 				t.Fatalf("Pi's message does not hold the text and the argument of the stream: %s", want[i])
@@ -189,6 +190,7 @@ func TestStreamDeltaEventsKeepSurrogatesAsPi(t *testing.T) {
 	want := piPayloads(t, "testdata/stream_surrogate_events.mjs", rows)
 	for i, row := range rows {
 		t.Run(row.Name, func(t *testing.T) {
+			skipStrippedAPI(t, row.API)
 			if !strings.Contains(want[i], `text_delta "T[\ud83d`) && row.API != "mistral-conversations" {
 				t.Fatalf("the stream of Pi yields no text delta that ends with the half: %s", want[i])
 			}

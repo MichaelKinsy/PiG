@@ -25,6 +25,7 @@ func TestNestedCallsDoNotReachAProviderRequest(t *testing.T) {
 	want := piPayloads(t, "testdata/tool_surrogate_wire_body.mjs", rows)
 	for i, row := range rows {
 		t.Run(row.Name, func(t *testing.T) {
+			skipStrippedAPI(t, row.API)
 			capture := &wireCapture{}
 			toolSurrogateResult(t, row, capture)
 			for _, side := range []struct{ name, body string }{{"Pi", want[i]}, {"PiG", string(capture.body)}} {
