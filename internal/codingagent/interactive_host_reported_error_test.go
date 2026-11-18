@@ -40,8 +40,8 @@ func TestInteractiveShowsAnErrorTheHostReportsThroughTheRuntimeAndWritesNothingT
 	runtime.ReportRuntimeError(&extension.ExtensionError{ExtensionPath: "/ext/old.mjs", Event: "events:ch", Error: `report_error names the extension "foreign", which does not run in the process of old: reported as old's error`})
 	runtime.ReportRuntimeError(&extension.ExtensionError{ExtensionPath: "/ext/old.mjs", Event: "events:ch", Error: "by another process"})
 	restore()
-	stdoutW.Close()
-	stderrW.Close()
+	_ = stdoutW.Close()
+	_ = stderrW.Close()
 	gotStdout, _ := io.ReadAll(stdoutR)
 	gotStderr, _ := io.ReadAll(stderrR)
 	if len(gotStdout) != 0 || len(gotStderr) != 0 {
