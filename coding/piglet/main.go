@@ -1890,7 +1890,7 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 	}
 
 	// session_start handler: resolve + apply. It returns without awaiting: it reads the flag, resolves the Piglet and scopes the tools, so the bind of a session that has no
-	// other session_start handler that can pend takes no turn of the event loop. pig additive: Pi has no Piglet extension, so there is no handler of Pi's to cite.
+	// other session_start handler that can pend takes no turn of the event loop.
 	ext.AddEventHandlerReturningWithoutAwait("session_start", 0, func(args ...any) (any, error) {
 		if len(args) < 2 {
 			return nil, nil

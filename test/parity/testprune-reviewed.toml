@@ -2290,3 +2290,10 @@ commit = "382daffe1a5878622f3cf6499b5ff623d57cd043"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The commit moves PiG's own raw QuickJS module from codemode/assets/quickjs.wasm to codemode/assets/raw/quickjs.wasm (a nested data-only module, so the file leaves the root module zip). TestEmbeddedQuickJSWasmFrameDecodesToTheAsset compares the decoded embedded frame with that file: its read path changes from EmbeddedQuickJSWasmPath to the literal assets/raw/quickjs.wasm, and the failure message names the new path. The compared bytes, the embedded frame and the assertion are unchanged. The path is a PiG build-layout fact; Pi (a TypeScript package that loads no QuickJS module) has no line for it."
+
+[[entry]]
+path = "coding/extension/host/inproc/registry_test.go"
+commit = "b4b67844c7569aa9d0d8239e9f36dd2c17b54054"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test counted the handlers of the Runner by extension path (HasHandlersOutsideBuiltinMCP) and its expected value for an extension that is not the built-in MCP one stayed; the commit replaces the question with PiG's own property, HasHandlersThatMayAwait: a handler registered through AddEventHandlerReturningWithoutAwait no longer counts as one that may await, whatever the path of its extension. Pi has no such property (its bind awaits every handler's promise; the handler of extensions/mcp/index.ts:1115-1152 is a plain function, which is why PiG's registration says so), so the changed expectation is PiG's own API and not a behaviour of Pi that changed."
