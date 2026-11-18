@@ -27,7 +27,7 @@
    "call:coding/cli/main.go#Main"
   ],
   "evidence": [
-   "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsReportsRegisteredServersWhenNoExtensionConnectsThem",
+   "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsReportsRegisteredServersWhenNoExtensionConnectsThem",
    "test:coding/session_reload_extensions_test.go#TestReloadExtensionsReplacesTheRunnerAndRebuildsTools"
   ],
   "rationale": "AgentSession.extensionRunner is the Go method coding.Session.ExtensionRunner; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",
@@ -61,7 +61,7 @@
    "call:coding/cli/rpc_mode.go#runRPCMode"
   ],
   "evidence": [
-   "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+   "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
    "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels"
   ],
   "rationale": "AgentSession.getSessionStats is the Go method coding.Session.GetSessionStats; signature reviewed against the upstream declaration (a persistence or validation failure is the returned error; undefined is nil or the empty value); callers and tests attributed by go/types (methodrefs).",

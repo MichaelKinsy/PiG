@@ -260,7 +260,7 @@
    "call:agent/agent.go#Agent.SystemPromptSnapshot"
   ],
   "evidence": [
-   "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+   "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
    "test:coding/session_branch_summary_upstream_test.go#TestModelCompleterAgentStreamOverride"
   ],
   "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
@@ -279,7 +279,7 @@
    "call:agent/system_state.go#declareToolChanges"
   ],
   "evidence": [
-   "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+   "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
    "test:coding/session_compaction_suite_upstream_test.go#TestAgentSessionCompactionSuiteUpstream"
   ],
   "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",
