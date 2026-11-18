@@ -1285,7 +1285,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8aaa730](#bf-8aaa730) | A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same… | PiG's own defect | All platforms | Unreleased |
 | [BF-8aab9eb](#bf-8aab9eb) | fix(codingagent): hand the editor an extension installs the provider that exists when the host installs it | PiG's own defect | All platforms | Unreleased |
 | [BF-8ab5a89](#bf-8ab5a89) | A long session no longer holds each tool result twice | PiG's own defect | All platforms | 0.5.0 |
-| [BF-8ab86c8](#bf-8ab86c8) | RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-8ab86c8](#bf-8ab86c8) | RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now… | A Pi defect that PiG fixed first | All platforms | 0.5.0 |
 | [BF-8ac653e](#bf-8ac653e) | The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native… | PiG's own defect | Windows | Unreleased |
 | [BF-8aff02e](#bf-8aff02e) | `grep` with `context` numbers a file's lines at line feeds only, as ripgrep does: a lone carriage return no… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-8b15be3](#bf-8b15be3) | Tests: the read barrier, which lets a fixture server write its next record only when the client is reading… | PiG's own defect | Linux | Unreleased |
@@ -1555,6 +1555,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D626](#bf-d626) | A model object an extension set is replaced by the registry's model only when the registry's entry for its… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D628](#bf-d628) | auth.json is read once per availability pass, where Pi stats it on every credential read | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D629](#bf-d629) | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D630](#bf-d630) | RPC mode reads no stdin inside a reload whose reloaded extension awaits while it loads | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D633](#bf-d633) | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D636](#bf-d636) | A page applies the language and the theme its user chose earlier when it opens, where Pi applies a stored… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D647](#bf-d647) | A message or entry that an extension renders is drawn as the placeholder `[<customType>]` until the… | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -1562,6 +1563,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D649](#bf-d649) | A native extension's settle-tail handler in flight when RPC input ends does not hold the exit, where Pi's… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D650](#bf-d650) | A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D652](#bf-d652) | The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D657](#bf-d657) | Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -19920,12 +19922,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now…**
 
-- **Source:** PiG's own defect
+- **Source:** A Pi defect that PiG fixed first (divergence D146)
 - **Symptom:** RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now answers first from the old Session, as in Pi; PiG still answers the replacement when stdin ends, which Pi does not (D146).
 - **Root cause:** One ordering mechanism, rpcAwaitInOrder on the executor's event-loop task queue, serves both awaited operations that Pi resumes in request order: - set_model's auth checks run concurrently and settle in input order. Two pipelined set_models used to apply in completion order, so the final model was wrong in 1 of 12 runs. - Session replacements chain: each starts after the previous one applied and answers after it, so the last one requested decides the final Session. Concurrent replacements raced in Runner.BindCommandActions and hung at stdin end about one run in two. - A fork or clone requested while an earlier replacement is pending reads its entry from the Session that was current when it…
 - **User impact:** Behavior differed from Pi
 - **Platform:** All platforms
 - **Fixed in:** 0.5.0
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi answers a replacement command that is in flight when stdin ends. The part about replacements in flight together goes when Pi runs them one after the other (it starts every line at once at `rpc-mode.ts:833` and does not guard `AgentSessionRuntime` in Pi 1.5.2, and nothing upstream says it will): until then PiG keeps its order, which cannot be dropped without copying the double `session_shutdown`.
 - **Fix commits:** `8ab86c8219` (2026-10-10)
 - **Tests:** `coding/cli/rpc_replacement_order_test.go::TestRPCCloneAfterNewSessionOfOneBatchUsesTheRequestingSession`, `coding/cli/rpc_replacement_order_test.go::TestRPCReplacementStartsAfterItsBatchWasDispatched`, `coding/cli/rpc_replacement_order_test.go::TestRPCReplacementsOfOneBatchRunInRequestOrder`, `coding/cli/rpc_replacement_order_test.go::TestRPCSessionReplacementAnswersAfterALaterCommandOfItsBatch`, `coding/cli/rpc_replacement_order_test.go::TestRPCSessionReplacementsOfOneBatchSettleInDispatchOrder`, `coding/cli/rpc_resume_integration_test.go::TestRPCModeSessionReplacementAndExport`, `coding/cli/rpc_set_model_pipeline_test.go::TestRPCPipelinedSetModelsApplyInInputOrder`, `test/parity/scenarios/rpc/55-rpc-replacement-concurrent-get-state.toml`
 - **Release note:** RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now answers first from the old Session, as in Pi; PiG still answers the replacement when stdin ends, which Pi does not (D146).
@@ -23706,6 +23710,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `dbb1bbb1bd` (2026-11-12)
 - **Tests:** `coding/cli/rpc_prompt_one_chunk_pi_test.go::TestRPCPromptsWrittenInOneChunkDivergeFromPi`, `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsOfOneBatchAnswerInRequestOrder`, `coding/cli/rpc_prompt_order_test.go::TestRPCPromptsWithDueCompactionsAnswerInRequestOrder`
 
+### BF-D630
+
+**RPC mode reads no stdin inside a reload whose reloaded extension awaits while it loads**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D630)
+- **Symptom:** with a reloaded extension whose factory awaits while it loads, Pi's RPC mode reads stdin inside `reload()` (`rpc-mode.ts:832-834`) and runs a prompt written meanwhile on the runner the reload has invalidated (`agent-session.ts:3826`): an `extension_error` with the stale-context message and the prompt answered "handled"; at stdin's end it exits 0 and the response of the command that awaited `ctx.reload()` is never written. To be filed upstream.\n\nScope: `coding/cli/rpc_settle_gate.go` (`rpcSettleGate.holdReload`), `coding/cli/rpc_mode.go` (the reload the mode installs with `Runtime.SetReload`).
+- **Root cause:** A prompt read inside the load can only fail: it runs on extensions the reload has already invalidated. Holding it gives the client the answer of the extension it reloaded, in the order it wrote its records, and never loses the reloading command's response. The host sees a loading factory's wait in no runtime today, and a Go, Python or Rust extension has no factory that awaits on the host's loop at all.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** Pi stops reading stdin inside `reload()`, or rejects a prompt that arrives during it.
+- **Fix commits:** `53173c48cb` (2026-11-13), `c3634bf629` (2026-11-13), `e2eaee47a0` (2026-11-13)
+- **Tests:** `coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptWrittenDuringAReloadRunsOnTheReloadedExtension`, `coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptWrittenWhileAReloadedFactoryAwaitsRunsOnTheReloadedExtension`
+
 ### BF-D633
 
 **A failed settings save is reported where the change was made, where Pi reports it only in its settings…**
@@ -23810,6 +23829,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Removed when Pi fixes it:** Pi shows progress for a compaction, or the owner withdraws the display.
 - **Fix commits:** `24a9659012` (2026-11-14)
 - **Tests:** `internal/codingagent/compaction/provider_completer_progress_test.go::TestProviderCompleterProgressChangesNeitherRequestNorResult`, `internal/codingagent/interactive_compaction_progress_test.go::TestCompactionEscapeDuringTheStreamLeavesNothingRunning`, `internal/codingagent/interactive_compaction_progress_test.go::TestCompactionLineShowsElapsedTimeAndStreamedTokens`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionLineInANarrowTerminal`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionProgressAllocations`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestCompactionStatusMessage`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageChangesNothingWithinASecond`, `internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageFollowsClockAndCounter` and 1 more in docs/bug-ledger.json
+
+### BF-D657
+
+**Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D657)
+- **Symptom:** none; sharing the event is Pi's design.
+- **Root cause:** the transport gives each handler a decoded copy of a frame, and a runtime that keeps one object per payload would have to hand every handler the same object across a thread, a process and a language boundary. Every realization that can share does not, so that an extension behaves the same in the isolated, the packed and the fused load, whichever the author or the Piglet Binary chooses (D31, D18), and so that a handler that writes after it returned (a goroutine, a timer) cannot change what another handler or a later dispatch reads. The fused path pays one decode and one clone for each handler (`TestFusedDispatchAllocations`). For an assigned member the reason is how each SDK builds its…
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** the SDKs of every language hand the handlers of one dispatch one event object (a handle API for the payload) so that a write reaches the next handler as it does in Pi; the copy then goes from `eventArgsMemo`, the replica clones and the per-request decode of the shared object. For an assigned member: the Go, Python, Rust and Lisp SDKs stop carrying an assigned `event.messages` and `event.entries` (they keep the list they handed the handler, as the Node runtime does), and the Rust SDK can tell an assignment of `event.input` from an edit.
+- **Fix commits:** `00ebf27311` (2026-11-17), `0cd95cb097` (2026-11-17), `d352bb2345` (2026-11-17)
+- **Tests:** `coding/cli/event_handler_payload_pi_test.go::TestEventHandlersOfOneDispatchShareTheirPayloadInPiAndNotInPiG`, `coding/extension/host/subprocess/fused_dispatch_norace_test.go::TestFusedDispatchAllocations`, `test/extension-conformance/assigned_event_members_test.go::TestAssignedContextListIsValidatedLikeAReturnedOne`, `test/extension-conformance/assigned_event_members_test.go::TestAssignedEventMembersFollowPi`, `test/extension-conformance/assigned_event_members_test.go::TestAssignedEventMembersMatchPi`, `test/extension-conformance/context_session_edits_test.go::TestConformance_ContextEditsInASessionReachTheNextHandler`, `test/extension-conformance/context_session_edits_test.go::TestConformance_ContextListEditsInASessionReachTheNextExtension`, `test/extension-conformance/event_isolation_test.go::TestConformance_EventHandlersDoNotShareTheirPayload` and 9 more in docs/bug-ledger.json
 
 ### BF-a076a50
 
@@ -35310,7 +35344,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D142 | Settlement keeps idle waiters pending and abort discards deferred prompts (Pi #10704, #10705) | [BF-31740ec](#bf-31740ec) |
 | D143 | A device-attributes reply split across slow reads is not forwarded as input (Pi #10657) | [BF-0225a43](#bf-0225a43) |
 | D145 | Nested Errors keep their name and message in codemode output (Pi #10650) | [BF-35e46b1](#bf-35e46b1) |
-| D146 | RPC stdin end answers a Session-replacing command that Pi leaves unanswered | deliberate difference |
+| D146 | RPC stdin end answers a Session-replacing command that Pi leaves unanswered | [BF-8ab86c8](#bf-8ab86c8) |
 | D147 | Compactions requested in one input batch run one after another | deliberate difference |
 | D148 | An aborted compaction answers one error; two Pi defects of overlapping compacts are not reproduced | deliberate difference |
 | D150 | `--no-stdin` skips the startup read of piped stdin (Pi #10415) | [BF-D150](#bf-d150) |
@@ -35386,7 +35420,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D626 | A model object an extension set is replaced by the registry's model only when the registry's entry for its… | [BF-D626](#bf-d626) |
 | D628 | auth.json is read once per availability pass, where Pi stats it on every credential read | [BF-D628](#bf-d628) |
 | D629 | A prompt that arrives while another prompt is being admitted in RPC mode is rejected with an error, where Pi… | [BF-D629](#bf-d629) |
-| D630 | RPC mode reads no stdin inside a reload whose reloaded extension awaits while it loads | deliberate difference |
+| D630 | RPC mode reads no stdin inside a reload whose reloaded extension awaits while it loads | [BF-D630](#bf-d630) |
 | D631 | A command run by `pi.exec` or the bash tool gets pipes for its output, where Pi gives it socket pairs | [BF-6da170c](#bf-6da170c) |
 | D632 | Resource loader operations that overlap wait for each other, where Pi's reloads interleave and can mix their… | [BF-68dfec5](#bf-68dfec5) |
 | D633 | A failed settings save is reported where the change was made, where Pi reports it only in its settings… | [BF-D633](#bf-d633) |
@@ -35398,6 +35432,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D650 | A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process… | [BF-D650](#bf-d650) |
 | D651 | Credential and state files are replaced through a temporary file where that changes nothing but the inode… | [BF-fbe92b6](#bf-fbe92b6) |
 | D652 | The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label | [BF-D652](#bf-d652) |
+| D657 | Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one… | [BF-D657](#bf-d657) |
 
 ## Fix-titled commits that are not bugs in a release
 

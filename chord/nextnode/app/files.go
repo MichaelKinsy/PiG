@@ -237,7 +237,8 @@ func maybeFileJSON(file *FileInfo) delta.JsonValue {
 // `dir/.uploads/<run>/` (`Uploads`), ending with the object (an unfinished one is dropped when the next one goes live). For
 // apps that host their own hosts; `startServer` and `startWorker` load it on theirs.
 //
-// pig divergence (D430): the facet starts the appends of a chunked upload with Reference.Start and awaits them apart.
+// pig divergence (D430): the facet runs the blocking remainder of its `onLive` routine from outside the host package with host.AwaitingCtx;
+// only a test helper starts a call with Reference.Start.
 func FilesFacet(dir string, caps FilesCaps, uploads int) host.Facet {
 	maxFile := caps.MaxFile
 	if maxFile == 0 {

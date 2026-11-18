@@ -5699,6 +5699,7 @@ export class Runtime {
           const handlers = this.handlers.get(request.event) ?? [];
           const selected = handlers.find(({ id: handlerId }) => handlerId === request.handler_id);
           if (!selected) throw new Error(`unknown event handler ${request.handler_id} for ${request.event}`);
+          // pig divergence (D657): one request frame for each handler, decoded for this call, so a write to the payload reaches no other handler (the message objects of a message event are shared per process, D541). Pi hands every handler of an emit the one event object.
           const event = request.args ?? {};
           if (Array.isArray(request.message_seqs)) shareEventMessages(request.event, event, request.message_seqs);
           // Upstream preparation.fileOps holds Set<string> values; the wire

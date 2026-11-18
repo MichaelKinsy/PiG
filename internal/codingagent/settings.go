@@ -2970,20 +2970,31 @@ func (sm *SettingsManager) GetEnableInstallTelemetry() bool {
 }
 
 // IsInstallTelemetryEnabled reports whether install/attribution telemetry is
-// enabled, honoring the PI_TELEMETRY env override first and otherwise the
+// enabled, honoring the PIG_TELEMETRY / PI_TELEMETRY env override first and otherwise the
 // enableInstallTelemetry setting (default true). Mirrors upstream
 // isInstallTelemetryEnabled (telemetry.ts:8): when PI_TELEMETRY is set its
 // truthiness wins; otherwise the setting decides. Gates provider attribution
 // headers (provider-attribution.ts) in addition to package-install telemetry.
 // pig divergence (D26): gates the OpenRouter/NVIDIA/Cloudflare attribution headers in coding/model.go.
 func (sm *SettingsManager) IsInstallTelemetryEnabled() bool {
-	// pig divergence (D2): PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY; Pi's name wins when both are set.
-	for _, name := range []string{"PI_TELEMETRY", "PIG_TELEMETRY"} {
-		if env, ok := os.LookupEnv(name); ok {
-			return isTruthyTelemetryEnvFlag(env)
-		}
+	if value, ok := InstallTelemetryEnvOverride(); ok {
+		return isTruthyTelemetryEnvFlag(value)
 	}
 	return sm.GetEnableInstallTelemetry()
+}
+
+// InstallTelemetryEnvOverride is the one place that resolves the telemetry environment override: PIG_TELEMETRY, PiG's name, when it is
+// set, otherwise Pi's PI_TELEMETRY. ok is false when neither is set and the enableInstallTelemetry setting decides. The value is returned
+// as written; both names share one grammar (Pi's isTruthyEnvFlag). The reader of the setting and `pig`'s export to the Node extension
+// runtime both call it.
+// pig divergence (D2): PIG_TELEMETRY wins over PI_TELEMETRY when both are set (owner decision 2026-11-17).
+func InstallTelemetryEnvOverride() (value string, ok bool) {
+	//perf:ok one environment lookup per provider request or start-up; read on each call as Pi's default parameter reads process.env.PI_TELEMETRY (telemetry.ts:8, called from sdk.ts:352 per request), so a changed variable applies at once; a cached value would not
+	if value, ok = os.LookupEnv("PIG_TELEMETRY"); ok {
+		return value, true
+	}
+	//perf:ok the same per-call read (telemetry.ts:8), reached only when PIG_TELEMETRY is unset
+	return os.LookupEnv("PI_TELEMETRY")
 }
 
 // isTruthyTelemetryEnvFlag mirrors upstream isTruthyEnvFlag (telemetry.ts:3):

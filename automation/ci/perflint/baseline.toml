@@ -4621,14 +4621,6 @@ class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder com
 
 [[hit]]
 file = "internal/codingagent/settings.go"
-func = "SettingsManager.IsInstallTelemetryEnabled"
-pattern = "env-stat"
-detail = "os.LookupEnv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "internal/codingagent/settings.go"
 func = "WarningSettings.MarshalJSON"
 pattern = "nested-marshal"
 detail = "json.Marshal"

@@ -47,23 +47,45 @@ func TestHelpNamesPigEnvironmentVariables(t *testing.T) {
 	}
 }
 
-// PIG_TELEMETRY reaches the processes that read Pi's name; a PI_TELEMETRY that is set stays as it is.
+// What `pig` exports as PI_TELEMETRY, for the Node extension runtime and every child process, is the resolved value. Owner decision
+// 2026-11-17 (divergence record D2): when both names are set PIG_TELEMETRY wins, so a PIG_TELEMETRY=0 is never undone by a PI_TELEMETRY=1
+// that is also in the environment (before the decision Pi's name won). PI_TELEMETRY alone stays as it is; with neither nothing is set.
+// PIG_TELEMETRY itself is passed through untouched.
 func TestExportTelemetryOverride(t *testing.T) {
-	if value, ok := os.LookupEnv("PI_TELEMETRY"); ok {
-		t.Cleanup(func() { _ = os.Setenv("PI_TELEMETRY", value) })
-	} else {
-		t.Cleanup(func() { _ = os.Unsetenv("PI_TELEMETRY") })
-	}
-	_ = os.Unsetenv("PI_TELEMETRY")
-	t.Setenv("PIG_TELEMETRY", "0")
-	exportTelemetryOverride()
-	if got, ok := os.LookupEnv("PI_TELEMETRY"); !ok || got != "0" {
-		t.Fatalf("PI_TELEMETRY = %q (set %v) after PIG_TELEMETRY=0, want 0", got, ok)
-	}
-	t.Setenv("PI_TELEMETRY", "1")
-	exportTelemetryOverride()
-	if got := os.Getenv("PI_TELEMETRY"); got != "1" {
-		t.Fatalf("PI_TELEMETRY = %q, want the 1 that was set", got)
+	str := func(s string) *string { return &s }
+	for _, tc := range []struct {
+		name    string
+		pig, pi *string
+		want    string
+		wantSet bool
+	}{
+		{"neither", nil, nil, "", false},
+		{"PI alone", nil, str("1"), "1", true},
+		{"PI alone off", nil, str("0"), "0", true},
+		{"PIG alone", str("0"), nil, "0", true},
+		{"PIG=0 PI=1", str("0"), str("1"), "0", true},
+		{"PIG=1 PI=0", str("1"), str("0"), "1", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for name, value := range map[string]*string{"PIG_TELEMETRY": tc.pig, "PI_TELEMETRY": tc.pi} {
+				t.Setenv(name, "")
+				if value == nil {
+					_ = os.Unsetenv(name)
+				} else {
+					t.Setenv(name, *value)
+				}
+			}
+			exportTelemetryOverride()
+			got, ok := os.LookupEnv("PI_TELEMETRY")
+			if ok != tc.wantSet || got != tc.want {
+				t.Fatalf("PI_TELEMETRY = %q (set %v), want %q (set %v)", got, ok, tc.want, tc.wantSet)
+			}
+			if tc.pig != nil {
+				if pig, _ := os.LookupEnv("PIG_TELEMETRY"); pig != *tc.pig {
+					t.Fatalf("PIG_TELEMETRY = %q, want it passed through as %q", pig, *tc.pig)
+				}
+			}
+		})
 	}
 }
 

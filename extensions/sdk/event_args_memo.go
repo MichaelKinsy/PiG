@@ -88,6 +88,7 @@ func (m *eventArgsMemo) decodeWithMaster(args []byte) (data, master map[string]a
 		return nil, nil, nil, release
 	}
 	order = entry.order.Copies()
+	// pig divergence (D657): the handler gets a clone of the shared master, never the master, so a write by one handler reaches no other handler or extension. Pi hands every handler the one event object.
 	out, _ := cloneStreamValueOrdered(entry.master, order).(map[string]any)
 	return out, entry.master, order, release
 }
