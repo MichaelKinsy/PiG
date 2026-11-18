@@ -23,7 +23,7 @@ const esbuild = (() => {
 const ts = require("typescript");
 
 export async function bundleRuntimePackage(shimArg, packageName, entryFiles, { output: outputArg, external = [], json = false } = {}) {
-  const shims = resolve(shimArg);
+  const shims = realpathSync(resolve(shimArg));
   const source = join(shims, "pi-dist", packageName);
   const logicalOutput = join(source, "sdk-bundle");
   const output = outputArg ? resolve(outputArg) : logicalOutput;
