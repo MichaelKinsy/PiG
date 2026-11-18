@@ -43,6 +43,9 @@ const (
 	// exitBytesSlowDisposeEnv makes the runtime host's dispose last exitBytesSlowDispose after its hook, so the frame the hook requests comes due inside the dispose.
 	exitBytesSlowDisposeEnv = "PIG_TEST_EXIT_BYTES_SLOW_DISPOSE"
 	exitBytesSlowDispose    = 300 * time.Millisecond
+	// exitBytesReadyMarker is the last write the child makes to the pseudo-terminal before it reports ready. The test's copy of the pseudo-terminal lags the
+	// child's writes, so the copy's length when the test sees the ready file is not where the child's writes before it end: the end of the marker is.
+	exitBytesReadyMarker = "\x1b]777;pig-exit-bytes-ready\x07"
 )
 
 // exitTitleOrProgress matches a terminal title (OSC 0) or a progress indicator (OSC 9;4) sequence.
@@ -91,7 +94,7 @@ func TestExitWritesOnlyTheProgressClearThePiStopWrites(t *testing.T) {
 		for _, end := range ends {
 			t.Run(fmt.Sprintf("%s with showTerminalProgress %v", end.name, progress), func(t *testing.T) {
 				child := startExitBytesChild(t, progress, end.run)
-				child.await("the mode to be ready for input", child.ready)
+				child.awaitReady()
 				end.end(t, child)
 				written := child.finish()
 				var want []string
@@ -233,6 +236,14 @@ func (c *exitBytesChild) await(what string, done func() bool) {
 	}
 }
 
+// awaitReady returns once the child's mode is ready for input and everything the child wrote before that is in the test's copy of the pseudo-terminal, so
+// that a length of the copy taken after it, which the exit rows take as the start of the exit's bytes, holds none of those writes back.
+func (c *exitBytesChild) awaitReady() {
+	c.t.Helper()
+	c.await("the mode to be ready for input", c.ready)
+	c.await("the ready marker in the copy of the pseudo-terminal", func() bool { return strings.Contains(c.captured.from(0), exitBytesReadyMarker) })
+}
+
 func (c *exitBytesChild) tail() string {
 	return c.captured.from(max(0, c.captured.len()-600))
 }
@@ -329,6 +340,10 @@ func TestExitBytesChild(t *testing.T) {
 			readyAt = written.len()
 			if os.Getenv(exitBytesStormEnv) == "true" {
 				startExitBytesStorm(mode, terminal)
+			}
+			// The last write before the ready file, so that it follows every byte the child wrote before the mode was ready in the pseudo-terminal's order.
+			if _, err := os.Stdout.WriteString(exitBytesReadyMarker); err != nil {
+				report.Failure = err.Error()
 			}
 			if err := os.WriteFile(filepath.Join(dir, "ready"), nil, 0o600); err != nil {
 				report.Failure = err.Error()
