@@ -3801,28 +3801,6 @@ Evidence: `test/extension-conformance/session_actions_event_context_test.go` (`T
 
 Parity allowance: observable only to an extension in the Go, Python, Rust or Lisp SDK that calls a command-only session action through a context Pi's types forbid it on.
 
-## D618 A start repaints after the highlight grammar load only when a highlight lookup made before it could have answered differently
-
-What: Pi's `init` loads the remaining highlight.js grammars after the startup frame and then calls `invalidate()` and `requestRender()` (`packages/coding-agent/src/modes/interactive/interactive-mode.ts`, `loadAllHighlightLanguages().then(...)`). Pi's renderer writes a frame for every render request even when no row changed (`packages/tui/src/tui-alt-screen.ts` `doRender` has no early return for unchanged lines), so a fresh start writes one more frame about 100 ms after the first: a 29-byte cursor-only frame (`CSI ? 2026 h`, `CSI <row>;1 H`, `CSI ? 25 l`, `CSI ? 2026 l`) that repaints nothing. PiG's `loadRemainingHighlightLanguages` repaints only when `tui.LoadAllHighlightLanguages` reports that a highlight lookup made before the load answers differently now: a language name the startup grammars do not register (including a name no language has), an auto-detection over the languages registered so far, or a listing of them. A start that drew no code block (the usual start) made none, so PiG writes nothing after its first frame. A screen that did draw such code is repainted as in Pi, so highlighted code still picks up the remaining grammars.
-
-Why: the frame carries no row, yet it restarts any consumer's output-quiet wait, and it costs a render pass on the pinned core right after start. Measured on xd670 (core 103, interactive session, 15 rounds): wall 519 ms to 483 ms with CPU unchanged (Pi-Bolt 500 ms). The bytes PiG omits are bytes that do not change the terminal's state: the cursor is already at that row and hidden.
-
-Pi bug: none; Pi's repaint after the load is intended. (Pi-Bolt omits the frame too.)
-
-Scope: `tui` (`LoadAllHighlightLanguages`), `tui/internal/hljs` (`Registry.LoadAllLanguages` and the lookups that record a miss), `internal/codingagent` (`loadRemainingHighlightLanguages`). A Piglet Binary built with `pig_strip_syntax_highlight` loads no grammar and, as before, has nothing to repaint.
-
-By owner principle (decision 29, 2026-11-17), checked by Claude and Tern: performance work that is unobservable; the one cursor-only frame repaints nothing
-
-SCRUTINIZED:approved 2026-11-17 text-sha256:5a65896a4ab32ebb
-
-Remove when: Pi's renderer writes nothing for a render request that changes no row and moves no cursor, or the owner withdraws the approval.
-
-Call-site markers: `internal/codingagent/interactive.go` (`loadRemainingHighlightLanguages`), `tui/highlight.go` (`LoadAllHighlightLanguages`), `tui/internal/hljs/registry.go` (`LoadAllLanguages`).
-
-Evidence: `TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop`, `TestLoadRemainingHighlightLanguagesPostsNoRepaintWhenNoLookupDiffers` (`internal/codingagent/highlight_languages_load_test.go`), `TestLoadAllLanguagesReportsEarlierLookupsThatDiffer` (`tui/internal/hljs/load_reports_test.go`), and parity scenario `interactive-rendering/69-startup-frames-after-grammar-load`, which captures the raw start of both binaries in tmux and pins the number of cursor-only frames after the footer's text: Pi 1 and PiG 1, where PiG before D618 wrote 2 (21 consecutive runs of each binary, and the pre-D618 build failing the scenario). Both binaries write other frames there while tmux answers their start-up color queries, so the stream is not pinned beyond that count.
-
-Parity allowance: scenario 69 (`final_frame_cursor_only_pig = 1`, `final_frame_cursor_only_pi = 1`) pins the count of cursor-only frames each binary's renderer writes after the footer's text, read from `PI_TUI_WRITE_LOG`, the log above PiG's screen writer (D624), which does not send the terminal a frame that changes nothing; the settled screens are compared as in the family's other scenarios.
-
 ## D619 A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are being drawn, where Pi asks for it at once
 
 What: Pi's `Loader` (`packages/tui/src/components/loader.ts`) calls `ui.requestRender()` on every animation step (`setInterval` every 80 ms for the default spinner), so a step that falls between the frames a streaming reply asks for is drawn as a frame of its own, up to 16 ms after the last frame. PiG's interactive mode drew every status-indicator tick with an immediate `Render()` (so also off the 16 ms throttle, often 3-8 ms after the stream's last frame); the mode and `Loader` now ask for the step's frame through `RequestRenderWithin(min(40 ms, interval/2))` when the TUI has one: any frame drawn in that time draws the step and the timer is dropped; only when none is does the timer ask for a frame (`RequestRender`, with the same 16 ms throttle). Every other change to the loader (start, message, indicator, invalidate) still asks for a frame at once. A request made while a frame is running asks for the next frame at once, as `RequestRender` does. The final screen, the order of what is drawn and the 80 ms step cadence are Pi's; a step is drawn at most 40 ms plus the frame throttle after its tick, and a step that a streaming frame has already drawn adds no frame.
