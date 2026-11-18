@@ -132,7 +132,6 @@ D607 new added on the release line by fdf8853 (parity: libraryEntries lists chor
 D614 new added on the release line by 633aaa0 (Mount plugin UI views over D107 in every extension SDK (D614)), first merge 19321a064 Merge the plugin UI port fixes (lint, port-lint, embedder docs, regenerated bund
 D616 new added on the release line by 3467950 (ledgers: regenerate the bug ledger, the interface mapping and DIVERGEN), first merge d2f8bb47e Merge fix/plugins-install-tar-relative-archive 7f3ea7dff into fix/pi-pin-bump
 D617 new added on the release line by b1e1773 (docs: D617 is approved and narrowed to the Go, Python, Rust and Lisp S), first merge f492051e0 Merge release/set-152-final (d591389546cd) into fix/next-go-1.27.4
-D618 new added on the release line by e7a2839 (docs: D618 row in the bundle divergence page; generated ledger, diverg), first merge f492051e0 Merge release/set-152-final (d591389546cd) into fix/next-go-1.27.4
 D619 new added on the release line by 1488c99 (generated: docs bundle and interface inventory for batch C), first merge f492051e0 Merge release/set-152-final (d591389546cd) into fix/next-go-1.27.4
 D621 new added on the release line by 92630fc (gcpolicy: an interactive run collects at GOGC 150 until 8 MiB are live), first merge f492051e0 Merge release/set-152-final (d591389546cd) into fix/next-go-1.27.4
 D624 new added on the release line by 0502bf8 (docs: draft additive record D624 (PIG_TUI_SCREEN_WRITER=1), scrutiny p), first merge 13ebc69db merge: the screen writer (perf/screen-parity-b 2b55d338f1d2) under adaptive fram

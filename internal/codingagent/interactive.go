@@ -763,19 +763,14 @@ type InteractiveMode struct {
 	reloadTailInput [][]byte
 }
 
-// loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then, on the owner loop, requests a render as Pi does and invalidates the cached lines first only when a highlight lookup made before the load answers differently now (D618), so code highlighted with the startup grammars picks up the rest. A mode that has stopped requests nothing.
+// loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then, on the owner loop, invalidates the cached lines and requests a render, so code highlighted with the startup grammars picks up the rest. A mode that has stopped requests nothing.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
 func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 	ctx := m.backgroundCtx
 	m.backgroundTasks.Go(func() {
-		// pig divergence (D618): Pi invalidates and requests a render whenever the languages have loaded (interactive-mode.ts init). The render request is
-		// made always, so the renderer writes the frame Pi's does (a cursor-only one when no row changed); the invalidation, which makes every component
-		// render its lines again, is made only when a screen drew code before the load could have answered it differently.
-		differs := tui.LoadAllHighlightLanguages()
+		tui.LoadAllHighlightLanguages()
 		_ = m.postToMain(ctx, func() {
-			if differs {
-				m.tuiInst.Invalidate()
-			}
+			m.tuiInst.Invalidate()
 			m.tuiInst.RequestRender()
 		})
 		// After the repaint is queued, so the collection never delays it.

@@ -21,7 +21,7 @@ type repaintRecorder struct {
 func (r *repaintRecorder) Invalidate()           { r.calls = append(r.calls, "invalidate") }
 func (r *repaintRecorder) RequestRender(...bool) { r.calls = append(r.calls, "requestRender") }
 
-// Pi's init loads the remaining grammars off the event loop after the startup frame; its continuation, back on the loop, invalidates and requests a render unless the mode has stopped (interactive-mode.ts:init). pig divergence (D618): PiG requests the render as Pi does and invalidates only when a highlight lookup made before the load answers differently now. The grammar load runs once per process, so each test runs in a process of its own.
+// Pi's init loads the remaining grammars off the event loop after the startup frame; its continuation, back on the loop, returns if the mode is not initialized, then calls ui.invalidate() and ui.requestRender(), in that order (interactive-mode.ts:1163-1167, `loadAllHighlightLanguages().then(...)`). Both calls are asserted: a load that drops either one fails. The grammar load runs once per process, so each test runs in a process of its own.
 func TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop(t *testing.T) {
 	if !testenv.InOwnProcess(t) {
 		return
@@ -52,38 +52,6 @@ func TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop(t *testing.T) {
 		t.Fatalf("repaint calls %v, want invalidate then requestRender", got)
 	}
 	m.backgroundTasks.Wait()
-}
-
-// A start that looked up no language the load adds has nothing to re-highlight: the load requests its render, as Pi's does (parity scenario 69: Pi writes a
-// 29-byte cursor-only frame there and so does PiG), and invalidates nothing (D618).
-func TestLoadRemainingHighlightLanguagesRequestsTheRenderWithoutInvalidatingWhenNoLookupDiffers(t *testing.T) {
-	if !testenv.InOwnProcess(t) {
-		return
-	}
-	renderer := &repaintRecorder{}
-	m := &InteractiveMode{tuiInst: renderer, uiTaskCh: make(chan func(), 1), backgroundCtx: t.Context()}
-	// Looking up an eager language is the same answer before and after the load.
-	if !tui.SupportsLanguage("javascript") {
-		t.Fatal("javascript is not an eager language")
-	}
-	m.loadRemainingHighlightLanguages()
-	m.backgroundTasks.Wait()
-	var task func()
-	select {
-	case task = <-m.uiTaskCh:
-	default:
-		t.Fatal("the grammar load posted no render request to the owner loop")
-	}
-	if !tui.SupportsLanguage("ada") {
-		t.Fatal("the load did not register the remaining languages")
-	}
-	if len(renderer.calls) != 0 {
-		t.Fatalf("the background task called the renderer off the owner loop: %v", renderer.calls)
-	}
-	task()
-	if got := renderer.calls; len(got) != 1 || got[0] != "requestRender" {
-		t.Fatalf("renderer calls %v, want exactly one requestRender and no invalidate", got)
-	}
 }
 
 func TestLoadRemainingHighlightLanguagesSkipsTheRepaintAfterStop(t *testing.T) {

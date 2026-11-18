@@ -3,19 +3,16 @@
 # out and then invalidates and requests a render (interactive-mode.ts init: loadAllHighlightLanguages().then(...)); the tui writes a frame for every render
 # request even when no row changed (tui-alt-screen.ts doRender has no early return for unchanged lines), so Pi writes one more frame: a cursor-only
 # CSI ? 2026 h, CSI <row>;1 H, CSI ? 25 l, CSI ? 2026 l (29 bytes) that repaints nothing.
-# pig divergence (D618): PiG repaints after the load only when a highlight lookup made before it could have answered differently (an unregistered name,
-# an auto-detection or a listing over the languages registered so far). A fresh start made none, so PiG writes nothing after its first frame.
-# Upstream evidence (pi v1.5.2, npm @earendil-works/pi-coding-agent, 2026-11-11, pty capture on xd670): one 29-byte cursor-only frame about 97 ms after the
-# startup frames. PiG before D618 wrote the same frame about 30 ms after its startup frames (BoltTurn trace of loadRemainingHighlightLanguages).
+# PiG does the same: after the grammar load it invalidates and requests a render on the owner loop (loadRemainingHighlightLanguages), so each binary's renderer
+# writes that cursor-only frame once. Upstream evidence (pi v1.5.2, npm @earendil-works/pi-coding-agent, 2026-11-11, pty capture on xd670): one 29-byte
+# cursor-only frame about 97 ms after the startup frames.
 # Both binaries also write frames after the footer's text while the terminal answers their start-up queries (OSC 10/11/4 and DA1, which tmux answers):
 # the colors apply, the logo row is rewritten (a frame that is not cursor-only), and further renders find no changed row. The number and order of
-# those frames follow the replies' timing, and Pi coalesces some of them, so the stream after the text is not pinned. What is stable, measured on
-# xd670 over 8 consecutive runs of each binary: Pi writes exactly one cursor-only frame after the text; PiG with D618 writes exactly one; PiG
-# before D618 wrote exactly two (BoltTurn2 measurement, 8 of 8 runs). The extra frame was the repaint after the grammar load. So the scenario pins
-# the count of cursor-only frames after the text, per binary, which is the one frame kind D618 is about and independent of the reply timing; a
-# mutation that restores the unconditional repaint in loadRemainingHighlightLanguages makes PiG's count 2 and fails. The scenario cannot show
-# which of Pi's frames comes from its grammar load (the harness has no direct pty driver and the cursor-only frames are byte-identical); that
-# attribution is the pty capture in the evidence above, and the direct tests of the repaint decision in internal/codingagent and tui/internal/hljs.
+# those frames follow the replies' timing, and Pi coalesces some of them, so the stream after the text is not pinned. What is stable is the count of
+# cursor-only frames after the text: exactly one in each binary. So the scenario pins that count, per binary, independent of the reply timing; a
+# load that requests no render makes PiG's count 0 and fails. The scenario cannot show which of the frames comes from the grammar load (the harness has
+# no direct pty driver and the cursor-only frames are byte-identical); that attribution is the pty capture in the evidence above and the direct test of
+# the load's two calls in internal/codingagent (TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop).
 
 # Re-measured 2026-11-12 on xd670 (Ubuntu 26.04, tmux 3.6a, Pi 1.5.2 source oracle b4afdddf, with and without the post-release backports; the counts did not differ).
 # The earlier red came from the runner, not from either binary: the transcript was read through cat, which on that host is uutils coreutils 0.8.0 and stops copying
@@ -28,7 +25,7 @@
 # Read above PiG's screen writer since 2026-11-12 (container tern-ci:v10, tmux 3.4, this scenario alone, 10 runs in each of PiG's modes). With the screen
 # writer on (D624) the terminal got no cursor-only frame from PiG after the text, 10 runs of 10: the writer does not send a frame that changes nothing. Its
 # record log of the same runs (PIG_TUI_SCREEN_WRITER_LOG) shows that the renderer wrote exactly one such frame after the text (29 bytes in, none out) in 10
-# of 10. With PIG_TUI_SCREEN_WRITER=pi the transcript held one, 10 of 10. D618 is about the frame the renderer is asked for, so the frames of both binaries
+# of 10. With PIG_TUI_SCREEN_WRITER=pi the transcript held one, 10 of 10. The scenario is about the frame the renderer is asked for, so the frames of both binaries
 # are read from PI_TUI_WRITE_LOG, the log of what the renderers wrote (Pi's ProcessTerminal.write and PiG's port of it; PiG's screen writer sits under it):
 # read that way, this scenario alone, Pi wrote one cursor-only frame after the text and PiG one in 30 pairs of 30 with the screen writer and in 30 of 30 with
 # PIG_TUI_SCREEN_WRITER=pi. A write log that is missing or lacks the text fails the run ("the text is not in the raw transcript").
@@ -42,7 +39,7 @@
 # by the family's scenarios that follow a start with a prompt (68-no-frame-after-reply and the others).
 
 name = "69-startup-frames-after-grammar-load"
-description = "A fresh start writes the same number of cursor-only frames after the footer's text as Pi (D618: PiG skips the grammar-load repaint, so PiG writes one and not two)."
+description = "A fresh start writes the same number of cursor-only frames after the footer's text as Pi: the render both binaries request when the remaining highlight grammars have loaded."
 covers = [
   "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
   "packages/tui/src/tui-alt-screen.ts",

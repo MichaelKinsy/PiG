@@ -68,7 +68,7 @@ func TestEvaluateOutcome_NoFramesAfterReply(t *testing.T) {
 	}
 }
 
-// A numbered divergence over a repaint is pinned by the number of cursor-only frames each binary writes after the final_frame text (D618), since both
+// The frames of a repaint are pinned by the number of cursor-only frames each binary writes after the final_frame text, since both
 // binaries write other frames there while the terminal answers their start-up queries.
 func TestObserveFinalFrameKeepsTheFramesAfterTheText(t *testing.T) {
 	frame := func(body string) string { return "\x1b[?2026h" + body + "\x1b[37;1H\x1b[?25l\x1b[?2026l" }
