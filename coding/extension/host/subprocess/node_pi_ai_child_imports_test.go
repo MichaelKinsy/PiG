@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 // pi: packages/coding-agent/src/core/extensions/loader.ts
