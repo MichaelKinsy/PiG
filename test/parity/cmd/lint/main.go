@@ -84,7 +84,11 @@
 //     least two distinct recorded positions, under a `# floating-evidence:`
 //     comment: a sequence that never moves is compared, not skipped.
 //     erasures_only narrows a window to its erase-in-display sequences (ESC[2J,
-//     ESC[3J) and does not combine with floating.
+//     ESC[3J) and does not combine with floating. write_kinds reduces a window to
+//     the kinds of its writes (frame, standalone cursor placement, title, other
+//     sequences) and does not combine with erasures_only; collapse_frame_runs
+//     (only with write_kinds) counts a run of frames as one entry and needs a
+//     `# frame-count-evidence:` comment naming two recorded Pi runs that differ.
 package main
 
 import (
@@ -192,6 +196,9 @@ type sequenceWindowBlock struct {
 	Until        string                  `toml:"until"`
 	Floating     []floatingSequenceBlock `toml:"floating"`
 	ErasuresOnly bool                    `toml:"erasures_only"`
+	WriteKinds   bool                    `toml:"write_kinds"`
+	// CollapseFrameRuns is checked with WriteKinds: runner/transcript_sequences.go counts a run of frames as one entry only for a window that compares write kinds.
+	CollapseFrameRuns bool `toml:"collapse_frame_runs"`
 }
 
 type floatingSequenceBlock struct {
@@ -740,6 +747,15 @@ func lintTranscriptSequences(path, source string, sc *scenario) []violation {
 			bad("transcript-sequences-window", "transcript_sequences_equal window %q replaces from and until", w.Window)
 		case w.Window == "" && w.From == "" && w.Until == "":
 			bad("transcript-sequences-window", "transcript_sequences_equal needs a window name or a from or until marker: the whole stream is not a stable comparison")
+		}
+		if w.WriteKinds && w.ErasuresOnly {
+			bad("transcript-sequences-write-kinds", "transcript_sequences_equal write_kinds and erasures_only are two reductions of the window; name one")
+		}
+		if w.CollapseFrameRuns && !w.WriteKinds {
+			bad("transcript-sequences-write-kinds", "transcript_sequences_equal collapse_frame_runs belongs to write_kinds")
+		}
+		if w.CollapseFrameRuns && !strings.Contains(source, "# frame-count-evidence:") {
+			bad("frame-count-evidence-missing", "scenario %q collapses frame runs without a '# frame-count-evidence:' comment naming two recorded Pi runs with different frame counts and the reply whose timing moves them", sc.Name)
 		}
 		if w.ErasuresOnly && len(w.Floating) > 0 {
 			bad("transcript-sequences-erasures", "transcript_sequences_equal erasures_only compares the erase sequences alone, and floating names sequences left out of a full comparison")

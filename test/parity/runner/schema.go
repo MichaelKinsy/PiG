@@ -300,8 +300,8 @@ type AssertSpec struct {
 	NoFramesAfterReply bool `toml:"no_frames_after_reply"`
 	// FinalFrameCursorOnlyPig and FinalFrameCursorOnlyPi pin, for every run of that binary, the exact number of cursor-only frames (CSI ? 2026 h,
 	// CSI <row>;1 H, CSI ? 25 l, CSI ? 2026 l: a render that repaints nothing) that begin after the last occurrence of a final_frame text. Both
-	// binaries write other frames there while the terminal answers their start-up queries, so a scenario that records a numbered divergence over
-	// a repaint pins the one frame kind the divergence is about (D618) and not the whole stream.
+	// binaries write other frames there while the terminal answers their start-up queries, so a scenario about a repaint pins the one frame
+	// kind it is about and not the whole stream.
 	FinalFrameCursorOnlyPig *int `toml:"final_frame_cursor_only_pig"`
 	FinalFrameCursorOnlyPi  *int `toml:"final_frame_cursor_only_pi"`
 	// TranscriptSequencesEqual requires, for every run pair and each window it declares, that the ordered escape sequences and text runs the two binaries wrote between two points of the terminal transcript are the same list (see SequenceWindowSpec). The transcript holds every byte from the program's first write; the comparator reads output only, never the keys or terminal replies the program received.

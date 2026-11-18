@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "760e6f69c183d3699babfb934d5e9f4c266e995122d7a545add9ba7b0c1ca728",
+      "sha256": "210d6a1aff3beed290404880873ed019c2be2717f9c10319ea62ac18dc43d5b9",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
@@ -57,7 +57,7 @@
     },
     {
       "source": "test/parity/runner/transcript_sequences.go",
-      "sha256": "e5bc979cf22b6b1d536574252721a0afb5b01f0bcd43c1e2431f1535ad0657a9",
+      "sha256": "8e01847154717ff4229c448459cc3d3f2d5b75ad990e68627a12292a1b30bda8",
       "reason": "transcript_sequences_equal compares the ordered escape sequences and text runs of one stretch of the terminal transcript token by token, byte for byte, with no normalisation. Its only exemption is a floating sequence a scenario declares: exactly one complete sequence or one OSC number, present in every run of both binaries, never written earlier than Pi's earliest recorded position, with Pi evidence of at least two distinct positions. It removes that sequence's place from the comparison and nothing else."
     },
     {
@@ -12530,6 +12530,43 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/startup/20-startup-write-kinds.toml",
+      "transforms": [
+        {
+          "kind": "transcript_sequences_floating",
+          "window": {
+            "from": "\u001b[?2004h",
+            "until": ""
+          },
+          "sequence": "\u001b[>4;2m",
+          "reason": "Pi writes it when the terminal answers its Kitty keyboard query; the answer's time moves it across the first frame.",
+          "evidence_runs": 20,
+          "evidence_positions": [
+            26,
+            72
+          ]
+        },
+        {
+          "kind": "transcript_sequences_floating",
+          "window": {
+            "from": "\u001b[?2004h",
+            "until": ""
+          },
+          "osc": 0,
+          "reason": "Pi sets the window title in the same step as the CSI > 4 ; 2 m above.",
+          "evidence_runs": 20,
+          "evidence_positions": [
+            27,
+            73
+          ]
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/startup/21-startup-changelog-version-recorded-for-a-resumed-session-without-messages.toml",
       "transforms": [
         {
@@ -12658,6 +12695,70 @@
     {
       "scenario": "test/parity/scenarios/startup/30-exit-sighup-idle-stop-sequences.toml",
       "transforms": [
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/startup/31-startup-notices-follow-the-header.toml",
+      "transforms": [
+        {
+          "kind": "normalize_replace",
+          "pattern": "Warning: pig crashed on",
+          "with": "Warning: pi crashed on",
+          "reason": "D2: the crash notice names the host product (APP_NAME); the date, the message and the rest of the sentence stay literal."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "/tmp/parity-snap-PIG_HOME-[0-9]+/docs/bundle-[0-9a-f]+/",
+          "with": "<docs>/",
+          "reason": "The documentation directory is where each product installs its docs: PiG's bundle directory under its home. Only the directory differs; the file names after it and the lines are compared."
+        },
+        {
+          "kind": "normalize_replace",
+          "pattern": "/tmp/parity-pi-pkg-[0-9]+/pi-coding-pkg-with-bundle-pad/docs/",
+          "with": "<docs>/",
+          "reason": "The documentation directory is where each product installs its docs: Pi's package directory, padded by the runner to PiG's length. Only the directory differs; the file names after it and the lines are compared."
+        },
+        {
+          "kind": "transcript_sequences_floating",
+          "window": {
+            "from": "\u001b[?2004h",
+            "until": ""
+          },
+          "sequence": "\u001b[>4;2m",
+          "reason": "Pi writes it when the terminal answers its Kitty keyboard query; the answer's time moves it across the first frame.",
+          "evidence_runs": 20,
+          "evidence_positions": [
+            25,
+            66
+          ]
+        },
+        {
+          "kind": "transcript_sequences_floating",
+          "window": {
+            "from": "\u001b[?2004h",
+            "until": ""
+          },
+          "osc": 0,
+          "reason": "Pi sets the window title in the same step as the CSI > 4 ; 2 m above.",
+          "evidence_runs": 20,
+          "evidence_positions": [
+            26,
+            67
+          ]
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "[Context]",
+            "capture_end_regex": "─{20}"
+          },
+          "reason": "Owned visible surface: The startup diagnostic, the model fallback message and the crash notice sit between the header and the editor, in that order, as pi's run() shows them after init().",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
         {
           "kind": "cwd_snapshot_digits",
           "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."

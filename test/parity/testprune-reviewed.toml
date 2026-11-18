@@ -2324,3 +2324,10 @@ commit = "91d00732f51b98fac2713958fad2f059fc47de4c"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The changed expectations are PiG's own precedence between PIG_TELEMETRY and Pi's PI_TELEMETRY when both are set; Pi has no PIG_TELEMETRY, so no Pi line governs it; owner decision 24 of 2026-11-17 (divergence record D2) makes PIG_TELEMETRY win; the expectations for PI_TELEMETRY alone and for neither variable are unchanged."
+
+[[entry]]
+path = "coding/extension/host/inproc/registry_test.go"
+commit = "b4b67844c7569aa9d0d8239e9f36dd2c17b54054"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The test counted the handlers of the Runner by extension path (HasHandlersOutsideBuiltinMCP) and its expected value for an extension that is not the built-in MCP one stayed; the commit replaces the question with PiG's own property, HasHandlersThatMayAwait: a handler registered through AddEventHandlerReturningWithoutAwait no longer counts as one that may await, whatever the path of its extension. Pi has no such property (its bind awaits every handler's promise; the handler of extensions/mcp/index.ts:1115-1152 is a plain function, which is why PiG's registration says so), so the changed expectation is PiG's own API and not a behaviour of Pi that changed."

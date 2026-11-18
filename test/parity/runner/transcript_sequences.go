@@ -25,6 +25,10 @@ type SequenceWindowSpec struct {
 	Floating []FloatingSequence `toml:"floating"`
 	// ErasuresOnly narrows the comparison to the sequences that erase the display (CSI Ps J: ESC[2J clears the screen, ESC[3J the terminal's scrollback), their number and their order. It is for a window whose other bytes differ for reasons that are not its contract, such as the run's random directory in a footer, when the contract is whether the program wipes the screen or the scrollback. It does not combine with Floating.
 	ErasuresOnly bool `toml:"erasures_only"`
+	// WriteKinds reduces the window to the ordered kinds of the program's writes (writeKinds): each synchronized frame, each standalone cursor placement and each title is one entry, whatever it carries, and every other sequence stands for itself. It is for a window whose frames cannot be byte-equal (the run's random directory in the footer) and whose contract is what the program writes around them: a bare cursor placement a render with nothing to change adds, a frame more or fewer. Every window with it compares the kinds in order and their number.
+	WriteKinds bool `toml:"write_kinds"`
+	// CollapseFrameRuns, with WriteKinds, counts each maximal run of frames that each end in their own cursor placement as one entry: the number of frames of the run is not compared. It is declared only where Pi's frame count differs from run to run with the time a terminal reply arrives (a floating declaration says which), and every placement that does not follow a frame still is.
+	CollapseFrameRuns bool `toml:"collapse_frame_runs"`
 }
 
 // FloatingSequence declares one sequence kind that is left out of a window's comparison: exactly one of Sequence (one complete escape sequence, byte for byte) or OSC (every operating system command with that number, whatever its text and terminator). A prefix of a sequence, a list of them or a pattern is not a declaration.
@@ -55,6 +59,9 @@ func (w SequenceWindowSpec) title() string {
 	if w.ErasuresOnly {
 		return fmt.Sprintf("window from %q until %q (erase sequences only)", from, until)
 	}
+	if w.WriteKinds {
+		return fmt.Sprintf("window from %q until %q (write kinds)", from, until)
+	}
 	return fmt.Sprintf("window from %q until %q", from, until)
 }
 
@@ -67,6 +74,12 @@ func (w SequenceWindowSpec) validate() error {
 		return fmt.Errorf("transcript_sequences_equal window %q replaces from and until", w.Window)
 	case w.Window == "" && w.From == "" && w.Until == "":
 		return fmt.Errorf("transcript_sequences_equal needs a window name or a from or until marker: the whole stream is not a stable comparison")
+	}
+	if w.CollapseFrameRuns && !w.WriteKinds {
+		return fmt.Errorf("transcript_sequences_equal %s: collapse_frame_runs belongs to write_kinds", w.title())
+	}
+	if w.ErasuresOnly && w.WriteKinds {
+		return fmt.Errorf("transcript_sequences_equal %s: erasures_only and write_kinds are two reductions of the window; name one", w.title())
 	}
 	if w.ErasuresOnly && len(w.Floating) > 0 {
 		return fmt.Errorf("transcript_sequences_equal %s: erasures_only compares the erase sequences alone, and floating names sequences left out of a full comparison", w.title())
@@ -239,6 +252,9 @@ func observeSequenceWindow(raw []byte, whole []string, w SequenceWindowSpec) Seq
 		if (!w.ErasuresOnly || isDisplayErase(token)) && !slices.ContainsFunc(w.Floating, func(f FloatingSequence) bool { return f.matches(token) }) {
 			result.Tokens = append(result.Tokens, token)
 		}
+	}
+	if w.WriteKinds {
+		result.Tokens = writeKinds(result.Tokens, w.CollapseFrameRuns)
 	}
 	return result
 }

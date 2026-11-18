@@ -1,0 +1,80 @@
+# Behavior family: startup
+# PORT_MAP linkage is explicit in the covers table below.
+# Scenario: the writes around the startup frames
+#
+# In a plain interactive startup (no typing, no extension handler held) pig writes what Pi writes around its frames and no more: the same kinds of write in the
+# same order, from the first byte to the settled screen. The 00 scenario compares the stream only up to the first frame, and frames differ in bytes (the footer's
+# random working directory, Pi's logo), so before this scenario a render pig asked for that Pi does not (init() renders after the bind, a warning renders
+# at once) left its bare cursor placement, ESC[<n>G ESC[?25l, in the stream with no scenario seeing it.
+#
+# Upstream evidence (Pi 1.5.2, packages/coding-agent/src/modes/interactive/interactive-mode.ts and packages/tui/src/tui.ts): init() mounts the header and ends in renderNow
+# (:1141-1162), run() shows the notices after init() returns (:1230-1267) and showWarning only requests a render (:4812-4816), and the renderer writes a frame and then
+# the cursor placement for every render it runs (tui.ts:1025-1031). The measurement of the resulting stream follows.
+#
+# Measured in Pi (xd670, 2026-11-17, a pty answering the DA1 and colour queries like tmux, 20 runs): after the mode setup the stream is a frame and its cursor
+# placement, the Kitty push and the window title, then two more frames each followed by its cursor placement; in half of the runs the first frame is not written
+# (see the frame-count-evidence below). On a terminal that answers nothing the stream is, in all 5 runs, frame, placement, title, frame, placement, frame, placement.
+
+name = "20-startup-write-kinds"
+description = "plain startup: pig writes the same kinds of write as Pi around its frames (frame, cursor placement, title), with no extra standalone cursor placement"
+
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/tui/src/tui.ts",
+]
+
+tags = ["fast", "tui", "hermetic"]
+driver = "interactive-tmux"
+
+# Regular mode, the terminal's own scrollback: the cursor placement is a write of this mode only (fullscreen's alternate screen has no standalone placement).
+[env]
+override_base_args = true
+pig_args = ["--tui-mode", "regular"]
+pi_args = ["--tui-mode", "regular"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "PiG can explain"
+ready_pattern_pi = "Pi can explain"
+ready_timeout_seconds = 15
+# The transcript is cut after the screen has been quiet for this long: every write of the startup has been made.
+settle_seconds = 4
+
+[assert]
+runs = 5
+both_reach_ready = true
+# D2: PiG never draws Pi's logo (the "▀▀█" of its first line); the frames are not compared in bytes, only counted by kind below.
+pig_not_contain = ["▀▀█"]
+
+# frame-count-evidence: Pi 1.5.2, 20 runs of regular-mode startup on a pty answering DA1 and the colour queries like tmux (xd670, 2026-11-17, /tmp harness ptyrun.py,
+# the same input every run): 10 runs wrote 3 frames and 10 wrote 2, each frame followed by its own cursor placement. The frame that is missing is the first, the one
+# written before the Kitty push and the window title: Pi's first scheduled frame comes before or after the terminal's reply to its DA1 query, which decides whether the
+# push, the title and the later frames are written before it. The stream is compared from the first write to the end of the transcript as the ordered kinds of write; a run
+# of frames that each end in their own cursor placement is one entry, so the count of frames is free and every placement that follows no frame is compared.
+# floating-evidence: Pi 1.5.2, the same 20 runs, token positions counted from 0 in the whole transcript (text runs included): CSI > 4 ; 2 m is first seen at token 26 in 10
+# runs (before the first frame) and at token 72 in 10 (after it); the OSC 0 title follows it at token 27 or 73. Pi writes both when the terminal's reply to its Kitty
+# keyboard query arrives, which the first scheduled frame overtakes in half of the runs.
+[[assert.transcript_sequences_equal]]
+from = "\u001b[?2004h"
+write_kinds = true
+collapse_frame_runs = true
+
+[[assert.transcript_sequences_equal.floating]]
+sequence = "\u001b[>4;2m"
+reason = "Pi writes it when the terminal answers its Kitty keyboard query; the answer's time moves it across the first frame."
+evidence_runs = 20
+evidence_positions = [26, 72]
+
+[[assert.transcript_sequences_equal.floating]]
+osc = 0
+reason = "Pi sets the window title in the same step as the CSI > 4 ; 2 m above."
+evidence_runs = 20
+evidence_positions = [27, 73]
+
+[diverge]
+pig_contains = [
+  "PiG can explain",
+]
+pi_contains = ["Pi can explain"]
+reason = "D2 replaces Pi's logo with PiG's pig head and the onboarding names the product; the frames' bytes are not compared here, only the kinds of write around them."

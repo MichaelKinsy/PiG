@@ -30,6 +30,15 @@ func (m *InteractiveMode) drainMainLoopOnce() {
 	}
 }
 
+// runRequestedFrame runs, as inputLoop does, the frame that a request has armed: it waits for the frame's own deadline and runs the frame then. With no frame
+// armed there is nothing to wait for.
+func (m *InteractiveMode) runRequestedFrame() {
+	for m.frameDue.Load() != 0 {
+		<-m.renderWakeCh
+		m.runScheduledRender()
+	}
+}
+
 // A throttled render requested while the UI task queue is saturated (the main
 // loop stalled under load while spinner ticks and worker posts piled up) must
 // still paint once the loop catches up. Upstream's requestRender timer callback
