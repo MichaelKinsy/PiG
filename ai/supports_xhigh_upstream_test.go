@@ -74,7 +74,7 @@ func TestSupportsXHighUpstream(t *testing.T) {
 		})
 	}
 	// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:88
-	for _, id := range []string{"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra"} {
+	for _, id := range []string{"gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6.2-astra", "gpt-6.2-sol"} {
 		t.Run("includes xhigh for openai-codex "+id+" models", func(t *testing.T) {
 			if got := GetSupportedThinkingLevels(upstreamThinkingModel(t, "openai-codex/"+id)); !slices.Contains(got, ThinkingXHigh) {
 				t.Fatalf("levels = %v", got)
@@ -144,32 +144,34 @@ func TestSupportsXHighUpstream(t *testing.T) {
 		}
 	})
 	// .upstream/current/packages/ai/test/supports-xhigh.test.ts (b317575f, #11781)
-	for _, id := range []string{"gpt-6-astra", "gpt-6-luna", "gpt-6-sol", "gpt-6.1-sol", "gpt-6.1-terra"} {
+	for _, id := range []string{"gpt-6-astra", "gpt-6-luna", "gpt-6-sol", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6.2-astra", "gpt-6.2-sol"} {
 		t.Run("uses the Azure Foundry 1.05M context window for "+id, func(t *testing.T) {
 			if got := upstreamThinkingModel(t, "azure/"+id).Capabilities.ContextWindow; got != 1050000 {
 				t.Errorf("context window = %d, want 1050000", got)
 			}
 		})
 	}
-	// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:113 (OpenAI and Codex reject reasoning.effort "none" for GPT-6.1 Sol)
-	t.Run("does not support off for GPT-6.1 Sol", func(t *testing.T) {
-		for _, tc := range []struct {
-			provider string
-			levels   []ModelThinkingLevel
-		}{
-			{"openai", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
-			{"azure", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
-			{"openai-codex", []ModelThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
-		} {
-			m := upstreamThinkingModel(t, tc.provider+"/gpt-6.1-sol")
-			if got := GetSupportedThinkingLevels(m); !slices.Equal(got, tc.levels) {
-				t.Errorf("%s levels = %v, want %v", tc.provider, got, tc.levels)
+	// .upstream/v0.99.1/packages/ai/test/supports-xhigh.test.ts:113 (OpenAI and Codex reject reasoning.effort "none" for GPT-6.1 Sol and GPT-6.2, e56d35ce5)
+	for _, id := range []string{"gpt-6.1-sol", "gpt-6.2-astra", "gpt-6.2-sol"} {
+		t.Run("does not support off for "+id, func(t *testing.T) {
+			for _, tc := range []struct {
+				provider string
+				levels   []ModelThinkingLevel
+			}{
+				{"openai", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
+				{"azure", []ModelThinkingLevel{ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
+				{"openai-codex", []ModelThinkingLevel{ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingXHigh, ThinkingMax}},
+			} {
+				m := upstreamThinkingModel(t, tc.provider+"/"+id)
+				if got := GetSupportedThinkingLevels(m); !slices.Equal(got, tc.levels) {
+					t.Errorf("%s levels = %v, want %v", tc.provider, got, tc.levels)
+				}
+				if off, ok := m.ThinkingLevelMap[ThinkingOff]; !ok || off != nil {
+					t.Errorf("%s thinkingLevelMap.off = %v (present %t), want null", tc.provider, off, ok)
+				}
 			}
-			if off, ok := m.ThinkingLevelMap[ThinkingOff]; !ok || off != nil {
-				t.Errorf("%s thinkingLevelMap.off = %v (present %t), want null", tc.provider, off, ok)
-			}
-		}
-	})
+		})
+	}
 	// packages/ai/test/supports-xhigh.test.ts "supports off but not minimal for GPT-6.1 Terra" (6c384aa3): Terra accepts reasoning.effort "none" but, like GPT-6.1 Sol, rejects "minimal".
 	t.Run("supports off but not minimal for GPT-6.1 Terra", func(t *testing.T) {
 		for _, provider := range []string{"openai", "azure", "openai-codex"} {
@@ -198,6 +200,8 @@ func TestSupportsXHighUpstream(t *testing.T) {
 		// Codex serves GPT-6.1 Sol with a 500K default context window (#10840)
 		{"gpt-6.1-sol", ModelCost{Input: 2, Output: 10, CacheRead: 0.1, CacheWrite: 2.5}, 500000},
 		{"gpt-6.1-terra", ModelCost{Input: 1, Output: 5, CacheRead: 0.05, CacheWrite: 1.25}, 500000},
+		{"gpt-6.2-astra", ModelCost{Input: 8, Output: 40, CacheRead: 0.4, CacheWrite: 10}, 272000},
+		{"gpt-6.2-sol", ModelCost{Input: 2, Output: 10, CacheRead: 0.1, CacheWrite: 2.5}, 500000},
 	} {
 		t.Run("includes official metadata for OpenAI and Codex "+tc.id, func(t *testing.T) {
 			for _, provider := range []string{"openai", "openai-codex"} {

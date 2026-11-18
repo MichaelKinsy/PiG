@@ -254,13 +254,17 @@ func TestProvBOpenAICodex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	provBIDsEqual(t, provBIDs(catalog), "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra")
+	provBIDsEqual(t, provBIDs(catalog), "gpt-6.2-astra", "gpt-6.2-sol", "gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna", "gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra")
 	models := provBModelsOf(catalog)
 	provBCheck(t, models, []provBWant{
 		{"gpt-6.1-sol", "name", `"GPT-6.1 Sol"`},
 		{"gpt-6.1-sol", "contextWindow", "500000"},
 		{"gpt-6.1-terra", "contextWindow", "500000"},
 		{"gpt-6-astra", "contextWindow", "272000"},
+		{"gpt-6.2-astra", "name", `"GPT-6.2 Astra"`},
+		{"gpt-6.2-astra", "contextWindow", "272000"},
+		{"gpt-6.2-sol", "name", `"GPT-6.2 Sol"`},
+		{"gpt-6.2-sol", "contextWindow", "500000"},
 		{"gpt-5.6-terra", "contextWindow", "272000"},
 		{"gpt-6-sol", "maxTokens", "128000"},
 		{"gpt-6-sol", "api", `"openai-codex-responses"`},

@@ -28,6 +28,8 @@ func TestApplyOpenAIFamilyRules(t *testing.T) {
 		{"gpt-5.6 on another API gets xhigh only", "x", "gpt-5.6-sol", "anthropic-messages", `{"xhigh":"xhigh"}`, `null`},
 		{"gpt-6 astra rejects none", "openai", "gpt-6-astra", "openai-responses", gpt6Levels, `null`},
 		{"gpt-6.1 sol rejects none", "openai-codex", "gpt-6.1-sol", "openai-codex-responses", gpt6Levels, `null`},
+		{"gpt-6.2 astra rejects none", "openai", "gpt-6.2-astra", "openai-responses", gpt6Levels, `null`},
+		{"gpt-6.2 sol rejects none", "azure", "gpt-6.2-sol", "azure-openai-responses", gpt6Levels, `null`},
 		{"gpt-6.1 terra accepts none", "openai-codex", "gpt-6.1-terra", "openai-codex-responses", `{"off":"none","minimal":null,"low":"low","medium":"medium","high":"high","xhigh":"xhigh","max":"max"}`, `null`},
 		{"gpt-6 sol on Chat Completions takes xhigh and max only", "openrouter", "gpt-6-sol", "openai-completions", `{"xhigh":"xhigh","max":"max"}`, `null`},
 		{"gpt-5.5-pro loses off, minimal and low after the xhigh rule", "openai", "gpt-5.5-pro", "openai-responses", `{"off":null,"xhigh":"xhigh","minimal":null,"low":null}`, `null`},

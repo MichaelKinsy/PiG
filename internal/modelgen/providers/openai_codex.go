@@ -12,10 +12,11 @@ var openaiCodexModelList = []struct {
 	id, name      string
 	contextWindow float64
 }{
-	// GPT-6.1 uses the 500k default returned by /backend-api/codex/models.
+	// Context windows are the defaults /backend-api/codex/models returns (checked November 2026).
+	{"gpt-6.2-astra", "GPT-6.2 Astra", 272000},
+	{"gpt-6.2-sol", "GPT-6.2 Sol", 500000},
 	{"gpt-6.1-sol", "GPT-6.1 Sol", 500000},
 	{"gpt-6.1-terra", "GPT-6.1 Terra", 500000},
-	// GPT-5.6 and GPT-6 use Codex's 272k default catalog limit.
 	{"gpt-6-astra", "GPT-6 Astra", 272000},
 	{"gpt-6-sol", "GPT-6 Sol", 272000},
 	{"gpt-6-luna", "GPT-6 Luna", 272000},
@@ -34,6 +35,8 @@ var openaiCodexAdditionalToolsModelIDs = map[string]bool{
 	"gpt-6-luna":    true,
 	"gpt-6.1-sol":   true,
 	"gpt-6.1-terra": true,
+	"gpt-6.2-astra": true,
+	"gpt-6.2-sol":   true,
 }
 
 func openaiCodex() ProviderDefinition {

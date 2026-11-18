@@ -22,19 +22,19 @@ func TestPostLoginModelSelectionRules(t *testing.T) {
 		ids               []string
 		selected, problem string
 	}{
-		{"oauth default", "github-copilot", []string{"other", "gpt-6.1-sol"}, "gpt-6.1-sol", ""},
-		{"api key default", "openai", []string{"other", "gpt-6.1-sol"}, "gpt-6.1-sol", ""},
+		{"oauth default", "github-copilot", []string{"other", providerDefault("github-copilot")}, providerDefault("github-copilot"), ""},
+		{"api key default", "openai", []string{"other", providerDefault("openai")}, providerDefault("openai"), ""},
 		{"no default", "custom", []string{"first"}, "", `, but no default model is configured for provider "custom". Use /model to select a model.`},
 		{"empty no default", "custom", nil, "", `, but no default model is configured for provider "custom". Use /model to select a model.`},
 		{"empty catalog", "openai", nil, "", ", but no models are available for that provider. Use /model to select a model."},
-		{"missing default", "openai", []string{"other"}, "", `, but its default model "gpt-6.1-sol" is not available. Use /model to select a model.`},
+		{"missing default", "openai", []string{"other"}, "", `, but its default model "` + providerDefault("openai") + `" is not available. Use /model to select a model.`},
 		{"radius default", "radius", []string{"fast", "balanced"}, "balanced", ""},
 		{"radius catalog order", "radius", []string{"powerful", "fast"}, "powerful", ""},
 		{"llama empty", "llama.cpp", nil, "", ". No llama.cpp models are loaded. Use /llama to load a model, then /model to select it."},
 		{"llama loaded", "llama.cpp", []string{"local"}, "", ". Use /model to select a loaded llama.cpp model, or /llama to manage models."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			models := []tui.ModelSelectorItem{{Provider: "other", ID: "gpt-6.1-sol"}}
+			models := []tui.ModelSelectorItem{{Provider: "other", ID: DefaultModelPerProvider()[tc.provider]}}
 			for _, id := range tc.ids {
 				models = append(models, tui.ModelSelectorItem{Provider: tc.provider, ID: id})
 			}
@@ -221,7 +221,7 @@ func TestPostLoginPreservesKnownModelAndReportsSelectionFailure(t *testing.T) {
 					t.Fatal(got)
 				}
 			case "unknown sentinel":
-				waitPostLoginStatus(t, m, "Selected gpt-6.1-sol.")
+				waitPostLoginStatus(t, m, "Selected "+providerDefault("openai")+".")
 			default:
 				reason := "cannot build"
 				if name == "persistence failure" {
@@ -241,10 +241,11 @@ func BenchmarkPostLoginModelSelection(b *testing.B) {
 	for _, model := range ai.ListModels("") {
 		models = append(models, tui.ModelSelectorItem{Provider: model.Provider, ID: model.ID})
 	}
+	want := providerDefault("openai")
 	b.ReportAllocs()
 	for b.Loop() {
-		selected, problem := postLoginModel("openai", "Saved API key for OpenAI", DefaultModelPerProvider()["openai"], models)
-		if selected != "gpt-6.1-sol" || problem != "" {
+		selected, problem := postLoginModel("openai", "Saved API key for OpenAI", want, models)
+		if selected != want || problem != "" {
 			b.Fatalf("selection = %s, %s", selected, problem)
 		}
 	}
@@ -260,11 +261,11 @@ func TestPostLoginPersistsDefaultIntoNonEmptyScope(t *testing.T) {
 	if err := setPostLoginAPIKey(m, "openai", "test-key"); err != nil {
 		t.Fatal(err)
 	}
-	waitPostLoginStatus(t, m, "Selected gpt-6.1-sol.")
-	if got := strings.Join(m.scopedModelIDs, ","); got != "openai/other,openai/gpt-6.1-sol" {
+	waitPostLoginStatus(t, m, "Selected "+providerDefault("openai")+".")
+	if got := strings.Join(m.scopedModelIDs, ","); got != "openai/other,openai/"+providerDefault("openai") {
 		t.Fatalf("scope = %s", got)
 	}
-	if got := strings.Join(m.opts.SettingsManager.GetEnabledModels(), ","); got != "openai/other,openai/gpt-6.1-sol" {
+	if got := strings.Join(m.opts.SettingsManager.GetEnabledModels(), ","); got != "openai/other,openai/"+providerDefault("openai") {
 		t.Fatalf("saved scope = %s", got)
 	}
 }

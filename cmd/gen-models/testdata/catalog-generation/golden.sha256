@@ -1,5 +1,5 @@
-2b6cb363955fd4e08480c40ed5d8d970a30561d61dc4e8a0bc80b86d3f855458  ./catalog/models.all.json
-393e07dc0e34f06b2e9939fc81d565884a971e46beb53040d078518a533e31bd  ./catalog/models.json
+7852f75740f5f7e6f9ee97f2d864344e7c08e111c5bd50361f9059db8ea30201  ./catalog/models.all.json
+702b45819b8a863446b54f931655fab071c5d4030ea6b5674a19ae4dfab10dcc  ./catalog/models.json
 3b68461bec3bc6a720c669b59209be99d7d24a7fe94c65b43e0336c47c0e6ea3  ./catalog/providers.json
 77b89ff841fa437fa5e2196d31af51febc444969ceb95b5a73b333c8a834c5d0  ./catalog/providers/amazon-bedrock.all.json
 654ad741900ee04403c58d9aa5dad1edaf552e9baeff5cf51d021aa6caed6935  ./catalog/providers/amazon-bedrock.json
@@ -47,8 +47,8 @@ ea77b477314ddae84d79b99a616a7bd7cc355b073e18dc588a95187387475bac  ./catalog/prov
 84356e0e76caf874898b2943c264f4ccc1651c35557b1fa3d36c694dd3f4a66f  ./catalog/providers/moonshotai.json
 b2a908c85ec0d8b35ec224a25b24d0efca3cf097fd9a21117282a20b0f8a4ca8  ./catalog/providers/nvidia.all.json
 0db980bc68ce14a629400b3e846a0c0b9e8ff38e64321ced0edf4790476ffa5b  ./catalog/providers/nvidia.json
-6ebd52bf10269e32007e6e56b67a1b57663735bfb9c5cd5878e91465a5cdea49  ./catalog/providers/openai-codex.all.json
-2bce1aa83b6bfd7c75202ffc0834dc5924acaf9fbf1c60ed899a0d6678b73786  ./catalog/providers/openai-codex.json
+5129894b1239bb463acea7150c34f8d6ee7c382b8b72117dae3c89e056bb0151  ./catalog/providers/openai-codex.all.json
+477356c680f25e26c05f805fb2514f88578064b9918f9f8f5c9e20d2747bbf89  ./catalog/providers/openai-codex.json
 f2dfa47877f2a31bb21b1efd1aeb17da403e6ddbdda268be3444e5585946017f  ./catalog/providers/openai.all.json
 86e7f988cf9e8c93f99944cf480e6c4a0e98d241f975ae78fdce9d5753370aeb  ./catalog/providers/openai.json
 1874ec4b50e594e053c2bf54240e17fb3e5947c9ddd3c52537b8317eb14d6383  ./catalog/providers/opencode-go.all.json
@@ -106,7 +106,7 @@ e7cdef608650816f696a08216ce12d0d0adaf8f38c1c136c1c8475a87ade53e3  ./data/hugging
 1a15468b1edf9205956e4c5ea41fc4cacc14eabf00523b9143e23a38264f57f7  ./data/moonshotai-cn.json
 f31cdf2e6c81a403c4cb0e6b7e759ceff2820f966b08dbec80cfafa3f80dfc63  ./data/moonshotai.json
 91ba3ad16de860bf4006520076ced4189f1562f613095811a4bf2ce60b79aa00  ./data/nvidia.json
-dd30453068f310317abf35d9adc6d841339a1351f0c6925a6aff45d975e0257c  ./data/openai-codex.json
+29755658ee3d3c36f4d2578368101180b9daca1e1953a78b4f0a8248284f3a67  ./data/openai-codex.json
 127496cff0d40f0d39387f8ce6d0f5fbcf2a99af27b9a4f2ecb0fef3938edcdd  ./data/openai.json
 76f49958791e6f09531775607db58785cf2042ab05032ce2e02dc3ff401beab1  ./data/opencode-go.json
 b8b77243a931ea5681ef9b9691bf3a0d7e591fc07c774fd54ac0511607fa1099  ./data/opencode.json

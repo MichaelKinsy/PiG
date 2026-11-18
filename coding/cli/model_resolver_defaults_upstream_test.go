@@ -12,8 +12,8 @@ func TestModelResolverDefaultsUpstream(t *testing.T) {
 		name string
 		want map[string]string
 	}{
-		// .upstream/current/packages/coding-agent/test/model-resolver.test.ts:700
-		{"openai defaults track current models", map[string]string{"openai": "gpt-6.1-sol", "openai-codex": "gpt-6.1-sol"}},
+		// .upstream/current/packages/coding-agent/test/model-resolver.test.ts:683 (e56d35ce5: GPT-6.2 Sol)
+		{"openai defaults track current models", map[string]string{"openai": "gpt-6.2-sol", "openai-codex": "gpt-6.2-sol"}},
 		// .upstream/v0.99.1/packages/coding-agent/test/model-resolver.test.ts:714
 		{"zai, minimax, cerebras, and ant-ling defaults track current models", map[string]string{"zai": "glm-5.3", "zai-coding-cn": "glm-5.3", "minimax": "MiniMax-M3", "minimax-cn": "MiniMax-M3", "cerebras": "gpt-oss-120b", "ant-ling": "Ring-2.6-1T"}},
 		// .upstream/v0.99.1/packages/coding-agent/test/model-resolver.test.ts:738
@@ -21,7 +21,7 @@ func TestModelResolverDefaultsUpstream(t *testing.T) {
 		// .upstream/current/packages/coding-agent/test/model-resolver.test.ts b425754a2
 		{"anthropic default tracks current model", map[string]string{"anthropic": "claude-opus-5-5"}},
 		// d84123b32: provider defaults move to newer models at the same or a lower price.
-		{"newer models at the same or a lower price", map[string]string{"amazon-bedrock": "us.anthropic.claude-opus-5-5", "azure": "gpt-6.1-sol", "google": "gemini-4-argon", "google-vertex": "gemini-4-argon", "baseten": "zai-org/GLM-5.3", "qwen-token-plan": "qwen3.8-max", "qwen-token-plan-cn": "qwen3.8-max", "opencode-go": "kimi-k3.1-pro", "moonshotai": "kimi-k2.7-code", "moonshotai-cn": "kimi-k2.7-code", "huggingface": "moonshotai/Kimi-K2.7-Code", "opencode": "kimi-k2.7-code", "openrouter": "moonshotai/kimi-k2.7-code", "cloudflare-workers-ai": "@cf/moonshotai/kimi-k2.7-code", "cloudflare-ai-gateway": "workers-ai/@cf/moonshotai/kimi-k2.7-code"}},
+		{"newer models at the same or a lower price", map[string]string{"amazon-bedrock": "us.anthropic.claude-opus-5-5", "azure": "gpt-6.2-sol", "google": "gemini-4-argon", "google-vertex": "gemini-4-argon", "baseten": "zai-org/GLM-5.3", "qwen-token-plan": "qwen3.8-max", "qwen-token-plan-cn": "qwen3.8-max", "opencode-go": "kimi-k3.1-pro", "moonshotai": "kimi-k2.7-code", "moonshotai-cn": "kimi-k2.7-code", "huggingface": "moonshotai/Kimi-K2.7-Code", "opencode": "kimi-k2.7-code", "openrouter": "moonshotai/kimi-k2.7-code", "cloudflare-workers-ai": "@cf/moonshotai/kimi-k2.7-code", "cloudflare-ai-gateway": "workers-ai/@cf/moonshotai/kimi-k2.7-code"}},
 		// .upstream/v0.99.1/packages/coding-agent/test/model-resolver.test.ts:742
 		{"xai default tracks current model", map[string]string{"xai": "grok-4.7"}},
 		// .upstream/v0.99.1/packages/coding-agent/test/model-resolver.test.ts:746

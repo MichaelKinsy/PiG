@@ -16,14 +16,14 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/upstreammirror"
 )
 
 // TestDefaultModelPerProviderMatchesPinnedUpstream derives its expectation from
 // the pinned Pi model-resolver.ts defaultModelPerProvider table.
 func TestDefaultModelPerProviderMatchesPinnedUpstream(t *testing.T) {
-	source, err := os.ReadFile(filepath.Join("..", "..", ".upstream", "v"+pigversion.UpstreamVersion, "packages", "coding-agent", "src", "core", "model-resolver.ts"))
+	source, err := upstreammirror.ReadPicked(filepath.Join("..", ".."), "packages/coding-agent/src/core/model-resolver.ts")
 	if err != nil {
 		t.Fatalf("read pinned Pi model-resolver.ts (run make upstream-mirror): %v", err)
 	}

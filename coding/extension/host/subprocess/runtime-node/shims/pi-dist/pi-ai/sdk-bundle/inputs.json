@@ -263,7 +263,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/.manifest.json",
-      "sha256": "0e20eb7639b437b06a6751c8b8f381fd3c64eae9c4a95a520908153fdf09fc1b"
+      "sha256": "f31031182abb891e6babcb479161edba59457841e82400545733e91bbd08f98d"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/amazon-bedrock.json",
@@ -279,7 +279,7 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/azure.json",
-      "sha256": "be272463577772c18c2c02df0d1b4acdc8cd32a704ee24952964bfbe889d51c5"
+      "sha256": "86ad73e6c1cdf5ed1cf6c9c7c4081b240928f9c2693dfffb772bde7ee5962b33"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/baseten.json",
@@ -359,11 +359,11 @@
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai-codex.json",
-      "sha256": "dd30453068f310317abf35d9adc6d841339a1351f0c6925a6aff45d975e0257c"
+      "sha256": "29755658ee3d3c36f4d2578368101180b9daca1e1953a78b4f0a8248284f3a67"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/openai.json",
-      "sha256": "13556fa4d845912544cda76e3f7d6a44567c5fa77c7857df8f337616422120e2"
+      "sha256": "5f10dc275b50b6bcefa065281620ffc1134c2cc12388f68e7620530b7bbad021"
     },
     {
       "path": "pi-dist/pi-ai/providers/data/opencode-go.json",

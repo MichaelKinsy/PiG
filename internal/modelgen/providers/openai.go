@@ -22,6 +22,8 @@ var openaiShortContextCappedModelIDs = map[string]bool{
 	"gpt-6-luna":    true,
 	"gpt-6.1-sol":   true,
 	"gpt-6.1-terra": true,
+	"gpt-6.2-astra": true,
+	"gpt-6.2-sol":   true,
 }
 
 var openaiLongContextPricingModelIDs = func() map[string]bool {
@@ -51,6 +53,7 @@ var openaiNoneReasoningModelIDs = map[string]bool{
 // https://developers.openai.com/api/docs/guides/reasoning
 var openaiMidConvoEffortModelIDs = map[string]bool{
 	"gpt-6-astra": true, "gpt-6-sol": true, "gpt-6-luna": true, "gpt-6.1-sol": true, "gpt-6.1-terra": true,
+	"gpt-6.2-astra": true, "gpt-6.2-sol": true,
 }
 
 // Not listed by models.dev.

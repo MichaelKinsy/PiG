@@ -1,0 +1,84 @@
+from = "1.5.2+5f89cc0a"
+to = "1.5.2+e56d35ce"
+
+[[files]]
+path = "packages/ai/catalog/families/openai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/family_test.go#TestApplyOpenAIFamilyRules", "test:internal/modelgen/evidence_cat_test.go#TestFamilyOpenAITablesMatchPi", "test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream"]
+rationale = "e56d35ce5ece: OPENAI_STANDARD_COSTS gains gpt-6.2-astra (8, 40, 0.4, 10) and gpt-6.2-sol (2, 10, 0.1, 2.5); OPENAI_TOOL_SEARCH_MODEL_IDS and GPT_6_MODEL_IDS gain both ids; the new set GPT_6_NO_NONE_EFFORT_MODEL_IDS (gpt-6-astra, gpt-6.1-sol, gpt-6.2-astra, gpt-6.2-sol) replaces the id test that made `off` unavailable. PiG's counterpart is internal/modelgen/family_openai.go (OpenAIStandardCosts, OpenAIToolSearchModelIDs, gpt6ModelIDs, gpt6NoNoneEffortModelIDs); no new matcher, the rule is the same one fed by a set."
+oracle = "carried: e56d35ce5ece (the catalog overlay automation/gen/catalog-source/pi-overlay/catalog/families/openai.ts: Pi's own generator makes the oracle's provider data from the recording)"
+
+[[files]]
+path = "packages/ai/catalog/providers/azure.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream"]
+rationale = "e56d35ce5ece: CONTEXT_WINDOW_OVERRIDES gains gpt-6.2-astra and gpt-6.2-sol at 1050000 (internal/modelgen/providers/azure.go azureContextWindowOverrides)."
+oracle = "carried: e56d35ce5ece (the catalog overlay catalog/providers/azure.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/openai-codex.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/evidence_provB_test.go#TestProvBOpenAICodex", "test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream", "test:ai/max_thinking_upstream_test.go#TestMaxThinkingUpstream"]
+rationale = "e56d35ce5ece: MODELS gains gpt-6.2-astra and gpt-6.2-sol (name GPT-6.2 Astra / GPT-6.2 Sol, context 272000, Codex's default until /backend-api/codex/models is checked) ahead of the GPT-6.1 entries, and ADDITIONAL_TOOLS_MODEL_IDS gains both (internal/modelgen/providers/openai_codex.go openaiCodexModelList, openaiCodexAdditionalToolsModelIDs)."
+oracle = "carried: e56d35ce5ece (the catalog overlay catalog/providers/openai-codex.ts)"
+
+[[files]]
+path = "packages/ai/catalog/providers/openai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/cache_retention_upstream_test.go#TestCacheRetentionResponsesUpstream", "test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream"]
+rationale = "e56d35ce5ece: SHORT_CONTEXT_CAPPED_MODEL_IDS (and so LONG_CONTEXT_PRICING_MODEL_IDS) and MID_CONVO_EFFORT_MODEL_IDS gain gpt-6.2-astra and gpt-6.2-sol (internal/modelgen/providers/openai.go openaiShortContextCappedModelIDs, openaiMidConvoEffortModelIDs). The models themselves come from models.dev through the recording (automation/gen/catalog-source), which the live refresh of this commit's member carries."
+oracle = "carried: e56d35ce5ece (the catalog overlay catalog/providers/openai.ts)"
+
+[[files]]
+path = "packages/ai/test/cache-retention.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/cache_retention_upstream_test.go#TestCacheRetentionResponsesUpstream"]
+rationale = "e56d35ce5ece adds gpt-6.2-astra and gpt-6.2-sol to the rows that expect no cache warming from the documented TTL alone; the Go twin has the same nine ids."
+
+[[files]]
+path = "packages/ai/test/max-thinking.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/max_thinking_upstream_test.go#TestMaxThinkingUpstream"]
+rationale = "e56d35ce5ece adds gpt-6.2-astra and gpt-6.2-sol to the Codex Responses `max` effort rows (the rest of the diff is formatting)."
+
+[[files]]
+path = "packages/ai/test/supports-xhigh.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream"]
+rationale = "e56d35ce5ece: xhigh for the Codex models, `off` unavailable for gpt-6.1-sol, gpt-6.2-astra and gpt-6.2-sol on openai, azure and openai-codex (one row per id), official metadata for both new ids (Astra 8/40/0.4/10, Sol 2/10/0.1/2.5, Codex context 272000, long-context tier above 272k), and the Azure 1.05M context window for both. The Go twin has the same inputs and expected levels."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "e56d35ce5ece: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "e56d35ce5ece: Pi's changelog entry. PiG's user-visible change is its own changelog.d fragment."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-resolver.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/model_resolver_defaults_upstream_test.go#TestModelResolverDefaultsUpstream"]
+rationale = "e56d35ce5ece: defaultModelPerProvider names gpt-6.2-sol for openai, azure and openai-codex (gpt-6.1-sol before). PiG's counterpart is internal/codingagent/default_models.go DefaultModelPerProviderOrder; github-copilot keeps gpt-6.1-sol, as in Pi."
+oracle = "carried: e56d35ce5ece (pi-coding-agent/core/model-resolver.js: defaultModelPerProvider)"
+
+[[files]]
+path = "packages/coding-agent/test/model-resolver.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:coding/cli/model_resolver_defaults_upstream_test.go#TestModelResolverDefaultsUpstream"]
+rationale = "e56d35ce5ece: the openai defaults test expects gpt-6.2-sol for openai and openai-codex. The Go twin expects it for both and, in its own azure row, for azure."

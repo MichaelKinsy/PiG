@@ -44,11 +44,15 @@ func newPostLoginTestMode(t *testing.T) *InteractiveMode {
 	return m
 }
 
+// providerDefault is the model a login selects for the provider: the flow tests assert that a login picks the provider's default, not which
+// model the default is. The ids themselves are pinned once, in the port of Pi's model-resolver.test.ts (TestModelResolverDefaultsUpstream).
+func providerDefault(provider string) string { return DefaultModelPerProvider()[provider] }
+
 // Pi interactive-mode.ts:5879-5969 completes both authentication methods through
 // one path, selecting and persisting the provider default only from unknown.
 func TestAPIKeyLoginSelectsProviderDefault(t *testing.T) {
 	for _, tc := range []struct{ provider, name, model string }{
-		{"openai", "OpenAI", "gpt-6.1-sol"},
+		{"openai", "OpenAI", providerDefault("openai")},
 		{"anthropic", "Anthropic", "claude-opus-5-5"},
 	} {
 		t.Run(tc.provider, func(t *testing.T) {

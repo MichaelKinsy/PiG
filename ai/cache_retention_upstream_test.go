@@ -54,8 +54,8 @@ func TestCacheRetentionAnthropicUpstream(t *testing.T) {
 }
 
 func TestCacheRetentionResponsesUpstream(t *testing.T) {
-	// .upstream/v0.87.1/packages/ai/test/cache-retention.test.ts:243 (all seven rows)
-	for _, id := range []string{"gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-6-astra", "gpt-6-luna", "gpt-6-sol", "gpt-6.1-terra"} {
+	// .upstream/v0.87.1/packages/ai/test/cache-retention.test.ts:243 (all nine rows, e56d35ce5)
+	for _, id := range []string{"gpt-5.6-luna", "gpt-5.6-sol", "gpt-5.6-terra", "gpt-6-astra", "gpt-6-luna", "gpt-6-sol", "gpt-6.1-terra", "gpt-6.2-astra", "gpt-6.2-sol"} {
 		t.Run("does not enable cache warming from the documented TTL alone for "+id, func(t *testing.T) {
 			model, ok := LookupModelExact("openai/" + id)
 			if !ok {

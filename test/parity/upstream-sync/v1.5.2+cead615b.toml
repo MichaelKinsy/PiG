@@ -1,0 +1,24 @@
+from = "1.5.2+e56d35ce"
+to = "1.5.2+cead615b"
+
+[[files]]
+path = "packages/ai/catalog/providers/openai-codex.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/modelgen/providers/evidence_provB_test.go#TestProvBOpenAICodex", "test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream"]
+rationale = "cead615b48b8: the context windows of the Codex models are the defaults /backend-api/codex/models returns (checked November 2026): GPT-6.2 Sol 500000 (272000 in e56d35ce5ece), GPT-6.2 Astra stays 272000; the two comments that explained the earlier 272k guess and the per-family defaults go. PiG's counterpart is internal/modelgen/providers/openai_codex.go openaiCodexModelList (an authored list: no recording is involved). Nothing else changes: ids, names, order and the additional-tools set are e56d35ce5ece's."
+oracle = "carried: cead615b48b8 (the catalog overlay catalog/providers/openai-codex.ts)"
+
+[[files]]
+path = "packages/ai/test/supports-xhigh.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/supports_xhigh_upstream_test.go#TestSupportsXHighUpstream"]
+rationale = "cead615b48b8: the official-metadata row of gpt-6.2-sol expects the Codex context window 500000 (272000 before). The Go twin has the same row."
+
+[[files]]
+path = "packages/ai/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "cead615b48b8: the GPT-6.2 entry of Pi's changelog says Codex serves Sol with 500K and Astra with 272K. PiG's user-visible change is its own changelog.d fragment."
