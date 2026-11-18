@@ -559,7 +559,7 @@ func ciResultRun(t *testing.T, set map[string]string, liveHead string) (string, 
 		"CHANGES": "success", "DOCS": "skipped", "BOOKKEEPING": "success", "VERIFY": "success", "NODE_RUNTIME": "success",
 		"WINDOWS": "success", "MACOS": "success", "ANDROID": "success", "NODE_LOADER": "success",
 		"DURABLE_CF_HOST": "success", "DURABLE_CONTRACT": "success", "PREFLIGHT": "success",
-		"VERDICT": "skipped", "WINDOWS_PLANNED": "true", "MACOS_PLANNED": "true",
+		"VERDICT": "success", "WINDOWS_PLANNED": "true", "MACOS_PLANNED": "true",
 	}
 	for name := range declared {
 		if _, ok := values[name]; !ok {
@@ -618,7 +618,11 @@ func TestCIResultRequiresEveryPlannedJob(t *testing.T) {
 		{"pull request the pre-flight rejected", merge(pullRequest, map[string]string{"VERDICT": "failure", "BOOKKEEPING": "skipped"}), false},
 		{"pull request the pre-flight never judged", merge(pullRequest, map[string]string{"VERDICT": "skipped"}), false},
 		{"pull request whose pre-flight wait was cancelled", merge(pullRequest, map[string]string{"VERDICT": "cancelled"}), false},
-		{"merge group that waited for a pre-flight", map[string]string{"VERDICT": "success"}, false},
+		// The verdict job runs on every event and waits for the pre-flight only on a pull request; skipped, it skipped every
+		// job behind Bookkeeping, which is how every nightly run tested nothing.
+		{"nightly run with every job", map[string]string{"EVENT": "schedule"}, true},
+		{"nightly run whose verdict job was skipped", map[string]string{"EVENT": "schedule", "VERDICT": "skipped"}, false},
+		{"merge group whose verdict job was skipped", map[string]string{"VERDICT": "skipped"}, false},
 		{"light pull request runs no Windows or macOS job", merge(pullRequest, lightPlanResults), true},
 		{"full pull request that planned Windows but skipped it", merge(pullRequest, map[string]string{"WINDOWS": "skipped"}), false},
 		{"full pull request that planned macOS but skipped it", merge(pullRequest, map[string]string{"MACOS": "skipped"}), false},
