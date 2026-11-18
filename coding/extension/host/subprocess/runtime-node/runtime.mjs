@@ -1213,7 +1213,9 @@ function quitDrainState(drain) {
       // An aborted request whose author the host goes on awaiting: Pi awaits the run's end at stdin's end (dispose awaits session.abort()), and its process exits when its loop empties, which is what an author that holds no timer and no I/O leaves.
       held ||= request.authorHeld && !request.forwarding && request.controller?.signal.aborted === true;
       // A run handler or a tool the run awaits that has not answered at stdin's end: Pi's dispose awaits the aborted run (agent-session.ts abort -> waitForIdle), which awaits that handler, and a promise that settles nothing holds no handle, so the process exits when its loop empties (Pi 1.5.2: 15 ms over RPC). A handler with a timer, a socket or a host call keeps the loop and reports nothing here.
-      held ||= !request.forwarding && (request.toolCall || RUN_AWAITED_EVENTS.has(request.event));
+      // The abort that Pi's dispose makes in the tick stdin ends (agent-session-runtime.ts dispose awaits session.abort(), whose synchronous prefix aborts the run's signal) reaches this process after runtime_input_end, which the host sends when stdin ends. While this runtime's run signal is active and not aborted, and this request has not been cancelled, an empty loop only means that abort is still on its way, and a handler or tool that waits for nothing but its signal is woken by it. The report waits for it: the run_signal and cancel frames refresh this state, and the transports stay referenced meanwhile (reportQuitExit), so this process lives to read them.
+      const abortComing = runtime.runSignal !== undefined && !runtime.runSignal.controller.signal.aborted && request.controller?.signal.aborted !== true;
+      held ||= !request.forwarding && !abortComing && (request.toolCall || RUN_AWAITED_EVENTS.has(request.event));
       commands ||= request.command && !request.drainReported;
       tail ||= request.quitTail;
       // The request waits on this runtime's transport, which is not a drained loop.
@@ -5006,6 +5008,8 @@ export class Runtime {
           return;
         }
         this.applyRunSignal(args ?? {});
+        // The run's abort or end is what a held handler's report waited for (quitDrainState): the transports reportQuitExit referenced stop keeping this process alive, so its loop can drain again and report.
+        refreshQuitDrain(drainFor(this.group));
         return;
       }
       case "invalidate": {

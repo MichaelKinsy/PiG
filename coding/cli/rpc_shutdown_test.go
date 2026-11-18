@@ -264,6 +264,29 @@ func TestRPCInputEndMidPromptSequenceComparedWithPi(t *testing.T) {
 	}
 }
 
+// Pi 1.5.2, a tool that ignores its abort signal at stdin's end: dispose() awaits
+// session.abort() (agent-session-runtime.ts:415-417), which aborts the Agent and
+// waits for it to be idle (agent-session.ts:2601-2612). The tool settles nothing
+// and holds no handle, so the run never ends, Node's event loop empties, and the
+// process exits 0 right after the abort: no session_shutdown handler runs and
+// nothing reaches stdout. Pig's Node runtime reports that drained loop once the
+// abort has reached the tool, and pig exits 0 the same.
+func TestRPCInputEndWithAbortDeafToolExitsZeroWithoutShutdown(t *testing.T) {
+	inFlight := rpcMidPromptInputEndExtensionEvents[:slices.Index(rpcMidPromptInputEndExtensionEvents, "tool_running")+1]
+	for _, impl := range rpcShutdownImplementations {
+		t.Run(impl.name, func(t *testing.T) {
+			p, report := impl.start(t, "RPC_SHUTDOWN_TOOL_DEAF=1")
+			afterEOF, events := endInputMidPrompt(p, report)
+			if len(afterEOF) != 0 {
+				t.Fatalf("stdout after stdin ended = %v, want nothing: the dispose never returns", afterEOF)
+			}
+			if !slices.Equal(events, inFlight) {
+				t.Fatalf("extension events = %v, want %v: the tool ignores its abort and no session_shutdown runs", events, inFlight)
+			}
+		})
+	}
+}
+
 // Pi reads stdin's end one event-loop iteration after the line that starts a
 // command, and then shutdown() exits within microtasks and one tick
 // (rpc-mode.ts:728-744, output-guard.ts:105-108). A command answers only if it
