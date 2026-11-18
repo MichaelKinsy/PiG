@@ -155,6 +155,10 @@ type Conn struct {
 	onRequestStart atomic.Pointer[func()]
 	// onTimerDeferAck runs on the read loop for each NotifyTimerDeferAck frame, with its arguments.
 	onTimerDeferAck func(args json.RawMessage)
+	// onHeldNotify runs, on the host's loop and after the report_error notifications read before it were applied, for each notification the read loop held behind them (Envelope.held).
+	onHeldNotify func(env *Envelope)
+	// emissionsCreated, when set, is the number of events emissions the host has created; the read loop records it with each report_error notification it reads (reportMark).
+	emissionsCreated func() uint64
 	// timerDefer numbers the NotifyTimerDefer frames sent on this connection and records the acks (timer_defer.go).
 	timerDefer seqAcks
 	// invalidations numbers the NotifyInvalidate frames sent on this connection that ask for the runtime's acknowledgement, and records the acks (invalidateAcknowledged).
@@ -242,10 +246,12 @@ type Conn struct {
 	onRequestEnd  atomic.Pointer[func()]
 	producerTasks sync.WaitGroup
 
-	// Incoming messages that aren't responses go here for the host to process.
+	// Incoming messages that aren't responses go here for the host to process. So do the responses of requests that were in flight when a report_error notification was read, queued behind it (reports).
 	inCh chan *Envelope
 	// incoming is the Host's read loop of this connection (Host.goHandleIncoming); nil when no Host loop reads it.
 	incoming atomic.Pointer[incomingLoop]
+	// reports orders the responses the read loop routes behind the report_error notifications it read before them (reportOrder).
+	reports reportOrder
 
 	// runSignal is the last run signal state the runtime was sent.
 	runSignal runSignalSync
@@ -1482,6 +1488,16 @@ func (c *Conn) readLoop(ctx context.Context) {
 		// Route responses to pending requests.
 		if env.Type == MsgResponse || env.Type == MsgCallResult {
 			if env.ID != "" {
+				if c.reports.holds(env.ID) {
+					// A report was read before this response, and the request was in flight when it was: the host's loop applies the report, then delivers the response.
+					env.held = true
+					select {
+					case c.inCh <- &env: //perf:ok once per response of a request that was in flight when a report_error was read, not per frame
+					case <-ctx.Done(): //perf:ok the same select
+						return
+					}
+					continue
+				}
 				c.deliverResponse(env.ID, &env)
 			}
 			// Response-shaped frames never become unsolicited host messages.
@@ -1510,6 +1526,11 @@ func (c *Conn) readLoop(ctx context.Context) {
 			if startsRun(env.Call.Method) && env.Call.ParentRequestID != "" {
 				c.reportRequestPhase(env.Call.ParentRequestID, invocation.Resumed)
 			}
+		}
+
+		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyReportError {
+			// Counted before the host can see it, so a response read after it finds it unapplied.
+			c.noteReportRead()
 		}
 
 		// Everything else goes to the host.
@@ -2471,6 +2492,10 @@ func (c *Conn) sendResponse(id string, ch chan *Envelope, env *Envelope) bool {
 // routeResponseFrame delivers the frame when it is a response in the shape parseResponseFrame recognizes that inbound does not need, and reports whether it did; any other frame is left for the full decode, which shows it to inbound.
 func (c *Conn) routeResponseFrame(data []byte) bool {
 	if c.inbound != nil && c.inboundWantsResponse == nil {
+		return false
+	}
+	if c.reports.pending() {
+		// A report is unapplied: the full decode names the request, and the read loop queues the response behind the report when the request was in flight before it.
 		return false
 	}
 	id, result, ok := parseResponseFrame(data)

@@ -1,0 +1,36 @@
+# Pi 18e99051be24 (#12233): a pi.events listener's failure is reported synchronously, inside emit() (loader.ts:537-549 -> runner.ts:411-414 -> emitError, runner.ts:749-753), and an RPC
+# extension command answers after its handler returned (agent-session.ts:2172-2178), so every `extension_error` line precedes the command's response. A script with a shebang line is a standalone: each extension runs in its own process in PiG and the Host's bus dispatches to the listener.
+# The last failing listener of each channel carries 2 MiB of padding (testdata/events-order-listeners-isolated.mjs). That is what makes the race's loser deterministic: the Host needs longer to read and apply that report than to route the response written after it, so a Host that lets the response overtake the report shows `R E` on every run, not on a lucky schedule. Pi's order does not depend on the size.
+name = "93-rpc-events-handler-errors-isolated-extensions"
+description = "Every failing pi.events listener of an extension in its own Node process is an extension_error line before the response of the command whose emit ran it, in registration order"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts", "packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"cmd","type":"prompt","message":"/events-order-boom"}'
+wait_event = '{"id":"cmd","type":"response","command":"prompt","success":true}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/events-order-emitter-isolated.mjs", "testdata/events-order-listeners-isolated.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/events-order-emitter-isolated.mjs", "testdata/events-order-listeners-isolated.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions", "--system-prompt", "P.", "--no-context-files", "--no-skills"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 3
+both_contain = ['"error":"first listener failed"', '"error":"second listener failed"', '"error":"third listener failed (a thrown string)"', '"error":"fourth listener failed xxxx', '"event":"events:demo:order"', '"id":"cmd","type":"response","command":"prompt","success":true']
+both_not_contain = ['"success":false', 'Event handler error', '"stack"']
+
+[[assert.json_aliases]]
+paths = ["/**/extensionPath"]
+kind = "path"
+reason = "The extension's snapshot path varies per host and run; the member's presence and the event and message stay exact."

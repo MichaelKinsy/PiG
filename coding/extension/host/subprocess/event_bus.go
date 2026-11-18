@@ -10,6 +10,7 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"strconv"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -49,6 +50,8 @@ func (h *Host) observeXref(conn *Conn) {
 	conn.onLoopTurned = func(args json.RawMessage) { h.forwardLoopTurned(conn, args) }
 	conn.onLoopTurnTaken = func(args json.RawMessage) { h.loopTurns.take(conn, args) }
 	conn.onTimerDeferAck = func(args json.RawMessage) { conn.timerDefer.ack(args) }
+	conn.emissionsCreated = h.eventBus.emissionsCreated
+	conn.onHeldNotify = func(env *Envelope) { h.eventBus.quiesce(conn, env.Notify.Args) }
 	conn.reportView = func(surface string, err error) { h.reportViewRejection(conn, surface, err) }
 	conn.terminalRows = h.terminalHeight
 	if outbound := h.outboundObserver; outbound != nil {
@@ -60,6 +63,10 @@ func (h *Host) observeXref(conn *Conn) {
 			observe(conn.name, env)
 		}
 		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == notifyEventsQuiesce {
+			// A realm reports a rejected listener's error before it quiesces, and Pi reports it before the emitter goes on: an unapplied report holds the quiesce behind it (Conn.applyHeld runs it).
+			if conn.reports.pending() && h.eventBus.holdQuiesce(conn, env) {
+				return
+			}
 			h.eventBus.quiesce(conn, env.Notify.Args)
 			return
 		}
@@ -173,6 +180,30 @@ func (b *hostEventBus) quiesce(conn *Conn, raw json.RawMessage) {
 	if emission != nil {
 		b.addPending(emission, conn, -1)
 	}
+}
+
+// emissionsCreated is the number of emissions the bus has created; emissions are numbered from 1 in creation order.
+func (b *hostEventBus) emissionsCreated() uint64 {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.nextEmission
+}
+
+// holdQuiesce marks the quiesce notification env as held (Envelope.held) when the emission it names was created before conn's oldest unapplied report was read, and reports whether it did: the realm wrote the report before the quiesce, and Pi reports a listener's error before the emitter goes on. A quiesce of a later emission is not held (the report's own listener may have emitted it and wait for it), and neither is one that names no emission.
+func (b *hostEventBus) holdQuiesce(conn *Conn, env *Envelope) bool {
+	var args struct {
+		Emission string `json:"emission"`
+	}
+	if json.Unmarshal(env.Notify.Args, &args) != nil {
+		return false
+	}
+	//portlint:allow numbers the emission is a decimal counter the host itself wrote into the frame (reportOrder.holdsEmission), never a number a JS value produced
+	n, err := strconv.ParseUint(args.Emission, 10, 64)
+	if err != nil || !conn.reports.holdsEmission(n) {
+		return false
+	}
+	env.held = true
+	return true
 }
 
 // settle lets the emission's waiting listener realms run their continuations, then waits for their microtask checkpoints and forgets the emission.
@@ -699,4 +730,39 @@ func (h *Host) reportExtensionError(owner *managedExt, event, message, stack str
 	}
 	path, _ := extensionSourcePaths(owner.config)
 	h.providerRuntime.ReportRuntimeError(&extension.ExtensionError{ExtensionPath: path, Event: event, Error: message, Stack: stack})
+}
+
+// applyReportError applies the report_error notification the read loop counted (Conn.noteReportRead), then counts it applied, so the responses queued behind it go on. A generation the host no longer accepts reports nothing, as it serves no other frame.
+// A malformed report (arguments that are not the payload, or no event name) is dropped like a malformed argument of any other notification; its size is bounded by MaxFrameSize, the cap of the frame that carries it.
+// A report is never lost for the extension it names: a name (ReportErrorPayload.Extension) that is no extension of this connection's own process is ignored, the report is applied as the connection's own extension's, in its place in the order, and the refused name is reported first as an error of the connection's extension, through the runner's error listeners (the same mode-aware path as the report itself).
+func (h *Host) applyReportError(me *managedExt, conn *Conn, args json.RawMessage) {
+	defer conn.reportApplied()
+	if !h.acceptsNodeGeneration(me) {
+		return
+	}
+	var report ReportErrorPayload
+	if json.Unmarshal(args, &report) != nil || report.Event == "" {
+		return
+	}
+	owner := h.reportOwner(me, report.Extension)
+	if owner == nil {
+		// The diagnostic goes through the runner's error listeners like every extension error (the chat in the TUI, extension_error in RPC mode, stderr only in print mode, as Pi's), never to the terminal's own stderr.
+		h.reportExtensionError(me, report.Event, fmt.Sprintf("report_error names the extension %q, which does not run in the process of %s: reported as %s's error", report.Extension, me.config.Name, me.config.Name), "")
+		owner = me
+	}
+	h.reportExtensionError(owner, report.Event, report.Error, report.Stack)
+}
+
+// reportOwner is the extension whose error a report_error notification on me's connection is: me, or the extension the report names (ReportErrorPayload.Extension) when it runs in me's own process (the shared realm of a Node cell). A name that is no loaded extension or runs in another process has no owner: nil.
+func (h *Host) reportOwner(me *managedExt, name string) *managedExt {
+	if name == "" || name == me.config.Name {
+		return me
+	}
+	h.mu.Lock()
+	member := h.exts[name]
+	h.mu.Unlock()
+	if member == nil || processIdentity(member) != processIdentity(me) {
+		return nil
+	}
+	return member
 }

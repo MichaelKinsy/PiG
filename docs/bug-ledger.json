@@ -2287,6 +2287,47 @@
       "tests": []
     },
     {
+      "id": "BF-0aecafc",
+      "title": "A `pi.events` listener's failure is reported before the command that emitted answers, as in Pi: an RPC client…",
+      "symptom": "A `pi.events` listener's failure is reported before the command that emitted answers, as in Pi: an RPC client reads every `extension_error` line before the command's response (`E E E E R`, and `E R` for a listener that rejects after an await), and print and JSON mode write the error to stderr before the command's own output, whether the extensions share a Node process or each run in their own.",
+      "rootCause": "the read loop handed a response to its waiter itself while a report_error notification written before it on the same socket went through the host loop, and a shared Node realm sent the listener report on the listener connection and the emitter answer on another, so the answer could be read first",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `pi.events` listener's failure is reported before the command that emitted answers, as in Pi: an RPC client reads every `extension_error` line before the command's response (`E E E E R`, and `E R` for a listener that rejects after an await), and print and JSON mode write the error to stderr before the command's own output, whether the extensions share a Node process or each run in their own. Cause: a Node runtime writes the failing listener's `report_error` notification before the response, but the connection's read loop routed the response straight to its waiter while the notification went through the Host's loop; a shared Node realm sent the listener's report on the listener's connection and the emitter's response on another; and the quiesce that releases the emitter of a listener that rejects after an await was counted on the read loop before the Host's loop applied the report. The read loop now queues the response and the quiesce behind the unapplied report, and a shared realm sends the report on the emitter's connection, naming the listening extension (the Host takes the name only for an extension of the connection's own process and applies any other name's report as the connection's own). No released PiG has this: the `report_error` notification arrives with the same release.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "0aecafce0a",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "447a4edc21",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "6390f27ae9",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/report_error_extension_tag_test.go::TestReportErrorNotifyNamingAnExtensionOutsideTheConnectionsProcessIsTheConnectionsOwnAndTheNameIsRefused",
+        "coding/extension/host/subprocess/report_error_extension_tag_test.go::TestReportErrorNotifyNamingAnotherExtensionIsThatExtensionsErrorInItsProcessOnly",
+        "coding/extension/host/subprocess/report_order_test.go::TestErrorListenerThatCallsTheExtensionIsAnsweredWhileItsReportIsPending",
+        "coding/extension/host/subprocess/report_order_test.go::TestQuiesceHeldBehindAReportIsReleasedWhenTheConnectionEnds",
+        "coding/extension/host/subprocess/report_order_test.go::TestQuiesceOfAnEmissionTheErrorListenerStartedIsNotHeld",
+        "coding/extension/host/subprocess/report_order_test.go::TestQuiesceWaitsForTheReportWrittenBeforeIt",
+        "coding/extension/host/subprocess/report_order_test.go::TestResponseWaitsForTheReportWrittenBeforeIt",
+        "coding/extension/host/subprocess/report_order_test.go::TestSettleWaitingForAHeldQuiesceReturnsWhenTheRunIsCancelled",
+        "test/parity/scenarios/rpc/91-rpc-events-handler-errors-two-extensions.toml",
+        "test/parity/scenarios/rpc/92-rpc-events-async-handler-error-two-extensions.toml",
+        "test/parity/scenarios/rpc/93-rpc-events-handler-errors-isolated-extensions.toml",
+        "test/parity/scenarios/rpc/94-rpc-events-async-handler-error-isolated-extensions.toml"
+      ]
+    },
+    {
       "id": "BF-0b13d8b",
       "title": "`pig auth --help` names `pig auth ...` instead of `pi auth ...`",
       "symptom": "`pig auth --help` names `pig auth ...` instead of `pi auth ...`.",
