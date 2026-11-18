@@ -2989,9 +2989,11 @@ func (sm *SettingsManager) IsInstallTelemetryEnabled() bool {
 // runtime both call it.
 // pig divergence (D2): PIG_TELEMETRY wins over PI_TELEMETRY when both are set (owner decision 2026-11-17).
 func InstallTelemetryEnvOverride() (value string, ok bool) {
+	//perf:ok one environment lookup per provider request or start-up; read on each call as Pi's default parameter reads process.env.PI_TELEMETRY (telemetry.ts:8, called from sdk.ts:352 per request), so a changed variable applies at once; a cached value would not
 	if value, ok = os.LookupEnv("PIG_TELEMETRY"); ok {
 		return value, true
 	}
+	//perf:ok the same per-call read (telemetry.ts:8), reached only when PIG_TELEMETRY is unset
 	return os.LookupEnv("PI_TELEMETRY")
 }
 
