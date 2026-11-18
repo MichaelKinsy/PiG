@@ -715,6 +715,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## @google/genai 2.32.0 (three enum declarations)
+
+Pi's `api/google-shared` module imports the `FinishReason`, `FunctionCallingConfigMode` and `ThinkingLevel` enums from `@google/genai`, which PiG does not ship to extensions. `coding/extension/host/subprocess/runtime-node/shims/google-genai-enums.mjs` holds those three declarations, copied byte for byte from `dist/node/index.mjs` of the npm package `@google/genai@2.32.0` (integrity `sha512-+PDtco2/Z0ONdzCGekCoCT+O1VJS9xJQNN4XzQpXG/t3El/SWWMkCWlFRO1KmivOHPa4Q0VjUYu1HBKCZ/v33Q==`) by `automation/gen/vendor-pi-ai-apis.mjs`, with the package's licence header. The package is licensed under the Apache License, Version 2.0; the file keeps its notice (`Copyright 2025 Google LLC`, `SPDX-License-Identifier: Apache-2.0`) and the canonical text is in `LICENSES/Apache-2.0.txt`. The package has no `NOTICE` file.
+
 ## Independent Node SDK dependencies
 
 `automation/gen/vendor-pi-dist.sh` copies the following exact production dependencies from the locked Pi 0.87.1 installation. Paths are relative to `coding/extension/host/subprocess/runtime-node/shims/`. Each package retains its published manifest and complete license. The Photon package includes its published WebAssembly image-processing asset; it is not an extension runtime.

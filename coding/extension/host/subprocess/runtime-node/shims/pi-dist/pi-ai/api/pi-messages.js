@@ -1,3 +1,4 @@
 // PiG: the pi-messages implementation runs in PiG's host (D74); see automation/gen/vendor-pi-dist.sh.
 import { bridgeApi } from "../../../pi-ai-bridge.mjs";
+export { PiMessagesResponseError } from "./pi-messages.impl.js";
 export const { stream, streamSimple } = bridgeApi("pi-messages");

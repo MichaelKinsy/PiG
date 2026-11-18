@@ -118,7 +118,7 @@ func runExtensionLoginPreview(args []string) int {
 	bridge := subprocess.NewUIBridge(func() {})
 	bridge.SetUIContext(ui)
 	host.SetUIBridge(bridge)
-	codingagent.WireEarlyModelStream(bridge, "")
+	codingagent.WireEarlyModelStream(bridge)
 	width := extensionLoginPreviewWidth()
 	trueColor := tui.SupportsTrueColor()
 	glyphFree := loginPreviewGlyphFreeEnabled()

@@ -1004,6 +1004,10 @@ func NewAgent(opts AgentOptions) (*Agent, error) {
 	if opts.ThinkingLevel == "" {
 		opts.ThinkingLevel = ai.ThinkingOff
 	}
+	// agent.ts:259: `runtimeOptions.transport ?? "auto"`. The Agent never forwards an unset transport.
+	if opts.Transport == "" {
+		opts.Transport = ai.TransportAuto
+	}
 	sm := opts.SteeringMode
 	if sm == "" {
 		sm = QueueModeOneAtATime

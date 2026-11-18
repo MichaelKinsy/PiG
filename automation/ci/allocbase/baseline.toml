@@ -435,6 +435,11 @@ allocs = 2124
 
 [[benchmark]]
 package = "./ai"
+benchmark = "BenchmarkCodexWebSocketStatsChanges"
+allocs = 1
+
+[[benchmark]]
+package = "./ai"
 benchmark = "BenchmarkCompletionsRequest200Turns/messages-cached"
 allocs = 656
 

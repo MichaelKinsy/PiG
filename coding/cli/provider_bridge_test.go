@@ -61,7 +61,7 @@ func startBridge(t *testing.T) *bridgeRun {
 	outR, outW := io.Pipe()
 	run := &bridgeRun{stdin: inW, lines: make(chan providerBridgeReply, 64), done: make(chan int, 1)}
 	go func() {
-		run.done <- runProviderBridge(inR, outW, "")
+		run.done <- runProviderBridge(inR, outW)
 		_ = outW.Close()
 	}()
 	go func() {

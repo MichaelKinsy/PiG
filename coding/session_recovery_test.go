@@ -135,6 +135,8 @@ type harnessOptions struct {
 	compatStream bool
 	// provider replaces the scripted provider as the model's provider, so a session runs against a real provider over a hermetic server; the scripted responses are then unused.
 	provider ai.Provider
+	// transport is the Session's SessionOptions.Transport, the caller's own choice that outranks the settings'.
+	transport ai.Transport
 }
 
 type recoveryHarness struct {
@@ -189,6 +191,7 @@ func newRecoveryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 		runner = inproc.NewRunner(loaded, t.TempDir(), opts.runtime)
 	}
 	options := SessionOptions{Model: model, SkipBuiltinTools: !opts.defaultTools, Tools: opts.tools, Runner: runner, SystemPromptResources: opts.resources, AllowedTools: opts.allowedTools, ExcludedTools: opts.excludedTools}
+	options.Transport = opts.transport
 	if opts.emptySessionManager {
 		options.existing = opts.sessionManager
 		if options.existing == nil {
