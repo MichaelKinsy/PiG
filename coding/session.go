@@ -1258,10 +1258,26 @@ type ModelCycleResult = icodingagent.ModelCycleResult
 // The next Send uses the new provider/model; tools, system prompt, and history are unchanged.
 // Global model defaults change only with Persist. The thinking default never changes here. Runtime-managed providers must have configured auth.
 func (s *Session) SetModel(m *ai.Model, options ...ModelMutationOptions) error {
+	if err := s.refuseOversizedModelSwitch(m); err != nil {
+		return err
+	}
 	if err := s.checkModelAuth(s.backgroundContext(), m); err != nil {
 		return err
 	}
 	return s.setModel(m, extension.ModelSelectSourceUser, options...)
+}
+
+// pig divergence (D655): Pi's setModel and cycleModel (agent-session.ts:2562-2585, 2604-2706) switch without checking context tokens against the target model's context window; PiG refuses user-initiated switches when known context tokens exceed a positive target context window.
+// refuseOversizedModelSwitch refuses a user-initiated switch to m when the session's current context tokens are known and exceed m's context window. Unknown tokens (after a compaction) or an unknown window (0) never refuse. It runs before any mutation of the switch.
+func (s *Session) refuseOversizedModelSwitch(m *ai.Model) error {
+	if m == nil || m.Capabilities.ContextWindow <= 0 {
+		return nil
+	}
+	usage := s.ContextUsage()
+	if usage == nil || usage.Tokens == nil || *usage.Tokens <= m.Capabilities.ContextWindow {
+		return nil
+	}
+	return fmt.Errorf("%s/%s holds %d tokens; this session has %d. Run /compact first, then switch.", providerID(m), m.ID, m.Capabilities.ContextWindow, *usage.Tokens)
 }
 
 // CheckModelAuth reports the error SetModel returns when m's provider has no configured auth (agent-session.ts:2477-2480 setModel's checkAuth step).
@@ -1287,6 +1303,9 @@ func (s *Session) checkModelAuth(ctx context.Context, m *ai.Model) error {
 func (s *Session) SetModelOnMain(ctx context.Context, m *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
 	ctx, release := s.notificationContext(ctx)
 	defer release()
+	if err := s.refuseOversizedModelSwitch(m); err != nil {
+		return err
+	}
 	if err := s.checkModelAuth(ctx, m); err != nil {
 		return err
 	}
@@ -1338,6 +1357,11 @@ func (s *Session) setModelWithThinking(m *ai.Model, source extension.ModelSelect
 
 // BeginModelChange applies the synchronous model mutation and returns its awaited extension notification, or nil when it is already complete. RPC admits the next command after this prefix; blocking SDK callers invoke a non-nil completion before returning. The caller owns and joins completion, which must be invoked once.
 func (s *Session) BeginModelChange(ctx context.Context, m *ai.Model, source extension.ModelSelectSource, options ...ModelMutationOptions) (func(), error) {
+	if source == extension.ModelSelectSourceUser {
+		if err := s.refuseOversizedModelSwitch(m); err != nil {
+			return nil, err
+		}
+	}
 	return s.beginModelChangeWithThinking(ctx, m, source, nil, options...)
 }
 
@@ -1395,9 +1419,10 @@ func (s *Session) beginModelChangeState(ctx context.Context, m *ai.Model, source
 	}, nil
 }
 
-// thinkingLevelForModelSwitch mirrors upstream _getThinkingLevelForModelSwitch:
-// the target model's modelThinkingLevels entry, else defaultThinkingLevel,
-// else the current level. SetThinkingLevel clamps it to the model.
+// thinkingLevelForModelSwitch sets the thinking level a model switch leaves the Session on. A hand switch (SetModel, SetModelOnMain, BeginModelChange, and the
+// user model cycle) takes the target's modelThinkingLevels entry when it has one, else defaultThinkingLevel when that is set, else keeps the current level;
+// SetThinkingLevel then clamps the result to the target model. So with no per-model entry, a defaultThinkingLevel of "off" turns thinking off, and an unset
+// defaultThinkingLevel keeps the current level, which is off only if it was already off. Mirrors upstream _getThinkingLevelForModelSwitch.
 func (s *Session) thinkingLevelForModelSwitch(target *ai.Model) ai.ModelThinkingLevel {
 	settings := s.SettingsManager()
 	if perModel := settings.GetModelThinkingLevel(providerID(target), target.ID); perModel != "" {
