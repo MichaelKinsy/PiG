@@ -3281,12 +3281,12 @@ allocs = 3177
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelPickerScopedReopen/per-1000-entries"
-allocs = 80017
+allocs = 80240
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkModelPickerScopedReopenCustomProvider"
-allocs = 820136
+allocs = 807051
 
 [[benchmark]]
 package = "./internal/codingagent"
