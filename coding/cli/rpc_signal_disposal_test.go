@@ -38,27 +38,37 @@ func TestRPCSignalDisposalHoldsTheRunLikePisEventLoop(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	// A Python handler reports no window. Its waitForIdle returns at once: the run settled before session_shutdown.
-	waitsForIdle := filepath.Join(extensions, "waits_for_idle")
-	if err := os.MkdirAll(waitsForIdle, 0o755); err != nil {
+	// A Python handler reports no window. A handler may not call waitForIdle (a command-context member, Pi runner.ts:1016),
+	// so it makes another Promise-shaped host call, exec, which returns at once: the run settled before session_shutdown,
+	// and the call is served while the signal's disposal waits for the handler. The handler must end without an extension
+	// error.
+	makesHostCall := filepath.Join(extensions, "makes_host_call")
+	if err := os.MkdirAll(makesHostCall, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(waitsForIdle, "waits_for_idle.py"), []byte(`import pig_sdk
+	if err := os.WriteFile(filepath.Join(makesHostCall, "makes_host_call.py"), []byte(`import pig_sdk
+
+
+def shutdown(ctx, data):
+    done = ctx.exec("true")
+    if done.exit_code != 0:
+        raise RuntimeError("exec true exited with %d" % done.exit_code)
 
 
 def new_extension() -> pig_sdk.Extension:
-    e = pig_sdk.Extension("waits_for_idle")
-    e.on_event("session_shutdown", lambda ctx, data: ctx.wait_for_idle())
+    e = pig_sdk.Extension("makes_host_call")
+    e.on_event("session_shutdown", shutdown)
     return e
 `), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct {
-		name, extension string
+		name, extension    string
+		wantExtensionError bool
 	}{
-		{"throwing handler", throwing},
-		{"slow handler", slow},
-		{"python handler waiting for idle", waitsForIdle},
+		{"throwing handler", throwing, true},
+		{"slow handler", slow, false},
+		{"python handler making a host call", makesHostCall, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workDir, agentDir, sessionDir := t.TempDir(), t.TempDir(), t.TempDir()
@@ -106,6 +116,9 @@ def new_extension() -> pig_sdk.Extension:
 			var exitErr *exec.ExitError
 			if !errors.As(err, &exitErr) || exitErr.ExitCode() != 143 {
 				t.Fatalf("wait = %v, want exit status 143; stderr:\n%s", err, stderr.String())
+			}
+			if got := strings.Contains(stdout.String(), `"type":"extension_error"`); got != tc.wantExtensionError {
+				t.Fatalf("stdout has an extension_error event = %v, want %v:\nstdout:\n%s\nstderr:\n%s", got, tc.wantExtensionError, stdout.String(), stderr.String())
 			}
 			files, _ := filepath.Glob(filepath.Join(sessionDir, "*.jsonl"))
 			if len(files) != 1 {
