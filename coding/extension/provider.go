@@ -45,7 +45,8 @@ type ProviderConfig struct {
 	// endpoint. Opt-in only, for self-signed/internal-CA on-prem gateways.
 	// pig additive (D36): additive optional field; no upstream per-provider TLS-skip. True is on; the zero value is the omitted value, so a
 	// re-registration that leaves it out keeps the earlier opt-in. A decoded `"insecure": false` is a defined value that turns it off: InsecureSetting
-	// returns the three states.
+	// returns the three states. Against a `models.json` entry of the same provider an explicit value wins; an omitted one keeps the entry's opt-in only
+	// while the registration keeps the entry's endpoint (providerTLSOptIn in internal/codingagent).
 	Insecure bool `json:"insecure,omitempty"`
 	// insecureOff is a decoded `"insecure": false`.
 	insecureOff bool

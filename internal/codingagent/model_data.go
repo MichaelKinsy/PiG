@@ -154,7 +154,6 @@ func modelDefinitionEntry(providerID string, prov providerConfig, md modelDefini
 		CacheWriteCost:                     cacheWriteCost,
 		CostTiers:                          costTiers,
 		PromptCache:                        maps.Clone(md.PromptCache),
-		Insecure:                           optedIn(prov.Insecure),
 	}
 }
 

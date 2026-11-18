@@ -761,7 +761,7 @@ func (r *ModelRegistry) layerCatalogEntry(providerID, modelID string, entry Mode
 			if dynamic.APIKey != "" {
 				entry.APIKey = configvalue.Resolve(dynamic.APIKey, r.providerEnv(providerID))
 			}
-			entry.Insecure = optedIn(dynamic.Insecure)
+			entry.Insecure = r.providerTLSOptInLocked(providerID, nil)
 		}
 	}
 	if configured != nil {
@@ -838,7 +838,7 @@ func (r *ModelRegistry) resolveGeneratedModelLocked(entry ModelEntry, provider p
 	entry.BaseURL = firstModelValue(provider.BaseURL, entry.BaseURL)
 	entry.Headers = mergeHeadersOrdered(entry.Headers, provider.Headers, provider.headerEntries, r.providerEnv(entry.ProviderID))
 	entry.Compat = mergeCompat((*providerCompat)(entry.Compat), provider.Compat)
-	entry.Insecure = optedIn(provider.Insecure)
+	entry.Insecure = r.providerTLSOptInLocked(entry.ProviderID, nil)
 	entry.AuthHeader = provider.AuthHeader != nil && *provider.AuthHeader
 	entry.APIKey = configvalue.Resolve(provider.APIKey, r.providerEnv(entry.ProviderID))
 	if entry.APIKey == "" {
@@ -876,7 +876,7 @@ func (r *ModelRegistry) mergeProviderDefaultsLocked(entry ModelEntry, provider p
 	if provider.AuthHeader != nil {
 		entry.AuthHeader = *provider.AuthHeader
 	}
-	entry.Insecure = entry.Insecure || optedIn(provider.Insecure)
+	entry.Insecure = r.providerTLSOptInLocked(entry.ProviderID, nil)
 	return entry
 }
 
@@ -1820,6 +1820,7 @@ func (r *ModelRegistry) resolveModelDef(providerID string, prov providerConfig, 
 	providerHeaders := mergeHeadersOrdered(nil, prov.Headers, prov.headerEntries, env)
 	entry.Headers = mergeHeadersOrdered(providerHeaders, md.Headers, md.headerEntries, env)
 	entry.Env = env
+	entry.Insecure = r.providerTLSOptInLocked(providerID, nil)
 	return entry
 }
 
@@ -1843,7 +1844,7 @@ func (r *ModelRegistry) resolveProviderDefaults(providerID string, prov provider
 		Env:        env,
 		AuthHeader: authHeader,
 		Compat:     mergeCompat(prov.Compat, nil),
-		Insecure:   optedIn(prov.Insecure),
+		Insecure:   r.providerTLSOptInLocked(providerID, nil),
 	}
 }
 
