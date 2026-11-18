@@ -1,11 +1,14 @@
 package subprocess_test
 
 import (
+	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // The installed oracle carries the post-release backports (automation/pin/oracle.py), so vendoring from it must verify them, never
@@ -26,14 +29,22 @@ func TestVendorPiDistIsIdempotentOnTheCommittedTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	copied := filepath.Join(t.TempDir(), "shims")
+	// The generator gets its shims directory through a directory link, so the path it is given and the path esbuild resolves differ on every
+	// platform (macOS /tmp is a link to /private/tmp, which is where this showed first).
+	real := filepath.Join(t.TempDir(), "real")
+	if err := os.Mkdir(real, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	linked := filepath.Join(t.TempDir(), "linked")
+	testenv.RequireDirectoryLink(t, real, linked)
+	copied := filepath.Join(real, "shims")
 	if log, err := exec.CommandContext(t.Context(), "cp", "-R", shims, copied).CombinedOutput(); err != nil {
 		t.Fatalf("copy the shims: %v\n%s", err, log)
 	}
 	want := bundleDigests(t, shims)
 	for run := 1; run <= 2; run++ {
 		command := exec.CommandContext(t.Context(), "bash", script)
-		command.Env = append(command.Environ(), "PIG_VENDOR_SHIMS="+copied)
+		command.Env = append(command.Environ(), "PIG_VENDOR_SHIMS="+filepath.Join(linked, "shims"))
 		if log, err := command.CombinedOutput(); err != nil {
 			t.Fatalf("vendor-pi-dist.sh run %d (run make parity-deps): %v\n%s", run, err, log)
 		}
