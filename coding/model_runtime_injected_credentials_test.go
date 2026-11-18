@@ -10,6 +10,7 @@ import (
 	"testing/synctest"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/benchalloc"
 )
 
 // Pi packages/ai/src/models.ts:414-417,489-498 passes the refresh signal to CredentialStore.read, including the offline restoration phase.
@@ -173,13 +174,19 @@ func BenchmarkInjectedCredentialAvailability(b *testing.B) {
 		b.Fatal(err)
 	}
 	b.Cleanup(runtime.Close)
-	b.ReportAllocs()
-	for b.Loop() {
-		models, err := runtime.GetAvailable(b.Context(), "anthropic")
-		if err != nil || len(models) == 0 {
-			b.Fatalf("scoped availability: models=%d, err=%v", len(models), err)
-		}
+	available, err := runtime.GetAvailable(b.Context(), "anthropic")
+	if err != nil || len(available) == 0 {
+		b.Fatalf("scoped availability: models=%d, err=%v", len(available), err)
 	}
+	entries := len(available)
+	b.Run("per-1000-entries", func(b *testing.B) {
+		benchalloc.Per1000Entries(b, entries, func() {
+			models, err := runtime.GetAvailable(b.Context(), "anthropic")
+			if err != nil || len(models) != entries {
+				b.Fatalf("scoped availability: models=%d, err=%v", len(models), err)
+			}
+		})
+	})
 }
 
 func TestInjectedCredentialStoreRefreshReadReceivesCancellation(t *testing.T) {

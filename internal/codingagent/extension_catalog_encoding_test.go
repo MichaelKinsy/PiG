@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/benchalloc"
 )
 
 // Pi: packages/coding-agent/src/core/model-registry.ts:64 (ModelRegistry.getAll).
@@ -288,19 +289,21 @@ func BenchmarkExtensionCatalogEncoding(b *testing.B) {
 		b.Run(name, func(b *testing.B) {
 			registry := NewModelRegistry(b.TempDir())
 			cache := &extensionCatalogEncoding{}
-			b.ReportAllocs()
-			for b.Loop() {
-				catalog := registry.GetAllModelData()
-				var state map[string]any
-				if cached {
-					state = cache.state(registry, catalog)
-				} else {
-					state = ExtensionModelRegistryState(registry, catalog)
-				}
-				if _, err := json.Marshal(state); err != nil {
-					b.Fatal(err)
-				}
-			}
+			entries := len(registry.GetAllModelData())
+			b.Run("per-1000-entries", func(b *testing.B) {
+				benchalloc.Per1000Entries(b, entries, func() {
+					catalog := registry.GetAllModelData()
+					var state map[string]any
+					if cached {
+						state = cache.state(registry, catalog)
+					} else {
+						state = ExtensionModelRegistryState(registry, catalog)
+					}
+					if _, err := json.Marshal(state); err != nil {
+						b.Fatal(err)
+					}
+				})
+			})
 		})
 	}
 }

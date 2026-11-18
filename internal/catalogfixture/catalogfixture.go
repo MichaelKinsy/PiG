@@ -19,9 +19,13 @@ package catalogfixture
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
+
+// ProviderPrefix is prefixed to the provider of every entry that ModelsJSON writes, so that the fixture's providers stand apart from the built-in ones of the same name.
+const ProviderPrefix = "fixture-"
 
 // LiveEntries is the size of the shipped catalog on 2026-11-16, and the size of the fixture.
 const LiveEntries = 1663
@@ -66,4 +70,41 @@ func Compats() []*ai.ModelCompat {
 		compats[i] = rows[i].Compat
 	}
 	return compats
+}
+
+// ModelsJSON returns the fixture as the models.json of a registry: one custom provider per provider of the entries, named ProviderPrefix and the entry's provider, with every entry as a custom model (its id, name, API, base URL, reasoning, input modalities, limits and cost rates). A nonempty apiKey is the key of the providers named in keyed (of every provider when keyed is empty), which makes their models available; an empty apiKey leaves every provider without a key. A registry built from it (codingagent.NewModelRegistry on a directory holding the file) lists the fixture's models next to the built-in catalog, whose providers stay unavailable without credentials.
+func ModelsJSON(apiKey string, keyed ...string) []byte {
+	providers := map[string]map[string]any{}
+	for _, row := range GeneratedModels() {
+		id := ProviderPrefix + row.Provider
+		baseURL := row.BaseURL
+		if baseURL == "" {
+			// A shipped entry of the azure provider has no base URL (the resource comes from the environment); models.json requires one.
+			baseURL = "https://fixture.invalid"
+		}
+		provider := providers[id]
+		if provider == nil {
+			provider = map[string]any{"baseUrl": baseURL, "models": []map[string]any{}}
+			if apiKey != "" && (len(keyed) == 0 || slices.Contains(keyed, row.Provider)) {
+				provider["apiKey"] = apiKey
+			}
+			providers[id] = provider
+		}
+		input := []string{"text"}
+		if slices.Contains(row.Capabilities, "image") {
+			input = append(input, "image")
+		}
+		model := map[string]any{
+			"id": row.ID, "name": row.DisplayName, "api": string(row.API), "baseUrl": baseURL, "reasoning": row.Reasoning, "input": input,
+			"contextWindow": row.ContextWindow, "maxTokens": row.MaxOutputTokens,
+			"cost": map[string]any{"input": row.InputCostPerMTokens, "output": row.OutputCostPerMTokens, "cacheRead": row.CacheReadCost, "cacheWrite": row.CacheWriteCost},
+		}
+		provider["models"] = append(provider["models"].([]map[string]any), model)
+	}
+	//portlint:allow mapkeyorder test support: the file is read back by the registry as models.json, whose member order no benchmark reads
+	data, err := json.Marshal(map[string]any{"providers": providers})
+	if err != nil {
+		panic(fmt.Sprintf("catalogfixture: models.json: %v", err))
+	}
+	return data
 }
