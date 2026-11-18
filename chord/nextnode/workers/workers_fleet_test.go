@@ -176,7 +176,7 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 	if entry == "" {
 		entry = fixtureEntry(t)
 	}
-	var routing host.Host = server
+	routing := server
 	if options.resolved != nil {
 		routing = &resolvedSeam{Host: server, resolved: options.resolved}
 	}
