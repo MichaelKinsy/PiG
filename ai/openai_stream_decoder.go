@@ -22,6 +22,7 @@ type openAIStreamDecoder struct {
 	err        error
 	done       bool
 	finished   bool
+	sawDone    bool // pig additive (D237): distinguish the "[DONE]" sentinel from EOF.
 	// record holds the bytes of the record being parsed, reused across records up to openAIStreamRecordReuse bytes.
 	record []byte
 	// chunks, when set, decodes each record as a chat completion chunk while parse checks it; chunk is the last one it decoded, when chunkOK.
@@ -88,6 +89,7 @@ func (decoder *openAIStreamDecoder) Next() bool {
 		return false
 	}
 	if sse.Data == "[DONE]" {
+		decoder.sawDone = true
 		// 7.19 breaks at the sentinel; the loop's AsyncIteratorClose returns _iterSSEMessages without aborting the request, so the body is not read to its end.
 		decoder.messages.close(true)
 		openAIStreamSuspend(decoder.suspend) // AsyncIteratorClose awaits _iterSSEMessages.return().

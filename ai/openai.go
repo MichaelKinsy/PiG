@@ -1803,6 +1803,7 @@ func (p *openAIProvider) streamResponse(ctx context.Context, request *http.Reque
 			body = native
 		}
 		builder.start()
+		builder.openAITrace = newOpenAIStreamTrace(resp) // pig additive (D237)
 		p.parseSSE(ctx, body, builder, grammarProps)
 		return nil
 	})
@@ -1886,6 +1887,7 @@ func applyOpenAISessionAffinityHeaders(headers http.Header, sessionID string, fo
 }
 
 func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *assistantStreamBuilder, grammarProps map[string]string) {
+	trace := builder.openAITrace
 	// Track partial tool calls by index
 	type partialTool struct {
 		streamIndex int
@@ -1956,6 +1958,7 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	decoder.decodeChunks()
 	for decoder.Next() {
 		data := decoder.Event().Data
+		trace.record(data)
 
 		var thrown string
 		// The decoder decoded the common chunk while it checked the record; the chunk is valid until the next record.
@@ -2155,7 +2158,11 @@ func (p *openAIProvider) parseSSE(ctx context.Context, r io.Reader, builder *ass
 	case !supportsFinishReason:
 		done(inferredStopReason())
 	default:
-		fail(StopReasonError, errors.New("Stream ended without finish_reason"))
+		err := errors.New("Stream ended without finish_reason")
+		if trace != nil { // pig additive (D237): retain evidence on the existing failed message.
+			AppendAssistantMessageDiagnostic(builder.partial, CreateAssistantMessageDiagnostic("stream_ended_without_finish_reason", err, trace.details(decoder.sawDone)))
+		}
+		fail(StopReasonError, err)
 	}
 }
 
