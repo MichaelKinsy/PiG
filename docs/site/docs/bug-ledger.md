@@ -431,6 +431,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-34f7594-2](#bf-34f7594-2) | Fixed the interactive bash block stripping escape sequences with the wrong rule… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34f7594-3](#bf-34f7594-3) | Fixed the `re:` mode of the session selector search to read its pattern as JavaScript does (`new… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-34f7594-4](#bf-34f7594-4) | Repeated codemode timeouts or aborts can no longer pile up running VMs: at most two codemode VMs are alive… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-351b869](#bf-351b869) | A Codex WebSocket session whose requests name no transport (a caller of the `ai` package with… | PiG's own defect | All platforms | Unreleased |
 | [BF-3548f29](#bf-3548f29) | fix(tui): bash block strips ANSI with Pi's utils/ansi.ts rule | PiG's own defect | All platforms | Unreleased |
 | [BF-35b06f4](#bf-35b06f4) | fix(tools): the grep event scanner reads an escaped member name as the name it spells; the fuzz target skips… | PiG's own defect | All platforms | Unreleased |
 | [BF-35be5ca](#bf-35be5ca) | A key bound to two editor actions now performs the action Pi performs | PiG's own defect | All platforms | Unreleased |
@@ -8031,6 +8032,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `34f7594aa5` (2026-10-11)
 - **Tests:** `internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation`, `internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseEndsThePhase`, `test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-fork.toml`, `test/parity/scenarios/extensions-runtime/73-shutdown-from-session-before-switch.toml`, `test/parity/scenarios/extensions-runtime/73-shutdown-from-session-start.toml`
 - **Release note:** Repeated codemode timeouts or aborts can no longer pile up running VMs: at most two codemode VMs are alive across sessions in one process, and a cancelled VM holds its slot until it exits ([#10748](https://github.com/earendil-works/pi/issues/10748)).
+
+### BF-351b869
+
+**A Codex WebSocket session whose requests name no transport (a caller of the `ai` package with…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Codex WebSocket session whose requests name no transport (a caller of the `ai` package with `StreamOptions.Transport` unset, or a pi-ai helper that passes none) now sends the full context on its later requests, as Pi's do, instead of the delta of a cached context (one new item and a `previous_response_id`).
+- **Root cause:** the Codex WebSocket provider read an unset transport as Pi's default "auto" in the cached-context decision, on a comment's claim that Pi does the same, where Pi defaults the option only to choose the WebSocket path and decides the cached context from the raw option, and no test compared a request with no transport against Pi's
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `351b869062` (2026-11-17)
+- **Tests:** `internal/codingagent/subprocess_early_model_stream_test.go::TestEarlyModelStreamServesAPICallsWithoutASession`
+- **Release note:** A Codex WebSocket session whose requests name no transport (a caller of the `ai` package with `StreamOptions.Transport` unset, or a pi-ai helper that passes none) now sends the full context on its later requests, as Pi's do, instead of the delta of a cached context (one new item and a `previous_response_id`). The transports `auto` and `websocket-cached` still send the delta and `websocket` still sends the full context. PiG's `Agent` and `Session` name `auto` when no transport is set, as Pi's do, so the requests of the CLI are unchanged, and an extension's model calls through the host no longer add the settings' transport, as in Pi. The Codex provider has treated an unset transport as `auto` since v0.2.0.
 
 ### BF-3548f29
 
