@@ -1543,6 +1543,7 @@ func Main(args []string, options *MainOptions) {
 		return builder.interactiveInputs(next, coding.SessionStartOptions{}), next, nil
 	})
 	defer sessionFactory.Close()
+	terminateSessionExtensions = sessionFactory.TerminateProcesses
 	trace.Mark("pre-session")
 	startManager, err := coding.SessionManagerFor(services, interactiveInputs.Start)
 	if err != nil {

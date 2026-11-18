@@ -107691,6 +107691,17 @@
       "shapeHash": "sha256:aa13964b0d95b90a916cea31295cebbdfe0753eb9b1593f2eb593174d62f6eac"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#terminateSessionExtensions",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "terminateSessionExtensions",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#terminationExitRecordOnce",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "terminationExitRecordOnce",
