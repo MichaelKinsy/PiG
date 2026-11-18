@@ -2,7 +2,7 @@
   "mechanisms": [
     {
       "source": "test/parity/runner/asserts.go",
-      "sha256": "760e6f69c183d3699babfb934d5e9f4c266e995122d7a545add9ba7b0c1ca728",
+      "sha256": "210d6a1aff3beed290404880873ed019c2be2717f9c10319ea62ac18dc43d5b9",
       "reason": "Normalized/layout comparators are explicit plain-terminal contracts: ANSI, CR, trailing spaces and outer blank rows are not compared. They are not full wire proof. Exact comparators apply only scenario-declared, justified replacements."
     },
     {
