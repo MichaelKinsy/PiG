@@ -1666,7 +1666,7 @@ allocs = 1064
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionRegistryMetadataRefresh"
-allocs = 444
+allocs = 308
 
 [[benchmark]]
 package = "./coding"
