@@ -11,7 +11,7 @@ type insecureLayer struct {
 	baseURL string
 }
 
-// providerTLSOptIn is the one answer to "does this provider skip TLS certificate verification" (pig additive D36); every place that builds a request's
+// pig additive (D36): providerTLSOptIn is the one answer to "does this provider skip TLS certificate verification"; every place that builds a request's
 // entry or transport reads it from here and from nowhere else. The rule (owner decision 29):
 //   - a registration that states `insecure` wins, true or false;
 //   - one that states nothing keeps the opt-in of the models.json entry, but only while it keeps the entry's endpoint: a registration that names another
