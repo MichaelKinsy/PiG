@@ -2218,6 +2218,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-f2a2b34](#bf-f2a2b34) | An unmatched tool result row in the /tree selector shows the tool's name, as in Pi (`[bash]`), instead of… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-f2aed24](#bf-f2aed24) | A terminal write that fails for a reason other than a lost terminal (not `EIO`, `EPIPE`, `ENOTCONN` or… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-f2aed24-2](#bf-f2aed24-2) | An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-f2be7ae](#bf-f2be7ae) | fix(piglet): drop the untyped additive sentence from the session_start handler's comment | PiG's own defect | All platforms | Unreleased |
 | [BF-f2c00f9](#bf-f2c00f9) | A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id… | PiG's own defect | All platforms | 0.5.3 |
 | [BF-f2c00f9-2](#bf-f2c00f9-2) | Extensions' `ui_prompt_start` and `ui_prompt_end` notifications are recorded in order when the host is slow… | PiG's own defect | All platforms | 0.5.3 |
 | [BF-f2c00f9-3](#bf-f2c00f9-3) | A fused Go extension's `createLocalBashOperations().exec` (and `createLocalPowerShellOperations`) no longer… | PiG's own defect | All platforms | 0.5.3 |
@@ -32854,6 +32855,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `f2aed24c0d` (2026-11-03, #397)
 - **Tests:** None recorded.
 - **Release note:** An extension's `ctx.ui.setTitle` replaces control characters in the title with spaces, as Pi's terminal title does, so a BEL or ESC in it no longer ends the sequence early and sends the rest to the terminal as escapes (#397).
+
+### BF-f2be7ae
+
+**fix(piglet): drop the untyped additive sentence from the session_start handler's comment**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(piglet): drop the untyped additive sentence from the session_start handler's comment
+- **Root cause:** The sentence said only that Pi has no Piglet extension, which the divergence-consistency gate rejects as an untyped additive comment and which a reader of the handler does not need.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `f2be7ae869` (2026-11-17)
+- **Tests:** None recorded.
 
 ### BF-f2c00f9
 

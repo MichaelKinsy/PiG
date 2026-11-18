@@ -61873,6 +61873,25 @@
       "tests": []
     },
     {
+      "id": "BF-f2be7ae",
+      "title": "fix(piglet): drop the untyped additive sentence from the session_start handler's comment",
+      "symptom": "fix(piglet): drop the untyped additive sentence from the session_start handler's comment",
+      "rootCause": "The sentence said only that Pi has no Piglet extension, which the divergence-consistency gate rejects as an untyped additive comment and which a reader of the handler does not need.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f2be7ae869",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f2c00f9",
       "title": "A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id…",
       "symptom": "A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id, params)` and the other `create\u003cTool\u003eTool` forms) no longer fails with \"extension stopped while waiting for builtinTool.execute response\" when another extension in the same process stops while the tool runs.",
