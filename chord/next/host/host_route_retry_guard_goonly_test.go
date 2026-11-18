@@ -11,8 +11,14 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/data"
 )
 
-// Go-only: the guards of the route's remembered retry (TestRouteHandleRetryWhileTheResolveRunsThatThenRejectsResolvesOnceMoreAfterTheRejection):
-// it is for the rejection of the resolve it entered during, and for no other.
+// Go-only: the guards of the route's remembered retry (TestRouteHandleRetryWhileTheResolveRunsThatThenRejectsASupersededFailureResolvesOnceMoreAfterTheRejection):
+// it is for the superseded rejection of the resolve it entered during, and for no other. Every rejection here says it is superseded, so
+// that only the guard under test can keep the retry from resolving.
+
+// supersededWith is a rejection that says its failure was ended.
+func supersededWith(message string) error {
+	return supersedingRejection{error: errors.New(message), superseded: func() bool { return true }}
+}
 
 // A resolve that succeeds takes the retry with it (the link serves the address: nothing restarts). The address's next rejection, after
 // its link dropped, fails its holders and resolves nothing more: only the resolve the drop started ran.
@@ -25,7 +31,7 @@ func TestRouteHandleRetryWhileTheResolveRunsThatSucceedsIsNotRememberedForTheRej
 				_, _ = chordctx.Receive(ctx, pending)
 				return worker(), nil
 			}
-			return resolved{}, errors.New("no worker")
+			return resolved{}, supersededWith("no worker")
 		}})
 		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
@@ -55,7 +61,7 @@ func TestRouteHandleRetryWhileTheResolveRunsIsNotRememberedOnceTheAddressIsSuspe
 		r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, _ func() resolved, ctx context.Context) (resolved, error) {
 			calls.Add(1)
 			_, _ = chordctx.Receive(ctx, pending)
-			return resolved{}, errors.New("no worker")
+			return resolved{}, supersededWith("no worker")
 		}})
 		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
@@ -82,7 +88,7 @@ func TestRouteHandleRetryWhileTheResolveRunsIsNotRememberedOnceTheLastHolderRele
 		r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, _ func() resolved, ctx context.Context) (resolved, error) {
 			calls.Add(1)
 			_, _ = chordctx.Receive(ctx, pending)
-			return resolved{}, errors.New("no worker")
+			return resolved{}, supersededWith("no worker")
 		}})
 		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -12,20 +13,34 @@ import (
 	"github.com/MichaelKinsy/PiG/chord/next/host"
 )
 
-// Go-only (no Pi case): the stated difference of the route's remembered retry. A retry that enters while a start is in flight and the
-// start then fails on its own (the app's `start` throws) finds Pi's address failed until another retry. Here the route remembers the
-// retry for the rejection of the resolve it entered during, so it handles the rejection as usual (reports it, fails the holders) and
-// then resolves the address once more. The address has its new failure by then, so that resolve rejects at once: no fork, the app's
-// `start` ran once, `worker_failed` is reported once, the address is failed, and the route reports the rejection twice.
-func TestARetryDuringAStartThatThenFailsOnItsOwnResolvesTheAddressOnceMoreAndStartsNothing(t *testing.T) {
+// Pi's behavior, pinned (no Pi test): a retry that enters while a start is in flight, and the start then fails on its own (the app's
+// `start` throws), is gone with that start.
+//
+//	workers.ts:391-397 `retry` clears the address's failure (none yet), refreshes the state and calls `route.retry`;
+//	route.ts:158-164 `retry` clears its own failure and calls #resolveIfHeld, which returns at :237 because `routed.resolving`;
+//	workers.ts:502 the start throws `this.#fail(...)` (:747): the failure is recorded, `worker_failed` reported once;
+//	route.ts:265-273 the rejection is reported (`resolve_failed`, once) and #settle (:255) fails the holders with it.
+//
+// So Pi has one resolve, one `resolve_failed` report, one start and the address failed. The retry is not remembered for this rejection:
+// it is the start's own failure, not a failure the retry ended (the one case in which the route resolves again after a rejection is a
+// rejection that says its failure was ended, workers_retry_resolving_test.go). The route's `resolve` count is read from the fleet's
+// `resolved` hook, and the section that handled the rejection is over when the hold's state is read: a resolve it started has returned.
+func TestARetryDuringAStartThatThenFailsOnItsOwnIsOneResolveOneReportAndTheAddressStaysFailed(t *testing.T) {
 	entered := make(chan struct{})
 	release := make(chan struct{})
 	var once sync.Once
-	f := newFleet(t, fleetOptions{start: func(contracts.Address, context.Context) (delta.JsonValue, error) {
-		once.Do(func() { close(entered) })
-		<-release
-		return nil, errors.New("the app's start failed")
-	}})
+	var resolves atomic.Int32
+	f := newFleet(t, fleetOptions{
+		start: func(contracts.Address, context.Context) (delta.JsonValue, error) {
+			once.Do(func() { close(entered) })
+			<-release
+			return nil, errors.New("the app's start failed")
+		},
+		resolved: func(_ contracts.Address, link host.ResolvedLink, err error, _ context.Context) (host.ResolvedLink, error) {
+			resolves.Add(1)
+			return link, err
+		},
+	})
 	reference := f.hold(fixtureControl, "S1")
 	defer reference.Release()
 	select {
@@ -37,21 +52,18 @@ func TestARetryDuringAStartThatThenFailsOnItsOwnResolvesTheAddressOnceMoreAndSta
 		t.Fatal(err)
 	}
 	close(release)
-	rejections := func() int {
-		count := 0
-		for _, err := range f.hostErrors.all() {
-			if err.Kind == host.ErrResolveFailed {
-				count++
-			}
-		}
-		return count
+	until(t, func() bool { return reported(f) >= 1 })
+	// The section that handled the rejection has ended: a resolve it started has returned.
+	reference.State().Value()
+	if got := resolves.Load(); got != 1 {
+		t.Fatalf("route resolves = %d, want 1 (the retry was not remembered: the start failed on its own)", got)
 	}
-	until(t, func() bool { return rejections() == 2 })
-	if state := f.stateOf("S1"); state == nil || state.Status != WorkerFailed {
-		t.Fatalf("state = %+v, want failed", state)
+	until(t, func() bool { state := f.stateOf("S1"); return state != nil && state.Status == WorkerFailed })
+	if got := reported(f); got != 1 {
+		t.Fatalf("resolve_failed reports = %d, want 1", got)
 	}
 	if got := f.starts.all(); len(got) != 1 {
-		t.Fatalf("starts = %v, want one (the retry started nothing more)", got)
+		t.Fatalf("starts = %v, want one", got)
 	}
 	failures := 0
 	for _, err := range f.errors.all() {
