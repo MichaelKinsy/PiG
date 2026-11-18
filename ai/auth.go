@@ -524,11 +524,16 @@ func (a *AuthStorage) withFileLock(ctx context.Context, asynchronous bool, fn fu
 	if err := a.ensureFileExists(); err != nil {
 		return err
 	}
+	// The lock sits beside the store file the write replaces, so every link to one store shares one lock (auth_lock_path.go).
+	lockPath, err := resolveAuthPath(a.path)
+	if err != nil {
+		return err
+	}
 	var lock *pilock.Lock
 	if asynchronous {
-		lock, err = acquireAuthFileLock(ctx, a.path)
+		lock, err = acquireAuthFileLock(ctx, lockPath)
 	} else {
-		lock, err = pilock.AcquireAuthSync(a.path)
+		lock, err = pilock.AcquireAuthSync(lockPath)
 	}
 	if err != nil {
 		// FileAuthStorageBackend rethrows proper-lockfile's error unchanged (auth-storage.ts:82,141).
