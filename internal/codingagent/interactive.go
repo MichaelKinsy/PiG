@@ -776,6 +776,8 @@ func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 		_ = m.postToMain(ctx, func() {
 			m.tuiInst.Invalidate()
 			m.tuiInst.RequestRender()
+			// The start's last repaint request: a startup profile, and a pty child that must not be ready before it, wait for this label.
+			m.startupMark()("highlight-repaint-requested")
 		})
 		// After the repaint is queued, so the collection never delays it.
 		m.releaseStartupHeapWhenIdle(ctx)
