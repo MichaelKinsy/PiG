@@ -21,17 +21,22 @@ func supersededWith(message string) error {
 }
 
 // A resolve that succeeds takes the retry with it (the link serves the address: nothing restarts). The address's next rejection, after
-// its link dropped, fails its holders and resolves nothing more: only the resolve the drop started ran.
+// its link dropped, fails its holders and resolves nothing more: only the resolve the drop started ran. A remembered retry that outlived
+// the resolve it entered during would resolve after every later rejection, for ever: the third resolve answers with a plain error, which
+// ends that, so the count below fails instead of the test running away.
 func TestRouteHandleRetryWhileTheResolveRunsThatSucceedsIsNotRememberedForTheRejectionOfALaterResolve(t *testing.T) {
 	forEachCodec(t, func(t *testing.T) {
 		pending := make(chan struct{})
 		var calls atomic.Int32
 		r := relay(t, relayedOptions{Resolve: func(_ contracts.Address, worker func() resolved, ctx context.Context) (resolved, error) {
-			if calls.Add(1) == 1 {
+			switch calls.Add(1) {
+			case 1:
 				_, _ = chordctx.Receive(ctx, pending)
 				return worker(), nil
+			case 2:
+				return resolved{}, supersededWith("no worker")
 			}
-			return resolved{}, supersededWith("no worker")
+			return resolved{}, errors.New("a third resolve: the retry was remembered for a later rejection")
 		}})
 		notes, err := r.Tab.Hold(background, PlacedNotes, routeS("S1"), GetOptions{})
 		must(t, err)
