@@ -32968,14 +32968,14 @@
     {
       "id": "BF-85791f8",
       "title": "A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the…",
-      "symptom": "A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input.",
+      "symptom": "A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input (in Node, Go and Python from v0.5.0 to v0.7.0, and in Lisp in v0.7.0).",
       "rootCause": "the reply protocol had one member for the input, meant for in-place edits the tool must receive, so an assigned input had no way across the process boundary and was dropped as no edit",
       "rootCauseSource": "release note",
       "userImpact": "Lost or altered data",
       "platform": "All platforms",
       "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input. The call itself still runs with the input it carried, as in Pi, so nothing a released extension could rely on is lost; a Rust handler keeps its own behaviour (assigning and editing the input are the same edit of one value).",
+      "releaseNote": "A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input (in Node, Go and Python from v0.5.0 to v0.7.0, and in Lisp in v0.7.0). The call itself still runs with the input it carried, as in Pi, so nothing a released extension could rely on is lost; a Rust handler keeps its own behaviour, which is unchanged in every released version: the Rust SDK holds the event as one value, so assigning the input and editing it in place are the same edit and the tool runs with what the handler left.",
       "origin": "release note",
       "commits": [
         {
@@ -38457,6 +38457,25 @@
       "tests": [
         "tui/editor_status_test.go::TestEmbeddedCompactionStatusTakesTheEditorBorderColorLikeWorking"
       ]
+    },
+    {
+      "id": "BF-9730d0a",
+      "title": "fix(extension-sdk-py): a turn_end event without entries keeps the empty list the SDK answered before",
+      "symptom": "fix(extension-sdk-py): a turn_end event without entries keeps the empty list the SDK answered before",
+      "rootCause": "The read of the entries a turn_end handler left defaults an absent member to an empty list, as it did before the entries began to be read after the handler.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9730d0a546",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-9740507",

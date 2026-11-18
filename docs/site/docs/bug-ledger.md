@@ -1432,6 +1432,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9624fc4-2](#bf-9624fc4-2) | Anthropic and Bedrock no longer send `strict: "prefer"` tools strict again on every request after Claude… | PiG's own defect | All platforms | Unreleased |
 | [BF-967def6](#bf-967def6) | Tool arguments for a `bigint` or `undefined` parameter are converted, not rejected: a JSON `"42"` or `42` for… | PiG's own defect | All platforms | Unreleased |
 | [BF-9721c48](#bf-9721c48) | An auto, manual or overflow compaction status shown in the editor's top border now takes the editor border… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-9730d0a](#bf-9730d0a) | fix(extension-sdk-py): a turn_end event without entries keeps the empty list the SDK answered before | PiG's own defect | All platforms | Unreleased |
 | [BF-9740507](#bf-9740507) | `pig extension upgrade` now rewrites a `Context.ConfigHome()` call in an `if` or `switch` init statement and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9740507-2](#bf-9740507-2) | `pig extension upgrade` no longer discards the error of `Context.ConfigHome` with `home, _ :=… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-9740507-3](#bf-9740507-3) | `pig extension upgrade` is all or nothing | PiG's own defect | All platforms | 0.5.0 |
@@ -18992,14 +18993,14 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 **A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the…**
 
 - **Source:** PiG's own defect
-- **Symptom:** A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input.
+- **Symptom:** A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input (in Node, Go and Python from v0.5.0 to v0.7.0, and in Lisp in v0.7.0).
 - **Root cause:** the reply protocol had one member for the input, meant for in-place edits the tool must receive, so an assigned input had no way across the process boundary and was dropped as no edit
 - **User impact:** Lost or altered data
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `85791f823c` (2026-11-17)
 - **Tests:** `coding/extension/host/subprocess/tool_call_assigned_input_test.go::TestToolCallAssignedInputReachesOnlyTheNextHandlers`
-- **Release note:** A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input. The call itself still runs with the input it carried, as in Pi, so nothing a released extension could rely on is lost; a Rust handler keeps its own behaviour (assigning and editing the input are the same edit of one value).
+- **Release note:** A `tool_call` handler that assigns a new object to `event.input` now gives it to the next handlers of the call, as in Pi, in Node extensions and in the Go, Python and Lisp SDKs; before, the next handler read the original input (in Node, Go and Python from v0.5.0 to v0.7.0, and in Lisp in v0.7.0). The call itself still runs with the input it carried, as in Pi, so nothing a released extension could rely on is lost; a Rust handler keeps its own behaviour, which is unchanged in every released version: the Rust SDK holds the event as one value, so assigning the input and editing it in place are the same edit and the tool runs with what the handler left.
 
 ### BF-85908ae
 
@@ -21928,6 +21929,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9721c489d0` (2026-10-13)
 - **Tests:** `tui/editor_status_test.go::TestEmbeddedCompactionStatusTakesTheEditorBorderColorLikeWorking`
 - **Release note:** An auto, manual or overflow compaction status shown in the editor's top border now takes the editor border color, like the working status, as in Pi 1.2.0; it used to keep the accent spinner and muted label.
+
+### BF-9730d0a
+
+**fix(extension-sdk-py): a turn_end event without entries keeps the empty list the SDK answered before**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extension-sdk-py): a turn_end event without entries keeps the empty list the SDK answered before
+- **Root cause:** The read of the entries a turn_end handler left defaults an absent member to an empty list, as it did before the entries began to be read after the handler.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9730d0a546` (2026-11-17)
+- **Tests:** None recorded.
 
 ### BF-9740507
 
