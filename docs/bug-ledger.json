@@ -6133,6 +6133,30 @@
       ]
     },
     {
+      "id": "BF-1d5b4bb",
+      "title": "The Go SDK's start-order tests no longer fail on a loaded machine since v0.5.2 (a test-claim fix: the SDK is…",
+      "symptom": "The Go SDK's start-order tests no longer fail on a loaded machine since v0.5.2 (a test-claim fix: the SDK is unchanged).",
+      "rootCause": "the tests asserted first-statement order, which is more than the SDK's invocation-order contract, and a goroutine descheduled between the release of its place and its handler's first statement is overtaken",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The Go SDK's start-order tests no longer fail on a loaded machine since v0.5.2 (a test-claim fix: the SDK is unchanged). The SDK guarantees the order in which handlers are invoked: a handler is invoked only after every earlier request's handler was invoked or its request ended without one. The tests asserted the order of the handlers' first statements, which is more than that, and a goroutine the operating system holds back after its place was released is overtaken by the handlers behind it, so one of 300 runs failed under one-CPU pressure. The tests now read the order where the SDK keeps it, and a new test holds one handler back to show that the invocation order stays intact while the first statements do not.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "1d5b4bb0fe",
+          "date": "2026-11-18"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/request_start_order_test.go::TestEventAndCommandHandlersStartInArrivalOrder",
+        "extensions/sdk/request_start_order_test.go::TestOvertakenHandlerKeepsItsInvocationPlace",
+        "extensions/sdk/tool_prepare_arguments_test.go::TestToolCallHandlersStartInArrivalOrder"
+      ]
+    },
+    {
       "id": "BF-1dcaef7",
       "title": "Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with…",
       "symptom": "Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with \"Malformed complete ... line N\".",

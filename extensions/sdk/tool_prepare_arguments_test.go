@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"runtime"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -132,21 +132,20 @@ func TestToolStartOrderHoldsALaterRequestUntilTheEarlierOnesBegan(t *testing.T) 
 	recvStart(t, afterBegan, "after")
 }
 
-// The dispatch path takes a place for each tool_call request in arrival order and begins it before the handler runs. One processor makes the
-// scheduler's choice deterministic (a goroutine that a request starts last runs first, as the unordered loop showed), so the handlers' first
-// statements show the order the gate gave. With more processors a thread the operating system preempts between the hand-off and the handler's
-// first statement can be overtaken, which no test can pin.
+// The dispatch path takes a place for each tool_call request in arrival order and invokes the handler only after the places before it were
+// released. The test reads the order where the SDK keeps it, in startObserver between the wait for the earlier places and the release of its own,
+// and checks that every handler ran once. The handlers' first statements are not that order, as TestOvertakenHandlerKeepsItsInvocationPlace shows.
 func TestToolCallHandlersStartInArrivalOrder(t *testing.T) {
 	const batch, batches = 16, 24
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1))
 	ext := New("start-order")
+	invoked := observeStarts(ext)
 	var mu sync.Mutex
-	var started []int
+	var ran []int
 	ext.RegisterTool(ToolDefinition{
 		Name: "probe", Label: "probe", Description: "Record the start order", Parameters: Schema{"type": "object"},
 		Execute: func(_ Context, params map[string]any) (any, error) {
 			mu.Lock()
-			started = append(started, int(params["n"].(float64)))
+			ran = append(ran, int(params["n"].(float64)))
 			mu.Unlock()
 			return "ok", nil
 		},
@@ -164,15 +163,15 @@ func TestToolCallHandlersStartInArrivalOrder(t *testing.T) {
 			}
 		}
 		mu.Lock()
-		got := started
-		started = nil
+		got := slices.Clone(ran)
+		ran = nil
 		mu.Unlock()
-		want := make([]int, batch)
-		for n := range want {
-			want[n] = n
+		slices.Sort(got)
+		if want := ascending(batch); !reflect.DeepEqual(got, want) {
+			t.Fatalf("round %d: handlers ran as %v, want each of %v once", round, got, want)
 		}
-		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("round %d: handlers started as %v, want %v", round, got, want)
+		if got, want := invoked(), ascending(batch); !reflect.DeepEqual(got, want) { // agent-loop.ts:656-658: Promise.all(map) invokes each call in source order, and nothing is awaited before the first handler
+			t.Fatalf("round %d: handlers invoked as %v, want %v", round, got, want)
 		}
 	}
 }

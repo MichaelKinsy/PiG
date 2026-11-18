@@ -243,6 +243,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1d02c73](#bf-1d02c73) | Filters that Pi writes with `toLowerCase()` (select lists, the config selector, file autocomplete, `/model`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1d1c8aa](#bf-1d1c8aa) | RPC mode now ends by the signal when a termination signal arrives while a quit `session_shutdown` handler is… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1d5b272](#bf-1d5b272) | A text file passed as an `@file` argument that holds invalid UTF-8 now reaches the prompt as Pi sends it… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-1d5b4bb](#bf-1d5b4bb) | The Go SDK's start-order tests no longer fail on a loaded machine since v0.5.2 (a test-claim fix: the SDK is… | PiG's own defect | All platforms | Unreleased |
 | [BF-1dcaef7](#bf-1dcaef7) | Durable: a JSONL line that starts with a byte order mark now opens, as in Pi, instead of failing with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-1de9126](#bf-1de9126) | fix(schema/formats): keep lone surrogates, drop unused idna helpers, check the generators in | PiG's own defect | All platforms | Unreleased |
 | [BF-1e2fa7e](#bf-1e2fa7e) | A Go, Rust, Python or Lisp extension can now set the Kitty image id of an image node of a view, as a Node… | PiG's own defect | All platforms | Unreleased |
@@ -5482,6 +5483,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `1d5b272feb` (2026-10-09), `433d232815` (2026-10-09)
 - **Tests:** `agent/convert_custom_upstream_test.go::TestConvertToLLMCustomMessagesMatchUpstreamConvertToLlm`, `agent/convert_custom_upstream_test.go::TestConvertToLLMToolFlowMatchesUpstreamTransformOrder`, `agent/convert_custom_upstream_test.go::TestCustomMessagesReachProvidersAsUpstreamContentBlocks`, `agent/transform_custom_user_boundary_test.go::TestAnthropicRequestAfterBranchSummaryHasNoOrphanToolResult`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomMessageWithoutWireOutputKeepsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMCustomUserMessageInterruptsToolFlow`, `agent/transform_custom_user_boundary_test.go::TestConvertToLLMHoldsSystemMessageUntilToolFlowCloses`, `coding/session_tree_wire_oracle_test.go::TestNavigateTreeEveryPointSendsValidToolFlow` and 2 more in docs/bug-ledger.json
 - **Release note:** A text file passed as an `@file` argument that holds invalid UTF-8 now reaches the prompt as Pi sends it: each ill-formed byte sequence becomes one U+FFFD replacement character. Pig previously copied the raw bytes, which later became one replacement character per byte.
+
+### BF-1d5b4bb
+
+**The Go SDK's start-order tests no longer fail on a loaded machine since v0.5.2 (a test-claim fix: the SDK is…**
+
+- **Source:** PiG's own defect
+- **Symptom:** The Go SDK's start-order tests no longer fail on a loaded machine since v0.5.2 (a test-claim fix: the SDK is unchanged).
+- **Root cause:** the tests asserted first-statement order, which is more than the SDK's invocation-order contract, and a goroutine descheduled between the release of its place and its handler's first statement is overtaken
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1d5b4bb0fe` (2026-11-18)
+- **Tests:** `extensions/sdk/request_start_order_test.go::TestEventAndCommandHandlersStartInArrivalOrder`, `extensions/sdk/request_start_order_test.go::TestOvertakenHandlerKeepsItsInvocationPlace`, `extensions/sdk/tool_prepare_arguments_test.go::TestToolCallHandlersStartInArrivalOrder`
+- **Release note:** The Go SDK's start-order tests no longer fail on a loaded machine since v0.5.2 (a test-claim fix: the SDK is unchanged). The SDK guarantees the order in which handlers are invoked: a handler is invoked only after every earlier request's handler was invoked or its request ended without one. The tests asserted the order of the handlers' first statements, which is more than that, and a goroutine the operating system holds back after its place was released is overtaken by the handlers behind it, so one of 300 runs failed under one-CPU pressure. The tests now read the order where the SDK keeps it, and a new test holds one handler back to show that the invocation order stays intact while the first statements do not.
 
 ### BF-1dcaef7
 
