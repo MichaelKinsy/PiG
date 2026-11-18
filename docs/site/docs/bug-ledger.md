@@ -1567,6 +1567,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D650](#bf-d650) | A native extension handler that waits on nothing holds a quit whose dispose cannot return, where Pi's process… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D652](#bf-d652) | The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D657](#bf-d657) | Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-D658](#bf-d658) | The Go, Rust, Python and Lisp SDKs invoke handlers in request arrival order, but a descheduled thread can run… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-a076a50](#bf-a076a50) | A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26](#bf-a09da26) | `pi.getSettings()` in a subprocess extension lists the settings in Pi's order: the global settings file's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a09da26-2](#bf-a09da26-2) | A bash or PowerShell tool card reads the result's `truncation` details by their exact keys, as Pi does: a… | PiG's own defect | Windows | 0.5.0 |
@@ -23888,6 +23889,21 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `00ebf27311` (2026-11-17), `0cd95cb097` (2026-11-17), `d352bb2345` (2026-11-17)
 - **Tests:** `coding/cli/event_handler_payload_pi_test.go::TestEventHandlersOfOneDispatchShareTheirPayloadInPiAndNotInPiG`, `coding/extension/host/subprocess/fused_dispatch_norace_test.go::TestFusedDispatchAllocations`, `test/extension-conformance/assigned_event_members_test.go::TestAssignedContextListIsValidatedLikeAReturnedOne`, `test/extension-conformance/assigned_event_members_test.go::TestAssignedEventMembersFollowPi`, `test/extension-conformance/assigned_event_members_test.go::TestAssignedEventMembersMatchPi`, `test/extension-conformance/context_session_edits_test.go::TestConformance_ContextEditsInASessionReachTheNextHandler`, `test/extension-conformance/context_session_edits_test.go::TestConformance_ContextListEditsInASessionReachTheNextExtension`, `test/extension-conformance/event_isolation_test.go::TestConformance_EventHandlersDoNotShareTheirPayload` and 9 more in docs/bug-ledger.json
 
+### BF-D658
+
+**The Go, Rust, Python and Lisp SDKs invoke handlers in request arrival order, but a descheduled thread can run…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D658)
+- **Symptom:** none.
+- **Root cause:** Not recorded.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** an SDK can invoke the handler and hand the place on in one step the scheduler cannot split, or a start place that is held until the handler's first host call without stalling later handlers or deadlocking.
+- **Fix commits:** `6f33ab97e1` (2026-11-18)
+- **Tests:** `extensions/sdk/request_start_order_test.go::TestEventAndCommandHandlersStartInArrivalOrder`, `extensions/sdk/request_start_order_test.go::TestOvertakenHandlerKeepsItsInvocationPlace`, `extensions/sdk/tool_prepare_arguments_test.go::TestToolCallHandlersStartInArrivalOrder`, `test/extension-conformance/tool_dispatch_test.go::TestToolBatchStartsInSourceOrderAcrossSDKs`
+
 ### BF-a076a50
 
 **A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…**
@@ -35476,6 +35492,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D651 | Credential and state files are replaced through a temporary file where that changes nothing but the inode… | [BF-fbe92b6](#bf-fbe92b6) |
 | D652 | The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label | [BF-D652](#bf-d652) |
 | D657 | Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one… | [BF-D657](#bf-d657) |
+| D658 | The Go, Rust, Python and Lisp SDKs invoke handlers in request arrival order, but a descheduled thread can run… | [BF-D658](#bf-d658) |
 
 ## Fix-titled commits that are not bugs in a release
 

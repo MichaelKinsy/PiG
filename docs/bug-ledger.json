@@ -42547,6 +42547,32 @@
       ]
     },
     {
+      "id": "BF-D658",
+      "title": "The Go, Rust, Python and Lisp SDKs invoke handlers in request arrival order, but a descheduled thread can run…",
+      "symptom": "none.",
+      "rootCause": "",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D658",
+      "removeWhen": "an SDK can invoke the handler and hand the place on in one step the scheduler cannot split, or a start place that is held until the handler's first host call without stalling later handlers or deadlocking.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "6f33ab97e1",
+          "date": "2026-11-18"
+        }
+      ],
+      "tests": [
+        "extensions/sdk/request_start_order_test.go::TestEventAndCommandHandlersStartInArrivalOrder",
+        "extensions/sdk/request_start_order_test.go::TestOvertakenHandlerKeepsItsInvocationPlace",
+        "extensions/sdk/tool_prepare_arguments_test.go::TestToolCallHandlersStartInArrivalOrder",
+        "test/extension-conformance/tool_dispatch_test.go::TestToolBatchStartsInSourceOrderAcrossSDKs"
+      ]
+    },
+    {
       "id": "BF-a076a50",
       "title": "A model request on a reused connection gets the full HTTP idle timeout to receive its first response bytes…",
       "symptom": "The time the connection had spent idle in the pool was deducted from the next request's timeout.",
@@ -67729,6 +67755,11 @@
       "id": "D657",
       "title": "Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one…",
       "entry": "BF-D657"
+    },
+    {
+      "id": "D658",
+      "title": "The Go, Rust, Python and Lisp SDKs invoke handlers in request arrival order, but a descheduled thread can run…",
+      "entry": "BF-D658"
     }
   ],
   "exemptCommits": {
