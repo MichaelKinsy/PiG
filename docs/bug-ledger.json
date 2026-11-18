@@ -34485,7 +34485,9 @@
       "rootCauseSource": "commit",
       "userImpact": "Behavior differed from Pi",
       "platform": "All platforms",
-      "class": "own",
+      "class": "ahead-of-pi",
+      "divergence": "D146",
+      "removeWhen": "Pi answers a replacement command that is in flight when stdin ends. The part about replacements in flight together goes when Pi runs them one after the other (it starts every line at once at `rpc-mode.ts:833` and does not guard `AgentSessionRuntime` in Pi 1.5.2, and nothing upstream says it will): until then PiG keeps its order, which cannot be dropped without copying the double `session_shutdown`.",
       "fixedIn": "0.5.0",
       "releaseNote": "RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now answers first from the old Session, as in Pi; PiG still answers the replacement when stdin ends, which Pi does not (D146).",
       "origin": "release note",
@@ -41989,6 +41991,38 @@
       ]
     },
     {
+      "id": "BF-D630",
+      "title": "RPC mode reads no stdin inside a reload whose reloaded extension awaits while it loads",
+      "symptom": "with a reloaded extension whose factory awaits while it loads, Pi's RPC mode reads stdin inside `reload()` (`rpc-mode.ts:832-834`) and runs a prompt written meanwhile on the runner the reload has invalidated (`agent-session.ts:3826`): an `extension_error` with the stale-context message and the prompt answered \"handled\"; at stdin's end it exits 0 and the response of the command that awaited `ctx.reload()` is never written. To be filed upstream.\\n\\nScope: `coding/cli/rpc_settle_gate.go` (`rpcSettleGate.holdReload`), `coding/cli/rpc_mode.go` (the reload the mode installs with `Runtime.SetReload`).",
+      "rootCause": "A prompt read inside the load can only fail: it runs on extensions the reload has already invalidated. Holding it gives the client the answer of the extension it reloaded, in the order it wrote its records, and never loses the reloading command's response. The host sees a loading factory's wait in no runtime today, and a Go, Python or Rust extension has no factory that awaits on the host's loop at all.",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D630",
+      "removeWhen": "Pi stops reading stdin inside `reload()`, or rejects a prompt that arrives during it.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "53173c48cb",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "c3634bf629",
+          "date": "2026-11-13"
+        },
+        {
+          "hash": "e2eaee47a0",
+          "date": "2026-11-13"
+        }
+      ],
+      "tests": [
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptWrittenDuringAReloadRunsOnTheReloadedExtension",
+        "coding/cli/rpc_reload_pipelined_test.go::TestRPCPromptWrittenWhileAReloadedFactoryAwaitsRunsOnTheReloadedExtension"
+      ]
+    },
+    {
       "id": "BF-D633",
       "title": "A failed settings save is reported where the change was made, where Pi reports it only in its settings…",
       "symptom": "not reported upstream yet.",
@@ -42209,6 +42243,53 @@
         "internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageChangesNothingWithinASecond",
         "internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageFollowsClockAndCounter",
         "internal/codingagent/interactive_compaction_progress_unit_test.go::TestTickCompactionMessageFollowsTheWidth"
+      ]
+    },
+    {
+      "id": "BF-D657",
+      "title": "Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one…",
+      "symptom": "none; sharing the event is Pi's design.",
+      "rootCause": "the transport gives each handler a decoded copy of a frame, and a runtime that keeps one object per payload would have to hand every handler the same object across a thread, a process and a language boundary. Every realization that can share does not, so that an extension behaves the same in the isolated, the packed and the fused load, whichever the author or the Piglet Binary chooses (D31, D18), and so that a handler that writes after it returned (a goroutine, a timer) cannot change what another handler or a later dispatch reads. The fused path pays one decode and one clone for each handler (`TestFusedDispatchAllocations`). For an assigned member the reason is how each SDK builds its…",
+      "rootCauseSource": "divergence record",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D657",
+      "removeWhen": "the SDKs of every language hand the handlers of one dispatch one event object (a handle API for the payload) so that a write reaches the next handler as it does in Pi; the copy then goes from `eventArgsMemo`, the replica clones and the per-request decode of the shared object. For an assigned member: the Go, Python, Rust and Lisp SDKs stop carrying an assigned `event.messages` and `event.entries` (they keep the list they handed the handler, as the Node runtime does), and the Rust SDK can tell an assignment of `event.input` from an edit.",
+      "fixedIn": "Unreleased",
+      "origin": "divergence",
+      "commits": [
+        {
+          "hash": "00ebf27311",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "0cd95cb097",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "d352bb2345",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/cli/event_handler_payload_pi_test.go::TestEventHandlersOfOneDispatchShareTheirPayloadInPiAndNotInPiG",
+        "coding/extension/host/subprocess/fused_dispatch_norace_test.go::TestFusedDispatchAllocations",
+        "test/extension-conformance/assigned_event_members_test.go::TestAssignedContextListIsValidatedLikeAReturnedOne",
+        "test/extension-conformance/assigned_event_members_test.go::TestAssignedEventMembersFollowPi",
+        "test/extension-conformance/assigned_event_members_test.go::TestAssignedEventMembersMatchPi",
+        "test/extension-conformance/context_session_edits_test.go::TestConformance_ContextEditsInASessionReachTheNextHandler",
+        "test/extension-conformance/context_session_edits_test.go::TestConformance_ContextListEditsInASessionReachTheNextExtension",
+        "test/extension-conformance/event_isolation_test.go::TestConformance_EventHandlersDoNotShareTheirPayload",
+        "test/extension-conformance/in_place_context_test.go::TestConformance_InPlaceContextEditsFollowPi",
+        "test/extension-conformance/in_place_provider_hook_test.go::TestConformance_InPlaceProviderHookEditsReachTheRequest",
+        "test/extension-conformance/in_place_tool_result_test.go::TestConformance_InPlaceToolResultEditsFollowPi",
+        "test/extension-conformance/node_next_extension_edits_test.go::TestNodeInPlaceEditsReachTheNextExtension",
+        "test/extension-conformance/outbound_frames_test.go::TestOutboundFramesAreTheEncodersBytes",
+        "test/extension-conformance/prompt_chain_test.go::TestBeforeAgentStartChainSeesEveryEarlierEditAcrossSDKs",
+        "test/extension-conformance/prompt_options_test.go::TestPromptOptionEditsAcrossSDKs",
+        "test/extension-conformance/tool_call_input_mutation_test.go::TestToolCallInputMutationAcrossSDKs",
+        "test/extension-conformance/turn_boundary_test.go::TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs"
       ]
     },
     {
@@ -66855,7 +66936,8 @@
     },
     {
       "id": "D146",
-      "title": "RPC stdin end answers a Session-replacing command that Pi leaves unanswered"
+      "title": "RPC stdin end answers a Session-replacing command that Pi leaves unanswered",
+      "entry": "BF-8ab86c8"
     },
     {
       "id": "D147",
@@ -67208,7 +67290,8 @@
     },
     {
       "id": "D630",
-      "title": "RPC mode reads no stdin inside a reload whose reloaded extension awaits while it loads"
+      "title": "RPC mode reads no stdin inside a reload whose reloaded extension awaits while it loads",
+      "entry": "BF-D630"
     },
     {
       "id": "D631",
@@ -67264,12 +67347,17 @@
       "id": "D652",
       "title": "The compaction line shows the elapsed time and the streamed size of the summary, where Pi shows a bare label",
       "entry": "BF-D652"
+    },
+    {
+      "id": "D657",
+      "title": "Every handler of an event gets its own copy of the payload, in every SDK; Pi's handlers of one emit share one…",
+      "entry": "BF-D657"
     }
   ],
   "exemptCommits": {
     "Failure found by the integration build of unreleased work": 2,
     "Fix reverted before release": 2,
-    "Follow-up to unreleased work": 27,
+    "Follow-up to unreleased work": 28,
     "Repair of a merge between development branches": 9,
     "Review follow-up to unreleased work": 4,
     "test-only": 1
