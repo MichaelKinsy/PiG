@@ -60,7 +60,7 @@ func TestExitModeResetsFollowPiStopOrder(t *testing.T) {
 			for _, end := range ends {
 				t.Run(fmt.Sprintf("%s %s progress %v", tuiMode, end.name, progress), func(t *testing.T) {
 					child := startExitBytesChild(t, progress, end.run, exitBytesTuiModeEnv+"="+tuiMode)
-					child.await("the mode to be ready for input", child.ready)
+					child.awaitReady()
 					end.end(t, child)
 					written := child.finish()
 					got := exitModeResets.FindAllString(written, -1)

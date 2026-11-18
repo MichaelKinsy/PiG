@@ -74,7 +74,7 @@ func TestExitTitleIsWrittenInTheDisposeAtPisPlace(t *testing.T) {
 func runExitWithRuntime(t *testing.T, tuiMode string, progress, run bool, end func(*testing.T, *exitBytesChild)) string {
 	t.Helper()
 	child := startExitBytesChild(t, progress, run, exitBytesTuiModeEnv+"="+tuiMode, exitBytesRuntimeEnv+"=true")
-	child.await("the mode to be ready for input", child.ready)
+	child.awaitReady()
 	end(t, child)
 	return child.finish()
 }
