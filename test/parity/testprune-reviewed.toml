@@ -1,6 +1,20 @@
 # Reviewed per-file ledger for testprune lint: each entry satisfies the expected-value finding of exactly one commit+path.
 
 [[entry]]
+path = "coding/extension/host/subprocess/report_error_extension_tag_test.go"
+commit = "447a4edc2103a0899bf453bd9b706a4248a67f55"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The extension tag of a report_error notification (ReportErrorPayload.Extension) is PiG's own wire field between the Node runtime and the Host: Pi has no process boundary and no counterpart, so no Pi line governs it. The commit bounds the tag to the extensions of the connection's own process, so the test's expected values change from attributing a foreign name's report to that extension to the connection's own extension; the order of the errors, which is Pi's (loader.ts runtime.reportError is synchronous), is not touched."
+
+[[entry]]
+path = "coding/extension/host/subprocess/report_error_extension_tag_test.go"
+commit = "95a798f82a3974bbbc085c399bba3fadfcae89a9"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The refusal of a foreign report_error tag is PiG's own wire diagnostic: Pi has no process boundary and no tag, so no Pi line governs it. The commit sends the diagnostic through the runner's error listeners (the path of every extension error, which is Pi's runtime.reportError to emitError) instead of the Host's raw stderr line, so the test's expected values change from a stderr line to an extension error followed by the report, in order, and an empty stderr."
+
+[[entry]]
 path = "agent/proxy_non_object_arguments_test.go"
 commit = "76f780d05da3ad93c499858912fe47c5b61ab356"
 class = "CITE"
