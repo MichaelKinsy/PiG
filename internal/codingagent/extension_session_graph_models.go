@@ -13,7 +13,7 @@ import (
 
 // GraphModelStreamRequest turns an extension's model request (the wire map of a modelStream call) into the provider call's context, transcript and options, as the Session's stream does.
 func GraphModelStreamRequest(ctx context.Context, model *ai.Model, request map[string]any, bridgeRequest extension.ModelStreamRequest) (context.Context, ai.Context, ai.StreamOptions, error) {
-	return decodeSubprocessStream(ctx, model, request, "", bridgeRequest)
+	return decodeSubprocessStream(ctx, model, request, bridgeRequest)
 }
 
 // GraphAPIModel decodes a model object an extension passed that its runtime does not list (Pi's stream takes any Model object).

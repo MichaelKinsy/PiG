@@ -859,7 +859,7 @@ func Main(args []string, options *MainOptions) {
 			runDiagnose(os.Stdout, binaryPath)
 			exitProcess(0)
 		case "provider-bridge":
-			exitProcess(runProviderBridge(os.Stdin, os.Stdout, ""))
+			exitProcess(runProviderBridge(os.Stdin, os.Stdout))
 		case "version":
 			fmt.Println(detailedVersionString())
 			exitProcess(0)

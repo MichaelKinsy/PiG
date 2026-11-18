@@ -95,7 +95,7 @@ func codexBridgeLine(id, baseURL, sessionID string) string {
 		"model": map[string]any{"provider": "openai-codex", "id": "gpt-5.2", "name": "Codex", "api": "openai-codex-responses", "baseUrl": baseURL, "reasoning": false,
 			"input": []string{"text"}, "contextWindow": 128000, "maxTokens": 4096, "cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}},
 		"request": map[string]any{"messages": []any{map[string]any{"role": "user", "content": "hi " + id, "timestamp": 0}},
-			"apiKey": "header." + base64.RawURLEncoding.EncodeToString(claims) + ".signature", "sessionId": sessionID, "timeoutMs": 2000},
+			"apiKey": "header." + base64.RawURLEncoding.EncodeToString(claims) + ".signature", "sessionId": sessionID, "timeoutMs": 2000, "transport": "auto"},
 	})
 	return string(line) + "\n"
 }
@@ -114,7 +114,7 @@ func startRawBridge(t *testing.T) *rawBridge {
 	outR, outW := io.Pipe()
 	run := &rawBridge{bridgeRun: &bridgeRun{stdin: inW, done: make(chan int, 1)}, raw: make(chan map[string]json.RawMessage, 256)}
 	go func() {
-		run.done <- runProviderBridge(inR, outW, "")
+		run.done <- runProviderBridge(inR, outW)
 		_ = outW.Close()
 	}()
 	go func() {

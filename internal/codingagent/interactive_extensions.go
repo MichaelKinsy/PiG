@@ -544,7 +544,6 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 	detachModelRegistry := WireModelOperations(b, ModelOperationBindings{
 		CurrentModel: m.sessionModel, ModelLookup: m.opts.ModelLookup, ModelCatalog: m.opts.ModelCatalog, Classify: m.opts.ModelClassify, GenerateImages: m.opts.ModelGenerateImages,
 		Registry: m.opts.ModelRegistry, ModelBuilder: m.opts.ModelBuilder, SessionHandle: m.opts.SessionHandle,
-		Transport: ai.Transport(m.opts.Settings.Transport),
 	})
 
 	b.SetHostAction("getFlag", func(extName, name string) any {
@@ -1590,7 +1589,6 @@ type ModelOperationBindings struct {
 	Classify func(context.Context, *ai.ClassifierModel, ai.ClassifierContext, ...ai.ModelsClassifierOptions) ai.ClassifierResult
 	// GenerateImages is the Session runtime's generateImages; an extension's ctx.modelRegistry.generateImages reaches it. Nil answers an error result.
 	GenerateImages func(context.Context, *ai.ImageModel, ai.ImagesContext, ...ai.ModelsImagesOptions) ai.AssistantImages
-	Transport      ai.Transport
 }
 
 // WireModelOperations installs one Session-owned extension model surface and returns its catalog-listener detach function.
@@ -1773,19 +1771,19 @@ func WireModelOperations(bridge ModelOperationBridge, bindings ModelOperationBin
 
 // EarlyModelStream is the model stream for the pi-ai functions (`completeSimple`, `streamSimple`) an extension calls while its module loads. Pi runs them in its
 // own process with no registration gate and no Session: the model is the caller's own object and the request goes through the global API providers.
-func EarlyModelStream(transport ai.Transport) func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error) {
+func EarlyModelStream() func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error) {
 	return func(ctx context.Context, model map[string]any, request map[string]any) (*ai.AssistantMessageEventStream, error) {
-		return streamModelForSubprocess(ctx, model, request, ModelOperationBindings{Transport: transport})
+		return streamModelForSubprocess(ctx, model, request, ModelOperationBindings{})
 	}
 }
 
 // WireEarlyModelStream installs [EarlyModelStream] on a bridge. The host has no Session yet, so the Session-owned surface of [WireModelOperations] replaces it
 // when it is installed.
-func WireEarlyModelStream(bridge ModelOperationBridge, transport ai.Transport) {
+func WireEarlyModelStream(bridge ModelOperationBridge) {
 	if bridge == nil {
 		return
 	}
-	bridge.SetHostAction("streamModel", EarlyModelStream(transport))
+	bridge.SetHostAction("streamModel", EarlyModelStream())
 }
 
 func streamModelForSubprocess(ctx context.Context, model map[string]any, request map[string]any, bindings ModelOperationBindings) (*ai.AssistantMessageEventStream, error) {
@@ -1807,7 +1805,7 @@ func streamModelForSubprocess(ctx context.Context, model map[string]any, request
 	if err != nil {
 		return nil, err
 	}
-	ctx, aiRequest, options, err := decodeSubprocessStream(ctx, llmModel, request, bindings.Transport, bridgeRequest)
+	ctx, aiRequest, options, err := decodeSubprocessStream(ctx, llmModel, request, bridgeRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -1821,8 +1819,9 @@ func streamModelForSubprocess(ctx context.Context, model map[string]any, request
 	return bindings.SessionHandle.StreamModel(ctx, llmModel, aiRequest, options), nil
 }
 
-// decodeSubprocessStream turns an extension's model request (the wire map) into the provider call's context and options.
-func decodeSubprocessStream(ctx context.Context, llmModel *ai.Model, request map[string]any, transport ai.Transport, bridgeRequest extension.ModelStreamRequest) (context.Context, ai.Context, ai.StreamOptions, error) {
+// decodeSubprocessStream turns an extension's model request (the wire map) into the provider call's context and options. It adds no transport: Pi's extension model calls pass the options the extension gave (model-runtime.ts streamSimple
+// :744-776 forwards `rest`, and the pi-ai compat stream functions an extension imports pass its options on), so a transport reaches the provider only when the request names one.
+func decodeSubprocessStream(ctx context.Context, llmModel *ai.Model, request map[string]any, bridgeRequest extension.ModelStreamRequest) (context.Context, ai.Context, ai.StreamOptions, error) {
 	// A null option is an absent one: upstream providers read undefined and
 	// null alike, and extensions pass getApiKeyAndHeaders' null headers and
 	// env straight through.
@@ -1847,7 +1846,7 @@ func decodeSubprocessStream(ctx context.Context, llmModel *ai.Model, request map
 			return ctx, ai.Context{}, ai.StreamOptions{}, err
 		}
 	}
-	options, err := subprocessStreamOptions(request, ai.StreamOptions{IsReasoning: llmModel.Capabilities.MaxThinking != "", Transport: transport})
+	options, err := subprocessStreamOptions(request, ai.StreamOptions{IsReasoning: llmModel.Capabilities.MaxThinking != ""})
 	if err != nil {
 		return ctx, ai.Context{}, ai.StreamOptions{}, err
 	}
@@ -1874,7 +1873,6 @@ func decodeSubprocessStream(ctx context.Context, llmModel *ai.Model, request map
 func (m *InteractiveMode) streamForSubprocess(ctx context.Context, model map[string]any, request map[string]any) (*ai.AssistantMessageEventStream, error) {
 	return streamModelForSubprocess(ctx, model, request, ModelOperationBindings{
 		ModelBuilder: m.opts.ModelBuilder, SessionHandle: m.opts.SessionHandle,
-		Transport: ai.Transport(m.opts.Settings.Transport),
 	})
 }
 

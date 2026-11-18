@@ -83,7 +83,7 @@ func newSessionGraphRigWithChildren(t testing.TB) *sessionGraphRig {
 	t.Cleanup(services.Close)
 	bridge := subprocess.NewUIBridge(func() {})
 	// A Node extension's own sessions stream through the host, as in the CLI (extensions.go).
-	icodingagent.WireEarlyModelStream(bridge, "")
+	icodingagent.WireEarlyModelStream(bridge)
 	r.host.SetUIBridge(bridge)
 	cli.BindChildSessions(bridge, services)
 	return r

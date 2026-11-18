@@ -122,7 +122,7 @@ func (c *bridgeCallbacks) answer(request providerBridgeRequest) {
 // runProviderBridge serves `pig provider-bridge`: JSON Lines on stdin and stdout, a process owned by the one that started it. A process with no extension runtime (a detached
 // helper or a forked worker that imports Pi's packages) reaches PiG's provider implementations through it; its lifetime is the starter's, so stdin end of file cancels every stream
 // and ends the process. Streams run concurrently; cancellation reaches the provider request, and the stream still delivers its terminal aborted event, as handleModelStream does.
-func runProviderBridge(in io.Reader, out io.Writer, transport ai.Transport) int {
+func runProviderBridge(in io.Reader, out io.Writer) int {
 	var writeMu sync.Mutex
 	//portlint:allow jsonescape PiG-only `pig provider-bridge` JSONL with no Pi counterpart; the caller's JSON.parse reads \u003c and \u0026 as the same text
 	encoder := json.NewEncoder(out)
@@ -206,7 +206,7 @@ func runProviderBridge(in io.Reader, out io.Writer, transport ai.Transport) int 
 					delete(cancels, request.ID)
 					mu.Unlock()
 				}()
-				serveBridgeStream(providerCtx, request, transport, send, &callbacks)
+				serveBridgeStream(providerCtx, request, send, &callbacks)
 			})
 		default:
 			send(providerBridgeReply{ID: request.ID, Type: "error", Error: fmt.Sprintf("provider bridge: unknown request type %q", request.Type)})
@@ -218,7 +218,7 @@ func runProviderBridge(in io.Reader, out io.Writer, transport ai.Transport) int 
 	return 0
 }
 
-func serveBridgeStream(ctx context.Context, request providerBridgeRequest, transport ai.Transport, send func(providerBridgeReply) bool, callbacks *bridgeCallbacks) {
+func serveBridgeStream(ctx context.Context, request providerBridgeRequest, send func(providerBridgeReply) bool, callbacks *bridgeCallbacks) {
 	decoded, err := decodeBridgeRequest(request.Request)
 	if err != nil {
 		send(providerBridgeReply{ID: request.ID, Type: "error", Error: err.Error()})
@@ -230,7 +230,7 @@ func serveBridgeStream(ctx context.Context, request providerBridgeRequest, trans
 	delivered := true
 	if err := ai.RunStreamContinuation(ctx, func(observation *ai.StreamObservation) error {
 		var err error
-		stream, err = icodingagent.StreamAPILeaf(ctx, request.Simple, request.Model, decoded, transport, bridgeCallbackSet(ctx, request, send, callbacks))
+		stream, err = icodingagent.StreamAPILeaf(ctx, request.Simple, request.Model, decoded, bridgeCallbackSet(ctx, request, send, callbacks))
 		if err != nil {
 			return err
 		}
