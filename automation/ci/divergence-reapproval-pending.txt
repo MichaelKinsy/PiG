@@ -116,7 +116,6 @@ D276 new added on the release line by 44f93fe (Give message and entry renderers 
 D277 new added on the release line by 44f93fe (Give message and entry renderers identity, per-message state and mouse), first merge f490b288f Merge fix/071-renderer-click into fix/071-next
 D430 new added on the release line by 930ef10 (docs(parity): regenerate DIVERGENCES.md with D430, D431 and D432), first merge 7e972cd72 merge follow/pi-main (55d8ccb4df) into follow/chord-sync
 D460 new added on the release line by 95f0f0d (parity: regenerate the divergence ledger for D460-D462, D464-D466 and ), first merge 7e735788a Merge follow/chord-int (1c9b2338c1) into follow/chord-ui
-D462 new added on the release line by 95f0f0d (parity: regenerate the divergence ledger for D460-D462, D464-D466 and ), first merge 7e735788a Merge follow/chord-int (1c9b2338c1) into follow/chord-ui
 D464 new added on the release line by 95f0f0d (parity: regenerate the divergence ledger for D460-D462, D464-D466 and ), first merge 7e735788a Merge follow/chord-int (1c9b2338c1) into follow/chord-ui
 D465 new added on the release line by 95f0f0d (parity: regenerate the divergence ledger for D460-D462, D464-D466 and ), first merge 7e735788a Merge follow/chord-int (1c9b2338c1) into follow/chord-ui
 D466 new added on the release line by 95f0f0d (parity: regenerate the divergence ledger for D460-D462, D464-D466 and ), first merge 7e735788a Merge follow/chord-int (1c9b2338c1) into follow/chord-ui
