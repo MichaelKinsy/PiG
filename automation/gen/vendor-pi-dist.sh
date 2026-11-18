@@ -102,8 +102,9 @@ while IFS= read -r file; do
     prefix="$prefix/.."
     case "$rest" in */*) rest=${rest%/*} ;; *) break ;; esac
   done
-  sed -i -e "s#\(from \)\"@earendil-works/pi-schema\";\$#\1\"$prefix/pi-schema/index.js\";#" \
+  sed -i.bak -e "s#\(from \)\"@earendil-works/pi-schema\";\$#\1\"$prefix/pi-schema/index.js\";#" \
     -e "s#\(from \)\"@earendil-works/pi-schema/formats\";\$#\1\"$prefix/pi-schema/formats/index.js\";#" "$dist/pi-ai/$file"
+  rm -f "$dist/pi-ai/$file.bak"
 done < <(cd "$dist/pi-ai" && grep -lE 'from "@earendil-works/pi-schema(/formats)?";$' -r . --include=*.js | sed 's#^\./##' | sort)
 
 # Every other copied pi-ai module that imports typebox (any a later Pi adds) reaches the vendored typebox shims by its own depth.
@@ -114,9 +115,10 @@ while IFS= read -r file; do
     prefix="$prefix/.."
     case "$rest" in */*) rest=${rest%/*} ;; *) break ;; esac
   done
-  sed -i -e "s#^\(import .* from \)\"typebox\";\$#\1\"$prefix/typebox.mjs\";#" \
+  sed -i.bak -e "s#^\(import .* from \)\"typebox\";\$#\1\"$prefix/typebox.mjs\";#" \
     -e "s#^\(import .* from \)\"typebox/value\";\$#\1\"$prefix/typebox-value.mjs\";#" \
     -e "s#^\(import .* from \)\"typebox/compile\";\$#\1\"$prefix/typebox-compile.mjs\";#" "$dist/pi-ai/$file"
+  rm -f "$dist/pi-ai/$file.bak"
 done < <(cd "$dist/pi-ai" && grep -lE '^import .* from "typebox(/value|/compile)?";$' -r . --include=*.js | sed 's#^\./##' | sort)
 
 
