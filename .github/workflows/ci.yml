@@ -148,7 +148,9 @@ jobs:
     # The pre-flight (.github/workflows/preflight.yml) judges the pull request from its API data and a sparse checkout, and
     # records the "preflight" commit status on the head. This job runs no code of the pull request: it reads the status and
     # fails when the pre-flight rejected the head or gave no verdict, so Bookkeeping and everything after it do not start.
-    if: github.event_name == 'pull_request'
+    # The job runs on every event and only its steps are for a pull request: every heavy job needs it through Bookkeeping,
+    # and a skipped job skips every job that needs it, directly or not, so a job-level condition here skipped the whole
+    # nightly, release and dispatch run. Outside a pull request it waits for nothing and succeeds.
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -156,10 +158,12 @@ jobs:
       statuses: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
         with:
           sparse-checkout: automation/ci/wait-preflight.sh
           persist-credentials: false
       - name: Wait for the pre-flight verdict of this head
+        if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -171,8 +175,7 @@ jobs:
   bookkeeping:
     name: Bookkeeping
     needs: [verdict]
-    # Every other event skips the verdict job; a failed verdict skips this one and fails CI result.
-    if: ${{ !cancelled() && needs.verdict.result != 'failure' }}
+    # A failed verdict skips this job, every job after it, and fails CI result.
     # The fail-fast gate: every job that spends real minutes waits for it, so a stale generated file, a stale ledger, a missing
     # sign-off or a broken policy gate stops the run in minutes. It runs only what needs Go, Python and the Pi source mirror
     # (make ci-bookkeeping): no oracle build, no npm install, no test binaries. Gates that need those stay in their shards.
@@ -1644,12 +1647,13 @@ jobs:
             fi
           }
           # The pre-flight comes first: a pull request it rejected, or never judged, fails here and no later job ran.
-          if [ "$EVENT" = pull_request ] && [ "$VERDICT" != success ]; then
-            echo "::error::Pre-flight verdict: $VERDICT; see the pre-flight comment and the preflight status on the pull request"
-            exit 1
-          fi
-          if [ "$EVENT" != pull_request ] && [ "$VERDICT" != skipped ]; then
-            echo "::error::Pre-flight verdict: $VERDICT, want skipped outside a pull request"
+          # The verdict job runs on every event (outside a pull request it waits for nothing), so it must have succeeded.
+          if [ "$VERDICT" != success ]; then
+            if [ "$EVENT" = pull_request ]; then
+              echo "::error::Pre-flight verdict: $VERDICT; see the pre-flight comment and the preflight status on the pull request"
+            else
+              echo "::error::Pre-flight verdict: $VERDICT; the jobs that wait for it did not run"
+            fi
             exit 1
           fi
           # Every job that spends real minutes waits for bookkeeping, so when it fails they were skipped, not run.

@@ -176,6 +176,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-234664c](#bf-234664c) | With `codemode.mode: "on"`, a tool whose output schema is a union of objects or any other multi-line type no… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-2359a0a](#bf-2359a0a) | In macOS Terminal.app, which sends Option+Up as plain Up in its default profile, plain Up with an empty… | A Pi defect that PiG fixed first | macOS | 0.7.0 |
 | [BF-23841dc](#bf-23841dc) | The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-23994a3](#bf-23994a3) | CI only: the nightly run on main, a push to a `release/**` branch, a merge group and a dispatch run the full… | PiG's own defect | All platforms | Unreleased |
 | [BF-23ee6e1](#bf-23ee6e1) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-24872ab](#bf-24872ab) | Extensions receive each model (`ctx.model`, `model_select`, `ctx.modelRegistry` reads, scoped models… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-24a821d](#bf-24a821d) | The openai stream decoder follows openai 7.19.0, the version packages/ai declares: the stream ends at [DONE]… | PiG's own defect | All platforms | 0.5.0 |
@@ -3835,6 +3836,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `23841dce31` (2026-11-02)
 - **Tests:** `internal/evals/evalsuites/audit_tool_test.go::TestSubmitAuditParametersKeepTheirAuthoredOrder`
 - **Release note:** The eval harness's `submit_documentation_audit` tool declares its `verdict` as Pi's documentation audit does, a union of the three literals (`anyOf` of `{"type":"string","const":...}`), where PiG sent a string enum; the whole schema is exactly what Pi's TypeBox writes.
+
+### BF-23994a3
+
+**CI only: the nightly run on main, a push to a `release/**` branch, a merge group and a dispatch run the full…**
+
+- **Source:** PiG's own defect
+- **Symptom:** CI only: the nightly run on main, a push to a `release/**` branch, a merge group and a dispatch run the full job set again.
+- **Root cause:** The `Pre-flight verdict` job ran only on a pull request, and a skipped job skips every job behind it, so every such run since the pre-flight landed ran `Changed paths` and `Bookkeeping` only and failed `CI result` on the verification jobs it skipped.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `23994a396e` (2026-11-17)
+- **Tests:** `test/ci-images/merge_queue_test.go::TestCIResultRequiresEveryPlannedJob`, `test/ci-images/wait_preflight_wiring_test.go::TestANeededJobOfCIRunsOnEveryEvent`
+- **Release note:** CI only: the nightly run on main, a push to a `release/**` branch, a merge group and a dispatch run the full job set again. The `Pre-flight verdict` job ran only on a pull request, and a skipped job skips every job behind it, so every such run since the pre-flight landed ran `Changed paths` and `Bookkeeping` only and failed `CI result` on the verification jobs it skipped. The verdict job now runs on every event and waits for the pre-flight only on a pull request. Released versions: none (CI only). <!-- cause: the verdict job's job-level `if: github.event_name == 'pull_request'` skipped it outside a pull request, GitHub skips the jobs that need a skipped job transitively (Bookkeeping's `!cancelled()` did not carry over to the jobs that need Bookkeeping), and the CI result test expected the verdict to be skipped outside a pull request, so no test ran a non-pull-request plan through the job graph -->
 
 ### BF-23ee6e1
 
