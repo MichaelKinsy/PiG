@@ -59,6 +59,7 @@ func (e *Extension) applyEventStream(req *requestMsg) {
 		e.eventReplicas = map[string]*eventReplica{}
 	}
 	e.eventReplicas[id] = &eventReplica{seq: stream.Seq, root: root}
+	// pig divergence (D657): the handler gets a clone of the replica, not the replica itself, so a write by one handler reaches no other handler. Pi hands every handler the one event object.
 	data, _ := cloneStreamValue(root).(map[string]any)
 	if data == nil {
 		data = map[string]any{}

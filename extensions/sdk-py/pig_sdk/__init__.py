@@ -6051,6 +6051,7 @@ class Extension:
                     raise RuntimeError(f"{name} delta applies to payload {base}, the replica holds a different one")
                 root = _apply_stream_ops(replica[1], stream.get("ops"))
             replicas[ident] = (int(stream.get("seq") or 0), root)
+            # pig divergence (D657): the handler gets a clone of the replica, not the replica itself, so a write by one handler reaches no other handler. Pi hands every handler the one event object.
             req["args"] = _clone_stream_value(root)
         except Exception as exc:  # noqa: BLE001 - The request that follows reports why its payload is missing.
             replicas.pop(ident, None)

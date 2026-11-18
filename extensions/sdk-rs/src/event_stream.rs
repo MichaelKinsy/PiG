@@ -45,6 +45,7 @@ impl EventReplicas {
         };
         match produced {
             Ok(root) => {
+                // pig divergence (D657): the handler gets a clone of the replica, not the replica itself, so a write by one handler reaches no other handler. Pi hands every handler the one event object.
                 req.args = Some(root.clone());
                 req.deep_args = deep;
                 self.replicas.insert(

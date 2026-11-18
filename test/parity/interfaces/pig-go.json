@@ -269138,6 +269138,17 @@
       "shapeHash": "sha256:dad72d41d667cf6dd2537533b4df21ed78c67c773b154eac7149f5130000ce77"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InstallTelemetryEnvOverride",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InstallTelemetryEnvOverride",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (value string, ok bool)"
+      },
+      "shapeHash": "sha256:afadfc637a9ca927d6585437c835a70ad9d136b90e72e950caaf473240f00630"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InstalledPigVersion",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InstalledPigVersion",

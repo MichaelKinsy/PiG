@@ -696,6 +696,9 @@ var processCwd = nodepath.Cwd
 
 // Main runs the pig command line for args, the arguments after the program name, as Pi's main(args, options) does (main.ts:573). The default and experimental executables call it with args and no options.
 func Main(args []string, options *MainOptions) {
+	// The first thing of every mode and command: the Node extension runtime and every child process (bash tool, package commands, subagents)
+	// read only PI_TELEMETRY, so it holds PiG's resolved choice before anything can start one (TestMainExportsTheResolvedTelemetryBeforeAnyCommand).
+	exportTelemetryOverride()
 	// pig additive (D174): at most procpolicy.Cap Ps unless the environment sets GOMAXPROCS; set before anything reads the width.
 	procpolicy.Apply()
 	// Upstream's theme.bold, italic, underline, inverse and strikethrough are chalk calls: they draw only when chalk's stdout color level is above zero.
@@ -912,7 +915,6 @@ func Main(args []string, options *MainOptions) {
 	}
 
 	exportOfflineMode(flags.Offline)
-	exportTelemetryOverride()
 
 	// --list-models is handled after extensions load (below), so
 	// extension-contributed providers appear in the catalog, matching upstream
@@ -1880,14 +1882,12 @@ func exportOfflineMode(flagOffline bool) {
 	}
 }
 
-// exportTelemetryOverride gives PIG_TELEMETRY to the processes that read Pi's name: the Node extension runtime runs Pi's own
-// isInstallTelemetryEnabled, which reads PI_TELEMETRY. A PI_TELEMETRY that is set wins and stays as it is.
-// pig divergence (D2): PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY ("Product name in messages").
+// exportTelemetryOverride gives the resolved telemetry override to the processes that read Pi's name: the Node extension runtime runs Pi's
+// own isInstallTelemetryEnabled, which reads only PI_TELEMETRY, so PI_TELEMETRY becomes what PiG decided (PIG_TELEMETRY when it is set,
+// even beside a PI_TELEMETRY of the opposite value). PIG_TELEMETRY itself stays in the environment as it was.
+// pig divergence (D2): PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY and wins when both are set ("Product name in messages").
 func exportTelemetryOverride() {
-	if _, ok := os.LookupEnv("PI_TELEMETRY"); ok { //perf:ok cold: read once per process start (Main)
-		return
-	}
-	if value, ok := os.LookupEnv("PIG_TELEMETRY"); ok { //perf:ok cold: read once per process start (Main)
+	if value, ok := codingagent.InstallTelemetryEnvOverride(); ok { //perf:ok cold: read once per process start (Main)
 		_ = os.Setenv("PI_TELEMETRY", value)
 	}
 }
