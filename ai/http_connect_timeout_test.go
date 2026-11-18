@@ -12,12 +12,21 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // Undici8.10.2 lib/core/connect.js clears its connection timer on secureConnect; the configured HTTP body/header idle timeout does not govern that handshake.
+//
+// The relay holds the connection, and with it the TLS handshake, until the test releases it, which it does after the handshake has waited three
+// times the idle timeout under that timeout: a product that governed the handshake would have ended it at one. The wait is a lower bound, so a stall of
+// the host only makes it longer. Once the handshake is held the test configures an hour, as the stalled-body test does, because the deadline that
+// begins at GotConn is armed with whatever is configured then and the response that follows is not what this test is about; the transport itself is
+// built under an hour for the same reason (its header timeout is the configured one when it is built).
 func TestHTTPIdleTimeoutBeginsAfterTLS(t *testing.T) {
+	const idleTimeoutMs, idleHoldMs = 100, 3_600_000
 	previous := ConfiguredHTTPIdleTimeoutMs()
-	if err := ConfigureHTTPDispatcher(100); err != nil {
+	if err := ConfigureHTTPDispatcher(idleHoldMs); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
@@ -33,9 +42,14 @@ func TestHTTPIdleTimeoutBeginsAfterTLS(t *testing.T) {
 			target := backend.Listener.Addr().String()
 			var workers sync.WaitGroup
 			var connected atomic.Bool
+			held := make(chan struct{}, 1)
+			release := make(chan struct{})
+			var releaseOnce sync.Once
+			releaseRelay := func() { releaseOnce.Do(func() { close(release) }) }
 			relay := func(conn net.Conn) {
 				defer func() { _ = conn.Close() }()
-				time.Sleep(400 * time.Millisecond)
+				held <- struct{}{}
+				<-release
 				upstream, err := net.Dial("tcp", target)
 				if err != nil {
 					return
@@ -115,17 +129,44 @@ func TestHTTPIdleTimeoutBeginsAfterTLS(t *testing.T) {
 					}
 				})
 			}
-			defer func() { closeIdle(); stop(); workers.Wait() }()
-			ctx, cancel := context.WithTimeout(t.Context(), 4*time.Second)
-			defer cancel()
+			ctx, cancel := context.WithCancel(testbudget.Context(t))
+			defer func() { cancel(); releaseRelay(); closeIdle(); stop(); workers.Wait() }()
 			request, err := http.NewRequestWithContext(ctx, http.MethodGet, address, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
-			response, err := client.Do(request)
-			if err != nil {
-				t.Fatalf("HTTP idle timeout interrupted connection establishment: %v", err)
+			if err := ConfigureHTTPDispatcher(idleTimeoutMs); err != nil {
+				t.Fatal(err)
 			}
+			type answer struct {
+				response *http.Response
+				err      error
+			}
+			answered := make(chan answer, 1)
+			go func() {
+				response, err := client.Do(request) //nolint:bodyclose // the response is handed to the test goroutine below, which closes its body
+				answered <- answer{response, err}
+			}()
+			select {
+			case <-held:
+			case <-t.Context().Done():
+				t.Fatal("the test ended while it waited for the relay to hold the connection")
+			}
+			time.Sleep(3 * idleTimeoutMs * time.Millisecond)
+			if err := ConfigureHTTPDispatcher(idleHoldMs); err != nil {
+				t.Fatal(err)
+			}
+			releaseRelay()
+			var got answer
+			select {
+			case got = <-answered:
+			case <-t.Context().Done():
+				t.Fatal("the test ended while it waited for the response")
+			}
+			if got.err != nil {
+				t.Fatalf("HTTP idle timeout interrupted connection establishment: %v", got.err)
+			}
+			response := got.response
 			body, err := io.ReadAll(response.Body)
 			_ = response.Body.Close()
 			if err != nil || string(body) != "connected" {

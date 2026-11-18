@@ -167,6 +167,15 @@ clean: ## Remove bin/ and tmp/ (builds, eval results, profiles, benchmarks)
 node-runtime: ## Regenerate the embedded Node runtime archive and content digest
 	go generate ./coding/extension/host/subprocess
 
+node-runtime-drift: ## Fail when the embedded Node runtime archive or digest differs from runtime-node (regenerate with make node-runtime)
+	go test -count=1 ./coding/extension/host/subprocess -run "^TestNodeRuntimeArchiveMatchesSources$$"
+
+# The shims follow the installed oracle, the archive follows the shims: the two gates cover the two links, and make generate runs both writers in that order.
+vendor-pi-dist-drift: parity-deps ## Fail when the vendored Pi runtime (runtime-node/shims) differs from what make vendor-pi-dist writes from the installed oracle (regenerate with make vendor-pi-dist, then make node-runtime)
+	@./automation/ci/vendor-pi-dist-drift.sh
+
+.PHONY: node-runtime-drift vendor-pi-dist-drift
+
 build: node-runtime ## Compile every package (go build ./...)
 	go build -buildvcs=false ./...
 
@@ -199,11 +208,12 @@ build-env-daemons: ## Cross-build the pi-env daemon for every remote system SshC
 generate: export LC_ALL := C
 generate help-text: export FORCE_COLOR := 0
 
-generate: ## Regenerate committed inventories, coverage, catalogs, help, and docs mirrors
+generate: ## Regenerate committed inventories, coverage, catalogs, help, docs mirrors, the vendored Pi runtime and its embedded archive (needs the pinned Pi oracle: make parity-deps)
 	@$(MAKE) divergences
 	@$(MAKE) piglet-strip-ids
 	@$(MAKE) sdk-bundles
 	@$(MAKE) model-catalogs
+	@$(MAKE) vendor-pi-dist
 	@$(MAKE) node-runtime
 	@$(MAKE) highlight-grammars
 	@$(MAKE) help-text
@@ -263,7 +273,7 @@ sdk-bundles: ## Regenerate the compressed SDK copies and embed lists of extensio
 sdk-bundles-drift: ## Fail when a compressed SDK copy differs from its source (regenerate with make sdk-bundles)
 	@./automation/ci/sdk-bundles-drift.sh
 
-.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
+.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift divergence-approve help-text highlight-grammars zone-names windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build changelog-unreleased changelog-check changelog-fold
 
 ##@ Test and lint
 
@@ -498,6 +508,7 @@ go-fix-clean: ## Fail when go fix would change any file
 compliance: ## Check badge and OpenSSF evidence: files, pins, workflow hardening, REUSE, govulncheck
 	@python3 -B -m unittest discover -s automation/ci -p test_go_pin.py
 	@python3 -B -m unittest discover -s automation/ci -p test_secret_scan_range.py
+	@python3 -B -m unittest discover -s automation/ci -p test_wait_preflight.py
 	@./automation/ci/check-compliance.py $(COMPLIANCE_ARGS)
 
 # divergence-consistency enforces AGENTS.md rule #4. Every divergence
@@ -506,8 +517,14 @@ compliance: ## Check badge and OpenSSF evidence: files, pins, workflow hardening
 divergence-consistency: ## Match every docs/parity/DIVERGENCES.md entry to its call-site marker
 	@./automation/ci/check-divergence-consistency.sh
 
-divergence-quality: ## Validate divergence records as enforceable contracts
+divergence-quality: ## Validate divergence records as enforceable contracts, each approval bound to the hash of its record's text
+	@python3 -B -m unittest discover -s automation/ci -p test_check_divergence_quality.py
 	@./automation/ci/check-divergence-quality.py
+
+divergence-approve: ## OWNER ONLY: approve the current text of record ID=D<N> (writes the date and text hash on its approval line, drops its pending entry, regenerates the ledger)
+	@test -n "$(ID)" || { echo "divergence-approve: set ID=D<N>" >&2; exit 2; }
+	@./automation/ci/check-divergence-quality.py --stamp $(ID)
+	@$(MAKE) --no-print-directory divergences
 
 # divergence-guard fails on hidden divergences no docs/parity/DIVERGENCES.md entry
 # records: invented limits and timeouts, dropped events, swallowed errors,
@@ -544,6 +561,13 @@ race-coverage: ## Fail on a concurrency package that no nightly -race group runs
 # -benchtime=5x with GOMAXPROCS=1, which takes about an hour, so it belongs in a nightly job, not in `make check`.
 alloc-baseline: ## Fail when a hot-path benchmark's allocs/op rises or falls from the committed baseline (slow; nightly)
 	@go run ./automation/ci/allocbase
+
+# alloc-baseline-changed is the pull request's form of alloc-baseline: the same tool, settings and verdict, for only the hot packages the change since TEST_BASE (default the branch's upstream, then main; the merge base with HEAD) makes the run measure: a package with a changed benchmark file, baseline row or non-test file, and the packages that import a changed one. A change that touches none of them measures nothing and passes at once. CI reads the commits only (-committed), as test-changed does.
+alloc-baseline-changed: ## Run alloc-baseline for the hot packages the change since TEST_BASE touches or imports (the pull request's form; a change that touches none exits 0 at once)
+	@base="$$TEST_BASE"; [ -n "$$base" ] || base='@{upstream}'; git rev-parse --verify --quiet "$$base^{commit}" >/dev/null || base=main; \
+	go run ./automation/ci/allocbase -changed-since "$$base" $${CI:+-committed}
+
+.PHONY: alloc-baseline-changed
 
 # docs-drift gates the shipped docs bundle against the code it describes: every
 # documented command must exist, every listable command must be documented, and
@@ -594,7 +618,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs test-sdk-py test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard divergences-drift node-runtime-drift vendor-pi-dist-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard test-provenance docs-drift bug-ledger-check perf-scoreboard-check module-size alloc-baseline-changed ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo

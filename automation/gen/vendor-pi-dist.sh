@@ -43,9 +43,7 @@ copy() {
 }
 
 # The oracle builds are read-only, and cp keeps their modes: make what an earlier run copied owner-writable so rm can remove it.
-for stale in "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"; do
-  if [ -e "$stale" ]; then chmod -R u+w "$stale"; fi
-done
+if [ -e "$shims" ]; then chmod -R u+w "$shims"; fi # every copy, including the third-party packages the dependency vendoring wrote and removes again below
 rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib" "$shims/marked-cjk-friendly/dist" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 printf '{\n  "type": "module"\n}\n' >"$dist/package.json"
@@ -104,8 +102,9 @@ while IFS= read -r file; do
     prefix="$prefix/.."
     case "$rest" in */*) rest=${rest%/*} ;; *) break ;; esac
   done
-  sed -i -e "s#\(from \)\"@earendil-works/pi-schema\";\$#\1\"$prefix/pi-schema/index.js\";#" \
+  sed -i.bak -e "s#\(from \)\"@earendil-works/pi-schema\";\$#\1\"$prefix/pi-schema/index.js\";#" \
     -e "s#\(from \)\"@earendil-works/pi-schema/formats\";\$#\1\"$prefix/pi-schema/formats/index.js\";#" "$dist/pi-ai/$file"
+  rm -f "$dist/pi-ai/$file.bak"
 done < <(cd "$dist/pi-ai" && grep -lE 'from "@earendil-works/pi-schema(/formats)?";$' -r . --include=*.js | sed 's#^\./##' | sort)
 
 # Every other copied pi-ai module that imports typebox (any a later Pi adds) reaches the vendored typebox shims by its own depth.
@@ -116,9 +115,10 @@ while IFS= read -r file; do
     prefix="$prefix/.."
     case "$rest" in */*) rest=${rest%/*} ;; *) break ;; esac
   done
-  sed -i -e "s#^\(import .* from \)\"typebox\";\$#\1\"$prefix/typebox.mjs\";#" \
+  sed -i.bak -e "s#^\(import .* from \)\"typebox\";\$#\1\"$prefix/typebox.mjs\";#" \
     -e "s#^\(import .* from \)\"typebox/value\";\$#\1\"$prefix/typebox-value.mjs\";#" \
     -e "s#^\(import .* from \)\"typebox/compile\";\$#\1\"$prefix/typebox-compile.mjs\";#" "$dist/pi-ai/$file"
+  rm -f "$dist/pi-ai/$file.bak"
 done < <(cd "$dist/pi-ai" && grep -lE '^import .* from "typebox(/value|/compile)?";$' -r . --include=*.js | sed 's#^\./##' | sort)
 
 
@@ -244,8 +244,8 @@ node "$root/automation/gen/bundle-pi-sdk.mjs" "$shims"
 node "$root/automation/gen/vendor-pi-package-roots.mjs" "$shims" "$agent"
 node "$root/automation/gen/vendor-node-manifest.mjs" "$shims" "$agent"
 
-# Leave the copies owner-writable too, so the next run (and a checkout cleanup) can remove them; u+w changes no content.
-chmod -R u+w "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
+# Leave every copy owner-writable, so the next run (and a checkout cleanup) can remove it; u+w changes no content.
+chmod -R u+w "$shims"
 
 version() { node -p "require('$1/package.json').version"; }
 echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw"), partial-json $(version "$pjson"), marked $(version "$marked"), marked-cjk-friendly $(version "$markedCjk"), highlight.js $(version "$hljs"), jiti $(version "$jiti"), ignore $(version "$ignore") and diff $(version "$jsdiff") into $shims"

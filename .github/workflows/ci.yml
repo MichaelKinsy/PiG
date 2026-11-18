@@ -15,8 +15,9 @@ name: CI
 # automation/ci/ci-tiers.txt assigns every job to a tier and .github/AGENTS.md
 # renders the table. The light run is one runner (Linux). A pull request that changes a path of
 # automation/ci/os-specific-paths.txt runs the full set, as does the ci:full label.
-# Pre-flight first: a pull request's heavy jobs wait for the Pre-flight verdict job, which waits for the "preflight" commit
-# status that .github/workflows/preflight.yml records on the head (automation/ci/preflight, about two minutes).
+# Pre-flight first: a pull request's heavy jobs wait for the Pre-flight verdict job, which follows the pre-flight workflow run
+# for the head (.github/workflows/preflight.yml, automation/ci/wait-preflight.py) until that run records the "preflight" commit
+# status (automation/ci/preflight, about two minutes once it has a runner).
 # The full run is also the nightly run on main (the only run that saves caches, with a manual dispatch), a push to a
 # release/** branch, and a dispatch; .github/workflows/nightly-bisect.yml bisects a red nightly.
 on:
@@ -146,21 +147,28 @@ jobs:
   verdict:
     name: Pre-flight verdict
     # The pre-flight (.github/workflows/preflight.yml) judges the pull request from its API data and a sparse checkout, and
-    # records the "preflight" commit status on the head. This job runs no code of the pull request: it reads the status and
-    # fails when the pre-flight rejected the head or gave no verdict, so Bookkeeping and everything after it do not start.
+    # records the "preflight" commit status on the head when its run ends. This job runs no code of the pull request: it
+    # follows the STATE of the pre-flight run for this head through the API (automation/ci/wait-preflight.py) and fails when
+    # the pre-flight rejected the head, or when its runs ended without a verdict, so Bookkeeping and everything after it do
+    # not start. A pre-flight run that is merely queued or running is waited for, however long the runner pool takes to start
+    # it: both use ubuntu-24.04 and queue behind the same jobs. A push to the pull request cancels this wait through the
+    # workflow's concurrency group. The bound below is the only clock; each minute waited holds one ubuntu-24.04 slot that the
+    # pre-flight itself needs, so it is the pre-flight's worst observed run (39 minutes) with margin, not a hope.
     # The job runs on every event and only its steps are for a pull request: every heavy job needs it through Bookkeeping,
     # and a skipped job skips every job that needs it, directly or not, so a job-level condition here skipped the whole
     # nightly, release and dispatch run. Outside a pull request it waits for nothing and succeeds.
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 60
     permissions:
       contents: read
+      # The run list of the pre-flight workflow (read only; no write scope, and the job runs no pull request code).
+      actions: read
       statuses: read
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: github.event_name == 'pull_request'
         with:
-          sparse-checkout: automation/ci/wait-preflight.sh
+          sparse-checkout: automation/ci/wait-preflight.py
           persist-credentials: false
       - name: Wait for the pre-flight verdict of this head
         if: github.event_name == 'pull_request'
@@ -170,7 +178,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           # pull_request_target runs preflight.yml from the default branch, whatever the PR's base.
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-        run: automation/ci/wait-preflight.sh "$REPO" "$HEAD_SHA" "$DEFAULT_BRANCH"
+        run: python3 automation/ci/wait-preflight.py "$REPO" "$HEAD_SHA" "$DEFAULT_BRANCH"
 
   bookkeeping:
     name: Bookkeeping

@@ -16,6 +16,7 @@ import (
 
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // componentMarker is a string compiled into the small Piglet's fused
@@ -51,7 +52,7 @@ func buildSmallPigletBinary(t *testing.T, extraArgs ...string) string {
 	t.Helper()
 	root := t.TempDir()
 	t.Setenv("PIG_HOME", filepath.Join(root, "home"))
-	t.Setenv("HOME", filepath.Join(root, "home"))
+	testenv.SetHome(t, filepath.Join(root, "home"))
 	// Go makes downloaded module-cache files read-only by default, which would
 	// prevent testing.TempDir from removing this isolated HOME on Unix.
 	t.Setenv("GOFLAGS", strings.TrimSpace(os.Getenv("GOFLAGS")+" -modcacherw"))

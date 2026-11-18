@@ -12,6 +12,11 @@
 //
 // A ✅ row that is not proven fails unless the committed baseline lists it. The baseline only shrinks: a new unproven tick fails, and so
 // does a baseline entry for a row that is now proven or no longer ✅. `-generate` rewrites the status column from the derivation.
+//
+// A marker row's mutants are replayed with `go test -overlay` in a private Go build cache that reads the user's cache through a cache
+// server (GOCACHEPROG; this binary) and never writes it. The private cache lives in a directory of the temporary directory that the run
+// owns; a killed run's directory is removed by the next run's first replay. `-clean-replays` removes leftovers at once, including the
+// `.portmap-gocache-*` clones that older versions made beside the build cache. See replaycache.go.
 package main
 
 import (
@@ -84,13 +89,22 @@ var (
 )
 
 func main() {
+	serveCacheServerIfAsked()
 	root := flag.String("root", ".", "repository root")
 	report := flag.Bool("report", false, "print every unproven tick")
 	updateBaseline := flag.Bool("update-baseline", false, "rewrite the baseline from the current derivation (shrink-only review)")
 	generate := flag.Bool("generate", false, "rewrite the PORT_MAP status column from the derivation")
 	doFixCells := flag.Bool("fix-cells", false, "rewrite the cited-file cell of every row whose only failures are WRONG-FILE or ZERO-SYMBOL")
+	cleanReplays := flag.Bool("clean-replays", false, "remove the replay directories killed runs left (owner gone, or older than 12h) and the legacy .portmap-gocache-* clones beside the build cache older than 12h, then exit")
 	shardFlag := flag.String("shard", "", "check only shard `N/M` of the ✅ rows (1 <= N <= M); every shard must pass, and together they check every row once")
 	flag.Parse()
+	if *cleanReplays {
+		if err := cleanReplayLeftovers(os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, "portmapcheck:", err)
+			os.Exit(2)
+		}
+		return
+	}
 	shard, err := parseShard(*shardFlag)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "portmapcheck:", err)

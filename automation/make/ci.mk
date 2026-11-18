@@ -7,7 +7,7 @@ autofix-check: ## Unit-test the derived-file autofix tool that the bookkeeping j
 	@python3 -B -m unittest discover -s automation/ci -p test_autofix.py
 
 # ci-bookkeeping is the fail-fast job every other job waits for: the committed derived files, ledgers and policy gates that need only Go, Python and the Pi source mirror (no oracle build, no npm install, no test binaries). A stale ledger or a missing sign-off stops the run in minutes instead of after the 30-minute shards. CI runs it with make -k -j, so one failing gate does not hide the others; automation/ci/autofix-gates.txt names the gates whose remedy is make generate.
-ci-bookkeeping: autofix-check divergences-drift piglet-strip-ids-drift sdk-bundles-drift known-gaps-drift custom-factory-ledger-drift lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard source-hygiene fixture-guard test-provenance docs-drift bug-ledger-check race-coverage perf-scoreboard-check go-fix-clean
+ci-bookkeeping: autofix-check divergences-drift piglet-strip-ids-drift sdk-bundles-drift node-runtime-drift vendor-pi-dist-drift known-gaps-drift custom-factory-ledger-drift lint-scenarios port-map-drift coverage-drift divergence-consistency divergence-quality divergence-guard source-hygiene fixture-guard test-provenance docs-drift bug-ledger-check race-coverage perf-scoreboard-check go-fix-clean
 ci-startup: startup-proxies
 ci-build: module-publication lint
 # The light pull-request run (automation/ci/ci-tiers.txt) lints the whole changed files (CI sets LINT_BASE=origin/main); the full run keeps the repository-wide lint.
@@ -23,6 +23,8 @@ ci-test-fast-sharded: test-fast-sharded
 ci-test-changed: export TEST_CHANGED_FOR := fast-parallel
 ci-test-changed: export TEST_CHANGED_RACE := none
 ci-test-changed: test-changed sdk-vectors-changed
+# The allocation ratchet's own shard (automation/ci/ci-tiers.txt): the nightly's alloc-baseline for the hot packages the change touches or imports (TEST_BASE names the base). It blocks like every shard of the linux matrix (a failure fails "Linux verification" and so "CI result"). It is its own shard because a change to ai or tui makes it measure most of the hot packages, about 22 minutes, which test-fast must not carry; a change that touches none measures nothing.
+ci-alloc-ratchet: alloc-baseline-changed
 # The SDK modules are not packages of the main module, so test-changed never runs their Pi vector suites. When the change touches the shared tui engine, an SDK or a vector file (automation/ci/sdk-vectors-changed.sh), run the vector check and each SDK's own suite.
 sdk-vectors-changed:
 	@if [ "$$(automation/ci/sdk-vectors-changed.sh)" = true ]; then \

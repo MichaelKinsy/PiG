@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 func BenchmarkRuntimeInteractiveRebind(b *testing.B) {
@@ -24,6 +25,7 @@ func BenchmarkRuntimeInteractiveRebind(b *testing.B) {
 				}
 				return nil
 			}}
+			testenv.EmptyPath(b)
 			b.ReportAllocs()
 			for b.Loop() {
 				if _, err := f.runtime.NewSession(b.Context(), options); err != nil {

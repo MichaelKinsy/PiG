@@ -78,6 +78,6 @@ func TestNodeVendorManifestIncludesPinnedNativeAssets(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(data, committed) {
-		t.Fatal("vendor manifest differs from the reviewed generated snapshot: run automation/gen/vendor-pi-dist.sh")
+		t.Fatal("vendor manifest differs from the reviewed generated snapshot: run make generate (or make vendor-pi-dist, then make node-runtime) and commit the result")
 	}
 }

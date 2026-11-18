@@ -297,6 +297,7 @@ func groupedTestFixture(t *testing.T) string {
 	copyCIFixture(t, root, "automation/ci/assert-clean-tmp.sh")
 	copyCIFixture(t, root, "automation/ci/agent-dir-guard.sh")
 	copyCIFixture(t, root, "automation/ci/reap-test-processes.sh")
+	copyCIFixture(t, root, "automation/ci/race-timeout.sh")
 	// test-grouped.sh enters the in-repo Porter extension module to warm its dependency-module build cache.
 	writeCIFixture(t, root, "piglets/porter/extensions/pig-porter/.keep", "")
 	// The core-fault group runs exactly the tests that the pigfault-tagged test files of durable/core/driver declare; an untagged file's tests belong to the normal run.

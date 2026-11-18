@@ -10,6 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // benchReplacementBuilder returns the process-fixed builder print mode uses, configured with one Node extension, and the startup build.
@@ -58,6 +59,7 @@ func BenchmarkSessionReplacementCycle(b *testing.B) {
 	for _, extensions := range []int{1, 4} {
 		b.Run(map[int]string{1: "1ext", 4: "4ext"}[extensions], func(b *testing.B) {
 			builder, cwd, agentDir := benchReplacementBuilder(b, extensions)
+			testenv.PathOf(b, "node")
 			ctx := context.Background()
 			var rebuildTotal time.Duration
 			start := time.Now()
@@ -108,6 +110,7 @@ func BenchmarkSessionReplacementPhases(b *testing.B) {
 	for _, extensions := range []int{1, 4} {
 		b.Run(map[int]string{1: "1ext", 4: "4ext"}[extensions], func(b *testing.B) {
 			builder, cwd, _ := benchReplacementBuilder(b, extensions)
+			testenv.PathOf(b, "node")
 			ctx := context.Background()
 			manager, err := coding.NewInMemorySessionManager(cwd)
 			if err != nil {

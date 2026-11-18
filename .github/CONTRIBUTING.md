@@ -50,6 +50,16 @@ git commit --allow-empty --signoff -S -F message.txt
 
 Each row is a commit SHA (at least 10 hex characters) followed by its subject, and the block ends at the first blank line. `automation/ci/check-dco.sh` accepts an unsigned commit only if a later commit in the pull request has the same author (or a mapped identity of that person), names the unsigned commit in a block whose lead line carries the author's name, and has its own `Signed-off-by` line for its own author. `dco-identities.txt` lists one person per line, identities joined by ` = `; changing it needs the maintainer review CODEOWNERS requires. A remediation by someone else, or one that precedes the commit it names, does not count. Prefer amending the commit while the branch is still private.
 
+The single-line form the DCO bot writes is accepted too, one line per commit, naming the unsigned commit's author identity and its full 40-character sha (a short sha does not count), in a later commit of the same author that carries its own `Signed-off-by` line:
+
+```text
+I, Jane Doe <jane@example.com>, hereby add my Signed-off-by to this commit: 0123456789abcdef0123456789abcdef01234567
+
+Signed-off-by: Jane Doe <jane@example.com>
+```
+
+The name and email in the line must match the unsigned commit's author, ignoring case like a `Signed-off-by` line. The check lists each accepted commit as `<short sha> <subject>: remedied by <short sha>`.
+
 PiG does not require a Contributor License Agreement.
 
 ## Signed commits
@@ -144,7 +154,7 @@ A pull request must:
 - include both a DCO `Signed-off-by` line and a GitHub-verified signature on every commit;
 - contain no credentials or private data;
 - include tests or explain why the existing tests prove the change;
-- update `docs/parity/DIVERGENCES.md` for an approved observable difference;
+- update `docs/parity/DIVERGENCES.md` for an approved observable difference (the record's `SCRUTINIZED:approved` line binds a hash of its text and only the owner approves a changed text with `make divergence-approve`; a contributor lists the record in `automation/ci/divergence-reapproval-pending.txt` instead, see `docs/parity/divergences/head.md`);
 - update extension conformance coverage for an SDK contract change;
 - update SBOM, notice, or provenance inputs when dependencies or copied material change;
 - update `vendorHash` in `nix/package.nix` when Go modules change (the `Nix vendor hash` check prints the value; `nix/vendor-hash.sh update` computes it where Nix is installed); and

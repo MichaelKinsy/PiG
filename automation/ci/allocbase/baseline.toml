@@ -351,7 +351,7 @@ allocs = 1
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCloneCatalogCompat"
-allocs = 5034
+allocs = 4870
 
 [[benchmark]]
 package = "./ai"
@@ -475,8 +475,8 @@ allocs = 1286
 
 [[benchmark]]
 package = "./ai"
-benchmark = "BenchmarkGeneratedToModelCatalog"
-allocs = 18435
+benchmark = "BenchmarkGeneratedToModelCatalog/per-1000-entries"
+allocs = 7757
 
 [[benchmark]]
 package = "./ai"
@@ -1165,8 +1165,8 @@ allocs = 10231
 
 [[benchmark]]
 package = "./coding"
-benchmark = "BenchmarkModelRegistryMetadata"
-allocs = 24324
+benchmark = "BenchmarkModelRegistryMetadata/per-1000-entries"
+allocs = 9887
 
 [[benchmark]]
 package = "./coding"
@@ -1700,13 +1700,18 @@ allocs = 2294
 
 [[benchmark]]
 package = "./coding/cli"
+benchmark = "BenchmarkServeBridgeStream"
+allocs = 12729
+
+[[benchmark]]
+package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementCycle/1ext"
-allocs = 12064
+allocs = 11874
 
 [[benchmark]]
 package = "./coding/cli"
 benchmark = "BenchmarkSessionReplacementCycle/4ext"
-allocs = 17975
+allocs = 17792
 
 [[benchmark]]
 package = "./coding/cli"
@@ -1926,27 +1931,27 @@ allocs = 95
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/cross-cwd"
-allocs = 717
+allocs = 698
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/direct"
-allocs = 716
+allocs = 699
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/reload"
-allocs = 716
+allocs = 699
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFactoryCacheThroughNodeHost/same-cwd"
-allocs = 716
+allocs = 700
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkFailedFactoryAPIThroughNodeCell"
-allocs = 845
+allocs = 820
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2041,12 +2046,12 @@ allocs = 5863
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAdmissionStartup/one-node"
-allocs = 654
+allocs = 623
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAdmissionStartup/three-node"
-allocs = 1105
+allocs = 1076
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2125,8 +2130,18 @@ allocs = 12
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
-benchmark = "BenchmarkReload_PackedCellWarmCache"
-allocs = 5416
+benchmark = "BenchmarkReload_PackedCellWarmCache/fixed"
+allocs = 1395
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/per-100-sdk-files"
+allocs = 1103
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/per-10-sdk-dirs"
+allocs = 121
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2321,7 +2336,7 @@ allocs = 82
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkCloneCatalogInput"
-allocs = 27412
+allocs = 29409
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2481,12 +2496,12 @@ allocs = 14
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkInteractiveSessionReload/0"
-allocs = 956
+allocs = 843
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkInteractiveSessionReload/1000"
-allocs = 21895
+allocs = 21792
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -2641,12 +2656,12 @@ allocs = 97
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRuntimeInteractiveRebind/0"
-allocs = 4994
+allocs = 4803
 
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkRuntimeInteractiveRebind/1000"
-allocs = 49083
+allocs = 47888
 
 [[benchmark]]
 package = "./internal/codingagent"

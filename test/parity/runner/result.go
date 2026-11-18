@@ -29,6 +29,9 @@ type Result struct {
 
 	// ChangelogSource is the binary's independent document input for complete release-header assertions.
 	ChangelogSource string
+
+	// HangDump is what the tmux driver recorded when a wait of this run timed out: the pane, the process tree and, for pig, the goroutine dump (hang_dump.go). It is whole; Err carries a capped copy. Empty for a run whose waits passed.
+	HangDump string
 }
 
 // SystemResults groups multiple runs of the same binary on one scenario.

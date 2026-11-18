@@ -66,6 +66,7 @@
     "TestCatalogCacheHitIgnoresOnlyRuntimeProvider",
     "TestCatalogSnapshotAvoidsMetadataSerialization",
     "TestCloneCatalogInputDoesNotAllocateInlineStructs",
+    "TestCloneCatalogInputLiveAllocationBudget",
     "TestModelCatalogBindingPublishesTheFinishedBindingOnce",
     "TestModelCatalogBindingKeepsPublicationBytesAndCalls",
     "TestModelCatalogBindingKeepsRegistrationOrdering"
