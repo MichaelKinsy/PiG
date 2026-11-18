@@ -15260,6 +15260,30 @@
       "tests": []
     },
     {
+      "id": "BF-4477d23",
+      "title": "A server killed in the middle of importing or deleting the data of one address (an app built with the kit…",
+      "symptom": "A server killed in the middle of importing or deleting the data of one address (an app built with the kit keeps the address's records in two SQLite stores, the plugins' and the server host's, where Pi has one) no longer leaves it partly imported or deleted: the import or delete writes a record of itself, with the address's old data, to `server/imports/` before its first commit and removes it after its second, and the next start undoes an interrupted import (the address is as it was) or completes an interrupted delete before serving anything, and reports it as an app error of kind `interrupted_data_change`.",
+      "rootCause": "PiG split Pi's one server commit into two stores and kept an undo only for a failure the process survives, so a kill between the two commits left the address partly imported or deleted, and no test killed the process there",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A server killed in the middle of importing or deleting the data of one address (an app built with the kit keeps the address's records in two SQLite stores, the plugins' and the server host's, where Pi has one) no longer leaves it partly imported or deleted: the import or delete writes a record of itself, with the address's old data, to `server/imports/` before its first commit and removes it after its second, and the next start undoes an interrupted import (the address is as it was) or completes an interrupted delete before serving anything, and reports it as an app error of kind `interrupted_data_change`. A record that cannot be used blocks only its own address and is reported.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "4477d23ffb",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/app/app_import_kill_test.go::TestAnIntentThatCannotBeUsedBlocksItsAddressOnly",
+        "chord/nextnode/app/app_import_kill_test.go::TestTheIntentIsFlushedBeforeTheFirstCommitAndItsRemovalAfterTheSecond",
+        "internal/atomicfile/syncdir_test.go::TestSyncDirectoryReportsARealFailureAndToleratesAnUnsupportedFlush"
+      ]
+    },
+    {
       "id": "BF-448b245",
       "title": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode",
       "symptom": "The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode.",

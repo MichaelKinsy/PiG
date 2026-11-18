@@ -567,6 +567,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-43d2597-3](#bf-43d2597-3) | A resumed session and `/tree` navigation activate the extension tools the branch never added or removed, such… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-43d2597-4](#bf-43d2597-4) | Switching to a session whose system message holds a `toolsAdded` or `toolsRemoved` member the loadout restore… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
 | [BF-4477a81](#bf-4477a81) | A chord app's `Close` kept going after a step failed and joined the errors; it now stops at the first failing… | PiG's own defect | All platforms | Unreleased |
+| [BF-4477d23](#bf-4477d23) | A server killed in the middle of importing or deleting the data of one address (an app built with the kit… | PiG's own defect | All platforms | Unreleased |
 | [BF-448b245](#bf-448b245) | The working status (OSC 7501) no longer disappears in Rex and iTerm2 during runs in regular TUI mode | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
 | [BF-448d2a9](#bf-448d2a9) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-448ff71](#bf-448ff71) | A panic in an extension error listener is now named on stderr instead of vanishing, and extension SDK… | PiG's own defect | All platforms | 0.5.0 |
@@ -9939,6 +9940,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `4477a81c13` (2026-11-08)
 - **Tests:** None recorded.
 - **Release note:** A chord app's `Close` kept going after a step failed and joined the errors; it now stops at the first failing step and returns that error, as Pi's close chain does (the steps after it, the data directory's lock release included, do not run).
+
+### BF-4477d23
+
+**A server killed in the middle of importing or deleting the data of one address (an app built with the kit…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A server killed in the middle of importing or deleting the data of one address (an app built with the kit keeps the address's records in two SQLite stores, the plugins' and the server host's, where Pi has one) no longer leaves it partly imported or deleted: the import or delete writes a record of itself, with the address's old data, to `server/imports/` before its first commit and removes it after its second, and the next start undoes an interrupted import (the address is as it was) or completes an interrupted delete before serving anything, and reports it as an app error of kind `interrupted_data_change`.
+- **Root cause:** PiG split Pi's one server commit into two stores and kept an undo only for a failure the process survives, so a kill between the two commits left the address partly imported or deleted, and no test killed the process there
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `4477d23ffb` (2026-11-17)
+- **Tests:** `chord/nextnode/app/app_import_kill_test.go::TestAnIntentThatCannotBeUsedBlocksItsAddressOnly`, `chord/nextnode/app/app_import_kill_test.go::TestTheIntentIsFlushedBeforeTheFirstCommitAndItsRemovalAfterTheSecond`, `internal/atomicfile/syncdir_test.go::TestSyncDirectoryReportsARealFailureAndToleratesAnUnsupportedFlush`
+- **Release note:** A server killed in the middle of importing or deleting the data of one address (an app built with the kit keeps the address's records in two SQLite stores, the plugins' and the server host's, where Pi has one) no longer leaves it partly imported or deleted: the import or delete writes a record of itself, with the address's old data, to `server/imports/` before its first commit and removes it after its second, and the next start undoes an interrupted import (the address is as it was) or completes an interrupted delete before serving anything, and reports it as an app error of kind `interrupted_data_change`. A record that cannot be used blocks only its own address and is reported.
 
 ### BF-448b245
 
