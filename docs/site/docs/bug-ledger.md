@@ -1140,6 +1140,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7b92429](#bf-7b92429) | `find` and `grep` trim like JavaScript: `FindTool` trimmed each fd output line with `strings.TrimSpace` where… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7ba3211](#bf-7ba3211) | A resumed session no longer holds its whole file in memory | PiG's own defect | macOS | 0.5.0 |
 | [BF-7bcd404](#bf-7bcd404) | fix(durable): state the lifetime of the goroutine that publishes an adopted commit | PiG's own defect | All platforms | Unreleased |
+| [BF-7c140b3](#bf-7c140b3) | Starting the interactive mode no longer writes cursor placements between its frames or frames of its own that… | PiG's own defect | All platforms | Unreleased |
 | [BF-7c24a92](#bf-7c24a92) | extensions: when the Node process that several TypeScript or JavaScript extensions share was killed or… | PiG's own defect | All platforms | Unreleased |
 | [BF-7c59949](#bf-7c59949) | fix(codingagent): session selector keeps Pi's out-of-range selected index | PiG's own defect | All platforms | Unreleased |
 | [BF-7c848e3](#bf-7c848e3) | A Zhipu/Z.ai usage limit (HTTP 429 with error code `1308`, which resets after hours) is no longer retried, in… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -17862,6 +17863,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `7bcd404f4b` (2026-10-26)
 - **Tests:** None recorded.
 
+### BF-7c140b3
+
+**Starting the interactive mode no longer writes cursor placements between its frames or frames of its own that…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A terminal that answers nothing used to see the header frame, two bare cursor placements (`ESC[<n>G ESC[?25l`), the window title, and the same again after each later frame: `frame, cursor, cursor, title, frame, cursor, frame, cursor, cursor`; it now sees Pi's `frame, cursor, title, frame, cursor, frame, cursor`.
+- **Root cause:** PiG painted a frame right after binding the session and painted each startup notice, warning and status line at once, where Pi only requests a frame and lets the next one carry them; it also took a turn of the event loop for every `session_start` handler, because the registry could not tell a handler that returns without awaiting (the built-in MCP one) from one that can wait, and no test compared the kinds of write around the startup frames, only the bytes up to the first frame
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `5edf81f2ab` (2026-11-17), `7c140b3c41` (2026-11-17), `b4b67844c7` (2026-11-17)
+- **Tests:** `coding/extension/factoryload/session_start_without_await_test.go::TestSessionStartRegisteredAsReturningWithoutAwaitingDoesNotMakeTheRunnerAwait`, `coding/extension/factoryload/session_start_without_await_test.go::TestSessionStartReturningWithoutAwaitFallsBackToOnSessionStart`, `coding/extension/handler_await_test.go::TestHandlerRegistrationSurvivesRemovalAndReplacement`, `coding/extension/handler_await_test.go::TestHasEventHandlersThatMayAwaitAsksTheRegistrationOfEachHandler`, `coding/extension/host/inproc/registry_test.go::TestHasHandlersThatMayAwaitLeavesOutTheHandlersThatReturnWithoutAwaiting`, `coding/mcpext/session_start_without_await_test.go::TestBuiltinMCPSessionStartHandlerReturnsWithoutAwaiting`, `coding/piglet/session_start_without_await_test.go::TestPigletSessionStartHandlerReturnsWithoutAwaiting`, `internal/codingagent/bind_may_pend_test.go::TestBindMayPendAsksWhetherAHandlerCanPend` and 6 more in docs/bug-ledger.json
+- **Release note:** Starting the interactive mode no longer writes cursor placements between its frames or frames of its own that Pi does not write. A terminal that answers nothing used to see the header frame, two bare cursor placements (`ESC[<n>G ESC[?25l`), the window title, and the same again after each later frame: `frame, cursor, cursor, title, frame, cursor, frame, cursor, cursor`; it now sees Pi's `frame, cursor, title, frame, cursor, frame, cursor`. The start now builds the header, binds the extensions and paints one frame at the end of its start, as Pi does, and the notices that follow it (resource diagnostics, the model fallback message, the crash notice) each request a frame. A plain start also no longer waits on the built-in MCP extension: its `session_start` handler returns without awaiting what it starts, as Pi's does, and an extension handler can now say the same of itself, so the session binds without taking a turn of the event loop. A handler of a subprocess extension, which can always wait, keeps the wait.
+
 ### BF-7c24a92
 
 **extensions: when the Node process that several TypeScript or JavaScript extensions share was killed or…**
@@ -23162,7 +23177,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Pi issue:** none recorded
 - **Removed when Pi fixes it:** Pi's renderer writes nothing for a render request that changes no row and moves no cursor, or the owner withdraws the approval.
 - **Fix commits:** `a726a597cc` (2026-11-11), `e7a2839b83` (2026-11-11)
-- **Tests:** `internal/codingagent/highlight_languages_load_test.go::TestLoadRemainingHighlightLanguagesPostsNoRepaintWhenNoLookupDiffers`, `internal/codingagent/highlight_languages_load_test.go::TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop`, `tui/internal/hljs/load_reports_test.go::TestLoadAllLanguagesReportsEarlierLookupsThatDiffer`
+- **Tests:** `internal/codingagent/highlight_languages_load_test.go::TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop`, `tui/internal/hljs/load_reports_test.go::TestLoadAllLanguagesReportsEarlierLookupsThatDiffer`
 
 ### BF-D619
 

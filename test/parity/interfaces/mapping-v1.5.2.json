@@ -168567,9 +168567,9 @@
         "call:coding/mcpext/register.go#CreateMcpExtension"
       ],
       "evidence": [
-        "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285RendersThemInHTMLExportsToo",
-        "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285SlashExportRendersThemInHTMLExports",
-        "test:internal/codingagent/mcp_tool_renderers_10285_test.go#TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered"
+        "test:coding/mcpext/session_start_without_await_test.go#TestBuiltinMCPSessionStartHandlerReturnsWithoutAwaiting",
+        "test:internal/codingagent/startup_write_kinds_pty_test.go#TestStartupWriteKindsChild",
+        "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285RendersThemInHTMLExportsToo"
       ]
     },
     {
@@ -168589,9 +168589,9 @@
         "call:coding/mcpext/register.go#CreateMcpExtension"
       ],
       "evidence": [
-        "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285RendersThemInHTMLExportsToo",
-        "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285SlashExportRendersThemInHTMLExports",
-        "test:internal/codingagent/mcp_tool_renderers_10285_test.go#TestRegression10285RendersCallsToMCPToolsThatAreNotRegistered"
+        "test:coding/mcpext/session_start_without_await_test.go#TestBuiltinMCPSessionStartHandlerReturnsWithoutAwaiting",
+        "test:internal/codingagent/startup_write_kinds_pty_test.go#TestStartupWriteKindsChild",
+        "test:internal/codingagent/mcp_tool_renderers_10285_export_test.go#TestRegression10285RendersThemInHTMLExportsToo"
       ]
     },
     {
@@ -175670,7 +175670,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/builtin/codemode/tool.go#CreateCodemodeExtension"
+        "call:coding/extension/api_returns_without_await.go#OnSessionStartReturningWithoutAwait"
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
@@ -191299,7 +191299,8 @@
         "call:internal/codingagent/settings_diagnostics.go#InteractiveMode.showInitNotices"
       ],
       "evidence": [
-        "test:internal/codingagent/reload_trust_models_test.go#TestInitNoticesFollowUpstreamOrder"
+        "test:internal/codingagent/reload_trust_models_test.go#TestInitNoticesFollowUpstreamOrder",
+        "test:internal/codingagent/startup_write_kinds_pty_test.go#TestStartupWriteKindsChild"
       ]
     },
     {
@@ -213814,7 +213815,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/factoryload/events.go#api.OnSessionStart"
+        "call:coding/extension/api_returns_without_await.go#OnSessionStartReturningWithoutAwait"
       ],
       "evidence": [
         "test:coding/runner_model_registry_upstream_test.go#TestNewExtensionRunnerBindsItsConstructorArguments",
@@ -313611,14 +313612,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/renderer.go#TUI.RenderNow"
+        "call:internal/codingagent/interactive.go#InteractiveMode.Init"
       ],
       "evidence": [
-        "test:tui/tui_alt_screen_layout_root_test.go#TestViewportTUIFullRedrawsAndRenderNowThroughTheInterface"
+        "test:tui/tui_alt_screen_layout_root_test.go#TestViewportTUIFullRedrawsAndRenderNowThroughTheInterface",
+        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences",
+        "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach"
       ]
     },
     {
@@ -313631,14 +313634,16 @@
       ],
       "layers": {
         "behavior": "complete",
-        "production": "public-api-tested",
+        "production": "complete",
         "shape": "complete"
       },
       "production": [
-        "public-api:tui/renderer.go#TUI.RenderNow"
+        "call:internal/codingagent/interactive.go#InteractiveMode.Init"
       ],
       "evidence": [
-        "test:tui/tui_alt_screen_layout_root_test.go#TestViewportTUIFullRedrawsAndRenderNowThroughTheInterface"
+        "test:tui/tui_alt_screen_layout_root_test.go#TestViewportTUIFullRedrawsAndRenderNowThroughTheInterface",
+        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences",
+        "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach"
       ]
     },
     {
