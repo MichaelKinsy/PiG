@@ -160,6 +160,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-1136763-3](#bf-1136763-3) | The record of the calls a tool made through `executeTool` keeps a lone UTF-16 surrogate of a nested tool's… | PiG's own defect | All platforms | Unreleased |
 | [BF-1147e77](#bf-1147e77) | A line an extension wrote to its stderr or stdout just before pig ended could be lost: with `--mode rpc`… | PiG's own defect | All platforms | Unreleased |
 | [BF-114f195](#bf-114f195) | Chord plugins (internal, the tests' seam): a tree the plugins component's file watcher watches on request… | PiG's own defect | All platforms | Unreleased |
+| [BF-1162a57](#bf-1162a57) | A Piglet built with any model API stripped no longer allocates on every model catalog lookup | PiG's own defect | All platforms | Unreleased |
 | [BF-116b36c](#bf-116b36c) | fix(extensions): answer the start-window report of a tool call that holds no window, where the report is read | PiG's own defect | All platforms | Unreleased |
 | [BF-11866f8](#bf-11866f8) | `WaitForIdle` on the Harness or a Conversation no longer fails with "Harness is closed" when a close begins… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-11a6fcb](#bf-11a6fcb) | fix(extension): a restart adopts the new renderers; the late-registration row runs what it registered | PiG's own defect | All platforms | Unreleased |
@@ -4331,6 +4332,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `114f195453` (2026-11-13)
 - **Tests:** `chord/nextnode/app/app_web_browser_test.go::TestThePagesLanguageWritesLangAndDirOnTheRootElementFromTheDeviceThenTheUsersPick`, `chord/nextnode/app/reload_rollout_test.go::TestARolloutAcrossHostsEndsTwoRolloutsBackToBackOnTheSecondsCodeThePageFollowingWithoutFailing`, `chord/nextnode/plugins/plugins_plugins_test.go::TestAComponentsDiscoveryKeepsTheTreeItsBarrierWatches`, `chord/nextnode/plugins/plugins_watcher_linux_test.go::TestClosingTheWatcherReleasesTheWatchesOfATreeItWasAskedToWatch`, `chord/nextnode/plugins/plugins_watcher_test.go::TestADiscoveryDropsTheTreeOfAPluginWhoseLinkIsGoneAndKeepsATreeTheWatcherWasAskedToWatch`, `chord/nextnode/plugins/plugins_watcher_test.go::TestATreeTheWatcherWasAskedToWatchStaysWatchedAcrossDiscoveries`, `chord/nextnode/plugins/plugins_watcher_test.go::TestTheBarrierReturnsWhenADiscoveryLandsBetweenItsWatchTreeAndItsDirectory`
 - **Release note:** Chord plugins (internal, the tests' seam): a tree the plugins component's file watcher watches on request (`Plugins.WatchTree`, which only the tests' barrier `pluginstest.Settle` calls) stays watched across discoveries until the component is closed. A discovery dropped it with every tree that is no root's, base's or linked plugin's, so the build of an apply that ran beside a test's edit could take the barrier's watch away between the barrier's request and the event it waits for: `TestARolloutAcrossHostsEndsTwoRolloutsBackToBackOnTheSecondsCodeThePageFollowingWithoutFailing` then failed with `timed out after 15s waiting for the watcher to handle a directory made after the edits`, in about one run in ten. No product path calls `WatchTree`: the trees of the roots, of the base code and of linked plugins are watched and released as before.
+
+### BF-1162a57
+
+**A Piglet built with any model API stripped no longer allocates on every model catalog lookup**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Piglet built with any model API stripped no longer allocates on every model catalog lookup.
+- **Root cause:** the catalog tested whether the strip state had changed by comparing a copy of the stripped list against the list it held, and pigstrip.IDs returns a new slice whenever anything is stripped, so the comparison itself allocated; the no-allocation contract of the lookup was only ever tested in a build that strips nothing, where IDs returns nil
+- **User impact:** Extra allocation or slower run
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `1162a57f06` (2026-11-16)
+- **Tests:** `internal/codingagent/builtin_chat_catalog_test.go::TestBuiltinChatCatalogDoesNotAllocateWhileAnAPIIsStripped`, `internal/codingagent/builtin_chat_catalog_test.go::TestBuiltinChatCatalogListsWhatListModelsLists`, `internal/codingagent/builtin_chat_catalog_test.go::TestBuiltinChatCatalogLookupsRaceAStrip`, `internal/codingagent/builtin_chat_catalog_test.go::TestBuiltinChatCatalogSeesAStripBetweenTwoLookups`, `internal/pigstrip/pigstrip_test.go::TestGenerationChangesOnlyWhenTheStripStateDoes`
+- **Release note:** A Piglet built with any model API stripped no longer allocates on every model catalog lookup. The built-in chat catalog asked the strip state for a fresh copy of the stripped API list each time it was read, to see whether the list had changed; it now compares one counter that the strip state advances when it changes, and reads the list only to rebuild. A strip applied after the first lookup (a Piglet's strip list is applied at start-up) is still seen by the next lookup. Stock PiG strips nothing and is unchanged. The bug was present since v0.7.0.
 
 ### BF-116b36c
 

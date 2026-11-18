@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"slices"
 	"sync"
+	"sync/atomic"
 )
 
 // Strip lists, named as in a Piglet's strip key, in manifest order.
@@ -118,6 +119,9 @@ var (
 	mu       sync.RWMutex
 	stripped []entry
 	piglet   string
+	// generation counts the changes of stripped, so a reader that caches something derived from the strip state asks one atomic
+	// load (Generation) instead of copying the list (IDs) on every read.
+	generation atomic.Uint64
 )
 
 // SetPiglet names the Piglet whose strip list this process runs, so a request
@@ -147,11 +151,13 @@ func Strip(list, id string) (undo func()) {
 		return func() {}
 	}
 	stripped = append(stripped, e)
+	generation.Add(1)
 	return func() {
 		mu.Lock()
 		defer mu.Unlock()
 		if i := slices.Index(stripped, e); i >= 0 {
 			stripped = slices.Delete(stripped, i, i+1)
+			generation.Add(1)
 		}
 	}
 }
@@ -163,6 +169,11 @@ func Has(list, id string) bool {
 	defer mu.RUnlock()
 	return slices.Contains(stripped, entry{list, id})
 }
+
+// Generation is a number that grows each time the strip state changes: a Strip that records a new entry, and the undo of one that removes it. A Strip
+// that records nothing new does not change it. A reader that derives something from the strip state keeps the number it read it at and rebuilds when
+// Generation is larger. Read it before the state (IDs, Has), so what is kept is never newer than the number it is kept under.
+func Generation() uint64 { return generation.Load() }
 
 // Active reports whether this process strips anything. It is false in Stock
 // PiG.

@@ -89,3 +89,31 @@ func TestErrorNamesThePigletAndHowToKeepIt(t *testing.T) {
 		t.Fatalf("after undo: %q, want %q", got, base)
 	}
 }
+
+// The probe is an ID no build tag strips, so the test starts from a state in which it is not recorded whichever strip tags built the test binary.
+func TestGenerationChangesOnlyWhenTheStripStateDoes(t *testing.T) {
+	const probe = "generation-probe"
+	start := Generation()
+	undo := Strip(ListFeatures, probe)
+	recorded := Generation()
+	if recorded <= start {
+		t.Fatalf("a new strip left the generation at %d (was %d)", recorded, start)
+	}
+	again := Strip(ListFeatures, probe)
+	if got := Generation(); got != recorded {
+		t.Fatalf("a strip that records nothing moved the generation to %d (was %d)", got, recorded)
+	}
+	again()
+	if got := Generation(); got != recorded {
+		t.Fatalf("the undo of a strip that recorded nothing moved the generation to %d (was %d)", got, recorded)
+	}
+	undo()
+	if got := Generation(); got <= recorded {
+		t.Fatalf("undoing a strip left the generation at %d (was %d)", got, recorded)
+	}
+	settled := Generation()
+	undo()
+	if got := Generation(); got != settled {
+		t.Fatalf("a second undo moved the generation to %d (was %d)", got, settled)
+	}
+}
