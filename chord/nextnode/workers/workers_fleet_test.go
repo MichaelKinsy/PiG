@@ -63,6 +63,25 @@ type fleetOptions struct {
 	// onOutput, when set, is told each chunk of a worker's output before the fleet collects it, on the goroutine that reads the
 	// stream; the fleet collects the chunk only when it returns true.
 	onOutput func(stream string, chunk []byte) (collect bool)
+	// resolved, when set, is told what the workers' `resolve` returned for an address before the route handles it, and what it returns is
+	// what the route handles: a test's hold between the workers' answer and the route's.
+	resolved func(address contracts.Address, link host.ResolvedLink, err error, ctx context.Context) (host.ResolvedLink, error)
+}
+
+// resolvedSeam is a host whose routes hand what their `resolve` returned to resolved before they handle it.
+type resolvedSeam struct {
+	host.Host
+	resolved func(address contracts.Address, link host.ResolvedLink, err error, ctx context.Context) (host.ResolvedLink, error)
+}
+
+// Route implements host.Host.
+func (s *resolvedSeam) Route(kind *contracts.HostKind, options host.RouteOptions, ctx context.Context) (host.RouteHandle, error) {
+	resolve := options.Resolve
+	options.Resolve = func(address contracts.Address, routing context.Context) (host.ResolvedLink, error) {
+		link, err := resolve(address, routing)
+		return s.resolved(address, link, err, routing)
+	}
+	return s.Host.Route(kind, options, ctx)
 }
 
 // collector collects values from callbacks on other goroutines.
@@ -157,7 +176,11 @@ func newFleet(t testing.TB, options fleetOptions) *fleet {
 	if entry == "" {
 		entry = fixtureEntry(t)
 	}
-	workers, err := CreateWorkers(server, fixtureSession, WorkersOptions{
+	var routing host.Host = server
+	if options.resolved != nil {
+		routing = &resolvedSeam{Host: server, resolved: options.resolved}
+	}
+	workers, err := CreateWorkers(routing, fixtureSession, WorkersOptions{
 		Kind:         "worker",
 		Entry:        entry,
 		BaseDir:      options.baseDir,
