@@ -921,6 +921,17 @@ func (m *InteractiveMode) releaseFrames() {
 	m.tuiInst.RequestRender()
 }
 
+// requestRenderPastHold is the frame a status, a warning or a notice asks for. Pi requests it (ui.requestRender()), and the frame follows at the next turn of the
+// event loop. D270 holds the frames a /tree choice requested, but a status, a warning or a notice is not held: while the hold lasts it paints by name (Render),
+// outside the hold it only requests the frame. Owner loop only, as frameHold is.
+func (m *InteractiveMode) requestRenderPastHold() {
+	if m.frameHold {
+		m.tuiInst.Render()
+		return
+	}
+	m.tuiInst.RequestRender()
+}
+
 // runOnMain hands fn to the main input loop and blocks until the loop accepts
 // it (backpressure) or ctx is cancelled (shutdown/abort); the owner loop itself never blocks (see postFromOwner). Unlike postUITask it
 // never drops fn, so it is the tool for state the loop must not miss: streamed

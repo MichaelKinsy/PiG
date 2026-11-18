@@ -471,7 +471,7 @@ func (m *InteractiveMode) appendBorderedNotice(blocks ...tui.Component) {
 		m.chatContainer.Add(b)
 	}
 	m.chatContainer.Add(tui.NewDynamicBorderToken("warning"))
-	m.tuiInst.RequestRender()
+	m.requestRenderPastHold()
 }
 
 // lastAssistantMessageText is session.getLastAssistantText(), which /copy reads (interactive-mode.ts handleCopyCommand): empty when the Session has no assistant text.
@@ -576,7 +576,7 @@ func (m *InteractiveMode) showManagedToolStatus(status tools.ToolStatus) {
 	m.lastStatusSpacer = nil
 	m.lastStatusText = nil
 	if m.tuiInst != nil {
-		m.tuiInst.RequestRender()
+		m.requestRenderPastHold()
 	}
 }
 
@@ -597,9 +597,9 @@ func (m *InteractiveMode) showStatus(msg string) {
 		m.lastStatusSpacer = spacer
 		m.lastStatusText = text
 	}
-	// Mirror upstream's `this.ui.requestRender()` (interactive-mode.ts:3972,3983): a request, painted by the next frame, never a render of its own.
+	// Mirror upstream's `this.ui.requestRender()` (interactive-mode.ts:3972,3983): a request, painted by the next frame, never a render of its own (D270: while a /tree hold lasts, the paint is by name).
 	if m.tuiInst != nil {
-		m.tuiInst.RequestRender()
+		m.requestRenderPastHold()
 	}
 }
 
