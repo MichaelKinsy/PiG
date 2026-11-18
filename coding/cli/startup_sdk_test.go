@@ -7,36 +7,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
-	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 )
-
-func TestStartupSDKStageLockWaitIsBoundedAndVisible(t *testing.T) {
-	configRoot := t.TempDir()
-	release, err := pigsdklock.AcquireBuild(context.Background(), configRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = release() }()
-
-	var stderr bytes.Buffer
-	start := time.Now()
-	stageExtensionSDKsAtStartup(context.Background(), configRoot, &stderr, 25*time.Millisecond)
-	if elapsed := time.Since(start); elapsed > time.Second {
-		t.Fatalf("startup SDK staging returned after %s, want bounded wait", elapsed)
-	}
-	output := stderr.String()
-	lockPath := filepath.Join(configRoot, "state", "pigsdk", ".transaction.lock")
-	for _, want := range []string{"extension SDK staging failed", lockPath, "startup will continue"} {
-		if !strings.Contains(output, want) {
-			t.Fatalf("startup warning %q does not contain %q", output, want)
-		}
-	}
-}
 
 // A config root this user may not write is a deployment choice, so startup stages nothing there and says nothing. This build reads only its own
 // staged SDK directories, so nothing another build staged there can stand in for them.

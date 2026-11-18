@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // customModelFields are the members a custom model id takes from the provider's model it is a copy of: every member but id and name
@@ -117,6 +118,9 @@ func TestStartupCustomModelIDIsACopyOfTheProvidersModel(t *testing.T) {
 		{name: "built-in OAuth subscription provider", provider: "openai-codex", sibling: defaultOf("openai-codex")},
 	}
 	for _, tc := range cases {
+		if tc.provider == "mistral" && pigstrip.Has(pigstrip.ListAPIs, "mistral-conversations") {
+			continue // a Piglet that strips the Mistral API has no mistral provider to copy a model from
+		}
 		t.Run(tc.name, func(t *testing.T) {
 			dir := isolateProviderAuthEnv(t)
 			if tc.config != "" {

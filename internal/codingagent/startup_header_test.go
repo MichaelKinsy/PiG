@@ -133,7 +133,7 @@ func TestBuiltInHeaderMatchesPiStartupHelp(t *testing.T) {
 		" v" + pigversion.Version,
 		"escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more",
 		"Press ctrl+o to show full startup help and loaded resources.",
-		"PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.",
+		onboardingLine(),
 	} {
 		if !strings.Contains(compact, want) {
 			t.Errorf("compact header missing %q: %q", want, compact)

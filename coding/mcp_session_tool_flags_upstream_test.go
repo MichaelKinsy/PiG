@@ -1,4 +1,4 @@
-//go:build !pig_strip_mcp
+//go:build !pig_strip_mcp && !pig_strip_codemode && !pig_strip_tool_search
 
 package coding
 

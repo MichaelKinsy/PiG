@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // Pi 0.87.1 packages/ai/src/models.ts:628 deletes the credential on logout; auth/resolve.ts:87-109 then uses ambient auth on the next request. The already-built startup provider must not retain the deleted key as its fallback.
@@ -82,6 +83,9 @@ func TestBuildModelLogoutFallsBackToEnv(t *testing.T) {
 // These API kinds have no per-request key callback. Keep their shared builder's once-at-build resolution, including refresh errors, rather than silently dropping auth when startup stops pre-resolving it.
 func TestBuildModelResolvesStaticAPIKeyOnce(t *testing.T) {
 	for _, apiKind := range []ai.API{ai.APIOpenAICodexResponses, ai.APIAzureOpenAIResponses, ai.APIGoogleGenerativeAI, ai.APIGoogleVertex, ai.APIBedrockConverseStream, ai.APIMistralConversations} {
+		if pigstrip.Has(pigstrip.ListAPIs, string(apiKind)) {
+			continue // this build compiles the API out: a model on it is not built (the strip tests of this package hold that answer)
+		}
 		t.Run(string(apiKind), func(t *testing.T) {
 			dir := t.TempDir()
 			config := `{"providers":{"static":{"baseUrl":"http://localhost:1","api":"` + string(apiKind) + `","models":[{"id":"m1"}]}}}`

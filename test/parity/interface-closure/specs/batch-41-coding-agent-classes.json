@@ -27,7 +27,7 @@
    "call:coding/cli/extension_login_preview_command.go#runExtensionLoginPreview"
   ],
   "evidence": [
-   "test:coding/cli/extension_login_preview_command_test.go#TestGeneratedLoginExtensionIsIdentifiedThroughPigletResolution",
+   "test:coding/cli/extension_login_preview_piglet_test.go#TestGeneratedLoginExtensionIsIdentifiedThroughPigletResolution",
    "test:coding/extension/host/inproc/cancelled_dispatch_test.go#TestCancelledDispatchIsNotReportedAsAHandlerError"
   ],
   "rationale": "ExtensionRunner.emit is the Go method Runner.Emit; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
@@ -179,8 +179,8 @@
    "call:internal/codingagent/tool_definition_renderers.go#InteractiveMode.bindToolCard"
   ],
   "evidence": [
-   "test:coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamExtensionConflicts",
-   "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts"
+   "test:coding/cli/configured_resources_node_test.go#TestResourceLoaderUpstreamExtensionConflicts",
+   "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts"
   ],
   "rationale": "ExtensionRunner.getToolDefinition is the Go method Runner.GetToolDefinition; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",
   "async": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error. AbortSignal is the context.Context argument; no detached goroutine."
@@ -264,7 +264,7 @@
    "call:coding/cli/extension_login_preview_command.go#runExtensionLoginPreview"
   ],
   "evidence": [
-   "test:coding/cli/extension_login_preview_command_test.go#TestGeneratedLoginExtensionIsIdentifiedThroughPigletResolution",
+   "test:coding/cli/extension_login_preview_piglet_test.go#TestGeneratedLoginExtensionIsIdentifiedThroughPigletResolution",
    "test:coding/extension/host/inproc/context_binding_lifetime_test.go#TestRunnerContextQueriesDuringUIReplacement"
   ],
   "rationale": "ExtensionRunner.setUIContext is the Go method Runner.SetUIContext; signature reviewed against the upstream declaration (upstream class ExtensionRunner is Go Runner); callers and tests attributed by go/types (methodrefs).",

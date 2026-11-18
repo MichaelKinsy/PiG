@@ -1,3 +1,5 @@
+//go:build !pig_strip_export_html
+
 package coding
 
 import (

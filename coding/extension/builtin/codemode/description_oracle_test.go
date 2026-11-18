@@ -11,6 +11,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/internal/pioracle"
 )
 
@@ -62,6 +63,10 @@ emit(input.map((p) => {
 		got, errText := goDescription(p)
 		// The docs path names the agent directory, which the Pi process and this test place differently.
 		got, wantText := docsPath.ReplaceAllString(got, "Read <docs> first"), docsPath.ReplaceAllString(want[i].Text, "Read <docs> first")
+		if pigstrip.Has(pigstrip.ListFeatures, pigstrip.Docs) {
+			// pig additive (D92): a build that strips docs writes no page, so the models line points to none.
+			wantText = strings.ReplaceAll(wantText, " Read <docs> first.", "")
+		}
 		if got != wantText || errText != want[i].Err {
 			if bad++; bad <= 3 {
 				t.Errorf("probe %d (%d tools, models=%v, budget=%v): err=%q want %q\n%s", i, len(p.Tools), p.Models, p.Budget, errText, want[i].Err, firstDifference(got, wantText))

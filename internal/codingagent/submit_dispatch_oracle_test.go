@@ -125,6 +125,11 @@ func TestSubmitDispatchMatchesPi(t *testing.T) {
 			}
 		}
 
+		// A build that strips the changelog has no /changelog: the line is an ordinary prompt there.
+		if strippedFeatureCommand(wantAction) {
+			wantAction, wantArg = "prompt", ""
+		}
+
 		// What Pig's pipeline does.
 		text := widthx.JSTrim(raw)
 		gotAction, gotArg := "none", ""

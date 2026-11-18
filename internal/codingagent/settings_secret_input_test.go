@@ -321,6 +321,8 @@ func TestSettingsRosterDiffersFromPiOnlyByD64AndD80(t *testing.T) {
 	for _, images := range []bool{false, true} {
 		pi := piSettingsRoster(t, string(raw), images)
 		want, anchored := pigSettingsRosterFromPi(pi)
+		// A build that strips a built-in does not offer its rows (settingStripped).
+		want, pi = withoutStrippedSettingsRows(want), withoutStrippedSettingsRows(pi)
 		if !anchored {
 			t.Fatalf("images=%v: Pi roster lacks share-destination or tree-filter-mode: %v", images, pi)
 		}

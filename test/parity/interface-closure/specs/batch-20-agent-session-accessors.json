@@ -90,7 +90,7 @@
    "call:coding/session.go#NewSession"
   ],
   "evidence": [
-   "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+   "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
    "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDoesNotLetCodemodeCallItselfOrInactiveDirectTools"
   ],
   "rationale": "AgentSession.setActiveToolsByName is the Go method Session.SetActiveToolsByName; signature reviewed against the upstream declaration."

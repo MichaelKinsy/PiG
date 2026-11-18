@@ -72,6 +72,11 @@ func TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback(t *testing.T) 
 		"ShowHardwareCursor": "true", "ShowImages": "false", "ShowTerminalProgress": "true", "SteeringMode": "all",
 		"Transport": "websocket", "TreeFilterMode": "no-tools", "TuiMode": "fullscreen",
 	}
+	for name, row := range map[string]string{"CollapseChangelog": "collapse-changelog", "EnableInstallTelemetry": "install-telemetry"} {
+		if settingStripped(row) { // a build that strips the changelog does not offer these rows
+			delete(want, name)
+		}
+	}
 	for name, value := range want {
 		if got, ok := fired[name]; !ok || got != value {
 			t.Errorf("%s callback = %q (fired %v), want %q", name, got, ok, value)

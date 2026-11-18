@@ -5,6 +5,7 @@ package coding
 import (
 	"github.com/MichaelKinsy/PiG/coding/extension/factoryload"
 
+	"bytes"
 	"context"
 	"encoding/json"
 	"slices"
@@ -30,6 +31,15 @@ import (
 // waits are observed in the transcript, the tool registry and the tool results.
 
 const mcpTinyPNGBase64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg=="
+
+func requireEqual[T any](t *testing.T, what string, got, want T) {
+	t.Helper()
+	gotJSON, _ := json.Marshal(got)
+	wantJSON, _ := json.Marshal(want)
+	if !bytes.Equal(gotJSON, wantJSON) {
+		t.Errorf("%s = %s, want %s", what, gotJSON, wantJSON)
+	}
+}
 
 var mcpServerTools = []map[string]any{
 	{

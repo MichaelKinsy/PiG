@@ -44,16 +44,21 @@ func TestToolSchemaTextKeepsItsMemberOrderOnEveryProviderWire(t *testing.T) {
 			return NewGoogleProvider(GoogleConfig{BaseURL: url + "/v1beta", APIKey: "k", Model: "gemini-1.5-flash", ProviderID: "google"})
 		}},
 		{"google-vertex", func(url string) Provider {
-			return NewGoogleVertexProvider(GoogleVertexConfig{BaseURL: url + "/v1/publishers/google", APIKey: "k", Model: "gemini-1.5-flash", ProviderID: "google-vertex"})
+			return newGoogleVertexTestProvider(GoogleVertexConfig{BaseURL: url + "/v1/publishers/google", APIKey: "k", Model: "gemini-1.5-flash", ProviderID: "google-vertex"}, nil)
 		}},
 		{"mistral-conversations", func(url string) Provider {
-			return NewMistralProvider(MistralConfig{BaseURL: url, APIKey: "k", Model: "codestral-latest", ProviderID: "mistral"})
+			return newMistralTestProvider(MistralConfig{BaseURL: url, APIKey: "k", Model: "codestral-latest", ProviderID: "mistral"}, nil)
 		}},
 		{"pi-messages", func(url string) Provider {
 			return NewPiMessagesProvider(PiMessagesConfig{BaseURL: url, APIKey: "k", Model: "m", ProviderID: "pi"})
 		}},
 	}
+	// A build with the API's pig_strip tag has no provider for the row.
+	strippable := map[string]API{"google-vertex": APIGoogleVertex, "mistral-conversations": APIMistralConversations}
 	for _, c := range cases {
+		if api, ok := strippable[c.name]; ok && !BuiltAPI(api) {
+			continue
+		}
 		t.Run(c.name, func(t *testing.T) {
 			var body []byte
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

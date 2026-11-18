@@ -54,7 +54,7 @@ func randomThinkingProbes(bindings []map[string][]string) []thinkingProbe {
 		}
 		probe.Keys = make([]string, 1+rng.Intn(14))
 		for i := range probe.Keys {
-			probe.Keys[i] = keys[rng.Intn(len(keys))]
+			probe.Keys[i] = dictionaryFree(keys[rng.Intn(len(keys))])
 		}
 		probes = append(probes, probe)
 	}

@@ -18,7 +18,24 @@ func TestTagMapsIDsToBuildTags(t *testing.T) {
 	}
 }
 
+// hideRecords empties the strip state for the rest of the test and restores it after, so a test of the state itself starts from the
+// state Stock PiG has whatever strip tags built the test binary. It reaches the unexported state, which is why it lives in this package's
+// tests: the production code has no way to un-strip a process.
+func hideRecords(t *testing.T) {
+	t.Helper()
+	mu.Lock()
+	saved := slices.Clone(stripped)
+	stripped = nil
+	mu.Unlock()
+	t.Cleanup(func() {
+		mu.Lock()
+		stripped = saved
+		mu.Unlock()
+	})
+}
+
 func TestStripHasAndUndo(t *testing.T) {
+	hideRecords(t)
 	if Has(ListFeatures, Docs) {
 		t.Fatal("a fresh process strips docs")
 	}

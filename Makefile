@@ -274,6 +274,12 @@ piglet-strip-matrix: ## Check cmd/pig under each Piglet strip build tag that str
 piglet-strip-guard: ## Vet ./ai/... and its tests, live files included, under each Piglet strip build tag that strips a model API alone and under all tags: the fast part of piglet-strip-matrix (ci-contracts)
 	@go run ./automation/ci/stripmatrix -guard
 
+# piglet-strip-tests runs the tests of the coding agent under every strip tag set, so a test that needs a built-in a tag compiles out and
+# has no build constraint on its file fails in the night it is added. One set is the cost of the ./coding/... and ./internal/codingagent/...
+# test run plus a rebuild of what the tag changes (STRIP_TESTS_MINUTES); all 22 sets are the nightly workflow's strip-tests jobs, one per set.
+piglet-strip-tests: ## Test ./coding/... and ./internal/codingagent/... under each Piglet strip build tag alone and under all tags (hours; the nightly workflow runs one set per job): STRIP_TESTS_SET='tag,tag' takes one set, as -print-sets lists it
+	@go run ./automation/ci/stripmatrix -coding -sets all $(if $(STRIP_TESTS_SET),-set '$(STRIP_TESTS_SET)')
+
 # The SDK bundles are pure Go to regenerate (go generate in each SDK directory): the Go SDK's bundle in the root module (internal/gosdkbundle), the Python, Rust and Lisp bundles (extensions/sdk-py, sdk-rs, sdk-lisp) are sdk.zst, the SDK's files as one zstd frame, and bundle_pack.go, which embeds it with the file list and the staging hash (automation/gen/packsdk). The nested module extensions/sdk keeps the bundle it was published with, a gzip copy of each source under .gz and bundle_embed.go (automation/gen/embed-bundle.go). Each generator keeps an existing frame or copy that already holds the source's text, so only a stale one is rewritten.
 sdk-bundles: ## Regenerate the packed SDK bundles (sdk.zst, bundle_pack.go) of the Go, Python, Rust and Lisp SDKs, and the nested Go SDK module's own gzip bundle, from their sources (go generate)
 	@for dir in extensions/sdk internal/gosdkbundle extensions/sdk-lisp extensions/sdk-py extensions/sdk-rs; do (cd $$dir && go generate .) || exit 1; done
@@ -281,7 +287,7 @@ sdk-bundles: ## Regenerate the packed SDK bundles (sdk.zst, bundle_pack.go) of t
 sdk-bundles-drift: ## Fail when a packed SDK bundle differs from its sources (regenerate with make sdk-bundles)
 	@./automation/ci/sdk-bundles-drift.sh
 
-.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift divergence-approve help-text highlight-grammars zone-names intl-tables windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build piglet-strip-matrix piglet-strip-guard changelog-unreleased changelog-check changelog-fold
+.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift divergence-approve help-text highlight-grammars zone-names intl-tables windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build piglet-strip-matrix piglet-strip-guard piglet-strip-tests changelog-unreleased changelog-check changelog-fold
 
 ##@ Test and lint
 

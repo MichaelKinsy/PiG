@@ -3,6 +3,7 @@ package codingagent
 // pi: packages/coding-agent/src/cli/startup-ui.ts
 
 import (
+	"maps"
 	"os"
 	"testing"
 
@@ -88,8 +89,11 @@ func requireRestoresTUIKeybindings(t *testing.T, name string, run func(*testing.
 }
 
 // configureStartupTui installs the process-wide keybindings of the agent directory, so every test that opens a startup prompt has to restore them.
+// startupKeybindingTests are the tests this one runs besides its own list: a file a build tag excludes adds its entries from an init of its own.
+var startupKeybindingTests = map[string]func(*testing.T){}
+
 func TestStartupPromptTestsRestoreTheProcessKeybindings(t *testing.T) {
-	for name, run := range map[string]func(*testing.T){
+	tests := map[string]func(*testing.T){
 		"TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput": TestStartupPromptAppliesTerminalColorsAndKeepsRepliesOutOfInput,
 		"TestStartupPromptAppliesColorsThatArriveAfterTheTimeout":         TestStartupPromptAppliesColorsThatArriveAfterTheTimeout,
 		"TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme":          TestStartupPromptWithFixedThemeQueriesAndKeepsTheTheme,
@@ -97,11 +101,9 @@ func TestStartupPromptTestsRestoreTheProcessKeybindings(t *testing.T) {
 		"TestStartupPromptMalformedThemeUsesSystemTheme":                  TestStartupPromptMalformedThemeUsesSystemTheme,
 		"TestStartupPromptComponentsAreBuiltUnderThePendingSystemTheme":   TestStartupPromptComponentsAreBuiltUnderThePendingSystemTheme,
 		"TestStartupPromptComponentsAreBuiltUnderTheCapabilityOverrides":  TestStartupPromptComponentsAreBuiltUnderTheCapabilityOverrides,
-		"TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI":                TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI,
-		"TestShowFirstTimeSetupSkipSavesNothing":                          TestShowFirstTimeSetupSkipSavesNothing,
-		"TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite":    TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite,
-		"TestShowFirstTimeSetupReportsNoSettingsWriteFailure":             TestShowFirstTimeSetupReportsNoSettingsWriteFailure,
-	} {
+	}
+	maps.Copy(tests, startupKeybindingTests)
+	for name, run := range tests {
 		t.Run(name, func(t *testing.T) { requireRestoresTUIKeybindings(t, name, run) })
 	}
 }

@@ -3523,7 +3523,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_UpdatesStateWithMutators",
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -3678,7 +3678,7 @@
       "evidence": [
         "test:agent/agent_upstream_test.go#TestAgent_UpdatesStateWithMutators",
         "test:agent/tool_call_hook_func_upstream_test.go#TestToolCallFuncsReceiveTheToolCallBlockAndTheAgentContext",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -16425,7 +16425,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -16447,7 +16447,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -16469,7 +16469,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -16491,7 +16491,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -61428,7 +61428,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -61450,7 +61450,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -61472,7 +61472,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -61494,7 +61494,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -103481,7 +103481,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -103503,7 +103503,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -103525,7 +103525,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -103547,7 +103547,7 @@
       "evidence": [
         "test:ai/transcript_messages_upstream_test.go#TestTranscriptMessagesReplayIntoOneLeadingMessageUpstream",
         "test:ai/transcript_replay_oracle_test.go#TestTranscriptReplayMatchesPi",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -154598,7 +154598,7 @@
       "evidence": [
         "test:coding/session_dispose_upstream_test.go#TestSessionDisposeAbortsWorkAndDropsListeners",
         "test:coding/session_dispose_leak_test.go#TestSessionDisposeReleasesEventProducers",
-        "test:internal/codingagent/tool_renderer_examples_upstream_test.go#TestToolRendererExamplesUpstream"
+        "test:internal/codingagent/tool_renderer_examples_upstream_node_test.go#TestToolRendererExamplesUpstream"
       ]
     },
     {
@@ -154620,7 +154620,7 @@
       "evidence": [
         "test:coding/session_dispose_upstream_test.go#TestSessionDisposeAbortsWorkAndDropsListeners",
         "test:coding/session_dispose_leak_test.go#TestSessionDisposeReleasesEventProducers",
-        "test:internal/codingagent/tool_renderer_examples_upstream_test.go#TestToolRendererExamplesUpstream"
+        "test:internal/codingagent/tool_renderer_examples_upstream_node_test.go#TestToolRendererExamplesUpstream"
       ]
     },
     {
@@ -154688,7 +154688,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestExportToHTMLChoosesTheNamedThenSettingsTheme",
-        "test:coding/session_state_test.go#TestSessionExportToHTML"
+        "test:coding/session_export_html_test.go#TestSessionExportToHTML"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -154711,7 +154711,7 @@
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestExportToHTMLChoosesTheNamedThenSettingsTheme",
-        "test:coding/session_state_test.go#TestSessionExportToHTML"
+        "test:coding/session_export_html_test.go#TestSessionExportToHTML"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -154774,7 +154774,7 @@
         "call:coding/session.go#Session.ExtensionRunner"
       ],
       "evidence": [
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsReportsRegisteredServersWhenNoExtensionConnectsThem",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsReportsRegisteredServersWhenNoExtensionConnectsThem",
         "test:coding/runner_model_registry_upstream_test.go#TestSessionRunnerGetModelRegistryIsTheServicesFacade",
         "test:coding/session_bind_extensions_upstream_test.go#TestBindExtensionsOnErrorReplacesTheEarlierListener"
       ]
@@ -154864,8 +154864,8 @@
         "call:coding/session_tools.go#Session.ActiveToolNames"
       ],
       "evidence": [
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsConnectsAndDisconnectsServersRegisteredDuringTheSession",
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsConnectsServersRegisteredWhileExtensionsLoad",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsConnectsAndDisconnectsServersRegisteredDuringTheSession",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsConnectsServersRegisteredWhileExtensionsLoad",
         "test:coding/mcp_session_resume_upstream_test.go#TestAgentSessionMCPToolsAfterResumeAndReloadDeclaresToolsToolSearchLoadedAgainAfterReload"
       ]
     },
@@ -154886,8 +154886,8 @@
         "call:coding/session_tools.go#Session.ActiveToolNames"
       ],
       "evidence": [
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsConnectsAndDisconnectsServersRegisteredDuringTheSession",
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsConnectsServersRegisteredWhileExtensionsLoad",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsConnectsAndDisconnectsServersRegisteredDuringTheSession",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsConnectsServersRegisteredWhileExtensionsLoad",
         "test:coding/mcp_session_resume_upstream_test.go#TestAgentSessionMCPToolsAfterResumeAndReloadDeclaresToolsToolSearchLoadedAgainAfterReload"
       ]
     },
@@ -154910,7 +154910,7 @@
       "evidence": [
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDeclaresDirectlyExposedMCPToolsToTheModel",
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPListsAndReadsResourcesWithCodexResourceTools",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed"
+        "test:coding/base_tools_override_test.go#TestBaseToolsOverrideReplacesTheBuiltInToolsAndIsActive"
       ]
     },
     {
@@ -154932,7 +154932,7 @@
       "evidence": [
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPDeclaresDirectlyExposedMCPToolsToTheModel",
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPListsAndReadsResourcesWithCodexResourceTools",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed"
+        "test:coding/base_tools_override_test.go#TestBaseToolsOverrideReplacesTheBuiltInToolsAndIsActive"
       ]
     },
     {
@@ -155172,7 +155172,7 @@
         "call:coding/session.go#Session.GetSessionStats"
       ],
       "evidence": [
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
         "test:coding/session_compaction_suite_upstream_test.go#TestAgentSessionCompactionSuiteUpstream"
       ]
@@ -155194,7 +155194,7 @@
         "call:coding/session.go#Session.GetSessionStats"
       ],
       "evidence": [
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
         "test:coding/session_compaction_suite_upstream_test.go#TestAgentSessionCompactionSuiteUpstream"
       ]
@@ -155525,7 +155525,7 @@
       ],
       "evidence": [
         "test:coding/bash_execution_llm_text_upstream_test.go#TestRecordedBashResultReachesModelContextUpstream",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPListsAServerBeforeItConnectsAndAppendsItsSummaryWithTheNextPrompt"
       ]
     },
@@ -156127,9 +156127,9 @@
         "call:coding/session_tools.go#Session.SetActiveToolsByName"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -156149,9 +156149,9 @@
         "call:coding/session_tools.go#Session.SetActiveToolsByName"
       ],
       "evidence": [
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
     },
     {
@@ -156438,8 +156438,8 @@
       ],
       "evidence": [
         "test:coding/session_name_newlines_upstream_test.go#TestUpstreamSessionNameNewlines",
-        "test:coding/session_name_upstream_test.go#TestSessionNameNotificationDoesNotAwaitLaterHandler",
-        "test:coding/session_name_upstream_test.go#TestSessionNameNotificationNodePrefix"
+        "test:coding/session_name_upstream_node_test.go#TestSessionNameNotificationNodePrefix",
+        "test:coding/session_name_upstream_test.go#TestSessionNameNotificationDoesNotAwaitLaterHandler"
       ]
     },
     {
@@ -156460,8 +156460,8 @@
       ],
       "evidence": [
         "test:coding/session_name_newlines_upstream_test.go#TestUpstreamSessionNameNewlines",
-        "test:coding/session_name_upstream_test.go#TestSessionNameNotificationDoesNotAwaitLaterHandler",
-        "test:coding/session_name_upstream_test.go#TestSessionNameNotificationNodePrefix"
+        "test:coding/session_name_upstream_node_test.go#TestSessionNameNotificationNodePrefix",
+        "test:coding/session_name_upstream_test.go#TestSessionNameNotificationDoesNotAwaitLaterHandler"
       ]
     },
     {
@@ -156812,7 +156812,7 @@
         "call:coding/session_transcript.go#Session.SystemPrompt"
       ],
       "evidence": [
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
         "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerBashCurrentState",
         "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerDerivesCWD"
       ]
@@ -156947,8 +156947,8 @@
       ],
       "evidence": [
         "test:coding/session_default_tool_modifiers_upstream_test.go#TestNewSessionRejectsInvalidToolModifierOptions",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed",
-        "test:coding/base_tools_override_test.go#TestUsesDefaultToolsIsDerivedAndOverridable"
+        "test:coding/base_tools_override_test.go#TestUsesDefaultToolsIsDerivedAndOverridable",
+        "test:coding/session_active_builtin_extension_tools_test.go#TestNewSessionAllowedToolsActivateInCallerOrder"
       ]
     },
     {
@@ -163545,7 +163545,7 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:coding/session_context_9789_upstream_test.go#TestUpstream9789KeepsMidConversationSystems",
+        "test:coding/session_context_9789_upstream_node_test.go#TestUpstream9789KeepsMidConversationSystems",
         "test:coding/session_model_extension_hooks_upstream_test.go#TestSessionModelExtensionHooksUpstream"
       ]
     },
@@ -163720,7 +163720,7 @@
         "call:coding/extension/host/inproc/runner.go#RenderSystemPrompt"
       ],
       "evidence": [
-        "test:coding/session_context_9789_upstream_test.go#TestUpstream9789KeepsMidConversationSystems",
+        "test:coding/session_context_9789_upstream_node_test.go#TestUpstream9789KeepsMidConversationSystems",
         "test:coding/session_prompt_custom_run_upstream_test.go#TestUpstreamSessionPromptRunsStartedByACustomMessage",
         "test:coding/session_system_prompt_updates_upstream_test.go#TestForcedPromptRequestShapeMatchesPi"
       ]
@@ -166717,7 +166717,7 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
+        "test:coding/create_agent_session_node_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
         "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -166740,7 +166740,7 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
+        "test:coding/create_agent_session_node_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
         "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
@@ -167043,7 +167043,7 @@
       ],
       "evidence": [
         "test:coding/session_export_html_oracle_test.go#TestSessionExportToHTMLMatchesPi",
-        "test:coding/create_agent_session_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
+        "test:coding/create_agent_session_node_test.go#TestCreateAgentSessionBindsItsStateToTheExtensionsOfItsLoader",
         "test:coding/create_agent_session_test.go#TestCreateAgentSessionBuildsItsServicesFromTheOptions"
       ]
     },
@@ -168155,8 +168155,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed",
-        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost"
+        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost",
+        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpriteSetRepaintsTheHeaderThroughTheInteractiveHost"
       ]
     },
     {
@@ -168177,8 +168177,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed",
-        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost"
+        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost",
+        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpriteSetRepaintsTheHeaderThroughTheInteractiveHost"
       ]
     },
     {
@@ -173248,9 +173248,9 @@
         "public-api:coding/discover_extensions.go#DiscoverAndLoadExtensions"
       ],
       "evidence": [
-        "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
-        "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare",
-        "test:coding/load_time_completion_strip_test.go#TestLoadTimeCompletionsAnsweredWithAnAPIStrippedAtRunTime"
+        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
+        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare",
+        "test:coding/load_time_completion_node_test.go#TestDiscoverAndLoadExtensionsAnswersLoadTimeCompletions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -175403,8 +175403,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -175425,8 +175425,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -175447,8 +175447,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -175469,8 +175469,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -180628,7 +180628,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -180650,7 +180650,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -180672,7 +180672,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -180694,7 +180694,7 @@
       "evidence": [
         "test:coding/extension/context_api_test.go#TestContext_InjectedActionsForward",
         "test:coding/extension/context_api_test.go#TestContext_StaleRunnerErrors",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
       ]
     },
     {
@@ -181980,7 +181980,7 @@
       "evidence": [
         "test:coding/cache_warming_decision_upstream_test.go#TestCacheWarmingDecisionUsesLastExtensionOverride",
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
-        "test:coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions"
+        "test:coding/cli/extension_set_upstream_node_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -182969,8 +182969,8 @@
         "call:coding/extension/host/inproc/runner.go#Runner.Command"
       ],
       "evidence": [
-        "test:coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/extension_set_upstream_node_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog"
       ]
     },
@@ -182991,8 +182991,8 @@
         "call:coding/extension/host/inproc/runner.go#Runner.Command"
       ],
       "evidence": [
-        "test:coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/extension_set_upstream_node_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog"
       ]
     },
@@ -183363,7 +183363,7 @@
         "call:coding/extension/host/inproc/runner.go#Runner.Commands"
       ],
       "evidence": [
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog",
         "test:coding/test_harness_upstream_test.go#TestUpstreamTestHarness"
       ]
@@ -183385,7 +183385,7 @@
         "call:coding/extension/host/inproc/runner.go#Runner.Commands"
       ],
       "evidence": [
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog",
         "test:coding/test_harness_upstream_test.go#TestUpstreamTestHarness"
       ]
@@ -183495,7 +183495,7 @@
         "call:coding/extension/host/inproc/runner.go#Runner.GetToolDefinition"
       ],
       "evidence": [
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers",
         "test:test/extension-conformance/session_actions_event_context_test.go#TestConformance_CommandOnlySessionActionsRefusedFromEventContext"
       ]
@@ -183517,7 +183517,7 @@
         "call:coding/extension/host/inproc/runner.go#Runner.GetToolDefinition"
       ],
       "evidence": [
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers",
         "test:test/extension-conformance/session_actions_event_context_test.go#TestConformance_CommandOnlySessionActionsRefusedFromEventContext"
       ]
@@ -183671,8 +183671,8 @@
         "call:coding/extension/host/inproc/runner.go#Runner.Invalidate"
       ],
       "evidence": [
-        "test:coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/extension_set_upstream_node_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:coding/extension/host/inproc/upstream_modes_test.go#TestRunnerCapturedContextsFollowUIBinding"
       ]
     },
@@ -183693,8 +183693,8 @@
         "call:coding/extension/host/inproc/runner.go#Runner.Invalidate"
       ],
       "evidence": [
-        "test:coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/extension_set_upstream_node_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:coding/extension/host/inproc/upstream_modes_test.go#TestRunnerCapturedContextsFollowUIBinding"
       ]
     },
@@ -184717,8 +184717,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -184739,8 +184739,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/runtime_shared_state_test.go#TestBindCoreRuntimeHandlersForwardArgumentsAndResults",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -184761,8 +184761,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -184783,8 +184783,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/event_send_user_message_test.go#TestAnEventHandlerCanSendAUserMessage",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences"
       ]
     },
     {
@@ -187890,7 +187890,7 @@
         "call:internal/codingagent/cache_warmer.go#lastPromptTokens"
       ],
       "evidence": [
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeOptionsAndStore",
         "test:coding/session_bash_persistence_upstream_test.go#TestUpstreamBashPersistence"
       ]
@@ -192763,7 +192763,7 @@
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
         "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:coding/resource_loader_extension_files_test.go#TestDefaultResourceLoaderExtensionsOutliveTheContextOfTheReload"
+        "test:coding/resource_loader_extension_files_node_test.go#TestDefaultResourceLoaderExtensionsOutliveTheContextOfTheReload"
       ]
     },
     {
@@ -192785,7 +192785,7 @@
       "evidence": [
         "test:coding/create_agent_session_extensions_result_test.go#TestCreateAgentSessionFromServicesReturnsTheLoadedExtensions",
         "test:coding/create_agent_session_test.go#TestCreateAgentSessionReturnsTheLoadersExtensionsResult",
-        "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures"
+        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures"
       ]
     },
     {
@@ -192806,8 +192806,8 @@
       ],
       "evidence": [
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
-        "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
-        "test:coding/load_time_completion_strip_test.go#TestLoadTimeCompletionsAnsweredWithAnAPIStrippedAtRunTime"
+        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
+        "test:coding/load_time_completion_node_test.go#TestDiscoverAndLoadExtensionsAnswersLoadTimeCompletions"
       ]
     },
     {
@@ -192827,8 +192827,8 @@
         "call:coding/cli/cli_resource_loader.go#cliRuntimeBuilder.buildResourceLoader"
       ],
       "evidence": [
-        "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
-        "test:coding/discover_extensions_test.go#TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare",
+        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
+        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare",
         "test:coding/loaded_extensions_runtime_test.go#TestSessionRunnerBindsTheRuntimeTheLoadedExtensionsShare"
       ]
     },
@@ -194960,7 +194960,7 @@
         "call:coding/mcpext/cli.go#RunMcpCommand"
       ],
       "evidence": [
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsAsksOAuthServersThatKeepRejectingRequestsForANewSignIn"
       ]
     },
@@ -194981,7 +194981,7 @@
         "call:coding/mcpext/cli.go#RunMcpCommand"
       ],
       "evidence": [
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsAsksOAuthServersThatKeepRejectingRequestsForANewSignIn"
       ]
     },
@@ -195002,7 +195002,7 @@
         "call:coding/mcpext/cli.go#RunMcpCommand"
       ],
       "evidence": [
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsAsksOAuthServersThatKeepRejectingRequestsForANewSignIn"
       ]
     },
@@ -195023,7 +195023,7 @@
         "call:coding/mcpext/cli.go#RunMcpCommand"
       ],
       "evidence": [
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsAsksOAuthServersThatKeepRejectingRequestsForANewSignIn"
       ]
     },
@@ -195044,7 +195044,7 @@
         "call:coding/mcpext/cli.go#RunMcpCommand"
       ],
       "evidence": [
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsAsksOAuthServersThatKeepRejectingRequestsForANewSignIn"
       ]
     },
@@ -195065,7 +195065,7 @@
         "call:coding/mcpext/cli.go#RunMcpCommand"
       ],
       "evidence": [
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsAsksOAuthServersThatKeepRejectingRequestsForANewSignIn"
       ]
     },
@@ -200562,7 +200562,7 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBeforeAgentStart",
-        "test:coding/session_context_9789_upstream_test.go#TestUpstream9789KeepsMidConversationSystems",
+        "test:coding/session_context_9789_upstream_node_test.go#TestUpstream9789KeepsMidConversationSystems",
         "test:coding/session_model_extension_hooks_upstream_test.go#TestSessionModelExtensionHooksUpstream"
       ]
     },
@@ -205554,7 +205554,7 @@
         "call:coding/extension/host/inproc/runner.go#Runner.Command"
       ],
       "evidence": [
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog",
         "test:coding/test_harness_upstream_test.go#TestUpstreamTestHarness"
       ],
@@ -205577,8 +205577,8 @@
         "call:coding/extension/factoryload/api.go#api.RegisterCommand"
       ],
       "evidence": [
-        "test:coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/extension_set_upstream_node_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:coding/cli/sdk_skills_upstream_test.go#TestUpstreamSDKSkillsSubprocess"
       ]
     },
@@ -205668,7 +205668,7 @@
         "call:coding/extension/host/inproc/runner.go#Runner.Command"
       ],
       "evidence": [
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:coding/extension/host/inproc/upstream_catalog_test.go#TestUpstreamRunnerCatalog",
         "test:coding/test_harness_upstream_test.go#TestUpstreamTestHarness"
       ]
@@ -210659,7 +210659,7 @@
         "call:internal/codingagent/bug_report.go#BugReportBranch"
       ],
       "evidence": [
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeOptionsAndStore",
         "test:coding/mcp_session_tool_flags_upstream_test.go#TestAgentSessionMCPDoesNotDeclareUnnamedMCPToolsRestoredFromTheTranscript"
       ]
@@ -213930,7 +213930,7 @@
         "call:coding/session.go#Session.GetSessionStats"
       ],
       "evidence": [
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
         "test:coding/session_compaction_suite_upstream_test.go#TestAgentSessionCompactionSuiteUpstream"
       ]
@@ -213995,7 +213995,7 @@
         "call:coding/session.go#Session.GetSessionStats"
       ],
       "evidence": [
-        "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
         "test:coding/session_compaction_suite_upstream_test.go#TestAgentSessionCompactionSuiteUpstream"
       ]
@@ -217878,7 +217878,7 @@
       "evidence": [
         "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/first_time_setup_test.go#TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI"
+        "test:internal/codingagent/first_time_setup_pig_login_test.go#TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI"
       ]
     },
     {
@@ -217900,7 +217900,7 @@
       "evidence": [
         "test:internal/codingagent/settings_defaults_oracle_test.go#TestSettingsDefaultsMatchPiOnAnEmptySettingsManager",
         "test:internal/codingagent/settings_structured_getters_oracle_test.go#TestSettingsManagerStructuredGettersMatchPi",
-        "test:internal/codingagent/first_time_setup_test.go#TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI"
+        "test:internal/codingagent/first_time_setup_pig_login_test.go#TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI"
       ]
     },
     {
@@ -227000,7 +227000,7 @@
         "call:coding/extension/builtin/codemode/tool.go#Definition"
       ],
       "evidence": [
-        "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesOutputFieldsBehindLocalSchemaReferences",
         "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeSummarizesUnionAndMultiLineOutputTypes"
       ]
@@ -227378,7 +227378,7 @@
       "evidence": [
         "test:coding/builtin_tool_definitions_oracle_test.go#TestSessionRegistersBuiltInToolDefinitionsAsPiDoes",
         "test:internal/codingagent/tool_execution_component_upstream_test.go#TestToolExecutionComponentUpstream",
-        "test:internal/codingagent/tool_renderer_examples_upstream_test.go#TestToolRendererExamplesUpstream"
+        "test:internal/codingagent/tool_renderer_examples_upstream_node_test.go#TestToolRendererExamplesUpstream"
       ]
     },
     {
@@ -227398,7 +227398,7 @@
         "call:tui/assistant_message_block.go#AssistantMessageComponent.Render"
       ],
       "evidence": [
-        "test:internal/codingagent/codemode_main_screen_oracle_test.go#TestCodemodeCardCutInsideSurrogatePairMatchesPiMainScreen",
+        "test:internal/codingagent/codemode_main_screen_oracle_syntax_highlight_test.go#TestCodemodeCardCutInsideSurrogatePairMatchesPiMainScreen",
         "test:internal/codingagent/edit_tool_no_redraw_upstream_test.go#TestEditToolNoFullRedrawUpstream",
         "test:internal/codingagent/interactive_mode_status_upstream_test.go#TestInteractiveManagedToolStatusContiguousGroupUpstream"
       ]
@@ -227718,7 +227718,7 @@
         "call:tui/tool_execution.go#ToolExecutionComponent.Render"
       ],
       "evidence": [
-        "test:internal/codingagent/codemode_main_screen_oracle_test.go#TestCodemodeCardCutInsideSurrogatePairMatchesPiMainScreen",
+        "test:internal/codingagent/codemode_main_screen_oracle_syntax_highlight_test.go#TestCodemodeCardCutInsideSurrogatePairMatchesPiMainScreen",
         "test:internal/codingagent/edit_tool_no_redraw_upstream_test.go#TestEditToolNoFullRedrawUpstream",
         "test:internal/codingagent/mcp_cards_oracle_test.go#TestMcpToolCardsMatchPi"
       ]
@@ -227740,7 +227740,7 @@
         "call:tui/tool_execution.go#ToolExecutionComponent.Render"
       ],
       "evidence": [
-        "test:internal/codingagent/codemode_main_screen_oracle_test.go#TestCodemodeCardCutInsideSurrogatePairMatchesPiMainScreen",
+        "test:internal/codingagent/codemode_main_screen_oracle_syntax_highlight_test.go#TestCodemodeCardCutInsideSurrogatePairMatchesPiMainScreen",
         "test:internal/codingagent/edit_tool_no_redraw_upstream_test.go#TestEditToolNoFullRedrawUpstream",
         "test:internal/codingagent/mcp_cards_oracle_test.go#TestMcpToolCardsMatchPi"
       ]
@@ -274219,7 +274219,7 @@
         "call:coding/extension/mcp_servers.go#McpServerConfig.IsHTTP"
       ],
       "evidence": [
-        "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
+        "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
         "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIMcpServersRegisterAndUnregister",
         "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo"
       ]

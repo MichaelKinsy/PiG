@@ -6,7 +6,6 @@
 package cli
 
 import (
-	"path/filepath"
 	"slices"
 	"testing"
 
@@ -14,20 +13,6 @@ import (
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
-
-// Ports .upstream/v0.99.1/packages/coding-agent/test/resource-loader.test.ts:1107-1124 ("should load built-in extensions after file
-// extensions with and without trust resolution"): a project override gives the built-in project scope, which must not move it ahead.
-func TestUpstreamResourceLoaderLoadsBuiltinExtensionsAfterFileExtensions(t *testing.T) {
-	root, cwd, agentDir := resourceExtensionFixture(t)
-	writeResourceTestFiles(t, root, map[string]string{
-		"agent/extensions/user.ts":   "export default function() {}",
-		"project/.pig/settings.json": `{"extensions":["+builtin:mcp"]}`,
-	})
-	loader := newExtensionSetTestLoader(t, cwd, agentDir, Args{}, extension.NamedInlineExtension{Name: "mcp", Builtin: true, Factory: commandFactory("", "", nil)})
-	want := []string{filepath.Join(agentDir, "extensions", "user.ts"), "builtin:mcp"}
-	requirePaths(t, reloadExtensionSet(t, loader, func(extensionSetResult) (bool, error) { return true, nil }).paths(), want)
-	requirePaths(t, reloadExtensionSet(t, loader, nil).paths(), want)
-}
 
 // Ports .upstream/v0.99.1/packages/coding-agent/test/resource-loader.test.ts:1126-1147 ("should disable built-in extensions with
 // noExtensions unless loaded with -e builtin:<name>").

@@ -1,3 +1,5 @@
+//go:build !pig_strip_syntax_highlight
+
 package codingagent
 
 import (
@@ -63,4 +65,9 @@ func TestWholeMarkdownBlocksRenderBytes(t *testing.T) {
 	if got := hex.EncodeToString(hash.Sum(nil)); got != want {
 		t.Errorf("rows hash %s, want %s", got, want)
 	}
+}
+
+// These tests select a theme, so TestThemeTestsRestoreTheProcessTheme runs them too; a build that strips what they need does not link them, and neither does it have the entries.
+func init() {
+	themeRestoringTests["TestWholeMarkdownBlocksRenderBytes"] = TestWholeMarkdownBlocksRenderBytes
 }

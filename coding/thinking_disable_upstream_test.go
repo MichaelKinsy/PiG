@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -27,7 +28,7 @@ type thinkingDisableCase struct {
 }
 
 func thinkingDisableCases() []thinkingDisableCase {
-	return []thinkingDisableCase{
+	return slices.Concat([]thinkingDisableCase{
 		// .upstream/v0.87.1/packages/ai/test/google-thinking-disable.test.ts:93
 		{name: "disables thinking for budget-based reasoning models", provider: "anthropic", model: "claude-sonnet-4-5", keyEnv: "PIG_LIVE_ANTHROPIC_API_KEY", field: "thinking", want: `{"type":"disabled"}`, maxTokens: 320},
 		// .upstream/v0.87.1/packages/ai/test/google-thinking-disable.test.ts:99
@@ -38,15 +39,17 @@ func thinkingDisableCases() []thinkingDisableCase {
 		{name: "disables thinking for Gemini 3.x", provider: "google", model: "gemini-3-flash-preview", keyEnv: "PIG_LIVE_GEMINI_API_KEY", field: "thinkingConfig", want: `{"thinkingLevel":"MINIMAL"}`, maxTokens: 160},
 		// .upstream/v0.87.1/packages/ai/test/google-thinking-disable.test.ts:115
 		{name: "does not error when thinking is off for Gemini 3.1 Pro", provider: "google", model: "gemini-3.1-pro-preview", keyEnv: "PIG_LIVE_GEMINI_API_KEY", field: "thinkingConfig", want: `{"thinkingLevel":"LOW"}`, maxTokens: 512, minPongs: 20},
+	}, whenVertex([]thinkingDisableCase{
 		// .upstream/v0.87.1/packages/ai/test/google-thinking-disable.test.ts:133
 		{name: "disables thinking for Gemini 2.5", provider: "google-vertex", model: "gemini-2.5-flash", keyEnv: "PIG_LIVE_VERTEX_API_KEY", field: "thinkingConfig", want: `{"thinkingBudget":0}`, maxTokens: 160},
 		// .upstream/v0.87.1/packages/ai/test/google-thinking-disable.test.ts:139
 		{name: "disables thinking for Gemini 3.x", provider: "google-vertex", model: "gemini-3-flash-preview", keyEnv: "PIG_LIVE_VERTEX_API_KEY", field: "thinkingConfig", want: `{"thinkingLevel":"MINIMAL"}`, maxTokens: 160},
+	}...), []thinkingDisableCase{
 		// .upstream/v0.87.1/packages/ai/test/google-thinking-disable.test.ts:147
 		{name: "disables thinking for Responses reasoning models", provider: "openai", model: "gpt-5.4-mini", keyEnv: "PIG_LIVE_OPENAI_API_KEY", field: "reasoning", want: `{"effort":"none"}`, maxTokens: 160, noTemperature: true},
 		// .upstream/v0.87.1/packages/ai/test/google-thinking-disable.test.ts:155
 		{name: "disables thinking for Qwen 3.5 reasoning models", provider: "openrouter", model: "qwen/qwen3.5-plus-02-15", keyEnv: "PIG_LIVE_OPENROUTER_API_KEY", field: "reasoning", want: `{"effort":"none"}`, maxTokens: 160, maxOutput: 100},
-	}
+	})
 }
 
 func TestThinkingDisableUpstream(t *testing.T) {

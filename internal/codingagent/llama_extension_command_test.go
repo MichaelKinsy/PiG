@@ -46,8 +46,8 @@ func TestSlashPopupWithoutExtensionsListsPisTwentyFourBuiltins(t *testing.T) {
 	m, _ := newCustomEditorDispatchMode(t)
 	m.opts.AgentDir = t.TempDir()
 	names := popupNames(t, m)
-	if len(names) != 24 {
-		t.Fatalf("popup entries = %d %q, want Pi's 24 built-in commands", len(names), names)
+	if len(names) != piBuiltinCommandCount() {
+		t.Fatalf("popup entries = %d %q, want Pi's %d built-in commands", len(names), names, piBuiltinCommandCount())
 	}
 	if names[0] != "settings" || names[len(names)-1] != "quit" {
 		t.Fatalf("popup = %q, want settings first and quit last", names)
@@ -63,10 +63,10 @@ func TestSlashPopupListsLlamaAmongExtensionCommandsInLoadOrder(t *testing.T) {
 	m.newRunner = inproc.NewRunner([]extension.Extension{llamaExtension(), mcp}, m.opts.AgentDir)
 	t.Cleanup(func() { m.newRunner.Invalidate("") })
 	names := popupNames(t, m)
-	if len(names) != 26 {
-		t.Fatalf("popup entries = %d %q, want 24 built-ins plus /llama and /mcp", len(names), names)
+	if builtins := piBuiltinCommandCount(); len(names) != builtins+2 {
+		t.Fatalf("popup entries = %d %q, want %d built-ins plus /llama and /mcp", len(names), names, builtins)
 	}
-	if got := names[24:]; got[0] != "llama" || got[1] != "mcp" {
+	if got := names[piBuiltinCommandCount():]; got[0] != "llama" || got[1] != "mcp" {
 		t.Fatalf("extension commands = %q, want llama then mcp", got)
 	}
 }

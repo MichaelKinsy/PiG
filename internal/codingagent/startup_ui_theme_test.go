@@ -78,7 +78,6 @@ var themeRestoringTests = map[string]func(*testing.T){
 	"TestExtensionUIResetRestoresTheFooterAndTheHeader":                     TestExtensionUIResetRestoresTheFooterAndTheHeader,
 	"TestExtensionUIResetRestoresTheWorkingStatus":                          TestExtensionUIResetRestoresTheWorkingStatus,
 	"TestExtensionUIResetWritesTheSessionTitle":                             TestExtensionUIResetWritesTheSessionTitle,
-	"TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite":          TestFirstTimeSetupCreateYourOwnShowsTheHintAndKeepsTheSprite,
 	"TestFrontendFramesCarryTheThemeAcrossSwitches":                         TestFrontendFramesCarryTheThemeAcrossSwitches,
 	"TestInteractiveManagedToolStatusContiguousGroupUpstream":               TestInteractiveManagedToolStatusContiguousGroupUpstream,
 	"TestInteractiveStatusCoalescingUpstream":                               TestInteractiveStatusCoalescingUpstream,
@@ -114,9 +113,6 @@ var themeRestoringTests = map[string]func(*testing.T){
 	"TestSettingsSelectorOmitsShareDestination":                             TestSettingsSelectorOmitsShareDestination,
 	"TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback":          TestSettingsSelectorReportsEveryCyclingRowThroughItsCallback,
 	"TestSettingsSelectorUpstream":                                          TestSettingsSelectorUpstream,
-	"TestShowFirstTimeSetupReportsNoSettingsWriteFailure":                   TestShowFirstTimeSetupReportsNoSettingsWriteFailure,
-	"TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI":                      TestShowFirstTimeSetupSavesTheChoiceBeforeTheTUI,
-	"TestShowFirstTimeSetupSkipSavesNothing":                                TestShowFirstTimeSetupSkipSavesNothing,
 	"TestStartupPromptAppliesTerminalCapabilitySettings":                    TestStartupPromptAppliesTerminalCapabilitySettings,
 	"TestStartupPromptComponentsAreBuiltUnderTheCapabilityOverrides":        TestStartupPromptComponentsAreBuiltUnderTheCapabilityOverrides,
 	"TestThinkingSelectorBoundariesMatchPi":                                 TestThinkingSelectorBoundariesMatchPi,
@@ -126,8 +122,6 @@ var themeRestoringTests = map[string]func(*testing.T){
 	"TestTreeListRemappedKeysMatchPi":                                       TestTreeListRemappedKeysMatchPi,
 	"TestTreeSavedLabelCarriesTheSaveTimeAndRemovalClearsIt":                TestTreeSavedLabelCarriesTheSaveTimeAndRemovalClearsIt,
 	"TestUpstreamExtendResourcesKeepPackageMetadata":                        TestUpstreamExtendResourcesKeepPackageMetadata,
-	"TestWarmedWriteCardDrawsTheLinesOfAWholeRun":                           TestWarmedWriteCardDrawsTheLinesOfAWholeRun,
-	"TestWholeMarkdownBlocksRenderBytes":                                    TestWholeMarkdownBlocksRenderBytes,
 }
 
 // terminalColorQueryPrefix begins the OSC 10 request that starts a terminal color query.

@@ -117,7 +117,7 @@ rationale = "The accumulator's temp file comes from the shared output-file helpe
 path = "packages/coding-agent/src/extensions/codemode/execute.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:coding/extension/builtin/codemode/save_images_test.go#TestSaveImagesPutsEachSavedPathBeforeItsImage", "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"]
+evidence = ["test:coding/extension/builtin/codemode/save_images_test.go#TestSaveImagesPutsEachSavedPathBeforeItsImage", "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"]
 rationale = "image() output is saved to temp files after truncation, each image preceded by a text item naming its path, a repeated image saved once, a failed write kept as a label (#10310); the text spill file is user-only."
 
 [[files]]

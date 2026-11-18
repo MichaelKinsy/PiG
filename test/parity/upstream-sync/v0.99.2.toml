@@ -82,7 +82,7 @@ rationale = "The delta adds resolveCodemodeWorkerSpecifier (#10204), which picks
 path = "packages/coding-agent/src/core/agent-session.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:coding/session_tool_registry_port_test.go#TestDefaultToolsReloadPort", "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"]
+evidence = ["test:coding/session_tool_registry_port_test.go#TestDefaultToolsReloadPort", "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"]
 rationale = "Two deltas. (1) usesDefaultTools: /reload activates only tools newly added to the defaultTools setting, keeps removed ones active and leaves allowlist, no-tools and exclusion options alone (coding/session_tool_registry.go, coding/session_tools.go). TestDefaultToolsReloadPort ports default-tools-setting.test.ts:159-235. (2) Hidden tools are not listed in the prompt snippets, in both the build and the loadout-applied paths (coding/session_tools.go toolPromptMetadata). TestUpstreamAgentSessionCodemodeTool asserts the prompt lists codemode but not the hidden read tool (#10192)."
 
 [[files]]
@@ -159,7 +159,7 @@ rationale = "The delta renders the call and result as Containers with Spacer, Te
 path = "packages/coding-agent/src/extensions/codemode/tool.ts"
 change = "modified"
 disposition = "ported"
-evidence = ["test:coding/extension/builtin/codemode/description_upstream_test.go#TestCodemodeDescriptionLeavesDeferredToolsAndTheirNamespacesOutEntirely", "test:coding/extension/builtin/codemode/description_namespace_test.go#TestCodemodeDescriptionDocumentsDescribeNamespaceAndAlwaysCarriesTheSearchGuidance", "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"]
+evidence = ["test:coding/extension/builtin/codemode/description_upstream_test.go#TestCodemodeDescriptionLeavesDeferredToolsAndTheirNamespacesOutEntirely", "test:coding/extension/builtin/codemode/description_namespace_test.go#TestCodemodeDescriptionDocumentsDescribeNamespaceAndAlwaysCarriesTheSearchGuidance", "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"]
 rationale = "The delta documents describeNamespace() and the namespace option of searchTools, always carries the \"some nested tools may be omitted\" guidance, drops the COMPLETE/PARTIAL line and the per-namespace counts, leaves deferred tools out of the description entirely and lists shared MCP types only for shown tools. The cited tests assert those description texts and the session-level description with Pi's expected strings."
 
 [[files]]

@@ -1401,8 +1401,7 @@
         "coding/extension/host/subprocess/loop_turned_forward_test.go::TestLoopTurnIsTakenOnlyOnceEveryRecipientTookIt",
         "coding/extension/host/subprocess/loop_turned_forward_test.go::TestLoopTurnedReachesOnlyOtherNodeProcesses",
         "coding/extension/host/subprocess/quit_handler_yield_test.go::TestPrintModeQuitHandlerReportsItsYield",
-        "coding/extension/host/subprocess/runtime_node_loop_turn_stall_test.go::TestNodeLoopTurnWaitsUntilAStalledProcessTookIt",
-        "coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop"
+        "coding/extension/host/subprocess/runtime_node_loop_turn_stall_test.go::TestNodeLoopTurnWaitsUntilAStalledProcessTookIt"
       ]
     },
     {
@@ -1782,12 +1781,7 @@
         "coding/extension/host/subprocess/native_provider_login_test.go::TestNativeAuthInteractionAnswersTheLoginDialog",
         "coding/extension/host/subprocess/native_provider_login_test.go::TestNativeProviderCarrierCarriesDeclaredLogins",
         "coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginCallbacks",
-        "coding/extension/host/subprocess/oauth_legacy_callbacks_test.go::TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginRejectsUnknownInteractionTypes",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt"
+        "coding/extension/host/subprocess/oauth_legacy_callbacks_test.go::TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface"
       ]
     },
     {
@@ -2742,7 +2736,6 @@
       ],
       "tests": [
         "internal/codingagent/interactive_resume_thinking_test.go::TestInteractiveModeThinkingTogglePreservesPartialBashOutputUpstream",
-        "internal/codingagent/session_tool_cards_oracle_test.go::TestBuiltinToolCardsWithoutRegisteredDefinitionMatchPi",
         "internal/codingagent/session_tool_cards_oracle_test.go::TestUnregisteredToolCardsMatchPi",
         "internal/codingagent/tick_render_test.go::TestTimerDrivenFramesReachTerminalWithoutInput"
       ]
@@ -2834,9 +2827,7 @@
         }
       ],
       "commitsFrom": "release note",
-      "tests": [
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods"
-      ]
+      "tests": []
     },
     {
       "id": "BF-0d0a3ef",
@@ -3205,7 +3196,6 @@
       ],
       "tests": [
         "internal/codingagent/tool_builtin_edit_shell_test.go::TestStockEditCardDrawsItsOwnShell",
-        "internal/codingagent/tool_builtin_renderers_pi104_test.go::TestBuiltInRenderersMatchPi104",
         "tui/editor_oracle_test.go::TestEditorMatchesPiOracle",
         "tui/keybindings_test.go::TestTUIDefaultKeybindingsIgnoreThePlatform",
         "tui/login_dialog_pi_test.go::TestLoginDialogMaskDisabledMatchesPi"
@@ -3264,10 +3254,6 @@
         }
       ],
       "tests": [
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt",
         "tui/locked_container_guard_test.go::TestEveryLockedContainerComponentTakesItsLockInRenderAndIsDirty",
         "tui/locked_container_guard_test.go::TestTheLockedContainerGuardFailsOnAMissingOrUnlockedOverride",
         "tui/login_dialog_lock_test.go::TestAuthURLCopyOutcomeRendersRaceFreeThroughAParent",
@@ -3423,10 +3409,7 @@
           "date": "2026-10-10"
         }
       ],
-      "tests": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsMatchPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsRandomMatchPi"
-      ]
+      "tests": []
     },
     {
       "id": "BF-1003d2e",
@@ -4414,7 +4397,6 @@
         "coding/cli/rpc_ui_integration_test.go::TestRPCModeExtensionUIRoundTrip",
         "coding/cli/session_wire_lifecycle_test.go::TestModeWireLifecycle",
         "coding/cli/startup_alloc_budget_test.go::TestStartupAllocationBudget",
-        "coding/extension/host/subprocess/node_cell_memory_test.go::TestNodeCellMembersShareRegistryPublications",
         "internal/codingagent/extension_ui_phase_shutdown_test.go::TestAwaitedExtensionPhaseWithoutShutdownReturnsItsResult",
         "internal/codingagent/extension_ui_phase_shutdown_test.go::TestNewSessionEndedByShutdownIsNotAFatalRuntimeError",
         "internal/codingagent/extension_ui_phase_shutdown_test.go::TestShutdownDuringAwaitedExtensionPhaseDoesNotWaitForAHandlerThatIgnoresCancellation",
@@ -4454,7 +4436,6 @@
         "coding/cli/rpc_ui_integration_test.go::TestRPCModeExtensionUIRoundTrip",
         "coding/cli/session_wire_lifecycle_test.go::TestModeWireLifecycle",
         "coding/cli/startup_alloc_budget_test.go::TestStartupAllocationBudget",
-        "coding/extension/host/subprocess/node_cell_memory_test.go::TestNodeCellMembersShareRegistryPublications",
         "test/extension-conformance/rpc_nested_events_test.go::TestRPCNestedEventsCompleteInEverySDK"
       ]
     },
@@ -4562,7 +4543,6 @@
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
         "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
-        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
         "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
@@ -4729,7 +4709,6 @@
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
         "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
-        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
         "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
@@ -5635,8 +5614,6 @@
         }
       ],
       "tests": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsMatchPi",
-        "internal/codingagent/codemode_cards_oracle_test.go::TestCodemodeCardsMatchPi",
         "internal/codingagent/session_info_themed_test.go::TestSessionCommandBlockFollowsThemeChanges",
         "internal/codingagent/tool_codemode_timer_test.go::TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
         "tui/editor_status_test.go::TestEmbeddedCompactionStatusTakesTheEditorBorderColorLikeWorking",
@@ -6506,7 +6483,6 @@
         "coding/cli/resource_loader_gaps_upstream_test.go::TestPrintModeInvalidDiscoveredFileURLFailsBind",
         "coding/extension/host/inproc/upstream_scoped_models_test.go::TestContextThinkingLevelReadsTheBoundRuntimeLive",
         "coding/extension/host/subprocess/runtime_node_loop_turn_test.go::TestNodeLoopTurnRunsQueuedImmediatesBeforeLaterFrames",
-        "coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop",
         "coding/extension/widget_placement_test.go::TestPowerShellToolInputIsTheBashInputShape",
         "coding/mcpext/extension_test.go::TestAgentSessionMCPHoldsTheFirstPromptForServersWithDirectToolsOnlyUpToTheStartupWait",
         "coding/session_extend_resources_test.go::TestSessionExtendsItsLoaderAfterExtensionReplacement",
@@ -8275,12 +8251,7 @@
         "coding/extension/host/subprocess/native_provider_login_test.go::TestDecodeNativeLoginCallback",
         "coding/extension/host/subprocess/native_provider_login_test.go::TestNativeAuthInteractionAnswersTheLoginDialog",
         "coding/extension/host/subprocess/native_provider_login_test.go::TestNativeProviderCarrierCarriesDeclaredLogins",
-        "coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginCallbacks",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginRejectsUnknownInteractionTypes",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt"
+        "coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginCallbacks"
       ]
     },
     {
@@ -8306,12 +8277,7 @@
         "coding/extension/host/subprocess/native_provider_login_test.go::TestDecodeNativeLoginCallback",
         "coding/extension/host/subprocess/native_provider_login_test.go::TestNativeAuthInteractionAnswersTheLoginDialog",
         "coding/extension/host/subprocess/native_provider_login_test.go::TestNativeProviderCarrierCarriesDeclaredLogins",
-        "coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginCallbacks",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginRejectsUnknownInteractionTypes",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt"
+        "coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginCallbacks"
       ]
     },
     {
@@ -8337,12 +8303,7 @@
         "coding/extension/host/subprocess/native_provider_login_test.go::TestDecodeNativeLoginCallback",
         "coding/extension/host/subprocess/native_provider_login_test.go::TestNativeAuthInteractionAnswersTheLoginDialog",
         "coding/extension/host/subprocess/native_provider_login_test.go::TestNativeProviderCarrierCarriesDeclaredLogins",
-        "coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginCallbacks",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginRejectsUnknownInteractionTypes",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt"
+        "coding/extension/host/subprocess/native_provider_oauth_test.go::TestNativeProviderOAuthLoginCallbacks"
       ]
     },
     {
@@ -8502,7 +8463,6 @@
       ],
       "tests": [
         "internal/codingagent/interactive_events_stream_args_test.go::TestInteractiveStreamedToolArgsDeltaCostIsFlat",
-        "internal/codingagent/interactive_events_write_stream_oracle_test.go::TestInteractiveStreamedWriteCardMatchesPiOracle",
         "internal/codingagent/tool_builtin_renderers_args_cost_test.go::TestEditRenderersDoNotReencodeUnchangedArgs",
         "tui/bash_execution_append_cost_test.go::TestBashExecutionAppendOutputDoesNotCopyCleanChunks",
         "tui/tool_execution_streamed_args_test.go::TestStreamedArgsEncodeOncePerDraw"
@@ -11552,7 +11512,6 @@
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
         "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
-        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
         "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
@@ -13860,7 +13819,6 @@
         "coding/cli/extension_upgrade_completeness_test.go::TestUpgradeAllFourShapesInOneRun",
         "coding/cli/extension_upgrade_completeness_test.go::TestUpgradeRestoreRemovesAFileItAdded",
         "coding/cli/extension_upgrade_completeness_test.go::TestUpgradeWritesNothingWhenTheRewriteWouldAddACompileError",
-        "coding/cli/extension_upgrade_test.go::TestUpgraderKeepsTheSafeRewritesAndListsWhatItCannotChange",
         "coding/cli/parallel_tool_end_order_test.go::TestNodeExtensionParallelToolCallsEndInTheOrderTheirToolsSettle",
         "coding/cli/rpc_compaction_provider_hooks_test.go::TestRPCCompactionEmitsOnlyProviderHeadersEvent",
         "coding/cli/rpc_ui_settle_test.go::TestRPCUIResponsesSettleTheirDialogsInStdinOrder",
@@ -15806,7 +15764,6 @@
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
         "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
-        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
         "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
@@ -17447,7 +17404,6 @@
         "ai/llama_cpp_render_contract_test.go::TestLlamaCppRenderBoundaryDocsParity",
         "internal/codingagent/edit_card_unlinkable_path_test.go::TestEditCardDrawsTheCallFallbackForAnUnlinkablePath",
         "internal/codingagent/read_truncation_view_test.go::TestReadTruncationViewOfTheToolsOwnDetails",
-        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
         "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsParity",
         "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsProbeDump",
         "internal/codingagent/write_stream_prefix_contract_test.go::TestInteractiveStreamedWriteCardMatchesPiAtTheLeadingBlockBoundary",
@@ -17483,7 +17439,6 @@
         "ai/llama_cpp_render_contract_test.go::TestLlamaCppRenderBoundaryDocsParity",
         "internal/codingagent/edit_card_unlinkable_path_test.go::TestEditCardDrawsTheCallFallbackForAnUnlinkablePath",
         "internal/codingagent/read_truncation_view_test.go::TestReadTruncationViewOfTheToolsOwnDetails",
-        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
         "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsParity",
         "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsProbeDump",
         "internal/codingagent/write_stream_prefix_contract_test.go::TestInteractiveStreamedWriteCardMatchesPiAtTheLeadingBlockBoundary",
@@ -19871,7 +19826,6 @@
         "ai/credential_key_order_test.go::TestAuthStorageKeepsEnvOrderAndFirstPositionOfARepeatedKey",
         "internal/codingagent/device_code_native_test.go::TestProviderOwnedAuthDialogNotifications",
         "internal/codingagent/login_info_event_test.go::TestOAuthInteractionSecretPromptHonorsMaskSecretInput",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt",
         "test/parity/scenarios/oauth/31-provider-object-login-info-links.toml"
       ]
     },
@@ -19897,7 +19851,6 @@
         "ai/credential_key_order_test.go::TestAuthStorageKeepsEnvOrderAndFirstPositionOfARepeatedKey",
         "internal/codingagent/device_code_native_test.go::TestProviderOwnedAuthDialogNotifications",
         "internal/codingagent/login_info_event_test.go::TestOAuthInteractionSecretPromptHonorsMaskSecretInput",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt",
         "test/parity/scenarios/oauth/31-provider-object-login-info-links.toml"
       ]
     },
@@ -20135,7 +20088,6 @@
       ],
       "tests": [
         "coding/cli/config_command_test.go::TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors",
-        "coding/cli/introspection_truth_test.go::TestInstallValidateOnlyReportsWhatDiscoveryWouldLoad",
         "coding/cli/introspection_truth_test.go::TestNotAutoDiscoveredWarningFollowsPiDiscovery"
       ]
     },
@@ -20258,14 +20210,8 @@
         "coding/extension/host/subprocess/oauth_bridge_test.go::TestOAuthCallbackInitiationFollowsRealCallbackEntry",
         "coding/extension/host/subprocess/oauth_callback_variants_test.go::TestOAuthLoginVariantsAreReachableFromTheWire",
         "coding/extension/host/subprocess/oauth_legacy_callbacks_test.go::TestOAuthProxy_ManualCodeInputShowsPisPromptMessage",
-        "internal/codingagent/config_oauth_login_cancel_test.go::TestConfigOAuthLoginSelectCancelReturnsToMenu",
         "internal/codingagent/login_info_event_test.go::TestOAuthLoginShowsAnInfoEventWithItsLinks",
         "internal/codingagent/login_prompt_empty_test.go::TestOAuthLoginTextPromptAcceptsAnEmptyAnswer",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginRejectsUnknownInteractionTypes",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt",
         "internal/codingagent/radius_login_test.go::TestRunOAuthProviderLoginUsesContextAndPreselectedMethod",
         "test/extension-conformance/oauth_conformance_test.go::TestConformance_OAuthTransportsMatch",
         "test/parity/runner/runner_test.go::TestParity"
@@ -20536,10 +20482,6 @@
         }
       ],
       "tests": [
-        "coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration",
-        "coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderOnlyOverlayRefresh",
-        "coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval",
-        "coding/cli/model_registry_refresh_test.go::TestSubprocessModelRegistryRefreshesConnectedNode",
         "coding/cli/port_wave_10_package_command_paths_test.go::TestPortWave10ModelRuntimeCreation",
         "coding/cli/shipped_piglet_inventory_test.go::TestShippedPigletInventory",
         "coding/cli/strip_leak_gate_test.go::TestStripLeakGate",
@@ -20822,8 +20764,6 @@
         "coding/extension/host/subprocess/loop_turned_forward_test.go::TestLoopTurnedReachesOnlyOtherNodeProcesses",
         "coding/extension/host/subprocess/runtime_node_loop_turn_test.go::TestNodeLoopTurnRunsQueuedImmediatesBeforeLaterFrames",
         "coding/extension/host/subprocess/runtime_node_loop_turn_test.go::TestNodePromptEndWaitIgnoresAFinishedRunsSignal",
-        "coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePackedPromptEndWaitHoldsTimersUntilEveryMemberIsInvalidated",
-        "coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop",
         "extensions/sdk/surface_parity_test.go::TestLoopTurnedNotifyChangesNothing",
         "test/parity/scenarios/extensions-runtime/75-print-shutdown-loop-turn-isolated.toml",
         "test/parity/scenarios/extensions-runtime/75-print-shutdown-loop-turn.toml"
@@ -21957,8 +21897,6 @@
       ],
       "tests": [
         "coding/cli/session_replaced_2860_sdk_test.go::TestReplacedSession2860AcrossSDKs",
-        "coding/session_extension_user_message_expand_test.go::TestGraphBridgeSendUserMessageForwardsExpandPromptTemplates",
-        "coding/session_extension_user_message_expand_test.go::TestSubprocessSendUserMessageExpandsPromptTemplatesInTheSession",
         "test/extension-conformance/theme_test.go::TestThemeQueriesAcrossSDKs"
       ]
     },
@@ -29505,7 +29443,6 @@
       "tests": [
         "coding/extension/host/inproc/registries_test.go::TestShortcuts_DiagnosticMessageMatchesUpstream",
         "coding/extension/host/inproc/shortcuts_oracle_test.go::TestRunnerShortcutsMatchPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsMatchPi",
         "internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi",
         "tui/extension_input_oracle_test.go::TestExtensionInputMatchesPi",
         "tui/extension_selector_oracle_test.go::TestExtensionSelectorMatchesPi"
@@ -29554,7 +29491,6 @@
         "coding/extension/host/inproc/registries_test.go::TestShortcuts_DiagnosticMessageMatchesUpstream",
         "coding/extension/host/inproc/shortcuts_oracle_test.go::TestRunnerShortcutsMatchPi",
         "coding/mcpext/manager_view_oracle_test.go::TestMcpManagerViewMatchesPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsMatchPi",
         "internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi",
         "internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries",
         "internal/codingagent/session_messagefor_cache_test.go::TestMessageForReportsAnUnparseableEntryWithoutParsingItAgain",
@@ -29607,7 +29543,6 @@
         "coding/extension/host/inproc/registries_test.go::TestShortcuts_DiagnosticMessageMatchesUpstream",
         "coding/extension/host/inproc/shortcuts_oracle_test.go::TestRunnerShortcutsMatchPi",
         "coding/mcpext/manager_view_oracle_test.go::TestMcpManagerViewMatchesPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsMatchPi",
         "internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi",
         "internal/codingagent/llama/ui_oracle_test.go::TestLlamaViewMatchesPi",
         "internal/codingagent/session_context_settings_test.go::TestGetSessionContextSettingsBoundaries",
@@ -29653,7 +29588,6 @@
         "coding/extension/host/inproc/registries_test.go::TestShortcuts_DiagnosticMessageMatchesUpstream",
         "coding/extension/host/inproc/shortcuts_oracle_test.go::TestRunnerShortcutsMatchPi",
         "coding/mcpext/manager_view_oracle_test.go::TestMcpManagerViewMatchesPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsMatchPi",
         "internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi",
         "internal/codingagent/llama/ui_oracle_test.go::TestLlamaViewMatchesPi",
         "internal/codingagent/mcp_cards_oracle_test.go::TestMcpToolCardsMatchPi",
@@ -29697,7 +29631,6 @@
         "coding/extension/host/inproc/shortcuts_oracle_test.go::TestRunnerShortcutsMatchPi",
         "coding/mcpext/manager_view_oracle_test.go::TestMcpManagerViewMatchesPi",
         "internal/codingagent/bash_execution_oracle_test.go::TestBashExecutionComponentMatchesPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsMatchPi",
         "internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi",
         "internal/codingagent/llama/ui_oracle_test.go::TestLlamaViewMatchesPi",
         "internal/codingagent/mcp_cards_oracle_test.go::TestMcpToolCardsMatchPi",
@@ -29749,7 +29682,6 @@
         "coding/extension/host/inproc/shortcuts_oracle_test.go::TestRunnerShortcutsMatchPi",
         "coding/mcpext/manager_view_oracle_test.go::TestMcpManagerViewMatchesPi",
         "internal/codingagent/bash_execution_oracle_test.go::TestBashExecutionComponentMatchesPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsMatchPi",
         "internal/codingagent/extension_editor_test.go::TestExtensionEditorHandleInputMatchesPi",
         "internal/codingagent/llama/ui_oracle_test.go::TestLlamaViewMatchesPi",
         "internal/codingagent/mcp_cards_oracle_test.go::TestMcpToolCardsMatchPi",
@@ -34522,7 +34454,6 @@
         }
       ],
       "tests": [
-        "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeExtensionReadsExactlyTheSessionTheHostHolds",
         "coding/extension/host/subprocess/runtime_node_refused_append_test.go::TestNodeRuntimeStopsShowingAnAppendTheHostRefused",
         "test/extension-conformance/session_refused_append_test.go::TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs"
       ]
@@ -35076,14 +35007,8 @@
         }
       ],
       "tests": [
-        "coding/cli/load_time_completion_loaders_test.go::TestAuthContributionInspectionAnswersLoadTimeCompletions",
-        "coding/cli/load_time_completion_loaders_test.go::TestAuthContributionLoadByNameAnswersLoadTimeCompletions",
-        "coding/cli/load_time_completion_loaders_test.go::TestExtensionLoginPreviewAnswersLoadTimeCompletions",
-        "coding/cli/load_time_completion_loaders_test.go::TestExtensionValidationAnswersLoadTimeCompletions",
         "coding/extension/host/subprocess/runtime_node_model_runtime_test.go::TestHostAnswersACallItHasNoHandlerFor",
         "coding/extension/host/subprocess/runtime_node_model_runtime_test.go::TestNodeLoadTimeCompletionAnswersBeforeRegistration",
-        "coding/load_time_completion_test.go::TestDefaultResourceLoaderAnswersLoadTimeCompletions",
-        "coding/load_time_completion_test.go::TestDiscoverAndLoadExtensionsAnswersLoadTimeCompletions",
         "internal/codingagent/subprocess_early_model_stream_test.go::TestEarlyModelStreamServesAPICallsWithoutASession"
       ]
     },
@@ -36458,10 +36383,7 @@
           "date": "2026-10-13"
         }
       ],
-      "tests": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsMatchPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go::TestBuiltinToolCardsRandomMatchPi"
-      ]
+      "tests": []
     },
     {
       "id": "BF-90f6908",
@@ -38711,7 +38633,6 @@
       ],
       "tests": [
         "coding/cli/builtin_extension_order_test.go::TestBuiltinExtensionsLoadInIndexOrderWithLlamaFirst",
-        "coding/cli/builtin_extension_order_test.go::TestExplicitBuiltinExtensionsPrecedeTheIndexOrderedOnes",
         "coding/cli/extension_set_builtin_mcp_upstream_test.go::TestUpstreamResourceLoaderNoExtensionsDisablesBuiltinsUnlessLoadedExplicitly",
         "coding/extensionset/extensionset_test.go::TestBuiltinNamesListsARepeatedNameOnce"
       ]
@@ -40287,7 +40208,6 @@
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
         "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
-        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
         "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
@@ -40486,7 +40406,6 @@
         "coding/cli/rpc_tool_abort_grace_test.go::TestRPCAbortedExtensionToolSettlesAndFreesTheSession",
         "coding/extension/host/subprocess/liveness_test.go::TestCancelledToolCallWaitsTheGraceForItsAnswer",
         "coding/extension/host/subprocess/liveness_test.go::TestRequestCancellationWinsOverLateResponse",
-        "coding/extension/host/subprocess/tool_abort_grace_test.go::TestAbortedToolCallSettlesCooperativelyOrFailsAfterTheGrace",
         "test/extension-conformance/tool_abort_grace_test.go::TestConformance_AbortedToolSettlesWithinTheGrace"
       ]
     },
@@ -44825,7 +44744,6 @@
       "tests": [
         "coding/extension/host/subprocess/node_library_bundle_test.go::TestNodeLibraryBundlesKeepSharedIdentitiesWithoutRawCatalogLoads",
         "coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeFactoryTuiShowOverlayHandleIsSynchronous",
-        "coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop",
         "coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayEndsWithItsConnection",
         "coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayShowsAtOnceAndEndsWithItsHide",
         "coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayWithoutTUIIsNotShown",
@@ -45262,10 +45180,6 @@
         }
       ],
       "tests": [
-        "coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndCallbacksRunOnlyAfterTheRuntimeIsStale",
-        "coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenReloadBegins",
-        "coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitLeavesOtherRequestsRunning",
-        "coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodeRPCPromptEndCallbacksRunBeforeTheNextStep",
         "coding/extension/host/subprocess/runtime_node_prompt_end_unix_test.go::TestNodePromptEndWaitEndsWithTheProcess",
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-command.toml",
         "test/parity/scenarios/extensions-runtime/73-print-prompt-end-input.toml",
@@ -47255,7 +47169,6 @@
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
         "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
-        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
         "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
@@ -47736,7 +47649,6 @@
         }
       ],
       "tests": [
-        "internal/codingagent/config_oauth_login_cancel_test.go::TestConfigOAuthLoginSelectCancelReturnsToMenu",
         "internal/codingagent/login_prompt_empty_test.go::TestOAuthLoginTextPromptAcceptsAnEmptyAnswer"
       ]
     },
@@ -48103,7 +48015,6 @@
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
         "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
-        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
         "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
@@ -48991,8 +48902,7 @@
       "tests": [
         "coding/session_custom_entries_test.go::TestAppendExtensionEntryPreservesIdentityAndEventSemantics",
         "coding/session_custom_entries_test.go::TestAppendExtensionEntryRejectsWithoutChangingTheLog",
-        "coding/session_custom_entries_test.go::TestAppendExtensionEntrySharesTheNativeAppendLock",
-        "coding/session_custom_entries_test.go::TestAppendExtensionEntryThroughNodeHost"
+        "coding/session_custom_entries_test.go::TestAppendExtensionEntrySharesTheNativeAppendLock"
       ]
     },
     {
@@ -50769,12 +50679,6 @@
         "coding/extension/host/subprocess/oauth_bridge_test.go::TestOAuthCallbackInitiationFollowsRealCallbackEntry",
         "coding/extension/host/subprocess/oauth_legacy_callbacks_test.go::TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface",
         "coding/extension/host/subprocess/oauth_legacy_callbacks_test.go::TestOAuthProxy_ManualCodeInputShowsPisPromptMessage",
-        "internal/codingagent/config_oauth_login_cancel_test.go::TestConfigOAuthLoginSelectCancelReturnsToMenu",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginRejectsUnknownInteractionTypes",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt",
         "test/extension-conformance/oauth_conformance_test.go::TestConformance_OAuthTransportsMatch"
       ]
     },
@@ -50814,12 +50718,6 @@
         "coding/extension/host/subprocess/oauth_bridge_test.go::TestOAuthCallbackInitiationFollowsRealCallbackEntry",
         "coding/extension/host/subprocess/oauth_legacy_callbacks_test.go::TestOAuthProxy_LoginRelaysTheLegacyCallbackSurface",
         "coding/extension/host/subprocess/oauth_legacy_callbacks_test.go::TestOAuthProxy_ManualCodeInputShowsPisPromptMessage",
-        "internal/codingagent/config_oauth_login_cancel_test.go::TestConfigOAuthLoginSelectCancelReturnsToMenu",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginRunsDeclaredLogin",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderAPIKeyLoginWithoutDeclaredLoginUsesGenericPrompt",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginOffersDeclaredMethods",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderLoginRejectsUnknownInteractionTypes",
-        "internal/codingagent/native_provider_login_test.go::TestNativeProviderOAuthLoginSelectPrompt",
         "test/extension-conformance/oauth_conformance_test.go::TestConformance_OAuthTransportsMatch"
       ]
     },
@@ -51698,7 +51596,6 @@
         "coding/extension/host/subprocess/node_library_bundle_test.go::TestNodeLibraryBundlesKeepSharedIdentitiesWithoutRawCatalogLoads",
         "coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeFactoryTuiShowOverlayHandleIsSynchronous",
         "coding/extension/host/subprocess/runtime_node_overlay_handle_test.go::TestNodeSurfaceFactoryTuiShowsOverlays",
-        "coding/extension/host/subprocess/runtime_node_prompt_end_test.go::TestNodePromptEndWaitEndsWhenAnotherProcessTurnsTheLoop",
         "coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayEndsWithItsConnection",
         "coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayShowsAtOnceAndEndsWithItsHide",
         "coding/extension/host/subprocess/ui_bridge_raw_overlay_test.go::TestRawOverlayWithoutTUIIsNotShown",
@@ -54192,7 +54089,6 @@
         }
       ],
       "tests": [
-        "internal/codingagent/codemode_main_screen_oracle_test.go::TestCodemodeCardCutInsideSurrogatePairMatchesPiMainScreen",
         "tui/render_overflow_test.go::TestOverflowCrashLogEncodesUnpairedSurrogates",
         "tui/render_overflow_test.go::TestOverflowMeasuresRowsBeforeUnpairedSurrogatesAreEncoded",
         "tui/widthx/surrogate_test.go::TestApplyLineResetKeepsUnpairedSurrogatesMeasuredAsPi"
@@ -57613,7 +57509,6 @@
         }
       ],
       "tests": [
-        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
         "test/parity/scenarios/interactive-rendering/70-prototype-named-path-cards.toml",
         "test/parity/scenarios/interactive-rendering/71-resume-prototype-named-path-cards.toml"
       ]
@@ -59028,7 +58923,6 @@
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesMarkerWhenAnEntryIsBusy",
         "coding/cli/extension_cache_gc_test.go::TestAutomaticExtensionCacheGCWritesNoMarkerOnRealFailure",
         "coding/cli/extension_cache_gc_test.go::TestExtensionsCacheStatsShowsTheLastAutomaticPruneFailure",
-        "coding/cli/extension_cache_gc_test.go::TestLoadingExtensionsSchedulesButDoesNotRunTheCacheCollection",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCReturnsBeforeCollectionFinishes",
         "coding/cli/extension_cache_gc_test.go::TestStartAutomaticExtensionCacheGCRunsOnlyWhenScheduledAndOnlyOnce",
         "coding/cli/extension_cache_gc_test.go::TestStopAutomaticExtensionCacheGCCancelsTheCollection",
@@ -60690,7 +60584,6 @@
         "ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty",
         "internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi",
         "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves",
-        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
         "internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth",
         "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
         "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes",
@@ -60725,7 +60618,6 @@
         "ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty",
         "internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi",
         "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves",
-        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
         "internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth",
         "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
         "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes",
@@ -60760,7 +60652,6 @@
         "ai/validate_prototype_names_test.go::TestAToolArgumentNamedLikeAnObjectPrototypeMemberIsValidatedAsAnOwnProperty",
         "internal/codingagent/prototype_named_path_cards_test.go::TestCardsOfAPathNamedLikeAnObjectPrototypeMemberAgainstPi",
         "internal/codingagent/prototype_named_path_cards_test.go::TestReadAndWriteCardsOfAPathNamedLikeAnObjectPrototypeMemberAreTheCardsThemselves",
-        "internal/codingagent/read_write_cards_contract_test.go::TestReadWriteCardsMatchPi",
         "internal/evals/report_color_prototype_names_oracle_test.go::TestATermNamedLikeAnObjectPrototypeMemberHasTheDefaultColorDepth",
         "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoIsDrawnAsLovelyMermaidDrawsIt",
         "internal/mermaid/class_named_proto_test.go::TestAClassNamedProtoStylesItsNodes",
@@ -63076,9 +62967,6 @@
         "automation/ci/changelogfrag/history_test.go::TestAnUnmarkedLegacyBulletFailsWithoutAGitCheckout",
         "automation/ci/changelogfrag/history_test.go::TestLegacyFragmentsAreExemptFromReachabilityButNotFromTheMarker",
         "automation/ci/changelogfrag/main_test.go::TestFoldRefusesABulletTheLedgerWouldGuessAbout",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesInstalledGitSource",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesUninstalledGitSourceInScratchDir",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesUninstalledNPMSourceInScratchDir",
         "coding/cli/git_checkout_path_test.go::TestGitLongPathsEnvPerPlatform",
         "coding/cli/piglet_install_scripts_test.go::TestInstallArgsIgnoreScriptsOnlyWhenAsked",
         "coding/cli/piglet_install_scripts_test.go::TestPackageInstallKeepsPisLifecycleScripts",
@@ -63136,9 +63024,6 @@
         "automation/ci/changelogfrag/history_test.go::TestAnUnmarkedLegacyBulletFailsWithoutAGitCheckout",
         "automation/ci/changelogfrag/history_test.go::TestLegacyFragmentsAreExemptFromReachabilityButNotFromTheMarker",
         "automation/ci/changelogfrag/main_test.go::TestFoldRefusesABulletTheLedgerWouldGuessAbout",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesInstalledGitSource",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesUninstalledGitSourceInScratchDir",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesUninstalledNPMSourceInScratchDir",
         "coding/cli/git_checkout_path_test.go::TestGitLongPathsEnvPerPlatform",
         "coding/cli/piglet_install_scripts_test.go::TestInstallArgsIgnoreScriptsOnlyWhenAsked",
         "coding/cli/piglet_install_scripts_test.go::TestPackageInstallKeepsPisLifecycleScripts",
@@ -63196,9 +63081,6 @@
         "automation/ci/changelogfrag/history_test.go::TestAnUnmarkedLegacyBulletFailsWithoutAGitCheckout",
         "automation/ci/changelogfrag/history_test.go::TestLegacyFragmentsAreExemptFromReachabilityButNotFromTheMarker",
         "automation/ci/changelogfrag/main_test.go::TestFoldRefusesABulletTheLedgerWouldGuessAbout",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesInstalledGitSource",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesUninstalledGitSourceInScratchDir",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesUninstalledNPMSourceInScratchDir",
         "coding/cli/git_checkout_path_test.go::TestGitLongPathsEnvPerPlatform",
         "coding/cli/piglet_install_scripts_test.go::TestInstallArgsIgnoreScriptsOnlyWhenAsked",
         "coding/cli/piglet_install_scripts_test.go::TestPackageInstallKeepsPisLifecycleScripts",
@@ -63256,9 +63138,6 @@
         "automation/ci/changelogfrag/history_test.go::TestAnUnmarkedLegacyBulletFailsWithoutAGitCheckout",
         "automation/ci/changelogfrag/history_test.go::TestLegacyFragmentsAreExemptFromReachabilityButNotFromTheMarker",
         "automation/ci/changelogfrag/main_test.go::TestFoldRefusesABulletTheLedgerWouldGuessAbout",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesInstalledGitSource",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesUninstalledGitSourceInScratchDir",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesUninstalledNPMSourceInScratchDir",
         "coding/cli/git_checkout_path_test.go::TestGitLongPathsEnvPerPlatform",
         "coding/cli/piglet_install_scripts_test.go::TestInstallArgsIgnoreScriptsOnlyWhenAsked",
         "coding/cli/piglet_install_scripts_test.go::TestPackageInstallKeepsPisLifecycleScripts",
@@ -63316,9 +63195,6 @@
         "automation/ci/changelogfrag/history_test.go::TestAnUnmarkedLegacyBulletFailsWithoutAGitCheckout",
         "automation/ci/changelogfrag/history_test.go::TestLegacyFragmentsAreExemptFromReachabilityButNotFromTheMarker",
         "automation/ci/changelogfrag/main_test.go::TestFoldRefusesABulletTheLedgerWouldGuessAbout",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesInstalledGitSource",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesUninstalledGitSourceInScratchDir",
-        "coding/cli/extension_validate_command_test.go::TestInstallValidateOnlyValidatesUninstalledNPMSourceInScratchDir",
         "coding/cli/git_checkout_path_test.go::TestGitLongPathsEnvPerPlatform",
         "coding/cli/piglet_install_scripts_test.go::TestInstallArgsIgnoreScriptsOnlyWhenAsked",
         "coding/cli/piglet_install_scripts_test.go::TestPackageInstallKeepsPisLifecycleScripts",

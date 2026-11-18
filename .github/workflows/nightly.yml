@@ -8,6 +8,9 @@ name: Nightly race, fuzz, allocation ratchet and Piglet strip matrix
 # automation/ci/allocbase/baseline.toml (make alloc-baseline).
 # The strip matrix job runs make piglet-strip-matrix in its default mode (automation/ci/stripmatrix): 2610 s at 8 CPUs, so pull requests
 # run only its go vet of ./ai/... (make piglet-strip-guard, in ci-contracts).
+# The strip tests jobs run make piglet-strip-tests, the tests of ./coding/... and ./internal/codingagent/... under each strip tag
+# alone and under all tags, one job per set (the set list comes from the registry: stripmatrix -print-sets), so a test that needs a stripped
+# built-in without a build constraint on its file fails the night it is added.
 on:
   schedule:
     - cron: '23 3 * * *'
@@ -253,3 +256,60 @@ jobs:
         env:
           CI: '1'
         run: make piglet-strip-matrix
+
+  strip-tests-sets:
+    name: Piglet strip tests / the sets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      sets: ${{ steps.sets.outputs.sets }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      - name: List the strip tag sets
+        id: sets
+        run: echo "sets=$(go run ./automation/ci/stripmatrix -print-sets -sets all)" >> "$GITHUB_OUTPUT"
+
+  strip-tests:
+    name: Piglet strip tests / ${{ matrix.set }}
+    needs: strip-tests-sets
+    runs-on: ubuntu-24.04
+    # The bound leaves room for the hosted runner, which has fewer CPUs than the host the Makefile comment of piglet-strip-tests measured.
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        set: ${{ fromJSON(needs.strip-tests-sets.outputs.sets) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: .go-version
+          cache: true
+      # The tests of ./coding/... start node (the Pi-oracle tests and the Node extension host): the pinned Node and the oracle, as in the strip-matrix job.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Install native test tools and the pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation/ci/install-native-test-packages.sh
+          npm_version="$(awk '/^  NPM_VERSION:/ { print $2; exit }' .github/workflows/ci.yml)"
+          automation/ci/install-npm-toolchain.sh
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
+          test "$(npm --version)" = "$npm_version"
+          make upstream-mirror
+      - name: Test ./coding/... and ./internal/codingagent/... under the strip tag set
+        env:
+          CI: '1'
+        run: make piglet-strip-tests STRIP_TESTS_SET='${{ matrix.set }}'

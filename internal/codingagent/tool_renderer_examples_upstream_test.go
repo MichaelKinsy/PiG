@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -64,42 +63,6 @@ func rendererExampleState(t *testing.T, tempDir, extensionPath string, tools []s
 	defer func() { _ = session.Close() }()
 	definition, ok := session.GetToolDefinition("edit")
 	return session.SystemPrompt(), definition, ok
-}
-
-func TestToolRendererExamplesUpstream(t *testing.T) {
-	// .upstream/v0.99.2/packages/coding-agent/test/tool-renderer-examples.test.ts:65
-	// Regression test for https://github.com/earendil-works/pi/issues/10072
-	for _, tc := range []struct {
-		name, file string
-		tools      []string
-	}{
-		{"built-in tool renderer", "built-in-tool-renderer.ts", []string{"read", "bash", "edit", "write"}},
-		{"minimal mode", "minimal-mode.ts", []string{"read", "bash", "write", "edit", "find", "grep", "ls"}},
-	} {
-		t.Run("keeps the system prompt unchanged for the "+tc.name+" example", func(t *testing.T) {
-			tempDir := t.TempDir()
-			baseline, _, _ := rendererExampleState(t, tempDir, "", tc.tools)
-			withRenderer, _, _ := rendererExampleState(t, tempDir, filepath.Join(examplesDir, tc.file), tc.tools)
-			if withRenderer != baseline {
-				t.Fatalf("system prompt changed by %s:\n--- baseline\n%s\n--- with renderer\n%s", tc.file, baseline, withRenderer)
-			}
-		})
-	}
-	// .upstream/v0.99.2/packages/coding-agent/test/tool-renderer-examples.test.ts:86
-	// Regression test for https://github.com/earendil-works/pi/issues/10072
-	t.Run("keeps minimal mode's edit tool in the default shell", func(t *testing.T) {
-		_, editToolDefinition, ok := rendererExampleState(t, t.TempDir(), filepath.Join(examplesDir, "minimal-mode.ts"), []string{"edit"})
-		if !ok {
-			t.Fatal("minimal mode did not register the edit tool")
-		}
-		defaultShellDefinition := editToolDefinition
-		defaultShellDefinition.RenderShell = ""
-
-		got, want := renderEditTool(t, editToolDefinition), renderEditTool(t, defaultShellDefinition)
-		if !slices.Equal(got, want) {
-			t.Fatalf("edit card = %q, want the default shell %q", got, want)
-		}
-	})
 }
 
 // renderEditTool ports renderEditTool (tool-renderer-examples.test.ts:97-107) at width 40. Pi's renderCall runs synchronously inside ToolExecutionComponent.render, so its card already holds the example's "edit notes.txt" call line. A subprocess renderCall draws through a proxy that answers off the render loop and shows its last completed frame (D56), so the first Render has no call line yet. This waits for the extension's frame and returns the settled card, which is the card Pi compares; comparing the first frames would compare only the empty shells.
