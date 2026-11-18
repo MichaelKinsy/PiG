@@ -21,7 +21,7 @@ type repaintRecorder struct {
 func (r *repaintRecorder) Invalidate()           { r.calls = append(r.calls, "invalidate") }
 func (r *repaintRecorder) RequestRender(...bool) { r.calls = append(r.calls, "requestRender") }
 
-// Pi's init loads the remaining grammars off the event loop after the startup frame; its continuation, back on the loop, invalidates and requests a render unless the mode has stopped (interactive-mode.ts:init). pig divergence (D618): PiG does so only when a highlight lookup made before the load answers differently now. The grammar load runs once per process, so each test runs in a process of its own.
+// Pi's init loads the remaining grammars off the event loop after the startup frame; its continuation, back on the loop, invalidates and requests a render unless the mode has stopped (interactive-mode.ts:init). pig divergence (D618): PiG requests the render as Pi does and invalidates only when a highlight lookup made before the load answers differently now. The grammar load runs once per process, so each test runs in a process of its own.
 func TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop(t *testing.T) {
 	if !testenv.InOwnProcess(t) {
 		return
@@ -54,9 +54,9 @@ func TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop(t *testing.T) {
 	m.backgroundTasks.Wait()
 }
 
-// A start that looked up no language the load adds has nothing to redraw: the load posts no repaint, so no frame follows the first (D618; Pi writes
-// a 29-byte cursor-only frame there, see parity scenario 69).
-func TestLoadRemainingHighlightLanguagesPostsNoRepaintWhenNoLookupDiffers(t *testing.T) {
+// A start that looked up no language the load adds has nothing to re-highlight: the load requests its render, as Pi's does (parity scenario 69: Pi writes a
+// 29-byte cursor-only frame there and so does PiG), and invalidates nothing (D618).
+func TestLoadRemainingHighlightLanguagesRequestsTheRenderWithoutInvalidatingWhenNoLookupDiffers(t *testing.T) {
 	if !testenv.InOwnProcess(t) {
 		return
 	}
@@ -68,16 +68,21 @@ func TestLoadRemainingHighlightLanguagesPostsNoRepaintWhenNoLookupDiffers(t *tes
 	}
 	m.loadRemainingHighlightLanguages()
 	m.backgroundTasks.Wait()
+	var task func()
 	select {
-	case <-m.uiTaskCh:
-		t.Fatal("the grammar load posted a repaint although no earlier lookup differs")
+	case task = <-m.uiTaskCh:
 	default:
+		t.Fatal("the grammar load posted no render request to the owner loop")
 	}
 	if !tui.SupportsLanguage("ada") {
 		t.Fatal("the load did not register the remaining languages")
 	}
 	if len(renderer.calls) != 0 {
-		t.Fatalf("the load repainted: %v", renderer.calls)
+		t.Fatalf("the background task called the renderer off the owner loop: %v", renderer.calls)
+	}
+	task()
+	if got := renderer.calls; len(got) != 1 || got[0] != "requestRender" {
+		t.Fatalf("renderer calls %v, want exactly one requestRender and no invalidate", got)
 	}
 }
 
