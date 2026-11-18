@@ -209364,6 +209364,17 @@
       "shapeHash": "sha256:61314d52146326cad46b31eaea06582a642fd5622dfdc2fd2bf4aecda47ce168"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.passStart",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "Extension.passStart",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string, method string, place *github.com/MichaelKinsy/PiG/extensions/sdk/internal/jsloop.Place)"
+      },
+      "shapeHash": "sha256:35b97a2fa481e714361d4854628dc299e6d1d81064f7e5c1ecce59796b5aa016"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#Extension.publishTool",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "Extension.publishTool",
