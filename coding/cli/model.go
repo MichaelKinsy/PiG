@@ -37,6 +37,12 @@ func buildModelFromRef(ctx context.Context, providerID, modelID string, services
 		}
 		return model, nil
 	}
+	// A stored model (in the models store, not bundled or in models.json) is the composed catalog's own entry, not a provider-default copy (resolveStartupModelEntry below).
+	if _, bundled := ai.LookupModelExact(providerID + "/" + modelID); !bundled && !registry.HasModelDefinition(providerID, modelID) {
+		if model := services.ModelRuntime().GetModel(providerID, modelID); model != nil {
+			return model, nil
+		}
+	}
 	entry := resolveStartupModelEntry(providerID, modelID, registry)
 
 	// Radius runtime keys are in-memory metadata; the shared builder owns stored credential reads and refresh.
