@@ -40595,29 +40595,6 @@
       ]
     },
     {
-      "id": "BF-D235",
-      "title": "A session-graph client's two live runs with no \"no run\" read between them are one context",
-      "symptom": "none. The difference comes from the wire.",
-      "rootCause": "the wire carries no run identity. A new context per read would renumber an aborted run on every sync (the busy loop fixed in). A run that follows an aborted one is told apart, because the abort cancelled the context.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D235",
-      "removeWhen": "the getSignal wire carries a run token in all SDKs and the binding makes a new context when the token changes (a later lane).",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "81095f5f95",
-          "date": "2026-11-05"
-        }
-      ],
-      "tests": [
-        "coding/session_graph_signal_test.go::TestGraphGetSignalIsOneObjectForARunAndItsAbort"
-      ]
-    },
-    {
       "id": "BF-D266",
       "title": "An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the…",
       "symptom": "Pi's tool card names an image block whose `mimeType` is the empty string `[Image: []]`, an empty bracket pair, where PiG names it `[Image: [image/unknown]]`.",
@@ -45538,6 +45515,74 @@
         "coding/pigletbuild/node_cell_test.go::TestBuildNodeCellRefusesALinkWithAParentStepAfterAName",
         "internal/archivepath/archivepath_test.go::TestCheckLink",
         "internal/archivepath/archivepath_test.go::TestMember"
+      ]
+    },
+    {
+      "id": "BF-b290bc0",
+      "title": "A session-graph client's extension (an `ExtensionRunner` an extension builds, in the Go, Python, Rust or Lisp…",
+      "symptom": "A session-graph client's extension (an `ExtensionRunner` an extension builds, in the Go, Python, Rust or Lisp SDK) no longer lets a handler that kept a run's `ctx.signal` see the next run's abort, and the handler still sees its own run's abort when the next run began before the host read it.",
+      "rootCause": "the getSignal answer carried only none, live or aborted, so the host could tell a new run only from an abort it had already read, and no SDK said which signal object a run was",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "ahead-of-pi",
+      "divergence": "D235",
+      "removeWhen": "no supported client sends an answer without `run` (the host may then require it and case (1) is gone), and the host can read an aborted run without renumbering it on every sync, so that the storm guard can be dropped and two runs aborted at birth are two contexts (case (2) is gone).",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A session-graph client's extension (an `ExtensionRunner` an extension builds, in the Go, Python, Rust or Lisp SDK) no longer lets a handler that kept a run's `ctx.signal` see the next run's abort, and the handler still sees its own run's abort when the next run began before the host read it. The SDK's `getSignal` answer now carries a run token (`run`, new for each signal object the client returns) and `endedAborted` (the previous run's signal had aborted), and the host makes a context for each token; an abort of a client that returns a new signal object on every call costs at most four reads of its `getSignal`. A client built before this change, or one that sends no token, behaves as before (D235).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "81095f5f95",
+          "date": "2026-11-05"
+        },
+        {
+          "hash": "7b5888ce5e",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "a8e7420fe9",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "ae821f41fc",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "b1ed275cb9",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "b290bc068c",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "e01a57f90c",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "ff1812064c",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/session_graph_signal_test.go::TestGraphGetSignalAppliesTokenedAnswersInReadOrder",
+        "coding/session_graph_signal_test.go::TestGraphGetSignalEndedAbortedCancelsTheOldRun",
+        "coding/session_graph_signal_test.go::TestGraphGetSignalErrorBetweenTokenedRuns",
+        "coding/session_graph_signal_test.go::TestGraphGetSignalIsOneObjectForARunAndItsAbort",
+        "coding/session_graph_signal_test.go::TestGraphGetSignalMalformedRunIsAReadError",
+        "coding/session_graph_signal_test.go::TestGraphGetSignalTokenedRuns",
+        "coding/session_graph_signal_test.go::TestGraphGetSignalZeroRunIsNoToken",
+        "coding/session_graph_signal_test.go::TestGraphSignalAnswerWithRunDecodesInAReleasedHost",
+        "coding/session_graph_signal_test.go::TestGraphSignalReadOfAHeldRunAllocatesNothing",
+        "coding/session_graph_signal_test.go::TestGraphTwoRunsAbortedAtBirthShareOneContext",
+        "coding/session_graph_signal_test.go::TestGraphUnstableSignalIsReadOncePerRequest",
+        "extensions/sdk/signal_runs_test.go::TestSignalRunsBoxTheTokenOncePerRun",
+        "extensions/sdk/signal_runs_test.go::TestSignalRunsTokenFollowsTheSignalObject",
+        "extensions/sdk/signal_runs_test.go::TestSignalRunsUncomparableSignalIsANewRunEachTime",
+        "test/extension-conformance/extension_runner_signal_test.go::TestPackedSessionGraphRunSignalAcrossSDKs",
+        "test/extension-conformance/extension_runner_signal_test.go::TestSessionGraphRunSignalAcrossSDKs",
+        "test/extension-conformance/session_graph_gc_test.go::TestSessionGraphRowsUnderAggressiveCollector"
       ]
     },
     {
@@ -66282,8 +66327,8 @@
     },
     {
       "id": "D235",
-      "title": "A session-graph client's two live runs with no \"no run\" read between them are one context",
-      "entry": "BF-D235"
+      "title": "A session-graph client's runs share one ctx.signal when its SDK sends no run token, and when two runs were…",
+      "entry": "BF-b290bc0"
     },
     {
       "id": "D266",

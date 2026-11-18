@@ -1501,7 +1501,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-D208](#bf-d208) | From inside a component's render, a TuiAltScreen of the Go, Rust, Python and Lisp SDKs fails the calls that… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D220](#bf-d220) | Markdown renders each paragraph with the inline state at its position, not with the lines of an earlier… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D226](#bf-d226) | Go, Rust, Python and Lisp serve TypeBox `Value.Check` and `Value.Errors` only, through the host | A Pi defect that PiG fixed first | All platforms | Unreleased |
-| [BF-D235](#bf-d235) | A session-graph client's two live runs with no "no run" read between them are one context | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D266](#bf-d266) | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D267](#bf-d267) | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-D269](#bf-d269) | A system fd or rg is accepted only if `--version` names it, and the `@` autocomplete runs fd in a new session | A Pi defect that PiG fixed first | All platforms | Unreleased |
@@ -1667,6 +1666,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-b1ff77a](#bf-b1ff77a) | The pi-env daemon answers as Pi's daemon does where a differential test found it did not: an error for an… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-b214a4c](#bf-b214a4c) | After `/new`, `/resume`, `/clone` or `/fork` in the interactive mode, the model selector, an extension's… | PiG's own defect | All platforms | Unreleased |
 | [BF-b22120f](#bf-b22120f) | A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into | PiG's own defect | All platforms | 0.7.0 |
+| [BF-b290bc0](#bf-b290bc0) | A session-graph client's extension (an `ExtensionRunner` an extension builds, in the Go, Python, Rust or Lisp… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-b2b0c63](#bf-b2b0c63) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-b2c219f](#bf-b2c219f) | fix(runtimecell): satisfy the divergence, port and perf gates for the usage-lease and fingerprint changes | PiG's own defect | All platforms | Unreleased |
 | [BF-b30b8aa](#bf-b30b8aa) | After a failed `/reload` in the interactive mode, the API that the old extensions captured is stale, as in… | PiG's own defect | All platforms | Unreleased |
@@ -22894,21 +22894,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `24d55ab3f0` (2026-11-02), `4a7c33c707` (2026-11-02), `82fd316d04` (2026-11-02), `e27164c914` (2026-11-02), `04b54f41a6` (2026-11-05), `2d64420e5d` (2026-11-05), `2ea7c28f18` (2026-11-05), `55a49d1a10` (2026-11-05), `574b3d1aa2` (2026-11-05), `57bb1d4864` (2026-11-05), `6791a37e85` (2026-11-05), `758e965b93` (2026-11-05), `ed16a91348` (2026-11-05)
 - **Tests:** `coding/extension/host/subprocess/type_engine_test.go::TestAbandonedValueWalksEndWithTheirConnection`, `internal/typebox/engine/refine_oracle_test.go::TestRefineMatchesTypeBox`, `internal/typebox/engine/value_walk_test.go::TestSessionCloseCancelsItsParkedWalks`, `internal/typebox/engine/value_walk_test.go::TestValueWalkCostIsLinearInTheRefinementCalls`, `internal/typebox/engine/value_walk_test.go::TestValueWalkFollowsRecursionAsDeepAsTypeBox`, `internal/typebox/refine_depth_test.go::TestWalkersStopASelfReferringSchema`, `test/extension-conformance/refine_arguments_test.go::TestConformance_RefinedToolArgumentsAreNotRefined`, `test/extension-conformance/refine_value_test.go::TestConformance_RefinedValueOfASelfReferringSchemaFailsTheCall` and 1 more in docs/bug-ledger.json
 
-### BF-D235
-
-**A session-graph client's two live runs with no "no run" read between them are one context**
-
-- **Source:** A Pi defect that PiG fixed first (divergence D235)
-- **Symptom:** none. The difference comes from the wire.
-- **Root cause:** the wire carries no run identity. A new context per read would renumber an aborted run on every sync (the busy loop fixed in). A run that follows an aborted one is told apart, because the abort cancelled the context.
-- **User impact:** Behavior differed from Pi
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** the getSignal wire carries a run token in all SDKs and the binding makes a new context when the token changes (a later lane).
-- **Fix commits:** `81095f5f95` (2026-11-05)
-- **Tests:** `coding/session_graph_signal_test.go::TestGraphGetSignalIsOneObjectForARunAndItsAbort`
-
 ### BF-D266
 
 **An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the…**
@@ -25221,6 +25206,22 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `9155fc460c` (2026-11-01), `b22120fdb8` (2026-11-01)
 - **Tests:** `coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesKeepsLinksThatStayInsideTheTree`, `coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesRefusesALinkReachedByAnotherSpellingOfItsName`, `coding/extension/host/cellpack/node_cell_test.go::TestUntarNodeSourcesRefusesWritesThroughSymbolicLinks`, `coding/pigletbuild/node_cell_test.go::TestBuildNodeCellNamesTheExtensionDirectoryForALinkThatLeavesIt`, `coding/pigletbuild/node_cell_test.go::TestBuildNodeCellRefusesALinkWithAParentStepAfterAName`, `internal/archivepath/archivepath_test.go::TestCheckLink`, `internal/archivepath/archivepath_test.go::TestMember`
 - **Release note:** A Piglet Binary's Node extension archive can no longer write outside the directory it is extracted into. The extraction checked link names as text, but the kernel resolves `z/..` through a link `z`, so a link such as `z/../z/../..` passed the check while resolving above the directory, and a later archive member under it was written there. The extraction now writes through `os.Root`, refuses a member whose path passes through a link the archive wrote, and accepts only a link target that climbs (`..`) before it names anything; the check reads the tree on disk, so a file system that folds case cannot reach a link by another spelling, and a link target holding `:` is refused. `pig piglet build` refuses the same links instead of embedding them.
+
+### BF-b290bc0
+
+**A session-graph client's extension (an `ExtensionRunner` an extension builds, in the Go, Python, Rust or Lisp…**
+
+- **Source:** A Pi defect that PiG fixed first (divergence D235)
+- **Symptom:** A session-graph client's extension (an `ExtensionRunner` an extension builds, in the Go, Python, Rust or Lisp SDK) no longer lets a handler that kept a run's `ctx.signal` see the next run's abort, and the handler still sees its own run's abort when the next run began before the host read it.
+- **Root cause:** the getSignal answer carried only none, live or aborted, so the host could tell a new run only from an abort it had already read, and no SDK said which signal object a run was
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** no supported client sends an answer without `run` (the host may then require it and case (1) is gone), and the host can read an aborted run without renumbering it on every sync, so that the storm guard can be dropped and two runs aborted at birth are two contexts (case (2) is gone).
+- **Fix commits:** `81095f5f95` (2026-11-05), `7b5888ce5e` (2026-11-17), `a8e7420fe9` (2026-11-17), `ae821f41fc` (2026-11-17), `b1ed275cb9` (2026-11-17), `b290bc068c` (2026-11-17), `e01a57f90c` (2026-11-17), `ff1812064c` (2026-11-17)
+- **Tests:** `coding/session_graph_signal_test.go::TestGraphGetSignalAppliesTokenedAnswersInReadOrder`, `coding/session_graph_signal_test.go::TestGraphGetSignalEndedAbortedCancelsTheOldRun`, `coding/session_graph_signal_test.go::TestGraphGetSignalErrorBetweenTokenedRuns`, `coding/session_graph_signal_test.go::TestGraphGetSignalIsOneObjectForARunAndItsAbort`, `coding/session_graph_signal_test.go::TestGraphGetSignalMalformedRunIsAReadError`, `coding/session_graph_signal_test.go::TestGraphGetSignalTokenedRuns`, `coding/session_graph_signal_test.go::TestGraphGetSignalZeroRunIsNoToken`, `coding/session_graph_signal_test.go::TestGraphSignalAnswerWithRunDecodesInAReleasedHost` and 9 more in docs/bug-ledger.json
+- **Release note:** A session-graph client's extension (an `ExtensionRunner` an extension builds, in the Go, Python, Rust or Lisp SDK) no longer lets a handler that kept a run's `ctx.signal` see the next run's abort, and the handler still sees its own run's abort when the next run began before the host read it. The SDK's `getSignal` answer now carries a run token (`run`, new for each signal object the client returns) and `endedAborted` (the previous run's signal had aborted), and the host makes a context for each token; an abort of a client that returns a new signal object on every call costs at most four reads of its `getSignal`. A client built before this change, or one that sends no token, behaves as before (D235).
 
 ### BF-b2b0c63
 
@@ -34747,7 +34748,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D227 | A suspended session resumed in the background stays parked until `fg` | [BF-b65e288](#bf-b65e288) |
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 | D230 | `pig config` lists declared Package members that are missing from disk, marked `missing` | [BF-825b4ab](#bf-825b4ab) |
-| D235 | A session-graph client's two live runs with no "no run" read between them are one context | [BF-D235](#bf-d235) |
+| D235 | A session-graph client's runs share one ctx.signal when its SDK sends no run token, and when two runs were… | [BF-b290bc0](#bf-b290bc0) |
 | D266 | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | [BF-D266](#bf-d266) |
 | D267 | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | [BF-D267](#bf-d267) |
 | D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |
