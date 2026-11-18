@@ -230,7 +230,7 @@ func firstEditorStateDifference(got, want []editorProbeState) string {
 }
 
 // dictionaryFree is the text of a random probe in a Binary built without the word dictionaries: that build moves over a whole run of CJK text by
-// word (pig additive D92) where Pi's ICU splits it with its dictionary, so the oracle tests draw no CJK character there. Every other build keeps it.
+// word (D92) where Pi's ICU splits it with its dictionary, so the oracle tests draw no CJK character there. Every other build keeps it.
 func dictionaryFree(s string) string {
 	if !pigstrip.Has(pigstrip.ListFeatures, pigstrip.WordDictionaries) {
 		return s
