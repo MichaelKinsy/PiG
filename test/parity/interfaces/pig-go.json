@@ -145828,6 +145828,17 @@
       "shapeHash": "sha256:039bf7a563d74be1b6094b2ef7a6546c120c094b53f467b4dd08a48c9f5ab5b7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.SyncPendingAutocomplete",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.SyncPendingAutocomplete",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, provider *github.com/MichaelKinsy/PiG/coding/extension.AutocompleteProvider) error"
+      },
+      "shapeHash": "sha256:039bf7a563d74be1b6094b2ef7a6546c120c094b53f467b4dd08a48c9f5ab5b7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.Views",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "UIBridge.Views",
@@ -147344,6 +147355,17 @@
         "type": "func(kind string, conn *Conn, raw github.com/MichaelKinsy/PiG/extensions/sdk/json.RawMessage, lines []string, width int) (*github.com/MichaelKinsy/PiG/coding/extension.FramedView, bool)"
       },
       "shapeHash": "sha256:027b4f46c47262105096af44d3077ae3066ee08700e56b6be4edd3c90d0a874e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.syncEditor",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.syncEditor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, editor *editorProxy, provider *github.com/MichaelKinsy/PiG/coding/extension.AutocompleteProvider) error"
+      },
+      "shapeHash": "sha256:fba1d8670f1784006a090e85d56117fd5fa6dc2f3679972470f2d6ebaeba07cc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.systemPromptOptionsWire",
@@ -270524,6 +270546,17 @@
       "shapeHash": "sha256:45d6ad6158405e88425b7ff80bd78571eda5078898dd8e4386c6742e486e5a6a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.currentAutocompleteProvider",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.currentAutocompleteProvider",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *github.com/MichaelKinsy/PiG/coding/extension.AutocompleteProvider"
+      },
+      "shapeHash": "sha256:ce728822be75eaa7cbba8611fa09e44343ee3d71854422e8bbadb397bb601822"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.currentSession",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.currentSession",
@@ -271842,6 +271875,17 @@
         "type": "func() \u003c-chan string"
       },
       "shapeHash": "sha256:ae3a24834f4a9b003a6650e768ced2d29fd4e6827049f4c1bf882817069a4f39"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.handPendingAutocompleteToRemoteEditor",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.handPendingAutocompleteToRemoteEditor",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.handleAgentEvent",

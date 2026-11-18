@@ -34189,6 +34189,25 @@
       ]
     },
     {
+      "id": "BF-8aab9eb",
+      "title": "fix(codingagent): hand the editor an extension installs the provider that exists when the host installs it",
+      "symptom": "fix(codingagent): hand the editor an extension installs the provider that exists when the host installs it",
+      "rootCause": "the host installs a remote editor later than its process built it, and the provider hand-over of Pi's setCustomEditorComponent was done only at build time (ui.autocomplete.current, answered false before the bind ends) and by rebuilds, so an editor built before the provider existed and installed after it was built heard neither.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8aab9eb314",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-8ab5a89",
       "title": "A long session no longer holds each tool result twice",
       "symptom": "A long session no longer holds each tool result twice.",
@@ -40329,6 +40348,31 @@
       "tests": []
     },
     {
+      "id": "BF-9e8e1f9",
+      "title": "fix(codingagent): an editor built before the bind's setup gets the provider the setup builds, and a provider…",
+      "symptom": "fix(codingagent): an editor built before the bind's setup gets the provider the setup builds, and a provider added before it stands on the base",
+      "rootCause": "Pi's editor has no autocomplete provider until the first setupAutocompleteProvider after the bind, and two paths of that state were still wrong in PiG.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "9e8e1f932c",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/autocomplete_pending_sync_test.go::TestSyncPendingAutocompleteReachesOnlyAnEditorBuiltWithoutAProvider",
+        "internal/codingagent/autocomplete_installed_editor_test.go::TestInstalledSubprocessEditorGetsTheProviderInEitherOrder",
+        "internal/codingagent/autocomplete_sync_error_test.go::TestRefusedProviderIsAnExtensionErrorWhereNoCallerCarriesIt",
+        "internal/codingagent/startup_bind_input_pty_test.go::TestAProviderAddedFromSessionStartStandsOnTheBuiltInCommandsBeforeTheBindEnds",
+        "internal/codingagent/startup_bind_input_pty_test.go::TestInitStartupBindChild"
+      ]
+    },
+    {
       "id": "BF-9eda512",
       "title": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…",
       "symptom": "The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads: `contextRetentionMs` is read only when the conversation is idle, as Pi's `runtime.context` does, which removes four settings resolutions from every round of one generation with a tool call.",
@@ -43633,6 +43677,27 @@
       ],
       "tests": [
         "chord/nextnode/workers/workers_workers_test.go::TestCloseLandingAtTheEntryOfAStartsForkSectionForksNothingTheStartFailsClosed"
+      ]
+    },
+    {
+      "id": "BF-a8d41a2",
+      "title": "fix(extension): a subprocess editor installs before the host has an autocomplete provider",
+      "symptom": "fix(extension): a subprocess editor installs before the host has an autocomplete provider",
+      "rootCause": "the install guard used the absence of a provider as the signal that the mode has no editor, so it only worked while the provider existed from construction on.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "a8d41a2014",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/runtime_node_editor_no_provider_test.go::TestNodeEditorInstallsBeforeTheHostHasAProvider"
       ]
     },
     {

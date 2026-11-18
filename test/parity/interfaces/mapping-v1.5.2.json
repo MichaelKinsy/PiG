@@ -186354,6 +186354,7 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
+        "test:internal/codingagent/startup_bind_input_pty_test.go#TestInitStartupBindChild",
         "test:test/extension-conformance/conformance_test.go#TestToolSignalAndUpdatesSDKsMatch"
       ]
     },
@@ -186375,6 +186376,7 @@
       ],
       "evidence": [
         "test:coding/extension/ui_test.go#TestNoopUIContext_AllMethodsReturnUpstreamDefaults",
+        "test:internal/codingagent/startup_bind_input_pty_test.go#TestInitStartupBindChild",
         "test:test/extension-conformance/conformance_test.go#TestToolSignalAndUpdatesSDKsMatch"
       ]
     },

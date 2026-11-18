@@ -1266,6 +1266,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8a88c34](#bf-8a88c34) | On Windows, a custom theme edited in a rapid burst of writes no longer stays on a stale version | PiG's own defect | Windows | 0.7.0 |
 | [BF-8a9bb40](#bf-8a9bb40) | fix(ai): Anthropic retry-delay message and Codex error body without an error member | PiG's own defect | All platforms | Unreleased |
 | [BF-8aaa730](#bf-8aaa730) | A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same… | PiG's own defect | All platforms | Unreleased |
+| [BF-8aab9eb](#bf-8aab9eb) | fix(codingagent): hand the editor an extension installs the provider that exists when the host installs it | PiG's own defect | All platforms | Unreleased |
 | [BF-8ab5a89](#bf-8ab5a89) | A long session no longer holds each tool result twice | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8ab86c8](#bf-8ab86c8) | RPC `get_state` sent right after `new_session`, `fork`, `clone`, `switch_session` or `export_html` now… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-8ac653e](#bf-8ac653e) | The powershell tool no longer reports `Command exited with code 1` under Windows PowerShell 5.1 when a native… | PiG's own defect | Windows | Unreleased |
@@ -1495,6 +1496,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-9df8c5c](#bf-9df8c5c) | `--session <id>` and `--fork <id>` with an exact session ID now read only the session headers of the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9e34810](#bf-9e34810) | A plugin view is sent only to a client that draws every node kind it holds (D614): the registry now reads the… | PiG's own defect | All platforms | Unreleased |
 | [BF-9e72f22](#bf-9e72f22) | A terminal client's device pairing ended its wait between polls at a cancel; it now settles when the poll… | PiG's own defect | All platforms | Unreleased |
+| [BF-9e8e1f9](#bf-9e8e1f9) | fix(codingagent): an editor built before the bind's setup gets the provider the setup builds, and a provider… | PiG's own defect | All platforms | Unreleased |
 | [BF-9eda512](#bf-9eda512) | The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-9ee5c21](#bf-9ee5c21) | Loading a packed Lisp cell no longer hangs when two of its extensions each make a host call, such as a… | PiG's own defect | All platforms | Unreleased |
 | [BF-9f4702c](#bf-9f4702c) | A failed extension shortcut handler is now reported as `Error: Shortcut handler error: …` in the error… | PiG's own defect | All platforms | 0.5.0 |
@@ -1603,6 +1605,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a8428a1](#bf-a8428a1) | A wait of the durable harness (`Submission.Wait`, `WaitForTask`, `WaitForIdle`) whose context was cancelled… | PiG's own defect | All platforms | Unreleased |
 | [BF-a8a04f4](#bf-a8a04f4) | `PIG_DEBUG` writes its log with mode 0600 and refuses a symlink or a file owned by another user in the shared… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a8b5e75](#bf-a8b5e75) | chord: a worker could be forked into a component that a `Close` had begun to close: a start looked at the… | PiG's own defect | All platforms | Unreleased |
+| [BF-a8d41a2](#bf-a8d41a2) | fix(extension): a subprocess editor installs before the host has an autocomplete provider | PiG's own defect | All platforms | Unreleased |
 | [BF-a8f5413](#bf-a8f5413) | Fix the lint findings of the JPEG port | PiG's own defect | All platforms | Unreleased |
 | [BF-a8ff0c7](#bf-a8ff0c7) | The anthropic-messages and google-generative-ai requests build their URL as @anthropic-ai/sdk and… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-a901509](#bf-a901509) | OpenRouter turns (the built-in provider and custom providers on OpenRouter's endpoint) now take OpenRouter's… | PiG's own defect | All platforms | 0.5.3 |
@@ -19626,6 +19629,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** `coding/extension/host/subprocess/prepare_loadout_sync_test.go::TestNodeRuntimeStartsPrepareLoadoutNestedInARefreshItWaitsOn`
 - **Release note:** A Node extension with a `prepareLoadout` tool no longer hangs PiG when it, or another extension in the same process, registers a tool after loading (in a `session_start` handler, as pi-extensible-workflows does) or calls `setActiveTools` and then a synchronous API such as `getActiveTools`; a parallel batch of tool calls no longer gets a `prepare_loadout` extension error. The hook now runs inside that call, as in Pi.
 
+### BF-8aab9eb
+
+**fix(codingagent): hand the editor an extension installs the provider that exists when the host installs it**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codingagent): hand the editor an extension installs the provider that exists when the host installs it
+- **Root cause:** the host installs a remote editor later than its process built it, and the provider hand-over of Pi's setCustomEditorComponent was done only at build time (ui.autocomplete.current, answered false before the bind ends) and by rebuilds, so an editor built before the provider existed and installed after it was built heard neither.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8aab9eb314` (2026-11-17)
+- **Tests:** None recorded.
+
 ### BF-8ab5a89
 
 **A long session no longer holds each tool result twice**
@@ -22811,6 +22827,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** A terminal client's device pairing ended its wait between polls at a cancel; it now settles when the poll interval ends (at most 2 s later) with the cancellation's cause and no further poll, as Pi's bare timeout does.
 
+### BF-9e8e1f9
+
+**fix(codingagent): an editor built before the bind's setup gets the provider the setup builds, and a provider…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(codingagent): an editor built before the bind's setup gets the provider the setup builds, and a provider added before it stands on the base
+- **Root cause:** Pi's editor has no autocomplete provider until the first setupAutocompleteProvider after the bind, and two paths of that state were still wrong in PiG.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `9e8e1f932c` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/autocomplete_pending_sync_test.go::TestSyncPendingAutocompleteReachesOnlyAnEditorBuiltWithoutAProvider`, `internal/codingagent/autocomplete_installed_editor_test.go::TestInstalledSubprocessEditorGetsTheProviderInEitherOrder`, `internal/codingagent/autocomplete_sync_error_test.go::TestRefusedProviderIsAnExtensionErrorWhereNoCallerCarriesIt`, `internal/codingagent/startup_bind_input_pty_test.go::TestAProviderAddedFromSessionStartStandsOnTheBuiltInCommandsBeforeTheBindEnds`, `internal/codingagent/startup_bind_input_pty_test.go::TestInitStartupBindChild`
+
 ### BF-9eda512
 
 **The Go Durable SDK's scheduler no longer resolves the Harness settings for the context a run itself reads…**
@@ -24351,6 +24380,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a8b5e75eb3` (2026-11-15)
 - **Tests:** `chord/nextnode/workers/workers_workers_test.go::TestCloseLandingAtTheEntryOfAStartsForkSectionForksNothingTheStartFailsClosed`
 - **Release note:** chord: a worker could be forked into a component that a `Close` had begun to close: a start looked at the component and forked in two steps, and a Close between them found no child to stop. A worker spawned that way showed as `starting` for a moment, was killed by the start's cleanup, and the late fork re-armed the idle timer Close had stopped; a fork failing in that window reported worker_failed on a closed set. Pi checks `closing` and forks in one synchronous step (workers.ts); the check, the base's file and the fork are now one section.
+
+### BF-a8d41a2
+
+**fix(extension): a subprocess editor installs before the host has an autocomplete provider**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(extension): a subprocess editor installs before the host has an autocomplete provider
+- **Root cause:** the install guard used the absence of a provider as the signal that the mode has no editor, so it only worked while the provider existed from construction on.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a8d41a2014` (2026-11-17)
+- **Tests:** `coding/extension/host/subprocess/runtime_node_editor_no_provider_test.go::TestNodeEditorInstallsBeforeTheHostHasAProvider`
 
 ### BF-a8f5413
 
