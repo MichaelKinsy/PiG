@@ -7,6 +7,10 @@
 # random working directory, Pi's logo), so before this scenario a render pig asked for that Pi does not (init() renders after the bind, a warning renders
 # at once) left its bare cursor placement, ESC[<n>G ESC[?25l, in the stream with no scenario seeing it.
 #
+# Upstream evidence (Pi 1.5.2, packages/coding-agent/src/modes/interactive/interactive-mode.ts and packages/tui/src/tui.ts): init() mounts the header and ends in renderNow
+# (:1141-1162), run() shows the notices after init() returns (:1230-1267) and showWarning only requests a render (:4812-4816), and the renderer writes a frame and then
+# the cursor placement for every render it runs (tui.ts:1025-1031). The measurement of the resulting stream follows.
+#
 # Measured in Pi (xd670, 2026-11-17, a pty answering the DA1 and colour queries like tmux, 20 runs): after the mode setup the stream is a frame and its cursor
 # placement, the Kitty push and the window title, then two more frames each followed by its cursor placement; in half of the runs the first frame is not written
 # (see the frame-count-evidence below). On a terminal that answers nothing the stream is, in all 5 runs, frame, placement, title, frame, placement, frame, placement.
