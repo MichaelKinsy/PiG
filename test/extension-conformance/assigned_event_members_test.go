@@ -104,7 +104,7 @@ func TestAssignedEventMembersFollowPi(t *testing.T) {
 					wantCaller, wantSeen := c.caller, c.seen
 					switch {
 					case c.event == "tool_call" && strings.Contains(tc.name, "rust"):
-						// A Rust handler holds the event as one Value, so assigning data["input"] and editing it are the same edit, and the call's input is what the handler left (the language limit D541 states for Rust message events).
+						// A Rust handler holds the event as one Value, so assigning data["input"] and editing it are the same edit, and the call's input is what the handler left.
 						wantCaller = map[string]any{"input": map[string]any{"command": inPlaceEdited}}
 					case c.carried != nil && !strings.HasPrefix(tc.name, "subprocess-node"):
 						// The native SDKs carry the assigned list (the Go and Rust SDKs since v0.2.0 / v0.3.0, Lisp's turn_end since v0.7.0), the next handler and the request or session hold it; the Node runtime follows Pi.
