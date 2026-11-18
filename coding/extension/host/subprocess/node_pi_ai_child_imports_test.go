@@ -58,7 +58,7 @@ export default async function (pi) {
 `, list, worker, child)
 }
 
-// TestChildAndWorkerImportsOfPiAiResolveAsUnderPi: code an extension starts without an extension runtime (a worker_threads Worker, a forked child) is loaded by Node itself. The same extension runs under the pinned Pi and under PiG, in two set-ups: the extension's package has its own node_modules/@earendil-works/pi-ai (the pinned package), or has none; the worker and the child import the pi-ai root, /compat, /models, /oauth, /providers/all and some /api and /utils subpaths.
+// TestChildAndWorkerImportsOfPiAiResolveAsUnderPi: code an extension starts without an extension runtime (a worker_threads Worker, a forked child) is loaded by Node itself, as in Pi, which loads extensions inside its own process and gives jiti the virtual modules or aliases for pi-ai there (packages/coding-agent/src/core/extensions/loader.ts:580-587), so a child or worker it starts inherits none of them. PiG registers its loader hooks in the extension's own thread from the bootstrap entry, so process.execArgv is empty and neither a worker nor a child inherits them (issue #517). The same extension runs under the pinned Pi and under PiG, in two set-ups: the extension's package has its own node_modules/@earendil-works/pi-ai (the pinned package), or has none; the worker and the child import the pi-ai root, /compat, /models, /oauth, /providers/all and some /api and /utils subpaths, and each resolves, or fails, the same in both.
 func TestChildAndWorkerImportsOfPiAiResolveAsUnderPi(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
@@ -122,10 +122,6 @@ func TestChildAndWorkerImportsOfPiAiResolveAsUnderPi(t *testing.T) {
 		}
 		pig := read(ext.Commands["probe"].Description)
 		host.Shutdown("test done")
-		served := map[string]bool{}
-		for _, sub := range []string{"", "/compat", "/models", "/oauth", "/providers/all"} {
-			served["@earendil-works/pi-ai"+sub] = true
-		}
 		for _, kind := range []string{"worker", "child"} {
 			piT, pigT := pi.Worker, pig.Worker
 			if kind == "child" {
@@ -134,26 +130,12 @@ func TestChildAndWorkerImportsOfPiAiResolveAsUnderPi(t *testing.T) {
 			for _, spec := range specifiers {
 				want, got := piT[spec], pigT[spec]
 				label := setup + " " + kind + " " + spec
-				if served[spec] {
-					// The loader hooks the worker and the child inherit (execArgv) serve these five specifiers from PiG's runtime: where Pi loads the extension's own copy PiG serves its module, which has every name Pi's has, and where Pi finds no package PiG still serves one.
-					if got.Error != "" || got.File == "" {
-						t.Errorf("%s: PiG fails: %s", label, got.Error)
-					}
-					if setup == "no-node-modules" && want.Error == "" {
-						t.Errorf("%s: Pi resolves it with no package installed", label)
-					}
-					for name, typ := range want.Names {
-						if got.Names[name] != typ {
-							t.Errorf("%s: Pi exports %s (%s); PiG has %q", label, name, typ, got.Names[name])
-						}
-					}
-					continue
-				}
-				// Every other subpath is Node's own resolution in both: the extension's copy of pi-ai (the same file, with Pi's own exports) or the same failure.
+				// Every specifier is Node's own resolution in both: the extension's copy of pi-ai (the same file, with Pi's own exports) or the same failure. PiG starts the extension with no --import and no NODE_OPTIONS, so a worker or a child it starts loads none of PiG's loader hooks (issue #517) and finds no package where Pi finds none.
 				if got.File != want.File || got.Error != want.Error || !maps.Equal(got.Names, want.Names) {
 					t.Errorf("%s differs\n Pi : file=%s error=%q names=%v\n PiG: file=%s error=%q names=%v", label, want.File, want.Error, want.Names, got.File, got.Error, got.Names)
 				}
-				if setup == "own-node-modules" && (want.Error != "" || len(want.Names) == 0) {
+				// The file proves Pi loaded the extension's own module; the name list may be empty, as for /oauth, which is type-only in Pi (packages/ai/src/oauth.ts has only `export type`), so an empty namespace is a real result there.
+				if setup == "own-node-modules" && (want.Error != "" || want.File == "") {
 					t.Errorf("%s: Pi does not load the extension's own module: %q", label, want.Error)
 				}
 			}
