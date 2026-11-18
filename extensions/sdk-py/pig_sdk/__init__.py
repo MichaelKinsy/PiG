@@ -2626,6 +2626,7 @@ class _RequestStart:
         self._previous = previous
         self.done = threading.Event()
 
+    # pig divergence (D658): the place is handed on before the handler's first statement runs, so a descheduled thread can be overtaken; Pi runs a handler to its first await in invocation order.
     def begin(self) -> None:
         if self._previous is not None:
             self._previous.wait()

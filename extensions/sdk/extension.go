@@ -1411,6 +1411,7 @@ func startsInArrivalOrder(req *requestMsg) bool {
 }
 
 // passStart waits until the handler of every earlier request was invoked or its request ended without one, then lets startObserver see that this request's handler is next and hands the place on. The order it keeps is the order of invocation: what a handler runs first is up to the scheduler.
+// pig divergence (D658): the place is handed on before the handler's first statement runs, so a descheduled thread can be overtaken; Pi runs a handler to its first await in invocation order.
 func (e *Extension) passStart(id, method string, place *jsloop.Place) {
 	place.Wait()
 	if e.startObserver != nil {

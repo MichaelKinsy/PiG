@@ -94,6 +94,7 @@ pub(crate) struct RequestStart {
 
 impl RequestStart {
     /// Returns when every earlier request began its handler or ended without one, then hands the place on.
+    // pig divergence (D658): the place is handed on before the handler's first statement runs, so a descheduled thread can be overtaken; Pi runs a handler to its first await in invocation order.
     pub(crate) fn begin(&self) {
         if let Some(previous) = &self.previous {
             previous.wait();
