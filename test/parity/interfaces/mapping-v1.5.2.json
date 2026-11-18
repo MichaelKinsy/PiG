@@ -153712,8 +153712,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -160810,12 +160810,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
+        "call:coding/extension/host/inproc/runner.go#Runner.EmitToolCall"
       ],
       "evidence": [
         "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
-        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs"
       ]
     },
     {
@@ -160880,8 +160880,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -160902,8 +160902,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -160924,8 +160924,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -162167,9 +162167,9 @@
         "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.encodedHalves"
       ],
       "evidence": [
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
         "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
       ]
     },
     {
@@ -162190,8 +162190,8 @@
       ],
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs",
-        "test:test/extension-conformance/entry_null_members_test.go#TestEntryMemberNullAndOmittedAcrossSDKs"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
       ]
     },
     {
@@ -162212,8 +162212,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ]
     },
     {
@@ -162233,9 +162233,9 @@
         "call:coding/extension/host/subprocess/boundary_wire.go#boundaryContextWire.encodedHalves"
       ],
       "evidence": [
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
         "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
+        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload"
       ]
     },
     {
@@ -162256,8 +162256,8 @@
       ],
       "evidence": [
         "test:coding/session_boundaries_drafts_upstream_test.go#TestUpstreamSessionBoundariesDrafts",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/outbound_frames_test.go#TestOutboundFramesAreTheEncodersBytes"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
       ]
     },
     {
@@ -173606,12 +173606,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
+        "call:coding/extension/host/inproc/runner.go#Runner.EmitToolCall"
       ],
       "evidence": [
         "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
-        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs"
       ]
     },
     {
@@ -173676,8 +173676,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -173698,8 +173698,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -173720,8 +173720,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -182406,7 +182406,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnAgentBeforeSettleChainsContinuation",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -182429,7 +182429,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_dispatch_test.go#TestUpstreamRunnerBoundary",
         "test:test/extension-conformance/api_on_emitters_more_test.go#TestConformanceAPIOnAgentBeforeSettleChainsContinuation",
-        "test:test/extension-conformance/boundary_draft_members_test.go#TestBoundaryDraftNullAndAbsentMembersAcrossSDKs"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -182498,7 +182498,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedContextListIsValidatedLikeAReturnedOne"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -182521,7 +182521,7 @@
       "evidence": [
         "test:coding/extension/host/inproc/upstream_context_headers_test.go#TestUpstreamRunnerContextAndHeaders",
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnMessageAndContextEventsChain",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedContextListIsValidatedLikeAReturnedOne"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -182723,8 +182723,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -182746,8 +182746,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -188121,12 +188121,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
+        "call:coding/extension/host/inproc/runner.go#Runner.EmitToolCall"
       ],
       "evidence": [
         "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
-        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs"
       ]
     },
     {
@@ -188191,8 +188191,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -188213,8 +188213,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -188235,8 +188235,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -190003,12 +190003,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
+        "call:coding/extension/host/inproc/runner.go#Runner.EmitToolCall"
       ],
       "evidence": [
         "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
-        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs"
       ]
     },
     {
@@ -190073,8 +190073,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -190095,8 +190095,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -190117,8 +190117,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -194036,12 +194036,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
+        "call:coding/extension/host/inproc/runner.go#Runner.EmitToolCall"
       ],
       "evidence": [
         "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
-        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs"
       ]
     },
     {
@@ -194106,8 +194106,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -194128,8 +194128,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -194150,8 +194150,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -202199,12 +202199,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
+        "call:coding/extension/host/inproc/runner.go#Runner.EmitToolCall"
       ],
       "evidence": [
         "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
-        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs"
       ]
     },
     {
@@ -202269,8 +202269,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -202291,8 +202291,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -202313,8 +202313,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -204485,12 +204485,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
+        "call:coding/extension/host/inproc/runner.go#Runner.EmitToolCall"
       ],
       "evidence": [
         "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
-        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs"
       ]
     },
     {
@@ -204555,8 +204555,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -204577,8 +204577,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -204599,8 +204599,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -230589,9 +230589,9 @@
         "call:coding/extension/events.go#TurnEndEvent.MarshalJSON"
       ],
       "evidence": [
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
         "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload"
       ]
     },
     {
@@ -230675,9 +230675,9 @@
         "call:coding/extension/events.go#TurnEndEvent.MarshalJSON"
       ],
       "evidence": [
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
         "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder",
-        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
+        "test:test/extension-conformance/event_isolation_test.go#TestConformance_EventHandlersDoNotShareTheirPayload"
       ]
     },
     {
@@ -230699,7 +230699,7 @@
       "evidence": [
         "test:coding/session_extension_events_upstream_test.go#TestSessionEmitsTurnStartWithThePerRunTurnIndexAndATimestamp",
         "test:test/extension-conformance/api_on_results_test.go#TestConformanceAPIOnSessionStartAndTurnEndReachTheTypedHandlers",
-        "test:test/extension-conformance/event_echo_order_test.go#TestConformance_HandedBackEventObjectsKeepTheirMemberOrder"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi"
       ]
     },
     {
@@ -232670,12 +232670,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/extension/host/subprocess/event_payload.go#applyToolCallInput"
+        "call:coding/extension/host/inproc/runner.go#Runner.EmitToolCall"
       ],
       "evidence": [
         "test:coding/session_surrogate_pi_oracle_test.go#TestToolCallHookKeepsALoneSurrogateInTheModelsArguments",
-        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs",
-        "test:coding/session_tool_admission_upstream_test.go#TestSessionParallelPreflightAbortPreventsPreparedEffects"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/tool_call_input_mutation_test.go#TestToolCallInputMutationAcrossSDKs"
       ]
     },
     {
@@ -232740,8 +232740,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -232762,8 +232762,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
@@ -232784,8 +232784,8 @@
       ],
       "evidence": [
         "test:test/extension-conformance/api_on_emitters_test.go#TestConformanceAPIOnToolCallBlockEndsDispatch",
-        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged",
-        "test:test/extension-conformance/event_result_reference_test.go#TestConformance_EventResultsReachTheHost"
+        "test:test/extension-conformance/assigned_event_members_test.go#TestAssignedEventMembersFollowPi",
+        "test:test/extension-conformance/event_payload_test.go#TestConformance_EventPayloadsReachEverySDKUnchanged"
       ]
     },
     {
