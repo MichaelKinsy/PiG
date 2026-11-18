@@ -3236,7 +3236,7 @@ allocs = 1
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkPostLoginModelSelection"
-allocs = 4
+allocs = 1
 
 [[benchmark]]
 package = "./internal/codingagent"
