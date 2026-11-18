@@ -990,6 +990,10 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if signal != nil && !signalAborted {
 		// The signal-only cancel follows the request frame, also when the signal ended after the flag was read: AfterFunc runs at once for a signal that already ended. The reply is still awaited, as Pi awaits the handler.
 		stop := context.AfterFunc(signal, func() {
+			// The run's abort frame goes first, as for a cancelled request (beforeCancel): Pi aborts one signal for both, the run's own watcher syncs the runtimes on a goroutine of its own and can be late, and a runtime that reads the cancel alone has nothing that wakes a handler waiting on ctx.signal, so its loop can empty and report the handler as held.
+			if c.beforeCancel != nil {
+				c.beforeCancel()
+			}
 			_ = c.Send(&Envelope{Type: MsgCancel, ID: env.ID, Cancel: &CancelPayload{RequestID: env.ID, Reason: signal.Err().Error(), SignalOnly: true}})
 		})
 		defer stop()
