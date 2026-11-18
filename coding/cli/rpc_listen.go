@@ -258,12 +258,13 @@ func lstatPinned(path string) os.FileInfo {
 	return info
 }
 
-// removeOwnSocket removes path when it still names the socket the server created (created, from lstatPinned after the bind), and leaves a path another server or a user put there meanwhile alone: the server's exit does not remove a path it did not create. With no record of the socket it removes the path. pig additive (D232).
+// removeOwnSocket removes path when it still names the socket the server created (created, from lstatPinned after the bind), and leaves a path another server or a user put there meanwhile alone: the server's exit does not remove a path it did not create. With no record of the socket it leaves the path alone. pig additive (D232).
 func removeOwnSocket(path string, created os.FileInfo) {
-	if created != nil {
-		if now, err := os.Lstat(path); err != nil || !os.SameFile(created, now) { //perf:ok cold: one stat per server exit
-			return
-		}
+	if created == nil {
+		return
+	}
+	if now, err := os.Lstat(path); err != nil || !os.SameFile(created, now) { //perf:ok cold: one stat per server exit
+		return
 	}
 	_ = os.Remove(path)
 }
