@@ -63,11 +63,11 @@ func contextEditsOf(t *testing.T, h *harness, phase string) (edits contextEdit) 
 	return edits
 }
 
-// contextEditsReached is the table of what the second handler reads, by realization. Every cell the session's dispatch runs reads both edits, as Pi's one realm does,
-// except the Lisp SDK's list: the probe there can only assign event.messages a new vector (the SDK decodes arrays as simple vectors, which cannot grow in place), and a
-// reassignment of the list is not carried in Pi either (runner.ts emitContext compares its own visibleMessages). The cell is a limit of the Lisp language, not a comparison the SDK omits.
-func contextEditsReached(name string) contextEdit {
-	return contextEdit{message: true, list: !strings.Contains(name, "lisp")}
+// contextEditsReached is what the second handler reads: every cell the session's dispatch runs reads both edits. The Lisp probe can only assign event.messages a new vector
+// (the SDK decodes arrays as simple vectors, which cannot grow in place); the native SDKs carry an assigned event.messages of context (TestAssignedEventMembersFollowPi), where
+// Pi carries only an in-place edit of its one list.
+func contextEditsReached() contextEdit {
+	return contextEdit{message: true, list: true}
 }
 
 // TestConformance_ContextEditsInASessionReachTheNextHandler pins what a session's context dispatch (Runner.EmitContext and EmitContextWithSystem, the calls the Session makes; not
@@ -91,7 +91,7 @@ func TestConformance_ContextEditsInASessionReachTheNextHandler(t *testing.T) {
 			})
 			for _, phase := range []string{"context", "context_with_system"} {
 				t.Run(phase, func(t *testing.T) {
-					if got, want := contextEditsOf(t, h, phase), contextEditsReached(tc.name); got != want {
+					if got, want := contextEditsOf(t, h, phase), contextEditsReached(); got != want {
 						t.Errorf("second handler of one extension read %+v, want %+v", got, want)
 					}
 				})
