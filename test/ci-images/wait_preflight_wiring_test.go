@@ -148,7 +148,7 @@ func TestANeededJobOfCIRunsOnEveryEvent(t *testing.T) {
 	}
 	waits := 0
 	for _, step := range workflow.Jobs["verdict"].Steps {
-		if !strings.Contains(step.Run, "wait-preflight.sh") {
+		if !strings.Contains(step.Run, "wait-preflight.py") {
 			continue
 		}
 		waits++
@@ -157,6 +157,6 @@ func TestANeededJobOfCIRunsOnEveryEvent(t *testing.T) {
 		}
 	}
 	if waits != 1 {
-		t.Errorf("%d steps of the verdict job run wait-preflight.sh, want 1", waits)
+		t.Errorf("%d steps of the verdict job run wait-preflight.py, want 1", waits)
 	}
 }
