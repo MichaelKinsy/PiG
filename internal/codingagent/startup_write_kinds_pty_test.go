@@ -33,7 +33,7 @@ const startupWriteKindsChildEnv = "PIG_TEST_STARTUP_WRITE_KINDS_CHILD"
 
 // A plain interactive startup writes what Pi's init() writes after its first frame and no more (interactive-mode.ts:1141-1162, tui.ts:1025-1031). Measured in Pi
 // 1.5.2 on a pseudo-terminal that answers no query, five runs, identical: the first frame and its cursor placement, the window title, the frame init() ends in
-// (renderNow) and its cursor placement, the frame of the warning run() shows after init() and its cursor placement. Init() has no render between the bind and
+// (renderNow) and its cursor placement, the frame of the warnings run() shows after init() (the model fallback message and a crash notice) and its cursor placement. Init() has no render between the bind and
 // renderInitialMessages (requests only), and ends in renderNow, which clears the requests made before it. pig once rendered right after the bind and again at the
 // end, a frame was painted between the colour reply and the header, and every render with nothing to change wrote a bare cursor placement, ESC[<n>G ESC[?25l,
 // outside a frame.
@@ -101,6 +101,12 @@ func TestStartupWriteKindsChild(t *testing.T) {
 	}
 	// Pi's and pig's default mode is fullscreen, which has no standalone cursor placement; the regular mode is the one that has it.
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(`{"tuiMode":"regular"}`), 0o600); err != nil {
+		fail("%v", err)
+	}
+	// A crash record Pi's run() has not shown yet: its notice comes after the model fallback message, so the start shows two warnings in a row, and Pi's showWarning only
+	// requests a render (interactive-mode.ts:4812-4816), so both are painted by one frame; a render of each would write a frame of its own.
+	crash := `[{"timestamp":"2099-06-15T12:00:00.000Z","version":"0.0.0","kind":"uncaught_exception","message":"Boom","stack":null,"sessionFile":null,"cwd":"/"}]`
+	if err := os.WriteFile(filepath.Join(agentDir, "crashes.json"), []byte(crash), 0o600); err != nil {
 		fail("%v", err)
 	}
 	cwd := t.TempDir()
