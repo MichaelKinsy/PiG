@@ -4,8 +4,9 @@
 # request even when no row changed (tui-alt-screen.ts doRender has no early return for unchanged lines), so Pi writes one more frame: a cursor-only
 # CSI ? 2026 h, CSI <row>;1 H, CSI ? 25 l, CSI ? 2026 l (29 bytes) that repaints nothing.
 # PiG does the same: after the grammar load it invalidates and requests a render on the owner loop (loadRemainingHighlightLanguages), so each binary's renderer
-# writes that cursor-only frame once. Upstream evidence (pi v1.5.2, npm @earendil-works/pi-coding-agent, 2026-11-11, pty capture on xd670): one 29-byte
-# cursor-only frame about 97 ms after the startup frames.
+# writes that cursor-only frame once.
+# Upstream evidence (pi v1.5.2, npm @earendil-works/pi-coding-agent, 2026-11-11, pty capture on xd670): one 29-byte cursor-only frame about 97 ms after the
+# startup frames.
 # Both binaries also write frames after the footer's text while the terminal answers their start-up queries (OSC 10/11/4 and DA1, which tmux answers):
 # the colors apply, the logo row is rewritten (a frame that is not cursor-only), and further renders find no changed row. The number and order of
 # those frames follow the replies' timing, and Pi coalesces some of them, so the stream after the text is not pinned. What is stable is the count of
