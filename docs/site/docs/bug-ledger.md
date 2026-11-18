@@ -1422,7 +1422,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-959646e](#bf-959646e) | Kitty and iTerm2 images no longer cover an overlay drawn over them | PiG's own defect | All platforms | Unreleased |
 | [BF-959a66e](#bf-959a66e) | fix(chord/nextnode/workers): shutdown takes effect before the next message; one signal channel each; no… | PiG's own defect | All platforms | Unreleased |
 | [BF-95a5f79](#bf-95a5f79) | RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does | PiG's own defect | All platforms | 0.5.0 |
-| [BF-95a798f](#bf-95a798f) | fix: a refused report_error tag is reported through the runner's error listeners, not to stderr | PiG's own defect | All platforms | Unreleased |
 | [BF-95db124](#bf-95db124) | A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of… | PiG's own defect | All platforms | Unreleased |
 | [BF-95de1de](#bf-95de1de) | An image the model receives is now JPEG-encoded with a port of Photon's encoder (image 0.24.9: the IJG… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-95eefe2](#bf-95eefe2) | openai-completions thinking formats now match Pi (`ai/openai.go`, openai-completions.ts:885-985 and… | PiG's own defect | All platforms | 0.5.0 |
@@ -21787,19 +21786,6 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `95a5f79e17` (2026-10-07)
 - **Tests:** `coding/cli/tools_flag_order_test.go::TestReloadKeepsTheToolsFlagOrder`, `coding/cli/tools_flag_order_test.go::TestToolsFlagOrderReachesTheProviderInEveryMode`, `coding/cli/tools_flag_order_test.go::TestToolsFlagSelectsToolsInItsOrder`, `coding/session_tool_registry_port_test.go::TestAllowedToolsStartActiveInTheirOrder`, `coding/session_tool_registry_port_test.go::TestReloadKeepsTheActiveToolOrder`, `test/parity/scenarios/rpc/45-rpc-tools-flag-order.toml`
 - **Release note:** RPC mode starts the `--tools` list active in its own order when it names extension tools, as Pi does. `--tools grep,my_tool,read` declares `grep`, `my_tool`, `read` to the model and lists them in that order in the system prompt; RPC mode listed the built-in tools first and appended the extension tools.
-
-### BF-95a798f
-
-**fix: a refused report_error tag is reported through the runner's error listeners, not to stderr**
-
-- **Source:** PiG's own defect
-- **Symptom:** fix: a refused report_error tag is reported through the runner's error listeners, not to stderr
-- **Root cause:** the refusal of a report_error tag reused the bus's raw stderr line, a writer that is not mode-aware
-- **User impact:** An operation failed or was rejected
-- **Platform:** All platforms
-- **Fixed in:** Unreleased
-- **Fix commits:** `95a798f82a` (2026-11-17)
-- **Tests:** `coding/extension/host/subprocess/report_error_extension_tag_test.go::TestReportErrorNotifyNamingAnExtensionOutsideTheConnectionsProcessIsTheConnectionsOwnAndTheNameIsRefused`
 
 ### BF-95db124
 
