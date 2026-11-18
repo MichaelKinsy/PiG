@@ -1,3 +1,5 @@
+//go:build !pig_strip_node_extensions
+
 package subprocess
 
 // pi: packages/ai/package.json (exports)
