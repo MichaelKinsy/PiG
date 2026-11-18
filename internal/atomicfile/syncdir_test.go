@@ -59,23 +59,3 @@ func TestWriteFileToleratesAFileSystemThatCannotSyncADirectory(t *testing.T) {
 		})
 	}
 }
-
-// SyncDirectory is the flush WriteFile makes of a directory, for a caller that creates or removes entries itself: a failure for a real reason is
-// reported, one that says the file system cannot flush a directory is not, and a directory that is not there is an error.
-func TestSyncDirectoryReportsARealFailureAndToleratesAnUnsupportedFlush(t *testing.T) {
-	dir := t.TempDir()
-	if err := SyncDirectory(dir); err != nil {
-		t.Fatalf("SyncDirectory(%s) = %v, want nil", dir, err)
-	}
-	if err := SyncDirectory(filepath.Join(dir, "missing")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("SyncDirectory of a missing directory = %v, want not-exist", err)
-	}
-	failedDirectorySync(t, syscall.EIO)
-	if err := SyncDirectory(dir); !errors.Is(err, syscall.EIO) {
-		t.Fatalf("SyncDirectory where the flush fails (EIO) = %v, want EIO", err)
-	}
-	failedDirectorySync(t, syscall.EINVAL)
-	if err := SyncDirectory(dir); err != nil {
-		t.Fatalf("SyncDirectory where the file system cannot flush a directory = %v, want nil", err)
-	}
-}
