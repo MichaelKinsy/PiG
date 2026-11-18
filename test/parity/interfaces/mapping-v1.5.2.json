@@ -112036,9 +112036,9 @@
         "call:chord/next/surfaces/intl_time.go#FormatTime"
       ],
       "evidence": [
+        "test:chord/next/surfaces/intl_drift_test.go#TestFormatTimeRefusesAnInstantOutsideTheDateRangeAsNodeDoes",
         "test:chord/next/surfaces/intl_drift_test.go#TestNumbersMatchNode",
-        "test:chord/next/surfaces/intl_drift_test.go#TestTimesMatchNode",
-        "test:chord/next/surfaces/intl_option_set_test.go#TestAnEmptyTimeOptionSetPrintsADateInNodeWherePiGReturnsErrOption"
+        "test:chord/next/surfaces/intl_drift_test.go#TestTimesMatchNode"
       ]
     },
     {
@@ -131054,7 +131054,7 @@
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
         "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor"
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginJoinsAGoStubsSetupFailureAndThePluginsOwnAsOneSetupFailed"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -131075,9 +131075,9 @@
         "call:chord/nextnode/plugins/plugins_testing.go#TestedPlugin.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginJoinsAGoStubsSetupFailureAndThePluginsOwnAsOneSetupFailed",
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginTestsASingleFilePluginAndAPluginInACheckoutOfSeveralOpusL4",
-        "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
-        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker"
+        "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -131098,9 +131098,9 @@
         "call:chord/nextnode/plugins/plugins_testing.go#TestedPlugin.Close"
       ],
       "evidence": [
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginJoinsAGoStubsSetupFailureAndThePluginsOwnAsOneSetupFailed",
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginTestsASingleFilePluginAndAPluginInACheckoutOfSeveralOpusL4",
-        "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
-        "test:chord/nextnode/plugins/plugins_examples_tutorial_test.go#TestTutorialListsPluginOnAListsWorker"
+        "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -131238,8 +131238,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginBuildsAsProductionByDefaultThePerKindCheckActiveAPIRequiredWithVersionedModules",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginRejectsABuildProductionWouldRefuseAndASetupThatThrows",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginRejectsAScriptThatThrowsWhileItEvaluatesWithItsOwnError"
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginJoinsAGoStubsSetupFailureAndThePluginsOwnAsOneSetupFailed",
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginRejectsABuildProductionWouldRefuseAndASetupThatThrows"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -131261,8 +131261,8 @@
       ],
       "evidence": [
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginBuildsAsProductionByDefaultThePerKindCheckActiveAPIRequiredWithVersionedModules",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginRejectsABuildProductionWouldRefuseAndASetupThatThrows",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginRejectsAScriptThatThrowsWhileItEvaluatesWithItsOwnError"
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginJoinsAGoStubsSetupFailureAndThePluginsOwnAsOneSetupFailed",
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginRejectsABuildProductionWouldRefuseAndASetupThatThrows"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -131285,7 +131285,7 @@
       "evidence": [
         "test:chord/nextnode/plugins/plugins_examples_testplugin_test.go#TestExample52TestPlugin",
         "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginBuildsAsProductionByDefaultThePerKindCheckActiveAPIRequiredWithVersionedModules",
-        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginLoadsThePluginBuiltAgainstTheAPIBesideAStubCollectsItsContributionsAndListsWhatItWaitsFor"
+        "test:chord/nextnode/plugins/plugins_testing_test.go#TestTestPluginJoinsAGoStubsSetupFailureAndThePluginsOwnAsOneSetupFailed"
       ]
     },
     {
@@ -183478,7 +183478,7 @@
       "evidence": [
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers",
-        "test:test/extension-conformance/tool_bigint_argument_test.go#TestToolReceivesABigintArgumentAsTheDigitsStringWithNAcrossSDKs"
+        "test:test/extension-conformance/session_actions_event_context_test.go#TestConformance_CommandOnlySessionActionsRefusedFromEventContext"
       ]
     },
     {
@@ -183500,7 +183500,7 @@
       "evidence": [
         "test:coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "test:test/extension-conformance/component_kit_test.go#TestConformance_ComponentKitWidgetHeaderFooterAndRenderers",
-        "test:test/extension-conformance/tool_bigint_argument_test.go#TestToolReceivesABigintArgumentAsTheDigitsStringWithNAcrossSDKs"
+        "test:test/extension-conformance/session_actions_event_context_test.go#TestConformance_CommandOnlySessionActionsRefusedFromEventContext"
       ]
     },
     {
@@ -305704,7 +305704,7 @@
       "evidence": [
         "test:internal/codingagent/dead_terminal_shutdown_unix_test.go#TestDeadTerminalShutdownChild",
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
+        "test:tui/screen_writer_log_off_test.go#TestScreenWriterLogWritesNoFileWithTheWriterOff"
       ]
     },
     {
@@ -305726,7 +305726,7 @@
       "evidence": [
         "test:internal/codingagent/dead_terminal_shutdown_unix_test.go#TestDeadTerminalShutdownChild",
         "test:internal/codingagent/dead_terminal_write_unix_test.go#TestDeadTerminalWriteChild",
-        "test:tui/terminal_exit_restore_test.go#TestRestoreTerminalOnExitAltScreenWithColorSchemeReportsAndModifyOtherKeys"
+        "test:tui/screen_writer_log_off_test.go#TestScreenWriterLogWritesNoFileWithTheWriterOff"
       ]
     },
     {
