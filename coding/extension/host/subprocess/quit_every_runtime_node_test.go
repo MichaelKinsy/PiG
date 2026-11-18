@@ -28,6 +28,11 @@ const (
 // startQuitRuntimes loads the sources as real Node runtimes, each isolated in a process of its own, in the order of names, and returns the host, the loaded
 // extensions by name and a channel that closes when the host's drain handler runs.
 func startQuitRuntimes(t *testing.T, names []string, sources map[string]string) (*Host, map[string]*extension.Extension, <-chan struct{}, context.Context) {
+	return startQuitRuntimesIn(t, "isolated", names, sources)
+}
+
+// startQuitRuntimesIn is startQuitRuntimes with the isolation of every extension named: "shared-ok" packs the Node extensions into one process.
+func startQuitRuntimesIn(t *testing.T, isolation string, names []string, sources map[string]string) (*Host, map[string]*extension.Extension, <-chan struct{}, context.Context) {
 	t.Helper()
 	nodeCellRequireNode(t)
 	dir := t.TempDir()
@@ -45,7 +50,7 @@ func startQuitRuntimes(t *testing.T, names []string, sources map[string]string) 
 		if err := os.WriteFile(path, []byte(sources[name]), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		configs = append(configs, ExtConfig{Name: name, Source: path, Enabled: true, Isolation: "isolated"})
+		configs = append(configs, ExtConfig{Name: name, Source: path, Enabled: true, Isolation: isolation})
 	}
 	loaded, errs := h.LoadAll(ctx, configs)
 	if len(errs) != 0 || len(loaded) != len(names) {
