@@ -2818,7 +2818,7 @@ export class Runtime {
           // loader.ts:537-551: a throwing handler is reported like other extension errors. The event bus would print it with console.error, which draws over the interactive TUI (Pi #11264).
           const bus = busFor(this.group);
           const reportingHandler = async (data) => {
-            // pig additive: on the in-heap bus this wrapper runs inside the emit of the runtime that emitted, and Pi reports its error there, before that emit and the command around it return. The emitter is read here, in the synchronous part, so a rejection that comes after an await reports through the same runtime (Runtime.reportError).
+            // pig additive (D19): on the in-heap bus this wrapper runs inside the emit of the runtime that emitted, and Pi reports its error there, before that emit and the command around it return. The emitter is read here, in the synchronous part, so a rejection that comes after an await reports through the same runtime (Runtime.reportError).
             const emitter = bus.emitting;
             try {
               await handler(data);
@@ -6431,7 +6431,7 @@ export class Runtime {
       return;
     }
     const report = stack === undefined ? { event, error } : { event, error, stack };
-    // pig additive: Pi's reportError is synchronous, so a listener's error is reported before the emit that ran it returns and before the command around the emit is answered. The in-heap bus of a shared realm runs this runtime's listener inside another runtime's emit, and only that runtime's connection orders the report before its response, so the report rides it and names this extension (ReportErrorPayload.Extension). A closed emitter connection falls back to this runtime's own.
+    // pig additive (D19): Pi's reportError is synchronous, so a listener's error is reported before the emit that ran it returns and before the command around the emit is answered. The in-heap bus of a shared realm runs this runtime's listener inside another runtime's emit, and only that runtime's connection orders the report before its response, so the report rides it and names this extension (ReportErrorPayload.Extension). A closed emitter connection falls back to this runtime's own.
     if (emitter !== undefined && emitter !== this && emitter.conn && !emitter.conn.closed) {
       emitter.notify("report_error", { ...report, extension: this.name });
       return;

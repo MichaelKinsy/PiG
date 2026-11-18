@@ -1492,8 +1492,8 @@ func (c *Conn) readLoop(ctx context.Context) {
 					// A report was read before this response, and the request was in flight when it was: the host's loop applies the report, then delivers the response.
 					env.held = true
 					select {
-					case c.inCh <- &env:
-					case <-ctx.Done():
+					case c.inCh <- &env: //perf:ok once per response of a request that was in flight when a report_error was read, not per frame
+					case <-ctx.Done(): //perf:ok the same select
 						return
 					}
 					continue

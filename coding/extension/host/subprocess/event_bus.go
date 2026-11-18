@@ -197,6 +197,7 @@ func (b *hostEventBus) holdQuiesce(conn *Conn, env *Envelope) bool {
 	if json.Unmarshal(env.Notify.Args, &args) != nil {
 		return false
 	}
+	//portlint:allow numbers the emission is a decimal counter the host itself wrote into the frame (reportOrder.holdsEmission), never a number a JS value produced
 	n, err := strconv.ParseUint(args.Emission, 10, 64)
 	if err != nil || !conn.reports.holdsEmission(n) {
 		return false
