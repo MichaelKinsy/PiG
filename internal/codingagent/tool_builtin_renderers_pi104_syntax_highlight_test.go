@@ -1,4 +1,4 @@
-//go:build !pig_strip_syntax_highlight
+//go:build !windows && !pig_strip_syntax_highlight
 
 package codingagent
 
