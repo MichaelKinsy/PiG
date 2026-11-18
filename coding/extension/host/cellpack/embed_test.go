@@ -3,6 +3,7 @@ package cellpack
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -43,7 +44,7 @@ func TestExtractThenResolve(t *testing.T) {
 	}
 
 	dest := t.TempDir()
-	if err := extract(fsys, m, dest); err != nil {
+	if err := extract(fsys, m, dest, io.Discard); err != nil {
 		t.Fatalf("extract: %v", err)
 	}
 	// Windows starts only files with an executable extension; elsewhere the

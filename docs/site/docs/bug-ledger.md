@@ -804,6 +804,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-5f22b85](#bf-5f22b85) | fix(coding): shut down the extension host of a DefaultResourceLoader an extension constructed when its last… | PiG's own defect | All platforms | Unreleased |
 | [BF-5f449b5](#bf-5f449b5) | An extension component in the editor's place (`ctx.ui.custom` without `overlay`) was invalidated three times… | PiG's own defect | All platforms | Unreleased |
 | [BF-5f4a0b2](#bf-5f4a0b2) | fix(durable/core): a Session's reports reach its report(error, info) | PiG's own defect | All platforms | Unreleased |
+| [BF-5fd39a7](#bf-5fd39a7) | A Piglet Binary with a TypeScript or JavaScript extension compares the extracted copy of the extension's… | PiG's own defect | Linux | Unreleased |
 | [BF-6005946](#bf-6005946) | chord: base bundles collect the fonts and images their stylesheets name: a base stylesheet with `url()`… | PiG's own defect | All platforms | Unreleased |
 | [BF-6018935](#bf-6018935) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-60285d7](#bf-60285d7) | Resuming a session (`pig -c`, `--resume`, `--session`, and the SDK's `CreateAgentSessionFromServices`) whose… | PiG's own defect | All platforms | Unreleased |
@@ -13225,6 +13226,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `5f4a0b297f` (2026-10-27)
 - **Tests:** None recorded.
+
+### BF-5fd39a7
+
+**A Piglet Binary with a TypeScript or JavaScript extension compares the extracted copy of the extension's…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A later start reused the copy under `piglet-binary-cells/node/<digest>/sources` by its `ready.json` alone, so a file changed or deleted there, a file added that the extension would import, a `node_modules` or `package.json` beside the sources, a file or folder replaced by a link, or a widened mode reached Node and ran in place of the code the Binary was built with, until the `<digest>` directory was removed.
+- **Root cause:** runtimecell.PublishArtifact trusted a ready.json for an entry that holds a whole source tree, so nothing compared the tree with the archive after the first extraction.
+- **User impact:** Behavior differed from Pi
+- **Platform:** Linux
+- **Fixed in:** Unreleased
+- **Fix commits:** `5fd39a75a5` (2026-11-17)
+- **Tests:** `coding/extension/host/cellpack/node_recheck_test.go::TestNodeCellStartExtractsTheArchiveAgainWhenTheTreeDiffers`, `coding/pigletbuild/node_binary_test.go::TestPigletBinaryRunsTheOriginalNodeSourcesAfterTheExtractedCopyIsEdited`
+- **Release note:** A Piglet Binary with a TypeScript or JavaScript extension compares the extracted copy of the extension's sources with the archive inside the Binary at every start, as it compares an embedded Go, Rust or Python cell binary with its embedded bytes. Before, a later start reused the copy under `piglet-binary-cells/node/<digest>/sources` by its `ready.json` alone, so a file changed or deleted there, a file added that the extension would import, a `node_modules` or `package.json` beside the sources, a file or folder replaced by a link, or a widened mode reached Node and ran in place of the code the Binary was built with, until the `<digest>` directory was removed. Now a copy that differs is replaced from the archive, one warning line on stderr names the first difference (`pig: warning: the extracted Node sources in <folder> differ from the Binary's archive (changed: sources/greeter/index.ts); extracted them again`) and nothing reaches stdout, and two Binaries starting at once do not disturb each other. A `node_modules`, `package.json`, `tsconfig.json` or `jsconfig.json` in `piglet-binary-cells` or `piglet-binary-cells/node` stops the start and names the path; the PiG configuration directory and the folders above it are not checked. The check runs at startup, not at a `/reload`. It reads every extracted file, which adds 0.3 ms to a start with an extension of 10 to 13 files, 9 ms to one with 561 files and 1.9 MB, 16 ms to one with 1,064 files and 28.5 MB, and 73 ms to one with 3,665 files and 17.5 MB (Linux, median of 20 starts). A Binary built before this change has no check: build it again to get one. An extension keeps its data outside its extracted sources, in the agent directory. Present since 0.5.0.
 
 ### BF-6005946
 

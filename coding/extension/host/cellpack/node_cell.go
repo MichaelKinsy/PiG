@@ -2,7 +2,6 @@ package cellpack
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -36,25 +35,75 @@ func nodeSourcesDir(dest, digest string) string {
 	return filepath.Join(dest, nodeLanguage, digest, nodeSourcesName)
 }
 
+// archiveSource is a Node cell's archive read where it lies: positioned reads and its length. The Binary's embedded file is
+// one (its bytes are the executable's read-only data), so a start copies none of the archive: not to take its digest, not to
+// compare the extracted entry with it, not to extract it again.
+type archiveSource interface {
+	io.ReaderAt
+	Size() int64
+}
+
+// archiveStream reads source from its first byte.
+func archiveStream(source archiveSource) *io.SectionReader {
+	return io.NewSectionReader(source, 0, source.Size())
+}
+
+// archiveDigestChunk is the size of the pieces the archive is hashed in: small enough that a cell of a few files allocates less
+// than the copy of its archive a start used to make, large enough that a 29 MB archive is read in 3,600 calls.
+const archiveDigestChunk = 8 << 10
+
+// archiveDigest is the SHA-256 of the archive, read in chunks.
+func archiveDigest(source archiveSource) (string, error) {
+	hash := sha256.New()
+	if _, err := io.CopyBuffer(hash, archiveStream(source), make([]byte, archiveDigestChunk)); err != nil {
+		return "", fmt.Errorf("read the Node cell archive: %w", err)
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
 // extractNodeCell verifies a Node cell archive against its manifest digest and
 // publishes its sources once per digest. Publication is the content-addressed,
 // atomic cache entry Stock PiG uses for its own Node runtime, so concurrent
 // Binaries share one complete extraction and never observe a partial one.
-func extractNodeCell(data []byte, c CellEntry, dest string) error {
-	sum := sha256.Sum256(data)
-	digest := hex.EncodeToString(sum[:])
+//
+// Every start compares the published entry with the archive (verifyNodeEntry), as
+// every start compares an embedded Go, Rust or Python cell binary with its
+// embedded bytes. A clean entry is left alone. One that differs, whatever its
+// ready.json says, is replaced from the verified archive under the entry's lock
+// and one line on warn names its folder and the first difference. A module-lookup
+// name in either folder above the entry cannot be replaced away, so the start
+// fails.
+// The archive is read where it lies (archiveSource): its digest, the comparison and an extraction stream from it and copy none of it.
+// pig additive (D18): the extracted Node sources are re-checked at every start.
+func extractNodeCell(archive archiveSource, c CellEntry, dest string, warn io.Writer) error {
+	digest, err := archiveDigest(archive)
+	if err != nil {
+		return err
+	}
 	if c.Digest != digest {
 		return fmt.Errorf("archive digest %s does not match its manifest digest %q", digest, c.Digest)
 	}
+	if err := refuseModuleLookupNames(filepath.Join(dest, nodeLanguage), dest); err != nil {
+		return err
+	}
 	entryDir := filepath.Dir(nodeSourcesDir(dest, digest))
-	_, err := runtimecell.PublishArtifact(context.Background(), entryDir, nodeArchiveMarker, digest, nodeLanguage, func(scratch string) (string, error) {
-		if err := untarNodeSources(data, filepath.Join(scratch, nodeSourcesName)); err != nil {
+	//portlint:allow ctxbackground extraction runs in Register at startup, before any session or context exists (cli.Main has none until after it); the work is bounded by the verification and one extraction
+	entry, err := runtimecell.PublishVerifiedArtifact(context.Background(), entryDir, nodeArchiveMarker, digest, nodeLanguage, func(dir string) error {
+		return verifyNodeEntry(archive, dir)
+	}, func(scratch string) (string, error) {
+		if err := untarNodeSources(archive, filepath.Join(scratch, nodeSourcesName)); err != nil {
 			return "", err
 		}
 		marker := filepath.Join(scratch, nodeArchiveMarker)
 		return marker, os.WriteFile(marker, []byte(digest), 0o644)
 	}, nodeSourcesName)
-	return err
+	if err != nil {
+		return err
+	}
+	if entry.Replaced != nil {
+		_, _ = fmt.Fprintf(warn, "pig: warning: the extracted Node sources in %s differ from the Binary's archive (%v); extracted them again\n", entryDir, entry.Replaced)
+	}
+	return nil
 }
 
 // untarNodeSources unpacks a Node cell archive into root. It accepts only
@@ -68,7 +117,7 @@ func extractNodeCell(data []byte, c CellEntry, dest string) error {
 // another (case, Unicode normalization), a link target climbs only before it
 // names anything (archivepath.CheckLink), and every write goes through an
 // os.Root, which refuses any resolution that leaves root.
-func untarNodeSources(data []byte, root string) error {
+func untarNodeSources(archive archiveSource, root string) error {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return err
 	}
@@ -78,7 +127,7 @@ func untarNodeSources(data []byte, root string) error {
 	}
 	defer func() { _ = tree.Close() }()
 	real := map[string]struct{}{}
-	reader := tar.NewReader(bytes.NewReader(data))
+	reader := tar.NewReader(archiveStream(archive))
 	for {
 		header, err := reader.Next()
 		if errors.Is(err, io.EOF) {

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -22,7 +23,7 @@ type archiveEntry struct {
 	mode             int64
 }
 
-func nodeArchive(t *testing.T, entries ...archiveEntry) ([]byte, string) {
+func nodeArchive(t testing.TB, entries ...archiveEntry) ([]byte, string) {
 	t.Helper()
 	var buffer bytes.Buffer
 	writer := tar.NewWriter(&buffer)
@@ -75,7 +76,7 @@ func TestExtractNodeCellPublishesMemberSources(t *testing.T) {
 	fsys := fstest.MapFS{"cells/node/abc.tar": {Data: data}}
 	dest := t.TempDir()
 	for range 2 {
-		if err := extract(fsys, m, dest); err != nil {
+		if err := extract(fsys, m, dest, io.Discard); err != nil {
 			t.Fatalf("extract: %v", err)
 		}
 	}
@@ -126,7 +127,7 @@ func TestExtractNodeCellRefusesMismatchedOrEscapingArchives(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			fsys := fstest.MapFS{"cells/node/abc.tar": {Data: test.data}}
-			err := extract(fsys, nodeManifest(test.digest), t.TempDir())
+			err := extract(fsys, nodeManifest(test.digest), t.TempDir(), io.Discard)
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("extract error = %v, want %q", err, test.want)
 			}
@@ -189,7 +190,7 @@ func TestUntarNodeSourcesRefusesWritesThroughSymbolicLinks(t *testing.T) {
 			if err := os.WriteFile(sentinel, []byte("keep"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			err := untarNodeSources(data, filepath.Join(parent, "sources"))
+			err := untarNodeSources(bytes.NewReader(data), filepath.Join(parent, "sources"))
 			listing, readErr := os.ReadDir(parent)
 			if readErr != nil {
 				t.Fatal(readErr)
@@ -230,7 +231,7 @@ func TestUntarNodeSourcesRefusesALinkReachedByAnotherSpellingOfItsName(t *testin
 		archiveEntry{name: "a/b/z/w", link: "../../../x"},
 	)
 	parent := t.TempDir()
-	err := untarNodeSources(data, filepath.Join(parent, "sources"))
+	err := untarNodeSources(bytes.NewReader(data), filepath.Join(parent, "sources"))
 	if err == nil {
 		t.Error("untarNodeSources accepted a member that passes through a link by another spelling of its name")
 	}
@@ -256,7 +257,7 @@ func TestUntarNodeSourcesKeepsLinksThatStayInsideTheTree(t *testing.T) {
 		archiveEntry{name: "greeter/not-yet/there", body: "x"},
 	)
 	root := filepath.Join(t.TempDir(), "sources")
-	if err := untarNodeSources(data, root); err != nil {
+	if err := untarNodeSources(bytes.NewReader(data), root); err != nil {
 		t.Fatal(err)
 	}
 	for _, link := range []string{"greeter/node_modules/.bin/dep", "greeter/node_modules/alias/index.js", "greeter/later"} {
@@ -308,7 +309,7 @@ func TestRegisterPublishesTheNodeCellOnlyUnderThePigHome(t *testing.T) {
 			t.Setenv("HOME", filepath.Join(sandbox, "home"))
 			t.Setenv("USERPROFILE", filepath.Join(sandbox, "home"))
 			root := pigHome(t, sandbox)
-			if err := registerFrom(fsys); err != nil {
+			if err := registerFrom(fsys, io.Discard); err != nil {
 				t.Fatalf("registerFrom: %v", err)
 			}
 			cellsDir := filepath.Join(root, "piglet-binary-cells", "node")

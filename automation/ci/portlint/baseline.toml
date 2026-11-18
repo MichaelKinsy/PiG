@@ -284,12 +284,6 @@ snippet = "_ = TouchUsage(finalDir, time.Now())"
 [[hit]]
 check = "clock"
 file = "coding/extension/host/runtimecell/cellcache.go"
-func = "ReusePublishedArtifact"
-snippet = "_ = TouchUsage(finalDir, time.Now())"
-
-[[hit]]
-check = "clock"
-file = "coding/extension/host/runtimecell/cellcache.go"
 func = "publishArtifact"
 snippet = "_ = TouchUsage(finalDir, time.Now())"
 count = 2
@@ -5291,12 +5285,6 @@ check = "ctxbackground"
 file = "coding/extension/factoryload/api.go"
 func = "api.RegisterNativeProvider"
 snippet = "if err := a.runtime.RegisterNativeProvider(context.Background(), provider, a.ext.Path); err != nil {"
-
-[[hit]]
-check = "ctxbackground"
-file = "coding/extension/host/cellpack/node_cell.go"
-func = "extractNodeCell"
-snippet = "_, err := runtimecell.PublishArtifact(context.Background(), entryDir, nodeArchiveMarker, digest, nodeLanguage, func(scratch string) (string, error) {"
 
 [[hit]]
 check = "ctxbackground"
