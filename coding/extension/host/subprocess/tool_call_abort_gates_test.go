@@ -41,8 +41,8 @@ type gateRun struct {
 	done  chan error
 }
 
-// startGateRun starts a run whose first assistant message calls the extension's tool once per id, in the given batch mode.
-func startGateRun(t *testing.T, mode agent.ToolExecutionMode, ids []string, tool agent.AgentTool, before agent.BeforeToolCallFunc, abortAfterAssistant bool) *gateRun {
+// startGateRun starts the run into run, which the caller made before it built the closures that abort it, so no closure reads the variable while it is assigned. It starts a run whose first assistant message calls the extension's tool once per id, in the given batch mode.
+func startGateRun(t *testing.T, run *gateRun, mode agent.ToolExecutionMode, ids []string, tool agent.AgentTool, before agent.BeforeToolCallFunc, abortAfterAssistant bool) *gateRun {
 	t.Helper()
 	provider := ai.NewFauxProvider(ai.FauxConfig{})
 	blocks := make([]ai.FauxContentBlock, len(ids))
@@ -53,7 +53,7 @@ func startGateRun(t *testing.T, mode agent.ToolExecutionMode, ids []string, tool
 		ai.FauxStaticStep(ai.FauxResponse{Content: blocks, StopReason: string(ai.StopReasonToolUse)}),
 		ai.FauxStaticStep(ai.FauxResponse{Content: []ai.FauxContentBlock{ai.FauxText("done")}}),
 	})
-	run := &gateRun{ends: map[string]agent.ToolExecutionEndEvent{}, done: make(chan error, 1)}
+	run.ends, run.done = map[string]agent.ToolExecutionEndEvent{}, make(chan error, 1)
 	a, err := agent.NewAgent(agent.AgentOptions{
 		Model:          &ai.Model{ID: "faux-1", Provider: provider, ProviderMeta: ai.ProviderMetadata{API: "faux", ProviderID: "faux"}},
 		Tools:          []agent.AgentTool{tool},
@@ -142,9 +142,9 @@ func TestAbortedRunAnswersAtTheLoopsGatesWithoutCallingTheExtension(t *testing.T
 		t.Run(tc.name, func(t *testing.T) {
 			rig := newEndedCallRig(t)
 			defer rig.playIncomingLoop()()
-			var run *gateRun
+			run := &gateRun{}
 			before, afterAssistant := tc.build(func() { run.agent.Abort() })
-			run = startGateRun(t, tc.mode, tc.ids, gateTool{execute: rig.execute}, before, afterAssistant)
+			startGateRun(t, run, tc.mode, tc.ids, gateTool{execute: rig.execute}, before, afterAssistant)
 			run.wait(t)
 			for _, id := range tc.ids {
 				if text, isError := run.end(t, id); text != "Operation aborted" || !isError {
@@ -163,10 +163,10 @@ func TestAbortAfterTheLoopsLastGateEntersTheExtensionTool(t *testing.T) {
 		t.Run(string(mode), func(t *testing.T) {
 			rig := newEndedCallRig(t)
 			defer rig.playIncomingLoop()()
-			var run *gateRun
+			run := &gateRun{}
 			var once sync.Once
 			tool := gateTool{execute: rig.execute, enter: func() { once.Do(func() { run.agent.Abort() }) }}
-			run = startGateRun(t, mode, []string{"tc-1"}, tool, nil, false)
+			startGateRun(t, run, mode, []string{"tc-1"}, tool, nil, false)
 			request := rig.enteredFrames(t)
 			rig.clock.expectTimer(t, ToolAbortGrace)
 			rig.respond(t, request, "answered after the abort")

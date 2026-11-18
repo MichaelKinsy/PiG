@@ -287,7 +287,7 @@ func TestEndedToolCallKeepsItsHostCallsUntilTheGraceEnds(t *testing.T) {
 	rig.settled(t)
 }
 
-// stuckPeerConn is a connection whose peer does not read: its writer holds one frame, blocked on the pipe, and, when fill is set, the queue behind it is
+// stuckPeerConn is a connection whose peer does not read: its writer holds one frame, blocked on the pipe with its batch closed, and, when fill is set, the queue behind it is
 // full to its capacity. Both are reached by sends the test makes itself, so nothing depends on timing.
 func stuckPeerConn(t *testing.T, rig *endedCallRig, name string, options connOptions, fill bool) (*managedExt, *Conn, net.Conn) {
 	t.Helper()
@@ -304,9 +304,14 @@ func stuckPeerConn(t *testing.T, rig *endedCallRig, name string, options connOpt
 	if err := conn.Send(filler); err != nil {
 		t.Fatal(err)
 	}
-	for deadline := time.Now().Add(10 * time.Second); len(conn.outCh) != 0; time.Sleep(time.Millisecond) {
+	// The writer holds writeMu from the end of its batch gathering to the end of its write: while it is held the writer is blocked on the peer, and no frame sent now joins its batch.
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(time.Millisecond) {
+		if !conn.writeMu.TryLock() {
+			break
+		}
+		conn.writeMu.Unlock()
 		if time.Now().After(deadline) {
-			t.Fatal("the writer never took the first frame")
+			t.Fatal("the writer never blocked on the first frame")
 		}
 	}
 	if fill {
