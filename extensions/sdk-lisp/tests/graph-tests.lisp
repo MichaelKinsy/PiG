@@ -211,3 +211,99 @@
   (check (pig::host-legacy-wsl-bash-p "d:/windows/sysnative/bash.exe"))
   (check (not (pig::host-legacy-wsl-bash-p "C:\\Windows\\System32\\cmd.exe")))
   (check (not (pig::host-legacy-wsl-bash-p "1:\\windows\\system32\\bash.exe"))))
+
+;;; D235: the getSignal answer names the run by the signal object (Pi: one AbortController per run).
+
+(defun signal-answer (wire)
+  "WIRE's answer as (values run aborted ended-aborted)."
+  (let ((answer (funcall wire)))
+    (values (pig:jget answer "run") (pig:jget answer "aborted") (pig:jget answer "endedAborted"))))
+
+(defun signal-wire-over (cell)
+  "A runner-signal-wire over a getSignal function that answers the car of CELL."
+  (pig::runner-signal-wire (lambda () (car cell))))
+
+(deftest signal-wire-token-follows-the-signal-object
+  (let* ((one (pig::make-abort-signal)) (two (pig::make-abort-signal)) (three (pig::make-abort-signal))
+         (cell (list nil)) (wire (signal-wire-over cell)))
+    (check (null (funcall wire)))
+    (setf (car cell) one)
+    (multiple-value-bind (run1 aborted ended) (signal-answer wire)
+      (check (and (integerp run1) (plusp run1)))
+      (check (not (eq aborted t)))
+      (check (null ended))
+      (dotimes (i 100) (check-equal run1 (signal-answer wire)))
+      ;; a nil answer touches nothing
+      (setf (car cell) nil)
+      (check (null (funcall wire)))
+      (setf (car cell) one)
+      (check-equal run1 (signal-answer wire))
+      (setf (car cell) two)
+      (multiple-value-bind (run2 aborted2 ended2) (signal-answer wire)
+        (check (and (integerp run2) (/= run2 run1)))
+        (check (not (eq aborted2 t)))
+        (check (null ended2))
+        (pig::signal-abort two)
+        (multiple-value-bind (again aborted-again ended-again) (signal-answer wire)
+          (check-equal run2 again)
+          (check (eq aborted-again t))
+          (check (null ended-again)))
+        (setf (car cell) three)
+        (multiple-value-bind (run3 aborted3 ended3) (signal-answer wire)
+          (check (and (integerp run3) (/= run3 run2) (/= run3 run1)))
+          (check (not (eq aborted3 t)))
+          (check (eq ended3 t))
+          ;; sticky: every answer of the same token repeats it
+          (multiple-value-bind (again3 aborted-again3 ended-again3) (signal-answer wire)
+            (declare (ignore aborted-again3))
+            (check-equal run3 again3)
+            (check (eq ended-again3 t)))
+          ;; the first object after others is a new run again, and it ended live
+          (setf (car cell) one)
+          (multiple-value-bind (run4 aborted4 ended4) (signal-answer wire)
+            (check (and (integerp run4) (/= run4 run3) (/= run4 run2) (/= run4 run1)))
+            (check (not (eq aborted4 t)))
+            (check (null ended4))))))))
+
+(deftest signal-wires-of-one-image-never-share-a-token
+  (let* ((cell (list (pig::make-abort-signal))) (seen '()))
+    (dotimes (i 20)
+      (push (signal-answer (signal-wire-over cell)) seen))
+    (check-equal 20 (length (remove-duplicates seen)))
+    ;; the request threads of one image share the counter (an atomic increment): no two wires are handed one token
+    (let* ((threads (loop repeat 8
+                          collect (sb-thread:make-thread
+                                   (lambda () (loop repeat 200 collect (signal-answer (signal-wire-over cell)))))))
+           (all (loop for thread in threads append (sb-thread:join-thread thread))))
+      (check-equal 1600 (length (remove-duplicates all))))))
+
+(deftest signal-wire-encodes-run-and-omits-ended-aborted-when-false
+  (let* ((one (pig::make-abort-signal)) (two (pig::make-abort-signal)) (cell (list one)) (wire (signal-wire-over cell))
+         (first (pig::to-json (funcall wire)))
+         (prefix "{\"aborted\":false,\"run\":"))
+    (check (and (> (length first) (length prefix)) (string= prefix first :end2 (length prefix))))
+    (check (digit-char-p (char first (length prefix))))
+    (check (char= #\} (char first (1- (length first)))))
+    (check (null (search "endedAborted" first)))
+    (check (null (search "null" first)))
+    (pig::signal-abort one)
+    (setf (car cell) two)
+    (let ((second (pig::to-json (funcall wire))))
+      (check (search "\"aborted\":false" second))
+      (check (search ",\"endedAborted\":true}" second)))))
+
+(defun hold-signal-through-a-wire ()
+  "A wire that answered once for a signal made here, and a weak pointer to that signal; nothing else refers to the signal."
+  (let* ((cell (list (pig::make-abort-signal))) (wire (signal-wire-over cell)) (weak (sb-ext:make-weak-pointer (car cell))))
+    (funcall wire)
+    (setf (car cell) nil)
+    (values wire weak)))
+
+(deftest signal-wire-holds-the-last-signal-strongly
+  (multiple-value-bind (wire weak) (hold-signal-through-a-wire)
+    (sb-ext:gc :full t)
+    (check (sb-ext:weak-pointer-value weak))
+    ;; the function answers nil now: that touches nothing, the wire still holds the last signal
+    (check (null (funcall wire)))
+    (sb-ext:gc :full t)
+    (check (sb-ext:weak-pointer-value weak))))

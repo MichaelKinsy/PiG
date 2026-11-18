@@ -5,6 +5,8 @@ Pi's runner is built over ``Extension`` objects that hold the extensions' functi
 Events and their results cross as Pi's JSON values (dicts and lists). The functions of ``bind_core``, ``bind_command_context`` and ``set_ui_context`` run in this process, called by the host when an extension asks for the action; they may call the runner. Each call blocks until Pi's would settle; the reads are calls on the host's state, so a read after a write sees the write. The members of Pi's ``ExtensionUIContext`` that take or return TUI components (``setFooter``, ``setHeader``, ``custom``, ``setEditorComponent``, ``addAutocompleteProvider``, ``theme`` and the theme functions, ``onTerminalInput``) are not served here: they belong to the TUI handle."""
 from __future__ import annotations
 
+import itertools
+import threading
 from typing import Any, Callable
 
 from ._graph import _GraphObject, _callback_id
@@ -44,10 +46,34 @@ def _table(context: Any, functions: dict[str, Callable[..., Any]] | None, allowe
     return wire
 
 
+_signal_run_counter = itertools.count(1)
+_signal_run_lock = threading.Lock()
+
+
 def _signal_wire(function: Callable[[], ProviderSignal | None]) -> Callable[[], Any]:
+    """The ``get_signal`` function as the host reads it: ``None`` (undefined), or ``{"aborted", "run", "endedAborted"?}``.
+
+    Pi gives every run its own signal object, so the object is the run: ``run`` is a token that is new whenever the function returns another object (``is``) than the one of the last answer, and ``endedAborted`` says the signal of the previous answer had aborted, which the host cannot see when the next run begins before it reads again. The token comes from one counter for the whole process, so the extensions packed in one process never share one. The last signal is held strongly, so an answered object is never collected and its identity reused while its token is the last. A ``None`` answer touches nothing. The host calls from several threads, so each wrapper's state and the counter are guarded by locks."""
+    lock = threading.Lock()
+    last: ProviderSignal | None = None
+    run = 0
+    ended_aborted = False
+
     def answer() -> Any:
+        nonlocal last, run, ended_aborted
         signal = function()
-        return None if signal is None else {"aborted": signal.is_set()}
+        if signal is None:
+            return None
+        with lock:
+            if last is not signal:
+                ended_aborted = last is not None and last.is_set()
+                with _signal_run_lock:
+                    run = next(_signal_run_counter)
+                last = signal
+            wire: dict[str, Any] = {"aborted": signal.is_set(), "run": run}
+            if ended_aborted:
+                wire["endedAborted"] = True
+            return wire
 
     return answer
 

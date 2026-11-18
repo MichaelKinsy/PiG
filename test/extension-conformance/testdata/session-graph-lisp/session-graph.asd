@@ -7,4 +7,5 @@
                (:file "graph-a")
                (:file "graph-b")
                (:file "graph-s1")
+               (:file "graph-signal")
                (:file "extension")))

@@ -235511,6 +235511,17 @@
       "shapeHash": "sha256:a59657a2b9e0e9ec20aec8dea725a110f7760c25aa27976c1cfda2921ee82adc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#sameSignal",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "sameSignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a context.Context, b context.Context) bool"
+      },
+      "shapeHash": "sha256:9283f6c6253ef0360add5e8fb265d86937936af101e246903375fd202a75a31e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#schemaOrderKey",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
       "name": "schemaOrderKey",
@@ -236072,9 +236083,108 @@
       "shapeHash": "sha256:ece58a403a47eac5cce437869b90015fde966166f00d46e640810d7aecd1a7ab"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#signalWire",
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#signalRunCounter",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
-      "name": "signalWire",
+      "name": "signalRunCounter",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "sync/atomic.Uint64"
+      },
+      "shapeHash": "sha256:0ffe83cc0351ce2b9a01cb8192026d6778d1b982be05921458a83342863e1340"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#signalRunCounter.Add",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "signalRunCounter.Add",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(delta uint64) (new uint64)"
+      },
+      "shapeHash": "sha256:2f4d9955d114f9fba79ce3a08315c25fefdc914bf8ac452d6429896e16fa861a"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#signalRunCounter.And",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "signalRunCounter.And",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(mask uint64) (old uint64)"
+      },
+      "shapeHash": "sha256:c9025b98e19e5ad2ccf455663f3a317a2fc0625aa7be599ad134b0753fc41c81"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#signalRunCounter.CompareAndSwap",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "signalRunCounter.CompareAndSwap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(old uint64, new uint64) (swapped bool)"
+      },
+      "shapeHash": "sha256:64e817e6febce1b7013282254dda62bb2c021235bc48fab2bd02e9a0b7e87e31"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#signalRunCounter.Load",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "signalRunCounter.Load",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() uint64"
+      },
+      "shapeHash": "sha256:8c2c25c05be990d156af5316d0723444537851bde41d6afa6bcb371a541de271"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#signalRunCounter.Or",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "signalRunCounter.Or",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(mask uint64) (old uint64)"
+      },
+      "shapeHash": "sha256:c9025b98e19e5ad2ccf455663f3a317a2fc0625aa7be599ad134b0753fc41c81"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#signalRunCounter.Store",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "signalRunCounter.Store",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(val uint64)"
+      },
+      "shapeHash": "sha256:8920d3f7210f34db10b7a901e69d1605a6c9aebc0458f948a2157ff1e982c0cd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#signalRunCounter.Swap",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "signalRunCounter.Swap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(new uint64) (old uint64)"
+      },
+      "shapeHash": "sha256:ecfcb83a724b0dc6ed0cfda5430a91eee954ae99ca091c903acb7cdd648445fc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#signalRuns",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "signalRuns",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "signalRuns"
+      },
+      "shapeHash": "sha256:76cd44dc7f6f6c42b260cec86f263a5326868fde6d76defeb5acb0985ed90131"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#signalRuns.wire",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "signalRuns.wire",
       "kind": "function",
       "exported": false,
       "shape": {

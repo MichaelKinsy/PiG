@@ -52,8 +52,27 @@
                      (graph-callback-id ctx (if (eq key adapt) (runner-signal-wire function) function)))))
     wire))
 
+(sb-ext:defglobal **signal-run-counter** (list 0)
+  "Numbers the signal objects every getSignal function of this image returns, so that the extensions packed in one image never share a token. Bumped with an atomic increment: the request threads share it.")
+
 (defun runner-signal-wire (function)
-  (lambda () (let ((signal (funcall function))) (and signal (obj "aborted" (if (abort-signal-set-p signal) t :false))))))
+  "FUNCTION (the bound getSignal) as the host reads it: NIL, or {aborted, run, endedAborted?}.
+Pi gives every run its own signal object (agent.ts:518-527), so the object is the run: RUN is a token that is new whenever FUNCTION returns another
+object (EQ) than the one of the last answer (it never repeats in this image), and endedAborted says the signal of the previous answer had aborted,
+which the host cannot see when the next run begins before it reads again; it is repeated with its token and omitted when false. The last signal is held strongly,
+so an object that was answered is never collected while its token is the last. A NIL answer touches nothing."
+  (let ((lock (sb-thread:make-mutex :name "pig signal run")) (last nil) (run 0) (ended-aborted nil))
+    (lambda ()
+      (let ((signal (funcall function)))
+        (when signal
+          (sb-thread:with-mutex (lock)
+            (unless (and last (eq last signal))
+              (setf ended-aborted (and last (abort-signal-set-p last) t)
+                    run (1+ (sb-ext:atomic-incf (car **signal-run-counter**)))
+                    last signal))
+            (let ((answer (obj "aborted" (if (abort-signal-set-p signal) t :false) "run" run)))
+              (when ended-aborted (setf (gethash "endedAborted" answer) t))
+              answer)))))))
 
 (defun runner-plist-hash (plist)
   (let ((table (make-hash-table :test 'eq)))
