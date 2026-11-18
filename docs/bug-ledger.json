@@ -18853,7 +18853,6 @@
       "tests": [
         "coding/extension/provider_insecure_test.go::TestProviderConfigInputInsecureSetting",
         "coding/extension/provider_insecure_test.go::TestProviderConfigInsecureKeepsThreeStatesOnTheWire",
-        "coding/provider_insecure_file_layer_test.go::TestFileInsecureAndRegistrationReachTheRequestAsShipped",
         "coding/provider_insecure_wiring_test.go::TestRegisteredProviderInsecureReachesTheRequestWithRefreshModels",
         "internal/codingagent/provider_insecure_tristate_test.go::TestRegisteredProviderInsecureFalseIsReadBack",
         "internal/codingagent/provider_insecure_tristate_test.go::TestRegisteredProviderInsecureHasThreeStates",
@@ -19406,6 +19405,28 @@
         "durable/examples/pocket_dropin_test.go::TestPocketToolHooksAreIntrospectableAndCallableFromATool",
         "durable/session/watch_doc_typed_test.go::TestDeferUntilPublishedRunsAfterEveryListener",
         "durable/session/watch_doc_typed_test.go::TestFamilyDocSeedAcceptsATypedGoValue"
+      ]
+    },
+    {
+      "id": "BF-56fcfdc",
+      "title": "fix(coding): one rule decides the TLS opt-in of a models.json entry and a registration on every request route",
+      "symptom": "fix(coding): one rule decides the TLS opt-in of a models.json entry and a registration on every request route",
+      "rootCause": "Owner decision 2026-11-18 (decision 29, rule R2). Root cause: the places that build a request read the raw insecure setting of different layers with local expressions, so a provider that models.json marks insecure and an extension registers again got two answers. The model runtime route (ProviderInsecure) dropped the file opt-in whenever the provider was registered, since 0.3.0. The route of a provider built straight from a model entry (BuildModel, used by the CLI --model, the interactive model picker and an extension model switch for a provider without a native stream function) kept the file opt-in with an or and never saw a registration false, since 0.2.0, so the explicit false of…",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "56fcfdc682",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/provider_insecure_file_layer_test.go::TestFileInsecureAndRegistrationReachTheRequest",
+        "internal/codingagent/provider_tls_optin_test.go::TestProviderTLSOptIn"
       ]
     },
     {

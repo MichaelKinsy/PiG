@@ -74526,6 +74526,17 @@
       "shapeHash": "sha256:ba56c315aa50feb8b34e6ef9daad84792aaec8a425e654f62ee05ea4cce891af"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.providerTLSOptInLocked",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.providerTLSOptInLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, native *github.com/MichaelKinsy/PiG/internal/codingagent.ProviderConfigInput) bool"
+      },
+      "shapeHash": "sha256:97df9561cfb569c9c99b75114a35ba22985c99fa78297776aff4d979036ddbe3"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.publishCatalog",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRegistry.publishCatalog",
@@ -278389,6 +278400,17 @@
       "shapeHash": "sha256:ba56c315aa50feb8b34e6ef9daad84792aaec8a425e654f62ee05ea4cce891af"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.providerTLSOptInLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.providerTLSOptInLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, native *ProviderConfigInput) bool"
+      },
+      "shapeHash": "sha256:780f799cbf9ce8b90bccdc98704ee4552d27e527e3838fa880ce0b34c5dc2da4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.publishCatalog",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ModelRegistry.publishCatalog",
@@ -305031,6 +305053,17 @@
       "shapeHash": "sha256:1339d0381e3a122a6f7ed63de4bd40291020055b73c1e0ccc2d4848a4569bdc2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#insecureLayer",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "insecureLayer",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "insecureLayer"
+      },
+      "shapeHash": "sha256:cacfc01ab6db0ee896d5bbbe5245d8e1638a47a1449071b77928c34bd7b7f317"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#installChangeCause",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "installChangeCause",
@@ -317186,6 +317219,17 @@
       "shapeHash": "sha256:03cda575b6366eb3f8745036c7cc5ec1a4fd37abae54d993da8bd00e4aaf3f72"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#providerTLSOptIn",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "providerTLSOptIn",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(file insecureLayer, registration insecureLayer) bool"
+      },
+      "shapeHash": "sha256:ac8f665238f35da59ddb16e492973d5e4be1dcefc5b626ca69e4522b5b4ec4e6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#quarantineDirName",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "quarantineDirName",
@@ -320671,6 +320715,17 @@
         "type": "func(a SessionEntryBase, b SessionEntryBase) bool"
       },
       "shapeHash": "sha256:c28802359107853a7a760a6f89fc98f5f06c1d2aaf9c59129a741b61a5b93897"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#sameEndpoint",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "sameEndpoint",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a string, b string) bool"
+      },
+      "shapeHash": "sha256:968ce1a7dee2275299fde4b8cf32edf3f46c82d20241fa36916c133213a2e03f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#sameMessageEntry",
