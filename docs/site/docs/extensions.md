@@ -552,6 +552,8 @@ In Go, use `sdk.Context.Done()` and return the cancellation error from owned wor
 
 An awaited handler must return only after its work finishes. Returning early changes completion ordering and loses errors.
 
+Handlers of requests that arrive together start in arrival order in every SDK, but in the Go, Rust, Python and Lisp SDKs a handler's own first statement can run after the next handler's when the operating system deschedules its thread at that moment (D658; about 5e-5 per start under one-cpu pressure, measured for Go; in Python one reorder in 100 pressured runs of a first-statement row forced on for it; Rust and Lisp by reading the code). Pi and the Node SDK never do. Do not rely on the first statements of two handlers running in order.
+
 Python custom-provider callbacks and the SDK's event forwarding share the request Context's cancellation signal. Check `ctx.is_cancelled()` while doing provider work. Cancellation before forwarding, during iteration, or after the iterator ends produces an aborted-operation error instead of forwarding further events.
 
 Interactive shutdown cancels and joins its input reader and decoder before stopping the renderer or restoring the terminal. Temporary dialogs keep the shared input owner alive. External-editor handoffs pause the terminal reader without closing stdin, so the next owner can receive unread input.

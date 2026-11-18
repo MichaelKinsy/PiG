@@ -21,6 +21,7 @@
 
 (defstruct (start-ticket (:constructor make-start-ticket (previous))) previous (done (make-latch)))
 
+;; pig divergence (D658): the place is handed on before the handler's first statement runs, so a descheduled thread can be overtaken; Pi runs a handler to its first await in invocation order.
 (defun ticket-begin (ticket)
   (when ticket
     (when (start-ticket-previous ticket) (latch-wait (start-ticket-previous ticket)))
