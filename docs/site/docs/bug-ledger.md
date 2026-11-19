@@ -21223,7 +21223,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 - **Source:** PiG's own defect
 - **Symptom:** The host used to keep the dead link, bind every hold to it and wait on it, and the next `Connect` left a hold that was already set where it was.
-- **Root cause:** Not recorded.
+- **Root cause:** a Go link closes on its own goroutine, between any two statements of its creator, where Pi's connect() runs to completion before any socket event: a link closed before the host registered it ran its close handler before the connection was the host's upstream, so the handler had nothing to clear and Connect then kept the dead link as the parent; likewise a WebSocket link read nothing of a socket that had closed before its close listener existed, so it stayed open over the closed socket
 - **User impact:** An operation failed or was rejected
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
@@ -36164,7 +36164,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 
 - Failure found by the integration build of unreleased work: 2
 - Fix reverted before release: 2
-- Follow-up to unreleased work: 33
+- Follow-up to unreleased work: 34
 - Repair of a merge between development branches: 9
 - Review follow-up to unreleased work: 4
 - test-only: 1

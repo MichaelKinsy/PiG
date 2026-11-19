@@ -106514,6 +106514,105 @@
       "shapeHash": "sha256:46bc02246fa709521fd10c13588763daa3e5c53683f39550f1fc02b8f2117fdb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#settlingTerminal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "settlingTerminal",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "settlingTerminal"
+      },
+      "shapeHash": "sha256:dc4f042861d279b8bf89ed42867925b6b083c2696dd652a953457207f23c9a4b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#settlingTerminal.Error",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "settlingTerminal.Error",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(line string)"
+      },
+      "shapeHash": "sha256:59c39583737657aff9a897e29c5dd0278866d64fef3e580d52011d34ea873425"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#settlingTerminal.Interactive",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "settlingTerminal.Interactive",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#settlingTerminal.OpenURL",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "settlingTerminal.OpenURL",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(url string)"
+      },
+      "shapeHash": "sha256:e93833706e5371d3b3fb02f44ba7a06d98bd97d3f05e07fb06662535e20b4f06"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#settlingTerminal.Question",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "settlingTerminal.Question",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, message string) (string, error)"
+      },
+      "shapeHash": "sha256:f5c68aac7a2bd000ced31c0c9e002f83c6210297aca8369443f094b839afadd2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#settlingTerminal.Secret",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "settlingTerminal.Secret",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, message string) (string, error)"
+      },
+      "shapeHash": "sha256:f5c68aac7a2bd000ced31c0c9e002f83c6210297aca8369443f094b839afadd2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#settlingTerminal.Write",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "settlingTerminal.Write",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(line string)"
+      },
+      "shapeHash": "sha256:59c39583737657aff9a897e29c5dd0278866d64fef3e580d52011d34ea873425"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#settlingTerminal.returned",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "settlingTerminal.returned",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#settlingTerminal.settle",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "settlingTerminal.settle",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#setupCli",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "setupCli",
