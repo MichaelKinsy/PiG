@@ -80,6 +80,10 @@ func (m *InteractiveMode) deliverUserMessageAfter(content any, deliverAs extensi
 		if m.agent == nil {
 			return
 		}
+		// A start posted before a quit key set requestExit must not begin a turn the quit settle would wait for (D247).
+		if m.requestExit.Load() {
+			return
+		}
 		// Upstream sendUserMessage is prompt() with source "extension" and
 		// no command dispatch or template expansion. A run that started
 		// after the check above receives an unspecified delivery as a

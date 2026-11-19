@@ -213,6 +213,9 @@ func (p Policy) watchLiveHeap(quit <-chan struct{}, fellBack *atomic.Bool, perce
 	timer := time.NewTimer(wait)
 	defer timer.Stop()
 	for {
+		if watcherTurn != nil {
+			watcherTurn()
+		}
 		select {
 		case <-quit:
 			return endedStopped
@@ -257,6 +260,10 @@ func (p Policy) watchLiveHeap(quit <-chan struct{}, fellBack *atomic.Bool, perce
 		timer.Reset(wait)
 	}
 }
+
+// watcherTurn, when a test sets it before Apply, is called each time the watcher is about to wait: first when it has started and made its
+// timer, then after each poll has set the timer again. It lets a test wait for those moments as events. It is nil in production.
+var watcherTurn func()
 
 // collected is set by the first poll that finds a finished collection. No later watcher of the process counts collections again: the
 // one a cleanup starts after an idle stop runs after a collection and reads metrics at once.
