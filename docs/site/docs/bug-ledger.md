@@ -1650,6 +1650,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-a966fc9](#bf-a966fc9) | Encoding every built-in model, as an extension host does when it attaches, no longer leaves 1.2 MB of… | PiG's own defect | All platforms | Unreleased |
 | [BF-a967e74](#bf-a967e74) | A Chord HTTP socket's once-listener (the close hook an upgrade keeps its connection by) could run before it… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-a9757c8](#bf-a9757c8) | A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-a97881e](#bf-a97881e) | A call that fails before the provider has a response stream (an HTTP error answered by Gemini, Vertex or… | PiG's own defect | All platforms | Unreleased |
 | [BF-a97bb03](#bf-a97bb03) | Highlighted code in a markdown block or a tool card, and the label of a legacy bash entry in the session… | PiG's own defect | All platforms | Unreleased |
 | [BF-a984ccc](#bf-a984ccc) | Starting PiG with an agent directory that cannot be made (a regular file where a parent directory should be… | PiG's own defect | All platforms | Unreleased |
 | [BF-a9d41ed](#bf-a9d41ed) | `chord/nextnode/plugins`: a failed build's empty `errors` list reaches the Node host as `[]` as in Pi, and a… | PiG's own defect | All platforms | 0.7.0 |
@@ -25050,6 +25051,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `a9757c8ed3` (2026-10-10)
 - **Tests:** `ai/provider_wrap_test.go::TestWrapBuiltinProviderResolvesTheEndpointFromTheConfiguredEnv`, `coding/cloudflare_build_model_test.go::TestBuildModelCloudflareEndpointUsesTheStoredCredentialEnv`
 - **Release note:** A Cloudflare model built with `coding.BuildModel` and streamed through its own `Provider` resolves `{CLOUDFLARE_ACCOUNT_ID}` and `{CLOUDFLARE_GATEWAY_ID}` from the stored credential's env again, under the request env, as Pi's `Models.applyAuth` merges the resolution env before `cloudflareStreams` runs. Since `ai.WrapBuiltinProvider` the wrapper read only the request env, so such a request went to the literal placeholder URL.
+
+### BF-a97881e
+
+**A call that fails before the provider has a response stream (an HTTP error answered by Gemini, Vertex or…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A call that fails before the provider has a response stream (an HTTP error answered by Gemini, Vertex or Mistral, or a payload hook that rejects the request on an OpenAI-style or Azure model) now reports `durationMs` from the start of the call, as Pi does.
+- **Root cause:** apiModuleFailure stamped the call in wall milliseconds, ran the call, and only then built the failed stream, so the stream began after the message's timestamp. Pi's module creates its stream first and stamps its message after (google-generative-ai.ts:64, :83, :288-292), and its stream leaves a message untimed only when the message's timestamp predates the stream (event-stream.ts:97-99, :126-128). In Go a millisecond boundary inside the call made the timestamp predate the stream, so the failed message had no durationMs; a call that stayed inside one millisecond was timed from after the call, 0.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `a97881e371` (2026-11-19)
+- **Tests:** `ai/failure_response_allocs_norace_test.go::TestFailedRequestAllocationsWithoutDeciderMatchTheLineBeforeTheSeam`, `ai/module_failure_duration_test.go::TestAPIModuleFailureIsTimedFromTheCall`, `ai/module_failure_duration_test.go::TestLazyStreamForwardsTheModuleFailureDurationUnchanged`
+- **Release note:** A call that fails before the provider has a response stream (an HTTP error answered by Gemini, Vertex or Mistral, or a payload hook that rejects the request on an OpenAI-style or Azure model) now reports `durationMs` from the start of the call, as Pi does. The failed message was timed from after the call: a program that reads the module's own stream (`ai.APIModuleStream`) saw no `durationMs` whenever a millisecond boundary fell inside the call, which every real network request crosses, and `0` otherwise, and a session saw a value measured by the stream that forwards it, not by the call.
 
 ### BF-a97bb03
 

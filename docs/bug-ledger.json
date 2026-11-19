@@ -44769,6 +44769,30 @@
       ]
     },
     {
+      "id": "BF-a97881e",
+      "title": "A call that fails before the provider has a response stream (an HTTP error answered by Gemini, Vertex or…",
+      "symptom": "A call that fails before the provider has a response stream (an HTTP error answered by Gemini, Vertex or Mistral, or a payload hook that rejects the request on an OpenAI-style or Azure model) now reports `durationMs` from the start of the call, as Pi does.",
+      "rootCause": "apiModuleFailure stamped the call in wall milliseconds, ran the call, and only then built the failed stream, so the stream began after the message's timestamp. Pi's module creates its stream first and stamps its message after (google-generative-ai.ts:64, :83, :288-292), and its stream leaves a message untimed only when the message's timestamp predates the stream (event-stream.ts:97-99, :126-128). In Go a millisecond boundary inside the call made the timestamp predate the stream, so the failed message had no durationMs; a call that stayed inside one millisecond was timed from after the call, 0.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A call that fails before the provider has a response stream (an HTTP error answered by Gemini, Vertex or Mistral, or a payload hook that rejects the request on an OpenAI-style or Azure model) now reports `durationMs` from the start of the call, as Pi does. The failed message was timed from after the call: a program that reads the module's own stream (`ai.APIModuleStream`) saw no `durationMs` whenever a millisecond boundary fell inside the call, which every real network request crosses, and `0` otherwise, and a session saw a value measured by the stream that forwards it, not by the call.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a97881e371",
+          "date": "2026-11-19"
+        }
+      ],
+      "tests": [
+        "ai/failure_response_allocs_norace_test.go::TestFailedRequestAllocationsWithoutDeciderMatchTheLineBeforeTheSeam",
+        "ai/module_failure_duration_test.go::TestAPIModuleFailureIsTimedFromTheCall",
+        "ai/module_failure_duration_test.go::TestLazyStreamForwardsTheModuleFailureDurationUnchanged"
+      ]
+    },
+    {
       "id": "BF-a97bb03",
       "title": "Highlighted code in a markdown block or a tool card, and the label of a legacy bash entry in the session…",
       "symptom": "Highlighted code in a markdown block or a tool card, and the label of a legacy bash entry in the session tree, no longer measure a lone UTF-16 surrogate one cell wide. highlight.js works on UTF-16 units and can split a surrogate pair between two scopes, and PiG encoded the leftover unit as U+FFFD before wrapping and truncating the row, so a row could wrap or clip one cell earlier than in Pi.",
