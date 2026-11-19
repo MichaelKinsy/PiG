@@ -465,6 +465,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-36e192b](#bf-36e192b) | fix(lint): port Kitty chunking in UTF-16 units; clear the codemode, terminal image and exit-restore lint hits | PiG's own defect | All platforms | Unreleased |
 | [BF-36e82ad](#bf-36e82ad) | fix(durable): a non-finite number is a strict JSON error whichever JSON package a value's own encoder used | PiG's own defect | All platforms | Unreleased |
 | [BF-36fd3b5](#bf-36fd3b5) | Hyperlinks (OSC 8) now work in Alacritty, which sets `TERM=alacritty` or `ALACRITTY_WINDOW_ID` but not… | PiG's own defect | All platforms | Unreleased |
+| [BF-3777b25](#bf-3777b25) | A data race between the connection read loop of an extension process and a handler whose request had ended… | PiG's own defect | All platforms | Unreleased |
 | [BF-37c6048](#bf-37c6048) | fix(tui): a streamed Markdown never resumes past a paragraph clipped before a LaTeX start | PiG's own defect | All platforms | Unreleased |
 | [BF-37c6264](#bf-37c6264) | A Node extension that draws Pi's `ToolExecutionComponent` for a tool that renders itself (`renderShell… | A fix Pi shipped that PiG ported | All platforms | Unreleased |
 | [BF-37d2daa](#bf-37d2daa) | An extension's `ctx.model` and model lists keep a model's `cost.tiers` when the model's record has it as an… | PiG's own defect | All platforms | 0.5.0 |
@@ -8582,6 +8583,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `36fd3b5939` (2026-11-05)
 - **Tests:** `tui/terminal_image_upstream_test.go::TestUpstreamTerminalImageCapabilities`
 - **Release note:** Hyperlinks (OSC 8) now work in Alacritty, which sets `TERM=alacritty` or `ALACRITTY_WINDOW_ID` but not `TERM_PROGRAM` (Pi #11767, D259).
+
+### BF-3777b25
+
+**A data race between the connection read loop of an extension process and a handler whose request had ended…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A data race between the connection read loop of an extension process and a handler whose request had ended without a reply is gone.
+- **Root cause:** Conn.dispatchBarrier runs on the connection read loop through the request arrival callback and the goroutine that made the request received its result through a plain variable (the session_start slot of makeEventHandler, introduced by 33d17edd37, and the dispatched variable of toolExecuteFunc, introduced by 2f03eb55db in 0.5.2). A reply orders the two goroutines, but a request that ends without its reply returns while the read loop is still inside the callback, so the caller read a variable the read loop wrote.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `3777b25640` (2026-11-19)
+- **Tests:** `coding/extension/host/subprocess/session_start_reply_race_test.go::TestSessionStartRequestEndedByAConnectionFailureLeavesTheReadLoopsMarkOrdered`
+- **Release note:** A data race between the connection read loop of an extension process and a handler whose request had ended without a reply is gone. When the extension process died (or the caller's context ended) after the host sent a `session_start` handler request or a tool call but before the reply was read, the handler goroutine read the dispatch mark that the read loop was still writing. The race detector reported it (`go test -race`, `TestRestartReplacesRegistrationBesideEveryReader`); a user could observe nothing by value, because the mark is read only to order the reply behind notices already sent. The mark is now handed over through an atomic pointer at both sites.
 
 ### BF-37c6048
 

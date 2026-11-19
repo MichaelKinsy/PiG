@@ -136264,9 +136264,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context) \u003c-chan struct{}"
+        "type": "func(ctx context.Context) *dispatchMark"
       },
-      "shapeHash": "sha256:c51e69fcae687343551f11ef3bb93ed4285737bc29c4a4d492a19948bd65dee4"
+      "shapeHash": "sha256:113c73d67b77686e4efecdf9a8f2662a71873b05d685bc95957e0617d03fb435"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.dropReservedHostCall",
@@ -150223,9 +150223,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(c *Conn, dispatched \u003c-chan struct{})"
+        "type": "func(c *Conn, mark *dispatchMark)"
       },
-      "shapeHash": "sha256:50eeea57225f1fdb6c332f90ffa19f0452cb8aff8964d7e89dcf7af682b4be33"
+      "shapeHash": "sha256:5c0ba0ec38ed27e648aaba44890a3a0a6891ab3b77e2811ede3eff29ff1c3ef6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#awaitStderrDrained",
