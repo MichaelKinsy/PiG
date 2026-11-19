@@ -3894,7 +3894,7 @@
       "id": "pkg:agent/.#AgentToolResult",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:4219e1893ef7ff54d4d9007d478793ebf4bb83532710cead397fbfaca9bbb68b",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult"
       ],
@@ -3914,7 +3914,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:content",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:579a485b14012a4360245c6cc7a0a043cafbe01f5504eaea352332cde98fbefa",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.Content"
       ],
@@ -3934,7 +3934,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:details",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0d1eaeb3aafa9cb5b0b3a4a7581afab5d7db1aea2eefcee3c7e7530ffd21fffd",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.Details"
       ],
@@ -3954,7 +3954,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:isError",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2f862a4a5bef9d233e869e5bdfdf8e328beefd9d47a88377cbb39b4441b05884",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.IsError"
       ],
@@ -3974,7 +3974,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:structuredContent",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:2bf50fc5a41ddef8f034a961e561cda23c7d21ded57737452fe48d3d36864cd3",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.StructuredContent"
       ],
@@ -3994,7 +3994,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:terminate",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0356276fedc4675b9735bbb9bbcb319fefd7cb95da4186cc33c15b2a3f3b4a4e",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.Terminate"
       ],
@@ -4014,7 +4014,7 @@
       "id": "pkg:agent/.#AgentToolResult::property:usage",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:68962e1f2cc1a23b50b8214f3dd8cebcf889a046bb37b37cac2caefab4d5ec79",
-      "rationale": "types.ts AgentToolResult\u003cT\u003e: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
+      "rationale": "types.ts AgentToolResult<T>: Go AgentToolResult has the same six members (Content, Details, StructuredContent, IsError, Usage, Terminate) with Details any for the generic T and IsError a bool for `isError?: boolean | undefined`. MemberOrder, Thrown, StructuredContentAppended and Preview are Go-side bookkeeping that reproduce upstream's object key order and thrown-error handling (agent-loop.ts:877-919); TestAgentLoop_ToolEventsCarryTheToolsMemberOrder asserts the serialized result.",
       "pigTargets": [
         "agent/agent.go#AgentToolResult.Usage"
       ],
@@ -6755,7 +6755,7 @@
       "id": "pkg:ai/.#Api",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e94e2ceb75efedd136d719c502c3d5bc4e6bc49140f3e97a2aee725b9489c7f8",
-      "rationale": "Api: the Go named string type API declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "Api: the Go named string type API declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/types.go#API"
       ],
@@ -10943,7 +10943,7 @@
       "id": "pkg:ai/.#ClassifierApi",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7c4c006449011ffdc3d6dfdcd41b6063ea59cadc5c5a3794dfec394aef8da709",
-      "rationale": "ClassifierApi: the Go named string type ClassifierAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "ClassifierApi: the Go named string type ClassifierAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/model_types.go#ClassifierAPI"
       ],
@@ -18282,7 +18282,7 @@
       "id": "pkg:ai/.#ImageApi",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3035773e555bf16f08b28386de4578ea0cd57da9ef3b40e914919329f658cebd",
-      "rationale": "ImageApi: the Go named string type ImageAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "ImageApi: the Go named string type ImageAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/model_types.go#ImageAPI"
       ],
@@ -32313,9 +32313,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
-        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
+        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -32447,9 +32447,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
       ]
     },
     {
@@ -32490,9 +32490,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -32533,9 +32533,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -51113,7 +51113,7 @@
       "id": "pkg:ai/compat#Api",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e94e2ceb75efedd136d719c502c3d5bc4e6bc49140f3e97a2aee725b9489c7f8",
-      "rationale": "Api: the Go named string type API declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "Api: the Go named string type API declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/types.go#API"
       ],
@@ -55618,7 +55618,7 @@
       "id": "pkg:ai/compat#ClassifierApi",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7c4c006449011ffdc3d6dfdcd41b6063ea59cadc5c5a3794dfec394aef8da709",
-      "rationale": "ClassifierApi: the Go named string type ClassifierAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "ClassifierApi: the Go named string type ClassifierAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/model_types.go#ClassifierAPI"
       ],
@@ -63741,7 +63741,7 @@
       "id": "pkg:ai/compat#ImageApi",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:3035773e555bf16f08b28386de4578ea0cd57da9ef3b40e914919329f658cebd",
-      "rationale": "ImageApi: the Go named string type ImageAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string \u0026 {})`) is the unconstrained Go string type.",
+      "rationale": "ImageApi: the Go named string type ImageAPI declares exactly the upstream literal value set (TestUpstreamStringUnionsMatchTheGoConstants parses the pinned union and compares it with the Go constants). The upstream open union (`| (string & {})`) is the unconstrained Go string type.",
       "pigTargets": [
         "ai/model_types.go#ImageAPI"
       ],
@@ -78419,9 +78419,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
-        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
+        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -78553,9 +78553,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
       ]
     },
     {
@@ -78596,9 +78596,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -78639,9 +78639,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -84100,7 +84100,7 @@
         "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream",
         "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
       ],
-      "asyncContract": "Awaiting the upstream Promise\u003cAssistantMessage\u003e is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
+      "asyncContract": "Awaiting the upstream Promise<AssistantMessage> is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
       "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
     },
     {
@@ -84122,7 +84122,7 @@
         "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream",
         "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
       ],
-      "asyncContract": "Awaiting the upstream Promise\u003cAssistantMessage\u003e is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
+      "asyncContract": "Awaiting the upstream Promise<AssistantMessage> is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
       "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
     },
     {
@@ -85457,7 +85457,7 @@
       "id": "pkg:ai/models#ModelsRefreshResult::property:errors",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:79a889dd355b2a71ce8c4ce2feaa10a380366ff8e7693c2eacdc7c1e29a98f25",
-      "rationale": "ReadonlyMap\u003cstring, Error\u003e is Errors map[string]error plus ErrorOrder, which keeps the Map's insertion order. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
+      "rationale": "ReadonlyMap<string, Error> is Errors map[string]error plus ErrorOrder, which keeps the Map's insertion order. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
       "pigTargets": [
         "ai/models_runtime.go#ModelsRefreshResult.Errors"
       ],
@@ -85885,7 +85885,7 @@
         "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream",
         "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
       ],
-      "asyncContract": "Awaiting the upstream Promise\u003cAssistantMessage\u003e is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
+      "asyncContract": "Awaiting the upstream Promise<AssistantMessage> is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
       "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
     },
     {
@@ -85907,7 +85907,7 @@
         "test:ai/faux_deferred_models_upstream_test.go#TestFauxModelsSubmitPollRedeemDeferredUpstream",
         "test:ai/models_collection_upstream_test.go#TestModelsDeferredResolvedRequestOptionsUpstream"
       ],
-      "asyncContract": "Awaiting the upstream Promise\u003cAssistantMessage\u003e is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
+      "asyncContract": "Awaiting the upstream Promise<AssistantMessage> is a blocking Go call that returns the final message; a stream failure is the message's error stopReason, not a returned error. AbortSignal is the context.Context argument.",
       "rationale": "Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface."
     },
     {
@@ -87315,7 +87315,7 @@
       "id": "pkg:ai/models#RefreshModelsContext::property:publish",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:5d5fa0d833de78dfa4fbd4f7cacdeca5d7fd076909da89118cc6cf26a5832a89",
-      "rationale": "Promise\u003cboolean\u003e is the (bool, error) return; false means a newer refresh or provider replacement superseded this one. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
+      "rationale": "Promise<boolean> is the (bool, error) return; false means a newer refresh or provider replacement superseded this one. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
       "pigTargets": [
         "ai/models_runtime.go#RefreshModelsContext.Publish"
       ],
@@ -87337,7 +87337,7 @@
       "id": "pkg:ai/models#RefreshModelsContext::property:publish::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f24f310d03b1852c123ef88ca7b3d2fb5ef7c49c4c3d7dcd924caca8545c3b91",
-      "rationale": "Promise\u003cboolean\u003e is the (bool, error) return; false means a newer refresh or provider replacement superseded this one. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
+      "rationale": "Promise<boolean> is the (bool, error) return; false means a newer refresh or provider replacement superseded this one. Re-reviewed against Pi 1.0.4: the owning source is unchanged since the 0.99.2 review except models.ts resolveRefreshCredential, which Pig ports (ai/models_runtime_refresh.go resolveRefreshCredential); the diff touches no other interface.",
       "pigTargets": [
         "ai/models_runtime.go#RefreshModelsContext.Publish"
       ],
@@ -102455,9 +102455,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:internal/codingagent/compaction/coding_compaction_upstream_test.go#TestCodingCompactionUpstream",
-        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
+        "test:internal/codingagent/compaction/generate_summary_oracle_test.go#TestGenerateSummaryMatchesPi"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -102589,9 +102589,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/retry_hash_oracle_test.go#TestRetryAndHashMatchPiOnSeededProbes",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"
       ]
     },
     {
@@ -102632,9 +102632,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -102675,9 +102675,9 @@
         "call:ai/assistant_retry.go#RetryAssistantCall"
       ],
       "evidence": [
+        "test:ai/openai_codex_ws_connection_limit_upstream_test.go#TestCodexWebSocketRetriesAConnectionLifetimeLimitOnAFreshWebSocket",
         "test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse",
-        "test:ai/assistant_retry_test.go#TestRetryAssistantCallMatchesNodeTimerOverflow"
+        "test:ai/assistant_retry_test.go#TestRetryAssistantCallCustomDeciderAndFailureResponse"
       ]
     },
     {
@@ -111406,7 +111406,7 @@
       "evidence": [
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyKindChanged",
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyedMappings",
-        "test:chord/next/contracts/declare_test.go#TestHostKeyedMembers"
+        "test:chord/next/contracts/contract_test.go#TestMemberNames"
       ]
     },
     {
@@ -111428,7 +111428,7 @@
       "evidence": [
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyKindChanged",
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyedMappings",
-        "test:chord/next/contracts/declare_test.go#TestHostKeyedMembers"
+        "test:chord/next/contracts/contract_test.go#TestMemberNames"
       ]
     },
     {
@@ -111450,7 +111450,7 @@
       "evidence": [
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyKindChanged",
         "test:chord/next/contracts/accepts_test.go#TestAcceptsKeyedMappings",
-        "test:chord/next/contracts/declare_test.go#TestHostKeyedMembers"
+        "test:chord/next/contracts/contract_test.go#TestMemberNames"
       ]
     },
     {
@@ -128072,24 +128072,20 @@
     },
     {
       "id": "pkg:chord/http#LinksOptions",
-      "disposition": "ported",
+      "disposition": "designed-out",
       "upstreamShapeHash": "sha256:461e2f9e0d7b121ac88929de3766878e00b0651d33958d84ca8924131ab6873a",
-      "rationale": "Derived by the interface gap detector: LinksOptions is Go chord/nextnode/http/http.go#LinksOptions (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Carried ahead of the pin: Pi 1.5.2 (packages/chord/src/node/http/http.ts:60-69) declares LinksOptions.opened as `(request: HttpRequest, principal: Principal) => (() => void) | undefined`; Pi main 5f89cc0a7df6 (http.ts:68) declares `(request: HttpRequest, principal: Principal, close: () => void) => (() => void) | undefined`: the hook also gets a close that ends that one link (an app closing the links of a credential it revoked), and what it returns still runs when the link closes. PiG implements the successor, not the pin shape: http.LinksOptions (chord/nextnode/http/http.go) with Opened func(request HttpRequest, principal data.Principal, closeLink func()) (closed func(), err error); Options and OptionsFunc are the two arms of Pi options (a value and a function that returns it: Go has no sum, a field per arm says which is absent; OptionsFunc is read when set, its error is a throw reported hook_failed with the upgrade refused 403) and an error from Opened is a throw reported hook_failed with the link kept. The signature rules compare the Go three parameters with the pin two and refute the row (S4). Remove condition: when the pin moves past 5f89cc0a7df6 to a Pi release that carries this declaration the row derives as ported; delete this entry then. Exercised by the Go tests of each arm and of close (inside the hook, twice, after the peer closed, racing the peer, other links stay open).",
       "pigTargets": [
         "chord/nextnode/http/http.go#LinksOptions"
       ],
-      "layers": {
-        "behavior": "complete",
-        "production": "complete",
-        "shape": "complete"
-      },
-      "production": [
-        "call:chord/nextnode/http/http.go#HttpComponent.upgradeSteps"
-      ],
       "evidence": [
-        "test:chord/nextnode/http/http_example_66_test.go#TestExample66WebSocketLimits",
-        "test:chord/nextnode/http/review_test.go#TestReviewAHostRemovedAndRestoredBetweenAnUpgradesCheckAndItsKeepEndsTheConnection",
-        "test:chord/nextnode/http/review_test.go#TestReviewARouterChangeBetweenAnUpgradesCheckAndItsKeepStillEndsTheConnection"
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointAcceptsALinkAsTheAuthenticatedPrincipalWithTheOptionsLinksOptionsGaveThatSocket",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointRefusesASocketWithoutAPrincipalFromAnotherOriginOrHostForeignOrWhoseLinksOptionsFails403",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointCallsOpenedOnceTheLinkIsAcceptedAndItsResultWhenTheSocketCloses",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointGivesOpenedWhatTerminatesThatLinkAtOnceTheOthersStayOpen",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointRunsWhatOpenedReturnedWhenItEndedTheLinkBeforeReturning",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointsCloseAfterThePeerClosedTheLinkDoesNothingAndClosedRanOnce",
+        "test:chord/nextnode/http/upgrades_test.go#TestTheLinksEndpointsCloseRacingThePeersCloseRunsClosedOnce"
       ]
     },
     {
@@ -155128,9 +155124,9 @@
         "call:coding/session.go#Session.LastAssistantText"
       ],
       "evidence": [
+        "test:coding/session_websocket_limit_retry_upstream_test.go#TestIssue12124WebSocketConnectionLifetimeRetry",
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestMissingConfiguredThemeExportsWithActiveFallback",
-        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce",
-        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAServerSocketClosedBeforeTheAnswer"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce"
       ]
     },
     {
@@ -155150,9 +155146,9 @@
         "call:coding/session.go#Session.LastAssistantText"
       ],
       "evidence": [
+        "test:coding/session_websocket_limit_retry_upstream_test.go#TestIssue12124WebSocketConnectionLifetimeRetry",
         "test:internal/codingagent/missing_theme_export_upstream_test.go#TestMissingConfiguredThemeExportsWithActiveFallback",
-        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce",
-        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAServerSocketClosedBeforeTheAnswer"
+        "test:coding/session_connection_closed_retry_test.go#TestSessionRetriesAGatewayClosedConnectionOnce"
       ]
     },
     {
@@ -155813,9 +155809,9 @@
         "call:coding/session_tool_registry.go#Session.Reload"
       ],
       "evidence": [
-        "test:coding/session_bind_extensions_upstream_test.go#TestReloadReplaysSessionStartOnlyForRealBindings",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad"
+        "test:coding/session_bind_extensions_upstream_test.go#TestReloadReplaysSessionStartForEveryBoundSession",
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
+        "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -155836,9 +155832,9 @@
         "call:coding/session_tool_registry.go#Session.Reload"
       ],
       "evidence": [
-        "test:coding/session_bind_extensions_upstream_test.go#TestReloadReplaysSessionStartOnlyForRealBindings",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad"
+        "test:coding/session_bind_extensions_upstream_test.go#TestReloadReplaysSessionStartForEveryBoundSession",
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
+        "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -157154,7 +157150,7 @@
       "evidence": [
         "test:coding/sdk_skills_upstream_test.go#TestSessionReadsSuppliedResourceLoaderLive",
         "test:coding/sdk_skills_upstream_test.go#TestUpstreamSDKSkillsNativeSession",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader"
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers"
       ]
     },
     {
@@ -157597,8 +157593,8 @@
       ],
       "evidence": [
         "test:coding/runtime_before_invalidate_upstream_test.go#TestBeforeSessionInvalidateRunsBetweenShutdownAndRebind",
-        "test:coding/session_replaced_2860_upstream_test.go#TestReplacedSession2860Switch",
-        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalNewResumeEvents"
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsDoesNotRepeatAFixedAndReappearingDiagnostic",
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsReturnsEachDiagnosticOnceAtStartupAndAfterReplacements"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -157620,8 +157616,8 @@
       ],
       "evidence": [
         "test:coding/runtime_before_invalidate_upstream_test.go#TestBeforeSessionInvalidateRunsBetweenShutdownAndRebind",
-        "test:coding/session_replaced_2860_upstream_test.go#TestReplacedSession2860Switch",
-        "test:coding/session_runtime_replacement_upstream_test.go#TestRuntimeOriginalNewResumeEvents"
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsDoesNotRepeatAFixedAndReappearingDiagnostic",
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsReturnsEachDiagnosticOnceAtStartupAndAfterReplacements"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -159571,9 +159567,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -159593,9 +159589,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -159681,6 +159677,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -159702,6 +159699,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -160119,9 +160117,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -160141,9 +160139,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -160331,6 +160329,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -160352,6 +160351,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -161752,9 +161752,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -161774,9 +161774,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -161957,6 +161957,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -161978,6 +161979,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -162815,9 +162817,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -162837,9 +162839,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -163051,9 +163053,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -163073,9 +163075,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -165493,9 +165495,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -165515,9 +165517,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -165729,9 +165731,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -165751,9 +165753,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -167541,7 +167543,9 @@
         "call:coding/cli/cli_session_factory.go#cliSessionFactory.create"
       ],
       "evidence": [
-        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction"
+        "test:coding/session_runtime_diagnostics_test.go#TestRuntimeKeepsDiagnosticsAndModelFallbackOfTheCurrentConstruction",
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsDoesNotRepeatAFixedAndReappearingDiagnostic",
+        "test:coding/runtime_take_unreported_diagnostics_upstream_test.go#TestTakeUnreportedDiagnosticsKeysByTypeAndMessage"
       ]
     },
     {
@@ -168155,8 +168159,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost",
-        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpriteSetRepaintsTheHeaderThroughTheInteractiveHost"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsReportsOnceTheRunnerExistsAndDropsBefore",
+        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost"
       ]
     },
     {
@@ -168177,8 +168181,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost",
-        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpriteSetRepaintsTheHeaderThroughTheInteractiveHost"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsReportsOnceTheRunnerExistsAndDropsBefore",
+        "test:internal/codingagent/pi_logo_upstream_test.go#TestSpritePickerEscapeIsNoErrorThroughTheInteractiveHost"
       ]
     },
     {
@@ -170971,9 +170975,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -170993,9 +170997,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -171081,6 +171085,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -171102,6 +171107,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -172487,9 +172493,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/captured_output_test.go#TestResolveAnnouncesAPackageItInstalls",
         "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
-        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
       ]
     },
     {
@@ -172509,9 +172515,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/captured_output_test.go#TestResolveAnnouncesAPackageItInstalls",
         "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
-        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
       ]
     },
     {
@@ -174158,8 +174164,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder",
-        "test:test/extension-conformance/api_events_test.go#TestConformance_ExtensionAPIEventsOrder"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsBusKeepsItsOwnReportForADirectSubscriber",
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {
@@ -174180,8 +174186,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder",
-        "test:test/extension-conformance/api_events_test.go#TestConformance_ExtensionAPIEventsOrder"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsBusKeepsItsOwnReportForADirectSubscriber",
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {
@@ -174308,8 +174314,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder",
-        "test:test/extension-conformance/api_events_test.go#TestConformance_ExtensionAPIEventsOrder"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsBusKeepsItsOwnReportForADirectSubscriber",
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {
@@ -174330,8 +174336,8 @@
       ],
       "evidence": [
         "test:coding/extension/eventbus_upstream_test.go#TestEventBusLifecycleAcrossOwnerAndExtensionViewsUpstream",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder",
-        "test:test/extension-conformance/api_events_test.go#TestConformance_ExtensionAPIEventsOrder"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsBusKeepsItsOwnReportForADirectSubscriber",
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {
@@ -175699,8 +175705,8 @@
       ],
       "evidence": [
         "test:coding/cli/extension_api_get_commands_upstream_test.go#TestExtensionAPIGetCommandsReadsTheBoundSession",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIMcpServersRegisterAndUnregister"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsReportsOnceTheRunnerExistsAndDropsBefore",
+        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIEventsBusDeliversInOrder"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -177107,7 +177113,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:session_start",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7bb1b77d9e9ace784d6d6b702cf14a7fcb4923f07e719b69073affd77125d04a",
-      "rationale": "pi.on(\"session_start\", handler): () =\u003e void is the Go API member OnSessionStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"session_start\", handler): () => void is the Go API member OnSessionStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnSessionStart"
       ],
@@ -177142,7 +177148,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:session_tree",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b4f9befe1f404bee2151115e88c3a92080aa216fe0da15c87b50c0dc60d4a3e1",
-      "rationale": "pi.on(\"session_tree\", handler): () =\u003e void is the Go API member OnSessionTree, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"session_tree\", handler): () => void is the Go API member OnSessionTree, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnSessionTree"
       ],
@@ -177173,7 +177179,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:thinking_level_select",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e534eae73f45efa1d58a74b9383a03e482d05e27a6aa266f310f4eabd8a4d8a2",
-      "rationale": "pi.on(\"thinking_level_select\", handler): () =\u003e void is the Go API member OnThinkingLevelSelect, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"thinking_level_select\", handler): () => void is the Go API member OnThinkingLevelSelect, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnThinkingLevelSelect"
       ],
@@ -177207,7 +177213,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_call",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:c68e9f83f7bc0d4d74701c2e1ecd66bda962fb468e46815410c5865be1a185cc",
-      "rationale": "pi.on(\"tool_call\", handler): () =\u003e void is the Go API member OnToolCall, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"tool_call\", handler): () => void is the Go API member OnToolCall, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnToolCall"
       ],
@@ -177240,7 +177246,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_execution_end",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:bb8602a864570eb3116f5aef70ad740a9a3d26211cc88667c8b0c39965e4e6bf",
-      "rationale": "pi.on(\"tool_execution_end\", handler): () =\u003e void is the Go API member OnToolExecutionEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"tool_execution_end\", handler): () => void is the Go API member OnToolExecutionEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnToolExecutionEnd"
       ],
@@ -177272,7 +177278,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_execution_start",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:1cebe4a00fbe8f2ce989969644cf32a1d287c3a71b0a9b2c1602e20b5ab1716a",
-      "rationale": "pi.on(\"tool_execution_start\", handler): () =\u003e void is the Go API member OnToolExecutionStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"tool_execution_start\", handler): () => void is the Go API member OnToolExecutionStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnToolExecutionStart"
       ],
@@ -177304,7 +177310,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_execution_update",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:646ba2bac3b264e37c71cf47eecde1eab6d40099cad5ad6701f79549b9c5d844",
-      "rationale": "pi.on(\"tool_execution_update\", handler): () =\u003e void is the Go API member OnToolExecutionUpdate, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"tool_execution_update\", handler): () => void is the Go API member OnToolExecutionUpdate, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnToolExecutionUpdate"
       ],
@@ -177336,7 +177342,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:tool_result",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:0fbf50c6a1f6fc1ab2c9edbffd72052dd8489d8430e4887e1b2941c4dba07f74",
-      "rationale": "pi.on(\"tool_result\", handler): () =\u003e void is the Go API member OnToolResult, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"tool_result\", handler): () => void is the Go API member OnToolResult, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnToolResult"
       ],
@@ -177368,7 +177374,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:turn_end",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:af5f01185cfbebb7a81fb5e048c3d02620e1370374ea8b237968bc731382b0fb",
-      "rationale": "pi.on(\"turn_end\", handler): () =\u003e void is the Go API member OnTurnEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's boundary payload and returns its mutation through the production Runner (TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs) and unsubscribes (TestConformance_EventUnsubscribeEveryEvent).",
+      "rationale": "pi.on(\"turn_end\", handler): () => void is the Go API member OnTurnEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's boundary payload and returns its mutation through the production Runner (TestTurnBoundaryMetadataMutationAndPreviewAcrossSDKs) and unsubscribes (TestConformance_EventUnsubscribeEveryEvent).",
       "pigTargets": [
         "coding/extension/api.go#API.OnTurnEnd"
       ],
@@ -177399,7 +177405,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:turn_start",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:b5a506924674fe94dd422916d568f6bdefc82b50d40a2f136cfb59526490ea68",
-      "rationale": "pi.on(\"turn_start\", handler): () =\u003e void is the Go API member OnTurnStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"turn_start\", handler): () => void is the Go API member OnTurnStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnTurnStart"
       ],
@@ -177432,7 +177438,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:ui_prompt_end",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:153d81d24704886e0b2eb69e7fbf28a45368ead2b41ee4939e099b2b836288ae",
-      "rationale": "pi.on(\"ui_prompt_end\", handler): () =\u003e void is the Go API member OnUiPromptEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"ui_prompt_end\", handler): () => void is the Go API member OnUiPromptEnd, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnUiPromptEnd"
       ],
@@ -177464,7 +177470,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:ui_prompt_start",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:a679282b7a70dfd48787eeb44052919c319b867b874674982c8ccc5bf65b269d",
-      "rationale": "pi.on(\"ui_prompt_start\", handler): () =\u003e void is the Go API member OnUiPromptStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
+      "rationale": "pi.on(\"ui_prompt_start\", handler): () => void is the Go API member OnUiPromptStart, which returns the unsubscribe function. The production host dispatches the event and each SDK (Go, Rust, Python and Node isolated, Node packed, Go fused) registers, receives Pi's payload and unsubscribes through the production Runner: TestConformance_EventUnsubscribeEveryEvent and TestConformance_EventPayloadsReachEverySDKUnchanged.",
       "pigTargets": [
         "coding/extension/api.go#API.OnUiPromptStart"
       ],
@@ -177496,7 +177502,7 @@
       "id": "pkg:coding-agent/.#ExtensionAPI::property:on::call:user_bash",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:e4dbf17af79a27a1e470c194e15b8c8fc3730c57e72da2a351ec50140c148011",
-      "rationale": "pi.on(\"user_bash\", handler): () =\u003e void is the Go API member OnUserBash, which returns the unsubscribe function. A handler in every SDK (Go, Rust, Python and Node isolated, Node packed, Go fused; the undefined result also packed Go, Python and Rust) receives Pi's payload, unsubscribes, and returns either a { result } (validated as runner.ts isUserBashEventResult) or { operations }: the BashOperations object stays in the extension, the reply names it by handle, and the host runs the user's command through its exec with onData, signal, timeout and env (RequestUserBashExec); Session.ExecuteBash consumes it in interactive and RPC mode (TestConformance_UserBashOperationsRunInTheExtension).",
+      "rationale": "pi.on(\"user_bash\", handler): () => void is the Go API member OnUserBash, which returns the unsubscribe function. A handler in every SDK (Go, Rust, Python and Node isolated, Node packed, Go fused; the undefined result also packed Go, Python and Rust) receives Pi's payload, unsubscribes, and returns either a { result } (validated as runner.ts isUserBashEventResult) or { operations }: the BashOperations object stays in the extension, the reply names it by handle, and the host runs the user's command through its exec with onData, signal, timeout and env (RequestUserBashExec); Session.ExecuteBash consumes it in interactive and RPC mode (TestConformance_UserBashOperationsRunInTheExtension).",
       "pigTargets": [
         "coding/extension/api.go#API.OnUserBash"
       ],
@@ -180846,9 +180852,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -180868,9 +180874,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -181027,6 +181033,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -181048,6 +181055,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -181582,9 +181590,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -181604,9 +181612,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -181806,6 +181814,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -181827,6 +181836,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -183673,7 +183683,7 @@
       "evidence": [
         "test:coding/cli/extension_set_upstream_node_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
         "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
-        "test:coding/extension/host/inproc/upstream_modes_test.go#TestRunnerCapturedContextsFollowUIBinding"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {
@@ -183695,7 +183705,7 @@
       "evidence": [
         "test:coding/cli/extension_set_upstream_node_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
         "test:coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
-        "test:coding/extension/host/inproc/upstream_modes_test.go#TestRunnerCapturedContextsFollowUIBinding"
+        "test:coding/extension/factoryload/events_handler_errors_upstream_test.go#TestPiEventsDropsAnErrorFromAHandlerThatFailsAfterItsSessionWasDisposed"
       ]
     },
     {
@@ -185188,9 +185198,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -185210,9 +185220,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -185392,6 +185402,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -185413,6 +185424,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -191344,12 +191356,12 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/codingagent/settings_diagnostics.go#InteractiveMode.showStartupDiagnostics"
+        "call:internal/codingagent/settings_diagnostics.go#InteractiveMode.showInitNotices"
       ],
       "evidence": [
         "test:internal/codingagent/reload_trust_models_test.go#TestInitNoticesFollowUpstreamOrder",
         "test:internal/codingagent/settings_diagnostics_test.go#TestInvalidSettingsWarningRendersStartupDiagnosticsInsideTranscript",
-        "test:internal/codingagent/settings_diagnostics_test.go#TestShowStartupDiagnosticsRendersEachType"
+        "test:internal/codingagent/settings_diagnostics_test.go#TestShowRuntimeDiagnosticsRendersEachType"
       ]
     },
     {
@@ -192762,9 +192774,9 @@
         "call:coding/cli/child_sessions.go#childResourceLoaderOptions"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
-        "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad",
-        "test:coding/resource_loader_extension_files_node_test.go#TestDefaultResourceLoaderExtensionsOutliveTheContextOfTheReload"
+        "test:coding/session_reload_upstream_test.go#TestSessionReloadResetsAPIProvidersBeforeTheExtensionsLoad"
       ]
     },
     {
@@ -192806,9 +192818,9 @@
         "call:coding/cli/child_sessions.go#childResourceLoaderOptions"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/session_reload_upstream_test.go#TestSessionReloadRebuildsTheRunnerFromTheResourceLoader",
-        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
-        "test:coding/load_time_completion_node_test.go#TestDiscoverAndLoadExtensionsAnswersLoadTimeCompletions"
+        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures"
       ]
     },
     {
@@ -192828,9 +192840,9 @@
         "call:coding/cli/cli_resource_loader.go#cliRuntimeBuilder.buildResourceLoader"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsLoadsWhatItDiscoversAndReportsFailures",
-        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare",
-        "test:coding/loaded_extensions_runtime_test.go#TestSessionRunnerBindsTheRuntimeTheLoadedExtensionsShare"
+        "test:coding/discover_extensions_node_test.go#TestDiscoverAndLoadExtensionsReturnsTheRuntimeTheExtensionsShare"
       ]
     },
     {
@@ -193171,9 +193183,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -193193,9 +193205,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -193353,6 +193365,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -193374,6 +193387,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -194763,9 +194777,9 @@
         "call:coding/mcpext/command.go#Extension.openURL"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/session_graph_mcp_test.go#TestGraphMcpUpdateConfigAndOpenURLWire",
-        "test:coding/mcpext/closed_config_test.go#TestRefuseConfigFilesDropsServersFromMcpJSON",
-        "test:coding/mcpext/command_test.go#TestMcpFactoryRegistersTheCommand"
+        "test:coding/mcpext/closed_config_test.go#TestRefuseConfigFilesDropsServersFromMcpJSON"
       ]
     },
     {
@@ -194785,9 +194799,9 @@
         "call:coding/mcpext/extension.go#Extension.createConnection"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode",
-        "test:coding/mcpext/manager_test.go#TestMcpManagerDisablesAGlobalServerInThisProject"
+        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
       ]
     },
     {
@@ -194807,9 +194821,9 @@
         "call:coding/mcpext/extension.go#New"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode",
-        "test:coding/mcpext/manager_test.go#TestMcpManagerDisablesAGlobalServerInThisProject"
+        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
       ]
     },
     {
@@ -194829,9 +194843,9 @@
         "call:coding/mcpext/extension.go#Extension.loadConfig"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpLoadConfigReceivesTheHandlersExtensionContext",
-        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
+        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools"
       ]
     },
     {
@@ -194851,9 +194865,9 @@
         "call:coding/mcpext/extension.go#Extension.getServerLog"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpFactoryRegistersTheCommand",
-        "test:coding/mcpext/command_test.go#TestMcpLoadConfigReceivesTheHandlersExtensionContext",
-        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools"
+        "test:coding/mcpext/command_test.go#TestMcpLoadConfigReceivesTheHandlersExtensionContext"
       ]
     },
     {
@@ -200018,9 +200032,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -200040,9 +200054,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -200306,6 +200320,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -200327,6 +200342,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -200628,9 +200644,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -200650,9 +200666,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -200874,6 +200890,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -200895,6 +200912,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -201049,8 +201067,8 @@
       ],
       "evidence": [
         "test:coding/cli/package_temporary_upstream_test.go#TestTemporaryGitInstallAndCleanup",
-        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory",
-        "test:internal/packagemanager/resolve_gaps_test.go#TestResolveExtensionSourcesReportsATemporarySourceThatFailsToInstall"
+        "test:coding/cli/package_run_test.go#TestInteractivePackageRunReportsTheEndOfAFailingInstallsOutput",
+        "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory"
       ]
     },
     {
@@ -201070,6 +201088,7 @@
         "call:internal/packagemanager/install_failure_warning.go#DescribePackageInstallFailure"
       ],
       "evidence": [
+        "test:coding/cli/package_run_test.go#TestInteractivePackageRunReportsTheEndOfAFailingInstallsOutput",
         "test:internal/packagemanager/managed_root_cwd_test.go#TestEmptyAgentDirNeverWritesIntoTheProcessDirectory",
         "test:internal/packagemanager/resolve_gaps_test.go#TestResolveSkipsAPackageSourceThatFailsToInstallAndReportsIt"
       ]
@@ -201608,9 +201627,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/captured_output_test.go#TestResolveAnnouncesAPackageItInstalls",
         "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
-        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
       ]
     },
     {
@@ -201630,9 +201649,9 @@
         "call:internal/packagemanager/package_manager.go#PackageManager.SetProgressCallback"
       ],
       "evidence": [
+        "test:internal/packagemanager/captured_output_test.go#TestResolveAnnouncesAPackageItInstalls",
         "test:internal/packagemanager/package_async_ext_b_unix_test.go#TestUpdateJoinsTheGitPoolAfterAnNpmBatchFails",
-        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged",
-        "test:internal/packagemanager/package_manager_test.go#TestPackageManagerReportsProgressToTheInstalledCallback"
+        "test:internal/packagemanager/package_manager_ops_gaps_test.go#TestPackageManagerWarnsWhenAnNpmUpdateLeavesTheInstalledVersionUnchanged"
       ]
     },
     {
@@ -202669,9 +202688,9 @@
       "id": "pkg:coding-agent/.#ProgressEvent",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:f69afc7058f8b4d935f017b96ec01d5349f023c7a9077ae93e3f15d239992b9d",
-      "rationale": "Derived by the interface gap detector: ProgressEvent is Go internal/packagemanager/progress.go#ProgressEvent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ProgressEvent is Go coding/resource_loader.go#ProgressEvent (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
-        "internal/packagemanager/progress.go#ProgressEvent"
+        "coding/resource_loader.go#ProgressEvent"
       ],
       "layers": {
         "behavior": "complete",
@@ -202679,7 +202698,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:internal/packagemanager/git.go#CleanAndInstallGitDependencies"
+        "call:coding/cli/package_progress.go#packageProgressPrinter"
       ],
       "evidence": [
         "test:coding/cli/git_update_upstream_test.go#TestGitUpdatesUpstream",
@@ -203181,9 +203200,9 @@
         "call:internal/codingagent/extension_trust_graph.go#GraphProjectTrustStore.Call"
       ],
       "evidence": [
+        "test:coding/cli/model_fallback_diagnostic_upstream_test.go#TestRuntimeDiagnosticsEndWithTheNoModelsWarningForTheShapesPiGivesNoModel",
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
-        "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
+        "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi"
       ]
     },
     {
@@ -203203,9 +203222,9 @@
         "call:internal/codingagent/trust_manager.go#NewProjectTrustStore"
       ],
       "evidence": [
+        "test:coding/cli/model_fallback_diagnostic_upstream_test.go#TestRuntimeDiagnosticsEndWithTheNoModelsWarningForTheShapesPiGivesNoModel",
         "test:internal/codingagent/trust_store_multi_oracle_test.go#TestProjectTrustStoreMultiEntryFilesMatchPi",
-        "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi",
-        "test:coding/cli/config_command_test.go#TestProjectPackageDeltaDrivesStartupStatusAndResourceCollectors"
+        "test:internal/codingagent/trust_store_oracle_test.go#TestProjectTrustStoreMatchesPi"
       ]
     },
     {
@@ -213337,9 +213356,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -213359,9 +213378,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -213583,6 +213602,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -213604,6 +213624,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -218758,7 +218779,7 @@
       "id": "pkg:coding-agent/.#SettingsManager::property:getOrCreateDeviceId",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9487e9aec06df28f64cb9c89c329cfd10eb5b623841e83c5fa96c85edf804d33",
-      "rationale": "SettingsManager.getOrCreateDeviceId is the Go method SettingsManager.GetOrCreateDeviceID (Id spelled ID); () =\u003e string on both sides; callers and tests attributed by go/types (methodrefs).",
+      "rationale": "SettingsManager.getOrCreateDeviceId is the Go method SettingsManager.GetOrCreateDeviceID (Id spelled ID); () => string on both sides; callers and tests attributed by go/types (methodrefs).",
       "pigTargets": [
         "internal/codingagent/settings.go#SettingsManager.GetOrCreateDeviceID"
       ],
@@ -218779,7 +218800,7 @@
       "id": "pkg:coding-agent/.#SettingsManager::property:getOrCreateDeviceId::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:9231ea69ae1121c895c1d3b2d307df795c874c1f1f85688b3ac32e9d1e7168c4",
-      "rationale": "SettingsManager.getOrCreateDeviceId is the Go method SettingsManager.GetOrCreateDeviceID (Id spelled ID); () =\u003e string on both sides; callers and tests attributed by go/types (methodrefs).",
+      "rationale": "SettingsManager.getOrCreateDeviceId is the Go method SettingsManager.GetOrCreateDeviceID (Id spelled ID); () => string on both sides; callers and tests attributed by go/types (methodrefs).",
       "pigTargets": [
         "internal/codingagent/settings.go#SettingsManager.GetOrCreateDeviceID"
       ],
@@ -222847,9 +222868,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -222869,9 +222890,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -223001,6 +223022,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -223022,6 +223044,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -223261,9 +223284,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -223283,9 +223306,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -223411,6 +223434,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -223432,6 +223456,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -223814,7 +223839,7 @@
       "evidence": [
         "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
         "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageComponentsUpstream",
-        "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi"
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -223856,9 +223881,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -223878,9 +223903,9 @@
         "call:tui/box.go#Box.AddChild"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -224092,9 +224117,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -224114,9 +224139,9 @@
         "call:tui/box.go#Box.Render"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -224485,9 +224510,9 @@
         "call:coding/cli/configured_resources.go#collectPackageExtensionConfigs"
       ],
       "evidence": [
+        "test:internal/codingagent/changelog_unreadable_upstream_test.go#TestExtensionChangelogUnreadableShowsNoNotesAndPrintsNothing",
         "test:test/extension-conformance/host_surface_test.go#TestExtensionSourceInfoAcrossSDKs",
-        "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs",
-        "test:coding/source/source_package_key_test.go#TestSourceInfoCarriesChangelogPathOnlyWhenSet"
+        "test:test/extension-conformance/theme_test.go#TestThemeQueriesAcrossSDKs"
       ]
     },
     {
@@ -225512,9 +225537,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -225534,9 +225559,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -225662,6 +225687,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -225683,6 +225709,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -226304,9 +226331,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -226326,9 +226353,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -226524,6 +226551,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -226545,6 +226573,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -227443,9 +227472,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -227465,9 +227494,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -229559,9 +229588,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -229581,9 +229610,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -229810,6 +229839,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -229831,6 +229861,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -231251,7 +231282,7 @@
       "evidence": [
         "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
         "test:internal/codingagent/user_message_upstream_test.go#TestUpstreamUserMessageTransformerContext",
-        "test:tui/user_message_render_oracle_test.go#TestUserMessageComponentRenderMatchesPi"
+        "test:tui/osc133_reuse_upstream_test.go#TestUserMessageAddsOSC133ZoneMarkersOnceAcrossRepeatedRenders"
       ]
     },
     {
@@ -231271,9 +231302,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -231293,9 +231324,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -231381,6 +231412,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -231402,6 +231434,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -231513,7 +231546,7 @@
       "evidence": [
         "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
         "test:internal/codingagent/user_message_upstream_test.go#TestUpstreamUserMessageTransformerContext",
-        "test:tui/user_message_render_oracle_test.go#TestUserMessageComponentRenderMatchesPi"
+        "test:tui/osc133_reuse_upstream_test.go#TestUserMessageAddsOSC133ZoneMarkersOnceAcrossRepeatedRenders"
       ]
     },
     {
@@ -231535,7 +231568,7 @@
       "evidence": [
         "test:internal/codingagent/assistant_message_upstream_test.go#TestAssistantMessageUpstream",
         "test:internal/codingagent/user_message_upstream_test.go#TestUpstreamUserMessageTransformerContext",
-        "test:tui/user_message_render_oracle_test.go#TestUserMessageComponentRenderMatchesPi"
+        "test:tui/osc133_reuse_upstream_test.go#TestUserMessageAddsOSC133ZoneMarkersOnceAcrossRepeatedRenders"
       ]
     },
     {
@@ -231643,9 +231676,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -231665,9 +231698,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -231797,6 +231830,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -231818,6 +231852,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -270118,9 +270153,9 @@
         "call:mcp/streamable_http.go#StreamableHTTPTransport.headers"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/oauth_refresh_test.go#TestMCPOAuthRefreshRefreshesOnceWhenSeveralProcessesFindTheSameTokenRejected",
-        "test:coding/mcpext/oauth_token_expiry_test.go#TestTokenRefreshesAheadOfExpiryOnlyInsideTheSkew",
-        "test:mcp/oauth/oauth_test.go#TestMCPOAuthSharesOneRefreshBetweenConcurrent401sWhenRefreshTokensRotate"
+        "test:coding/mcpext/oauth_token_expiry_test.go#TestTokenRefreshesAheadOfExpiryOnlyInsideTheSkew"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -274221,8 +274256,8 @@
       ],
       "evidence": [
         "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
-        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIMcpServersRegisterAndUnregister",
-        "test:test/extension-conformance/extension_api_go_test.go#TestExtensionAPIRegistrationsAtLoadGo"
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
+        "test:test/extension-conformance/api_actions_more_test.go#TestConformanceAPIMcpServersRegisterAndUnregister"
       ]
     },
     {
@@ -275424,9 +275459,9 @@
         "call:mcp/client.go#Client.Close"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsRetriesResourceReadsButNotToolCallsAfterATransientHTTPError",
-        "test:coding/session_graph_mcp_test.go#TestGraphMcpTransportProxy",
-        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools"
+        "test:coding/session_graph_mcp_test.go#TestGraphMcpTransportProxy"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -282031,7 +282066,7 @@
         "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite",
         "test:mcp/oauth/state_store_test.go#TestMemoryOAuthStateStoreLoadsNothingUntilASaveAndCopiesBothWays"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthStateStore::property:load",
@@ -282052,7 +282087,7 @@
       "evidence": [
         "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthStateStore::property:load::call:0",
@@ -282073,7 +282108,7 @@
       "evidence": [
         "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthStateStore::property:save",
@@ -282094,7 +282129,7 @@
       "evidence": [
         "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#McpOAuthStateStore::property:save::call:0",
@@ -282115,7 +282150,7 @@
       "evidence": [
         "test:mcp/oauth/oauth_test.go#TestMcpOAuthProviderKeepsFailingAfterAFailedWrite"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#McpRefreshLockBusyError",
@@ -282705,7 +282740,7 @@
       "id": "pkg:mcp/oauth#MemoryOAuthStateStore::construct:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:6dcf34a3052a4f6d561c6f560be2f7082d3a3023f27b56b8da102b789e38aeac",
-      "rationale": "The constructor `new MemoryOAuthStateStore()` is the zero value `\u0026MemoryOAuthStateStore{}`.",
+      "rationale": "The constructor `new MemoryOAuthStateStore()` is the zero value `&MemoryOAuthStateStore{}`.",
       "pigTargets": [
         "mcp/oauth/provider.go#MemoryOAuthStateStore"
       ],
@@ -282951,7 +282986,7 @@
       "evidence": [
         "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerRejectsAWaitWhenItTimesOutOrCloses"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#OAuthCallbackServer::property:close::call:0",
@@ -282972,7 +283007,7 @@
       "evidence": [
         "test:mcp/oauth/callback_server_options_test.go#TestOAuthCallbackServerRejectsAWaitWhenItTimesOutOrCloses"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; a rejection is the returned error; undefined is nil. `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/oauth#OAuthCallbackServer::property:redirectUrl",
@@ -286263,8 +286298,8 @@
       ],
       "evidence": [
         "test:coding/mcp_session_upstream_test.go#TestAgentSessionMCPWithdrawsAndRestoresMCPToolsTheServerChanges",
-        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/connection_test.go#TestMCPConnectionsAppendsServerLogMessagesToTheLogFile"
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
+        "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -286309,7 +286344,7 @@
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsMarksADroppedConnectionAndReconnectsOnTheNextCall",
         "test:mcp/client_test.go#TestClientNotifiesCloseListenersOnceWhenTheTransportDrops"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the error; `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the error; `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/testing#InMemoryTransport::property:close::call:0",
@@ -286331,7 +286366,7 @@
         "test:coding/mcpext/connection_test.go#TestMCPConnectionsMarksADroppedConnectionAndReconnectsOnTheNextCall",
         "test:mcp/client_test.go#TestClientNotifiesCloseListenersOnceWhenTheTransportDrops"
       ],
-      "asyncContract": "An awaited Promise is a blocking Go call that returns the error; `void | Promise\u003cvoid\u003e` is the single Go error."
+      "asyncContract": "An awaited Promise is a blocking Go call that returns the error; `void | Promise<void>` is the single Go error."
     },
     {
       "id": "pkg:mcp/testing#InMemoryTransport::property:connectPeer",
@@ -286604,9 +286639,9 @@
         "public-api:mcp/mcptest/inmemory.go#InMemoryTransport.Start"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns",
-        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
+        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -286627,9 +286662,9 @@
         "public-api:mcp/mcptest/inmemory.go#InMemoryTransport.Start"
       ],
       "evidence": [
+        "test:coding/session_reload_bound_empty_mcp_upstream_test.go#TestSessionReloadAfterBindExtensionsWithEmptyBindingsReconnectsTheMcpServers",
         "test:coding/mcpext/command_test.go#TestMcpToolCallPassesTheInputInItsMemberOrderToReachesTools",
-        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns",
-        "test:coding/mcpext/extension_test.go#TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode"
+        "test:coding/mcpext/connection_test.go#TestMCPConnectionsClosesAConnectionThatIsStillInitializingBeforeCloseReturns"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -293515,9 +293550,9 @@
         "call:tui/assistant_message_block.go#AssistantMessageComponent.IsDirty"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/message_components_oracle_test.go#TestSummaryAndSkillMessageComponentsMatchPi",
-        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi"
       ]
     },
     {
@@ -293537,9 +293572,9 @@
         "call:tui/box.go#NewPaddedBox"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged",
         "test:tui/output_pad_upstream_test.go#TestBoxSetPaddingXMatchesPi",
-        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges"
+        "test:internal/codingagent/write_card_rows_test.go#TestWriteCardRowsMatchAFreshChainWhileStreaming"
       ]
     },
     {
@@ -293560,7 +293595,7 @@
       ],
       "evidence": [
         "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesAChildsNewLines"
       ]
     },
     {
@@ -293581,7 +293616,7 @@
       ],
       "evidence": [
         "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesAChildsNewLines"
       ]
     },
     {
@@ -293782,7 +293817,7 @@
       ],
       "evidence": [
         "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesAChildsNewLines"
       ]
     },
     {
@@ -293803,7 +293838,7 @@
       ],
       "evidence": [
         "test:tui/box_cache_test.go#TestBoxRenderCacheMissesWhenPaddingChanges",
-        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesInPlaceChildEdits"
+        "test:tui/box_cache_test.go#TestBoxRenderCacheSeesAChildsNewLines"
       ]
     },
     {
@@ -294394,9 +294429,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -294416,9 +294451,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -295273,9 +295308,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -295295,9 +295330,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -295381,6 +295416,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -295402,6 +295438,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -297665,7 +297702,7 @@
       "id": "pkg:tui/.#fuzzyFilter",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:fb884c0d6bfe303d4016e8a901b58cf22d7f65a29aeba509881b60cc24808251",
-      "rationale": "fuzzy.ts fuzzyFilter\u003cT\u003e(items, query, getText). Go FuzzyFilter[T] has the same generic shape. Test-mapping packages/tui/test/fuzzy.test.ts records all 14 upstream cases ported with per-case citations and a compiling mutation.",
+      "rationale": "fuzzy.ts fuzzyFilter<T>(items, query, getText). Go FuzzyFilter[T] has the same generic shape. Test-mapping packages/tui/test/fuzzy.test.ts records all 14 upstream cases ported with per-case citations and a compiling mutation.",
       "pigTargets": [
         "tui/fuzzy.go#FuzzyFilter"
       ],
@@ -297686,7 +297723,7 @@
       "id": "pkg:tui/.#fuzzyFilter::call:0",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:7b6a619880c1062d4195a892ebf7d43ec653b2e59783ca8545dc1fc49d112ac2",
-      "rationale": "fuzzy.ts fuzzyFilter\u003cT\u003e(items, query, getText). Go FuzzyFilter[T] has the same generic shape. Test-mapping packages/tui/test/fuzzy.test.ts records all 14 upstream cases ported with per-case citations and a compiling mutation.",
+      "rationale": "fuzzy.ts fuzzyFilter<T>(items, query, getText). Go FuzzyFilter[T] has the same generic shape. Test-mapping packages/tui/test/fuzzy.test.ts records all 14 upstream cases ported with per-case citations and a compiling mutation.",
       "pigTargets": [
         "tui/fuzzy.go#FuzzyFilter"
       ],
@@ -298518,6 +298555,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -298539,6 +298577,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -302019,9 +302058,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -302041,9 +302080,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -306391,8 +306430,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges"
       ]
     },
     {
@@ -306452,9 +306491,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -306474,9 +306513,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -306620,6 +306659,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -306641,6 +306681,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -307086,9 +307127,9 @@
         "call:tui/scroll_view.go#ScrollView.ScrollToEnd"
       ],
       "evidence": [
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
         "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar",
-        "test:tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi",
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+        "test:tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi"
       ]
     },
     {
@@ -307108,9 +307149,9 @@
         "call:tui/scroll_view.go#ScrollView.ScrollToEnd"
       ],
       "evidence": [
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
         "test:tui/layout_scrollbar_test.go#TestLayoutRendersProportionalGlyphScrollbar",
-        "test:tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi",
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout"
+        "test:tui/layout_frame_oracle_test.go#TestRenderLayoutFrameMatchesPi"
       ]
     },
     {
@@ -307130,9 +307171,9 @@
         "call:tui/scroll_view.go#ScrollView.ScrollTop"
       ],
       "evidence": [
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
         "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenGivesViewportKeysBackWhenEditorAutocompleteCloses"
+        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList"
       ]
     },
     {
@@ -307345,8 +307386,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges"
       ]
     },
     {
@@ -307387,15 +307428,15 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges"
       ]
     },
     {
       "id": "pkg:tui/.#ScrollViewOptions::property:overscroll",
       "disposition": "ported",
       "upstreamShapeHash": "sha256:d5f979dcba6ba8f68481f52f68c10fe2b27ab5e96814ccac1680b140f15c5547",
-      "rationale": "Derived by the interface gap detector: ScrollViewOptions::property:overscroll is Go tui/scroll_view.go#ScrollViewOptions.Overscroll (name rule N1), every shape rule holds, and it is exercised by a function reachable from cmd/pig. The row is re-derived on every run of make interface-gaps-update.",
+      "rationale": "Derived by the interface gap detector: ScrollViewOptions::property:overscroll is Go tui/scroll_view.go#ScrollViewOptions.Overscroll (name rule N1), every shape rule holds, and it is exercised by an asserting Go test. The row is re-derived on every run of make interface-gaps-update.",
       "pigTargets": [
         "tui/scroll_view.go#ScrollViewOptions.Overscroll"
       ],
@@ -307408,7 +307449,9 @@
         "call:tui/scroll_view.go#NewScrollView"
       ],
       "evidence": [
-        "reach:tui/scroll_view.go#NewScrollView"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestDumpScrollFrameTurns",
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestScrollFrameTranscriptLines",
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames"
       ]
     },
     {
@@ -307429,8 +307472,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_tui_factory_upstream_test.go#TestInteractiveTuiShowsConfiguredJumpShortcut",
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenDefersViewportKeysToAFocusedList"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges"
       ]
     },
     {
@@ -309691,8 +309734,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
-        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream",
-        "test:internal/codingagent/interactive_cache_warming_test.go#TestConsecutiveCacheWarmsShareOneLine"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged",
+        "test:internal/codingagent/themed_notices_upstream_test.go#TestChatNoticesFollowThemeChangesUpstream"
       ]
     },
     {
@@ -309713,8 +309756,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
-        "test:internal/codingagent/interactive_cache_warming_test.go#TestConsecutiveCacheWarmsShareOneLine",
-        "test:internal/codingagent/interactive_resume_message_roles_test.go#TestResumedSessionRendersCustomAndSummaryMessageRoles"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged",
+        "test:internal/codingagent/interactive_cache_warming_test.go#TestConsecutiveCacheWarmsShareOneLine"
       ]
     },
     {
@@ -312332,9 +312375,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -312354,9 +312397,9 @@
         "call:tui/text.go#Text.SetText"
       ],
       "evidence": [
-        "test:tui/layout_upstream_test.go#TestUpstreamViewportLayout",
-        "test:tui/text_contract_oracle_test.go#TestTextRenderContractMatchesPi",
-        "test:tui/text_set_text_upstream_test.go#TestUpstreamTextKeepsItsWrappedLinesWhenTheSameTextIsSetAgain"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestBoxReusesItsOutputWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -313690,9 +313733,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -313712,9 +313755,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -314132,9 +314175,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -314154,9 +314197,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -314616,6 +314659,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -314637,6 +314681,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -315135,8 +315180,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -315157,8 +315202,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -315178,9 +315223,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -315200,9 +315245,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -315264,9 +315309,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollBy"
       ],
       "evidence": [
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenDoesNotScrollImageRows",
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrolledFramesShowEveryRow",
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrollsRowsDownWhenScrolledBack"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -315286,9 +315331,9 @@
         "call:tui/tui_alt_screen.go#TuiAltScreen.ScrollBy"
       ],
       "evidence": [
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenDoesNotScrollImageRows",
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrolledFramesShowEveryRow",
-        "test:tui/tui_alt_screen_scroll_test.go#TestAltScreenScrollsRowsDownWhenScrolledBack"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -315874,9 +315919,9 @@
         "call:tui/tui_alt_screen.go#NewTuiAltScreen"
       ],
       "evidence": [
-        "test:tui/assistant_mouse_upstream_test.go#TestAssistantThinkingClicksThroughTerminal",
-        "test:tui/collapsible_message_upstream_test.go#TestCollapsibleMessageClicksThroughTerminal",
-        "test:tui/key_event_type_upstream_test.go#TestIsFocusableAndIsViewportTUI"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenSearchStaysCurrentAcrossViewOnlyFramesAndContentChanges",
+        "test:tui/assistant_mouse_upstream_test.go#TestAssistantThinkingClicksThroughTerminal"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -316224,9 +316269,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -316246,9 +316291,9 @@
         "call:tui/tui.go#Container.AddChild"
       ],
       "evidence": [
-        "test:tui/select_page_keys_upstream_test.go#TestUpstreamAltScreenScrollsTheTranscriptForAFocusedContainerWrapper",
-        "test:internal/codingagent/resume_user_message_text_test.go#TestResumedUserMessageShowsUntrimmedText",
-        "test:internal/codingagent/user_message_start_text_test.go#TestUserMessageStartShowsTheJoinedUntrimmedText"
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerRendersAgainWhenChildrenAreAddedOrTheWidthChanges",
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerReturnsTheSameLinesWhileChildrenAreUnchanged"
       ]
     },
     {
@@ -316574,6 +316619,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -316595,6 +316641,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -317029,8 +317076,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -317051,8 +317098,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -317072,9 +317119,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -317094,9 +317141,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -318900,8 +318947,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -318922,8 +318969,8 @@
       ],
       "evidence": [
         "test:tui/surrogate_screens_oracle_test.go#TestSurrogateRowsMatchPiScreens",
-        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize",
-        "test:tui/tui_mode_debug_test.go#TestRenderNowAndRepaintAll"
+        "test:internal/codingagent/scroll_frame_bench_test.go#TestWheelBurstFrames",
+        "test:tui/tui_main_screen_new_test.go#TestNewTuiMainScreenDrawsOnItsTerminalAndTakesItsSize"
       ]
     },
     {
@@ -318943,9 +318990,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -318965,9 +319012,9 @@
         "call:tui/tui.go#tuiBase.RequestRender"
       ],
       "evidence": [
-        "test:tui/request_render_force_upstream_test.go#TestRequestRenderForceRepaintsEveryLine",
-        "test:tui/tui_render_keyboard_upstream_test.go#TestUpstreamTUIKeyboardRender",
-        "test:tui/tui_render_kitty_upstream_test.go#TestUpstreamTUIRenderKittyCleanup"
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenFramesAfterARenderRequestFocusChangeOrDirectRenderShowChangedComponents",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollKeepsAComponentThatChangedWithoutARenderRequestStale",
+        "test:tui/alt_screen_view_frames_upstream_test.go#TestAltScreenScrollsWithoutRenderingComponentsUntilContentChanges"
       ]
     },
     {
@@ -319603,6 +319650,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
@@ -319624,6 +319672,7 @@
         "call:tui/mouse.go#Container.HandleMouse"
       ],
       "evidence": [
+        "test:tui/container_output_reuse_upstream_test.go#TestContainerDispatchesMouseByTheRenderedChildHeights",
         "test:tui/mouse_test.go#TestContainerHandleMouseRoutesByRenderedRows",
         "test:tui/bordered_loader_container_test.go#TestBorderedLoaderHandleMouseRoutesToChildUnderPointer"
       ]
