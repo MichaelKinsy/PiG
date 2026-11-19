@@ -72,13 +72,13 @@ func TestConformance_HostPathsAgreeAcrossSDKs(t *testing.T) {
 					h.host.Shutdown("test done")
 				}
 			})
-			before := len(*h.notify)
+			before := len(h.ui.Recorded())
 			if !h.runner.ExecuteCommand(context.Background(), "host_paths_probe", existing+"|"+missing) {
 				t.Fatal("fixture has no host_paths_probe command")
 			}
 			var reported string
 			pollUntilConformance(t, "host_paths_probe: no report", func() bool {
-				for _, n := range (*h.notify)[before:] {
+				for _, n := range h.ui.Recorded()[before:] {
 					if rest, ok := strings.CutPrefix(n, "host_paths:"); ok {
 						reported = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 						return true

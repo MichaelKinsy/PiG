@@ -79,7 +79,7 @@ type refineValueReport struct {
 // runRefineValue runs the command refine_value of a harness's extension and returns its report.
 func runRefineValue(t *testing.T, h *harness, mode, value string) refineValueReport {
 	t.Helper()
-	before := len(*h.notify)
+	before := len(h.ui.Recorded())
 	args, err := json.Marshal(map[string]any{"mode": mode, "value": json.RawMessage(value)})
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +89,7 @@ func runRefineValue(t *testing.T, h *harness, mode, value string) refineValueRep
 	}
 	var reported string
 	pollUntilConformance(t, "refine_value: no report", func() bool {
-		for _, n := range (*h.notify)[before:] {
+		for _, n := range h.ui.Recorded()[before:] {
 			if rest, ok := strings.CutPrefix(n, "refine_value:"); ok {
 				reported = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 				return true

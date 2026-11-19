@@ -83,7 +83,7 @@ func TestConformance_FileMutationQueueAgreesAcrossSDKs(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		before := len(*h.notify)
+		before := len(h.ui.Recorded())
 		// A task stuck in the queue (a chain never released) blocks the command; the deadline turns that into a failure instead of a hang.
 		ctx, cancel := context.WithTimeout(t.Context(), 60*time.Second)
 		defer cancel()
@@ -92,7 +92,7 @@ func TestConformance_FileMutationQueueAgreesAcrossSDKs(t *testing.T) {
 		}
 		var reported string
 		pollUntilConformance(t, "file_queue_probe: no report", func() bool {
-			for _, n := range (*h.notify)[before:] {
+			for _, n := range h.ui.Recorded()[before:] {
 				if rest, ok := strings.CutPrefix(n, "file_queue:"); ok {
 					reported = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 					return true

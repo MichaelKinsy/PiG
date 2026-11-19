@@ -182,16 +182,16 @@ func TestRegistrySessionFacadesAcrossSDKs(t *testing.T) {
 			if !ok {
 				t.Fatal("missing registry-session command")
 			}
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			if err := command.Handler(t.Context(), ""); err != nil {
 				t.Fatal(err)
 			}
-			if len(*h.notify) != 1 {
-				t.Fatalf("notifications: %v", *h.notify)
+			if len(h.ui.Recorded()) != 1 {
+				t.Fatalf("notifications: %v", h.ui.Recorded())
 			}
 			var got any
 			// recordingUI appends the notification level.
-			text := strings.TrimSuffix((*h.notify)[0], ":info")
+			text := strings.TrimSuffix(h.ui.Recorded()[0], ":info")
 			if err := json.Unmarshal([]byte(text), &got); err != nil {
 				t.Fatalf("decode %q: %v", text, err)
 			}

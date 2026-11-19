@@ -33,7 +33,7 @@ func TestConformance_EventUnsubscribe(t *testing.T) {
 			ctx := context.Background()
 			probes := func() []string {
 				var found []string
-				for _, n := range *h.notify {
+				for _, n := range h.ui.Recorded() {
 					if rest, ok := strings.CutPrefix(n, "event_probe:"); ok {
 						found = append(found, strings.TrimSuffix(rest, ":info"))
 					}
@@ -47,7 +47,7 @@ func TestConformance_EventUnsubscribe(t *testing.T) {
 				}
 			}
 
-			*h.notify = (*h.notify)[:0]
+			h.ui.ClearRecorded()
 			runConformanceCommand(t, h, "event_probe_subscribe")
 			emit("probe-1")
 			pollUntilConformance(t, "the handler registered after connecting never ran", func() bool {

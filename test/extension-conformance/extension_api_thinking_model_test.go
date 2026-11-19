@@ -53,14 +53,14 @@ func TestExtensionAPIThinkingLevelAndSetModelAcrossSDKs(t *testing.T) {
 			if !ok {
 				t.Fatal("thinking-model command missing")
 			}
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			if err := command.Handler(h.runner.DispatchContext(t.Context()), ""); err != nil {
 				t.Fatal(err)
 			}
-			if len(*h.notify) != 1 {
-				t.Fatalf("notifications = %v", *h.notify)
+			if len(h.ui.Recorded()) != 1 {
+				t.Fatalf("notifications = %v", h.ui.Recorded())
 			}
-			if got, want := strings.TrimSuffix((*h.notify)[0], ":info"), `["xhigh",false]`; got != want {
+			if got, want := strings.TrimSuffix(h.ui.Recorded()[0], ":info"), `["xhigh",false]`; got != want {
 				t.Errorf("getThinkingLevel and setModel = %s, want %s", got, want)
 			}
 			// setThinkingLevel is fire-and-forget on the wire: the host receives it after the command returns.
@@ -105,14 +105,14 @@ func TestExtensionAPIGetCommandsAcrossSDKs(t *testing.T) {
 			if !ok {
 				t.Fatal("commands-probe command missing")
 			}
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			if err := command.Handler(h.runner.DispatchContext(t.Context()), ""); err != nil {
 				t.Fatal(err)
 			}
-			if len(*h.notify) != 1 {
-				t.Fatalf("notifications = %v", *h.notify)
+			if len(h.ui.Recorded()) != 1 {
+				t.Fatalf("notifications = %v", h.ui.Recorded())
 			}
-			if got, want := strings.TrimSuffix((*h.notify)[0], ":info"), `[["conformance-listed","prompt","Listed by the host"]]`; got != want {
+			if got, want := strings.TrimSuffix(h.ui.Recorded()[0], ":info"), `[["conformance-listed","prompt","Listed by the host"]]`; got != want {
 				t.Errorf("getCommands = %s, want %s", got, want)
 			}
 		})

@@ -466,7 +466,7 @@ func runTwoPrompts(t *testing.T, h *harness) (observed []string, requests [][]by
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	return append([]string(nil), *h.notify...), requests, entries, events
+	return append([]string(nil), h.ui.Recorded()...), requests, entries, events
 }
 
 // curePending are the rows PiG does not yet match Pi on, in every SDK and mode: the cure of D541's row 10 removes a row here, and the row then requires Pi's table.

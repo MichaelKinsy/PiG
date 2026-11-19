@@ -35,13 +35,13 @@ func TestConformance_BranchSummaryHelpersAgreeAcrossSDKs(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		before := len(*h.notify)
+		before := len(h.ui.Recorded())
 		if !h.runner.ExecuteCommand(context.Background(), "branch_probe", string(args)) {
 			t.Fatal("fixture has no branch_probe command")
 		}
 		var reported string
 		pollUntilConformance(t, "branch_probe: no report", func() bool {
-			for _, n := range (*h.notify)[before:] {
+			for _, n := range h.ui.Recorded()[before:] {
 				if rest, ok := strings.CutPrefix(n, "branch:"); ok {
 					reported = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 					return true

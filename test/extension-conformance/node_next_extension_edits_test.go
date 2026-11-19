@@ -134,7 +134,7 @@ func TestNodeInPlaceEditsReachTheNextExtension(t *testing.T) {
 			prefix := "edit_next:" + tc.event + ":"
 			var got string
 			pollUntilConformance(t, "the second extension reports", func() bool {
-				for _, n := range *h.notify {
+				for _, n := range h.ui.Recorded() {
 					if rest, ok := strings.CutPrefix(n, prefix); ok {
 						got = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 						return true

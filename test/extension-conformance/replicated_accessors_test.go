@@ -214,16 +214,16 @@ func runReplicatedAccessors(t *testing.T, tc harnessCase, args string) map[strin
 	if !ok {
 		t.Fatal("replicated-accessors command missing")
 	}
-	*h.notify = nil
+	h.ui.ClearRecorded()
 	if err := command.Handler(h.runner.DispatchContext(t.Context()), args); err != nil {
 		t.Fatal(err)
 	}
-	if len(*h.notify) != 1 {
-		t.Fatalf("notifications = %v", *h.notify)
+	if len(h.ui.Recorded()) != 1 {
+		t.Fatalf("notifications = %v", h.ui.Recorded())
 	}
 	var got map[string]any
-	if err := json.Unmarshal([]byte(strings.TrimSuffix((*h.notify)[0], ":info")), &got); err != nil {
-		t.Fatalf("decode %q: %v", (*h.notify)[0], err)
+	if err := json.Unmarshal([]byte(strings.TrimSuffix(h.ui.Recorded()[0], ":info")), &got); err != nil {
+		t.Fatalf("decode %q: %v", h.ui.Recorded()[0], err)
 	}
 	return got
 }

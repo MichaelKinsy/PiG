@@ -296,7 +296,7 @@ func TestConformance_ObservedEventPayloads(t *testing.T) {
 
 			sdkData := func(event string) []byte {
 				prefix := "event_probe_data:" + event + ":"
-				for _, n := range *h.notify {
+				for _, n := range h.ui.Recorded() {
 					if rest, ok := strings.CutPrefix(n, prefix); ok {
 						return []byte(strings.TrimSuffix(rest, ":info"))
 					}

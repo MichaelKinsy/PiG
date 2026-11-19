@@ -125,14 +125,14 @@ func TestSessionBranchReadsFollowAppendsAndLeafMovesAcrossSDKs(t *testing.T) {
 			for _, s := range steps {
 				s.act(t, session)
 				h.host.BroadcastStateUpdate()
-				*h.notify = nil
+				h.ui.ClearRecorded()
 				if err := command.Handler(context.Background(), s.target); err != nil {
 					t.Fatalf("%s: %v", s.name, err)
 				}
-				if len(*h.notify) != 1 {
-					t.Fatalf("%s: notifications %v", s.name, *h.notify)
+				if len(h.ui.Recorded()) != 1 {
+					t.Fatalf("%s: notifications %v", s.name, h.ui.Recorded())
 				}
-				if got := strings.TrimSuffix((*h.notify)[0], ":info"); got != s.want {
+				if got := strings.TrimSuffix(h.ui.Recorded()[0], ":info"); got != s.want {
 					t.Fatalf("%s:\n got  %s\n want %s", s.name, got, s.want)
 				}
 			}

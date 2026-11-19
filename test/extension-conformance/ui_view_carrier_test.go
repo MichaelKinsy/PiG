@@ -318,11 +318,11 @@ func TestConformance_UIViewCarrier(t *testing.T) {
 				n := strconv.Itoa(int(data["attachment"].(float64)))
 
 				pollUntilConformance(t, "abilities never replicated", func() bool {
-					*h.notify = (*h.notify)[:0]
+					h.ui.ClearRecorded()
 					runConformanceCommand(t, h, "ui_view_abilities")
 					return slices.Contains(viewNotifies(h), "view-abilities:mounts=7,argbytes=123,slots=panel+status,nodes=text+box+select-list,markdown=true")
 				})
-				*h.notify = (*h.notify)[:0]
+				h.ui.ClearRecorded()
 				runConformanceCommand(t, h, "ui_view_probe")
 				waitViewNotify(t, h, "view-second:epoch=2,rev=1")
 				runConformanceCommand(t, h, "ui_view_extras")

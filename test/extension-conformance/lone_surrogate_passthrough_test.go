@@ -137,7 +137,7 @@ func loneSeen(h *harness, name string) string {
 	prefix := "lone_seen:" + name + ":"
 	deadline := time.Now().Add(5 * time.Second)
 	for {
-		notes := slices.Clone(*h.notify)
+		notes := slices.Clone(h.ui.Recorded())
 		for _, note := range slices.Backward(notes) {
 			if rest, ok := strings.CutPrefix(note, prefix); ok {
 				units := strings.Split(strings.TrimSuffix(rest, ":info"), ".")

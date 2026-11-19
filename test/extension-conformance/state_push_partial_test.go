@@ -54,11 +54,11 @@ func TestSystemPromptOptionsAcrossIdenticalAndPartialStatePushes(t *testing.T) {
 			current = &sequence[i]
 			cc := h.runner.CreateCommandContext()
 			ctx := extension.WithCommandContext(extension.WithContext(t.Context(), cc.Context), cc)
-			before := len(*h.notify)
+			before := len(h.ui.Recorded())
 			if err := command.Handler(ctx, ""); err != nil {
 				t.Fatalf("probe %d: %v", i, err)
 			}
-			lines := (*h.notify)[before:]
+			lines := h.ui.Recorded()[before:]
 			if len(lines) != 1 {
 				t.Fatalf("probe %d notified %v", i, lines)
 			}

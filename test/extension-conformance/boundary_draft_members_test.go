@@ -51,7 +51,7 @@ func TestBoundaryDraftNullAndAbsentMembersAcrossSDKs(t *testing.T) {
 					h.host.Shutdown("boundary drafts complete")
 				}
 			})
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			boundary, err := h.runner.EmitBoundary(t.Context(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Outcome: extension.AgentActivityCompleted},
 				func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 					return extension.BoundaryContextPreview{ContextEntries: make([]extension.ProjectedSessionEntry, len(entries)), CanContinue: len(entries) > 0}, nil
@@ -62,8 +62,8 @@ func TestBoundaryDraftNullAndAbsentMembersAcrossSDKs(t *testing.T) {
 			if !boundary.Valid || !boundary.Continue || len(boundary.Entries) != 6 {
 				t.Fatalf("boundary result: %+v", boundary)
 			}
-			waitFor(t, func() bool { return len(*h.notify) > 1 })
-			if got := boundaryDraftsLine(t, (*h.notify)[1], boundary.Entries); got != wantBoundaryDrafts {
+			waitFor(t, func() bool { return len(h.ui.Recorded()) > 1 })
+			if got := boundaryDraftsLine(t, h.ui.Recorded()[1], boundary.Entries); got != wantBoundaryDrafts {
 				t.Errorf("boundary drafts = %q, want %q", got, wantBoundaryDrafts)
 			}
 		})

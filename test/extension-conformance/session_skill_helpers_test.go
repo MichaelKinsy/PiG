@@ -67,13 +67,13 @@ func TestConformance_SessionAndSkillHelpersAgreeAcrossSDKs(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		before := len(*h.notify)
+		before := len(h.ui.Recorded())
 		if !h.runner.ExecuteCommand(context.Background(), "skills_probe", string(args)) {
 			t.Fatal("fixture has no skills_probe command")
 		}
 		var reported string
 		pollUntilConformance(t, "skills_probe: no report", func() bool {
-			for _, n := range (*h.notify)[before:] {
+			for _, n := range h.ui.Recorded()[before:] {
 				if rest, ok := strings.CutPrefix(n, "skills:"); ok {
 					reported = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 					return true

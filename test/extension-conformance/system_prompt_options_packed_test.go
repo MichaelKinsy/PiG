@@ -56,8 +56,8 @@ func TestSystemPromptOptionContentAcrossSDKs(t *testing.T) {
 						t.Fatal(err)
 					}
 					// ctx.mode is delivered at ready and differs between harness families; TestConformance_TransportsMatch owns it. Compare the option content after it.
-					got := make([]string, 0, len(*h.notify))
-					for _, line := range *h.notify {
+					got := make([]string, 0, len(h.ui.Recorded()))
+					for _, line := range h.ui.Recorded() {
 						_, rest, _ := strings.Cut(line, " trusted=")
 						got = append(got, rest)
 					}
@@ -66,7 +66,7 @@ func TestSystemPromptOptionContentAcrossSDKs(t *testing.T) {
 						// Bind the reference to Pi's values so a shared reference/SDK fallback cannot pass by agreement.
 						expected := fmt.Sprintf("%t spo_prompt= spo_cwd=/probe-cwd spo_tools=read,bash spo_shape=selectedTools:array:2,toolSnippets:object:0,toolGuidelines:object:1,promptGuidelines:array:0,appendSystemPrompt:string:0,sections:object:0,contextFiles:array:0,skills:array:1 spo_guidelines=Read carefully. spo_skill_scope=project spo_force_empty=true spo_custom_present=%t:info", conformanceProjectTrusted, present)
 						if len(want) != 1 || want[0] != expected {
-							t.Fatalf("reference options = %v, want [%s]", *h.notify, expected)
+							t.Fatalf("reference options = %v, want [%s]", h.ui.Recorded(), expected)
 						}
 					} else if !reflect.DeepEqual(got, want) {
 						t.Fatalf("%s options = %v, want %v", tc.name, got, want)

@@ -21,10 +21,10 @@ func TestConformance_RunModeReachesEverySDK(t *testing.T) {
 		for _, tc := range componentKitSDKCells() {
 			t.Run(mode+"/"+tc.name, func(t *testing.T) {
 				h := startKitCell(t, tc)
-				*h.notify = nil
+				h.ui.ClearRecorded()
 				runKitCommand(t, h, "context-probe", "")
-				waitFor(t, func() bool { return len(*h.notify) > 0 })
-				got := (*h.notify)[0]
+				waitFor(t, func() bool { return len(h.ui.Recorded()) > 0 })
+				got := h.ui.Recorded()[0]
 				if want := "mode=" + mode + " "; !strings.HasPrefix(got, want) {
 					t.Fatalf("%s: context probe = %q, want it to start with %q", tc.name, got, want)
 				}

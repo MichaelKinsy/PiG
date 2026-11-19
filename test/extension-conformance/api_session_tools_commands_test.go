@@ -50,8 +50,8 @@ func TestConformance_ExtensionAPISessionToolsCommandsMessages(t *testing.T) {
 			coding.BindExtensionHostSessionActions(h.bridge, func() *coding.Session { return session })
 
 			reported := func(prefix string) string {
-				for i := range slices.Backward(*h.notify) {
-					if rest, ok := strings.CutPrefix((*h.notify)[i], prefix); ok {
+				for i := range slices.Backward(h.ui.Recorded()) {
+					if rest, ok := strings.CutPrefix(h.ui.Recorded()[i], prefix); ok {
 						return strings.TrimSuffix(rest, ":info")
 					}
 				}
@@ -62,7 +62,7 @@ func TestConformance_ExtensionAPISessionToolsCommandsMessages(t *testing.T) {
 			if len(session.ActiveToolNames()) < 2 {
 				t.Fatalf("the Session's active tools = %v", session.ActiveToolNames())
 			}
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			runConformanceCommand(t, h, "active_tools_get")
 			pollUntilConformance(t, "the SDK never reported its active tools", func() bool { return reported("active_tools:") != "<none>" })
 			if got, want := reported("active_tools:"), strings.Join(session.ActiveToolNames(), ","); got != want {
@@ -70,7 +70,7 @@ func TestConformance_ExtensionAPISessionToolsCommandsMessages(t *testing.T) {
 			}
 			runConformanceCommandArgs(t, h, "active_tools_set", "read")
 			pollUntilConformance(t, "the Session never took the active tools the SDK set", func() bool { return slices.Equal(session.ActiveToolNames(), []string{"read"}) })
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			runConformanceCommand(t, h, "active_tools_get")
 			pollUntilConformance(t, "the SDK never reported its active tools", func() bool { return reported("active_tools:") != "<none>" })
 			if got := reported("active_tools:"); got != "read" {

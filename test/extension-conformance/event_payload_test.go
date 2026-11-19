@@ -191,14 +191,14 @@ func TestConformance_EventPayloadsReachEverySDKUnchanged(t *testing.T) {
 			for _, c := range cases {
 				t.Run(c.event, func(t *testing.T) {
 					prefix := "event_payload:" + c.event + ":"
-					*h.notify = (*h.notify)[:0]
+					h.ui.ClearRecorded()
 					runConformanceCommandArgs(t, h, "event_payload_probe", c.event)
 					if err := c.emit(ctx, h); err != nil {
 						t.Fatalf("emit %s: %v", c.event, err)
 					}
 					var reported string
 					pollUntilConformance(t, c.event+": the handler never reported its payload", func() bool {
-						for _, n := range *h.notify {
+						for _, n := range h.ui.Recorded() {
 							if rest, ok := strings.CutPrefix(n, prefix); ok {
 								reported = strings.TrimSuffix(rest, ":info")
 								return true

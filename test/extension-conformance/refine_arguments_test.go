@@ -105,13 +105,13 @@ func TestConformance_RefinedToolArgumentsAreNotRefined(t *testing.T) {
 					t.Errorf("%s: the tool answered %q, want \"ok\" (the call is valid and the tool ran)", arguments, got)
 				}
 			}
-			before := len(*h.notify)
+			before := len(h.ui.Recorded())
 			if !h.runner.ExecuteCommand(context.Background(), "refine_log", "") {
 				t.Fatal("no refine_log command")
 			}
 			var reported string
 			pollUntilConformance(t, "refine_log: no report", func() bool {
-				for _, n := range (*h.notify)[before:] {
+				for _, n := range h.ui.Recorded()[before:] {
 					if rest, ok := strings.CutPrefix(n, "refine_log:"); ok {
 						reported = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 						return true

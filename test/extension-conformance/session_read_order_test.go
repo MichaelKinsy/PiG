@@ -101,14 +101,14 @@ func TestSessionReadsKeepPiMemberOrderAcrossSDKs(t *testing.T) {
 			if !ok {
 				t.Fatal("missing session-order command")
 			}
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			if err := command.Handler(context.Background(), ""); err != nil {
 				t.Fatal(err)
 			}
-			if len(*h.notify) != 1 {
-				t.Fatalf("notifications: %v", *h.notify)
+			if len(h.ui.Recorded()) != 1 {
+				t.Fatalf("notifications: %v", h.ui.Recorded())
 			}
-			got := strings.TrimSuffix((*h.notify)[0], ":info")
+			got := strings.TrimSuffix(h.ui.Recorded()[0], ":info")
 			if got != want.String() {
 				t.Fatalf("session reads differ from Pi's\n got  %s\n want %s", got, want.String())
 			}
