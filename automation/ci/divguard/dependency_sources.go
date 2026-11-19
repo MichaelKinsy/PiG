@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -29,6 +30,51 @@ const nodeVersionFile = ".node-version"
 // dependencyManifest reports a manifest a dependency proof may cite: a workspace package.json, or the root lockfile.
 func dependencyManifest(manifest string) bool {
 	return manifest == dependencyLockfile || strings.HasPrefix(manifest, "packages/") && path.Clean(manifest) == manifest && path.Base(manifest) == "package.json"
+}
+
+// backportsScript is the generator of the Pi fixes the release line carries beyond the pin; its dependency entries move a dependency a Pi package pins exactly.
+const backportsScript = "automation/gen/pi-post-release-backports.mjs"
+
+// carriedDependency is a dependency entry of backportsScript: Pi package `Package` (pi-coding-agent) pins `Name` at `From` in the mirror and at `To` from commit `ID` on.
+type carriedDependency struct {
+	ID        string `json:"id"`
+	Package   string `json:"package"`
+	Name      string `json:"name"`
+	From      string `json:"from"`
+	To        string `json:"to"`
+	Integrity string `json:"integrity"`
+}
+
+// loadCarriedDependencies reads the dependency entries of the root's backports script; a root without the script carries none.
+func loadCarriedDependencies(root string) ([]carriedDependency, error) {
+	script := filepath.Join(root, filepath.FromSlash(backportsScript))
+	if _, err := os.Stat(script); os.IsNotExist(err) {
+		return nil, nil
+	}
+	out, err := exec.Command("node", script, "--dependencies").Output()
+	if err != nil {
+		return nil, fmt.Errorf("list the dependencies %s carries: %w", backportsScript, err)
+	}
+	var carried []carriedDependency
+	if err := json.Unmarshal(out, &carried); err != nil {
+		return nil, fmt.Errorf("parse the dependencies %s carries: %w", backportsScript, err)
+	}
+	return carried, nil
+}
+
+// carriedPin returns the carried entry that moves the pin of record's package in the manifest it cites, when the mirror still pins the version the entry replaces.
+func carriedPin(carried []carriedDependency, record dependencySource, mirrorPin string) (carriedDependency, bool) {
+	dir, ok := strings.CutPrefix(record.Manifest, "packages/")
+	if !ok {
+		return carriedDependency{}, false
+	}
+	owner := "pi-" + path.Dir(dir)
+	for _, entry := range carried {
+		if entry.Package == owner && entry.Name == record.Package && entry.From == mirrorPin {
+			return entry, true
+		}
+	}
+	return carriedDependency{}, false
 }
 
 type dependencySource struct {
@@ -65,6 +111,10 @@ func (u *upstreamIndex) loadDependencySources(root string) (returnErr error) {
 		return err
 	}
 	defer func() { returnErr = errors.Join(returnErr, bounded.Close()) }()
+	carried, err := loadCarriedDependencies(root)
+	if err != nil {
+		return err
+	}
 	u.dependencies = map[string]string{}
 	for _, record := range records {
 		prefix := "node_modules/" + record.Package + "/"
@@ -92,7 +142,7 @@ func (u *upstreamIndex) loadDependencySources(root string) (returnErr error) {
 			if pinned := strings.TrimSpace(string(pin)); pinned != record.Version {
 				return fmt.Errorf("dependency proof for Node source requires exact %s pin in %s; found %q", record.Version, nodeVersionFile, pinned)
 			}
-		} else if err := u.verifyNpmPin(record); err != nil {
+		} else if err := u.verifyNpmPin(record, carried); err != nil {
 			return err
 		}
 		text, err := bounded.ReadFile(filepath.FromSlash(record.Source))
@@ -108,8 +158,9 @@ func (u *upstreamIndex) loadDependencySources(root string) (returnErr error) {
 	return nil
 }
 
-// verifyNpmPin checks an npm record's archive integrity and its exact pin in the cited manifest or the lockfile entry.
-func (u *upstreamIndex) verifyNpmPin(record dependencySource) error {
+// verifyNpmPin checks an npm record's archive integrity and its exact pin in the cited manifest or the lockfile entry. The pin in force is the mirror's, or, when
+// a dependency entry of the backports script replaces it, the entry's version, whose archive integrity the record must also carry.
+func (u *upstreamIndex) verifyNpmPin(record dependencySource, carried []carriedDependency) error {
 	integrity, ok := strings.CutPrefix(record.Integrity, "sha512-")
 	decoded, decodeErr := base64.StdEncoding.DecodeString(integrity)
 	if !ok || decodeErr != nil || len(decoded) != 64 {
@@ -137,6 +188,11 @@ func (u *upstreamIndex) verifyNpmPin(record dependencySource) error {
 			return fmt.Errorf("dependency proof for %s requires integrity %s in %s; found %q", record.Package, record.Integrity, record.Manifest, locked.Integrity)
 		}
 		pinned = locked.Version
+	} else if entry, ok := carriedPin(carried, record, pinned); ok {
+		if entry.Integrity != record.Integrity {
+			return fmt.Errorf("dependency proof for %s requires integrity %s carried for Pi %s; found %q", record.Package, entry.Integrity, entry.ID, record.Integrity)
+		}
+		pinned = entry.To
 	}
 	if pinned != record.Version {
 		return fmt.Errorf("dependency proof for %s requires exact %s pin in %s; found %q", record.Package, record.Version, record.Manifest, pinned)

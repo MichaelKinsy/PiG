@@ -16,7 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// Undici8.10.2 lib/core/connect.js clears its connection timer on secureConnect; the configured HTTP body/header idle timeout does not govern that handshake.
+// Undici 8.12.4 lib/core/connect.js clears its connection timer on secureConnect; the configured HTTP body/header idle timeout does not govern that handshake.
 //
 // The relay holds the connection, and with it the TLS handshake, until the test releases it, which it does after the handshake has waited three
 // times the idle timeout under that timeout: a product that governed the handshake would have ended it at one. The wait is a lower bound, so a stall of
