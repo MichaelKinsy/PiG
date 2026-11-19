@@ -5,7 +5,6 @@ package coding
 import (
 	"context"
 	"slices"
-	"sync"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -19,24 +18,6 @@ import (
 // Ports packages/coding-agent/test/suite/agent-session-mcp.test.ts (Pi 1.0.0), "AgentSession MCP tools after resume and
 // reload": a deferred `docs` server whose tools tool_search loads, then a second Session over the same in-memory session
 // (resume) or the same Session after `/reload`. The built-in tool-search and MCP extensions load the way the CLI loads them.
-
-// mcpConnectedNames counts the connections of the fake server by server name (`connected` of the test).
-type mcpConnectedNames struct {
-	mu    sync.Mutex
-	names []string
-}
-
-func (c *mcpConnectedNames) add(name string) {
-	c.mu.Lock()
-	c.names = append(c.names, name)
-	c.mu.Unlock()
-}
-
-func (c *mcpConnectedNames) all() []string {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return slices.Clone(c.names)
-}
 
 type mcpResumeSession struct {
 	*mcpSession
