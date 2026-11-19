@@ -141,6 +141,16 @@ func newListenServerIn(t *testing.T, dir string, extra ...string) *listenServer 
 
 func (s *listenServer) stderr() string { return s.errBuf.String() }
 
+// waitForStderr returns the server's stderr once it contains want. A line the server wrote before an event the test saw on a connection is not in stderr() yet at that event: stderr reaches the test through a pipe and exec's copy goroutine, which nothing orders against the connection.
+func (s *listenServer) waitForStderr(want string) string {
+	s.t.Helper()
+	got, ok := s.errBuf.waitFor(want, s.exited, s.budget)
+	if !ok {
+		s.t.Fatalf("the server's stderr never contained %q (budget %s)\n%s", want, s.budget, got)
+	}
+	return got
+}
+
 // dial connects and returns the session's client.
 func (s *listenServer) dial() *rpcProcess {
 	s.t.Helper()

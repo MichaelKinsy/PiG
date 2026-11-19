@@ -20,14 +20,20 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
+// lockedBuffer collects a child's stderr, which reaches it through exec's copy goroutine: that goroutine runs on its own schedule, so a test that saw an event on another stream must waitFor a line the child wrote before the event, not read String() at once.
 type lockedBuffer struct {
-	mu sync.Mutex
-	b  bytes.Buffer
+	mu    sync.Mutex
+	b     bytes.Buffer
+	grown chan struct{} // closed by the next Write once a waitFor is parked on it
 }
 
 func (b *lockedBuffer) Write(data []byte) (int, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
+	if b.grown != nil {
+		close(b.grown)
+		b.grown = nil
+	}
 	return b.b.Write(data)
 }
 
@@ -35,6 +41,33 @@ func (b *lockedBuffer) String() string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	return b.b.String()
+}
+
+// waitFor returns the content and true once it contains want, woken by each Write. It returns the content so far and false when abort closes (the content is then final if abort is the end of the child) or d passes first.
+func (b *lockedBuffer) waitFor(want string, abort <-chan struct{}, d time.Duration) (string, bool) {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	for {
+		b.mu.Lock()
+		got := b.b.String()
+		if strings.Contains(got, want) {
+			b.mu.Unlock()
+			return got, true
+		}
+		if b.grown == nil {
+			b.grown = make(chan struct{})
+		}
+		grown := b.grown
+		b.mu.Unlock()
+		select {
+		case <-grown:
+		case <-abort:
+			got = b.String()
+			return got, strings.Contains(got, want)
+		case <-timer.C:
+			return b.String(), false
+		}
+	}
 }
 
 type rpcRecord = map[string]any

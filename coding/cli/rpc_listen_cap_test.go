@@ -264,8 +264,10 @@ func TestListenRefusesTheConnectionPastTheCap(t *testing.T) {
 	extra := s.dialConn()
 	defer func() { _ = extra.Close() }()
 	expectRefusal(t, extra, "64")
-	if got := strings.Count(s.stderr(), "connections are open"); got != 1 {
-		t.Fatalf("stderr has %d at-cap lines, want 1:\n%s", got, s.stderr())
+	// The server writes the at-cap line to its stderr before it sends the refusal, but the line reaches the test's buffer through a pipe and a copy goroutine that the refusal does not order.
+	stderr := s.waitForStderr("connections are open")
+	if got := strings.Count(stderr, "connections are open"); got != 1 {
+		t.Fatalf("stderr has %d at-cap lines, want 1:\n%s", got, stderr)
 	}
 	first := bufio.NewReader(conns[0])
 	_, _ = conns[0].Write([]byte(`{"id":"1","type":"get_state"}` + "\n"))
