@@ -13,7 +13,13 @@ name: CI
 #   queue  a merge queue is required: a push runs the light subset and CI result
 #          can pass, and the queue's merge_group run is the full verification.
 # automation/ci/ci-tiers.txt assigns every job to a tier and .github/AGENTS.md
-# renders the table. A weekly run keeps main's health and the CI badge current.
+# renders the table. The light run is one runner (Linux). A pull request that changes a path of
+# automation/ci/os-specific-paths.txt runs the full set, as does the ci:full label.
+# Pre-flight first: a pull request's heavy jobs wait for the Pre-flight verdict job, which follows the pre-flight workflow run
+# for the head (.github/workflows/preflight.yml, automation/ci/wait-preflight.py) until that run records the "preflight" commit
+# status (automation/ci/preflight, about two minutes once it has a runner).
+# The full run is also the nightly run on main (the only run that saves caches, with a manual dispatch), a push to a
+# release/** branch, and a dispatch; .github/workflows/nightly-bisect.yml bisects a red nightly.
 on:
   pull_request:
     # labeled starts the run that the ci:full label asks for; ready_for_review starts the one a draft's owner asks for.
@@ -36,7 +42,7 @@ on:
       - '**/*_unix.go'
       - '.github/workflows/**'
   schedule:
-    - cron: '41 6 * * 1'
+    - cron: '41 6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -53,7 +59,7 @@ env:
   # The big caches (Go modules and build output, Cargo, npm, the Durable Cloudflare host's TinyGo) are saved only from main (the weekly run and a dispatch there, and cache-warm.yml)
   # and from a dispatch on a release branch. A pull request restores main's and saves none: its own copies are visible to that pull request alone, a handful of them filled
   # the repository's cache limit and evicted main's. Every save step tests this.
-  CACHE_SAVE: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/'))) }}
+  CACHE_SAVE: ${{ (github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')) || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/heads/release/')) }}
   NPM_VERSION: 12.2.1
   RUST_VERSION: 1.97.1
   # Wall-clock and speed-ratio gates only warn on shared runners (internal/testenv.TimingGate); count, size and allocation gates still block. make test-timing runs them blocking on quiet hardware before a release.
@@ -66,6 +72,7 @@ jobs:
     timeout-minutes: 5
     outputs:
       product: ${{ steps.classify.outputs.product }}
+      os-specific: ${{ steps.classify.outputs.os-specific }}
       full: ${{ steps.plan.outputs.full }}
       full-required: ${{ steps.plan.outputs.full-required }}
       linux: ${{ steps.plan.outputs.linux }}
@@ -118,7 +125,7 @@ jobs:
           MODE: ${{ vars.PIG_PR_CI_LIGHT }}
           # The label is read from the event's payload, so it is the pull request's labels at the push, label or review
           # event that started this run.
-          FULL_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') || github.event.action == 'ready_for_review' }}
+          FULL_REQUESTED: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') || github.event.action == 'ready_for_review' || steps.classify.outputs.os-specific == 'true' }}
         shell: bash
         # Every event but a pull request in a PIG_PR_CI_LIGHT mode runs every
         # job in automation/ci/ci-tiers.txt; the light pull-request run is the
@@ -169,8 +176,46 @@ jobs:
           path: ~/go/pkg/mod
           key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
 
+  verdict:
+    name: Pre-flight verdict
+    # The pre-flight (.github/workflows/preflight.yml) judges the pull request from its API data and a sparse checkout, and
+    # records the "preflight" commit status on the head when its run ends. This job runs no code of the pull request: it
+    # follows the STATE of the pre-flight run for this head through the API (automation/ci/wait-preflight.py) and fails when
+    # the pre-flight rejected the head, or when its runs ended without a verdict, so Bookkeeping and everything after it do
+    # not start. A pre-flight run that is merely queued or running is waited for, however long the runner pool takes to start
+    # it: both use ubuntu-24.04 and queue behind the same jobs. A push to the pull request cancels this wait through the
+    # workflow's concurrency group. The bound below is the only clock; each minute waited holds one ubuntu-24.04 slot that the
+    # pre-flight itself needs, so it is the pre-flight's worst observed run (39 minutes) with margin, not a hope.
+    # The job runs on every event and only its steps are for a pull request: every heavy job needs it through Bookkeeping,
+    # and a skipped job skips every job that needs it, directly or not, so a job-level condition here skipped the whole
+    # nightly, release and dispatch run. Outside a pull request it waits for nothing and succeeds.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      # The run list of the pre-flight workflow (read only; no write scope, and the job runs no pull request code).
+      actions: read
+      statuses: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          sparse-checkout: automation/ci/wait-preflight.py
+          persist-credentials: false
+      - name: Wait for the pre-flight verdict of this head
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # pull_request_target runs preflight.yml from the default branch, whatever the PR's base.
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: python3 automation/ci/wait-preflight.py "$REPO" "$HEAD_SHA" "$DEFAULT_BRANCH"
+
   bookkeeping:
     name: Bookkeeping
+    needs: [verdict]
+    # A failed verdict skips this job, every job after it, and fails CI result.
     # The fail-fast gate: every job that spends real minutes waits for it, so a stale generated file, a stale ledger, a missing
     # sign-off or a broken policy gate stops the run in minutes. It runs only what needs Go, Python and the Pi source mirror
     # (make ci-bookkeeping): no oracle build, no npm install, no test binaries. Gates that need those stay in their shards.
@@ -205,7 +250,8 @@ jobs:
             gomod-${{ runner.os }}-
       # The regeneration of stale frames (the changelog, the SDK bundles, the docs pages) needs the zstd the committed frames were written with; see the linux job.
       - name: Restore the pinned zstd
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pinned-zstd
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-zstd
           key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
@@ -215,6 +261,12 @@ jobs:
           set -euo pipefail
           echo "PIG_ZSTD=$(automation/ci/install-zstd.sh)" >> "$GITHUB_ENV"
           echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
+      - name: Save the pinned zstd
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pinned-zstd.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
       - name: Restore the Go build cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -262,7 +314,8 @@ jobs:
           export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
       - name: Restore the Pi oracle build
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pi-oracle-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-dev/pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
@@ -322,6 +375,12 @@ jobs:
         with:
           path: ~/.npm
           key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json', 'automation/images/ci-parity/package-lock.json', 'automation/images/npm-runtime/package-lock.json') }}
+      - name: Save the Pi oracle build
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pi-oracle-build.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
 
   preflight:
     name: Linux / preflight
@@ -330,7 +389,7 @@ jobs:
     # On release and integration branches (os-parallel) a failed Bookkeeping or preflight no longer skips them. !cancelled(), not
     # always(): a run that concurrency cancels must stop these jobs too.
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -375,7 +434,7 @@ jobs:
   linux:
     name: Linux / ${{ matrix.shard }}
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     # The job installs the Pi oracle (make upstream-mirror): a test that cannot find its Pi source fails here instead of skipping (internal/pioracle.Missing).
@@ -412,7 +471,8 @@ jobs:
       # another version and compresses the same input to different bytes. install-zstd.sh builds the checksummed release source into ~/.cache/pig-zstd, which the cache keeps for the pin.
       # The frame tests fail, not skip, here (PIG_REQUIRE_ZSTD=1) so a job that loses the command stops checking the frames.
       - name: Restore the pinned zstd
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pinned-zstd
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-zstd
           key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
@@ -422,6 +482,12 @@ jobs:
           set -euo pipefail
           echo "PIG_ZSTD=$(automation/ci/install-zstd.sh)" >> "$GITHUB_ENV"
           echo "PIG_REQUIRE_ZSTD=1" >> "$GITHUB_ENV"
+      - name: Save the pinned zstd
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pinned-zstd.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-zstd
+          key: zstd-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-zstd.sh') }}
       # This restores the newest cache a previous run saved, so a job recompiles only what changed.
       - name: Restore the Go build cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -469,7 +535,8 @@ jobs:
       # the lock and interpreter, so this key changes exactly when the script would build a new venv.
       - name: Restore the Python SDK venv
         if: matrix.shard == 'toolchains'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-python-sdk-venv
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-sdk-py
           key: sdk-py-${{ runner.os }}-${{ steps.python.outputs.python-version }}-${{ hashFiles('extensions/sdk-py/requirements-dev.txt') }}
@@ -489,7 +556,8 @@ jobs:
       # in a directory named for the lock or pin that produced it, so this key changes exactly when something there would be rebuilt.
       - name: Restore the terminal-engine builds
         if: matrix.shard == 'toolchains'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-terminal-engine-builds
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-term-engines
           key: term-engines-${{ runner.os }}-${{ runner.arch }}-${{ steps.python.outputs.python-version }}-${{ env.RUST_VERSION }}-${{ hashFiles('test/term-engines/alacritty/Cargo.lock', 'test/term-engines/alacritty/Cargo.toml', 'test/term-engines/alacritty/src/**', 'test/term-engines/wezterm/Cargo.lock', 'test/term-engines/wezterm/Cargo.toml', 'test/term-engines/wezterm/src/**', 'test/term-engines/libvterm/run.c', 'test/term-engines/pyte/requirements.txt', 'automation/dev/toolchains.lock', 'automation/ci/test-term-engines.sh') }}
@@ -512,7 +580,8 @@ jobs:
       # fail without it. install-sbcl.sh installs the checksummed official binary, and the cache keeps the prefix for the pin.
       - name: Restore the pinned SBCL
         if: startsWith(matrix.shard, 'test-') || startsWith(matrix.shard, 'portmap-') || startsWith(matrix.shard, 'parity-') || matrix.shard == 'toolchains'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pinned-sbcl
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-sbcl
           key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
@@ -537,7 +606,8 @@ jobs:
           test "$(npm --version)" = "$NPM_VERSION"
       # The oracle build is the same for every job of a pin; oracle.py reuses a restored build whose stamp matches.
       - name: Restore the Pi oracle build
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pi-oracle-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-dev/pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
@@ -663,11 +733,34 @@ jobs:
             ~/.cargo/git
             ~/.cache/pig-dev/cargo-target
           key: cargo-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('extensions/sdk-rs/Cargo.lock', 'extensions/sdk-rs/Cargo.toml', 'automation/ci/test-warm.sh') }}
-
+      - name: Save the Python SDK venv
+        if: ${{ (matrix.shard == 'toolchains') && env.CACHE_SAVE == 'true' && steps.cache-python-sdk-venv.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sdk-py
+          key: sdk-py-${{ runner.os }}-${{ steps.python.outputs.python-version }}-${{ hashFiles('extensions/sdk-py/requirements-dev.txt') }}
+      - name: Save the terminal-engine builds
+        if: ${{ (matrix.shard == 'toolchains') && env.CACHE_SAVE == 'true' && steps.cache-terminal-engine-builds.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-term-engines
+          key: term-engines-${{ runner.os }}-${{ runner.arch }}-${{ steps.python.outputs.python-version }}-${{ env.RUST_VERSION }}-${{ hashFiles('test/term-engines/alacritty/Cargo.lock', 'test/term-engines/alacritty/Cargo.toml', 'test/term-engines/alacritty/src/**', 'test/term-engines/wezterm/Cargo.lock', 'test/term-engines/wezterm/Cargo.toml', 'test/term-engines/wezterm/src/**', 'test/term-engines/libvterm/run.c', 'test/term-engines/pyte/requirements.txt', 'automation/dev/toolchains.lock', 'automation/ci/test-term-engines.sh') }}
+      - name: Save the pinned SBCL
+        if: ${{ (startsWith(matrix.shard, 'test-') || startsWith(matrix.shard, 'portmap-') || startsWith(matrix.shard, 'parity-') || matrix.shard == 'toolchains') && env.CACHE_SAVE == 'true' && steps.cache-pinned-sbcl.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Save the Pi oracle build
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pi-oracle-build.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
   node-runtime:
     name: Node extensions
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-runtime == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-runtime == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     # The job installs the Pi oracle (make upstream-mirror): a test that cannot find its Pi source fails here instead of skipping (internal/pioracle.Missing).
@@ -785,7 +878,7 @@ jobs:
   chord:
     name: Chord surfaces
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-chord == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-chord == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     # Not yet measured on GitHub. In a container on the lane host (8 CPUs, warm Go build cache; job ChordCiSplit/j2, 2026-11-13)
     # make ci-chord-tui took 21 s and make ci-chord-web 99 s. The limit leaves the runner's setup, its fewer cores and a cold
@@ -838,7 +931,7 @@ jobs:
   node-loader:
     name: Node loader / ${{ matrix.os }}
     needs: [changes, preflight]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-loader == 'true' && (needs.preflight.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-node-loader == 'true' && (needs.preflight.result == 'success' || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped')) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -896,7 +989,7 @@ jobs:
   durable-cf-host:
     name: Durable Cloudflare host
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-cf-host == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-cf-host == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -939,7 +1032,8 @@ jobs:
       # published release), as every other parity check does; make durable-core-host-deps links them. The oracle build is the same
       # for every job of a pin; oracle.py reuses a restored build whose stamp matches.
       - name: Restore the Pi oracle build
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pi-oracle-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-dev/pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
@@ -988,11 +1082,17 @@ jobs:
             ~/.cache/pig-dev/tinygo
             durable/contract/.cache
           key: durable-cf-host-${{ runner.os }}-${{ hashFiles('automation/dev/toolchains.lock', 'durable/contract/PIN') }}
+      - name: Save the Pi oracle build
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pi-oracle-build.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
 
   durable-contract:
     name: Durable contract / ${{ matrix.impl }}
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-contract == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-durable-contract == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -1041,7 +1141,8 @@ jobs:
       # The same Pi oracle build, TinyGo and reference checkout as the Cloudflare host job; the cache keys are shared with it, so
       # whichever job runs first warms the other.
       - name: Restore the Pi oracle build
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pi-oracle-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-dev/pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
@@ -1079,6 +1180,12 @@ jobs:
             ~/.cache/pig-dev/tinygo
             durable/contract/.cache
           key: durable-cf-host-${{ runner.os }}-${{ hashFiles('automation/dev/toolchains.lock', 'durable/contract/PIN') }}
+      - name: Save the Pi oracle build
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pi-oracle-build.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
 
   verify:
     name: Linux verification
@@ -1099,7 +1206,7 @@ jobs:
   windows:
     name: Windows ${{ matrix.shard }}
     needs: [changes, preflight]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.preflight.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.windows != '[]' && (needs.preflight.result == 'success' || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped')) }}
     runs-on: windows-latest
     timeout-minutes: 60
     strategy:
@@ -1181,7 +1288,8 @@ jobs:
       # automation/ci/windows-tools.txt, not from a package feed whose outages
       # (504, missing lib paths) failed every Windows shard.
       - name: Restore the native test tool archives
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-native-test-tool-archives
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}\native-tool-archives
           key: native-tools-${{ runner.os }}-${{ hashFiles('automation/ci/windows-tools.txt', 'automation/ci/install-windows-tools.ps1') }}
@@ -1198,7 +1306,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "ripgrep is not available" }
       # Without this every Windows job builds the oracle from source (5-12 minutes); oracle.py reuses a restored build whose stamp matches.
       - name: Restore the Pi oracle build
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pi-oracle-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}\pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
@@ -1357,11 +1466,23 @@ jobs:
         with:
           path: ~\AppData\Local\npm-cache
           key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json') }}
+      - name: Save the native test tool archives
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-native-test-tool-archives.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\native-tool-archives
+          key: native-tools-${{ runner.os }}-${{ hashFiles('automation/ci/windows-tools.txt', 'automation/ci/install-windows-tools.ps1') }}
+      - name: Save the Pi oracle build
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pi-oracle-build.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}\pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
 
   macos:
     name: macOS ${{ matrix.shard }}
     needs: [changes, preflight]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && (needs.preflight.result == 'success' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.macos != '[]' && (needs.preflight.result == 'success' || (needs.changes.outputs.os-parallel == 'true' && needs.preflight.result != 'skipped')) }}
     runs-on: macos-15
     timeout-minutes: 40
     env:
@@ -1374,6 +1495,11 @@ jobs:
       matrix:
         # GitHub runs at most five macOS jobs at a time, so the units are packed into five jobs (longest first, from
         # measured run times) and run in one wave. Each unit still runs in its own go test process and timeout.
+        # The times are go test's own seconds, the longest of runs 43592372203, 43594615087, 43599788980 and 43599786195 (pull
+        # requests of 2026-11-14), where a job spent about 4.5 more minutes on its setup and on compiling: cli-1 507, cli-2 513,
+        # cli-3 498, cli-4 460, cli-5 276, cli-6 217, cli-7 229, cli-8 198, extension-host-1 470, extension-host-2 332,
+        # extension-host-3 445, packages 163: the four jobs hold 1115, 1159, 991 and 1043 s of tests, 21 to 24 minutes with the setup.
+        # test/ci-images holds these times and fails when a job's units and setup pass three quarters of the limit.
         # native: the smoke run of the packages with macOS-specific code.
         # cli-1 to cli-8: the eight cmd/pig shards that make test-cli runs on Linux (automation/ci/test-shard-pattern.sh).
         # extension-host-1 to extension-host-5: the subprocess extension host tests, in the five shards of make test-subprocess.
@@ -1389,7 +1515,22 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: .go-version
-          cache: true
+          cache: false
+      - name: Restore the Go module cache
+        id: cache-gomod
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            gomod-${{ runner.os }}-
+      - name: Restore the Go build cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/Library/Caches/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
@@ -1413,7 +1554,8 @@ jobs:
           rustup default "$RUST_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
       - name: Restore the pinned SBCL
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pinned-sbcl
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-sbcl
           key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
@@ -1427,7 +1569,8 @@ jobs:
           echo "SBCL_HOME=$prefix/lib/sbcl" >> "$GITHUB_ENV"
           echo "$prefix/bin" >> "$GITHUB_PATH"
       - name: Restore the Pi oracle build
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: cache-pi-oracle-build
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/pig-dev/pi-builds
           key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
@@ -1524,11 +1667,35 @@ jobs:
         with:
           path: ~/.npm
           key: node-cache-${{ runner.os }}-${{ runner.arch }}-npm-${{ hashFiles('extensions/sdk-ts/package-lock.json', 'test/parity/interface-extractor/package-lock.json') }}
+      - name: Save the pinned SBCL
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pinned-sbcl.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-sbcl
+          key: sbcl-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('automation/dev/toolchains.lock', 'automation/ci/install-sbcl.sh') }}
+      - name: Save the Pi oracle build
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-pi-oracle-build.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pig-dev/pi-builds
+          key: pi-oracle-${{ runner.os }}-${{ hashFiles('.upstream/pin', 'automation/pin/frozen/**', 'automation/pin/*.py', '.node-version', 'automation/ci/npm-toolchain/package-lock.json') }}
+      - name: Save the Go module cache
+        if: ${{ env.CACHE_SAVE == 'true' && steps.cache-gomod.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/go/pkg/mod
+          key: gomod-${{ runner.os }}-${{ hashFiles('**/go.sum') }}
+      - name: Save the Go build cache
+        if: ${{ !cancelled() && env.CACHE_SAVE == 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/Library/Caches/go-build
+          key: gocache-${{ runner.os }}-${{ hashFiles('go.sum') }}-${{ github.sha }}
 
   android:
     name: Android build
     needs: [changes, bookkeeping]
-    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-android == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || needs.changes.outputs.os-parallel == 'true') }}
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.changes.outputs.product == 'true' && needs.changes.outputs.run-android == 'true' && (needs.bookkeeping.outputs.shards-blocked == 'false' || (needs.changes.outputs.os-parallel == 'true' && needs.bookkeeping.result != 'skipped')) }}
     # Termux runs this binary. The runner image provides the NDK; no hosted
     # runner executes the result, so this builds it with cgo and checks its ELF
     # headers (PIE, /system/bin/linker64, bionic libc) as the release does.
@@ -1586,7 +1753,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for prefix in gocache-Linux- gocache-Windows- portmap-coverage- golangci-lint-Linux- pi-oracle-Linux- pi-oracle-Windows- pi-oracle-macOS-; do
+          for prefix in gocache-Linux- gocache-Windows- gocache-macOS- golangci-lint-Linux- pi-oracle-Linux- pi-oracle-Windows- pi-oracle-macOS-; do
             gh cache list --repo "$REPO" --key "$prefix" --limit 100 --json id,ref,createdAt \
               --jq 'group_by(.ref)[] | sort_by(.createdAt) | reverse | .[1:][] | .id' |
               while read -r id; do
@@ -1594,6 +1761,13 @@ jobs:
                 gh cache delete "$id" --repo "$REPO" || echo "::warning::cache $id could not be deleted"
               done
           done
+          # Each portmap shard keeps its own newest ledger: the eight shards' keys (portmap-coverage-portmap-N-<sha>) share one
+          # prefix, and pruning by that prefix kept one shard's entry and deleted the other seven. Group by key without the sha.
+          gh cache list --repo "$REPO" --key portmap-coverage- --limit 200 --json id,ref,key,createdAt \
+            --jq 'group_by([.ref, (.key | sub("-[0-9a-f]{40}$"; ""))])[] | sort_by(.createdAt) | reverse | .[1:][] | .id' |
+            while read -r id; do
+              gh cache delete "$id" --repo "$REPO" || echo "::warning::cache $id could not be deleted"
+            done
 
   result:
     name: CI result
@@ -1607,7 +1781,7 @@ jobs:
     # is label) a pull request's result fails unless this run is the full run
     # on the pull request's current head, so a head that only the light run
     # tested can never satisfy the required check.
-    needs: [changes, bookkeeping, docs, preflight, verify, node-runtime, chord, windows, macos, android, node-loader, durable-cf-host, durable-contract]
+    needs: [changes, verdict, bookkeeping, docs, preflight, verify, node-runtime, chord, windows, macos, android, node-loader, durable-cf-host, durable-contract]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -1632,6 +1806,9 @@ jobs:
           RUN_DURABLE_CF_HOST: ${{ needs.changes.outputs.run-durable-cf-host }}
           RUN_DURABLE_CONTRACT: ${{ needs.changes.outputs.run-durable-contract }}
           CHANGES: ${{ needs.changes.result }}
+          VERDICT: ${{ needs.verdict.result }}
+          WINDOWS_PLANNED: ${{ needs.changes.outputs.windows != '[]' }}
+          MACOS_PLANNED: ${{ needs.changes.outputs.macos != '[]' }}
           DOCS: ${{ needs.docs.result }}
           BOOKKEEPING: ${{ needs.bookkeeping.result }}
           VERIFY: ${{ needs.verify.result }}
@@ -1656,6 +1833,16 @@ jobs:
               status=1
             fi
           }
+          # The pre-flight comes first: a pull request it rejected, or never judged, fails here and no later job ran.
+          # The verdict job runs on every event (outside a pull request it waits for nothing), so it must have succeeded.
+          if [ "$VERDICT" != success ]; then
+            if [ "$EVENT" = pull_request ]; then
+              echo "::error::Pre-flight verdict: $VERDICT; see the pre-flight comment and the preflight status on the pull request"
+            else
+              echo "::error::Pre-flight verdict: $VERDICT; the jobs that wait for it did not run"
+            fi
+            exit 1
+          fi
           # Every job that spends real minutes waits for bookkeeping, and on main it skips when bookkeeping fails; on a release or
           # integration branch it still runs, so this message names the failure and the other jobs' own results follow in the log.
           if [ "$BOOKKEEPING" != success ]; then
@@ -1693,8 +1880,11 @@ jobs:
           expect "Linux preflight" "$PREFLIGHT" "$product_skip"
           expect "Node extensions" "$NODE_RUNTIME" "$(skip_unless_planned "$RUN_NODE_RUNTIME")"
           expect "Chord surfaces" "$CHORD" "$(skip_unless_planned "$RUN_CHORD")"
-          expect "Windows" "$WINDOWS" "$product_skip"
-          expect "macOS" "$MACOS" "$product_skip"
+          # The light run is one runner: all its Windows and macOS rows are queue rows, so it plans none.
+          windows_skip=$product_skip; [ "$WINDOWS_PLANNED" = false ] && windows_skip=true
+          macos_skip=$product_skip; [ "$MACOS_PLANNED" = false ] && macos_skip=true
+          expect "Windows" "$WINDOWS" "$windows_skip"
+          expect "macOS" "$MACOS" "$macos_skip"
           expect "Android" "$ANDROID" "$(skip_unless_planned "$RUN_ANDROID")"
           expect "Node loader" "$NODE_LOADER" "$(skip_unless_planned "$RUN_NODE_LOADER")"
           expect "Durable Cloudflare host" "$DURABLE_CF_HOST" "$(skip_unless_planned "$RUN_DURABLE_CF_HOST")"
