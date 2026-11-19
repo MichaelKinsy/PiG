@@ -18,6 +18,28 @@ type noLong struct{}
 
 func (noLong) blockedBy(*blocker) {}
 
+// releasing is a `blocked` that releases its decision from inside the section that settles it: `settle` names its blocker there,
+// before it resolves its verdict, so the release and the verdict are both there when the waiter selects.
+type releasing struct{ decision *Decision }
+
+func (r releasing) blockedBy(*blocker) { r.decision.release() }
+
+// unservedDecision declares, in a section of h, a decision that asks for a type nobody serves.
+func unservedDecision(t *testing.T, h *chordHost) *Decision {
+	t.Helper()
+	var decision *Decision
+	var err error
+	h.enter(func() {
+		decision = newDecision(decisionOwner{host: h, label: "test.route", caller: h.own(), moved: func() {}})
+		err = decision.declare(func(self AdmitSelf) (any, error) {
+			self.Get(admMissing, jsonObject())
+			return self.Derive(nil, func([]any) (delta.JsonValue, error) { return Allow("v"), nil }), nil
+		}, background)
+	})
+	must(t, err)
+	return decision
+}
+
 func TestDecisionSettleWait(t *testing.T) {
 	made := func(t *testing.T) (*chordHost, *Decision) {
 		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "write"})
@@ -77,6 +99,20 @@ func TestDecisionSettleWait(t *testing.T) {
 		found := <-waiter
 		if found.kind != verdictBroken || !errors.Is(found.err, ErrDecisionReleased) {
 			t.Fatalf("verdict = %+v, want broken, ErrDecisionReleased", found)
+		}
+	})
+
+	t.Run("a release in the turn of the verdict wins: the waiter gets released, never the verdict", func(t *testing.T) {
+		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "write"})
+		h := s.h.(*chordHost)
+		// The release and the verdict are both ready when the wait selects, and select picks one at random: each decision is a
+		// toss, and half of them gave the waiter the parked verdict before the release was preferred.
+		for i := range 200 {
+			decision := unservedDecision(t, h)
+			found := decision.settleWait(releasing{decision}, background)
+			if found.kind != verdictBroken || !errors.Is(found.err, ErrDecisionReleased) {
+				t.Fatalf("decision %d: verdict = %+v, want broken, ErrDecisionReleased", i, found)
+			}
 		}
 	})
 
