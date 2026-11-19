@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -270,27 +271,19 @@ func TestCopilotTokenManager_MissingRefresh(t *testing.T) {
 }
 
 func TestCopilotTokenManager_Expired_Refreshes(t *testing.T) {
-	// Stand up a fake token endpoint that returns a fresh copilot token.
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.Contains(r.URL.Path, "/copilot_internal/v2/token") {
-			w.WriteHeader(404)
-			return
+	// refreshCopilotToken asks https://api.github.com/copilot_internal/v2/token through http.DefaultClient; the stand-in answers what GitHub answers a refresh
+	// token it does not know, so the test needs no network.
+	var tokenRequests []string
+	defaultTransport := http.DefaultTransport
+	http.DefaultTransport = roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if request.URL.Scheme != "https" || request.URL.Host != "api.github.com" || request.URL.Path != "/copilot_internal/v2/token" {
+			t.Errorf("unexpected request %s %s", request.Method, request.URL)
+			return nil, errors.New("unexpected request")
 		}
-		// Verify bearer token is the refresh token
-		if got := r.Header.Get("Authorization"); got != "Bearer ghu_test_refresh" {
-			t.Errorf("Authorization = %q, want Bearer ghu_test_refresh", got)
-		}
-		futureExp := time.Now().Add(30 * time.Minute).Unix()
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = io.WriteString(w, `{"token":"fresh-access-token","expires_at":`+
-			strings.TrimRight(strings.TrimRight(
-				func() string { s := time.Unix(futureExp, 0).Format("2006"); return s }(), "0"), "0")+`}`)
-		// Simpler: just write a valid response
-	}))
-	t.Cleanup(srv.Close)
-
-	// This test can't fully work without overriding the refresh URL.
-	// Instead, test that an expired token triggers an error mentioning refresh.
+		tokenRequests = append(tokenRequests, request.Header.Get("Authorization"))
+		return &http.Response{StatusCode: http.StatusUnauthorized, Status: "401 Unauthorized", Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"message":"Bad credentials"}`)), Request: request}, nil
+	})
+	t.Cleanup(func() { http.DefaultTransport = defaultTransport })
 	auth, err := NewAuthStorage(t.TempDir() + "/auth.json")
 	if err != nil {
 		t.Fatal(err)
@@ -308,9 +301,11 @@ func TestCopilotTokenManager_Expired_Refreshes(t *testing.T) {
 
 	mgr := &copilotTokenManager{auth: auth}
 	_, err = mgr.getAccessToken(context.Background())
-	// Will fail because refreshCopilotToken hits real github.com: expect error
 	if err == nil {
-		t.Fatal("expected error when refresh hits real endpoint")
+		t.Fatal("expected error when the refresh token is rejected")
+	}
+	if len(tokenRequests) != 1 || tokenRequests[0] != "Bearer ghu_test_refresh" {
+		t.Errorf("token requests = %q, want one with Bearer ghu_test_refresh", tokenRequests)
 	}
 	if !strings.Contains(err.Error(), "refresh failed") {
 		t.Errorf("error = %q, want mention of 'refresh failed'", err.Error())
