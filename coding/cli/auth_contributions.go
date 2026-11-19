@@ -8,11 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"slices"
 	"strings"
-	"syscall"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/cellpack"
@@ -59,11 +57,13 @@ type authContributionRegistry struct {
 // pig additive (D40): pre-session OAuth inventory uses registration-only extension startup.
 // discoverAuthContributions inspects runtime registration only. It starts no
 // session runner and dispatches no lifecycle or capability handler.
-func discoverAuthContributions() (*authContributionRegistry, error) {
-	return discoverAuthContributionsFor("")
+func discoverAuthContributions(ctx context.Context) (*authContributionRegistry, error) {
+	return discoverAuthContributionsFor(ctx, "")
 }
 
-func discoverAuthContributionsFor(targetID string) (*authContributionRegistry, error) {
+// discoverAuthContributionsFor inspects under parent, the command's one cancellation source: the registry keeps a child of it for the extension processes it
+// launches, and close ends them. The registry installs no signal handler of its own.
+func discoverAuthContributionsFor(parent context.Context, targetID string) (*authContributionRegistry, error) {
 	cwd, agentDir, settings, err := packageContext()
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func discoverAuthContributionsFor(targetID string) (*authContributionRegistry, e
 	configs = subprocess.DisambiguateIdentities(normalizeRuntimeExtensionConfigs(configs))
 	sortx.Stable(configs, func(a, b subprocess.ExtConfig) int { return strings.Compare(a.Name, b.Name) })
 
-	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	ctx, cancel := context.WithCancel(parent)
 	if len(configs) > 0 {
 		// Inspection builds source extensions, so it needs the staged SDKs a
 		// clean host has only after this first stage.
@@ -543,12 +543,12 @@ func registeredAuthTargetItems(registry *authContributionRegistry) []authTargetI
 	return append(items, contributed...)
 }
 
-func authProviderFromContribution(id string, registry **authContributionRegistry) (ai.OAuthProviderInterface, error) {
+func authProviderFromContribution(ctx context.Context, id string, registry **authContributionRegistry) (ai.OAuthProviderInterface, error) {
 	if provider, ok := ai.GetOAuthProvider(id); ok {
 		return provider, nil
 	}
 	if *registry == nil {
-		discovered, err := discoverAuthContributionsFor(id)
+		discovered, err := discoverAuthContributionsFor(ctx, id)
 		if err != nil {
 			return nil, err
 		}
@@ -557,12 +557,12 @@ func authProviderFromContribution(id string, registry **authContributionRegistry
 	return (*registry).load(id)
 }
 
-func loadDeclaredAuthProvider(id string, registry **authContributionRegistry) error {
+func loadDeclaredAuthProvider(ctx context.Context, id string, registry **authContributionRegistry) error {
 	if _, ok := ai.GetOAuthProvider(id); ok {
 		return nil
 	}
 	if *registry == nil {
-		discovered, err := discoverAuthContributionsFor(id)
+		discovered, err := discoverAuthContributionsFor(ctx, id)
 		if err != nil {
 			return err
 		}

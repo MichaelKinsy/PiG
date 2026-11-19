@@ -66,11 +66,33 @@ func parseLoginCommand(args []string) (*loginCLIOptions, bool) {
 	return opts, true
 }
 
+// runLoginCommand runs `pig login` or `pig logout`, or reports -1 for another command. One signal source serves the whole command, as the abort
+// signal of Pi's `pi auth login` does: the first SIGINT, SIGTERM or SIGHUP cancels the context every step runs under (the registry's extension
+// processes, the provider's login, a blocked prompt), and once that cleanup is done the process ends by the signal itself, as a Node process
+// running pi-ai's cli.ts does and as `pig login <provider>` always did, with nothing printed and nothing written.
 func runLoginCommand(args []string) int {
 	opts, ok := parseLoginCommand(args)
 	if !ok {
 		return -1
 	}
+	signals := notifyCommandSignals(context.Background(), commandTerminationSignals()...)
+	code := runLoginOptions(signals.ctx, opts)
+	if sig, fired := signals.Fired(); fired {
+		exitProcessBySignal(sig)
+	}
+	signals.Stop()
+	return code
+}
+
+// loginError prints a failure of the login or logout command, unless ctx has ended: a signal ended the command, and Node's default for it prints nothing.
+func loginError(ctx context.Context, args ...any) {
+	if ctx.Err() == nil {
+		fmt.Fprintln(os.Stderr, args...)
+	}
+}
+
+// runLoginOptions runs the parsed command under ctx, which a signal cancels.
+func runLoginOptions(ctx context.Context, opts *loginCLIOptions) int {
 	if opts.invalid != "" || (opts.list && opts.command != authLogin) || (opts.list && opts.provider != "") {
 		fmt.Fprintf(os.Stderr, "Usage: pig %s [provider] [--list] [--json] [--no-input]\n", opts.command)
 		return 2
@@ -83,9 +105,9 @@ func runLoginCommand(args []string) int {
 	defer func() { closeAuthContributionRegistry(contributions) }()
 	if opts.command == authLogin && opts.list {
 		var err error
-		contributions, err = discoverAuthContributions()
+		contributions, err = discoverAuthContributions(ctx)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "pig login --list:", err)
+			loginError(ctx, "pig login --list:", err)
 			return 1
 		}
 		return listAuthTargets(opts.json, contributions)
@@ -104,16 +126,16 @@ func runLoginCommand(args []string) int {
 
 	switch opts.command {
 	case authLogin:
-		provider, err := resolveLoginProvider(opts.provider, &contributions)
+		provider, err := resolveLoginProvider(ctx, opts.provider, &contributions)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error:", err)
+			loginError(ctx, "Error:", err)
 			return 1
 		}
 		// Pi passes the installation's device ID to every login (interactive-mode.ts:6297).
 		settings := codingagent.NewSettingsManager(cwd, agentDir)
-		cred, err := runOAuthProviderLogin(provider, opts.noInput, settings.GetOrCreateDeviceID)
+		cred, err := runOAuthProviderLogin(ctx, provider, opts.noInput, settings.GetOrCreateDeviceID)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error:", err)
+			loginError(ctx, "Error:", err)
 			return 1
 		}
 		credentialPath := "auth.json"
@@ -124,7 +146,7 @@ func runLoginCommand(args []string) int {
 			// cli.ts saveAuth keeps OAuth tokens readable by their owner only: chmod covers a file an older version created.
 			if _, statErr := os.Stat(authPath); statErr == nil { //perf:ok once per interactive `pig login`, which waits on a browser or a pasted code
 				if err = os.Chmod(authPath, 0o600); err != nil {
-					fmt.Fprintln(os.Stderr, "Error:", err)
+					loginError(ctx, "Error:", err)
 					return 1
 				}
 			}
@@ -136,11 +158,11 @@ func runLoginCommand(args []string) int {
 			var credential ai.Credential
 			if credential, err = ai.CredentialFromOAuth(cred); err == nil {
 				// As interactive login does, store through the cancellable lock, which waits for another process's lock like Pi's credentials.modify.
-				_, err = store.Modify(context.Background(), provider.ID(), func(*ai.Credential) (*ai.Credential, error) { return &credential, nil })
+				_, err = store.Modify(ctx, provider.ID(), func(*ai.Credential) (*ai.Credential, error) { return &credential, nil })
 			}
 		}
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error:", err)
+			loginError(ctx, "Error:", err)
 			return 1
 		}
 		fmt.Printf("\nCredentials saved to %s\n", credentialPath)
@@ -152,22 +174,22 @@ func runLoginCommand(args []string) int {
 			return 1
 		}
 		if opts.provider == "" {
-			contributions, err = discoverAuthContributions()
+			contributions, err = discoverAuthContributions(ctx)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Error:", err)
+				loginError(ctx, "Error:", err)
 				return 1
 			}
 			if err := contributions.loadAll(); err != nil {
-				fmt.Fprintln(os.Stderr, "Error:", err)
+				loginError(ctx, "Error:", err)
 				return 1
 			}
-		} else if err := loadDeclaredAuthProvider(opts.provider, &contributions); err != nil {
-			fmt.Fprintln(os.Stderr, "Error:", err)
+		} else if err := loadDeclaredAuthProvider(ctx, opts.provider, &contributions); err != nil {
+			loginError(ctx, "Error:", err)
 			return 1
 		}
-		providerID, err := resolveLogoutProvider(store, opts.provider)
+		providerID, err := resolveLogoutProvider(ctx, store, opts.provider)
 		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
+			loginError(ctx, err)
 			return 1
 		}
 		removedFromExtension := false
@@ -175,13 +197,13 @@ func runLoginCommand(args []string) int {
 			if credentialStore, ok := provider.(ai.OAuthCredentialStore); ok {
 				removedFromExtension, err = credentialStore.DeleteOAuthCredentials()
 				if err != nil {
-					fmt.Fprintln(os.Stderr, "Error:", err)
+					loginError(ctx, "Error:", err)
 					return 1
 				}
 			}
 		}
-		if err := store.Delete(context.Background(), providerID); err != nil {
-			fmt.Fprintln(os.Stderr, "Error:", err)
+		if err := store.Delete(ctx, providerID); err != nil {
+			loginError(ctx, "Error:", err)
 			return 1
 		}
 		if removedFromExtension {
@@ -248,12 +270,12 @@ func printLoginCommandHelp(cmd loginCommand) {
 	}
 }
 
-func resolveLoginProvider(input string, registry **authContributionRegistry) (ai.OAuthProviderInterface, error) {
+func resolveLoginProvider(ctx context.Context, input string, registry **authContributionRegistry) (ai.OAuthProviderInterface, error) {
 	if input != "" {
-		return authProviderFromContribution(input, registry)
+		return authProviderFromContribution(ctx, input, registry)
 	}
 	if *registry == nil {
-		discovered, err := discoverAuthContributions()
+		discovered, err := discoverAuthContributions(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -267,7 +289,7 @@ func resolveLoginProvider(input string, registry **authContributionRegistry) (ai
 	}
 	fmt.Println()
 	fmt.Printf("Enter number (1-%d): ", len(targets))
-	line, err := readLine(os.Stdin)
+	line, err := readLineContext(ctx, os.Stdin)
 	if err != nil {
 		return nil, err
 	}
@@ -275,10 +297,10 @@ func resolveLoginProvider(input string, registry **authContributionRegistry) (ai
 	if !ok {
 		return nil, fmt.Errorf("Invalid selection")
 	}
-	return authProviderFromContribution(targets[idx-1].ID, registry)
+	return authProviderFromContribution(ctx, targets[idx-1].ID, registry)
 }
 
-func resolveLogoutProvider(store *ai.AuthStorage, input string) (string, error) {
+func resolveLogoutProvider(ctx context.Context, store *ai.AuthStorage, input string) (string, error) {
 	if input != "" {
 		return input, nil
 	}
@@ -321,7 +343,7 @@ func resolveLogoutProvider(store *ai.AuthStorage, input string) (string, error) 
 	}
 	fmt.Println()
 	fmt.Printf("Enter number (1-%d): ", len(providers))
-	line, err := readLine(os.Stdin)
+	line, err := readLineContext(ctx, os.Stdin)
 	if err != nil {
 		return "", err
 	}
@@ -332,7 +354,7 @@ func resolveLogoutProvider(store *ai.AuthStorage, input string) (string, error) 
 	return providers[idx-1], nil
 }
 
-func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool, getDeviceID func() string) (ai.OAuthCredentials, error) {
+func runOAuthProviderLogin(ctx context.Context, provider ai.OAuthProviderInterface, noInput bool, getDeviceID func() string) (ai.OAuthCredentials, error) {
 	callbacks := ai.OAuthLoginCallbacks{
 		GetDeviceID: getDeviceID,
 		OnAuth: func(info ai.OAuthAuthInfo) {
@@ -354,14 +376,14 @@ func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool, get
 			}
 			question += ": "
 			fmt.Print(question)
-			return readLine(os.Stdin)
+			return readLineContext(ctx, os.Stdin)
 		},
 		OnManualCodeInput: func() (string, error) {
 			if noInput {
 				return "", fmt.Errorf("provider %s requires a callback code; rerun without --no-input", provider.ID())
 			}
 			fmt.Print("Enter code or callback URL: ")
-			return readLine(os.Stdin)
+			return readLineContext(ctx, os.Stdin)
 		},
 		OnProgress: func(message string) {
 			fmt.Println(message)
@@ -379,7 +401,7 @@ func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool, get
 				fmt.Printf("  %d. %s\n", i+1, opt.Label)
 			}
 			fmt.Printf("Enter number (1-%d): ", len(prompt.Options))
-			line, err := readLine(os.Stdin)
+			line, err := readLineContext(ctx, os.Stdin)
 			if err != nil {
 				return "", err
 			}
@@ -392,9 +414,9 @@ func runOAuthProviderLogin(provider ai.OAuthProviderInterface, noInput bool, get
 		},
 	}
 	if parityHarnessEnabled() {
-		return runParityHarnessOAuthLogin(provider, callbacks)
+		return runParityHarnessOAuthLogin(ctx, provider, callbacks)
 	}
-	return provider.Login(callbacks)
+	return loginWithContext(ctx, provider, callbacks)
 }
 
 func sortedOAuthProviders() []ai.OAuthProviderInterface {
@@ -439,7 +461,52 @@ func readLine(r io.Reader) (string, error) {
 	return strings.TrimRight(line, "\r\n"), nil
 }
 
-func runParityHarnessOAuthLogin(provider ai.OAuthProviderInterface, callbacks ai.OAuthLoginCallbacks) (ai.OAuthCredentials, error) {
+// readLineContext is readLine that gives up when ctx ends: a read of a terminal cannot be interrupted, so it goes on in a goroutine whose line nobody takes,
+// and the process, which a cancelled command ends, takes the goroutine with it.
+func readLineContext(ctx context.Context, r io.Reader) (string, error) {
+	type answer struct {
+		line string
+		err  error
+	}
+	answered := make(chan answer, 1)
+	go func() {
+		line, err := readLine(r)
+		answered <- answer{line, err}
+	}()
+	select {
+	case got := <-answered:
+		return got.line, got.err
+	case <-ctx.Done():
+		return "", context.Cause(ctx)
+	}
+}
+
+// loginWithContext runs the provider's login under ctx. Every provider of PiG implements LoginContext; one that only has Login runs it in a goroutine that
+// ctx abandons, so a cancelled command is not held by it.
+func loginWithContext(ctx context.Context, provider ai.OAuthProviderInterface, callbacks ai.OAuthLoginCallbacks) (ai.OAuthCredentials, error) {
+	if contextual, ok := provider.(interface {
+		LoginContext(context.Context, ai.OAuthLoginCallbacks) (ai.OAuthCredentials, error)
+	}); ok {
+		return contextual.LoginContext(ctx, callbacks)
+	}
+	type outcome struct {
+		credentials ai.OAuthCredentials
+		err         error
+	}
+	finished := make(chan outcome, 1)
+	go func() {
+		credentials, err := provider.Login(callbacks)
+		finished <- outcome{credentials, err}
+	}()
+	select {
+	case got := <-finished:
+		return got.credentials, got.err
+	case <-ctx.Done():
+		return ai.OAuthCredentials{}, context.Cause(ctx)
+	}
+}
+
+func runParityHarnessOAuthLogin(ctx context.Context, provider ai.OAuthProviderInterface, callbacks ai.OAuthLoginCallbacks) (ai.OAuthCredentials, error) {
 	switch provider.ID() {
 	case "github-copilot":
 		var polls int
@@ -463,10 +530,10 @@ func runParityHarnessOAuthLogin(provider ai.OAuthProviderInterface, callbacks ai
 				return nil, fmt.Errorf("unexpected oauth request: %s %s", req.Method, req.URL.String())
 			}
 		}, func() (ai.OAuthCredentials, error) {
-			return provider.Login(callbacks)
+			return loginWithContext(ctx, provider, callbacks)
 		})
 	default:
-		return provider.Login(callbacks)
+		return loginWithContext(ctx, provider, callbacks)
 	}
 }
 

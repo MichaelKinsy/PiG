@@ -70,7 +70,7 @@ func TestLogoutMenuTakesTheLeadingDigits(t *testing.T) {
 		_ = write.Close()
 		stdin := os.Stdin
 		os.Stdin = read
-		got, err := resolveLogoutProvider(store, "")
+		got, err := resolveLogoutProvider(t.Context(), store, "")
 		os.Stdin = stdin
 		_ = read.Close()
 		if c.fails {

@@ -27,6 +27,18 @@ var stopGCPolicy = func() {}
 // exitProcess releases startup extension ownership and writes profiles before
 // exiting. os.Exit skips deferred calls, so main uses this on every exit path.
 func exitProcess(code int) {
+	releaseForExit()
+	os.Exit(code)
+}
+
+// exitProcessBySignal does the cleanup of exitProcess, then ends the process by sig as its default action does (dieBySignal), so a parent sees death by that signal.
+func exitProcessBySignal(sig os.Signal) {
+	releaseForExit()
+	dieBySignal(sig)
+}
+
+// releaseForExit is the cleanup every exit does before the process ends.
+func releaseForExit() {
 	stopAutomaticExtensionCacheGC()
 	stopModelServices()
 	stopStartupExtensions()
@@ -42,5 +54,4 @@ func exitProcess(code int) {
 	tui.RestoreTerminalOnExit()
 	// pig additive (D102): an emergency exit in flight ends the process with its 129, and a claimed exit.log line is flushed first.
 	codingagent.BeforeExit()
-	os.Exit(code)
 }
