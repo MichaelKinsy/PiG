@@ -1383,6 +1383,50 @@ def _json_text(value: Any) -> str:
         return _dumps_deep(value)
 
 
+def _event_edit_messages(name: str, data: dict[str, Any]) -> list[Any]:
+    """The message objects of an event a handler may edit in place, by the position the reply names them at (``_pigEventEdits``): message_end has one, turn_end its assistant message and then its tool results. The reply is about these objects, so assigning another value to the member changes nothing, as assigning event.message changes nothing in Pi."""
+    if name in ("message_start", "message_end"):
+        return [data.get("message")]
+    if name == "agent_end":
+        messages = data.get("messages")
+        return list(messages) if isinstance(messages, list) else []
+    if name == "turn_end":
+        results = data.get("toolResults")
+        return [data.get("message"), *(results if isinstance(results, list) else [])]
+    return []
+
+
+def _snapshot_event_messages(messages: list[Any]) -> list[str | None]:
+    """The JSON text of each message as the handler received it (member order included), or None for a value that is no dict."""
+    return [_json_text(message) if isinstance(message, dict) else None for message in messages]
+
+
+def _event_message_edits(messages: list[Any], before: list[str | None]) -> list[dict[str, Any]]:
+    """The messages whose JSON text the handler changed, each at its position, as the handler left it."""
+    return [{"at": at, "message": message} for at, (message, text) in enumerate(zip(messages, before, strict=True)) if text is not None and _json_text(message) != text]
+
+
+# The events whose own members a handler may assign, reassign or delete for the later handlers of the dispatch: Pi hands every handler of an emit the one event object (runner.ts emit).
+_MEMBER_EVENTS = frozenset({"message_start", "message_update", "turn_start", "agent_start", "agent_end"})
+
+
+def _same_member(was: Any, now: Any) -> bool:
+    """Whether the handler left a member as it received it: a scalar by value and type, a dict or a list by identity (an edit inside a message is carried by the message entries)."""
+    return was is now or (isinstance(was, (str, int, float)) and type(was) is type(now) and was == now)
+
+
+def _event_member_edits(data: dict[str, Any], before: dict[str, Any]) -> list[dict[str, Any]]:
+    """The members the handler left different from the ones it received, as the second form of the reply's ``_pigEventEdits`` entries: ``{"member", "value"}`` for one it added or reassigned, ``{"member", "deleted": True}`` for one it deleted."""
+    edits: list[dict[str, Any]] = []
+    for name, value in before.items():
+        if name not in data:
+            edits.append({"member": name, "deleted": True})
+        elif not _same_member(value, data[name]):
+            edits.append({"member": name, "value": data[name]})
+    edits.extend({"member": name, "value": value} for name, value in data.items() if name not in before)
+    return edits
+
+
 def _json_loads(text: str) -> Any:
     """json.loads of ``text``, read with a stack of its own when it nests past the interpreter's limit (the host's values nest up to 10000 levels). A value nested past MAX_FRAME_DEPTH raises RecursionError; malformed JSON raises ValueError."""
     try:
@@ -2368,7 +2412,7 @@ class _SurfaceRenderer:
         with self._lock:
             if self._stopped:
                 return
-            width = ctx.width
+            width = ctx._terminal_width()
             try:
                 rendered = self.render(width)
                 # The Node runtime sends [] for a render result that is not an
@@ -2482,6 +2526,8 @@ class _ToolStart:
         self._previous = previous
         self.done = threading.Event()
         self._order = order
+        # The id of the request, which ``_ToolBatches.reserve`` sets; only ``_ToolBatches._observer`` reads it.
+        self._request_id = ""
         # Set when the request waits for its first host call and every earlier request passed its place; made only when the request has to wait. It, _dialog_passed, _dialog_opened, _ended and _slot are guarded by the order's lock.
         self._dialog_waiting: threading.Event | None = None
         self._dialog_passed = False
@@ -2493,11 +2539,16 @@ class _ToolStart:
     def begin(self) -> None:
         if self._previous is not None:
             self._previous.wait()
+        batches = self._order._batches
+        if batches is not None and batches._observer is not None:
+            batches._observer("tool_call", self._request_id)
         self.done.set()
 
     def end(self) -> None:
         """Hand the places on when the request's thread ends, also for a request that failed before it reached its handler. Like ``begin`` it waits for the earlier requests first, so a request without a handler cannot let a later handler start before an earlier one. Idempotent."""
-        self.begin()
+        if self._previous is not None:
+            self._previous.wait()
+        self.done.set()
         self._finish()
 
     def release(self) -> None:
@@ -2578,18 +2629,27 @@ class _ToolStart:
 class _RequestStart:
     """One request's place in the order the handlers start (``_starts_in_arrival_order``). ``begin`` returns when every earlier request began its handler or ended without one."""
 
-    def __init__(self, previous: threading.Event | None) -> None:
+    def __init__(self, previous: threading.Event | None, order: "_RequestStartOrder", method: str, request_id: str) -> None:
         self._previous = previous
         self.done = threading.Event()
+        self._order = order
+        self._method = method
+        self._request_id = request_id
 
+    # pig divergence (D658): the place is handed on before the handler's first statement runs, so a descheduled thread can be overtaken; Pi runs a handler to its first await in invocation order.
     def begin(self) -> None:
         if self._previous is not None:
             self._previous.wait()
+        observer = self._order._observer
+        if observer is not None:
+            observer(self._method, self._request_id)
         self.done.set()
 
     def end(self) -> None:
         """Hand the place on when the request's thread ends, also for a request that failed before it reached its handler. Like ``begin`` it waits for the earlier requests first, so a request without a handler cannot let a later handler start before an earlier one. Idempotent."""
-        self.begin()
+        if self._previous is not None:
+            self._previous.wait()
+        self.done.set()
 
     def release(self) -> None:
         """Hand the place on at once, for a request whose thread never started. The reader calls it, so it must not wait for the earlier requests. Idempotent."""
@@ -2610,11 +2670,13 @@ class _RequestStartOrder:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._tail: threading.Event | None = None
+        # Set by tests before the extension serves, never while it runs. It is called with the method and id of each request that invokes a handler, after the earlier places were released and before this one is.
+        self._observer: Callable[[str, str], None] | None = None
 
-    def reserve(self) -> _RequestStart:
+    def reserve(self, method: str, request_id: str) -> _RequestStart:
         """Take the next place. The reader calls this in arrival order, before it starts the request's thread."""
         with self._lock:
-            start = _RequestStart(self._tail)
+            start = _RequestStart(self._tail, self, method, request_id)
             self._tail = start.done
             return start
 
@@ -2673,14 +2735,18 @@ class _ToolBatches:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._orders: dict[str, _ToolStartOrder] = {}
+        # Set by tests before the extension serves, never while it runs. It is called with "tool_call" and the id of each request whose handler is invoked, after the earlier places of its batch were released and before this one is.
+        self._observer: Callable[[str, str], None] | None = None
 
-    def reserve(self, batch: str) -> _ToolStart:
+    def reserve(self, batch: str, request_id: str) -> _ToolStart:
         """Take the next place in the batch's order. The reader calls this in arrival order, before it starts the request's thread."""
         with self._lock:
             order = self._orders.get(batch)
             if order is None:
                 order = self._orders[batch] = _ToolStartOrder(self, batch)
-            return order.reserve()
+            start = order.reserve()
+            start._request_id = request_id
+            return start
 
     def _drop(self, batch: str, order: _ToolStartOrder) -> None:
         with self._lock:
@@ -2977,6 +3043,7 @@ class Context:
         ``partial`` is a string or a mapping with the tool-result shape. The
         host shows updates in order, before the tool's final result.
         """
+        self._assert_call_active()
         if not self.tool_call_id or not self.request_id:
             raise RuntimeError("on_update is only available while a tool runs")
         result = {"content": partial} if isinstance(partial, str) else partial
@@ -3087,6 +3154,7 @@ class Context:
         Raises ``RuntimeError`` until the host has sent them, as upstream's
         ``getSettings`` throws before the runner binds.
         """
+        self._assert_call_active()
         return self.extension._get_settings()
 
     @property
@@ -3261,6 +3329,12 @@ class Context:
 
     @property
     def width(self) -> int:
+        """The terminal width. Raises the stale message after the session was replaced or reloaded."""
+        self._assert_active()
+        return self._terminal_width()
+
+    def _terminal_width(self) -> int:
+        """The width the host last reported, without the stale check: the SDK's own renders and pushes read it, and a push from a stale context fails with the host's error, never with an exception on a thread of the SDK."""
         with self.extension._state_lock:
             return self.extension._width
 
@@ -3268,19 +3342,30 @@ class Context:
     def height(self) -> int:
         """Terminal height in rows, or 0 when the host has not reported one.
 
-        Updated by ``height_change`` notifications.
+        Updated by ``height_change`` notifications. Raises the stale message after the session was replaced or reloaded.
         """
+        self._assert_active()
         with self.extension._state_lock:
             return self.extension._height
 
-    def _assert_active(self) -> None:
-        """Raise the Host's stale message once the session was replaced or reloaded, as Pi's ExtensionContext getters throw it (runner.ts:571-600). A replacement context belongs to the new session and is not stale."""
+    def _stale_message(self) -> str | None:
+        """The Host's stale message once the session was replaced or reloaded, else None. A replacement context belongs to the new session and is not stale."""
         if self._replacement is not None:
-            return
+            return None
         with self.extension._state_lock:
-            message = self.extension._stale_message
+            return self.extension._stale_message
+
+    def _assert_active(self) -> None:
+        """Raise the Host's stale message once the session was replaced or reloaded, as Pi's ExtensionContext getters throw it (runner.ts:571-600)."""
+        message = self._stale_message()
         if message is not None:
             raise RuntimeError(message)
+
+    def _assert_call_active(self) -> None:
+        """Raise the stale message as the HostCallError a call to the host raises, for the calls that send no host call to be answered with it."""
+        message = self._stale_message()
+        if message is not None:
+            raise HostCallError(message)
 
     def _current_model(self) -> tuple[str, str]:
         """The model's id and provider id. A replacement context asks the host, since this process replicates only the requesting Session's model."""
@@ -3574,7 +3659,8 @@ class Context:
 
     @property
     def theme(self) -> Theme:
-        """Upstream ``ctx.ui.theme``: the host's active theme, kept current."""
+        """Upstream ``ctx.ui.theme``: the host's active theme, kept current. Raises the stale message after the session was replaced or reloaded."""
+        self._assert_active()
         return self.extension._theme
 
     @property
@@ -3744,6 +3830,7 @@ class Context:
         ``widget_push`` frame, as a string list does; with options (upstream
         ``ExtensionWidgetOptions``) it waits for the host.
         """
+        self._assert_call_active()
         if isinstance(content, kit.View):
             self.extension._set_widget_view(self, key, content, options)
             return
@@ -3760,6 +3847,7 @@ class Context:
 
         It follows the contract of :meth:`set_footer_renderer`: the SDK renders at the width the host reports and again after every width change, sends each set of rows with the width it was rendered for, and the host paints them only at that width, so a widget never shows rows laid out for the old width. ``options`` is the placement (``{"placement": "aboveEditor" | "belowEditor"}``). ``None`` clears the widget. An exception in ``render`` is reported as "widget render failed: ..." and leaves the previous rows. :meth:`set_widget` with the same key replaces the renderer.
         """
+        self._assert_call_active()
         if render is None:
             self.set_widget(key, None, options)
             return
@@ -3853,7 +3941,7 @@ class Context:
         if lines is None:
             self._call(method, {"clear": True})
             return
-        self._call(method, _surface_args([str(line) for line in lines], self.width))
+        self._call(method, _surface_args([str(line) for line in lines], self._terminal_width()))
 
     def _set_surface_view(self, method: str, view: kit.View) -> None:
         # An authoritative view: no rows and no width, since the host renders it at its own width.
@@ -4796,6 +4884,8 @@ class Extension:
         self._name = name
         self._tools: list[dict[str, Any]] = []
         self._tool_registration_lock = threading.RLock()
+        # Orders each tool change with its registerTool publication (taken before the registration lock; reentrant because tool_renderers reads the tool and publishes it under one hold).
+        self._tool_publish_lock = threading.RLock()
         self._tools_live = False
         # Raw terminal-input handlers, consulted synchronously while the host
         # holds the user's keystroke. Empty means the host never round-trips.
@@ -4989,19 +5079,22 @@ class Extension:
         declaration = {key: value for key, value in declaration.items() if key != "prepares_arguments"}
         if prepare is not None:
             declaration["prepares_arguments"] = True
-        with self._tool_registration_lock:
-            index = next((i for i, tool in enumerate(self._tools) if tool["name"] == name), None)
-            if index is None:
-                self._tools.append(declaration)
-            else:
-                self._tools[index] = declaration
-            self._tool_handlers[name] = handler
-            for handlers, callback in ((self._tool_prepare_handlers, prepare), (self._tool_call_renderers, render_call), (self._tool_result_renderers, render_result), (self._tool_loadout_handlers, prepare_loadout), (self._tool_reach_handlers, reaches_tools), (self._tool_call_view_renderers, call_view), (self._tool_result_view_renderers, result_view)):
-                if callback is None:
-                    handlers.pop(name, None)
+        with self._tool_publish_lock:
+            with self._tool_registration_lock:
+                index = next((i for i, tool in enumerate(self._tools) if tool["name"] == name), None)
+                if index is None:
+                    self._tools.append(declaration)
                 else:
-                    handlers[name] = callback
-            if self._tools_live:
+                    self._tools[index] = declaration
+                self._tool_handlers[name] = handler
+                for handlers, callback in ((self._tool_prepare_handlers, prepare), (self._tool_call_renderers, render_call), (self._tool_result_renderers, render_result), (self._tool_loadout_handlers, prepare_loadout), (self._tool_reach_handlers, reaches_tools), (self._tool_call_view_renderers, call_view), (self._tool_result_view_renderers, result_view)):
+                    if callback is None:
+                        handlers.pop(name, None)
+                    else:
+                        handlers[name] = callback
+                live = self._tools_live
+            # The host refreshes the registry before it answers and asks every tool's prepare_loadout hook while it does: the hook is answered from another thread that reads the tables under the registration lock, so the call is made without it. The publish lock keeps changes and their publications in one order.
+            if live:
                 self._call("registerTool", declaration)
 
     def register_tool(self, definition: ToolDefinition) -> None:
@@ -5488,16 +5581,20 @@ class Extension:
         """
         if render_shell not in {"default", "self"}:
             raise ValueError("render_shell must be 'default' or 'self'")
-        with self._tool_registration_lock:
-            for tool in self._tools:
-                if tool.get("name") != name:
-                    continue
+        with self._tool_publish_lock:
+            with self._tool_registration_lock:
+                tool = next((tool for tool in self._tools if tool.get("name") == name), None)
+                if tool is None:
+                    return
                 declaration = dict(tool)
-                declaration["render_shell"] = render_shell
-                declaration["renders_call"] = render_call is not None or call_view is not None
-                declaration["renders_result"] = render_result is not None or result_view is not None
-                self._register_tool(declaration, self._tool_handlers[name], self._tool_prepare_handlers.get(name), render_call, render_result, call_view=call_view, result_view=result_view)
-                break
+                handler = self._tool_handlers[name]
+                prepare = self._tool_prepare_handlers.get(name)
+                prepare_loadout = self._tool_loadout_handlers.get(name)
+                reaches_tools = self._tool_reach_handlers.get(name)
+            declaration["render_shell"] = render_shell
+            declaration["renders_call"] = render_call is not None or call_view is not None
+            declaration["renders_result"] = render_result is not None or result_view is not None
+            self._register_tool(declaration, handler, prepare, render_call, render_result, prepare_loadout, call_view, result_view, reaches_tools)
 
     def _render_tool(self, ctx: "Context", name: str, args: dict[str, Any]) -> tuple[Any, bool]:
         """Run the tool's renderer for the request's phase: its lines, or its view when the renderer is a view form
@@ -5898,9 +5995,9 @@ class Extension:
         batch = req.get("batch")
         # Only the calls of one parallel batch (the host's `batch` member, the same on each of them) take part in the dialog and continuation orders; any other tool_call is never gated.
         if req.get("method") == "tool_call" and isinstance(batch, str) and batch:
-            ctx._tool_start = self._tool_batches.reserve(batch)
+            ctx._tool_start = self._tool_batches.reserve(batch, env.get("id", ""))
         if _starts_in_arrival_order(req):
-            ctx._request_start = self._request_starts.reserve()
+            ctx._request_start = self._request_starts.reserve(req.get("method", ""), env.get("id", ""))
         self._request_state(env.get("id", ""), "started")
         worker = threading.Thread(
             target=self._handle_request_thread,
@@ -5976,6 +6073,7 @@ class Extension:
                     raise RuntimeError(f"{name} delta applies to payload {base}, the replica holds a different one")
                 root = _apply_stream_ops(replica[1], stream.get("ops"))
             replicas[ident] = (int(stream.get("seq") or 0), root)
+            # pig divergence (D657): the handler gets a clone of the replica, not the replica itself, so a write by one handler reaches no other handler. Pi hands every handler the one event object.
             req["args"] = _clone_stream_value(root)
         except Exception as exc:  # noqa: BLE001 - The request that follows reports why its payload is missing.
             replicas.pop(ident, None)
@@ -6582,9 +6680,10 @@ class Extension:
                 if handler is None:
                     raise RuntimeError(f"unknown event handler {handler_id} for {req.get('event', '')}")
                 data = req.get("args") or {}
-                # pig additive (D19): preserve boundary mutations alongside handler errors.
+                # pig additive (D19): preserve boundary mutations alongside handler errors. A turn_end handler also edits the turn's messages in place (Pi hands every handler the turn's message objects): the reply carries the ones it left different, beside the boundary members.
                 if req.get("event") in ("agent_before_settle", "turn_end"):
-                    entries = data.get("entries", [])
+                    event_messages = _event_edit_messages(req["event"], data)
+                    before = _snapshot_event_messages(event_messages)
                     result = None
                     error = None
                     try:
@@ -6593,7 +6692,15 @@ class Extension:
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve mutations and report the handler error.
                         error = {"message": str(exc)}
-                    self._respond(req_id, {"_pigBoundaryEntries": entries, "_pigBoundaryResult": result}, error)
+                    # The entries the handler left in data["entries"], assigned or edited in place, as the Go, Rust and Lisp SDKs carry them (v0.3.0, v0.7.0); the Node runtime follows Pi, which does not (runner.ts emitBoundary).
+                    reply = {"_pigBoundaryEntries": data.get("entries", []), "_pigBoundaryResult": result}
+                    try:
+                        edits = _event_message_edits(event_messages, before)
+                        if edits:
+                            reply["_pigEventEdits"] = edits
+                    except Exception as exc:  # noqa: BLE001 - A message that cannot be written is the handler's error.
+                        error = error or {"message": str(exc)}
+                    self._respond(req_id, reply, error)
                     return
                 # Pi's handler edits event.input in place and the runner reads it back (runner.ts emitToolCall). The host cannot share the dict, so the reply carries the input the handler left when it differs from the one it received, member order included, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall), so assigning a new dict to data["input"] changes nothing the tool receives.
                 if req.get("event") == "tool_call":
@@ -6610,12 +6717,16 @@ class Extension:
                     reply: dict[str, Any] = {"_pigToolCallResult": result}
                     if _json_text(tool_input) != before:
                         reply["_pigToolCallInput"] = tool_input
+                    # A new dict assigned to data["input"] is the input the next handlers read (runner.ts emitToolCall hands them the one event); the tool keeps the dict it carried.
+                    if data.get("input") is not tool_input:
+                        reply["_pigToolCallEventInput"] = data.get("input")
                     self._respond(req_id, reply, error)
                     return
                 # Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, turn_end, agent_end, the entry and the next request hold, even when it fails afterwards. The host cannot share the dict, so the reply carries the message the handler left when its JSON text differs from the one it received (member order included). Assigning a new dict to data["message"] changes nothing, as assigning event.message changes nothing in Pi.
-                if req.get("event") == "message_end":
-                    end_message = data.get("message")
-                    before = _json_text(end_message) if isinstance(end_message, dict) else None
+                if req.get("event") in ("message_start", "message_end", "agent_end"):
+                    event_messages = _event_edit_messages(req["event"], data)
+                    before = _snapshot_event_messages(event_messages)
+                    members_before = dict(data) if req["event"] in _MEMBER_EVENTS else None
                     result = None
                     error = None
                     try:
@@ -6624,13 +6735,15 @@ class Extension:
                         result = handler(ctx, data)
                     except Exception as exc:  # noqa: BLE001 - Preserve message edits before reporting the handler error.
                         error = {"message": str(exc)}
-                    reply = {"_pigMessageEndResult": result}
-                    if before is not None:
-                        try:
-                            if _json_text(end_message) != before:
-                                reply["_pigMessageEndMessage"] = end_message
-                        except Exception as exc:  # noqa: BLE001 - A message that cannot be written is the handler's error.
-                            error = error or {"message": str(exc)}
+                    reply = {"_pigEventResult": result}
+                    try:
+                        edits = _event_message_edits(event_messages, before)
+                        if members_before is not None:
+                            edits = [*edits, *_event_member_edits(data, members_before)]
+                        if edits:
+                            reply["_pigEventEdits"] = edits
+                    except Exception as exc:  # noqa: BLE001 - A message that cannot be written is the handler's error.
+                        error = error or {"message": str(exc)}
                     self._respond(req_id, reply, error)
                     return
                 # Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the dict, so the reply names the members the handler left different from the ones it received (JSON text, member order included), with their new values, and, of those, the ones it edited in the very object it received instead of replacing; the reply carries them also when the handler failed.
@@ -6717,6 +6830,22 @@ class Extension:
                         error,
                     )
                     return
+                # message_update, turn_start and agent_start (message_start and agent_end replied above): a member a handler assigns, reassigns or deletes is what the later handlers of the dispatch see (runner.ts emit), so the reply carries the members it left different, also from a handler that raised.
+                if req.get("event") in _MEMBER_EVENTS:
+                    members_before = dict(data)
+                    if ctx._request_start is not None:
+                        ctx._request_start.begin()
+                    try:
+                        result = handler(ctx, data)
+                    except Exception as exc:  # noqa: BLE001 - A member edit is kept when the handler raises, as in Pi.
+                        member_edits = _event_member_edits(data, members_before)
+                        if not member_edits:
+                            raise
+                        self._respond(req_id, {"_pigEventEdits": member_edits}, {"message": str(exc)})
+                        return
+                    member_edits = _event_member_edits(data, members_before)
+                    self._respond(req_id, {"_pigEventEdits": member_edits, "_pigEventResult": result} if member_edits else result, None)
+                    return
                 messages = data.get("messages")
                 snapshot = list(messages) if isinstance(messages, list) else None
                 # A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
@@ -6735,6 +6864,9 @@ class Extension:
                     result = _user_bash_operations_reply(self._bash_operations, result) or _user_bash_event_result(result)
                 if req.get("event") in {"context", "context_with_system"} and snapshot is not None:
                     returned = result.get("messages") if isinstance(result, dict) else None
+                    if returned is None:
+                        # The list the handler assigned to data["messages"] is carried, as the Go and Rust SDKs carry it (v0.2.0, v0.3.0); the Node runtime follows Pi, which does not (runner.ts emitContext).
+                        returned = data.get("messages")
                     if returned is None:
                         returned = messages
                     unchanged = len(returned) == len(snapshot) and all(a is b for a, b in zip(returned, snapshot))

@@ -174,7 +174,7 @@ func (m *InteractiveMode) resetExtensionUIForReplacement() {
 		}
 	}
 	// The replacement runs on a worker while the owner services tasks. After the loop ended, nothing else touches the UI.
-	if m.runCtx == nil || m.runEnded.Load() || m.runCtx.Err() != nil {
+	if m.runCtx == nil || m.runEnded.ended() || m.runCtx.Err() != nil {
 		reset()
 		return
 	}

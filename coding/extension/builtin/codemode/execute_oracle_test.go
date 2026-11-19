@@ -51,7 +51,7 @@ text("x".repeat(100))`,
 	if err := os.MkdirAll(filepath.Join(cache, "quickjs-wasi"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	wasm, err := filepath.Abs("../../../../codemode/assets/quickjs.wasm")
+	wasm, err := filepath.Abs("../../../../codemode/assets/raw/quickjs.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

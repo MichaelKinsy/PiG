@@ -189,6 +189,9 @@ type Conn struct {
 	terminating  atomic.Bool // Host.TerminateProcesses killed the extension's process: its end fails no pending request
 	// modelRegistry records RegisterPayload.WantsModelRegistry. UIBridge.RegisterExtConn sets it and PublishModelCatalog reads it, both under the bridge's mutex.
 	modelRegistry bool
+	// autocompletePending is set when the host answered this connection's ui.autocomplete.current with {} (no provider yet): the editor its process builds
+	// from that answer was handed none. A sync that reaches the connection's editor clears it. The UIBridge sets and reads it.
+	autocompletePending atomic.Bool
 	// modelCatalogMu orders the catalog frames queued for this connection and guards the record of the last one: modelCatalogSent is the digest
 	// of the last frame a publication queued, when modelCatalogSentSet. modelCatalogAlways is set once the replica applied a registry state
 	// that was not a catalog frame (the result of its own refresh call): it is then sent every publication.
@@ -248,8 +251,6 @@ type Conn struct {
 
 	// Incoming messages that aren't responses go here for the host to process. So do the responses of requests that were in flight when a report_error notification was read, queued behind it (reports).
 	inCh chan *Envelope
-	// incoming is the Host's read loop of this connection (Host.goHandleIncoming); nil when no Host loop reads it.
-	incoming atomic.Pointer[incomingLoop]
 	// reports orders the responses the read loop routes behind the report_error notifications it read before them (reportOrder).
 	reports reportOrder
 
@@ -652,6 +653,11 @@ func (c *Conn) sendEncoded(data encodedEnvelope) error {
 	return c.enqueue(context.Background(), outboundFrame{data: data, work: true})
 }
 
+// takesCalls reports whether the connection still takes a new request: it is neither closing (Close, Retire) nor closed. A tool call whose context ended is sent only to such a connection (D111); on one that a shutdown, a reload or a replacement is ending it is not.
+func (c *Conn) takesCalls() bool {
+	return !c.closing.Load() && !c.closed.Load()
+}
+
 // checkSendState rejects a send on a connection that is closing or closed. answer marks a call result, the one frame a retiring connection still sends: Retire leaves the peer running until it closes, and a call it made before it read the shutdown frame, or that its teardown makes, waits for a result only this connection can carry. A peer that blocks on the result, as a Node runtime does in a synchronous host call, cannot read the shutdown frame until it arrives, so refusing it leaves the peer waiting for the result and the host waiting for the peer to close.
 func (c *Conn) checkSendState(answer bool) error {
 	if c.closed.Load() || (c.closing.Load() && (!answer || !c.retiring.Load())) {
@@ -970,7 +976,18 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 		signalAborted = signal.Err() != nil
 		env.Request.SignalAborted = signalAborted
 	}
-	if err := c.sendOrdered(ctx, env, order); err != nil {
+	sendCtx := ctx
+	if env.Request != nil && env.Request.Method == MethodToolCall {
+		if sent, aborted := abortedCallSend(ctx); aborted {
+			// pig divergence (D111): a tool_call whose context had ended when it reached the host is written all the same, with its signal already aborted (RequestPayload.SignalAborted), as Pi runs tool.execute with an aborted signal (subagent-extension.test.ts "returns aborted task details when the signal is already aborted"). The cancel below follows the request, and the grace period runs from here.
+			sendCtx = sent
+			env.Request.SignalAborted = true
+		}
+	}
+	if err := c.sendOrdered(sendCtx, env, order); err != nil {
+		if sendCtx != ctx && errors.Is(context.Cause(sendCtx), ErrToolAborted) {
+			return nil, ErrToolAborted
+		}
 		return nil, err
 	}
 	if issued := requestIssued(ctx); issued != nil {
@@ -979,6 +996,10 @@ func (c *Conn) requestWithOrder(ctx context.Context, env *Envelope, inactivity t
 	if signal != nil && !signalAborted {
 		// The signal-only cancel follows the request frame, also when the signal ended after the flag was read: AfterFunc runs at once for a signal that already ended. The reply is still awaited, as Pi awaits the handler.
 		stop := context.AfterFunc(signal, func() {
+			// The run's abort frame goes first, as for a cancelled request (beforeCancel): Pi aborts one signal for both, the run's own watcher syncs the runtimes on a goroutine of its own and can be late, and a runtime that reads the cancel alone has nothing that wakes a handler waiting on ctx.signal, so its loop can empty and report the handler as held.
+			if c.beforeCancel != nil {
+				c.beforeCancel()
+			}
 			_ = c.Send(&Envelope{Type: MsgCancel, ID: env.ID, Cancel: &CancelPayload{RequestID: env.ID, Reason: signal.Err().Error(), SignalOnly: true}})
 		})
 		defer stop()
@@ -1208,7 +1229,7 @@ func (c *Conn) Close(reason string) error {
 			Type: MsgResponse,
 			ID:   id,
 			Response: &ResponsePayload{
-				Error: &ErrorInfo{Code: failureCode, Message: "connection closed"},
+				Error: &ErrorInfo{Code: failureCode, Message: "connection closed", closedByHost: failureCode == ""},
 			},
 		}:
 		default:
@@ -1258,26 +1279,6 @@ func (c *Conn) failureError() error {
 // Done returns a channel that closes when all connection goroutines have exited.
 func (c *Conn) Done() <-chan struct{} {
 	return c.done
-}
-
-// incomingLoop is the Host's read loop of one connection. ended closes once the loop has seen the connection end and has scheduled the work that follows it (the drop of the extension's ownership of thinking runs, D214).
-type incomingLoop struct {
-	ended chan struct{}
-	once  sync.Once
-}
-
-// endIncoming closes the end signal of the connection's Host read loop, once. It does nothing for a connection no Host loop reads.
-func (c *Conn) endIncoming() {
-	if loop := c.incoming.Load(); loop != nil {
-		loop.once.Do(func() { close(loop.ended) })
-	}
-}
-
-// awaitIncomingEnded returns once the connection's Host read loop has seen the connection end and scheduled the work that follows it. It returns at once for a connection no Host loop reads. The connection must be closed, or the loop never ends.
-func (c *Conn) awaitIncomingEnded() {
-	if loop := c.incoming.Load(); loop != nil {
-		<-loop.ended
-	}
 }
 
 // Name returns the extension name this connection serves.
@@ -2731,6 +2732,25 @@ func requestIssued(ctx context.Context) func() {
 	return fn
 }
 
+type abortedCallSendKey struct{}
+
+// abortedCallSendContext is the context the frames of a tool_call are written under when its own context had ended before the host sent it: the call's values and none of its cancellation, so the call is sent and the tool runs with its signal aborted, as Pi runs tool.execute. It also bounds the wait for room in the writer's queue. The call's own context goes on to end the wait, which cancels the tool's signal-only and starts the grace period.
+func abortedCallSendContext(ctx context.Context) (context.Context, context.CancelFunc) {
+	// pig divergence (D111): Pi has no bound here; a call whose frames cannot be queued within ToolAbortGrace (the writer's queue stays full) fails as ErrToolAborted. A frame already queued waits for its write as every request does, and ends with the connection's failure when the peer stops reading (heartbeat, D56).
+	return context.WithTimeoutCause(context.WithoutCancel(ctx), ToolAbortGrace, ErrToolAborted)
+}
+
+// withAbortedCallSend records the context abortedCallSendContext returned, for the request that sends the call.
+func withAbortedCallSend(ctx, sent context.Context) context.Context {
+	return context.WithValue(ctx, abortedCallSendKey{}, sent)
+}
+
+// abortedCallSend is the context withAbortedCallSend recorded: ok when the call's context had ended before the host sent it.
+func abortedCallSend(ctx context.Context) (sent context.Context, ok bool) {
+	sent, ok = ctx.Value(abortedCallSendKey{}).(context.Context)
+	return sent, ok
+}
+
 type requestSignalKey struct{}
 
 // withRequestSignal gives request the AbortSignal its handler receives as event.signal (session_before_compact, session_before_tree), for a request whose own context must not end with it: Pi awaits every handler of the event, with the signal aborted, and keeps its result (runner.ts emit). Request records whether the signal had ended before the frame was written (RequestPayload.SignalAborted), and when it ends while the handler runs it sends a signal-only cancel (CancelPayload.SignalOnly: no host call of the handler is cancelled) and keeps waiting for the reply.
@@ -2999,6 +3019,17 @@ func (c *Conn) dispatchBarrier(ctx context.Context) <-chan struct{} {
 		mark.release()
 	}
 	return mark.done
+}
+
+// awaitReplyDispatch waits until the host dispatched the frames that dispatched's marker was queued behind, or the connection ends. A nil dispatched is a request whose reply was not read.
+func awaitReplyDispatch(c *Conn, dispatched <-chan struct{}) {
+	if dispatched == nil {
+		return
+	}
+	select {
+	case <-dispatched:
+	case <-c.Done():
+	}
 }
 
 // requestsInFlight reports whether a request the host sent has no response yet.

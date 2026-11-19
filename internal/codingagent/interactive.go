@@ -139,8 +139,8 @@ type InteractiveMode struct {
 	newRunner     *inproc.Runner
 	// detachModelRegistry detaches the model operations wired to the current build's bridge.
 	detachModelRegistry func()
-	// runEnded is set once Stop finished and the owner loop no longer runs.
-	runEnded atomic.Bool
+	// runEnded records that Stop finished and the owner loop no longer runs, and releases a post that waits for the loop to take it (see postToMain).
+	runEnded loopLife
 	// isInitialized is upstream's isInitialized: Init completed and Stop has not run since.
 	isInitialized bool
 	// teardowns are the releases Stop runs, last registered first; stopMu guards them.
@@ -754,10 +754,14 @@ type InteractiveMode struct {
 	autocompleteEpoch       context.Context
 	autocompleteEpochCancel context.CancelFunc
 	autocompletePending     <-chan struct{}
-	currentInputTicket      *inputTicket
-	pendingUserInputs       []string
-	onInputCallback         func(string)
-	initialMessagesDone     <-chan struct{}
+	// autocompleteSetUp is Pi's `this.autocompleteProvider !== undefined`: false until the first setupAutocompleteProvider, which is the one that follows the first bind.
+	autocompleteSetUp bool
+	// autocompleteRebuildResult is the channel the next provider rebuild answers on instead of reporting its failure (setAutocompleteAwaiting); the callback takes it.
+	autocompleteRebuildResult chan<- error
+	currentInputTicket        *inputTicket
+	pendingUserInputs         []string
+	onInputCallback           func(string)
+	initialMessagesDone       <-chan struct{}
 	// activeSelectorToken identifies the model selector still shown while its change settles, and activeSelectorDispose closes it (interactive-mode.ts:469-470).
 	activeSelectorToken   *int
 	activeSelectorDispose func()
@@ -765,20 +769,18 @@ type InteractiveMode struct {
 	reloadTailInput [][]byte
 }
 
-// loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then, when a highlight lookup made before the load answers differently now (D618), repaints on the owner loop so code highlighted with the startup grammars picks up the rest. A mode that has stopped repaints nothing.
+// loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then, on the owner loop, invalidates the cached lines and requests a render, so code highlighted with the startup grammars picks up the rest. A mode that has stopped requests nothing.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
 func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 	ctx := m.backgroundCtx
 	m.backgroundTasks.Go(func() {
-		// pig divergence (D618): Pi invalidates and requests a render whenever the languages have loaded (interactive-mode.ts init), and its render
-		// writes a frame even when no row changed; here the repaint is for a screen that drew code before the load could have answered it
-		// differently, so a start that drew none writes no second frame.
-		if tui.LoadAllHighlightLanguages() {
-			_ = m.postToMain(ctx, func() {
-				m.tuiInst.Invalidate()
-				m.tuiInst.RequestRender()
-			})
-		}
+		tui.LoadAllHighlightLanguages()
+		_ = m.postToMain(ctx, func() {
+			m.tuiInst.Invalidate()
+			m.tuiInst.RequestRender()
+			// The start's last repaint request: a startup profile, and a pty child that must not be ready before it, wait for this label.
+			m.startupMark()("highlight-repaint-requested")
+		})
 		// After the repaint is queued, so the collection never delays it.
 		m.releaseStartupHeapWhenIdle(ctx)
 	})
@@ -923,6 +925,17 @@ func (m *InteractiveMode) releaseFrames() {
 	m.tuiInst.RequestRender()
 }
 
+// requestRenderPastHold is the frame a status, a warning or a notice asks for. Pi requests it (ui.requestRender()), and the frame follows at the next turn of the
+// event loop. D270 holds the frames a /tree choice requested, but a status, a warning or a notice is not held: while the hold lasts it paints by name (Render),
+// outside the hold it only requests the frame. Owner loop only, as frameHold is.
+func (m *InteractiveMode) requestRenderPastHold() {
+	if m.frameHold {
+		m.tuiInst.Render()
+		return
+	}
+	m.tuiInst.RequestRender()
+}
+
 // runOnMain hands fn to the main input loop and blocks until the loop accepts
 // it (backpressure) or ctx is cancelled (shutdown/abort); the owner loop itself never blocks (see postFromOwner). Unlike postUITask it
 // never drops fn, so it is the tool for state the loop must not miss: streamed
@@ -941,7 +954,7 @@ var errOwnerLoopUnavailable = errors.New("interactive mode is not accepting work
 
 // postToMain is runOnMain for callers that must report a task the loop never
 // accepted, such as an extension's sendUserMessage: it never drops fn, and
-// returns an error only when ctx ends first. The owner loop posting to itself
+// returns an error only when ctx ends or the owner loop ends first. The owner loop posting to itself
 // never blocks and never runs fn inline: see postFromOwner.
 func (m *InteractiveMode) postToMain(ctx context.Context, fn func()) error {
 	if fn == nil {
@@ -969,6 +982,9 @@ func (m *InteractiveMode) postToMain(ctx context.Context, fn func()) error {
 		return nil
 	case <-ctx.Done():
 		return fmt.Errorf("%w: %w", errOwnerLoopUnavailable, context.Cause(ctx))
+	case <-m.runEnded.endedCh():
+		// The loop that would take the task ended while the queue was full, and nothing drains it again until a later Run: ctx may outlive the loop for the whole process, as when a quit by keys ends the loop and the host shutdown waits for this post.
+		return fmt.Errorf("%w: the owner loop ended", errOwnerLoopUnavailable)
 	}
 }
 
@@ -1679,7 +1695,7 @@ func (m *InteractiveMode) printResumeHint() {
 // Run renders the initial editor and footer even with quiet startup, then blocks in the interactive loop until the user exits.
 func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	// After Run returns nothing services owner tasks, so a runtime closed later resets the UI in place.
-	defer m.runEnded.Store(true)
+	defer m.runEnded.end()
 	// pig additive (D102): Pi leaves no trace when input ends or fails. Registered before the crash handler below so it
 	// sees the error that handler returns; a crash has its own record.
 	defer func() {
@@ -1730,7 +1746,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	if m.isInitialized {
 		return nil
 	}
-	m.runEnded.Store(false)
+	m.runEnded.begin()
 	m.runCtx = ctx
 	// SIGINT is taken before anything draws, as Pi's init() registers its signal handlers first (interactive-mode.ts:974-977): a screen on the
 	// terminal means the handler is in place. Installed after the first render, a SIGINT sent to a session that had already drawn got Go's
@@ -1875,7 +1891,7 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 		m.postUITask(func() { apply(); m.tuiInst.RequestRender() })
 	})
 	m.editor.SetAutocompleteTaskOwner(m.backgroundCtx, m.backgroundTasks.Go, m.reportAutocompleteError)
-	m.editor.SetAutocomplete(m.buildAutocompleteProvider())
+	// No provider yet: Pi's editor has none until bindCurrentSessionExtensions calls setupAutocompleteProvider (interactive-mode.ts:2167); rebindSession installs it.
 	m.applyEditorMaxVisible()
 	m.statusLine = m.newFooter() // timings rebound after agent constructed
 	m.thinkingLevel = m.sessionThinkingLevel()
@@ -2034,28 +2050,33 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 		if errors.Is(err, errInteractiveShutdown) {
 			return nil
 		}
+		// Pi's init() awaits the bind, and nothing catches what its setupAutocompleteProvider throws: it is the uncaughtException that ends the process.
+		if rejection, ok := errors.AsType[uncaughtError](err); ok {
+			panic(rejection)
+		}
 		return err
 	}
 	mark("post-emit-session-start")
 
-	// rebindCurrentSession showed the loaded resources after the built-in or extension-supplied header. Quiet startup suppresses help and resource
-	// listings, not the initial editor and footer.
-	m.tuiInst.Render()
-	mark("first-render-done")
+	// Pi's init() has no render between the bind and renderInitialMessages (interactive-mode.ts:1141-1162): everything the bind changed is asked for with
+	// requestRender and painted by the one renderNow at the end of init(). A render here wrote a frame and, with nothing changed since, a bare cursor
+	// placement after the next one.
 	// Upstream's rebindCurrentSession shows the startup changelog notice after the loaded resources (showStartupNoticesIfNeeded, interactive-mode.ts
 	// bindCurrentSessionExtensions), before init() renders the initial messages.
 	m.showStartupChangelog(m.changelogEntries, m.extensionChangelogUpdates)
 
 	m.renderInitialMessages()
+	// Pi's init() ends with `this.ui.renderNow()` (interactive-mode.ts:1162) after renderInitialMessages and the provider count: the one frame of the
+	// startup state. renderNow clears a render a request asked for before it (tui.ts:1025-1031), so the requests the bind made fall into it.
+	m.tuiInst.RenderNow()
+	m.loadRemainingHighlightLanguages()
 	// upstream: interactive-mode.ts run() shows the startup diagnostics, migrated credentials, the models.json error, the model fallback message and the
-	// crash notice once init() has rendered the initial messages.
+	// crash notice once init() has returned (:1230-1262): each asks for a render, and the frame that follows is a second one after the startup frame.
 	m.showInitNotices()
 	m.showCrashNotice()
 	if m.frontendStartupWarning != "" {
 		m.showWarning(m.frontendStartupWarning)
 	}
-	m.tuiInst.Render()
-	m.loadRemainingHighlightLanguages()
 
 	return nil
 }

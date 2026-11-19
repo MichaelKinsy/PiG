@@ -10,7 +10,7 @@
    "call:coding/cli/extension_login_preview_command.go#runExtensionLoginPreview"
   ],
   "evidence": [
-   "test:coding/cli/extension_login_preview_command_test.go#TestGeneratedLoginExtensionIsIdentifiedThroughPigletResolution",
+   "test:coding/cli/extension_login_preview_piglet_test.go#TestGeneratedLoginExtensionIsIdentifiedThroughPigletResolution",
    "test:coding/extension/host/inproc/abort_binding_test.go#TestBindAbortPreservesOtherContextActions"
   ],
   "rationale": "ExtensionRunner.bindCore is inproc Runner.BindCore(actions, contextActions, providerActions *ProviderActions); providerActions is optional (nil)."

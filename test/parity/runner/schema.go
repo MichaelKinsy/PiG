@@ -166,6 +166,9 @@ type TmuxDriverConfig struct {
 
 	// CaptureHistory includes all retained scrollback, not only the final viewport. The driver gives this session its own maximum-retention pane.
 	CaptureHistory bool `toml:"capture_history"`
+
+	// PreTuiLines makes the launch shell print that many numbered lines (PRE-TUI-LINE-1 ...) before it starts the binary, the same for both binaries: the text a program, a package installer or a shell leaves above a TUI. Combine it with capture_history to see whether a command erased it.
+	PreTuiLines int `toml:"pre_tui_lines"`
 }
 
 // TmuxStep is one staged interaction block for an interactive-tmux
@@ -192,6 +195,8 @@ type TmuxStep struct {
 	FrameWatch *TmuxFrameWatch `toml:"frame_watch"`
 	// FinalFrame reads the raw terminal transcript after the step's waits, for no_frames_after_reply.
 	FinalFrame *TmuxFinalFrame `toml:"final_frame"`
+	// Signal ends the step by sending SIGTERM ("TERM") or SIGHUP ("HUP") to the program the pane's launch shell started, after the step's keys: a pane's keys can only be typed, and a program that ends on a signal is ended the way a supervisor or a closing terminal ends it. The signal goes to the program, not to the pane's process group or its terminal.
+	Signal string `toml:"signal"`
 }
 
 // TmuxFinalFrame names the text of a reply the step ends on. The visible pane keeps what the program last drew, so a settled-screen comparison cannot
@@ -295,8 +300,8 @@ type AssertSpec struct {
 	NoFramesAfterReply bool `toml:"no_frames_after_reply"`
 	// FinalFrameCursorOnlyPig and FinalFrameCursorOnlyPi pin, for every run of that binary, the exact number of cursor-only frames (CSI ? 2026 h,
 	// CSI <row>;1 H, CSI ? 25 l, CSI ? 2026 l: a render that repaints nothing) that begin after the last occurrence of a final_frame text. Both
-	// binaries write other frames there while the terminal answers their start-up queries, so a scenario that records a numbered divergence over
-	// a repaint pins the one frame kind the divergence is about (D618) and not the whole stream.
+	// binaries write other frames there while the terminal answers their start-up queries, so a scenario about a repaint pins the one frame
+	// kind it is about and not the whole stream.
 	FinalFrameCursorOnlyPig *int `toml:"final_frame_cursor_only_pig"`
 	FinalFrameCursorOnlyPi  *int `toml:"final_frame_cursor_only_pi"`
 	// TranscriptSequencesEqual requires, for every run pair and each window it declares, that the ordered escape sequences and text runs the two binaries wrote between two points of the terminal transcript are the same list (see SequenceWindowSpec). The transcript holds every byte from the program's first write; the comparator reads output only, never the keys or terminal replies the program received.
@@ -410,12 +415,20 @@ func validate(sc *Scenario) error {
 	if sc.Tmux.CaptureHistory && sc.Driver != "interactive-tmux" {
 		return fmt.Errorf("capture_history requires interactive-tmux")
 	}
+	if sc.Tmux.PreTuiLines < 0 || sc.Tmux.PreTuiLines > 0 && sc.Driver != "interactive-tmux" {
+		return fmt.Errorf("pre_tui_lines is a count of lines printed before an interactive-tmux binary starts")
+	}
 	if len(sc.Assert.TranscriptSequencesEqual) > 0 && sc.Driver != "interactive-tmux" {
 		return fmt.Errorf("transcript_sequences_equal requires interactive-tmux: only its panes have a terminal transcript")
 	}
 	for _, window := range sc.Assert.TranscriptSequencesEqual {
 		if err := window.validate(); err != nil {
 			return err
+		}
+	}
+	for i, step := range sc.Tmux.Steps {
+		if step.Signal != "" && step.Signal != "TERM" && step.Signal != "HUP" {
+			return fmt.Errorf("tmux step %d signal %q is unknown: the signals are %q and %q", i, step.Signal, "TERM", "HUP")
 		}
 	}
 	if sc.Assert.ChangelogHeadersComplete && (sc.Driver != "interactive-tmux" || !sc.Tmux.CaptureHistory) {

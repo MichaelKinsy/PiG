@@ -89,8 +89,15 @@ func listenTestBinary(t *testing.T) string {
 // startListenServerBinary starts the server from the pig executable at binary.
 func startListenServerBinary(t *testing.T, binary string, env []string, args ...string) *listenServer {
 	t.Helper()
+	return startListenServerBinaryAt(t, "", binary, env, args...)
+}
+
+// startListenServerBinaryAt is startListenServerBinary with the server's working directory set to cwd ("" keeps the test's).
+func startListenServerBinaryAt(t *testing.T, cwd, binary string, env []string, args ...string) *listenServer {
+	t.Helper()
 	s := &listenServer{t: t, errBuf: &lockedBuffer{}, exited: make(chan struct{}), budget: testbudget.Wait(t)}
 	cmd := exec.Command(binary, args...)
+	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), env...)
 	cmd.Stderr = s.errBuf
 	cmd.WaitDelay = 10 * time.Second
@@ -777,6 +784,18 @@ func TestRemoveOwnSocketLeavesAPathItDidNotCreate(t *testing.T) {
 	removeOwnSocket(path, created)
 	if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("the server's own path is still there: %v", err)
+	}
+}
+
+// A server that has no record of its socket removes nothing.
+func TestRemoveOwnSocketWithoutARecordLeavesThePath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "s.sock")
+	if err := os.WriteFile(path, []byte("keep"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	removeOwnSocket(path, nil)
+	if data, err := os.ReadFile(path); err != nil || string(data) != "keep" {
+		t.Fatalf("a path with no record was removed or changed: %q, %v", data, err)
 	}
 }
 

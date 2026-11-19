@@ -365,7 +365,7 @@ pub struct RequestMsg {
     pub stream_error: Option<String>,
     /// On `tool_call`: the call's position among the tool calls of the assistant message that issued it (the host's `tool_call_index`).
     pub tool_call_index: Option<u32>,
-    /// On `session_before_compact` and `session_before_tree`: the event's AbortSignal had already aborted when the host dispatched the handler (the host's `signal_aborted`).
+    /// On `session_before_compact`, `session_before_tree` and `tool_call`: the request's AbortSignal had already aborted when the host dispatched the handler (the host's `signal_aborted`).
     pub signal_aborted: bool,
     /// On `tool_call`: the JSON text of `args` as the host wrote it.
     pub args_raw: Option<String>,

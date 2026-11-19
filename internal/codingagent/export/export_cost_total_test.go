@@ -15,7 +15,7 @@ func TestExportHTMLCostUsesRecordedTotals(t *testing.T) {
 		{"type":"message","message":{"role":"assistant","content":[],"usage":{"cost":{"input":0.1,"output":0.2,"cacheRead":0,"cacheWrite":0,"total":0.9}}}},
 		{"type":"message","message":{"role":"assistant","content":[],"usage":{"cost":{"input":0.4,"output":0.1,"cacheRead":0,"cacheWrite":0}}}}
 	]`
-	out, err := exec.CommandContext(t.Context(), "node", "testdata/compute_stats_cost.cjs", "assets/template.js", entries).CombinedOutput()
+	out, err := exec.CommandContext(t.Context(), "node", "testdata/compute_stats_cost.cjs", "assets/src/template.js", entries).CombinedOutput()
 	if err != nil {
 		t.Fatalf("node: %v\n%s", err, out)
 	}

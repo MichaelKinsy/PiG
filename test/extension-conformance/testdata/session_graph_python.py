@@ -1618,6 +1618,65 @@ def extension_runner_tool(ctx, params):
     return json.dumps(extension_runner_script(ctx, params))
 
 
+def extension_runner_signal_script(ctx, args):
+    """The two sequences of extension-runner-signal.mjs through the Python SDK's ExtensionRunner: get_signal answers the signal of the client's current run (Pi: one AbortController per run, agent.ts:518-527)."""
+    cwd, agent_dir = args["cwd"], args["agentDir"]
+    current = [None]
+    turn = {"type": "turn_start", "turnIndex": 0, "timestamp": 1}
+    message = {"type": "message_start", "message": {"role": "user", "content": "hi", "timestamp": 1}}
+
+    def rig():
+        rt = ModelRuntime.create(ctx, auth_path=args["mrAuth"], models_path=args["mrModels"], models_store_path=args["mrStore"])
+        settings = SettingsManager.in_memory(ctx, {"compaction": {"enabled": False}, "retry": {"enabled": False}, "defaultProvider": "mr-local", "defaultModel": "m1"})
+        loader = DefaultResourceLoader(
+            ctx, cwd=cwd, agent_dir=agent_dir, settings_manager=settings, runtime=pig_sdk.create_extension_runtime(ctx), no_extensions=True, no_skills=True,
+            no_prompt_templates=True, no_themes=True, no_context_files=True, additional_extension_paths=[args["signalProbe"]],
+        )
+        loader.reload()
+        loaded = loader.get_extensions()
+        del loader
+        manager = SessionManager.in_memory(ctx, cwd)
+        runner = pig_sdk.ExtensionRunner(ctx, loaded.extensions, loaded.runtime, cwd, manager, rt)
+        entries, errors = [], []
+        runner.bind_core({"append_entry": lambda custom_type, data: entries.append([custom_type, data])}, {"get_signal": lambda: current[0]})
+        runner.on_error(lambda report: errors.append({"event": report["event"], "error": report["error"]}))
+        return runner, entries, errors, loaded["errors"], loaded
+
+    r = {}
+
+    # Sequence 1, two live runs.
+    current[0] = pig_sdk.ProviderSignal()
+    runner, entries, errors, load_errors, _loaded = rig()
+    runner.emit({"type": "agent_start"})
+    second = pig_sdk.ProviderSignal()
+    current[0] = second
+    runner.emit(turn)
+    second.set()
+    runner.emit(message)
+    r["twoLiveRuns"] = {"entries": entries, "errors": errors, "loadErrors": load_errors}
+
+    # Sequence 2, the own abort missed.
+    first = pig_sdk.ProviderSignal()
+    current[0] = first
+    runner, entries, errors, load_errors, _loaded = rig()
+    runner.emit({"type": "agent_start"})
+    first.set()
+    nxt = pig_sdk.ProviderSignal()
+    current[0] = nxt
+    # The client drops its own reference to run 1's aborted signal and collects before run 2 is read: the wrapper must hold the signal itself, or it cannot say run 1 had aborted.
+    del first
+    gc.collect()
+    runner.emit(turn)
+    nxt.set()
+    runner.emit(message)
+    r["abortedThenLive"] = {"entries": entries, "errors": errors, "loadErrors": load_errors}
+    return r
+
+
+def extension_runner_signal_tool(ctx, params):
+    return json.dumps(extension_runner_signal_script(ctx, params))
+
+
 def _entry_text(message):
     content = message.get("content")
     if isinstance(content, str):
@@ -1794,6 +1853,7 @@ def new_extension():
     ext.register_tool(pig_sdk.ToolDefinition(name="extension_refs", label="extension_refs", description="Runs the compiled-in extension factories script.", parameters={"type": "object"}, execute=extension_refs_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="mcp_options", label="mcp_options", description="Runs the createMcpExtension function options script.", parameters={"type": "object"}, execute=mcp_options_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="extension_runner", label="extension_runner", description="Runs the createExtensionRuntime and ExtensionRunner script.", parameters={"type": "object"}, execute=extension_runner_tool))
+    ext.register_tool(pig_sdk.ToolDefinition(name="extension_runner_signal", label="extension_runner_signal", description="Runs the two-run signal script of the ExtensionRunner.", parameters={"type": "object"}, execute=extension_runner_signal_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="agent_session_runtime", label="agent_session_runtime", description="Runs the createAgentSessionRuntime script.", parameters={"type": "object"}, execute=agent_session_runtime_tool))
     ext.register_tool(pig_sdk.ToolDefinition(name="services", label="services", description="Runs the createAgentSessionServices script.", parameters={"type": "object"}, execute=services_tool))
     return ext

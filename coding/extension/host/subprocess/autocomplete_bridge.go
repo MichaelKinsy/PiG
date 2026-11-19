@@ -327,7 +327,17 @@ type autocompleteProviderSource interface {
 	AutocompleteProvider(context.Context) (*extension.AutocompleteProvider, error)
 }
 
+// autocompletePendingSource is a UI that has a provider chain to give once Pi's first setupAutocompleteProvider has run.
+type autocompletePendingSource interface {
+	AutocompletePending(context.Context) (bool, error)
+}
+
+// handleAutocompleteCurrent answers the provider an editor installed now is handed (Pi's `this.autocompleteProvider`, which is undefined until
+// the first setupAutocompleteProvider after the bind): null for a UI with no editor, {} for an interactive UI whose first setup has not run, so
+// that an editor installed from the first session_start gets no provider call there, as in Pi, and hears the provider from the setup that follows.
 func (b *UIBridge) handleAutocompleteCurrent(ctx context.Context, name string, owner *Conn, ui extension.UIContext) (*CallResultPayload, error) {
+	// Each answer replaces the last: only {} leaves the editor the process builds from it without a provider.
+	owner.autocompletePending.Store(false)
 	source, ok := ui.(autocompleteProviderSource)
 	if !ok {
 		return &CallResultPayload{Result: json.RawMessage("null")}, nil
@@ -337,6 +347,16 @@ func (b *UIBridge) handleAutocompleteCurrent(ctx context.Context, name string, o
 		return nil, err
 	}
 	if provider == nil {
+		if pending, ok := ui.(autocompletePendingSource); ok {
+			wait, err := pending.AutocompletePending(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if wait {
+				owner.autocompletePending.Store(true)
+				return &CallResultPayload{Result: json.RawMessage("{}")}, nil
+			}
+		}
 		return &CallResultPayload{Result: json.RawMessage("null")}, nil
 	}
 	data, err := json.Marshal(b.autocompleteReference(name, owner, provider))
@@ -344,6 +364,7 @@ func (b *UIBridge) handleAutocompleteCurrent(ctx context.Context, name string, o
 }
 
 // SyncAutocomplete gives an installed subprocess editor the same provider as the default editor. It runs off the UI loop and awaits the editor's synchronous setter.
+// The editor's own failure is an [extension.EditorSyncError] naming its extension: Pi's setupAutocompleteProvider throws it to whichever caller rebuilt the provider.
 func (b *UIBridge) SyncAutocomplete(ctx context.Context, provider *extension.AutocompleteProvider) error {
 	b.mu.RLock()
 	editor := b.editor
@@ -351,6 +372,29 @@ func (b *UIBridge) SyncAutocomplete(ctx context.Context, provider *extension.Aut
 	if editor == nil || !editor.live() {
 		return nil
 	}
+	editor.conn.autocompletePending.Store(false)
+	return b.syncEditor(ctx, editor, provider)
+}
+
+// SyncPendingAutocomplete is the provider hand-over of Pi's setCustomEditorComponent (`newEditor.setAutocompleteProvider(this.autocompleteProvider)`,
+// interactive-mode.ts:3015-3017) for an editor whose process was answered {} by ui.autocomplete.current, so was built without one, and which the host
+// installs after the provider exists. An editor that was handed a provider at its build, or that a sync has reached since, is not synced again: Pi calls
+// its setter once at the install, not twice. The editor's own failure is the one [SyncAutocomplete] returns.
+func (b *UIBridge) SyncPendingAutocomplete(ctx context.Context, provider *extension.AutocompleteProvider) error {
+	b.mu.RLock()
+	editor := b.editor
+	b.mu.RUnlock()
+	if editor == nil || !editor.live() || !editor.conn.autocompletePending.CompareAndSwap(true, false) {
+		return nil
+	}
+	return b.syncEditor(ctx, editor, provider)
+}
+
+func (b *UIBridge) syncEditor(ctx context.Context, editor *editorProxy, provider *extension.AutocompleteProvider) error {
 	desc := b.autocompleteReference(editor.ext, editor.conn, provider)
-	return autocompleteRequest(ctx, editor.conn, "autocomplete.sync", map[string]any{"operation": "changed", "current": desc}, nil)
+	err := autocompleteRequest(ctx, editor.conn, "autocomplete.sync", map[string]any{"operation": "changed", "current": desc}, nil)
+	if err == nil || ctx.Err() != nil {
+		return err
+	}
+	return &extension.EditorSyncError{ExtensionPath: b.extensionPathOf(editor.ext), Err: err}
 }

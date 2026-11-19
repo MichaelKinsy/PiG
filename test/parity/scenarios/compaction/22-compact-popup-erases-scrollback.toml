@@ -1,0 +1,61 @@
+# Behavior family: compaction
+# Surface: /compact of a transcript that fills the pane exactly: the slash popup scrolls the pre-TUI lines out of the viewport, and the repaint after the compaction erases the scrollback
+#
+# Upstream evidence (Pi 1.5.2, probed on the comparator with the harness of this scenario family): typing /compact opens the slash autocomplete popup (3 rows), painted in a frame of its own about 16 ms after the echo
+# (the autocomplete promise jobs resolve after the echo frame and requestRender is throttled to 16 ms). The resumed transcript of 5 pairs is 30 rows, with the editor (3 rows) and the footer (2 rows) exactly the 35 rows of the pane,
+# so the 3 popup rows scroll the 5 pre-TUI lines out of the viewport into the scrollback. When the compaction then replaces the transcript, the first changed row is above the viewport top of the previous frame, and
+# packages/tui/src/tui-main-screen.ts (lines 455-459: if (firstChanged < prevViewportTop) { logRedraw(...); fullRender(true); return; }) takes the clearing full render: ESC[2J ESC[3J erase the screen and the terminal's scrollback.
+# The scrollback is erased, so PRE-TUI-LINE-1 and PRE-TUI-LINE-5 are ABSENT from the capture of both programs; the scenario fails if either side starts keeping them. PiG must write the same erases (tui/tui.go, the same rule).
+# Scenario 20 holds the opposite state (a transcript that leaves room for the popup: the pre-TUI lines stay).
+# Both binaries run in the regular TUI mode (--tui-mode regular), where the terminal's own scrollback exists. quietStartup is set in both agent
+# directories, so neither draws its startup header and the capture of the retained history and the screen, from its first line to its last, is compared as it stands:
+# escaped_output_equal over the whole capture, no crop, no normalization.
+# Both programs start from the resumed transcript (the ready pattern is its last row), the command is typed and the popup seen before Enter, so the echo that opens the raw-stream window and the popup frame are in both streams.
+
+name = "22-compact-popup-erases-scrollback"
+description = "After /compact of a transcript that fills the pane exactly, the slash popup has scrolled the pre-TUI lines out and the repaint erases the scrollback: the capture equals Pi's."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/tui/src/tui-main-screen.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/scrollback-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/scrollback-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "--session", "sessions/cur.jsonl", "--tui-mode", "regular"]
+pi_args = ["--session-dir", "sessions", "--session", "sessions/cur.jsonl", "--tui-mode", "regular"]
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/scrollback-compact-popup-full"
+pre_tui_lines = 5
+capture_history = true
+ready_pattern_pig = "CUR-R5 answer 5"
+ready_pattern_pi = "CUR-R5 answer 5"
+ready_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["/compact"]
+wait_visible_contains = ["/compact", "Manually compact"]
+wait_timeout_seconds = 25
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["[compaction]"]
+wait_timeout_seconds = 25
+settle_seconds = 3
+
+[assert]
+runs = 3
+both_reach_ready = true
+both_contain = ["[compaction]"]
+both_not_contain = ["unknown command", "panic:", "goroutine ", "PRE-TUI-LINE-1", "PRE-TUI-LINE-5"]
+escaped_output_equal = true
+
+# The raw stream: the erase-in-display sequences (ESC[2J clears the screen, ESC[3J the terminal's scrollback) both binaries wrote from the command's first echo
+# to the end of the stream are the same list. The other bytes of the stream are not compared here: the footer holds each run's random directory and PiG sets a window title.
+[[assert.transcript_sequences_equal]]
+from = "/compact"
+erasures_only = true

@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/benchalloc"
 )
 
 // Pi: packages/coding-agent/src/core/model-registry.ts:64 (ModelRegistry.getAll).
@@ -50,10 +51,12 @@ func BenchmarkWireModelCatalogBinding(b *testing.B) {
 		}
 		b.Run(name, func(b *testing.B) {
 			registry := NewModelRegistry(b.TempDir())
-			b.ReportAllocs()
-			for b.Loop() {
-				captureModelPublications(b, legacy, registry.GetAllModelData, registry)
-			}
+			entries := len(registry.GetAllModelData())
+			b.Run("per-1000-entries", func(b *testing.B) {
+				benchalloc.Per1000Entries(b, entries, func() {
+					captureModelPublications(b, legacy, registry.GetAllModelData, registry)
+				})
+			})
 		})
 	}
 }

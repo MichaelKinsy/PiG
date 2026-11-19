@@ -62,7 +62,7 @@ func TestStoreSnapshotMatchesPi(t *testing.T) {
 		Err    string `json:"err"`
 		Writes string `json:"writes"`
 	}
-	wasmPath, err := filepath.Abs("assets/quickjs.wasm")
+	wasmPath, err := filepath.Abs("assets/raw/quickjs.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

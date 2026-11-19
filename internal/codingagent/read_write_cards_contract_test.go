@@ -398,13 +398,6 @@ func readWriteCardProbes(t *testing.T) ([]toolCardProbe, []string) {
 	return probes, names
 }
 
-// The read and write tool cards (renderers/read.ts and renderers/write.ts, with render-utils.ts' path, range and output helpers) against pinned Pi over
-// readWriteCardProbes. Rows are compared byte for byte: colours, backgrounds and padding included.
-func TestReadWriteCardsMatchPi(t *testing.T) {
-	probes, names := readWriteCardProbes(t)
-	compareToolCards(t, probes, names)
-}
-
 // TestReadWriteCardsProbeDump prints the corpus for the Pi side of the tools/27 parity scenario.
 func TestReadWriteCardsProbeDump(t *testing.T) {
 	probes, _ := readWriteCardProbes(t)

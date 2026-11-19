@@ -1429,14 +1429,6 @@ class = "cold: one scratch-directory sweep"
 
 [[hit]]
 file = "coding/extension/host/runtimecell/cellcache.go"
-func = "publishArtifact"
-pattern = "env-stat"
-detail = "os.Stat"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
-
-[[hit]]
-file = "coding/extension/host/runtimecell/cellcache.go"
 func = "publishCellFailure"
 pattern = "env-stat"
 detail = "os.Stat"
@@ -1525,7 +1517,7 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "coding/extension/host/runtimecell/hash_inputs.go"
-func = "hashTree"
+func = "hashPhysicalTree"
 pattern = "env-stat"
 detail = "os.Stat"
 count = 1
@@ -1797,7 +1789,7 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "coding/extension/host/subprocess/host.go"
-func = "Host.ensureSockRuntimeDir"
+func = "Host.ensureSockRuntimeDirLocked"
 pattern = "env-stat"
 detail = "os.Getenv"
 count = 1
@@ -4573,7 +4565,7 @@ class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shr
 
 [[hit]]
 file = "internal/codingagent/session_store.go"
-func = "Session.readSlotsLocked"
+func = "Session.readSlotsStaleLocked"
 pattern = "sort-instance"
 detail = "slices.SortFunc"
 count = 1
@@ -4626,14 +4618,6 @@ pattern = "nested-marshal"
 detail = "json.Marshal"
 count = 1
 class = "hot-kept: a MarshalJSON re-encodes a nested value the outer encoder compacts again; lw-json (S5) and lw-request (S11) move hot encoders to append-style, shrink-only"
-
-[[hit]]
-file = "internal/codingagent/settings.go"
-func = "SettingsManager.IsInstallTelemetryEnabled"
-pattern = "env-stat"
-detail = "os.LookupEnv"
-count = 1
-class = "hot-kept: unfixed at integrate-042 tip, fix pending on a port lane; shrink-only"
 
 [[hit]]
 file = "internal/codingagent/settings.go"

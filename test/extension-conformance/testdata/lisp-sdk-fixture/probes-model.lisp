@@ -315,6 +315,15 @@
     (when (equal mode "gone") (pig:registry-unregister-provider registry "late"))
     (pig:to-json (pig:obj "mode" mode))))
 
+(defun mp-insecure-provider (ctx params)
+  (declare (ignore params))
+  (let ((registry (pig:ctx-model-registry ctx)))
+    (pig:registry-register-provider registry "tls" (pig:obj "baseUrl" "https://tls.test/v1" "insecure" t))
+    (pig:registry-register-provider registry "tls" (pig:obj "insecure" :false))
+    (pig:registry-register-provider registry "tls" (pig:obj "baseUrl" "https://tls.test/v2"))
+    (pig:registry-register-provider registry "tls" (pig:obj "insecure" t))
+    (pig:to-json (pig:obj "registered" 4))))
+
 (defun mp-ops-status (ctx params)
   (declare (ignore ctx params))
   (pig:to-json (pig:obj "cancelled" *mp-cancelled*)))
@@ -414,6 +423,6 @@
   (loop for (name handler) in (list (list "typed_reads" #'mp-typed-reads) (list "classify_probe" #'mp-classify-probe)
                                     (list "images_probe" #'mp-images-probe) (list "virtual_probe" #'mp-virtual-probe)
                                     (list "virtual_visible" #'mp-virtual-visible)
-                                    (list "late_provider" #'mp-late-provider) (list "ops_status" #'mp-ops-status))
+                                    (list "late_provider" #'mp-late-provider) (list "insecure_provider" #'mp-insecure-provider) (list "ops_status" #'mp-ops-status))
         do (let ((handler handler))
              (pig:tool ext name name (pig:obj "type" "object") (lambda (ctx params) (funcall handler ctx params))))))

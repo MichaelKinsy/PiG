@@ -40,6 +40,18 @@ const (
 	// exitBytesStormEnv makes the child write to the terminal from goroutines of its own, from the moment the mode is ready until the process ends: an
 	// extension's title (the path of ExtUIContext.SetTitle), an OSC 52 clipboard copy and the progress indicator's writes.
 	exitBytesStormEnv = "PIG_TEST_EXIT_BYTES_STORM"
+	// exitBytesSlowDisposeEnv makes the runtime host's dispose last exitBytesSlowDispose after its hook, so the frame the hook requests comes due inside the dispose.
+	exitBytesSlowDisposeEnv = "PIG_TEST_EXIT_BYTES_SLOW_DISPOSE"
+	exitBytesSlowDispose    = 300 * time.Millisecond
+	// exitBytesDisposeStatus is the footer status that the slow dispose sets after its UI reset: the one frame in the child's bytes that is known to be
+	// requested by the dispose, because only that frame carries its text.
+	exitBytesDisposeStatus = "EXIT-DISPOSE-FRAME-MARKER"
+	// exitBytesRepaintMark is the startup mark that ends the grammar repaint's task on the owner loop (loadRemainingHighlightLanguages): the start's last
+	// repaint request, which Pi makes once its languages have loaded (interactive-mode.ts:1163-1167).
+	exitBytesRepaintMark = "highlight-repaint-requested"
+	// exitBytesReadyMarker is the last write the child makes to the pseudo-terminal before it reports ready. The test's copy of the pseudo-terminal lags the
+	// child's writes, so the copy's length when the test sees the ready file is not where the child's writes before it end: the end of the marker is.
+	exitBytesReadyMarker = "\x1b]777;pig-exit-bytes-ready\x07"
 )
 
 // exitTitleOrProgress matches a terminal title (OSC 0) or a progress indicator (OSC 9;4) sequence.
@@ -88,7 +100,7 @@ func TestExitWritesOnlyTheProgressClearThePiStopWrites(t *testing.T) {
 		for _, end := range ends {
 			t.Run(fmt.Sprintf("%s with showTerminalProgress %v", end.name, progress), func(t *testing.T) {
 				child := startExitBytesChild(t, progress, end.run)
-				child.await("the mode to be ready for input", child.ready)
+				child.awaitReady()
 				end.end(t, child)
 				written := child.finish()
 				var want []string
@@ -230,6 +242,14 @@ func (c *exitBytesChild) await(what string, done func() bool) {
 	}
 }
 
+// awaitReady returns once the child's mode is ready for input and everything the child wrote before that is in the test's copy of the pseudo-terminal, so
+// that a length of the copy taken after it, which the exit rows take as the start of the exit's bytes, holds none of those writes back.
+func (c *exitBytesChild) awaitReady() {
+	c.t.Helper()
+	c.await("the mode to be ready for input", c.ready)
+	c.await("the ready marker in the copy of the pseudo-terminal", func() bool { return strings.Contains(c.captured.from(0), exitBytesReadyMarker) })
+}
+
 func (c *exitBytesChild) tail() string {
 	return c.captured.from(max(0, c.captured.len()-600))
 }
@@ -303,29 +323,49 @@ func TestExitBytesChild(t *testing.T) {
 	terminal := tui.NewProcessTerminalWithOutput(os.Stdin, os.Stdout, io.MultiWriter(os.Stdout, &written))
 	var mode *icodingagent.InteractiveMode
 	readyAt := -1
+	var readySeen, repaintSeen bool
 	// With a runtime host the mode's quit disposes through it, as the process's does: session_shutdown, then the beforeSessionInvalidate hook
 	// that writes the session title (agent-session-runtime.ts dispose), at Close when no dispose ran it.
 	var host *exitHookRuntime
 	var runtimeHost icodingagent.InteractiveRuntime
 	if os.Getenv(exitBytesRuntimeEnv) == "true" {
-		host = &exitHookRuntime{}
+		host = &exitHookRuntime{slow: os.Getenv(exitBytesSlowDisposeEnv) == "true"}
+		if host.slow {
+			host.afterHook = func() { mode.SetExtensionStatusForTest("exit-dispose", exitBytesDisposeStatus) }
+		}
 		runtimeHost = host
 		defer host.close()
 	}
 	mode = icodingagent.NewInteractiveMode(runtimeHost, icodingagent.InteractiveModeOptions{
 		CWD: cwd, AgentDir: agentDir, Model: model, SessionHandle: session, NoThemes: true, TuiMode: os.Getenv(exitBytesTuiModeEnv),
 		SettingsManager: services.SettingsManager(), Settings: services.SettingsManager().Get(), Terminal: terminal,
-		// The mark is made on the owner loop's goroutine, right before the loop reads input.
+		// The child is ready once the mode reads input and the start's last repaint has been requested: the grammar load requests one after the start, as
+		// Pi's does, and a child that was ready before it would have its frame fall into the bytes the tests count from the ready marker, whenever it
+		// came due. Both marks are made on the owner loop's goroutine, in either order: the one that comes second paints what was requested.
 		StartupMark: func(label string) {
-			if label != "interactive-ready" {
+			switch label {
+			case "interactive-ready":
+				readySeen = true
+			case exitBytesRepaintMark:
+				repaintSeen = true
+			default:
 				return
 			}
-			if os.Getenv(exitBytesRunEnv) == "true" {
-				mode.HandleAgentEventsOnOwnerLoop(agent.TurnStartEvent{}, agent.AgentEndEvent{})
+			if !readySeen || !repaintSeen {
+				return
 			}
+			var events []agent.AgentEvent
+			if os.Getenv(exitBytesRunEnv) == "true" {
+				events = []agent.AgentEvent{agent.TurnStartEvent{}, agent.AgentEndEvent{}}
+			}
+			mode.HandleAgentEventsOnOwnerLoop(events...)
 			readyAt = written.len()
 			if os.Getenv(exitBytesStormEnv) == "true" {
 				startExitBytesStorm(mode, terminal)
+			}
+			// The last write before the ready file, so that it follows every byte the child wrote before the mode was ready in the pseudo-terminal's order.
+			if _, err := os.Stdout.WriteString(exitBytesReadyMarker); err != nil {
+				report.Failure = err.Error()
 			}
 			if err := os.WriteFile(filepath.Join(dir, "ready"), nil, 0o600); err != nil {
 				report.Failure = err.Error()
@@ -365,6 +405,10 @@ type exitHookRuntime struct {
 	mu   sync.Mutex
 	hook func()
 	ran  bool
+	// slow keeps the dispose going after the hook ran, as the awaits of Pi's dispose do (the extensions' session_shutdown handlers, the session's teardown).
+	slow bool
+	// afterHook is what a session_shutdown handler does after the reset, on the goroutine of the dispose; it runs only with slow.
+	afterHook func()
 }
 
 func (h *exitHookRuntime) SetBeforeSessionReplacement(func(context.Context) error) {}
@@ -382,6 +426,10 @@ func (h *exitHookRuntime) dispose() {
 	h.mu.Unlock()
 	if run {
 		h.hook()
+		if h.slow {
+			h.afterHook()
+			time.Sleep(exitBytesSlowDispose)
+		}
 	}
 }
 

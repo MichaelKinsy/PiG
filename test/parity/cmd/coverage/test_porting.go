@@ -96,10 +96,10 @@ func loadTestPortingStats(root string) (testPortingStats, error) {
 }
 
 func (s testPortingStats) summaryLine() string {
-	line := fmt.Sprintf("**Upstream test porting:** %d ported / %d partial / %d pending (%d other dispositions; [file mapping](interfaces/test-mapping-v%s.json)).",
+	line := fmt.Sprintf("**Upstream test porting:** %d ported / %d partial / %d pending (%d other dispositions; [file mapping](../interfaces/test-mapping-v%s.json)).",
 		s.Ported, s.Partial, s.Pending, s.Other, coding.UpstreamVersion)
 	if !s.PolicyAvailable {
 		return line + " Deferral count unavailable (release policy absent)."
 	}
-	return line + fmt.Sprintf(" Of the partial/pending files, %d deferred to 0.3.x by the [release policy](interfaces/test-porting-policy-v%s.json) (`deferred-0.3.x`).", s.Deferred, coding.UpstreamVersion)
+	return line + fmt.Sprintf(" Of the partial/pending files, %d deferred to 0.3.x by the [release policy](../interfaces/test-porting-policy-v%s.json) (`deferred-0.3.x`).", s.Deferred, coding.UpstreamVersion)
 }

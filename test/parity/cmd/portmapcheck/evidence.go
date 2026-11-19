@@ -113,7 +113,7 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) err
 			}
 			slots <- struct{}{}
 			t0 := time.Now()
-			why, broke := mutantProblem(root, *r, mutants[r.Row.Pi], replays)
+			why, broke, also := mutantProblem(root, *r, mutants[r.Row.Pi], replays)
 			<-slots
 			mu.Lock()
 			mutantTime += time.Since(t0)
@@ -131,6 +131,10 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) err
 				r.Reasons = append(r.Reasons, why)
 				return
 			}
+			if also != "" {
+				// The mutant was killed by failed assertions; what else the replay showed is reported, not judged.
+				fmt.Fprintf(os.Stderr, "portmap: %s: mutant killed; %s\n", r.Row.Pi, also)
+			}
 			u.entry.Killed = true
 			storeEntry(root, u.entry)
 		})
@@ -143,9 +147,9 @@ func proveByEvidence(root string, res []result, mutants map[string][]mutant) err
 			cached++
 		}
 	}
-	fmt.Fprintf(os.Stderr, "portmap: %d rows: %d cached, %d run; %d test binaries built (%s), %d evidence runs (%s), mutant replays %s; %s wall\n",
+	fmt.Fprintf(os.Stderr, "portmap: %d rows: %d cached, %d run; %d test binaries built (%s), %d evidence runs (%s), mutant replays %s (cache: %s); %s wall\n",
 		len(units), cached, len(units)-cached, stats.builds, stats.buildTime.Round(time.Second), stats.runs, stats.runTime.Round(time.Second),
-		mutantTime.Round(time.Second), time.Since(started).Round(time.Second))
+		mutantTime.Round(time.Second), replays.summary(), time.Since(started).Round(time.Second))
 	for _, s := range stats.slowest(5) {
 		fmt.Fprintf(os.Stderr, "portmap:   slow %s\n", s)
 	}

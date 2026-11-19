@@ -3,6 +3,7 @@ package surfaces
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"math"
 	"math/rand/v2"
 	"os"
@@ -309,6 +310,36 @@ func TestTimesMatchNode(t *testing.T) {
 		if !sameAsNode(got, err, want[i]) && bad < 30 {
 			bad++
 			t.Errorf("time %s %d %v: go %q (%v), node %+v", driftTag(c.Locale), c.MS, c.Options, got, err, want[i])
+		}
+	}
+}
+
+// An instant beyond JavaScript's Date range (±8.64e15 ms from the epoch) is a RangeError in Pi's
+// `Intl.DateTimeFormat.format(new Date(ms))`; the range ends are valid (D465 claim 3).
+func TestFormatTimeRefusesAnInstantOutsideTheDateRangeAsNodeDoes(t *testing.T) {
+	node := driftNode(t)
+	const limit = 8_640_000_000_000_000
+	var cases []driftCase
+	for _, ms := range []int64{-limit - 1, -limit, -limit + 1, 1, limit - 1, limit, limit + 1} {
+		cases = append(cases, driftCase{Kind: "time", MS: ms, at: time.UnixMilli(ms).UTC(), timeOptions: &TimeOptions{TimeStyle: TimeStyleMedium},
+			Options: map[string]any{"timeZone": "UTC", "timeStyle": "medium"}})
+	}
+	locale := "en-US"
+	for i := range cases {
+		cases[i].Locale = &locale
+	}
+	want := runNode(t, node, cases)
+	for i, c := range cases {
+		got, err := formatClock(&Language{Locale: locale}, c.at, c.timeOptions)
+		if !sameAsNode(got, err, want[i]) {
+			t.Errorf("%d ms: go %q (%v), node %+v", c.MS, got, err, want[i])
+		}
+		inside := c.MS >= -limit && c.MS <= limit
+		if inside != (want[i].Err == "") {
+			t.Errorf("%d ms: node's answer %+v does not match the range ±%d the test names", c.MS, want[i], limit)
+		}
+		if !inside && !errors.Is(err, ErrOption) {
+			t.Errorf("%d ms: error %v does not wrap ErrOption", c.MS, err)
 		}
 	}
 }

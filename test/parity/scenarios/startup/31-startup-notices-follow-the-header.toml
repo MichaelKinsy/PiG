@@ -1,0 +1,93 @@
+# Behavior family: startup
+# Surface: where run()'s startup notices sit on the screen: below the header, above the editor, in the order of run(): the startup diagnostic, the model fallback message, the crash notice.
+#
+# Upstream evidence (Pi 1.5.2 interactive-mode.ts): init() mounts the header and renders once at its end (renderNow, :1162); run() shows the notices after init()
+# returns (:1230-1267): the startup diagnostics (:1238-1246), the migrated credentials (:1248-1250), the models.json error (:1252-1255), the model fallback message (:1257-1259),
+# then the crash notice (:1261-1267), each with showWarning, which requests a render (:4815-4819). So the frame that paints the notices follows the startup frame, and the
+# settled screen is the header, then "Warning: No models match pattern ...", then "Warning: No models available ...", then "Warning: pi crashed on ...", then the editor's top
+# border. pig now requests the same renders (before, init() rendered after the bind and showWarning rendered at once); the position of the notices is the container order,
+# and this crop holds the whole region from the header's last block, the "[Context]" list, through the editor's top border, so a notice that lands above the header, below
+# the editor or in another order fails the comparison. The crop starts there and not at the header's first hint because PiG's head is 7 rows tall where Pi's logo is
+# 2 (D2): its rows below the onboarding line are blank lines the head covers, and the 02, 03, 04 and 14 scenarios compare the header's own lines.
+#
+# The agent directory has an empty models.json (no model, so the fallback message) and a crashes.json whose one record is dated 2099, which is never older than
+# the crash log's seven days (crash-log.ts takeUnnotifiedCrash: `now - Date.parse(timestamp) <= MAX_AGE`); the copy the runner makes of the directory takes the
+# "notified" mark, so every run shows the notice. `--models zzz-no-such/model` makes the startup diagnostic, a warning that matches no model (core/model-resolver.ts:345).
+name = "31-startup-notices-follow-the-header"
+description = "The startup diagnostic, the model fallback message and the crash notice sit between the header and the editor, in that order, as pi's run() shows them after init()."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/crash-log.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_OFFLINE=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent-notices"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/pi-agent-notices"]
+pig_args = ["--no-extensions", "--models", "zzz-no-such/model"]
+pi_args = ["--models", "zzz-no-such/model"]
+
+[tmux]
+width = 110
+height = 40
+ready_pattern_pig = "Run /bug to report it"
+ready_pattern_pi = "Run /bug to report it"
+ready_timeout_seconds = 30
+capture_start = "[Context]"
+capture_end_regex = '─{20}'
+settle_seconds = 4
+
+[assert]
+both_reach_ready = true
+both_contain = ["Warning: No models match pattern \"zzz-no-such/model\"", "Warning: No models available", "crashed on 6/15/2099", "(Boom). Run /bug to report it"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3
+
+# The kinds of write around the frames, as in 20-startup-write-kinds. Three warnings are shown in a row, and Pi's showWarning only requests a render, so one frame
+# paints all three; a pig that rendered for each, or that left a bare cursor placement after a frame, writes a sequence of kinds that is not Pi's.
+# frame-count-evidence: Pi 1.5.2, 20 runs of this scenario's setup (the notices agent directory, `--models zzz-no-such/model`, regular mode) on a pty that answers DA1 and
+# the colour queries like tmux (xd670, 2026-11-17, /tmp harness ptyrun.py, the same input every run): 15 runs wrote 3 frames and 5 wrote 2, each frame followed by its own
+# cursor placement. The missing frame is the first, the one written before the Kitty push and the window title: Pi's first scheduled frame comes before or after the
+# terminal's reply to its DA1 query, which decides whether the push, the title and the later frames are written before it (the same split as 20's, which measured 10 and 10
+# on the plain start). The stream is compared as ordered kinds of write with a run of frames that each end in their own cursor placement as one entry, so the count of
+# frames is free and every placement that follows no frame is compared.
+# floating-evidence: the same 20 runs, token positions counted from 0 in the whole transcript (text runs included): CSI > 4 ; 2 m is first seen at token 25 in 5 runs (before
+# the first frame) and at token 66 in 15 (after it); the OSC 0 title follows it at token 26 or 67. The plain start of 20 has the same two places, at 26/72 and 27/73 (measured
+# with the same harness: the positions differ with the start's text, the split does not). Pi writes both when the terminal's reply to its Kitty keyboard query arrives, which the first scheduled frame overtakes in some runs: the positions float in Pi too, so the
+# comparison lets the two writes arrive at either place and holds every other write in order; do not tighten it to one position.
+[[assert.transcript_sequences_equal]]
+from = "\u001b[?2004h"
+write_kinds = true
+collapse_frame_runs = true
+
+[[assert.transcript_sequences_equal.floating]]
+sequence = "\u001b[>4;2m"
+reason = "Pi writes it when the terminal answers its Kitty keyboard query; the answer's time moves it across the first frame."
+evidence_runs = 20
+evidence_positions = [25, 66]
+
+[[assert.transcript_sequences_equal.floating]]
+osc = 0
+reason = "Pi sets the window title in the same step as the CSI > 4 ; 2 m above."
+evidence_runs = 20
+evidence_positions = [26, 67]
+
+# normalize-rationale: D2 substitutes the product name in the crash notice only; the date, the message and the rest of the sentence stay byte-faithful.
+[[assert.normalize_replace]]
+pattern = 'Warning: pig crashed on'
+with = 'Warning: pi crashed on'
+reason = "D2: the crash notice names the host product (APP_NAME); the date, the message and the rest of the sentence stay literal."
+
+# The fallback message lists the two documentation files that explain providers and models; each product keeps them under its own install directory (the runner pads Pi's
+# directory to the length of PiG's so both wrap alike). The file names and the lines they sit on stay compared; the directory in front of them is not.
+[[assert.normalize_replace]]
+pattern = '/tmp/parity-snap-PIG_HOME-[0-9]+/docs/bundle-[0-9a-f]+/'
+with = "<docs>/"
+reason = "The documentation directory is where each product installs its docs: PiG's bundle directory under its home. Only the directory differs; the file names after it and the lines are compared."
+
+[[assert.normalize_replace]]
+pattern = '/tmp/parity-pi-pkg-[0-9]+/pi-coding-pkg-with-bundle-pad/docs/'
+with = "<docs>/"
+reason = "The documentation directory is where each product installs its docs: Pi's package directory, padded by the runner to PiG's length. Only the directory differs; the file names after it and the lines are compared."

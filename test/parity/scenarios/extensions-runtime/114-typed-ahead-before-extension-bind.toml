@@ -1,0 +1,52 @@
+# Behavior family: extensions-runtime
+# Scenario: text typed while the startup session_start handler of an extension has not returned opens no completion menu.
+#
+# typed-ahead-start.mjs holds the first session_start of the run for 1.5 s. Pi's init() awaits rebindCurrentSession() (interactive-mode.ts:1141), whose bindCurrentSessionExtensions()
+# runs the handlers and only afterwards calls setupAutocompleteProvider() (interactive-mode.ts:2167): until then the editor has no autocomplete provider, so "/fork" typed in that window
+# is plain text and no dropdown opens. PiG installed a provider when it built the editor, so the same typing opened the slash-command dropdown (the row `-> fork  Create a new fork from a
+# previous user message`) at once and the stream differed from Pi's at its first frame after the echo.
+# The step types "/fork" and waits for the resumed transcript, which Pi renders only after the handler returns; nothing else is typed. The stream compared is the one from "/fork"
+# to the window title (OSC 0), which both binaries write when the bind ends (updateTerminalTitle after the provider is installed), token by token, no byte normalised: the echo of the
+# typed text and what follows it while the handler pends. On the unfixed code PiG's stream differs at position 10 (ESC[2B CR and the row `-> fork ...` where Pi writes the title).
+# The rest of the stream is not asserted here: after the title PiG writes one more cursor placement (ESC[6G ESC[?25l, outside a frame) than Pi before the frame that shows the
+# transcript, and the title's own text names the program (D2); that difference is not this scenario's.
+#
+# Upstream evidence (Pi 1.5.2, the comparator's own runs of this scenario): no dropdown row in the stream before the transcript.
+
+name = "114-typed-ahead-before-extension-bind"
+description = "Text typed while an extension's startup session_start handler is pending opens no completion menu, and the stream equals Pi's."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/typed-ahead-start-pig-agent", "TYPED_AHEAD_FLAG={{TEMP}}/typed-ahead-flag"]
+pi = ["PI_CODING_AGENT_DIR=testdata/typed-ahead-start-pi-agent", "PI_SKIP_VERSION_CHECK=1", "TYPED_AHEAD_FLAG={{TEMP}}/typed-ahead-flag"]
+pig_extensions = ["testdata/typed-ahead-start/typed-ahead-start.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/typed-ahead-start/typed-ahead-start.mjs"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "--session", "sessions/cur.jsonl", "--tui-mode", "regular"]
+pi_args = ["--session-dir", "sessions", "--session", "sessions/cur.jsonl", "--tui-mode", "regular"]
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/typed-ahead-start-fork"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["/fork"]
+wait_visible_contains = ["CUR-R1"]
+wait_timeout_seconds = 25
+settle_seconds = 2
+
+[assert]
+runs = 3
+both_reach_ready = true
+both_not_contain = ["error:", "panic:", "goroutine "]
+
+[[assert.transcript_sequences_equal]]
+from = "/fork"
+until = "\u001b]0;"

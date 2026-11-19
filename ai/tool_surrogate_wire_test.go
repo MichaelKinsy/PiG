@@ -139,6 +139,7 @@ func TestToolLoneSurrogatesReachTheWireAsPi(t *testing.T) {
 	want := piPayloads(t, "testdata/tool_surrogate_wire_body.mjs", rows)
 	for i, row := range rows {
 		t.Run(row.Name, func(t *testing.T) {
+			skipStrippedAPI(t, row.API)
 			if want[i] == "" {
 				t.Fatal("Pi posted no body for this row")
 			}
@@ -242,6 +243,7 @@ func TestCalledToolNameKeepsALoneSurrogateOfTheStream(t *testing.T) {
 	want := piPayloads(t, "testdata/tool_surrogate_stream.mjs", rows)
 	for i, row := range rows {
 		t.Run(row.Name, func(t *testing.T) {
+			skipStrippedAPI(t, row.API)
 			piName := calledToolName.FindStringSubmatch(want[i])
 			if piName == nil || piName[1] != `N[\ude00]` {
 				t.Fatalf("Pi's message does not name the called tool as the stream did: %s", want[i])
@@ -283,6 +285,7 @@ func TestStrictToolSchemaLoneSurrogatesReachTheWireAsPi(t *testing.T) {
 			strict++
 		}
 		t.Run(row.Name, func(t *testing.T) {
+			skipStrippedAPI(t, row.API)
 			if !strings.Contains(want[i], "E[") {
 				t.Fatalf("the body of Pi does not hold the enum value: %s", want[i])
 			}

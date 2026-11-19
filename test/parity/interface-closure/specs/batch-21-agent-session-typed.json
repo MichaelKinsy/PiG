@@ -75,7 +75,7 @@
   ],
   "evidence": [
    "test:coding/cli/rpc_initial_tools_test.go#TestRPCInitialActiveToolsPreserveFullRegistry",
-   "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool"
+   "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool"
   ],
   "rationale": "AgentSession.messages is the Go method Session.Messages; types reviewed against the upstream declaration; tests attributed by go/types (methodrefs)."
  },

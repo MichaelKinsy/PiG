@@ -110,7 +110,7 @@ func TestTheLongestSocketPathOfTheDeepestKeptDirectoryBindsAtTheLimit(t *testing
 		t.Fatal(err)
 	}
 	host := &Host{socketDir: deepest}
-	host.sockRuntimeOnce.Do(func() { host.sockRuntimeDir = runtimeDir })
+	host.sockRuntimeDir = runtimeDir
 	host.sockSeq.Store(lastSocketCount - 1)
 	path, err := host.newSocketPath()
 	if err != nil {

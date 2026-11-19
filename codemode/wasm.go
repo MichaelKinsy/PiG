@@ -4,7 +4,7 @@ package codemode
 
 import "fmt"
 
-// EmbeddedQuickJSWasmPath names the one QuickJS module the package has: the embedded asset.
+// EmbeddedQuickJSWasmPath names the one QuickJS module the package has: the embedded asset. It is a name, not a file: the binary embeds assets/quickjs.wasm.zst and the raw bytes are assets/raw/quickjs.wasm.
 const EmbeddedQuickJSWasmPath = "assets/quickjs.wasm"
 
 // LoadQuickJSWasm returns the QuickJS wasm module. Pi's `loadQuickJSWasm(path?)` reads the module at path, defaulting to the file of the installed quickjs-wasi package; PiG has one module source, the embedded asset (assets/PROVENANCE.md), and never reads a module from the file system. An empty path or EmbeddedQuickJSWasmPath is that module; any other path is an error. Pass the result through SandboxOptions.Wasm: sandboxes that load one module share one compilation.

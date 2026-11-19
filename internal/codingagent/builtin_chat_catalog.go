@@ -12,6 +12,8 @@ import (
 // builtinChatCatalogs holds the offered bundled chat models of each provider read so far, for the stripped APIs they were listed under. The bundled catalog never changes, so callers share one list per provider until the stripped APIs change, as Pi's getBuiltinModels shares its catalog objects (providers/all.ts:104).
 // It is the model-catalog snapshot of the registry's metadata readers: the generation (this value) is replaced as a whole when the stripped APIs change, so a reader that loads it once reads the lists and the converted models of one set of stripped APIs, never a mix.
 type builtinChatCatalogs struct {
+	// strip is the pigstrip generation the stripped APIs were read at; stripped is those APIs.
+	strip      uint64
 	stripped   []string
 	mu         sync.RWMutex
 	byProvider map[string][]ai.GeneratedModel
@@ -37,12 +39,14 @@ type builtinChatCatalogIdentity struct {
 
 var currentBuiltinChatCatalogs atomic.Pointer[builtinChatCatalogs]
 
-// currentBuiltinChatCatalogsNow is the generation for the stripped APIs in force now, replacing an older one.
+// currentBuiltinChatCatalogsNow is the generation for the stripped APIs in force now, replacing an older one. It compares one counter (pigstrip.Generation) and
+// reads the stripped IDs only to build a new generation, so a lookup allocates nothing while the strip state is unchanged. The counter is read before the IDs, so
+// a generation never claims a strip state newer than the IDs it holds, and a strip recorded between the two is seen by the next call.
 func currentBuiltinChatCatalogsNow() *builtinChatCatalogs {
-	stripped := pigstrip.IDs(pigstrip.ListAPIs)
+	strip := pigstrip.Generation()
 	catalogs := currentBuiltinChatCatalogs.Load()
-	for catalogs == nil || !slices.Equal(catalogs.stripped, stripped) {
-		fresh := &builtinChatCatalogs{stripped: stripped, byProvider: map[string][]ai.GeneratedModel{}, converted: map[string]*convertedChatModels{}}
+	for catalogs == nil || catalogs.strip < strip {
+		fresh := &builtinChatCatalogs{strip: strip, stripped: pigstrip.IDs(pigstrip.ListAPIs), byProvider: map[string][]ai.GeneratedModel{}, converted: map[string]*convertedChatModels{}}
 		if currentBuiltinChatCatalogs.CompareAndSwap(catalogs, fresh) {
 			return fresh
 		}

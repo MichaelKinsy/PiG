@@ -164,7 +164,7 @@ func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, regist
 	subprocess.SetThemeLoader(codingagent.LoadExtensionTheme)
 	host.SetUIBridge(bridge)
 	host.SetSessionGraph(coding.NewSessionGraph())
-	codingagent.WireEarlyModelStream(bridge, "")
+	codingagent.WireEarlyModelStream(bridge)
 	installStartupTrace(&trace, host.SetStartupTrace)
 	host.SetMode(string(mode))
 	host.SetHostInfo(extensionHostInfo())

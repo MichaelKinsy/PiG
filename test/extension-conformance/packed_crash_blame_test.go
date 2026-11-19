@@ -233,7 +233,8 @@ func TestPackedLispProcessEndedWithoutAnUnhandledConditionStopsTheWholeCell(t *t
 	}
 }
 
-// crashFactory writes a conventional factory of language with a command "ping" that notifies "pong-<name>" and a command "crash" that starts a goroutine
+// crashFactory writes a conventional factory of language with a command "ping" that notifies "pong-<name>", "count" that counts in the factory's own variable and notifies
+// "count-<name>-<n>", "hold" that notifies "held-<name>" and waits ten minutes, "crashhold" that is "hold" with a thread that ends the process after 300 ms, and a command "crash" that starts a goroutine
 // (a thread) of its own that panics (signals an error) with "crash of <name>", which nothing handles; a Lisp one also has "printbt", "exit" and "kill".
 func crashFactory(t testing.TB, language, name, isolation string) subprocess.ExtConfig {
 	t.Helper()
@@ -254,11 +255,24 @@ func crashFactory(t testing.TB, language, name, isolation string) subprocess.Ext
 		write("go.mod", fmt.Sprintf("module %s\n\ngo 1.26\n\nrequire github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0\n", cfg.ModulePath))
 		write("extension.go", fmt.Sprintf(`package crasher
 
-import sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+import (
+	"time"
+
+	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
+)
 
 func Extension() *sdk.Extension {
 	e := sdk.New(%[1]q)
+	count := 0
 	e.Command("ping", "", func(ctx sdk.Context, _ string) error { ctx.Notify("pong-"+%[1]q, "info"); return nil })
+	e.Command("count", "", func(ctx sdk.Context, _ string) error { count++; ctx.Notify("count-"+%[1]q+"-"+string(rune('0'+count)), "info"); return nil })
+	e.Command("hold", "", func(ctx sdk.Context, _ string) error { ctx.Notify("held-"+%[1]q, "info"); time.Sleep(10 * time.Minute); return nil })
+	e.Command("crashhold", "", func(ctx sdk.Context, _ string) error {
+		ctx.Notify("held-"+%[1]q, "info")
+		go func() { time.Sleep(300 * time.Millisecond); panic("crash of " + %[1]q) }()
+		time.Sleep(10 * time.Minute)
+		return nil
+	})
 	e.Command("crash", "", func(ctx sdk.Context, _ string) error {
 		go func() { panic("crash of " + %[1]q) }()
 		return nil
@@ -280,7 +294,13 @@ func Extension() *sdk.Extension {
            (sb-alien:alien-funcall (sb-alien:extern-alien "GetCurrentProcess" (function sb-alien:system-area-pointer)))
            9))
 (defun new-extension ()
-  (let ((e (pig:make-extension %[1]q)))
+  (let ((e (pig:make-extension %[1]q)) (count 0))
+    (pig:command e "count" "" (lambda (ctx args) (declare (ignore args)) (incf count) (pig:ctx-notify ctx (format nil "count-%[1]s-~d" count) "info")))
+    (pig:command e "hold" "" (lambda (ctx args) (declare (ignore args)) (pig:ctx-notify ctx "held-%[1]s" "info") (sleep 600)))
+    (pig:command e "crashhold" "" (lambda (ctx args) (declare (ignore args))
+                                    (pig:ctx-notify ctx "held-%[1]s" "info")
+                                    (sb-thread:make-thread (lambda () (sleep 0.3) (error "crash of %[1]s")))
+                                    (sleep 600)))
     (pig:command e "ping" "" (lambda (ctx args) (declare (ignore args)) (pig:ctx-notify ctx "pong-%[1]s" "info")))
     (pig:command e "crash" "" (lambda (ctx args) (declare (ignore ctx args))
                                 (sb-thread:make-thread (lambda () (error "crash of %[1]s")))

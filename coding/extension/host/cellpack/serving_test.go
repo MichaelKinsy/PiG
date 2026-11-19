@@ -3,6 +3,7 @@ package cellpack
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -101,7 +102,7 @@ func TestServing_PigletBinaryServesCellToolchainFree(t *testing.T) {
 		"cells/" + rel:        {Data: binBytes, Mode: 0o755},
 	}
 	dest := t.TempDir()
-	if err := extract(fsys, m, dest); err != nil {
+	if err := extract(fsys, m, dest, io.Discard); err != nil {
 		t.Fatalf("extract: %v", err)
 	}
 	runtimecell.SetPrebuiltResolver(NewResolver(m, dest))
@@ -201,7 +202,7 @@ func TestServing_PackedGoCellServedToolchainFree(t *testing.T) {
 		"cells/" + rel:        {Data: binBytes, Mode: 0o755},
 	}
 	dest := t.TempDir()
-	if err := extract(fsys, m, dest); err != nil {
+	if err := extract(fsys, m, dest, io.Discard); err != nil {
 		t.Fatalf("extract: %v", err)
 	}
 	runtimecell.SetPrebuiltResolver(NewResolver(m, dest))

@@ -74,7 +74,7 @@ func (r *ModelRegistry) radiusComposeLocked(provider *ai.RadiusProvider) ([]Mode
 		}
 		entry.Headers = r.composeRequestHeadersLocked(entry.ModelHeaders, provider.ID(), entry.ModelID, &configured, nil)
 		entry.Env = r.providerEnv(provider.ID())
-		entry.Insecure = configured.Insecure
+		entry.Insecure = r.providerTLSOptInLocked(provider.ID(), nil)
 		entry.AuthHeader = configured.AuthHeader != nil && *configured.AuthHeader
 	}
 	return entries, ""

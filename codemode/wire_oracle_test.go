@@ -1195,7 +1195,7 @@ func wireCases() []wireCase {
 
 func TestWireBehaviorMatchesPi(t *testing.T) {
 	cases := wireCases()
-	wasmPath, err := filepath.Abs("assets/quickjs.wasm")
+	wasmPath, err := filepath.Abs("assets/raw/quickjs.wasm")
 	if err != nil {
 		t.Fatal(err)
 	}

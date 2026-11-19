@@ -4,7 +4,7 @@ Operating rules for AI agents maintaining `pig`, the Go port of upstream `pi`. T
 
 ## Mission
 
-`pig` must match upstream `pi` observable behavior unless `docs/parity/DIVERGENCES.md` records a numbered, scrutinized exception. Treat the port as a compiler from upstream TypeScript behavior to Go behavior: `docs/parity/PORT_MAP.md` defines the file map, parity scenarios define behavior, `test/parity/coverage.md` reports proof, and gates keep the claims honest.
+`pig` must match upstream `pi` observable behavior unless `docs/parity/DIVERGENCES.md` records a numbered, scrutinized exception. Treat the port as a compiler from upstream TypeScript behavior to Go behavior: `docs/parity/PORT_MAP.md` defines the file map, parity scenarios define behavior, `test/parity/generated/coverage.md` reports proof, and gates keep the claims honest.
 
 Source of truth:
 - `.upstream/current/` is the upstream mirror.
@@ -19,7 +19,7 @@ Source of truth:
   Foundation I finishes generating its statuses from these ledgers.
 - `test/parity/upstream-sync/v<version>.toml` accounts for every changed tracked source file in a version leap.
 - `test/parity/async-contracts.toml` accounts for Promise/async semantics across the complete pinned upstream source tree.
-- `test/parity/coverage.md` and the generated block below report verification.
+- `test/parity/generated/coverage.md` and the generated block below report verification.
 - `docs/parity/DIVERGENCES.md` records intentional differences.
 
 No prose status claim overrides those files.
@@ -307,10 +307,10 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 |---|---:|---:|---:|---:|---:|---:|---|
 | `_top` | 1 | 1 | 0 | 0 | 0 | 1 | not run |
 | `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 90 | not run |
-| `autocomplete` | 14 | 14 | 0 | 0 | 0 | 5 | not run |
+| `autocomplete` | 20 | 20 | 0 | 0 | 0 | 5 | not run |
 | `cli-utils` | 38 | 38 | 0 | 0 | 0 | 17 | not run |
 | `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
-| `compaction` | 16 | 16 | 0 | 0 | 0 | 10 | not run |
+| `compaction` | 21 | 21 | 0 | 0 | 0 | 11 | not run |
 | `export-html` | 7 | 7 | 0 | 0 | 0 | 2 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `extensions-runtime` | 184 | 183 | 0 | 1 | 0 | 71 | not run |
@@ -327,15 +327,15 @@ Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registrati
 | `providers-registry` | 17 | 14 | 0 | 3 | 0 | 28 | not run |
 | `rpc` | 106 | 106 | 0 | 0 | 0 | 33 | not run |
 | `selectors` | 17 | 17 | 0 | 0 | 1 | 15 | not run |
-| `session` | 47 | 47 | 0 | 0 | 0 | 20 | not run |
+| `session` | 58 | 58 | 0 | 0 | 0 | 21 | not run |
 | `settings` | 17 | 17 | 0 | 0 | 0 | 21 | not run |
 | `slash-commands` | 35 | 34 | 1 | 0 | 0 | 23 | not run |
 | `startup` | 32 | 31 | 1 | 0 | 0 | 15 | not run |
 | `tools` | 41 | 41 | 0 | 0 | 0 | 42 | not run |
-| `tree` | 12 | 11 | 1 | 0 | 0 | 10 | not run |
+| `tree` | 16 | 15 | 1 | 0 | 0 | 11 | not run |
 | `tui-components` | 40 | 40 | 0 | 0 | 0 | 36 | not run |
 
-Full per-file detail: `test/parity/coverage.md`.
+Full per-file detail: `test/parity/generated/coverage.md`.
 
 <!-- END COVERAGE -->
 
@@ -494,6 +494,8 @@ A divergence is allowed only when it is user-visible or interop-relevant and can
 - `// pig divergence (D<N>): ...` at each call site;
 - parity coverage or an explicit parity allowance;
 - for a divergence that a test-mapping entry names, the labeled paragraphs `Protects:`, `PiG-shaped test considered:` and `Why not:`.
+
+The `SCRUTINIZED:approved` line of a record binds its normative text with `text-sha256:<hash>` and `make divergence-quality` fails when the text changes without a new approval line: only the owner runs `make divergence-approve ID=D<N>`, and an agent or a lane that changes a record's normative text (or adds a record) lists it in `automation/ci/divergence-reapproval-pending.txt` as `D<N> <class> <reason>` and says so in its pull request (details in `docs/parity/divergences/head.md`).
 
 Each record is one file, `docs/parity/divergences/D<N>.md`: an active record is a `## D<N> <title>` section, a retired record is one `- D<N>: ...` line. Edit that file only. `make divergences` generates `docs/parity/DIVERGENCES.md` from the files, and a lane does not commit the generated ledger; the merger regenerates it (`TestDivergenceLedgerEqualsItsRecordFiles` fails when they differ).
 

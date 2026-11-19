@@ -63,7 +63,7 @@ func TestExitStopSequenceHoldsNoWriterOfAnotherGoroutine(t *testing.T) {
 				// The child's terminal option shows the renderer's bytes; the clipboard and the storm's other writers use the process's stdout, so the
 				// pseudo-terminal's capture is the whole stream.
 				child := startExitBytesChild(t, true, end.run, exitBytesTuiModeEnv+"="+tuiMode, exitBytesStormEnv+"=true", "PI_CLIPBOARD_OSC52=1")
-				child.await("the mode to be ready for input", child.ready)
+				child.awaitReady()
 				mark := child.captured.len()
 				child.await("the storm to write", func() bool { return exitStormWrites.MatchString(child.captured.from(mark)) })
 				end.end(t, child)

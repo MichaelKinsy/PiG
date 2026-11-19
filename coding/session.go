@@ -504,6 +504,11 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 			thinkingBudgets = &ai.ThinkingBudgets{}
 		}
 	}
+	// sdk.ts:435 gives the Agent settingsManager.getTransport(), which is "auto" unless the settings name one (settings-defaults.ts:5); a Transport the caller names takes its place.
+	transport := opts.Transport
+	if transport == "" {
+		transport = ai.Transport(svcs.SettingsManager().GetTransport())
+	}
 
 	settings := svcs.Settings()
 	thinkingLevel := settings.DefaultThinkingLevel
@@ -610,7 +615,7 @@ func NewSession(svcs *AgentSessionServices, opts SessionOptions) (*Session, erro
 			FollowUpMode:               agent.QueueMode(svcs.SettingsManager().GetFollowUpMode()),
 			BeforeToolCallHooks:        opts.BeforeToolCall,
 			AfterToolCallHooks:         append([]agent.AfterToolCallHook(nil), opts.AfterToolCall...),
-			Transport:                  opts.Transport,
+			Transport:                  transport,
 			PreparePrompt:              preparePrompt,
 			PrepareToolResult:          prepareToolResult,
 			DefaultStreamFn:            cacheWarmingStreamFn(func() *Session { return sess }),

@@ -24,7 +24,7 @@ class CoverageDeltaTests(unittest.TestCase):
             root = Path(directory)
             (root / "automation/ci").mkdir(parents=True)
             shutil.copy(SCRIPT, root / "automation/ci/check-coverage-delta.sh")
-            coverage = root / "test/parity/coverage.md"
+            coverage = root / "test/parity/generated/coverage.md"
             coverage.parent.mkdir(parents=True)
             coverage.write_text(committed, encoding="utf-8")
             git = ["git", "-C", directory, "-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false"]

@@ -6,7 +6,8 @@
 // sees Pi's dispatch, credential order and result shapes, and the request runs
 // on PiG's port of the same provider.
 import { currentRuntime } from "../state.mjs";
-import { bridgeStream } from "./provider-bridge-client.mjs";
+import { bridgeStream, closeCodexWebSocketSessions, getCodexWebSocketDebugStats, resetCodexWebSocketDebugStats } from "./provider-bridge-client.mjs";
+import { registerSessionResourceCleanup } from "./pi-dist/pi-ai/session-resources.js";
 import { AssistantMessageEventStream } from "./pi-dist/pi-ai/sdk-bundle/index.js";
 
 // Headers that stand in for an API key, per upstream API implementation
@@ -91,7 +92,7 @@ function bridged(api, simple) {
     if ((api === "google-generative-ai" || api === "google-vertex") && options?.fetch === globalThis.fetch) {
       options = { ...options, fetch: undefined };
     }
-    // No extension runtime: a detached helper, a forked child or a worker that inherited the loader. Its stream runs in a provider bridge process it owns.
+    // No extension runtime: a detached helper, a forked child or a worker that loads this module from the harness package (the runtime's loader hooks are not passed on to it). Its stream runs in a provider bridge process it owns.
     const runtime = currentRuntime();
     if (!runtime) {
       return bridgeStream(model, context, { ...options, reasoning: (simple ? options?.reasoning : undefined) ?? "off" }, simple, failedStream);
@@ -119,4 +120,23 @@ export function bridgeImages(api) {
     errorMessage: "Image generation is not available to extensions running in PiG (see docs/parity/DIVERGENCES.md D74)",
     timestamp: Date.now(),
   });
+}
+
+// bridgeCodexWebSocketHelpers returns the three values api/openai-codex-responses exports beside stream and streamSimple (closeOpenAICodexWebSocketSessions, getOpenAICodexWebSocketDebugStats,
+// resetOpenAICodexWebSocketDebugStats). Pi's act on process-local maps; here the cache is the Go one of the provider-bridge child serving this process, reached through provider-bridge-client.mjs:
+// close and reset are one-way lines to it, the getter reads a replica it pushes (see there for when it is exact). As in Pi, loading the module registers the close function as a session resource
+// cleanup; the registration starts no child. There is no 'extension runtime present' branch: an extension's own streams run in the host, which holds the cache and the counters, and an extension
+// process cannot import api/* at all (D74).
+export function bridgeCodexWebSocketHelpers() {
+  function closeOpenAICodexWebSocketSessions(sessionId) {
+    closeCodexWebSocketSessions(sessionId);
+  }
+  function getOpenAICodexWebSocketDebugStats(sessionId) {
+    return getCodexWebSocketDebugStats(sessionId);
+  }
+  function resetOpenAICodexWebSocketDebugStats(sessionId) {
+    resetCodexWebSocketDebugStats(sessionId);
+  }
+  registerSessionResourceCleanup(closeOpenAICodexWebSocketSessions);
+  return { closeOpenAICodexWebSocketSessions, getOpenAICodexWebSocketDebugStats, resetOpenAICodexWebSocketDebugStats };
 }

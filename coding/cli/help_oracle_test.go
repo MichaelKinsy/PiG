@@ -1,3 +1,8 @@
+//go:build !pig_strip_bedrock_converse_stream && !pig_strip_changelog && !pig_strip_codemode && !pig_strip_docs && !pig_strip_export_html && !pig_strip_extension_sdk_go && !pig_strip_extension_sdk_lisp && !pig_strip_extension_sdk_python && !pig_strip_extension_sdk_rust && !pig_strip_google_vertex && !pig_strip_llama_cpp && !pig_strip_mcp && !pig_strip_mermaid && !pig_strip_mistral_conversations && !pig_strip_node_extensions && !pig_strip_pig_login && !pig_strip_piglet_builder && !pig_strip_self_update && !pig_strip_syntax_highlight && !pig_strip_tool_search && !pig_strip_word_dictionaries
+
+// Pi has no strip: the help of a build with strip tags drops the entries of what they strip (TestStripLeakGate covers that), so the
+// comparison with Pi's help runs in a build without tags.
+
 package cli
 
 import (

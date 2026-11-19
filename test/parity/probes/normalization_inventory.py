@@ -81,7 +81,7 @@ def main():
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[3])
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    target = args.root / "test/parity/normalization-inventory.json"
+    target = args.root / "test/parity/generated/normalization-inventory.json"
     content = render(args.root)
     if args.check:
         if not target.exists() or target.read_text() != content:

@@ -3,12 +3,14 @@ package runtimecell
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -74,6 +76,8 @@ type PublishedEntry struct {
 	Dir          string
 	ArtifactPath string
 	Reused       bool // an existing valid entry satisfied the request without building
+	// Replaced is why the entry this call replaced failed its verification (PublishVerifiedArtifact); nil when nothing was replaced, or the replaced entry was not a ready entry that differed.
+	Replaced error
 }
 
 // cellBuildTimeout bounds how long a caller with no deadline waits for a peer's
@@ -210,7 +214,29 @@ func isSHA256Hex(value string) bool {
 // either reused and recorded before a collection can take the lock, or the
 // collector has it and the entry is not reused.
 func ReusePublishedArtifact(finalDir string, want EntryIdentity) (PublishedEntry, bool) {
-	if _, ok := validCellEntry(finalDir, want); !ok {
+	return reusePublishedArtifact(finalDir, entryCheck{identity: want})
+}
+
+// entryCheck is what makes a published entry usable as it is: it is a ready entry for identity, and verify, when there is one, finds nothing different in it.
+type entryCheck struct {
+	identity EntryIdentity
+	verify   func(entryDir string) error
+}
+
+// adopt reports whether the entry at finalDir can be used as it is and returns its artifact path. When the entry is ready but verify finds it different, difference says how; an entry that is not ready is never verified, because it is replaced whatever it holds.
+func (c entryCheck) adopt(finalDir string) (artifact string, ok bool, difference error) {
+	artifact, ok = validCellEntry(finalDir, c.identity)
+	if !ok || c.verify == nil {
+		return artifact, ok, nil
+	}
+	if err := c.verify(finalDir); err != nil {
+		return "", false, err
+	}
+	return artifact, true, nil
+}
+
+func reusePublishedArtifact(finalDir string, check entryCheck) (PublishedEntry, bool) {
+	if _, ok, _ := check.adopt(finalDir); !ok {
 		return PublishedEntry{}, false
 	}
 	lock, ok := tryLockUsageShared(finalDir)
@@ -218,10 +244,11 @@ func ReusePublishedArtifact(finalDir string, want EntryIdentity) (PublishedEntry
 		return PublishedEntry{}, false
 	}
 	defer func() { _ = lock.Unlock() }()
-	art, ok := validCellEntry(finalDir, want)
+	art, ok := validCellEntry(finalDir, check.identity)
 	if !ok {
 		return PublishedEntry{}, false
 	}
+	//portlint:allow clock a use of an entry records the real time, as AcquireUsageLease does; the Now seam dates collections
 	_ = TouchUsage(finalDir, time.Now())
 	return PublishedEntry{Dir: finalDir, ArtifactPath: art, Reused: true}, true
 }
@@ -242,19 +269,30 @@ func ReusePublishedArtifact(finalDir string, want EntryIdentity) (PublishedEntry
 // each rebuilding it, and only {canonicalName, ready.json} is retained -
 // compiler intermediates (generated source, Rust target/) are discarded.
 func PublishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, language string, build func(scratch string) (artifactPath string, err error), keepAlso ...string) (PublishedEntry, error) {
-	return publishArtifact(ctx, finalDir, canonicalName, inputDigest, language, false, build, keepAlso...)
+	return publishArtifact(ctx, finalDir, canonicalName, inputDigest, language, false, nil, build, keepAlso...)
+}
+
+// PublishVerifiedArtifact is PublishArtifact for an entry that holds more than its canonical artifact, content that
+// ready.json does not vouch for. verify finds the difference between the entry directory it is given and what build
+// would make, or returns nil; it runs wherever an existing entry would be reused, so a ready entry that differs is not reused.
+// Such an entry is replaced under the per-digest lock, as a stale one is: after a verification under the lock, because a
+// peer may have replaced it already, the entry is renamed aside and the new one renamed into its place, and the old one is
+// deleted. A clean entry is never written. PublishedEntry.Replaced carries the difference verify found in the entry this
+// call replaced.
+func PublishVerifiedArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, language string, verify func(entryDir string) error, build func(scratch string) (artifactPath string, err error), keepAlso ...string) (PublishedEntry, error) {
+	return publishArtifact(ctx, finalDir, canonicalName, inputDigest, language, false, verify, build, keepAlso...)
 }
 
 // publishArtifactWithFailureCache replays a compiler failure for the same content address.
 // The build callback marks only deterministic compile errors with cacheBuildFailure.
 // Setup, cancellation, and I/O errors remain retryable.
 func publishArtifactWithFailureCache(ctx context.Context, finalDir, canonicalName, inputDigest, language string, build func(scratch string) (artifactPath string, err error), keepAlso ...string) (PublishedEntry, error) {
-	return publishArtifact(ctx, finalDir, canonicalName, inputDigest, language, true, build, keepAlso...)
+	return publishArtifact(ctx, finalDir, canonicalName, inputDigest, language, true, nil, build, keepAlso...)
 }
 
-func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, language string, cacheBuildFailures bool, build func(scratch string) (artifactPath string, err error), keepAlso ...string) (PublishedEntry, error) {
-	identity := EntryIdentity{InputDigest: inputDigest, Artifact: canonicalName, Language: language}
-	if entry, ok := ReusePublishedArtifact(finalDir, identity); ok {
+func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, language string, cacheBuildFailures bool, verify func(entryDir string) error, build func(scratch string) (artifactPath string, err error), keepAlso ...string) (PublishedEntry, error) {
+	check := entryCheck{identity: EntryIdentity{InputDigest: inputDigest, Artifact: canonicalName, Language: language}, verify: verify}
+	if entry, ok := reusePublishedArtifact(finalDir, check); ok {
 		return entry, nil
 	}
 	if cacheBuildFailures {
@@ -288,7 +326,7 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 	if err != nil || !locked {
 		// Timed out or cancelled waiting for the builder. Re-check once: a peer
 		// may have finished: rather than starting a duplicate expensive build.
-		if art, ok := validCellEntry(finalDir, identity); ok {
+		if art, ok, _ := check.adopt(finalDir); ok {
 			return PublishedEntry{Dir: finalDir, ArtifactPath: art, Reused: true}, nil
 		}
 		if cacheBuildFailures {
@@ -306,8 +344,9 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 	}
 	defer func() { _ = lock.Unlock() }()
 
-	// A peer may have published while we waited for the lock.
-	if art, ok := validCellEntry(finalDir, identity); ok {
+	// A peer may have published (or replaced a differing entry) while we waited for the lock.
+	art, ok, replaced := check.adopt(finalDir)
+	if ok {
 		_ = TouchUsage(finalDir, time.Now())
 		return PublishedEntry{Dir: finalDir, ArtifactPath: art, Reused: true}, nil
 	}
@@ -322,6 +361,7 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 	// that was killed mid-build. The age gate is far longer than any real build,
 	// so this can never remove a concurrent build's live scratch.
 	gcStaleScratch(parent)
+	removeReplacedAsides(parent, filepath.Base(finalDir))
 
 	// Build in private scratch that is a sibling of finalDir, so the publish
 	// rename stays on one filesystem (atomic, never EXDEV) and no other process
@@ -386,16 +426,27 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 		return PublishedEntry{}, err
 	}
 
-	// Publish atomically. A leftover invalid entry (e.g. legacy, no marker) is
-	// removed first; we hold the lock, so no peer is mid-publish here.
-	if _, err := os.Stat(finalDir); err == nil {
-		if err := os.RemoveAll(finalDir); err != nil {
+	// Publish atomically. A leftover entry the check does not accept (legacy, no marker, or a ready entry whose content differs) is
+	// renamed aside, not deleted in place: a peer that reads the entry meanwhile finds it absent and waits for the lock, never a
+	// half-deleted tree. We hold the lock, so no peer is mid-publish here.
+	// One Lstat tells whether an entry is there: verify, to say how it differs, and the rename aside both act on it only then.
+	_, statErr := os.Lstat(finalDir) //perf:ok once per publication, after a build: the lstat that replaces the os.Stat of this place; a start that reuses its entry never reaches it
+	if statErr != nil && !errors.Is(statErr, fs.ErrNotExist) {
+		return PublishedEntry{}, fmt.Errorf("replace stale cell entry: %w", statErr)
+	}
+	if statErr == nil {
+		if replaced == nil && verify != nil {
+			replaced = verify(finalDir)
+		}
+		aside, err := moveEntryAside(ctx, finalDir)
+		if err != nil {
 			return PublishedEntry{}, fmt.Errorf("replace stale cell entry: %w", err)
 		}
+		defer func() { _ = os.RemoveAll(aside) }()
 	}
 	var peerArtifact string
 	adopted, err := publishRename.publish(ctx, scratch, finalDir, func() bool {
-		art, ok := validCellEntry(finalDir, identity)
+		art, ok, _ := check.adopt(finalDir)
 		peerArtifact = art
 		return ok
 	})
@@ -403,10 +454,48 @@ func publishArtifact(ctx context.Context, finalDir, canonicalName, inputDigest, 
 		return PublishedEntry{}, fmt.Errorf("publish cell entry: %w", err)
 	}
 	if adopted {
-		return PublishedEntry{Dir: finalDir, ArtifactPath: peerArtifact, Reused: true}, nil
+		return PublishedEntry{Dir: finalDir, ArtifactPath: peerArtifact, Reused: true, Replaced: replaced}, nil
 	}
 	_ = TouchUsage(finalDir, time.Now())
-	return PublishedEntry{Dir: finalDir, ArtifactPath: filepath.Join(finalDir, canonicalName), Reused: false}, nil
+	return PublishedEntry{Dir: finalDir, ArtifactPath: filepath.Join(finalDir, canonicalName), Reused: false, Replaced: replaced}, nil
+}
+
+// replacedEntryPrefix starts the name an entry is renamed to while a new one takes its place: the prefix of a build scratch
+// directory, so that gcStaleScratch reclaims what a crash left, then replacedTagLen hex characters that tell two replacements
+// apart, then "-" and the entry's own name, which tells entries apart.
+const (
+	replacedEntryPrefix = ".build-replaced-"
+	replacedTagLen      = 16
+)
+
+// moveEntryAside renames the entry at finalDir (a folder or a link to one) to a name beside it and returns that name.
+func moveEntryAside(ctx context.Context, finalDir string) (string, error) {
+	var tag [replacedTagLen / 2]byte
+	if _, err := rand.Read(tag[:]); err != nil {
+		return "", err
+	}
+	aside := filepath.Join(filepath.Dir(finalDir), replacedEntryPrefix+hex.EncodeToString(tag[:])+"-"+filepath.Base(finalDir))
+	// The same retry as the publishing rename: Windows refuses to rename a folder whose files a process has open, for a moment when a scanner holds one, for as long as a running program does.
+	if _, err := publishRename.publish(ctx, finalDir, aside, func() bool { return false }); err != nil {
+		return "", err
+	}
+	return aside, nil
+}
+
+// removeReplacedAsides deletes what an earlier replacement of the entry named base left beside it: it holds the entry's
+// lock, and a replacement holds it from the rename aside to the delete, so none of these is in use.
+func removeReplacedAsides(parent, base string) {
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		return
+	}
+	for _, entry := range entries {
+		tagged, ok := strings.CutPrefix(entry.Name(), replacedEntryPrefix)
+		if !ok || len(tagged) <= replacedTagLen+1 || tagged[replacedTagLen] != '-' || tagged[replacedTagLen+1:] != base {
+			continue
+		}
+		_ = os.RemoveAll(filepath.Join(parent, entry.Name()))
+	}
 }
 
 // staleScratchAge is how long an abandoned build scratch directory must be

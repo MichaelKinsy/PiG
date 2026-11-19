@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -228,6 +229,15 @@ func firstEditorStateDifference(got, want []editorProbeState) string {
 	return ""
 }
 
+// dictionaryFree is the text of a random probe in a Binary built without the word dictionaries: that build moves over a whole run of CJK text by
+// word (D92) where Pi's ICU splits it with its dictionary, so the oracle tests draw no CJK character there. Every other build keeps it.
+func dictionaryFree(s string) string {
+	if !pigstrip.Has(pigstrip.ListFeatures, pigstrip.WordDictionaries) {
+		return s
+	}
+	return strings.NewReplacer("日本語", "ab cd", "日", "j").Replace(s)
+}
+
 // randomExtensionEditorProbes draws a prefill (multi-line, wide, combining) and key scripts of typing, line breaks, cursor and word movement, kill, yank,
 // undo, history, paste, submit and cancel keys. The external-editor key (ctrl+g) stays out because Pi would spawn the editor.
 func randomExtensionEditorProbes() []editorProbe {
@@ -236,10 +246,10 @@ func randomExtensionEditorProbes() []editorProbe {
 	keys := []string{"a", "b", " ", "é", "日", "😀", "\r", "\n", "\x1b[13;2u", "\x1b\r", "\x1b[A", "\x1b[B", "\x1b[D", "\x1b[C", "\x01", "\x05", "\x02", "\x06", "\x17", "\x15", "\x0b", "\x19", "\x1b[1;5D", "\x1b[1;5C", "\x1bb", "\x1bf", "\x1bd", "\x7f", "\x1b[3~", "\x1b[H", "\x1b[F", "\x1b[5~", "\x1b[6~", "\x1f", "\x1b[200~pasted\ntext\x1b[201~", "\x1b", "\x03", "\x14", "\x1b[1;3A", "\x04"}
 	var probes []editorProbe
 	for range 500 {
-		probe := editorProbe{Prefill: pieces[rng.Intn(len(pieces))] + pieces[rng.Intn(len(pieces))], Width: 8 + rng.Intn(113)}
+		probe := editorProbe{Prefill: dictionaryFree(pieces[rng.Intn(len(pieces))] + pieces[rng.Intn(len(pieces))]), Width: 8 + rng.Intn(113)}
 		probe.Keys = make([]string, 1+rng.Intn(20))
 		for i := range probe.Keys {
-			probe.Keys[i] = keys[rng.Intn(len(keys))]
+			probe.Keys[i] = dictionaryFree(keys[rng.Intn(len(keys))])
 		}
 		probes = append(probes, probe)
 	}

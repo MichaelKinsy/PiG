@@ -2,7 +2,7 @@ import { appendFileSync, existsSync, readFile as readFileCallback } from "node:f
 import { readFile } from "node:fs/promises";
 
 // Records every lifecycle event the extension receives. echo_bridge reports a
-// tool update and stays in flight until its run is aborted. session_shutdown
+// tool update and stays in flight until its run is aborted (RPC_SHUTDOWN_TOOL_DEAF: for ever). session_shutdown
 // reports that it started through a notification. Then RPC_SHUTDOWN_BLOCK
 // makes it wait on a promise that never settles, RPC_SHUTDOWN_SLOW makes it wait that many milliseconds, RPC_SHUTDOWN_HOLD also keeps
 // the event loop alive, and RPC_SHUTDOWN_DIALOG makes it wait on a select, and RPC_SHUTDOWN_SEND_AFTER makes it send a user message.
@@ -202,6 +202,8 @@ export default function (pi) {
     async execute(_id, _args, signal, onUpdate) {
       record("tool_running");
       onUpdate?.({ content: [{ type: "text", text: "running" }], details: {} });
+      // RPC_SHUTDOWN_TOOL_DEAF makes the tool ignore its abort signal: it settles nothing and holds no handle, so only a drained event loop ends the process.
+      if (process.env.RPC_SHUTDOWN_TOOL_DEAF) await new Promise(() => {});
       await new Promise((resolve) => {
         if (signal?.aborted) return resolve();
         signal?.addEventListener("abort", () => resolve(), { once: true });

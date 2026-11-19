@@ -16,6 +16,10 @@ func BenchmarkNodeEventLoopTurn(b *testing.B) {
 	if loaded.EventLoopTurn == nil {
 		b.Fatal("a Node extension has no EventLoopTurn")
 	}
+	// One turn before the loop, for the same reason as in BenchmarkNodeToolCallEvent.
+	if err := loaded.EventLoopTurn(b.Context()); err != nil {
+		b.Fatal(err)
+	}
 	b.ReportAllocs()
 	for b.Loop() {
 		if err := loaded.EventLoopTurn(b.Context()); err != nil {
@@ -28,6 +32,10 @@ func BenchmarkNodeToolCallEvent(b *testing.B) {
 	loaded := loadToolCallBenchExtension(b)
 	handler := loaded.Handlers["tool_call"][0]
 	event := map[string]any{"type": "tool_call", "toolCallId": "c1", "toolName": "bash", "input": map[string]any{"command": "true"}}
+	// One dispatch before the loop: the first one on a loaded extension fills what every later one reuses (pools, encoder caches, the runtime's first run). That work is not the dispatch's cost, and -benchtime 5x would count it in one iteration of five; b.Loop starts its timer at its first call.
+	if _, err := handler(event, b.Context()); err != nil {
+		b.Fatal(err)
+	}
 	b.ReportAllocs()
 	for b.Loop() {
 		if _, err := handler(event, b.Context()); err != nil {

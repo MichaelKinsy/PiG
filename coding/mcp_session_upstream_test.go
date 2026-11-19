@@ -1,4 +1,4 @@
-//go:build !pig_strip_mcp
+//go:build !pig_strip_mcp && !pig_strip_codemode && !pig_strip_tool_search
 
 package coding
 
@@ -24,15 +24,6 @@ import (
 // Ports packages/coding-agent/test/suite/agent-session-mcp.test.ts (Pi 0.99.2), "AgentSession MCP integration": the
 // whole Session with the built-in codemode, tool-search and MCP extensions, loaded as the CLI loads them. The extension
 // boundary forms of the same cases are in coding/mcpext/extension_test.go.
-
-func requireEqual[T any](t *testing.T, what string, got, want T) {
-	t.Helper()
-	gotJSON, _ := json.Marshal(got)
-	wantJSON, _ := json.Marshal(want)
-	if string(gotJSON) != string(wantJSON) {
-		t.Errorf("%s = %s, want %s", what, gotJSON, wantJSON)
-	}
-}
 
 func requireNotContains(t *testing.T, what, text, substring string) {
 	t.Helper()

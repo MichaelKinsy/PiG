@@ -274,6 +274,12 @@ piglet-strip-matrix: ## Check cmd/pig under each Piglet strip build tag that str
 piglet-strip-guard: ## Vet ./ai/... and its tests, live files included, under each Piglet strip build tag that strips a model API alone and under all tags: the fast part of piglet-strip-matrix (ci-contracts)
 	@go run ./automation/ci/stripmatrix -guard
 
+# piglet-strip-tests runs the tests of the coding agent under every strip tag set, so a test that needs a built-in a tag compiles out and
+# has no build constraint on its file fails in the night it is added. One set is the cost of the ./coding/... and ./internal/codingagent/...
+# test run plus a rebuild of what the tag changes (STRIP_TESTS_MINUTES); all 22 sets are the nightly workflow's strip-tests jobs, one per set.
+piglet-strip-tests: ## Test ./coding/... and ./internal/codingagent/... under each Piglet strip build tag alone and under all tags (hours; the nightly workflow runs one set per job): STRIP_TESTS_SET='tag,tag' takes one set, as -print-sets lists it
+	@go run ./automation/ci/stripmatrix -coding -sets all $(if $(STRIP_TESTS_SET),-set '$(STRIP_TESTS_SET)')
+
 # The SDK bundles are pure Go to regenerate (go generate in each SDK directory): the Go SDK's bundle in the root module (internal/gosdkbundle), the Python, Rust and Lisp bundles (extensions/sdk-py, sdk-rs, sdk-lisp) are sdk.zst, the SDK's files as one zstd frame, and bundle_pack.go, which embeds it with the file list and the staging hash (automation/gen/packsdk). The nested module extensions/sdk keeps the bundle it was published with, a gzip copy of each source under .gz and bundle_embed.go (automation/gen/embed-bundle.go). Each generator keeps an existing frame or copy that already holds the source's text, so only a stale one is rewritten.
 sdk-bundles: ## Regenerate the packed SDK bundles (sdk.zst, bundle_pack.go) of the Go, Python, Rust and Lisp SDKs, and the nested Go SDK module's own gzip bundle, from their sources (go generate)
 	@for dir in extensions/sdk internal/gosdkbundle extensions/sdk-lisp extensions/sdk-py extensions/sdk-rs; do (cd $$dir && go generate .) || exit 1; done
@@ -281,7 +287,7 @@ sdk-bundles: ## Regenerate the packed SDK bundles (sdk.zst, bundle_pack.go) of t
 sdk-bundles-drift: ## Fail when a packed SDK bundle differs from its sources (regenerate with make sdk-bundles)
 	@./automation/ci/sdk-bundles-drift.sh
 
-.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift help-text highlight-grammars zone-names intl-tables windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build piglet-strip-matrix piglet-strip-guard changelog-unreleased changelog-check changelog-fold
+.PHONY: sdk-bundles sdk-bundles-drift generate divergences divergences-drift divergence-approve help-text highlight-grammars zone-names intl-tables windows-zones piglet-strip-ids piglet-strip-ids-drift piglet-strip-build piglet-strip-matrix piglet-strip-guard piglet-strip-tests changelog-unreleased changelog-check changelog-fold
 
 ##@ Test and lint
 
@@ -571,8 +577,14 @@ compliance: ## Check badge and OpenSSF evidence: files, pins, workflow hardening
 divergence-consistency: ## Match every docs/parity/DIVERGENCES.md entry to its call-site marker
 	@./automation/ci/check-divergence-consistency.sh
 
-divergence-quality: ## Validate divergence records as enforceable contracts
+divergence-quality: ## Validate divergence records as enforceable contracts, each approval bound to the hash of its record's text
+	@python3 -B -m unittest discover -s automation/ci -p test_check_divergence_quality.py
 	@./automation/ci/check-divergence-quality.py
+
+divergence-approve: ## OWNER ONLY: approve the current text of record ID=D<N> (writes the date and text hash on its approval line, drops its pending entry, regenerates the ledger)
+	@test -n "$(ID)" || { echo "divergence-approve: set ID=D<N>" >&2; exit 2; }
+	@./automation/ci/check-divergence-quality.py --stamp $(ID)
+	@$(MAKE) --no-print-directory divergences
 
 # gui-import-guard keeps the dependency one-way: plugin UI code may import chord, chord never imports it.
 gui-import-guard: ## Fail when chord imports a plugin UI package
@@ -613,6 +625,13 @@ race-coverage: ## Fail on a concurrency package that no nightly -race group runs
 # -benchtime=5x with GOMAXPROCS=1, which takes about an hour, so it belongs in a nightly job, not in `make check`.
 alloc-baseline: ## Fail when a hot-path benchmark's allocs/op rises or falls from the committed baseline (slow; nightly)
 	@go run ./automation/ci/allocbase
+
+# alloc-baseline-changed is the pull request's form of alloc-baseline: the same tool, settings and verdict, for only the hot packages the change since TEST_BASE (default the branch's upstream, then main; the merge base with HEAD) makes the run measure: a package with a changed benchmark file, baseline row or non-test file, and the packages that import a changed one. A change that touches none of them measures nothing and passes at once. CI reads the commits only (-committed), as test-changed does.
+alloc-baseline-changed: ## Run alloc-baseline for the hot packages the change since TEST_BASE touches or imports (the pull request's form; a change that touches none exits 0 at once)
+	@base="$$TEST_BASE"; [ -n "$$base" ] || base='@{upstream}'; git rev-parse --verify --quiet "$$base^{commit}" >/dev/null || base=main; \
+	go run ./automation/ci/allocbase -changed-since "$$base" $${CI:+-committed}
+
+.PHONY: alloc-baseline-changed
 
 # docs-drift gates the shipped docs bundle against the code it describes: every
 # documented command must exist, every listable command must be documented, and
@@ -664,14 +683,14 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs lint-sdk-py test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard gui-import-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check model-data-check perf-scoreboard-check module-size ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs lint-sdk-py test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard gui-import-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check model-data-check perf-scoreboard-check module-size alloc-baseline-changed ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo
 	@echo "make check: all gates green."
 	@echo
 	@echo "Reminder: run 'make coverage' before signaling success to refresh"
-	@echo "the AGENTS.md dashboard and test/parity/coverage.md. Do not hand-edit."
+	@echo "the AGENTS.md dashboard and test/parity/generated/coverage.md. Do not hand-edit."
 
 # verify = deterministic gates + declared durability parity + coverage.
 # The recommended one-shot for end-of-loop verification: `parity` proves every

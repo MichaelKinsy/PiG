@@ -45,7 +45,8 @@ func TestModelResolverDefaultsUpstream(t *testing.T) {
 				id, hasDefault := codingagent.DefaultModelPerProvider()[provider]
 				if len(ai.ListModels(provider)) == 0 {
 					chatless++
-					if hasDefault {
+					// A provider whose every model is on a stripped API lists none, and keeps Pi's default in the table: the default names no model any lookup can reach.
+					if hasDefault && !ai.ProviderStripped(provider) {
 						t.Errorf("%s has no chat models and should have no chat default, got %q", provider, id)
 					}
 					return

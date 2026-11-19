@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // A model PiG used to build for an id its registry does not list had no api and no base URL, and a request of it went to the default OpenAI host as chat completions with the provider key. Pi
@@ -31,6 +32,9 @@ import (
 // BuildModel is the builder an extension set-model and resolve-model use (session_extension_host.go, ModelBuilder), so the library row is the extension row.
 func TestBareModelSendsNothingToTheDefaultOpenAIHost(t *testing.T) {
 	for _, provider := range []string{"groq", "anthropic", "google", "openrouter", "mistral", "xai"} {
+		if provider == "mistral" && pigstrip.Has(pigstrip.ListAPIs, "mistral-conversations") {
+			continue // a Piglet that strips the Mistral API has no mistral provider to build
+		}
 		for _, via := range []string{"BuildModel", "buildModel-explicit-key", "request-model-object", "listed-model-control"} {
 			t.Run(provider+"/"+via, func(t *testing.T) {
 				proxy := newDefaultHostProxy(t)

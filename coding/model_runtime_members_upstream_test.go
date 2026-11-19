@@ -65,13 +65,19 @@ func TestModelRuntimeGetProvidersUpstream(t *testing.T) {
 	for _, provider := range runtime.GetProviders() {
 		order = append(order, provider.ID)
 	}
-	for _, id := range ai.ListProviders()[:3] {
+	var builtin []string
+	for _, id := range ai.ListProviders() {
+		if !ai.ProviderStripped(id) { // a provider whose every model is on a stripped API is no provider of this build
+			builtin = append(builtin, id)
+		}
+	}
+	for _, id := range builtin[:3] {
 		if !slices.Contains(order, id) {
 			t.Fatalf("built-in provider %q missing from %v", id, order)
 		}
 	}
 	index := slices.Index(order, "ext-native")
-	if index < 0 || index < slices.Index(order, ai.ListProviders()[0]) {
+	if index < 0 || index < slices.Index(order, builtin[0]) {
 		t.Fatalf("registered provider order = %v", order)
 	}
 	if got := runtime.GetProviders()[index]; got.ID != "ext-native" || got.Name != "Extension Native" {

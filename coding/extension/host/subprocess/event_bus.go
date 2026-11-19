@@ -282,7 +282,7 @@ func (h *Host) planEventBus(ctx context.Context, cells []CellSpec) {
 	surviving := map[any]*managedExt{}
 	replaced := map[any]bool{}
 	for name, me := range h.exts {
-		if conn := me.connection(); conn == nil || conn.closed.Load() || !me.nodeRealm {
+		if conn := me.connection(); conn == nil || conn.closed.Load() || !me.inNodeRealm() {
 			continue
 		}
 		process := processIdentity(me)

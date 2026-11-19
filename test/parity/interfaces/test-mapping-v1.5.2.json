@@ -3140,7 +3140,7 @@
         "chord/nextnode/app/app_export_host_test.go",
         "chord/nextnode/plugins/plugins_watcher_base_test.go"
       ],
-      "rationale": "34 of the 34 upstream cases run in the evidence files. starting and closing (9) run in app_test.go (the type-level half of 'starts without worker kinds and without principal.worker' is a compile error in Pi; Go refuses worker kinds without a worker principal at start, which the case asserts); workers (2) in app_workers_test.go and app_changes_test.go; applying changes one after another and installs in app_changes_test.go; base code (9) in app_executable_test.go (the server's own code is its executable, D603: cases that start with no base given), app_bases_scan_test.go (answers before the scan finished; a record edited right after the start), app_changes_test.go (marks base for a change of base files, a worker kind's entry, not a rewrite with the same bytes) and, for 'settles baseWatched only once the base bundles' records were compared', plugins_watcher_base_test.go TestRecordBaseSettlesOnceItsFirstComparisonsEnded; bases built after the listen (5) in app_bases_linux_test.go, app_bases_workers_linux_test.go and app_bases_test.go (a worker kind's base is its executable's copy, D600); the seven 'export and import per address' cases in app_export_test.go (running worker, the worker's data object, the lock, a failed address, the round trip with its refusals) and app_export_host_test.go (the server's records and rows of the address copied, refused, replaced and deleted with it, and the order around the server's commit). The server's data is two parts (D462: the NodeHost's `server.archive` and the Go host's `kit-server.archive`), so the two export cases run against the NodeHost's part (Pi's TypeScript host reached through the process's control requests) and the Go host's part together, and the import's one server commit is two commits in Go. The close case, 'closes without waiting for a scan of its own code stalled on a read', is TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped in app_bases_scan_test.go (Pi holds the scan on a named pipe its start script imports; the Go server's own code is its executable, so the test holds the step that names it: the close returns while the scan is held, HTTP answers no more, the late result is dropped, nothing is reported or recorded). App.Close does not wait for a build or a scan, as Pi's does not; App.Wait joins them and is Go's own lifetime ownership."
+      "rationale": "34 of the 34 upstream cases run in the evidence files. starting and closing (9) run in app_test.go (the type-level half of 'starts without worker kinds and without principal.worker' is a compile error in Pi; Go refuses worker kinds without a worker principal at start, which the case asserts); workers (2) in app_workers_test.go and app_changes_test.go; applying changes one after another and installs in app_changes_test.go; base code (9) in app_executable_test.go (the server's own code is its executable, D603: cases that start with no base given), app_bases_scan_test.go (answers before the scan finished; a record edited right after the start), app_changes_test.go (marks base for a change of base files, a worker kind's entry, not a rewrite with the same bytes) and, for 'settles baseWatched only once the base bundles' records were compared', plugins_watcher_base_test.go TestRecordBaseSettlesOnceItsFirstComparisonsEnded; bases built after the listen (5) in app_bases_linux_test.go, app_bases_workers_linux_test.go and app_bases_test.go (a worker kind's base is its executable's copy, D600); the seven 'export and import per address' cases in app_export_test.go (running worker, the worker's data object, the lock, a failed address, the round trip with its refusals) and app_export_host_test.go (the server's records and rows of the address copied, refused, replaced and deleted with it, and the order around the server's commit). The server's data is two hosts' parts merged into the one `server.archive` (D462), so the two export cases run against the NodeHost's part (Pi's TypeScript host reached through the process's control requests) and the Go host's part together, and the import's one server commit is two commits in Go. The close case, 'closes without waiting for a scan of its own code stalled on a read', is TestAppClosesWithoutWaitingForAScanOfItsOwnCodeStalledOnAReadItsLateResultIsDropped in app_bases_scan_test.go (Pi holds the scan on a named pipe its start script imports; the Go server's own code is its executable, so the test holds the step that names it: the close returns while the scan is held, HTTP answers no more, the late result is dropped, nothing is reported or recorded). App.Close does not wait for a build or a scan, as Pi's does not; App.Wait joins them and is Go's own lifetime ownership."
     },
     {
       "path": "packages/chord/test/node/app/archive.test.ts",
@@ -6729,13 +6729,13 @@
         "coding/cli/configured_resources_test.go#TestCollectPromptPaths_AutoDiscoveryRespectsOverridePatterns",
         "coding/cli/configured_resources_test.go#TestCollectExtensionConfigs_AutoDiscoveryAndOverrides",
         "internal/codingagent/reload_resources_test.go#TestInteractiveModeExtendResourcesFromExtensions_MergesDiscoveredPaths",
-        "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamSDKOptions",
+        "coding/cli/configured_resources_node_test.go#TestResourceLoaderUpstreamSDKOptions",
         "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamDiscovery",
         "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamProjectPrecedence",
         "internal/codingagent/theme_precedence_test.go#TestResourceLoaderUpstreamThemePrecedence",
-        "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamSymlinkedExtensions",
-        "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamPreTrustExtensions",
-        "coding/cli/configured_resources_test.go#TestResourceLoaderUpstreamExtensionConflicts",
+        "coding/cli/configured_resources_node_test.go#TestResourceLoaderUpstreamSymlinkedExtensions",
+        "coding/cli/configured_resources_node_test.go#TestResourceLoaderUpstreamPreTrustExtensions",
+        "coding/cli/configured_resources_node_test.go#TestResourceLoaderUpstreamExtensionConflicts",
         "coding/cli/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderContextOptions",
         "coding/cli/upstream_resource_context_options_test.go#TestUpstreamResourceLoaderUntrustedProject",
         "internal/codingagent/upstream_resource_context_test.go#TestUpstreamResourceLoaderContextFiles",
@@ -6745,8 +6745,8 @@
         "docs/parity/resource-loader-test-review.md",
         "coding/cli/upstream_resource_prompt_sources_test.go#TestUpstreamResourceLoaderPromptSources",
         "coding/cli/upstream_resource_symlink_test.go#TestUpstreamResourceLoaderSymlinkedExtensions",
-        "coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderUserExtensionsBeforeTrust",
-        "coding/cli/resource_extensions_upstream_test.go#TestUpstreamResourceLoaderExtensionConflicts",
+        "coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderUserExtensionsBeforeTrust",
+        "coding/cli/resource_extensions_upstream_node_test.go#TestUpstreamResourceLoaderExtensionConflicts",
         "coding/cli/resource_discovery_upstream_test.go#TestUpstreamResourceLoaderDiscovery",
         "coding/cli/resource_loader_gaps_upstream_test.go#TestUpstreamResourceLoaderProjectOverUserCollisions",
         "coding/cli/resource_loader_gaps_upstream_test.go#TestUpstreamResourceLoaderPackageMetadata",
@@ -6761,13 +6761,13 @@
         "coding/cli/settings_file_url_upstream_test.go#TestReloadSnapshotReportsInvalidSettingsFileURL",
         "internal/codingagent/resource_extend_upstream_test.go#TestReloadFailureFromSettingsSnapshotShowsPiText",
         "coding/cli/resource_loader_gaps_upstream_test.go#TestPrintModeInvalidDiscoveredFileURLFailsBind",
-        "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderProjectManifestDoesNotOwnProjectExtension",
-        "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderWarnsAboutHostDependenciesInPackageManifest",
+        "coding/cli/extension_set_upstream_node_test.go#TestUpstreamResourceLoaderProjectManifestDoesNotOwnProjectExtension",
+        "coding/cli/extension_set_upstream_node_test.go#TestUpstreamResourceLoaderWarnsAboutHostDependenciesInPackageManifest",
         "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderFailsWhenPackageManifestCannotBeParsed",
         "coding/cli/extension_set_upstream_test.go#TestExtensionPackageWarningManifestShapes",
-        "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
+        "coding/cli/extension_set_upstream_node_test.go#TestUpstreamResourceLoaderLeavesOutReplaceableExtensions",
         "coding/cli/extension_set_upstream_test.go#TestUpstreamResourceLoaderSkipsBuiltinExtensionsDisabledInSettings",
-        "coding/cli/extension_set_builtin_mcp_upstream_test.go#TestUpstreamResourceLoaderLoadsBuiltinExtensionsAfterFileExtensions",
+        "coding/cli/extension_set_builtin_mcp_upstream_node_test.go#TestUpstreamResourceLoaderLoadsBuiltinExtensionsAfterFileExtensions",
         "coding/cli/extension_set_builtin_mcp_upstream_test.go#TestUpstreamResourceLoaderNoExtensionsDisablesBuiltinsUnlessLoadedExplicitly",
         "coding/cli/extension_set_builtin_mcp_upstream_test.go#TestUpstreamResourceLoaderAppliesProjectBuiltinOverridesAfterTrust",
         "coding/cli/builtin_extension_order_test.go#TestNoMcpSkipsTheBuiltinMcpExtensionEvenWhenSettingsOrDashEEnableIt",
@@ -7358,7 +7358,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:c0600f43dc0f32e02b34b3860d2e2c1aa1c03d27ab2904b1844e398513646236",
       "evidence": [
-        "coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+        "coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
         "coding/codemode_session_upstream_test.go#TestUpstreamCodemodeOptionsAndStore",
         "coding/codemode_session_upstream_test.go#TestUpstreamCodemodeModels",
         "coding/codemode_session_upstream_test.go#Pi #10631: a misplaced options line fails before the script runs",
@@ -7514,7 +7514,7 @@
       "upstreamTestHash": "sha256:5aa62e21e6482744675f83be0800d0c56c5f88f198286a04232967417dcc8a2d",
       "evidence": [
         "coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyNameThroughTheExtensionAPI",
-        "coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed",
+        "coding/session_tool_orchestration_builtin_extensions_test.go#TestSessionToolOrchestrationRegistersCodemodeAndToolSearchInactiveUntilNamed",
         "coding/session_tool_orchestration_upstream_test.go#TestSessionToolOrchestrationLeavesResultsWithoutNestedCallsUnchanged",
         "extensions/sdk/tool_orchestration_test.go#TestRegisterToolSendsUpstreamExposureFields",
         "test/extension-conformance/node_session_twins_test.go#TestNodeSessionToolOrchestrationSupportsToolsThatCallOtherToolsUnderAnyNameThroughTheExtensionAPI",
@@ -8458,8 +8458,8 @@
       "upstreamTestHash": "sha256:c1a3b358edc5b5264a6d9b984874928cacb6043e14ec6ccf3ced3ca1a4975ff5",
       "evidence": [
         "coding/session_context_9789_upstream_test.go#TestUpstream9789SliceRetainsPromptAndTools",
-        "coding/session_context_9789_upstream_test.go#TestUpstream9789KeepsMidConversationSystems",
-        "coding/session_context_9789_upstream_test.go#TestUpstream9789InPlaceInsertionWithoutReturn",
+        "coding/session_context_9789_upstream_node_test.go#TestUpstream9789KeepsMidConversationSystems",
+        "coding/session_context_9789_upstream_node_test.go#TestUpstream9789InPlaceInsertionWithoutReturn",
         "coding/session_context_9789_upstream_test.go#TestUpstream9789AddedSystemAfterReplayedHead",
         "coding/session_context_9789_upstream_test.go#TestUpstream9789ContextWithSystemFollowsContext",
         "coding/session_context_9789_upstream_test.go#TestUpstream9789RemovedHeadReportsErrorButHonorsOutput"
@@ -8688,7 +8688,7 @@
       "disposition": "ported",
       "upstreamTestHash": "sha256:ce780a390395fda981a8744082fdbd89279379c31e7dbeb5bdee753e1b62be9f",
       "evidence": [
-        "internal/codingagent/tool_renderer_examples_upstream_test.go#TestToolRendererExamplesUpstream"
+        "internal/codingagent/tool_renderer_examples_upstream_node_test.go#TestToolRendererExamplesUpstream"
       ],
       "rationale": "All three case sites: the two it.each system-prompt cases (:65, built-in-tool-renderer.ts and minimal-mode.ts, #10072) and keeps minimal mode's edit tool in the default shell (:86). The Go test loads the byte-identical vendored 0.99.2 examples through the Node subprocess host into a coding.Session over the same cwd, as the upstream getSessionState does, and compares the system prompts and the 40-column edit card with and without renderShell. The card comparison uses the settled card after the subprocess renderCall frame lands (D56); Pi renders that frame synchronously, so the first, empty PiG frame is not the card Pi compares. The same three assertions were run against real Pi 0.99.2 (equal prompts; equal cards; a self-shell card without the box differs). Forcing every host-built definition to the self shell fails the card case, and altering a host-built tool prompt snippet fails both prompt cases. No production change."
     },

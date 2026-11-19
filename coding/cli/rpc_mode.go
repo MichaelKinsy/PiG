@@ -832,8 +832,8 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 		return nil
 	})
 	replacementCtx := context.WithValue(ctx, rpcCommandReplacement{}, true)
-	// awaitReplacement is upstream `await runtime.newSession()` and its siblings (rpc-mode.ts:808-810 dispatches every line at once): the replacement starts after the input batch that requested it, so a later command of that batch answers first from the old Session, and the response is written when the replacement and its one rebind (the runtime's callback) finish.
-	// pig divergence (D146): Pi exits at stdin end while a replacement still awaits createRuntime and never answers it. Stdin end here waits for each replacement and writes its response.
+	// awaitReplacement is upstream `await runtime.newSession()` and its siblings (rpc-mode.ts:833 dispatches every line at once): the replacement starts after the input batch that requested it, so a later command of that batch answers first from the old Session, and the response is written when the replacement and its one rebind (the runtime's callback) finish.
+	// pig divergence (D146): Pi exits at stdin end (rpc-mode.ts:826-828, :744-755) while a replacement still awaits createRuntime and never answers it. Stdin end here waits for each replacement and writes its response.
 	var replacementWG sync.WaitGroup
 	var replacementMu sync.Mutex
 	var startedReplacements []*rpcPendingReplacement
@@ -931,6 +931,7 @@ func serveRPCMode(ctx context.Context, rt *coding.Runtime, options rpcModeOption
 			}
 			markPrechecked.Do(func() { close(pending.prechecked) })
 			awaitPrechecks()
+			// pig divergence (D146): Pi starts a second replacement while the first is unapplied (rpc-mode.ts:833, agent-session-runtime.ts:226-259) and so shuts a Session down twice or under its running session_start handler. A replacement starts here after the previous one applied.
 			select {
 			case <-previous:
 			case <-ctx.Done():

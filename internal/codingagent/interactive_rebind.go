@@ -5,6 +5,7 @@ package codingagent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -68,6 +69,12 @@ func (m *InteractiveMode) runOnMainAndWaitUnless(ctx context.Context, abandon <-
 			return errOwnerLoopBlocked
 		}
 		return <-result
+	case <-m.runEnded.endedCh():
+		// The loop ended with the task queued or running: a task it never started is abandoned, one it started has its result.
+		if claimed.CompareAndSwap(false, true) {
+			return fmt.Errorf("%w: the owner loop ended", errOwnerLoopUnavailable)
+		}
+		return <-result
 	}
 }
 
@@ -98,10 +105,13 @@ func (m *InteractiveMode) bindStartupSession(ctx context.Context) error {
 	})
 }
 
-// bindMayPend reports whether binding the runner's extensions runs a handler: session_start handlers and, when one is registered, resources_discover
-// handlers (agent-session.ts:3433-3436, 3439-3442). Nothing else of the bind waits.
+// bindMayPend reports whether binding the runner's extensions runs a handler that can pend: session_start handlers and, when one is registered,
+// resources_discover handlers (agent-session.ts:3433-3436, 3439-3442). Nothing else of the bind waits. A handler registered as one that returns without awaiting
+// (extension.Extension.AddEventHandlerReturningWithoutAwait) does not count: Pi's await of it settles in microtasks, so a bind whose handlers are all of that kind,
+// as a plain start's is (the built-in MCP extension's session_start handler, extensions/mcp/index.ts:1115-1152), takes no turn of the event loop between the colour
+// wait and the end of init(), where the frame the header requested is painted by renderNow.
 func bindMayPend(runner *inproc.Runner) bool {
-	return runner != nil && (runner.HasHandlers(EventSessionStart) || runner.HasHandlers(EventResourcesDiscover) && !runner.IsStale())
+	return runner != nil && (runner.HasHandlersThatMayAwait(EventSessionStart) || runner.HasHandlersThatMayAwait(EventResourcesDiscover) && !runner.IsStale())
 }
 
 // rebindSession runs the steps of a rebind: the owner steps before and after the emit through runOnMainAndWait, and the emit of session_start and
@@ -138,11 +148,15 @@ func (m *InteractiveMode) rebindSession(ctx context.Context, renderBeforeBind bo
 		return err
 	}
 	var resources *extension.ResourcesDiscoverAggregateResult
+	var rebuilt <-chan error
 	if err := awaitEmit(ctx, runner, func(ctx context.Context) error {
 		if runner == nil {
 			return nil
 		}
 		if _, err := runner.Emit(ctx, event); err != nil {
+			return err
+		}
+		if err := m.awaitInstalledEditor(ctx); err != nil {
 			return err
 		}
 		// upstream: agent-session.ts:3207 (bindExtensions)
@@ -156,7 +170,7 @@ func (m *InteractiveMode) rebindSession(ctx context.Context, renderBeforeBind bo
 	}); err != nil {
 		return err
 	}
-	return m.runOnMainAndWait(ctx, func() error {
+	if err := m.runOnMainAndWait(ctx, func() error {
 		if m.opts.SessionHandle != session {
 			return nil
 		}
@@ -167,14 +181,35 @@ func (m *InteractiveMode) rebindSession(ctx context.Context, renderBeforeBind bo
 			m.subscribeToAgent()
 		}
 		m.setupExtensionShortcutListener(m.runCtx)
-		m.editor.SetAutocomplete(m.buildAutocompleteProvider())
+		// Pi's bindCurrentSessionExtensions runs setupAutocompleteProvider after the bind, outside any extension handler: an installed editor that refuses the
+		// provider fails the bind, which is a fatal runtime error of the replacement (/new, /resume, /fork) or a crash of the startup.
+		m.autocompleteSetUp = true
+		rebuilt = m.setAutocompleteAwaiting(m.buildAutocompleteProvider())
 		m.updateProviderInfo()
 		m.editor.ThinkingLevel = m.thinkingLevel
 		m.editor.Invalidate()
 		m.updateTerminalTitle()
 		m.showLoadedResources(false, true)
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	if rebuilt == nil {
+		return nil
+	}
+	wait := func(ctx context.Context) error { return awaitAutocompleteRebuild(ctx, rebuilt) }
+	var err error
+	if m.onOwnerLoop() {
+		// The rebuild posts to the owner loop, which is this goroutine: the wait serves it, as an awaited handler phase does.
+		err = m.awaitExtensionUI(ctx, wait)
+	} else {
+		err = wait(ctx)
+	}
+	if err != nil && ctx.Err() == nil && !errors.Is(err, errInteractiveShutdown) {
+		// The throw of setupAutocompleteProvider: no handler of the bind catches it, so a replacement's caller makes it fatal and the startup's init() lets it end the process.
+		return uncaughtError{err}
+	}
+	return err
 }
 
 // runSignalNotifier is what the extension host's UI bridge offers the owner of the agent's run: a report that a run began or ended.

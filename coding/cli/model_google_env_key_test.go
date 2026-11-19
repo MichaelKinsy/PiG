@@ -20,16 +20,19 @@ import (
 // GOOGLE_CLOUD_API_KEY, else ADC (providers/google-vertex.ts). Neither reads
 // GOOGLE_API_KEY, and Vertex never borrows the Gemini key.
 func TestBuildModelGoogleKeysMatchUpstreamEnvVars(t *testing.T) {
-	for _, tc := range []struct {
+	type row struct {
 		name, provider string
 		env            map[string]string
 		wantKey        string
-	}{
+	}
+	rows := append([]row{
 		{name: "google ignores GOOGLE_API_KEY", provider: "google", env: map[string]string{"GOOGLE_API_KEY": "google-api"}},
 		{name: "google reads GEMINI_API_KEY", provider: "google", env: map[string]string{"GEMINI_API_KEY": "gemini", "GOOGLE_API_KEY": "google-api"}, wantKey: "gemini"},
-		{name: "vertex ignores Gemini and GOOGLE_API_KEY", provider: "google-vertex", env: map[string]string{"GEMINI_API_KEY": "gemini", "GOOGLE_API_KEY": "google-api"}},
-		{name: "vertex reads GOOGLE_CLOUD_API_KEY", provider: "google-vertex", env: map[string]string{"GEMINI_API_KEY": "gemini", "GOOGLE_CLOUD_API_KEY": "cloud"}, wantKey: "cloud"},
-	} {
+	}, whenVertex(
+		row{name: "vertex ignores Gemini and GOOGLE_API_KEY", provider: "google-vertex", env: map[string]string{"GEMINI_API_KEY": "gemini", "GOOGLE_API_KEY": "google-api"}},
+		row{name: "vertex reads GOOGLE_CLOUD_API_KEY", provider: "google-vertex", env: map[string]string{"GEMINI_API_KEY": "gemini", "GOOGLE_CLOUD_API_KEY": "cloud"}, wantKey: "cloud"},
+	)...)
+	for _, tc := range rows {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, name := range []string{"GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_CLOUD_API_KEY"} {
 				t.Setenv(name, tc.env[name])

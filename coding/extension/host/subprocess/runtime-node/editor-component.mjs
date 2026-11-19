@@ -76,6 +76,8 @@ export class EditorComponentHost {
 
   install(factory) {
     const runtime = this.runtime;
+    // null: the UI has no editor. {}: an interactive UI whose first setupAutocompleteProvider has not run (Pi's autocompleteProvider is undefined), so
+    // the editor gets no provider at install and hears the first one from the setup that follows the bind.
     const autocomplete = runtime.callSync("ui.autocomplete.current");
     if (!autocomplete) return;
     this.seq += 1;
@@ -119,9 +121,11 @@ export class EditorComponentHost {
         if (session.active) runtime.notify("ui.setShowHardwareCursor", { key: session.key, enabled: enabled === true });
       },
     };
+    // Pi replaces `this.editor` only once the factory's editor has taken every setting (setCustomEditorComponent): an editor that throws on the way
+    // leaves the previous one installed and answering input, so it is detached after the last step that can throw.
     const component = factory(tui, this.editorTheme(), runtime.keybindings());
-    this.detach();
     if (!component) {
+      this.detach();
       runtime.notify("ui.editor.clear", { key: "" });
       return;
     }
@@ -131,7 +135,7 @@ export class EditorComponentHost {
     component.onSubmit = (text) => this.submit(session, text);
     component.onChange = (text) => this.changed(session, text);
     if (component.borderColor !== undefined) component.borderColor = this.borderColor(session);
-    if (typeof component.setAutocompleteProvider === "function") {
+    if (autocomplete.id && typeof component.setAutocompleteProvider === "function") {
       component.setAutocompleteProvider(runtime.autocomplete.current(autocomplete));
     }
     // Pi copies the app-level handlers onto a CustomEditor (duck-typed on
@@ -147,6 +151,7 @@ export class EditorComponentHost {
     }
     // ui.setFocus(editor).
     if (runtimeRequire("./shims/pi-dist/pi-tui/tui.js").isFocusable(component)) component.focused = true;
+    this.detach();
     this.session = session;
     // The host answers with the editor text, padding, autocomplete size and
     // focus it copies, then the editor renders.

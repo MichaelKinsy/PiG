@@ -393,7 +393,7 @@ func EvaluateOutcome(o *ScenarioOutcome) {
 		}
 	}
 
-	// final_frame_cursor_only_pig / _pi: each binary's exact count of cursor-only frames after the final_frame text (D618).
+	// final_frame_cursor_only_pig / _pi: each binary's exact count of cursor-only frames after the final_frame text.
 	evaluateFinalFrameCursorOnly(o, a)
 
 	// transcript_sequences_equal: the two binaries' ordered sequences in each declared window of the terminal transcript.

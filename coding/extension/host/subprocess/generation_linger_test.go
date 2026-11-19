@@ -137,23 +137,6 @@ func processEnded(me *managedExt) <-chan struct{} {
 	return me.packedProcess.startWait()
 }
 
-func requireExited(t *testing.T, me *managedExt, what string) {
-	t.Helper()
-	exited := me.exited()
-	if exited == nil && me.packedProcess != nil {
-		// A member of the Node cell: the cell's process is the member's process.
-		exited = me.packedProcess.startWait()
-	}
-	if exited == nil {
-		t.Fatalf("%s: the generation has no process to wait for", what)
-	}
-	select {
-	case <-exited:
-	case <-time.After(testTimeout(t, 10*time.Second)):
-		t.Fatalf("%s: the process is still running", what)
-	}
-}
-
 // requireConnEnded waits for the connection of a generation that shares its process with live extensions: the generation ends, the process does not.
 func requireConnEnded(t *testing.T, conn *Conn, what string) {
 	t.Helper()

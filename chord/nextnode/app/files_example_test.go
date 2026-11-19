@@ -84,7 +84,7 @@ func TestExample65Files(t *testing.T) {
 	if err := CopyFiles(FilesSource{Store: f.store, Files: filepath.Join(f.dir, "files")}, filepath.Join(root, "copy"), background); err != nil {
 		t.Fatal(err)
 	}
-	other := filesOf(t, fixtureOptions{Dir: filepath.Join(root, "copy")})
+	other := filesOf(t, fixtureOptions{Dir: filepath.Join(root, "copy"), Store: kitStore})
 	if entries := other.must("list", "space", "shared", "folder", "docs/drafts").(*delta.JsonObject).Value("items").([]any); len(entries) != 1 {
 		t.Fatalf("8. the copy's docs/drafts: %d entries", len(entries))
 	}

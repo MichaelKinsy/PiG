@@ -153,6 +153,9 @@ fn io_wait(addr: &str) -> std::io::Result<()> {
     Ok(())
 }
 
+/// The address the session_info_changed handler waits on first; empty when the handler is not armed (io_wait_name).
+static NAME_WAIT_ADDR: std::sync::Mutex<String> = std::sync::Mutex::new(String::new());
+
 /// Subscribes `handler` to the event `name`. A before_agent_start handler registers with `on_before_agent_start` and receives the event as Pi's object (`BeforeAgentStartEvent::snapshot`).
 fn subscribe(
     subscriber: &pig_sdk::EventSubscriber,
@@ -2444,6 +2447,7 @@ fn main() {
             Err(err) => format!("{name}=error:{err}"),
         };
         [
+            describe("wait", ctx.wait_for_idle().map(|()| None)),
             describe("new", ctx.new_session(serde_json::json!({}))),
             describe("fork", ctx.fork("entry", serde_json::json!({}))),
             describe(
@@ -2496,6 +2500,74 @@ fn main() {
                 &format!("stored_actions:{}", report_session_actions(&kept)),
                 "info",
             );
+            CommandResult::Ok
+        },
+    );
+    // tool_call_cancel_on subscribes to tool_call with a handler that waits for the cancel signal and then answers (D650 claim 6).
+    let tool_call_cancel_subscriber = ext.event_subscriber();
+    let tool_call_cancel_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "tool_call_cancel_on",
+        "Subscribe to tool_call with a handler that waits for the cancel signal",
+        move |_ctx, _args| {
+            let subscription = subscribe(
+                &tool_call_cancel_subscriber,
+                "tool_call",
+                move |ctx, _data| {
+                    ctx.notify("cancel_wait", "info");
+                    while !ctx.is_cancelled() {
+                        std::thread::sleep(std::time::Duration::from_millis(5));
+                    }
+                    ctx.notify("cancel_seen", "info");
+                    Ok(Some(
+                        json!({"block": true, "reason": "answered after the abort"}),
+                    ))
+                },
+            );
+            tool_call_cancel_subscriptions
+                .lock()
+                .unwrap()
+                .push(subscription);
+            CommandResult::Ok
+        },
+    );
+    // session_actions_tool makes the same calls, and the wait, through the context of a tool's execute: Pi's createContext() object, so every one is refused.
+    ext.tool(
+        "session_actions_tool",
+        "Call the session actions through the tool's context",
+        json!({"type": "object", "properties": {}}),
+        move |ctx, _| ToolResult::text(format!("tool_actions:{}", report_session_actions(ctx))),
+    );
+    // wait_idle_command waits for the run from a command context (runner.ts createCommandContext); wait_idle_with_session from a withSession callback's context.
+    ext.command(
+        "wait_idle_command",
+        "Wait for the run from a command",
+        |ctx, _| {
+            let text = match ctx.wait_for_idle() {
+                Ok(()) => "done".to_string(),
+                Err(err) => format!("error:{err}"),
+            };
+            ctx.notify(&format!("wait_idle:{text}"), "info");
+            CommandResult::Ok
+        },
+    );
+    ext.command(
+        "wait_idle_with_session",
+        "Wait for the run from a withSession callback",
+        |ctx, _| {
+            // The callback runs while this command's switch_session call is in flight, so the notice is sent once the call returned.
+            let text = Arc::new(Mutex::new("never ran".to_string()));
+            let callback_text = text.clone();
+            let _ = ctx.switch_session_with("/s.jsonl", serde_json::json!({}), move |replaced| {
+                *callback_text.lock().unwrap() = match replaced.wait_for_idle() {
+                    Ok(()) => "done".to_string(),
+                    Err(err) => format!("error:{err}"),
+                };
+                Ok(())
+            });
+            let text = text.lock().unwrap().clone();
+            ctx.notify(&format!("with_session_wait:{text}"), "info");
             CommandResult::Ok
         },
     );
@@ -3103,6 +3175,21 @@ fn main() {
             let aborted = ctx.is_cancelled();
             let second = dialog("tool_signal:later");
             ToolResult::text(format!("tool_signal:{aborted}:{first}:{second}"))
+        },
+    );
+    // aborted_entry_probe: called with its run already aborted, it echoes the nonce, reports whether its signal was aborted on its first line, and makes a host call after that, which the host answers (TestConformance_ToolCalledAbortedEntersWithItsSignalAborted).
+    ext.tool(
+        "aborted_entry_probe",
+        "Report the signal a tool starts with",
+        json!({"type": "object", "properties": {}}),
+        |ctx, params: Value| {
+            let aborted = ctx.is_cancelled();
+            let nonce = params["nonce"].as_str().unwrap_or("").to_string();
+            let answer = match ctx.input(&format!("aborted_entry:{nonce}"), "p") {
+                Ok((value, _)) => value.as_str().unwrap_or("").to_string(),
+                Err(error) => format!("failed: {error}"),
+            };
+            ToolResult::text(format!("aborted_entry:{nonce}:{aborted}:{answer}"))
         },
     );
     // signal_nested_probe: a nested tool call keeps working after the abort, as Pi's in-process calls do.
@@ -3847,6 +3934,42 @@ fn main() {
             Err(err) => CommandResult::Error(err.to_string()),
         },
     );
+    ext.command(
+        "io_wait_name",
+        "Make the session_info_changed handler wait on a socket read",
+        |_ctx, args| {
+            *NAME_WAIT_ADDR.lock().unwrap() = args.to_string();
+            CommandResult::Ok
+        },
+    );
+    // io_wait_input and io_wait_start subscribe an input / before_agent_start handler that waits on a socket read first and then notifies "<event>:<text or prompt>".
+    for (command, event, member) in [
+        ("io_wait_input", "input", "text"),
+        ("io_wait_start", "before_agent_start", "prompt"),
+    ] {
+        let subscriber = ext.event_subscriber();
+        ext.command(
+            command,
+            "Make an input or before_agent_start handler wait on a socket read",
+            move |_ctx, args| {
+                let addr = args.to_string();
+                let subscription = subscribe(&subscriber, event, move |ctx, data| {
+                    io_wait(&addr).map_err(|err| err.to_string())?;
+                    ctx.notify(
+                        &format!(
+                            "{event}:{}",
+                            data.get(member).and_then(Value::as_str).unwrap_or("")
+                        ),
+                        "info",
+                    );
+                    Ok(None)
+                });
+                // The handler stays subscribed for the life of the extension.
+                std::mem::forget(subscription);
+                CommandResult::Ok
+            },
+        );
+    }
     let io_wait_subscriber = ext.event_subscriber();
     let io_wait_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));
@@ -4606,6 +4729,29 @@ fn main() {
     // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it,
     // shows it and updates it with a focus request, the same way in every SDK fixture (conformance
     // TestConformance_UIViewToolShowsAndFocuses).
+    // D521: bigint_tool registers a tool whose schema declares a bigint parameter and answers the kind of value it receives for it and the value.
+    ext.command(
+        "bigint_tool",
+        "Register the tool that reports what a bigint argument arrives as",
+        |ctx, _args| {
+            let tool = ToolDefinition::new(
+                "bigint_arg",
+                "bigint_arg",
+                "Report the kind and value of n",
+                json!({"type": "object", "required": ["n"], "properties": {"n": {"type": "bigint"}}}),
+                |_ctx, params| {
+                    let value = params.get("n").cloned().unwrap_or(Value::Null);
+                    let kind = if value.is_string() { "string" } else { "other" };
+                    let shown = value.as_str().map(str::to_string).unwrap_or_else(|| value.to_string());
+                    ToolResult::text(format!("{kind}:{shown}"))
+                },
+            );
+            match ctx.register_tool(tool) {
+                Ok(()) => CommandResult::Ok,
+                Err(err) => CommandResult::Error(err.to_string()),
+            }
+        },
+    );
     ext.command(
         "ui_view_tool",
         "Register the tool that shows a titled view",
@@ -5204,6 +5350,94 @@ fn main() {
                 Ok(None)
             });
             event_field_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    let event_level_subscriber = ext.event_subscriber();
+    let event_level_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    // event_level_edit_probe `<event> <top|deep>`: a handler that edits the event in place and returns nothing. `top` assigns a member of the event itself (probeTop); `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text block, else a string content, else a `probe` member. Every edit writes `other-event-edit`.
+    ext.command(
+        "event_level_edit_probe",
+        "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place",
+        move |_ctx, args| {
+            let mut words = args.split_whitespace();
+            let name = words.next().unwrap_or("").to_string();
+            let top = words.next() == Some("top");
+            let subscription = subscribe(&event_level_subscriber, &name, move |_ctx, data| {
+                let edited = Value::from("other-event-edit");
+                if top {
+                    data["probeTop"] = edited;
+                    return Ok(None);
+                }
+                let target: Option<&mut Value> = if data.get("message").is_some() {
+                    data.get_mut("message")
+                } else if let Some(list) = data.get_mut("messages").and_then(|v| v.as_array_mut()) {
+                    let at = list
+                        .iter()
+                        .position(|m| m.get("role").and_then(|r| r.as_str()) == Some("user"))
+                        .unwrap_or(0);
+                    list.get_mut(at)
+                } else {
+                    None
+                };
+                let Some(target) = target.filter(|t| t.is_object()) else {
+                    return Ok(None);
+                };
+                let first_is_text = target
+                    .get("content")
+                    .and_then(|c| c.as_array())
+                    .and_then(|c| c.first())
+                    .is_some_and(|b| b.get("type").and_then(|t| t.as_str()) == Some("text"));
+                if first_is_text {
+                    target["content"][0]["text"] = edited;
+                } else if target.get("content").is_some_and(|c| c.is_string()) {
+                    target["content"] = edited;
+                } else {
+                    target["probe"] = edited;
+                }
+                Ok(None)
+            });
+            event_level_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
+    let event_member_subscriber = ext.event_subscriber();
+    let event_member_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    // event_member_probe `<event> <set|delete|once> <member> [json]`: a handler that assigns the member the JSON, deletes it, or (once) assigns it in its first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there.
+    ext.command(
+        "event_member_probe",
+        "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event",
+        move |_ctx, args| {
+            let mut words = args.trim().splitn(4, char::is_whitespace);
+            let name = words.next().unwrap_or("").to_string();
+            let op = words.next().unwrap_or("").to_string();
+            let member = words.next().unwrap_or("").to_string();
+            let value: Value = match words.next().map(str::trim) {
+                Some(raw) if !raw.is_empty() => match serde_json::from_str(raw) {
+                    Ok(value) => value,
+                    Err(err) => return CommandResult::Error(err.to_string()),
+                },
+                _ => Value::Null,
+            };
+            let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+            let reported = name.clone();
+            let subscription = subscribe(&event_member_subscriber, &name, move |ctx, data| {
+                let call = calls.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+                if op == "delete" {
+                    if let Some(object) = data.as_object_mut() {
+                        object.remove(&member);
+                    }
+                } else if op == "once" && call > 1 {
+                    let stale = data.get(member.as_str()) == Some(&value);
+                    ctx.notify(&format!("member_probe_stale:{}:{}", reported, stale), "info");
+                } else {
+                    data[member.as_str()] = value.clone();
+                }
+                Ok(None)
+            });
+            event_member_subscriptions.lock().unwrap().push(subscription);
             CommandResult::Ok
         },
     );
@@ -5952,6 +6186,37 @@ fn main() {
     let event_edit_subscriber = ext.event_subscriber();
     let event_edit_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
         Arc::new(Mutex::new(Vec::new()));
+    // event_assign_probe: `<event>`, a handler that ASSIGNS a new value to the event's input (tool_call), messages (context) or entries (turn_end) instead of editing the old value in place, and returns nothing.
+    let event_assign_subscriber = ext.event_subscriber();
+    let event_assign_subscriptions: Arc<Mutex<Vec<pig_sdk::EventSubscription>>> =
+        Arc::new(Mutex::new(Vec::new()));
+    ext.command(
+        "event_assign_probe",
+        "Subscribe to the event named by the argument with a handler that assigns a new value to the event's input, messages or entries",
+        move |_ctx, args| {
+            let (name, variant) = args.trim().split_once(' ').map_or((args.trim().to_string(), String::new()), |(n, v)| (n.to_string(), v.to_string()));
+            let which = name.clone();
+            let subscription = subscribe(&event_assign_subscriber, &name, move |_ctx, data| {
+                match which.as_str() {
+                    "tool_call" => data["input"] = serde_json::json!({"command": "other-event-edit"}),
+                    "context" => {
+                        data["messages"] = match variant.as_str() {
+                            "bad" => serde_json::json!("oops"),
+                            "badmsg" => serde_json::json!([42]),
+                            _ => serde_json::json!([{"role": "user", "content": [{"type": "text", "text": "other-event-edit"}], "timestamp": 1}]),
+                        }
+                    }
+                    "turn_end" => {
+                        data["entries"] = serde_json::json!([{"type": "custom", "customType": "other-event-edit"}])
+                    }
+                    other => return Err(format!("event_assign_probe has no event {other}")),
+                }
+                Ok(None)
+            });
+            event_assign_subscriptions.lock().unwrap().push(subscription);
+            CommandResult::Ok
+        },
+    );
     // event_edit_probe: `<event> <edit> [fail]`, a handler that makes one edit of the event's content, details, isError, message or messages (tool_result, message_end, context), returns nothing and, with fail, errors after the edit. Every edit writes the value `other-event-edit`, which no other test uses.
     ext.command(
         "event_edit_probe",
@@ -6508,6 +6773,86 @@ fn main() {
                 "info",
             );
             CommandResult::Ok
+        },
+    );
+    // stale-members calls the members that answer a context kept past its Session: each outcome is one line, and the command fails with every
+    // line when one carries the stale message, else it reports them.
+    fn stale_members(ctx: &pig_sdk::Context) -> Result<(), String> {
+        let mut lines: Vec<String> = Vec::new();
+        let mut stale = false;
+        let mut member = |name: &str, call: &dyn Fn() -> Result<String, String>| {
+            let outcome = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(call)) {
+                Ok(Ok(value)) => format!("ok:{value}"),
+                Ok(Err(error)) => format!("error:{error}"),
+                Err(payload) => {
+                    let message = payload
+                        .downcast_ref::<String>()
+                        .cloned()
+                        .or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()))
+                        .unwrap_or_default();
+                    format!("panics:{message}")
+                }
+            };
+            stale = stale || outcome.contains("This extension ctx is stale");
+            lines.push(format!("{name}={outcome}"));
+        };
+        member("theme", &|| {
+            let _ = ctx.theme();
+            Ok("Theme".to_string())
+        });
+        member("width", &|| Ok(ctx.width().to_string()));
+        member("height", &|| Ok(ctx.height().to_string()));
+        member("sessionName", &|| Ok(ctx.session_name()));
+        member("setWidgetLines", &|| {
+            ctx.set_widget("stale-members", vec!["x".to_string()])
+                .map(|()| String::new())
+                .map_err(|e| e.to_string())
+        });
+        member("setWidgetView", &|| {
+            ctx.set_widget_view(
+                "stale-members-view",
+                pig_sdk::kit::View::new(pig_sdk::kit::Text::new("x", 0, 0)),
+                None,
+            )
+            .map(|()| String::new())
+            .map_err(|e| e.to_string())
+        });
+        member("setWidgetRenderer", &|| {
+            ctx.set_widget_renderer(
+                "stale-members-renderer",
+                Some(|_width: u32| vec!["x".to_string()]),
+                None,
+            )
+            .map(|()| String::new())
+            .map_err(|e| e.to_string())
+        });
+        member("onUpdate", &|| {
+            ctx.on_update(pig_sdk::ToolResult::text("x"))
+                .map(|()| String::new())
+                .map_err(|e| e.to_string())
+        });
+        member("getSettings", &|| {
+            ctx.get_settings()
+                .map(|_| String::new())
+                .map_err(|e| e.to_string())
+        });
+        member("registerToolRenderer", &|| {
+            ctx.register_tool_renderer(|_tool, _builtin| None)
+                .map(|()| String::new())
+                .map_err(|e| e.to_string())
+        });
+        if stale {
+            return Err(format!("stale-members\n{}", lines.join("\n")));
+        }
+        ctx.notify(&format!("members\n{}", lines.join("\n")), "info");
+        Ok(())
+    }
+    ext.command(
+        "stale-members",
+        "Call the members that fail with the stale message",
+        |ctx, _args| match stale_members(ctx) {
+            Ok(()) => CommandResult::Ok,
+            Err(error) => CommandResult::Error(error),
         },
     );
     ext.command("signal-probe", "Report ctx.signal", |ctx, _args| {
@@ -7643,6 +7988,13 @@ fn main() {
         }
         None
     });
+    // The handler's own context is still active (Pi invalidates after the handlers ran): the stale-members test reads every member from here.
+    ext.on_event_result("session_shutdown", |ctx, data| {
+        if data.get("reason").and_then(Value::as_str) == Some("stale-members-test") {
+            stale_members(ctx)?;
+        }
+        Ok(None)
+    });
     ext.on_event("session_shutdown", |ctx, data| {
         let reason = data.get("reason").and_then(Value::as_str).unwrap_or("");
         ctx.notify(&format!("session_shutdown:{reason}"), "info");
@@ -7656,6 +8008,11 @@ fn main() {
         None
     });
     ext.on_event("session_info_changed", |ctx, data| {
+        // io_wait_name arms the handler to wait on a socket read first, as a handler that awaits does in Pi.
+        let addr = NAME_WAIT_ADDR.lock().unwrap().clone();
+        if !addr.is_empty() {
+            let _ = io_wait(&addr);
+        }
         let name = data.get("name").and_then(Value::as_str).unwrap_or("");
         ctx.notify(&format!("session_info_changed:{name}"), "info");
         None

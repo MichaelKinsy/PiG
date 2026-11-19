@@ -36,8 +36,12 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	if os.Getenv(appFixtureEnv) == "worker" {
+	switch os.Getenv(appFixtureEnv) {
+	case "worker":
 		StartWorker(workerOptions())
+		return
+	case "importer":
+		runSeamChild()
 		return
 	}
 	os.Exit(m.Run())
@@ -68,9 +72,18 @@ func workerOptions() WorkerOptions {
 // testWorker is the tests' worker kind: its entry is this test binary.
 func testWorker(t testing.TB, kind *contracts.HostKind, facet string) AppWorkerKind {
 	t.Helper()
-	entry, err := os.Executable()
+	worker, err := testWorkerKind(kind, facet)
 	if err != nil {
 		t.Fatal(err)
+	}
+	return worker
+}
+
+// testWorkerKind is testWorker for a process that has no test to fail (the importing child of the kill test).
+func testWorkerKind(kind *contracts.HostKind, facet string) (AppWorkerKind, error) {
+	entry, err := os.Executable()
+	if err != nil {
+		return AppWorkerKind{}, err
 	}
 	return AppWorkerKind{
 		Kind: kind, Entry: entry, Facet: facet,
@@ -80,7 +93,7 @@ func testWorker(t testing.TB, kind *contracts.HostKind, facet string) AppWorkerK
 		},
 		Authorize: func(data.Principal, contracts.Address) bool { return true },
 		IdleMs:    func() time.Duration { return time.Minute },
-	}
+	}, nil
 }
 
 // appErrors collects what an app reports.

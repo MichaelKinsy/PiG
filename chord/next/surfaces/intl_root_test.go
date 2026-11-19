@@ -8,6 +8,7 @@ import (
 // platform sets the three variables ICU reads for the default locale (set to a value, or unset).
 func platform(t *testing.T, all, messages, lang *string) {
 	t.Helper()
+	useEnvironmentLocale(t)
 	for name, value := range map[string]*string{"LC_ALL": all, "LC_MESSAGES": messages, "LANG": lang} {
 		t.Setenv(name, "")
 		if value == nil {
@@ -137,9 +138,15 @@ func TestFormatsAllocateOnlyTheResultForCanonicalTags(t *testing.T) {
 		if n := testing.AllocsPerRun(100, func() { _, _ = FormatNumber(lang, 1234567.891, nil) }); n > 6 {
 			t.Errorf("FormatNumber(%s) allocates %v times, want at most 6", locale, n)
 		}
+		if n := testing.AllocsPerRun(100, func() { _, _ = FormatTime(lang, at, nil) }); n > 6 {
+			t.Errorf("FormatTime(%s) allocates %v times, want at most 6", locale, n)
+		}
 	}
 	platform(t, nil, nil, new("de_DE.UTF-8"))
 	if n := testing.AllocsPerRun(100, func() { _, _ = FormatNumber(nil, 1234567.891, nil) }); n > 6 {
 		t.Errorf("FormatNumber(nil) allocates %v times, want at most 6", n)
+	}
+	if n := testing.AllocsPerRun(100, func() { _, _ = FormatTime(nil, at, nil) }); n > 6 {
+		t.Errorf("FormatTime(nil) allocates %v times, want at most 6", n)
 	}
 }

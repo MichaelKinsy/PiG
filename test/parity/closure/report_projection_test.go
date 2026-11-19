@@ -109,7 +109,7 @@ func TestRenderCoverageProjectsPortMapClaim(t *testing.T) {
 	hash := HashBytes([]byte("denominator-coverage"))
 	graph, err := Build([]Record{
 		&Snapshot{Kind: KindSnapshot, ID: "snapshot:denominator-coverage", UpstreamCommit: strings.Repeat("a", 40), TargetCommit: strings.Repeat("b", 40), ToolchainHash: hash, EnvironmentHash: hash},
-		&Pin{Kind: KindPin, ID: "pin:denominator-coverage", SnapshotID: "snapshot:denominator-coverage", Repository: "pig", Commit: strings.Repeat("b", 40), Path: "test/parity/coverage.md", SemanticID: "denominator:coverage-row", StartLine: 1, EndLine: 10, QuoteHash: hash},
+		&Pin{Kind: KindPin, ID: "pin:denominator-coverage", SnapshotID: "snapshot:denominator-coverage", Repository: "pig", Commit: strings.Repeat("b", 40), Path: "test/parity/generated/coverage.md", SemanticID: "denominator:coverage-row", StartLine: 1, EndLine: 10, QuoteHash: hash},
 		rowOrderFact(t, "snapshot:denominator-coverage", "pin:denominator-coverage", CoverageDataset, "rows", []string{"packages/example.ts"}),
 		&Fact{Kind: KindFact, ID: "fact:denominator:coverage-row:example", SnapshotID: "snapshot:denominator-coverage", FactType: "denominator:coverage-row", SubjectID: "packages/example.ts", Resolution: "observed", PinIDs: []string{"pin:denominator-coverage"}, Value: json.RawMessage(`{"fields":["` + "`packages/example.ts`" + `","✅","1 (scenario)","1 (scenario)","1 pass"]}`)},
 		&ProvisionalClaim{Kind: KindProvisionalClaim, ID: "provisional:denominator:port-map:example", SnapshotID: "snapshot:denominator-coverage", SubjectID: "packages/example.ts", SourcePinID: "pin:denominator-coverage", Status: "✅"},
@@ -701,7 +701,7 @@ func TestMarkdownReportsPreserveCurrentAuthorityRows(t *testing.T) {
 		denominatorFields   int
 	}{
 		{name: "port map", dataset: PortMapDataset, path: "docs/parity/PORT_MAP.md", denominatorFields: 3},
-		{name: "coverage", dataset: CoverageDataset, path: "test/parity/coverage.md", denominatorFields: 5},
+		{name: "coverage", dataset: CoverageDataset, path: "test/parity/generated/coverage.md", denominatorFields: 5},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			current, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(test.path)))

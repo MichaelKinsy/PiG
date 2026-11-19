@@ -50,7 +50,8 @@ func TestShowHardwareCursorDescriptionNamesPiG(t *testing.T) {
 	}
 }
 
-// PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY: it decides when Pi's name is unset, with the same truthy spellings.
+// PIG_TELEMETRY is PiG's name beside Pi's PI_TELEMETRY: it decides alone, with the same truthy spellings, and wins when both are set
+// (owner decision 2026-11-17; the full table is TestInstallTelemetryPigBeatsPiWhenBothAreSet).
 func TestInstallTelemetryReadsPigTelemetryBesidePis(t *testing.T) {
 	if value, ok := os.LookupEnv("PI_TELEMETRY"); ok {
 		_ = os.Unsetenv("PI_TELEMETRY")
@@ -68,8 +69,8 @@ func TestInstallTelemetryReadsPigTelemetryBesidePis(t *testing.T) {
 		t.Error("PIG_TELEMETRY=yes with the setting disabled: telemetry is disabled")
 	}
 	t.Setenv("PI_TELEMETRY", "0")
-	if off.IsInstallTelemetryEnabled() {
-		t.Error("PI_TELEMETRY=0 beside PIG_TELEMETRY=yes: Pi's name does not win")
+	if !off.IsInstallTelemetryEnabled() {
+		t.Error("PI_TELEMETRY=0 beside PIG_TELEMETRY=yes: Pi's name wins, PIG_TELEMETRY must")
 	}
 }
 

@@ -17,7 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
-// pig additive (D19): autocomplete callback handles stay on their owner connection. ui.addAutocompleteProvider names a factoryId; autocomplete.sync wraps it around current or invokes apply/trigger, while autocomplete.suggest awaits getSuggestions. Captured references use ui.autocomplete.invoke and one-way release notifications. Columns are UTF-16. Parent cancellation owns handler calls; queryId also cancels editor-owned calls without a parent.
+// pig additive (D19): autocomplete callback handles stay on their owner connection. ui.addAutocompleteProvider names a factoryId; autocomplete.sync wraps it around current, invokes apply/trigger, or tells an installed editor's runtime that the host rebuilt the provider chain (operation "changed", current the new descriptor, answered with no result; Pi's setupAutocompleteProvider calls setAutocompleteProvider on the installed editor after every rebuild), while autocomplete.suggest awaits getSuggestions. Captured references use ui.autocomplete.invoke and one-way release notifications. Columns are UTF-16. Parent cancellation owns handler calls; queryId also cancels editor-owned calls without a parent.
 type autocompleteDescriptor struct {
 	ID                string   `json:"id"`
 	LocalID           string   `json:"localId,omitempty"`
@@ -653,7 +653,7 @@ type RequestPayload struct {
 	MessageSeqs []uint64 `json:"message_seqs,omitempty"` //portlint:allow emptydrop a PiG-only frame field; absent means no message of the event is shared
 	// SignalTimeoutMS, on oauth_refresh, tells a runtime whose refresh callback receives an AbortSignal that the signal is AbortSignal.timeout(SignalTimeoutMS) alone: the caller's cancellation never reaches it, as in Pi's refreshStoredOAuthCredential (auth/resolve.ts). Absent, the signal follows the request's cancellation.
 	SignalTimeoutMS *float64 `json:"signal_timeout_ms,omitempty"`
-	// SignalAborted, on a session_before_compact or session_before_tree event, reports that the event's AbortSignal had already aborted when the host dispatched the handler: Pi's runner awaits every handler of those events with event.signal aborted (runner.ts emit), so a handler dispatched after the abort starts with event.signal.aborted true. When the signal ends while the handler runs, the host sends a signal-only cancel (CancelPayload.SignalOnly) and keeps waiting for the reply, as Pi keeps the handler's result.
+	// SignalAborted, on a session_before_compact or session_before_tree event, reports that the event's AbortSignal had already aborted when the host dispatched the handler: Pi's runner awaits every handler of those events with event.signal aborted (runner.ts emit), so a handler dispatched after the abort starts with event.signal.aborted true. When the signal ends while the handler runs, the host sends a signal-only cancel (CancelPayload.SignalOnly) and keeps waiting for the reply, as Pi keeps the handler's result. On tool_call it reports that the call's context had ended when the call reached the host (a direct call of the tool, or an abort that lands after the agent's gate): Pi runs tool.execute with an aborted signal, so the tool starts with signal.aborted true and its host calls run; the signal-only cancel follows the request, and D111's grace period runs from the abort.
 	SignalAborted bool `json:"signal_aborted,omitempty"`
 	// OwnSignal, on tool_call, reports a nested call that runs with the signal its caller passed in options.signal: the tool's signal parameter is that signal, not the run's.
 	OwnSignal bool `json:"own_signal,omitempty"`
@@ -779,8 +779,10 @@ type BeforeAgentStartResponsePayload struct {
 
 // ToolCallResponsePayload is the result of a tool_call handler. Input is the event's input when the handler left it different from the one it received; an omitted Input means the handler made no edit. Result is the handler's ordinary block result. Any other member is an error: a reply in another shape would otherwise decode as no result and lose a block.
 type ToolCallResponsePayload struct {
-	Input  json.RawMessage `json:"_pigToolCallInput"`
-	Result json.RawMessage `json:"_pigToolCallResult"`
+	Input json.RawMessage `json:"_pigToolCallInput"`
+	// EventInput is event.input when the handler assigned a new object to it instead of editing the one it received; the next handlers receive it and the tool does not.
+	EventInput json.RawMessage `json:"_pigToolCallEventInput"`
+	Result     json.RawMessage `json:"_pigToolCallResult"`
 }
 
 func (p *ToolCallResponsePayload) UnmarshalJSON(data []byte) error {
@@ -795,22 +797,45 @@ func (p *ToolCallResponsePayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MessageEndResponsePayload is the result of an extension's message_end handler, from every SDK. Message is the event's message when the handler left it different from the one it received (an in-place edit, which Pi's later handlers, turn_end, agent_end and the stored entry all hold); an omitted Message means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
-type MessageEndResponsePayload struct {
-	Message json.RawMessage `json:"_pigMessageEndMessage"`
-	Result  json.RawMessage `json:"_pigMessageEndResult"`
+// EventResponsePayload is the result of an extension's message_start, message_end, turn_end or agent_end handler, from every SDK (turn_end's reply carries it beside its boundary members). Edits are the messages of the event the handler left different from the ones it received (an in-place edit, which Pi's later handlers, the saved entry and the next provider request all hold), each at its position in the event's list of messages; an omitted Edits means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
+type EventResponsePayload struct {
+	Edits  []EventEdit     `json:"_pigEventEdits"`
+	Result json.RawMessage `json:"_pigEventResult"`
 }
 
-func (p *MessageEndResponsePayload) UnmarshalJSON(data []byte) error {
-	type messageEndResponsePayload MessageEndResponsePayload
+func (p *EventResponsePayload) UnmarshalJSON(data []byte) error {
+	type eventResponsePayload EventResponsePayload
 	decoder := json.NewDecoder(bytes.NewReader(data))
 	decoder.DisallowUnknownFields()
-	var decoded messageEndResponsePayload
+	var decoded eventResponsePayload
 	if err := decoder.Decode(&decoded); err != nil {
 		return err
 	}
-	*p = MessageEndResponsePayload(decoded)
+	*p = EventResponsePayload(decoded)
 	return nil
+}
+
+// EventEdit is one message of an event as a handler left it: At is its position in the messages the event holds (message_start and message_end: 0; turn_end: 0 for the assistant message, then the tool results; agent_end: the index in messages) and Message the message. It has no decoder of its own: the reply's strict decode reaches its members, and applyEventEdits refuses an entry that names no position or no message object.
+//
+// The second form names a member of the event itself: {"member":"note","value":<json>} assigns it and {"member":"note","deleted":true} removes it (a top-level member of message_start, message_update, turn_start, agent_start or agent_end that a handler added, reassigned or deleted; see [extension.EventMember]). An entry is of one form: an entry with At or Message and Member, Value or Deleted is refused.
+type EventEdit struct {
+	At      *int            `json:"at"`
+	Message json.RawMessage `json:"message"`
+	Member  string          `json:"member"`
+	Value   json.RawMessage `json:"value"`
+	Deleted bool            `json:"deleted"`
+}
+
+// isMemberEntry tells whether the entry is of the second form (it names a member, or carries a member's value or deletion).
+func (e EventEdit) isMemberEntry() bool { return e.Member != "" || len(e.Value) > 0 || e.Deleted }
+
+// memberEvent tells whether a handler's edit of a top-level member of the event is carried: the events a Pi handler shares one object across handlers for (runner.ts emit) whose own members are not messages the entry holds.
+func memberEvent(event string) bool {
+	switch event {
+	case "message_start", "message_update", "turn_start", "agent_start", "agent_end":
+		return true
+	}
+	return false
 }
 
 // ToolResultResponsePayload is the result of an extension's tool_result handler, from every SDK. Edits names the members of the event the handler left different from the ones it received and, of those, the ones it edited in the object it received (see [extension.ToolResultEdits]); an omitted Edits means the handler made no edit. Result is the handler's ordinary result. Any other member is an error.
@@ -860,6 +885,8 @@ type ErrorInfo struct {
 	// builtinTool.localExec, and an SDK sets it on the error response of user_bash_exec when the error its exec raised is the one its local operations returned,
 	// unchanged. Message is then "timeout:<seconds>". It is omitted otherwise.
 	ShellExit *ShellExitInfo `json:"shellExit,omitempty"`
+	// closedByHost is set only on the answer a Conn makes up for a request still pending when the host closed the connection (Close, Retire): the extension did not give it, so it is no failure of the handler. It is neither sent nor read on the wire, and a copy of the value outside this process loses it, which is right: only the host's callers classify it (managedExt.answerError).
+	closedByHost bool
 }
 
 // ShellExitInfo is Pi's `shellExit`: the shell's own exit code and the seconds it ran, rounded to a tenth as Pi rounds them (Math.round(ms / 100) / 10).

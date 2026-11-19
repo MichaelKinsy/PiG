@@ -400,8 +400,8 @@ allocs = 24
 
 [[benchmark]]
 package = "./ai"
-benchmark = "BenchmarkCatalogModelJSONAll"
-allocs = 30688
+benchmark = "BenchmarkCatalogModelJSONAll/per-1000-entries"
+allocs = 7352
 
 [[benchmark]]
 package = "./ai"
@@ -416,7 +416,7 @@ allocs = 1
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkCloneCatalogCompat"
-allocs = 5015
+allocs = 4885
 
 [[benchmark]]
 package = "./ai"
@@ -432,6 +432,11 @@ allocs = 655
 package = "./ai"
 benchmark = "BenchmarkCodexWebSocketContinuation"
 allocs = 2124
+
+[[benchmark]]
+package = "./ai"
+benchmark = "BenchmarkCodexWebSocketStatsChanges"
+allocs = 1
 
 [[benchmark]]
 package = "./ai"
@@ -540,8 +545,8 @@ allocs = 787
 
 [[benchmark]]
 package = "./ai"
-benchmark = "BenchmarkGeneratedToModelCatalog"
-allocs = 18263
+benchmark = "BenchmarkGeneratedToModelCatalog/per-1000-entries"
+allocs = 7796
 
 [[benchmark]]
 package = "./ai"
@@ -1046,7 +1051,7 @@ allocs = 4
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkResolveCatalogRecordSequentialAll"
-allocs = 89
+allocs = 88
 
 [[benchmark]]
 package = "./ai"
@@ -1445,8 +1450,13 @@ allocs = 21
 
 [[benchmark]]
 package = "./coding"
-benchmark = "BenchmarkCatalogModelAuth"
-allocs = 460
+benchmark = "BenchmarkCatalogModelAuth/per-1000-entries"
+allocs = 10720
+
+[[benchmark]]
+package = "./coding"
+benchmark = "BenchmarkCatalogModelAuthCustomProvider"
+allocs = 161
 
 [[benchmark]]
 package = "./coding"
@@ -1480,8 +1490,8 @@ allocs = 707
 
 [[benchmark]]
 package = "./coding"
-benchmark = "BenchmarkInjectedCredentialAvailability"
-allocs = 352
+benchmark = "BenchmarkInjectedCredentialAvailability/per-1000-entries"
+allocs = 19877
 
 [[benchmark]]
 package = "./coding"
@@ -1495,8 +1505,8 @@ allocs = 10231
 
 [[benchmark]]
 package = "./coding"
-benchmark = "BenchmarkModelRegistryMetadata"
-allocs = 24036
+benchmark = "BenchmarkModelRegistryMetadata/per-1000-entries"
+allocs = 9918
 
 [[benchmark]]
 package = "./coding"
@@ -1661,7 +1671,7 @@ allocs = 1064
 [[benchmark]]
 package = "./coding"
 benchmark = "BenchmarkSessionRegistryMetadataRefresh"
-allocs = 444
+allocs = 308
 
 [[benchmark]]
 package = "./coding"
@@ -2425,6 +2435,11 @@ allocs = 8334
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkFusedToolCall"
+allocs = 123
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkHalfBlockRows/256/cells60x30"
 allocs = 5
 
@@ -2565,13 +2580,28 @@ allocs = 1064
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeAgentEndEvent"
+allocs = 1634
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeAgentEndEventEdit"
+allocs = 1656
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeAutocompleteRoundTrip"
 allocs = 171
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeEventLoopTurn"
-allocs = 30
+allocs = 18
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeInputHandlerRPC"
+allocs = 29
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2581,7 +2611,22 @@ allocs = 28
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeMessageEndEventEdit"
-allocs = 49
+allocs = 50
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeMessageStartEvent"
+allocs = 15
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeMessageStartEventEdit"
+allocs = 41
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeMessageUpdateStream"
+allocs = 186660
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2591,7 +2636,7 @@ allocs = 36566
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeToolCallEvent"
-allocs = 43
+allocs = 33
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2602,6 +2647,16 @@ allocs = 86
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkNodeToolResultEventEdit"
 allocs = 134
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeTurnEndEvent"
+allocs = 120
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkNodeTurnEndEventEdit"
+allocs = 138
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2695,18 +2750,53 @@ allocs = 12
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
-benchmark = "BenchmarkReload_PackedCellWarmCache/fixed"
-allocs = 1490
+benchmark = "BenchmarkRegistrationReaders/flag_resolution"
+allocs = 0
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
-benchmark = "BenchmarkReload_PackedCellWarmCache/per-100-sdk-files"
-allocs = 1105
+benchmark = "BenchmarkRegistrationReaders/node_runtime"
+allocs = 0
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRegistrationReaders/parallel_node_runtime"
+allocs = 1
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkRegistrationReaders/stopped_by_owner"
+allocs = 0
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/checkout-fixed"
+allocs = 1437
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/checkout-per-10-sdk-dirs"
+allocs = 120
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/checkout-per-100-sdk-files"
+allocs = 1103
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/fixed"
+allocs = 1400
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
 benchmark = "BenchmarkReload_PackedCellWarmCache/per-10-sdk-dirs"
 allocs = 120
+
+[[benchmark]]
+package = "./coding/extension/host/subprocess"
+benchmark = "BenchmarkReload_PackedCellWarmCache/per-100-sdk-files"
+allocs = 601
 
 [[benchmark]]
 package = "./coding/extension/host/subprocess"
@@ -2865,6 +2955,16 @@ allocs = 1
 
 [[benchmark]]
 package = "./internal/codingagent"
+benchmark = "BenchmarkBranchRefsOf10000/BranchRefs"
+allocs = 20001
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkBranchRefsOf10000/GetBranch"
+allocs = 292389
+
+[[benchmark]]
+package = "./internal/codingagent"
 benchmark = "BenchmarkBuildContext"
 allocs = 9008
 
@@ -2926,7 +3026,7 @@ allocs = 78
 [[benchmark]]
 package = "./internal/codingagent"
 benchmark = "BenchmarkCloneCatalogInput"
-allocs = 1017
+allocs = 29409
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3005,13 +3105,13 @@ allocs = 1
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkExtensionCatalogEncoding/cached"
-allocs = 49845
+benchmark = "BenchmarkExtensionCatalogEncoding/cached/per-1000-entries"
+allocs = 16883
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkExtensionCatalogEncoding/uncached"
-allocs = 89779
+benchmark = "BenchmarkExtensionCatalogEncoding/uncached/per-1000-entries"
+allocs = 19434
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3180,13 +3280,23 @@ allocs = 3177
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkModelPickerScopedReopen"
-allocs = 5394
+benchmark = "BenchmarkModelPickerScopedReopen/per-1000-entries"
+allocs = 80240
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkModelPickerSnapshotAndRender"
-allocs = 1440
+benchmark = "BenchmarkModelPickerScopedReopenCustomProvider"
+allocs = 807051
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkModelPickerSnapshotAndRender/per-1000-entries"
+allocs = 21291
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkModelPickerSnapshotAndRenderCustomProvider"
+allocs = 12274
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3257,6 +3367,26 @@ allocs = 36
 package = "./internal/codingagent"
 benchmark = "BenchmarkPromptTemplateExpansion/unicode"
 allocs = 18
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkReadEntries50Of10000/Page/GetEntry"
+allocs = 1851
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkReadEntries50Of10000/Page/ReadEntries"
+allocs = 1599
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkReadEntries50Of10000/Spread/GetEntry"
+allocs = 1851
+
+[[benchmark]]
+package = "./internal/codingagent"
+benchmark = "BenchmarkReadEntries50Of10000/Spread/ReadEntries"
+allocs = 1596
 
 [[benchmark]]
 package = "./internal/codingagent"
@@ -3620,13 +3750,13 @@ allocs = 110
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkWireModelCatalogBinding/encoded"
-allocs = 141665
+benchmark = "BenchmarkWireModelCatalogBinding/encoded/per-1000-entries"
+allocs = 38365
 
 [[benchmark]]
 package = "./internal/codingagent"
-benchmark = "BenchmarkWireModelCatalogBinding/legacy"
-allocs = 155106
+benchmark = "BenchmarkWireModelCatalogBinding/legacy/per-1000-entries"
+allocs = 39824
 
 [[benchmark]]
 package = "./internal/codingagent"

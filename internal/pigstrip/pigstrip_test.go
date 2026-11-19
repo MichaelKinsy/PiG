@@ -18,7 +18,24 @@ func TestTagMapsIDsToBuildTags(t *testing.T) {
 	}
 }
 
+// hideRecords empties the strip state for the rest of the test and restores it after, so a test of the state itself starts from the
+// state Stock PiG has whatever strip tags built the test binary. It reaches the unexported state, which is why it lives in this package's
+// tests: the production code has no way to un-strip a process.
+func hideRecords(t *testing.T) {
+	t.Helper()
+	mu.Lock()
+	saved := slices.Clone(stripped)
+	stripped = nil
+	mu.Unlock()
+	t.Cleanup(func() {
+		mu.Lock()
+		stripped = saved
+		mu.Unlock()
+	})
+}
+
 func TestStripHasAndUndo(t *testing.T) {
+	hideRecords(t)
 	if Has(ListFeatures, Docs) {
 		t.Fatal("a fresh process strips docs")
 	}
@@ -87,5 +104,33 @@ func TestErrorNamesThePigletAndHowToKeepIt(t *testing.T) {
 	undo()
 	if got := Error("The TypeScript and JavaScript extension runtime", ListFeatures, NodeExtensions).Error(); got != base {
 		t.Fatalf("after undo: %q, want %q", got, base)
+	}
+}
+
+// The probe is an ID no build tag strips, so the test starts from a state in which it is not recorded whichever strip tags built the test binary.
+func TestGenerationChangesOnlyWhenTheStripStateDoes(t *testing.T) {
+	const probe = "generation-probe"
+	start := Generation()
+	undo := Strip(ListFeatures, probe)
+	recorded := Generation()
+	if recorded <= start {
+		t.Fatalf("a new strip left the generation at %d (was %d)", recorded, start)
+	}
+	again := Strip(ListFeatures, probe)
+	if got := Generation(); got != recorded {
+		t.Fatalf("a strip that records nothing moved the generation to %d (was %d)", got, recorded)
+	}
+	again()
+	if got := Generation(); got != recorded {
+		t.Fatalf("the undo of a strip that recorded nothing moved the generation to %d (was %d)", got, recorded)
+	}
+	undo()
+	if got := Generation(); got <= recorded {
+		t.Fatalf("undoing a strip left the generation at %d (was %d)", got, recorded)
+	}
+	settled := Generation()
+	undo()
+	if got := Generation(); got != settled {
+		t.Fatalf("a second undo moved the generation to %d (was %d)", got, settled)
 	}
 }

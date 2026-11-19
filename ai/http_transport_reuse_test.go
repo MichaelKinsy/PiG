@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -125,45 +126,54 @@ func TestStreamingClientWithoutRetryReusesTheConnection(t *testing.T) {
 // Undici's headersTimeout and bodyTimeout run from the request that is being answered. A pooled connection's next request gets the whole
 // budget again, however long the connection sat idle before it. Go's transport keeps a read pending on an idle pooled connection, so a read
 // deadline set when that read began must not shorten the budget of the request that reuses the connection.
+//
+// The subject is one duration against another (the idle timeout, 3 s, against the time the connection sat idle and the time the headers took,
+// 2 s each), so the clock is the bubble's: the second request's headers arrive at 4 s on a read deadline set at 0 s, which is the shortened budget
+// the test must not see, and 1 s before the 5 s the reset deadline gives, in every run, whatever the host does. The server is reached over net.Pipe
+// (pipe_network_test.go); the same product code over a real socket, ending on events, is TestStreamingClientWithoutRetryReusesTheConnection and
+// TestProvidersReuseOneConnectionAcrossBuilds (the connection is reused, counted by connections accepted).
 func TestReusedStreamingConnectionGivesTheNextRequestTheFullIdleTimeout(t *testing.T) {
 	const timeout, idle, slowHeaders = 3000 * time.Millisecond, 2000 * time.Millisecond, 2000 * time.Millisecond
+	clearProxyEnvironment(t)
 	previous := ConfiguredHTTPIdleTimeoutMs()
 	t.Cleanup(func() { _ = ConfigureHTTPDispatcher(previous) })
-	if err := ConfigureHTTPDispatcher(int(timeout.Milliseconds())); err != nil {
-		t.Fatal(err)
-	}
-	var requests, accepted atomic.Int64
-	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		if requests.Add(1) == 2 {
-			time.Sleep(slowHeaders)
+	synctest.Test(t, func(t *testing.T) {
+		if err := ConfigureHTTPDispatcher(int(timeout.Milliseconds())); err != nil {
+			t.Fatal(err)
 		}
-		_, _ = io.WriteString(w, "ok")
-	}))
-	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
-		if state == http.StateNew {
-			accepted.Add(1)
-		}
-	}
-	server.Start()
-	t.Cleanup(server.Close)
-	// A model request is a POST whose body is written before the answer is awaited, so net/http does not replay it on another connection.
-	post := func() error {
-		response, err := newStreamingHTTPClient(false).Post(server.URL, "application/json", strings.NewReader(`{"model":"m"}`))
-		if err != nil {
+		var requests atomic.Int64
+		server := newPipeServer(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// A server that reads its request, as net/http then sees the client go away; a failing run ends with the test and no handler sleeps on in the bubble.
+			_, _ = io.Copy(io.Discard, r.Body)
+			if requests.Add(1) == 2 {
+				select {
+				case <-r.Context().Done():
+					return
+				case <-time.After(slowHeaders):
+				}
+			}
+			_, _ = io.WriteString(w, "ok")
+		}))
+		server.attach(t)
+		// A model request is a POST whose body is written before the answer is awaited, so net/http does not replay it on another connection.
+		post := func() error {
+			response, err := newStreamingHTTPClient(false).Post("http://reuse.test/", "application/json", strings.NewReader(`{"model":"m"}`))
+			if err != nil {
+				return err
+			}
+			defer func() { _ = response.Body.Close() }()
+			_, err = io.ReadAll(response.Body)
 			return err
 		}
-		defer func() { _ = response.Body.Close() }()
-		_, err = io.ReadAll(response.Body)
-		return err
-	}
-	if err := post(); err != nil {
-		t.Fatal(err)
-	}
-	time.Sleep(idle)
-	if err := post(); err != nil {
-		t.Fatalf("a request on a connection idle for %v failed while its headers took %v of the %v idle timeout: %v", idle, slowHeaders, timeout, err)
-	}
-	if got := accepted.Load(); got != 1 {
-		t.Fatalf("the second request opened a new connection (%d in all); the test needs it to reuse the first", got)
-	}
+		if err := post(); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(idle)
+		if err := post(); err != nil {
+			t.Fatalf("a request on a connection idle for %v failed while its headers took %v of the %v idle timeout: %v", idle, slowHeaders, timeout, err)
+		}
+		if got := server.dials.Load(); got != 1 {
+			t.Fatalf("the second request opened a new connection (%d in all); the test needs it to reuse the first", got)
+		}
+	})
 }

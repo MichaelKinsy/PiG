@@ -143,6 +143,15 @@ export default function (pi) {
     if (params.mode === "gone") registry.unregisterProvider("late");
     return reply({ mode: params.mode ?? null });
   });
+  // insecure_provider: four registrations of one provider after the factory finished, with insecure true, false, omitted and true (D36).
+  tool("insecure_provider", async (_id, _params, _signal, _update, ctx) => {
+    const registry = ctx.modelRegistry;
+    registry.registerProvider("tls", { baseUrl: "https://tls.test/v1", insecure: true });
+    registry.registerProvider("tls", { insecure: false });
+    registry.registerProvider("tls", { baseUrl: "https://tls.test/v2" });
+    registry.registerProvider("tls", { insecure: true });
+    return reply({ registered: 4 });
+  });
   // The provider "dyn": its oauth.usesCallbackServer is set, its oauth.modifyModels projects the models by the stored credential and its refreshModels reads the context and publishes (types.ts:1930, 2026, 2034). The Go, Rust, Python and Lisp fixtures register the same provider.
   pi.registerProvider("dyn", {
     api: "dyn-api", baseUrl: "https://dyn.test/v1", apiKey: "dyn-key",

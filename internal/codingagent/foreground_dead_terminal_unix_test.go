@@ -4,11 +4,15 @@ package codingagent
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 	"syscall"
 	"testing"
+	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 const foregroundDeadChildEnv = "PIG_FOREGROUND_DEAD_CHILD"
@@ -57,5 +61,56 @@ func TestForegroundCheckFailingWithEIOTakesTheDeadTerminalExit(t *testing.T) {
 				t.Fatalf("exit.log %q, output %q: want the terminal-gone reason with exit 129", log, output)
 			}
 		})
+	}
+}
+
+const foregroundNotControllingChildEnv = "PIG_FOREGROUND_NOT_CONTROLLING_CHILD"
+
+// TestForegroundNotControllingTerminalChild runs the production foreground check (tui.StdinInForeground, through foregroundOrExit) on a stdin that is a
+// terminal but not this process's controlling terminal, in a child process because a dead-terminal verdict ends the process. Only the terminal
+// operations are recorded; the check is the real one.
+func TestForegroundNotControllingTerminalChild(t *testing.T) {
+	if os.Getenv(foregroundNotControllingChildEnv) == "" {
+		t.Skip("child process only")
+	}
+	if _, err := unix.IoctlGetInt(0, unix.TIOCGPGRP); !errors.Is(err, unix.ENOTTY) {
+		t.Fatalf("premise: tcgetpgrp(stdin) = %v, want ENOTTY (stdin must be a terminal that is not the controlling terminal)", err)
+	}
+	m := NewInteractiveMode(nil, InteractiveModeOptions{CWD: "/work", AgentDir: os.Getenv("PIG_DEAD_TERMINAL_AGENT_DIR"), AppVersion: "9.9.9"})
+	var calls []string
+	var onContinue func() error
+	ops := m.suspendOperations()
+	ops.keepAlive = func(time.Duration) func() { return func() {} }
+	ops.ignoreInterrupt = func() func() { return func() {} }
+	ops.continued = func(continued func() error, _ func()) func() { onContinue = continued; return func() {} }
+	ops.stop = func() {}
+	ops.start = func() error { calls = append(calls, "start"); return nil }
+	ops.requestRender = func() { calls = append(calls, "render-force") }
+	ops.kill = func(pid int) error { calls = append(calls, fmt.Sprintf("kill:%d:SIGTSTP", pid)); return nil }
+	if err := suspendTerminal(t.Context(), "linux", nil, ops); err != nil {
+		t.Fatal(err)
+	}
+	calls = calls[:0] // the suspend's own SIGTSTP
+	err := onContinue()
+	_, _ = fmt.Fprintf(os.Stdout, "resume err=%v calls=%q\n", err, calls)
+	os.Exit(0)
+}
+
+// A SIGCONT that reaches a session whose stdin is a terminal that is not the controlling terminal restarts the UI as Pi's handleCtrlZ does
+// (ui.start(), then ui.requestRender(true)): tcgetpgrp answers ENOTTY there, job control does not apply, so the check neither stops the group
+// again nor takes the dead-terminal exit (129) that ENOTTY from a terminal write or setRawMode takes (D227).
+func TestResumeWithoutAControllingTerminalRestartsTheUI(t *testing.T) {
+	master, slave := openTestPTY(t) // O_NOCTTY: the child does not get it as controlling terminal
+	_ = master
+	agentDir := t.TempDir()
+	cmd := exec.Command(os.Args[0], "-test.run=^TestForegroundNotControllingTerminalChild$")
+	cmd.Env = append(os.Environ(), foregroundNotControllingChildEnv+"=1", "PIG_DEAD_TERMINAL_AGENT_DIR="+agentDir, "PIG_HOME="+t.TempDir())
+	cmd.Stdin = slave
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("child failed: %v\n%s", err, output)
+	}
+	if want := `resume err=<nil> calls=["start" "render-force"]`; !strings.Contains(string(output), want) {
+		t.Fatalf("child output %q, want %q: raw mode entered and a full render, no SIGTSTP, no exit", output, want)
 	}
 }

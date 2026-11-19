@@ -17,5 +17,5 @@ docs/site/docs/knowledge-graph.md
 internal/pigdocs/content/knowledge-graph.md
 internal/pigdocs/content/troubleshooting.md
 internal/pigstrip/ids_generated.go
-test/parity/coverage.md
+test/parity/generated/coverage.md
 test/parity/interfaces/custom-factory-call-surface-draft-v*.json

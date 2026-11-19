@@ -27,6 +27,9 @@ func TestLoginSearchIncludesProviderMethod(t *testing.T) {
 		selector.HandleInput("\x1b[B")
 	}
 	for _, id := range []string{"anthropic", "google", "amazon-bedrock", "google-vertex", "openrouter"} {
+		if ai.ProviderStripped(id) {
+			continue // every model of the provider is on an API this build compiles out, so it is no login provider
+		}
 		if !slices.Contains(ids, id) {
 			t.Errorf("missing %s from %v", id, ids)
 		}

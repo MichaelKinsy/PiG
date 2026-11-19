@@ -14,7 +14,8 @@ use crate::resource_loader::LoadedExtension;
 use crate::session_manager_class::SessionManager;
 use serde_json::{Map, Value, json};
 use std::io;
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex, PoisonError};
 
 /// A bound function that takes no argument.
 pub type Fn0<R> = Arc<dyn Fn() -> Result<R, String> + Send + Sync>;
@@ -28,6 +29,48 @@ type ExecuteToolFn =
 type SelectFn = Fn2<(String, Vec<String>), Option<Value>, Option<String>>;
 type InputFn = Fn2<(String, Option<String>), Option<Value>, Option<String>>;
 type SetWidgetFn = Fn2<(String, Vec<String>), Option<Value>, ()>;
+
+/// Numbers the signal objects of every `get_signal` function of this process, so that the extensions packed in one process never share a token.
+static SIGNAL_RUN_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+#[derive(Default)]
+struct SignalRunState {
+    last: Option<ProviderSignal>,
+    run: u64,
+    ended_aborted: bool,
+}
+
+/// What the host reads of the signals one `get_signal` function returns: undefined, or `{aborted, run, endedAborted?}`.
+/// Pi gives every run its own signal object (`agent.ts`), so the object is the run: `run` is a token that is new whenever the function returns another object than the one of the last answer (it never repeats in this process), and `endedAborted` says the signal of the previous answer had aborted, which the host cannot see when the next run begins before it reads again. The wrapper holds the last signal, so an object that was answered is never freed and reused while its token is the last. An undefined answer touches nothing.
+#[derive(Default)]
+struct SignalRuns {
+    state: Mutex<SignalRunState>,
+}
+
+impl SignalRuns {
+    fn wire(&self, signal: Option<ProviderSignal>) -> Value {
+        let Some(signal) = signal else {
+            return Value::Null;
+        };
+        let aborted = signal.is_cancelled();
+        let mut state = self.state.lock().unwrap_or_else(PoisonError::into_inner);
+        if state.last.as_ref() != Some(&signal) {
+            state.ended_aborted = state
+                .last
+                .as_ref()
+                .is_some_and(ProviderSignal::is_cancelled);
+            state.run = SIGNAL_RUN_COUNTER.fetch_add(1, Ordering::Relaxed) + 1;
+            state.last = Some(signal);
+        }
+        let mut answer = Map::new();
+        answer.insert("aborted".into(), Value::from(aborted));
+        answer.insert("run".into(), Value::from(state.run));
+        if state.ended_aborted {
+            answer.insert("endedAborted".into(), Value::Bool(true));
+        }
+        Value::Object(answer)
+    }
+}
 
 /// `ExtensionActions` of Pi's `bindCore`: the functions the extensions' `pi.sendMessage` and the rest call. `None` is Pi's undefined: the function is not bound, and the runtime's own default applies. A function that returns `Err` is Pi's thrown error. Messages, options, models and tool lists are Pi's JSON values.
 #[derive(Default, Clone)]
@@ -349,12 +392,15 @@ impl ExtensionRunner {
             "isProjectTrusted",
             |f| f().map(Value::from)
         );
-        bind0!(wire_context, context_actions.get_signal, "getSignal", |f| {
-            f().map(|signal| match signal {
-                Some(signal) => json!({"aborted": signal.is_cancelled()}),
-                None => Value::Null,
-            })
-        });
+        if let Some(f) = context_actions.get_signal.clone() {
+            let runs = SignalRuns::default();
+            named(
+                &mut wire_context,
+                context,
+                "getSignal",
+                Arc::new(move |_args: Vec<Value>| f().map(|signal| runs.wire(signal))),
+            );
+        }
         bind0!(wire_context, context_actions.abort, "abort", |f| f()
             .map(|()| Value::Null));
         bind0!(
@@ -1325,5 +1371,102 @@ impl ExtensionCommandContext {
             Some(f) => f().map_err(io::Error::other),
             None => Ok(()),
         }
+    }
+}
+
+#[cfg(test)]
+mod signal_runs_tests {
+    use super::SignalRuns;
+    use crate::provider::ProviderSignal;
+    use serde_json::{Value, json};
+
+    fn run(answer: &Value) -> u64 {
+        answer["run"].as_u64().expect("run is a JSON integer")
+    }
+
+    #[test]
+    fn the_first_answer_mints_a_token_and_the_same_object_keeps_it() {
+        let runs = SignalRuns::default();
+        let signal = ProviderSignal::new();
+        let first = runs.wire(Some(signal.clone()));
+        assert_eq!(first["aborted"], json!(false));
+        assert!(run(&first) > 0);
+        assert!(first.get("endedAborted").is_none());
+        assert_eq!(runs.wire(Some(signal.clone())), first);
+        signal.cancel();
+        assert_eq!(
+            runs.wire(Some(signal)),
+            json!({"aborted": true, "run": run(&first)})
+        );
+    }
+
+    #[test]
+    fn a_different_object_mints_the_next_token() {
+        let runs = SignalRuns::default();
+        let one = runs.wire(Some(ProviderSignal::new()));
+        let two = runs.wire(Some(ProviderSignal::new()));
+        assert!(run(&two) > run(&one));
+        assert!(two.get("endedAborted").is_none());
+    }
+
+    #[test]
+    fn a_none_answer_touches_nothing() {
+        let runs = SignalRuns::default();
+        assert_eq!(runs.wire(None), Value::Null);
+        let signal = ProviderSignal::new();
+        let one = runs.wire(Some(signal.clone()));
+        assert_eq!(runs.wire(None), Value::Null);
+        assert_eq!(runs.wire(Some(signal)), one);
+    }
+
+    #[test]
+    fn ended_aborted_is_set_at_the_change_and_repeated_with_the_token() {
+        let runs = SignalRuns::default();
+        let (first, second) = (ProviderSignal::new(), ProviderSignal::new());
+        runs.wire(Some(first.clone()));
+        first.cancel();
+        let two = runs.wire(Some(second.clone()));
+        assert_eq!(two["endedAborted"], json!(true));
+        assert_eq!(runs.wire(Some(second.clone())), two);
+        second.cancel();
+        assert_eq!(
+            runs.wire(Some(second)),
+            json!({"aborted": true, "run": run(&two), "endedAborted": true})
+        );
+        let three = runs.wire(Some(ProviderSignal::new()));
+        assert_eq!(three["endedAborted"], json!(true));
+        assert!(run(&three) > run(&two));
+    }
+
+    #[test]
+    fn ended_aborted_is_not_set_when_the_previous_object_was_live() {
+        let runs = SignalRuns::default();
+        let first = ProviderSignal::new();
+        runs.wire(Some(first.clone()));
+        let two = runs.wire(Some(ProviderSignal::new()));
+        assert!(two.get("endedAborted").is_none());
+        first.cancel();
+        assert!(runs.wire(Some(first)).get("endedAborted").is_none());
+    }
+
+    #[test]
+    fn two_wrappers_never_share_a_token() {
+        let (a, b) = (SignalRuns::default(), SignalRuns::default());
+        let shared = ProviderSignal::new();
+        assert_ne!(
+            run(&a.wire(Some(shared.clone()))),
+            run(&b.wire(Some(shared)))
+        );
+    }
+
+    #[test]
+    fn the_last_signal_is_held_while_it_is_last() {
+        let runs = SignalRuns::default();
+        let signal = ProviderSignal::new();
+        let first = signal.clone();
+        runs.wire(Some(signal));
+        assert_eq!(first.holders(), 2);
+        runs.wire(Some(ProviderSignal::new()));
+        assert_eq!(first.holders(), 1);
     }
 }

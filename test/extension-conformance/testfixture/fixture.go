@@ -54,6 +54,9 @@ func ioWait(addr string) error {
 	return err
 }
 
+// nameWaitAddr is the address the session_info_changed handler waits on first; empty when the handler is not armed (io_wait_name).
+var nameWaitAddr atomic.Value
+
 // kitProbe is the component kit's conformance view (D107,
 // docs/plan/extension-component-kit.md §10). It logs every HandleInput and
 // HandleViewEvent call and closes on select with the log joined by ",".
@@ -546,6 +549,7 @@ func Extension() *sdk.Extension {
 				parts = append(parts, name+"=error:"+err.Error())
 			}
 		}
+		report("wait", hctx.WaitForIdle())
 		_, err := hctx.NewSession(nil)
 		report("new", err)
 		_, err = hctx.Fork("entry", nil)
@@ -576,6 +580,43 @@ func Extension() *sdk.Extension {
 		}
 		ctx.Notify("stored_actions:"+reportSessionActions(kept), "info")
 		return nil
+	})
+	// tool_call_cancel_on subscribes to tool_call with a handler that waits for the run's cancel signal and then answers (D650 claim 6: a handler that honours ctx.Done returns after the abort).
+	ext.Command("tool_call_cancel_on", "Subscribe to tool_call with a handler that waits for the cancel signal", func(ctx sdk.Context, _ string) error {
+		ext.OnEvent("tool_call", func(hctx sdk.Context, _ map[string]any) (any, error) {
+			hctx.Notify("cancel_wait", "info")
+			<-hctx.Done()
+			hctx.Notify("cancel_seen", "info")
+			return map[string]any{"block": true, "reason": "answered after the abort"}, nil
+		})
+		return nil
+	})
+	// session_actions_tool makes the same calls, and the wait, through the context of a tool's execute: Pi's createContext() object, so every one is refused.
+	ext.Tool("session_actions_tool", "Call the session actions through the tool's context", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(tctx sdk.Context, _ map[string]any) (any, error) {
+		return map[string]string{"content": "tool_actions:" + reportSessionActions(tctx)}, nil
+	})
+	// wait_idle_command waits for the run from a command context, which Pi gives waitForIdle (runner.ts createCommandContext); the call returns when the host's wait does.
+	ext.Command("wait_idle_command", "Wait for the run from a command", func(ctx sdk.Context, _ string) error {
+		text := "done"
+		if err := ctx.WaitForIdle(); err != nil {
+			text = "error:" + err.Error()
+		}
+		ctx.Notify("wait_idle:"+text, "info")
+		return nil
+	})
+	// wait_idle_with_session waits for the run from a withSession callback, whose context is the command context of the replacement Session.
+	ext.Command("wait_idle_with_session", "Wait for the run from a withSession callback", func(ctx sdk.Context, _ string) error {
+		// The callback runs while this command's switchSession call is in flight, so the notice is sent once the call returned.
+		text := "never ran"
+		_, err := ctx.SwitchSession("/s.jsonl", map[string]any{"withSession": sdk.WithSessionFunc(func(replaced sdk.ReplacedSessionContext) error {
+			text = "done"
+			if err := replaced.WaitForIdle(); err != nil {
+				text = "error:" + err.Error()
+			}
+			return nil
+		})})
+		ctx.Notify("with_session_wait:"+text, "info")
+		return err
 	})
 	ext.Command("active_tools_get", "Report the active tools", func(ctx sdk.Context, _ string) error {
 		names, err := ctx.GetActiveTools()
@@ -933,6 +974,15 @@ func Extension() *sdk.Extension {
 		second := ask("tool_signal:later")
 		return fmt.Sprintf("tool_signal:%t:%s:%s", aborted, first, second), nil
 	})
+	// aborted_entry_probe is called with its run already aborted (TestConformance_ToolCalledAbortedEntersWithItsSignalAborted): Pi runs tool.execute with an aborted signal. It echoes the nonce it was given, reports whether its signal was aborted on its first line, and makes a host call after that, which the host answers.
+	ext.Tool("aborted_entry_probe", "Report the signal a tool starts with", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, params map[string]any) (any, error) {
+		aborted := ctx.Err() != nil
+		answer, _, err := ctx.Input(fmt.Sprintf("aborted_entry:%v", params["nonce"]), "p")
+		if err != nil {
+			return fmt.Sprintf("aborted_entry:%v:%t:failed: %v", params["nonce"], aborted, err), nil
+		}
+		return fmt.Sprintf("aborted_entry:%v:%t:%v", params["nonce"], aborted, answer), nil
+	})
 	// signal_nested_probe runs abort_tool as a nested call without a signal of its own: it gets the calling tool's signal (runner.ts:979-981 `options.signal ?? signal`), so the run's abort reaches it.
 	ext.Tool("signal_nested_probe", "Run abort_tool as a nested tool call", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(ctx sdk.Context, _ map[string]any) (any, error) {
 		outcome, err := ctx.ExecuteTool("abort_tool", map[string]any{}, nil)
@@ -1142,6 +1192,31 @@ func Extension() *sdk.Extension {
 	})
 	ext.Command("io_wait_settled", "Make agent_settled wait on a socket read", func(_ sdk.Context, addr string) error {
 		ext.OnEvent("agent_settled", func(sdk.Context, map[string]any) (any, error) { return nil, ioWait(addr) })
+		return nil
+	})
+	ext.Command("io_wait_name", "Make the session_info_changed handler wait on a socket read", func(_ sdk.Context, addr string) error {
+		nameWaitAddr.Store(addr)
+		return nil
+	})
+	// io_wait_input and io_wait_start subscribe an input / before_agent_start handler that waits on a socket read first and then notifies "<event>:<text or prompt>" (TestConformance_InputAndBeforeAgentStartDoNotHoldTheCallerWhileTheyWait).
+	ext.Command("io_wait_input", "Make an input handler wait on a socket read", func(_ sdk.Context, addr string) error {
+		ext.OnEvent("input", func(hctx sdk.Context, data map[string]any) (any, error) {
+			if err := ioWait(addr); err != nil {
+				return nil, err
+			}
+			hctx.Notify("input:"+fmt.Sprint(data["text"]), "info")
+			return nil, nil
+		})
+		return nil
+	})
+	ext.Command("io_wait_start", "Make a before_agent_start handler wait on a socket read", func(_ sdk.Context, addr string) error {
+		ext.OnEvent("before_agent_start", func(hctx sdk.Context, data map[string]any) (any, error) {
+			if err := ioWait(addr); err != nil {
+				return nil, err
+			}
+			hctx.Notify("before_agent_start:"+fmt.Sprint(data["prompt"]), "info")
+			return nil, nil
+		})
 		return nil
 	})
 
@@ -1458,6 +1533,17 @@ func Extension() *sdk.Extension {
 		return nil
 	})
 	redrawIntent := registerViewRows(ext)
+	// D521: bigint_tool registers a tool whose schema declares a bigint parameter and answers the kind of value it receives for it and the value (the same in every SDK fixture).
+	ext.Command("bigint_tool", "Register the tool that reports what a bigint argument arrives as", func(ctx sdk.Context, _ string) error {
+		ctx.RegisterTool(sdk.ToolDefinition{Name: "bigint_arg", Label: "bigint_arg", Description: "Report the kind and value of n", Parameters: sdk.Schema{"type": "object", "required": []string{"n"}, "properties": map[string]any{"n": map[string]any{"type": "bigint"}}}, Execute: func(_ sdk.Context, params map[string]any) (any, error) {
+			kind := "other"
+			if _, ok := params["n"].(string); ok {
+				kind = "string"
+			}
+			return map[string]string{"content": fmt.Sprintf("%s:%v", kind, params["n"])}, nil
+		}})
+		return nil
+	})
 	// D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it,
 	// shows it and updates it with a focus request, the same way in every SDK fixture (conformance
 	// TestConformance_UIViewToolShowsAndFocuses). The title and the node are the caller's.
@@ -1916,6 +2002,76 @@ func Extension() *sdk.Extension {
 				reported = string(encoded)
 			}
 			hctx.Notify("event_field:"+name+"."+field+"="+reported, "info")
+			return nil, nil
+		})
+		return nil
+	})
+	// event_level_edit_probe subscribes to the event named by the argument (`<event> <top|deep>`) with a handler that edits it in place and returns nothing: `top` assigns a
+	// member of the event itself (probeTop), `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text
+	// block, else a string content, else a `probe` member. Every edit writes `other-event-edit` (TestInPlaceMessageEventEditsMatchPi).
+	ext.Command("event_level_edit_probe", "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place", func(ctx sdk.Context, args string) error {
+		name, level, _ := strings.Cut(strings.TrimSpace(args), " ")
+		const edited = "other-event-edit"
+		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
+			if level == "top" {
+				data["probeTop"] = edited
+				return nil, nil
+			}
+			target, _ := data["message"].(map[string]any)
+			if list, ok := data["messages"].([]any); ok && target == nil && len(list) > 0 {
+				target, _ = list[0].(map[string]any)
+				for _, item := range list {
+					if m, ok := item.(map[string]any); ok && m["role"] == "user" {
+						target = m
+						break
+					}
+				}
+			}
+			if target == nil {
+				return nil, nil
+			}
+			blocks, _ := target["content"].([]any)
+			var first map[string]any
+			if len(blocks) > 0 {
+				first, _ = blocks[0].(map[string]any)
+			}
+			switch {
+			case first != nil && first["type"] == "text":
+				first["text"] = edited
+			case isStringContent(target):
+				target["content"] = edited
+			default:
+				target["probe"] = edited
+			}
+			return nil, nil
+		})
+		return nil
+	})
+	// event_member_probe `<event> <set|delete|once> <member> [json]` subscribes to the event with a handler that assigns the member the JSON, deletes it, or (once) assigns it in its
+	// first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there (TestInPlaceMessageEventEditsMatchPi).
+	ext.Command("event_member_probe", "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event", func(ctx sdk.Context, args string) error {
+		fields := strings.SplitN(strings.TrimSpace(args), " ", 4)
+		if len(fields) < 3 {
+			return fmt.Errorf("event_member_probe wants <event> <op> <member> [json]")
+		}
+		name, op, member := fields[0], fields[1], fields[2]
+		var value any
+		if len(fields) == 4 {
+			if err := json.Unmarshal([]byte(fields[3]), &value); err != nil {
+				return err
+			}
+		}
+		calls := 0
+		ext.OnEvent(name, func(hctx sdk.Context, data map[string]any) (any, error) {
+			calls++
+			switch {
+			case op == "delete":
+				delete(data, member)
+			case op == "once" && calls > 1:
+				hctx.Notify(fmt.Sprintf("member_probe_stale:%s:%t", name, reflect.DeepEqual(data[member], value)), "info")
+			default:
+				data[member] = value
+			}
 			return nil, nil
 		})
 		return nil
@@ -2504,6 +2660,33 @@ func Extension() *sdk.Extension {
 		})
 		return nil
 	})
+	// event_assign_probe subscribes to the event named by the argument with a handler that ASSIGNS a new value to the event's input (tool_call), messages (context) or
+	// entries (turn_end) instead of editing the old value in place, and returns nothing (TestAssignedEventMembersFollowPi). `context bad` assigns a string and `context badmsg` a list holding a number (TestAssignedContextListIsValidatedLikeAReturnedOne).
+	ext.Command("event_assign_probe", "Subscribe to the event named by the argument with a handler that assigns a new value to the event's input, messages or entries", func(ctx sdk.Context, args string) error {
+		name, variant, _ := strings.Cut(strings.TrimSpace(args), " ")
+		const edited = "other-event-edit"
+		ext.OnEvent(name, func(_ sdk.Context, data map[string]any) (any, error) {
+			switch name {
+			case "tool_call":
+				data["input"] = map[string]any{"command": edited}
+			case "context":
+				switch variant {
+				case "bad":
+					data["messages"] = "oops"
+				case "badmsg":
+					data["messages"] = []any{float64(42)}
+				default:
+					data["messages"] = []any{map[string]any{"role": "user", "content": []any{map[string]any{"type": "text", "text": edited}}, "timestamp": 1}}
+				}
+			case "turn_end":
+				data["entries"] = []any{map[string]any{"type": "custom", "customType": edited}}
+			default:
+				return nil, fmt.Errorf("event_assign_probe has no event %s", name)
+			}
+			return nil, nil
+		})
+		return nil
+	})
 	// event_edit_probe subscribes to the event named by the argument (`<event> <edit> [fail]`) with a handler that makes one edit of the event's content, details,
 	// isError, message or messages (tool_result, message_end, context), returns nothing and, with fail, fails after the edit
 	// (TestConformance_InPlaceEventEditsFollowPi). Every edit writes the value `other-event-edit`, which no other test uses.
@@ -2866,6 +3049,48 @@ func Extension() *sdk.Extension {
 	ext.Command("stale-probe", "Report cwd, mode, hasUI and model", func(ctx sdk.Context, _ string) error {
 		ctx.Notify(fmt.Sprintf("stale:%s|%s|%t|%s", ctx.Cwd(), ctx.Mode(), ctx.HasUI(), ctx.Model()), "info")
 		return nil
+	})
+	// stale-members calls the members that answer a context kept past its Session in every SDK: each outcome is one line, and the command fails with
+	// every line when one of them carries the stale message (Pi guards every context member: runner.ts:883-1037), else it reports them.
+	staleMembers := func(ctx sdk.Context) error {
+		var lines []string
+		stale := false
+		member := func(name string, call func() (string, error)) {
+			outcome := func() (out string) {
+				defer func() {
+					if recovered := recover(); recovered != nil {
+						out = fmt.Sprintf("panics:%v", recovered)
+					}
+				}()
+				value, err := call()
+				if err != nil {
+					return "error:" + err.Error()
+				}
+				return "ok:" + value
+			}()
+			stale = stale || strings.Contains(outcome, "This extension ctx is stale")
+			lines = append(lines, name+"="+outcome)
+		}
+		member("theme", func() (string, error) { return fmt.Sprintf("%T", ctx.UITheme()), nil })
+		member("width", func() (string, error) { return fmt.Sprint(ctx.Width()), nil })
+		member("height", func() (string, error) { return fmt.Sprint(ctx.Height()), nil })
+		member("sessionName", func() (string, error) { return ctx.SessionName(), nil })
+		member("setWidgetLines", func() (string, error) { return "", ctx.SetWidget("stale-members", []string{"x"}) })
+		member("setWidgetView", func() (string, error) {
+			return "", ctx.SetWidget("stale-members-view", kit.View{Root: kit.NewText("x", 0, 0)})
+		})
+		member("setWidgetRenderer", func() (string, error) {
+			return "", ctx.SetWidgetRenderer("stale-members-renderer", func(int) []string { return []string{"x"} })
+		})
+		member("onUpdate", func() (string, error) { return "", ctx.OnUpdate("x") })
+		if stale {
+			return errors.New("stale-members\n" + strings.Join(lines, "\n"))
+		}
+		ctx.Notify("members\n"+strings.Join(lines, "\n"), "info")
+		return nil
+	}
+	ext.Command("stale-members", "Call the members that fail with the stale message", func(ctx sdk.Context, _ string) error {
+		return staleMembers(ctx)
 	})
 	ext.Command("signal-wait", "Wait for ctx.signal to abort", func(ctx sdk.Context, _ string) error {
 		signal := ctx.Signal()
@@ -4483,12 +4708,24 @@ func Extension() *sdk.Extension {
 	})
 	ext.OnSessionShutdown(func(ctx sdk.Context, data map[string]any) (any, error) {
 		ctx.Notify("session_shutdown:"+fmt.Sprint(data["reason"]), "info")
+		// The handler's own context is still active (Pi invalidates after the handlers ran): the stale-members test reads every member from here.
+		if data["reason"] == "stale-members-test" {
+			if err := staleMembers(ctx); err != nil {
+				return nil, err
+			}
+		}
 		if path, ok := data["targetSessionFile"].(string); ok && path != "" {
 			ctx.Notify("target:"+path, "info")
 		}
 		return nil, nil
 	})
 	ext.OnEvent("session_info_changed", func(ctx sdk.Context, data map[string]any) (any, error) {
+		// io_wait_name arms the handler to wait on a socket read first, as a handler that awaits does in Pi.
+		if addr, _ := nameWaitAddr.Load().(string); addr != "" {
+			if err := ioWait(addr); err != nil {
+				return nil, err
+			}
+		}
 		ctx.Notify("session_info_changed:"+fmt.Sprint(data["name"]), "info")
 		return nil, nil
 	})
@@ -5175,4 +5412,10 @@ func lastRenderLine(render sdk.ToolRenderContext) string {
 		return "none"
 	}
 	return render.LastComponent.Lines[0]
+}
+
+// isStringContent reports whether the message's content is a string.
+func isStringContent(message map[string]any) bool {
+	_, ok := message["content"].(string)
+	return ok
 }

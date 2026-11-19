@@ -1,6 +1,7 @@
 package sessiongraph
 
 import (
+	"context"
 	"runtime"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 // extensionRunnerBench times n repetitions of one operation of the extension_runner row's objects, from inside the extension (BenchmarkSessionGraphExtensionRunner reads "nsPerOp"):
 //   - create: a runner over the two loaded probe extensions and the runtime of their load;
 //   - emit: one session_before_switch event through the runner to the handlers of both probes;
+//   - emitSignal: the same event with getSignal bound (a live signal), so each request the handlers' extensions serve reads the signal of the run from this process;
 //   - spawn: a loader that loads and starts both probe extensions.
 //
 // The loader's first load, the model runtime and the session manager are set up before the clock starts.
@@ -42,6 +44,13 @@ func extensionRunnerBench(ctx sdk.Context, args map[string]any) map[string]any {
 			ok(sdk.NewExtensionRunner(ctx, loaded.Extensions, loaded.Runtime, cwd, &manager, rt))
 		}
 	case "emit":
+		step = func() { ok(runner.Emit(map[string]any{"type": "session_before_switch", "reason": "new"})) }
+	case "emitSignal":
+		run, stop := context.WithCancel(context.Background())
+		defer stop()
+		if err := runner.BindCore(sdk.ExtensionActions{}, sdk.ExtensionContextActions{GetSignal: func() context.Context { return run }}, nil); err != nil {
+			panic(err)
+		}
 		step = func() { ok(runner.Emit(map[string]any{"type": "session_before_switch", "reason": "new"})) }
 	case "spawn":
 		step = func() { load() }

@@ -1,7 +1,7 @@
 // The Durable Object of the Cloudflare entry (Pi's CodemodeSandboxDurableObject, packages/codemode/src/cloudflare.ts): the remote
 // end of a remote codemode sandbox. Wrangler's `CompiledWasm` rule turns the two `.wasm` imports into compiled modules, made once
 // per isolate at global scope; Workers cannot compile Wasm from bytes. Build ./codemode.wasm with tools/build-codemode-wasm.sh
-// and copy codemode/assets/quickjs.wasm next to this file as ./quickjs.wasm.
+// and copy codemode/assets/raw/quickjs.wasm next to this file as ./quickjs.wasm.
 import { DurableObject } from "cloudflare:workers"
 import type { CodemodeRemoteExchange, CodemodeRemoteRequest } from "./protocol.ts"
 import { serveCodemodeRemote } from "./serve.ts"

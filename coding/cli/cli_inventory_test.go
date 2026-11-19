@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // cliInventoryRow is one entry of test/parity/interfaces/cli-v<pinned version>.json, the compiler-derived list of the pinned Pi's
@@ -130,12 +131,29 @@ func TestCLIInventoryTopLevelFlagsParseAsPiParses(t *testing.T) {
 			// args.ts:212-218: a following argument that is not a flag or @file is the search pattern.
 			assert.Equal(t, "fable", parseArgs([]string{"--list-models", "fable"}).ListModels)
 		}
+		if list, id, feature := strippedHelpFlag(row.Flag); feature && pigstrip.Has(list, id) {
+			// The flag parses in every build, but a build without its feature drops its help entry (TestStripLeakGate covers the rest).
+			assert.Empty(t, line, "%s stays in --help although %s %s is stripped", row.ID, list, id)
+			continue
+		}
 		assert.NotEmpty(t, line, "%s is missing from --help", row.ID)
 		for _, alias := range row.Aliases {
 			assert.Contains(t, line, alias, "%s alias on its --help line", row.ID)
 		}
 	}
 	assert.Len(t, cases, seen, "every case names an inventory row")
+}
+
+// strippedHelpFlag names the strip ID whose removal drops the help entry of a Pi flag: --export is HTML export, --no-mcp the MCP
+// built-in extension.
+func strippedHelpFlag(flag string) (list, id string, ok bool) {
+	switch flag {
+	case "--export":
+		return pigstrip.ListFeatures, pigstrip.ExportHTML, true
+	case "--no-mcp":
+		return pigstrip.ListExtensions, "mcp", true
+	}
+	return "", "", false
 }
 
 // helpLine is the line of text that starts the entry for flag.

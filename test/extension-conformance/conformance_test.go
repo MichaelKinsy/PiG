@@ -1509,6 +1509,32 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 				},
 				Source: inprocFixtureName,
 			},
+			// session_actions_tool exists here only so the transports' tool lists match this reference. The SDK fixtures call the command-only session actions through the tool's context
+			// and report the refusals. An in-process tool's context is *extension.Context (FromContext, coding/extension/context.go:413), which has no such member: WaitForIdle, NewSession,
+			// Fork, NavigateTree, SwitchSession and Reload are methods of *CommandContext only (context.go:492-566), so the probe cannot be written here. The tool answers with an error that
+			// says so, and never with an empty success that a row could take for a report.
+			"session_actions_tool": {
+				Definition: extension.ToolDefinition{
+					Name:        "session_actions_tool",
+					Description: "Call the session actions through the tool's context",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{}, errors.New("session_actions_tool: the in-process fixture does not implement the probe; it is registered only so the transports' tool lists match")
+					},
+				},
+				Source: inprocFixtureName,
+			},
+			"aborted_entry_probe": {
+				Definition: extension.ToolDefinition{
+					Name:        "aborted_entry_probe",
+					Description: "Report the signal a tool starts with",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{}, nil
+					},
+				},
+				Source: inprocFixtureName,
+			},
 			"signal_nested_probe": {
 				Definition: extension.ToolDefinition{
 					Name:        "signal_nested_probe",
@@ -3503,6 +3529,11 @@ func makeSubprocessNodeHarness(t *testing.T) *harness {
 // is to force real packed-cell hosting so the conformance suite's Node cases
 // prove packed and isolated are observationally identical, not just isolated.
 func makeSubprocessNodePackedHarness(t *testing.T) *harness {
+	return makeSubprocessNodePackedHarnessWithPeer(t, "export default function () {}\n")
+}
+
+// makeSubprocessNodePackedHarnessWithPeer is makeSubprocessNodePackedHarness with the source of the peer extension the node-sdk-fixture shares its cell with.
+func makeSubprocessNodePackedHarnessWithPeer(t *testing.T, peerSource string) *harness {
 	t.Helper()
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Fatalf("node is required for SDK conformance: %v", err)
@@ -3511,7 +3542,7 @@ func makeSubprocessNodePackedHarness(t *testing.T) *harness {
 	modRoot := findModuleRoot(t)
 	path := filepath.Join(modRoot, "test", "extension-conformance", "testdata", "node-sdk-fixture", "main.mjs")
 	peer := filepath.Join(t.TempDir(), "node-cell-peer.mjs")
-	if err := os.WriteFile(peer, []byte("export default function () {}\n"), 0o600); err != nil {
+	if err := os.WriteFile(peer, []byte(peerSource), 0o600); err != nil {
 		t.Fatalf("write Node cell peer fixture: %v", err)
 	}
 	notify := &[]string{}

@@ -152,6 +152,7 @@ var pigOnlyRunnerMethods = map[string]string{
 	"CommandsVersion":          "SDK-surface: read-only counter that moves with every change Commands can return (54a0d0b053); internal/codingagent CommandCatalogVersion reads it so a state push re-encodes the command catalog only when it changed. Pi rebuilds getCommands() on each call and has no counterpart; output is unchanged",
 	"ExtensionSources":         "SDK-surface: read-only resolved paths and sourceInfo for the loaded-resources listing (upstream reads extension.path and extension.sourceInfo directly)",
 	"ExecuteCommand":           "SDK-surface: active-runner command bridge for AgentSession/RPC invocation parity",
+	"HasHandlersThatMayAwait":  "private host seam: internal/codingagent bindMayPend asks whether a session_start or resources_discover handler can pend before it serves the terminal for one. Pi awaits every handler in emit (runner.ts:1103-1110) and its event loop takes a turn only while one pends; Go cannot tell a handler that awaits from one that does not, so a registration says it (Extension.AddEventHandlerReturningWithoutAwait). Not an author-facing API; guarded by registry_test.go and internal/codingagent/bind_may_pend_test.go",
 	// Upstream's getAllRegisteredTools returns each tool with its extension's
 	// sourceInfo; Pig's RegisteredTool.SourceInfo carries the D23 per-tool
 	// source instead, so getAllTools reads the extension's through this.

@@ -970,7 +970,7 @@
         "internal/codingagent/extension_shortcut_contract_test.go#TestExtensionShortcutsFollowRemappedKeybindings",
         "internal/codingagent/interactive_command_error_test.go#TestInteractiveShortcutDiagnosticOwnership",
         "internal/codingagent/reload_resources_test.go#TestReloadRefreshesExtensionShortcuts",
-        "internal/codingagent/reload_resources_test.go#TestReloadRefreshesRealSubprocessShortcuts",
+        "internal/codingagent/reload_resources_node_test.go#TestReloadRefreshesRealSubprocessShortcuts",
         "test/parity/scenarios/extensions-runtime/10-shortcut-reload-authority.toml"
       ],
       "contracts": [
@@ -2017,7 +2017,7 @@
       ],
       "evidence": [
         "internal/codingagent/edit_card_unlinkable_path_test.go#TestEditCardDrawsTheCallFallbackForAnUnlinkablePath",
-        "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+        "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
         "test/parity/scenarios/tools/26-render-tool-path.toml",
         "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
         "test/parity/scenarios/tools/28-render-tool-path-boundaries.toml",
@@ -2042,7 +2042,7 @@
         "internal/codingagent/tool_builtin_renderers.go#shellRenderCall"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml"
       ],
       "contracts": [
@@ -2059,7 +2059,7 @@
         "internal/codingagent/tool_builtin_renderers.go#shellRenderResult"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml"
       ],
       "contracts": [
@@ -2077,7 +2077,7 @@
       ],
       "evidence": [
         "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinEditCallPreviewMatchesPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml"
       ],
       "contracts": [
@@ -2094,7 +2094,7 @@
         "internal/codingagent/tool_builtin_renderers.go#editRenderResult"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml"
       ],
       "contracts": [
@@ -2111,7 +2111,7 @@
         "internal/codingagent/tool_builtin_renderers.go#builtInToolRenderers"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml"
       ],
       "contracts": [
@@ -2128,7 +2128,7 @@
         "internal/codingagent/tool_builtin_renderers.go#listRenderResult"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml"
       ],
       "contracts": [
@@ -2145,7 +2145,7 @@
         "internal/codingagent/tool_builtin_renderers.go#builtInToolRenderers"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml"
       ],
       "contracts": [
@@ -2162,7 +2162,7 @@
         "internal/codingagent/tool_builtin_renderers.go#listRenderResult"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml"
       ],
       "contracts": [
@@ -2179,7 +2179,7 @@
         "internal/codingagent/tool_builtin_renderers.go#builtInToolRenderers"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml"
       ],
       "contracts": [
@@ -2196,7 +2196,7 @@
         "internal/codingagent/tool_builtin_renderers.go#listRenderResult"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml"
       ],
       "contracts": [
@@ -2218,10 +2218,10 @@
         "tui/tool_execution.go#FormatReadHeader"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsRandomMatchPi",
         "internal/codingagent/compact_read_test.go#TestClassifyCompactRead",
-        "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+        "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml",
         "test/parity/scenarios/tools/27-read-write-tool-cards.toml",
         "tui/read_header_string_range_test.go#TestFormatReadLineRangeMatchesPi"
@@ -2245,11 +2245,11 @@
         "tui/highlight.go#LanguageFromPath"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPiAfterTheHighlightLanguageLoad",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPiAfterTheHighlightLanguageLoad",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsRandomMatchPi",
         "internal/codingagent/read_truncation_view_test.go#TestReadTruncationViewOfTheToolsOwnDetails",
-        "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+        "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml",
         "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
       ],
@@ -2272,11 +2272,11 @@
         "tui/tool_execution.go#FormatWriteHeaderArgs"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsRandomMatchPi",
         "internal/codingagent/code_highlighter_rows_test.go#TestCompleteWriteRowReusesItsHighlightingAcrossRedraws",
-        "internal/codingagent/interactive_events_write_stream_oracle_test.go#TestInteractiveStreamedWriteCardMatchesPiOracle",
-        "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+        "internal/codingagent/interactive_events_write_stream_oracle_syntax_highlight_test.go#TestInteractiveStreamedWriteCardMatchesPiOracle",
+        "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
         "internal/codingagent/write_highlight_cache_test.go#TestWriteHighlightCacheHoldsWhatUpstreamHolds",
         "internal/codingagent/write_stream_prefix_contract_test.go#TestInteractiveStreamedWriteCardMatchesPiAtTheLeadingBlockBoundary",
         "test/parity/scenarios/tools/24-tool-cards.toml",
@@ -2297,9 +2297,9 @@
         "internal/codingagent/tool_builtin_renderers.go#writeRenderResult"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsRandomMatchPi",
-        "internal/codingagent/read_write_cards_contract_test.go#TestReadWriteCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsRandomMatchPi",
+        "internal/codingagent/read_write_cards_contract_syntax_highlight_test.go#TestReadWriteCardsMatchPi",
         "test/parity/scenarios/tools/24-tool-cards.toml",
         "test/parity/scenarios/tools/27-read-write-tool-cards.toml"
       ],
@@ -2319,7 +2319,7 @@
       ],
       "evidence": [
         "internal/codingagent/code_highlighter_rows_test.go#TestCodemodeRowReusesItsScriptHighlightingAcrossRedraws",
-        "internal/codingagent/codemode_cards_oracle_test.go#TestCodemodeCardsMatchPi",
+        "internal/codingagent/codemode_cards_oracle_syntax_highlight_test.go#TestCodemodeCardsMatchPi",
         "internal/codingagent/tool_codemode_timer_test.go#TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
         "test/parity/scenarios/tools/25-codemode-cards.toml"
       ],
@@ -2337,7 +2337,7 @@
         "internal/codingagent/tool_codemode_renderer.go#codemodeRenderResult"
       ],
       "evidence": [
-        "internal/codingagent/codemode_cards_oracle_test.go#TestCodemodeCardsMatchPi",
+        "internal/codingagent/codemode_cards_oracle_syntax_highlight_test.go#TestCodemodeCardsMatchPi",
         "internal/codingagent/tool_codemode_timer_test.go#TestCodemodeRowShowsElapsedWhileRunningAndTookOnceFinished",
         "test/parity/scenarios/tools/25-codemode-cards.toml",
         "internal/codingagent/empty_mimetype_image_divergence_test.go#TestEmptyMimeTypeImageDiffersFromPi"
@@ -2926,7 +2926,7 @@
         "tui/tool_execution_definition.go#renderSelfShell"
       ],
       "evidence": [
-        "internal/codingagent/builtin_tool_cards_oracle_test.go#TestBuiltinToolCardsMatchPi",
+        "internal/codingagent/builtin_tool_cards_oracle_syntax_highlight_test.go#TestBuiltinToolCardsMatchPi",
         "test/parity/scenarios/interactive-rendering/03-tool-execution-bash.toml",
         "test/parity/scenarios/interactive-rendering/10-edit-tool-diff.toml",
         "tui/tool_execution_definition_test.go#TestDefinitionCardSelfShell",

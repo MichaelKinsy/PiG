@@ -32,9 +32,6 @@ type Registry struct {
 	nodes []any
 	// allLoaded is set by LoadAllLanguages: the full language set is registered.
 	allLoaded bool
-	// missedBeforeLoad is set when a lookup made before LoadAllLanguages can answer differently once it has run: a name the eager languages do not
-	// register, or an auto-detection or listing over the languages registered so far.
-	missedBeforeLoad bool
 	// deferred is the full snapshot, once a lookup needed it, until every language in it is decoded. indexed stays set after that.
 	deferred *deferredGrammars
 	indexed  bool
@@ -48,14 +45,10 @@ func NewRegistry() *Registry {
 }
 
 // LoadAllLanguages registers the complete language set, as Pi's loadAllHighlightLanguages imports highlight.js/lib/index.js: from here on every language and alias in it is found. A language's grammar is decoded when it is first looked up, and the whole set when the first auto-detection considers every language. Later calls do nothing.
-//
-// It reports whether a lookup made before it can answer differently now: only then does something already highlighted need highlighting again.
-func (r *Registry) LoadAllLanguages() (earlierLookupsDiffer bool) {
+func (r *Registry) LoadAllLanguages() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.allLoaded = true
-	// pig divergence (D618): the registry remembers a lookup the load changes, so the caller repaints only then.
-	return r.missedBeforeLoad
 }
 
 // SupportsLanguage is syntax-highlight.ts supportsLanguage: hljs.getLanguage(name) !== undefined.
@@ -219,7 +212,6 @@ func (r *Registry) HighlightAuto(code string, languageSubset []string) (html str
 func (r *Registry) Languages() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.missedBeforeLoad = r.missedBeforeLoad || !r.allLoaded
 	r.indexDeferred()
 	return slices.Clone(r.order)
 }
@@ -237,7 +229,6 @@ func (r *Registry) getLanguage(name string) *Mode {
 		}
 	}
 	if !r.allLoaded {
-		r.missedBeforeLoad = true
 		return nil
 	}
 	r.indexDeferred()

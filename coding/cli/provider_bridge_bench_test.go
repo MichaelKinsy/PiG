@@ -37,7 +37,7 @@ func BenchmarkServeBridgeStream(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		events = 0
-		serveBridgeStream(context.Background(), line, "", send, &callbacks)
+		serveBridgeStream(context.Background(), line, send, &callbacks)
 		if events < 200 {
 			b.Fatalf("%d events", events)
 		}

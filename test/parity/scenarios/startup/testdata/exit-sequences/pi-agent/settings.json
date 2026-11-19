@@ -1,0 +1,6 @@
+{
+  "quietStartup": true,
+  "terminal": {
+    "showTerminalProgress": true
+  }
+}

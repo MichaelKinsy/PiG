@@ -92,7 +92,7 @@ func TestPackedPromptHandlerBodyFIFO(t *testing.T) {
 }
 
 // A reported SDK host-call suspension, unlike a socket write, proves that the
-// start handler body ran and permits end to enter before start completes.
+// start handler body ran and permits end to enter before start completes. The call is exec (pi.exec, types.ts ExtensionAPI.exec: any handler may call it, and it returns a Promise): waitForIdle is a command-context call that an event handler does not have (D617).
 func TestPromptEndRunsWhileSDKStartWaitsForHost(t *testing.T) {
 	entered := make(chan struct{})
 	release := make(chan struct{})
@@ -103,7 +103,7 @@ func TestPromptEndRunsWhileSDKStartWaitsForHost(t *testing.T) {
 	defer unblock()
 	ext := sdk.New("prompt-await")
 	ext.OnEvent("ui_prompt_start", func(ctx sdk.Context, _ map[string]any) (any, error) {
-		err := ctx.WaitForIdle()
+		_, err := ctx.Exec("true", nil)
 		close(finished)
 		return nil, err
 	})
@@ -112,7 +112,11 @@ func TestPromptEndRunsWhileSDKStartWaitsForHost(t *testing.T) {
 	defer host.Shutdown("test complete")
 	defer unblock()
 	bridge := NewUIBridge(func() {})
-	bridge.SetActions(&HostCallbacks{WaitForIdle: func(context.Context) error { close(entered); <-release; return nil }})
+	bridge.SetActions(&HostCallbacks{ExecContext: func(context.Context, string, []string, *extension.ExecOptions) (extension.ExecResult, error) {
+		close(entered)
+		<-release
+		return extension.ExecResult{}, nil
+	}})
 	host.SetUIBridge(bridge)
 	loaded, err := host.LoadInProcess(t.Context(), ExtConfig{Name: "prompt-await", Enabled: true}, ext.RunWithConn)
 	if err != nil {

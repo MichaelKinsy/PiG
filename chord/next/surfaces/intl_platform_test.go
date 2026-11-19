@@ -26,6 +26,7 @@ func TestPlatformLocaleIsThatOfTheFirstSetVariable(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
+			useEnvironmentLocale(t)
 			for name, v := range map[string]struct {
 				value string
 				set   bool

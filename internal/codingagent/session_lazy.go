@@ -10,6 +10,7 @@ import (
 	"os"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
@@ -195,6 +196,12 @@ func (s *Session) lazyAtLocked(i int) bool {
 // entryHandlesLocked returns the entries of the given slots for a whole-history read: a resident entry as it is, a message that is not
 // resident as a LazyEntry, and any other entry read from its record. The caller holds s.mu.
 func (s *Session) entryHandlesLocked(indexes []int32) []SessionEntry {
+	return s.entryHandlesStaleLocked(indexes, nil)
+}
+
+// entryHandlesStaleLocked is entryHandlesLocked that reports, as readSlotsStaleLocked does, an entry read from its record that the record no
+// longer holds.
+func (s *Session) entryHandlesStaleLocked(indexes []int32, stale *atomic.Int64) []SessionEntry {
 	out := make([]SessionEntry, len(indexes))
 	s.handleMu.Lock()
 	if grow := len(s.slots) - len(s.handles); grow > 0 {
@@ -219,20 +226,26 @@ func (s *Session) entryHandlesLocked(indexes []int32) []SessionEntry {
 	}
 	s.handleMu.Unlock()
 	if len(need) > 0 {
-		for j, entry := range s.readSlotsLocked(need) {
+		for j, entry := range s.readSlotsStaleLocked(need, stale) {
 			out[missing[j]] = entry
 		}
 	}
 	return out
 }
 
+// timestampLocked is the timestamp of the entry of slot i as its record carries it. The caller holds s.mu.
+func (s *Session) timestampLocked(i int) string {
+	if timestamp, odd := s.oddTimestamps[i]; odd {
+		return timestamp
+	}
+	timestamp, _ := dateISOString(s.slots[i].ts)
+	return timestamp
+}
+
 // newHandleLocked is the LazyEntry of slot i, which lazyAtLocked accepts. The caller holds s.mu.
 func (s *Session) newHandleLocked(i int) sessionentry.LazyEntry {
 	slot := &s.slots[i]
-	timestamp, odd := s.oddTimestamps[i]
-	if !odd {
-		timestamp, _ = dateISOString(slot.ts)
-	}
+	timestamp := s.timestampLocked(i)
 	cold := s.coldPart(slot)
 	at := sessionentry.RecordAt{Off: cold.off, Size: cold.size, Hash: uint64(cold.hash)}
 	if blockNo := cold.blockOf(); blockNo != 0 {

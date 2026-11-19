@@ -23,14 +23,14 @@ import (
 // principal); the worker's plugins never see it.
 //
 // The worker has two stores (D462): the kit's own, which its Go host holds, and the plugins', which its NodeHost's process holds, so the
-// worker's export holds the kit's commit queue and reads the plugins' file from a snapshot taken meanwhile (PackRunning): both
-// archives are one point, as Pi's one store's export is.
+// worker's export holds the kit's commit queue and reads the plugins' file from a snapshot taken meanwhile (PackRunning): both exports
+// are one point, as Pi's one store's export is, and are written as the one `store.archive` Pi writes.
 //
 // Go forced differences (D460): the generic principal parameter is designed out (a principal is a JSON object). The worker's plugins run in a
 // Node subprocess that serves the worker's address, so HostData is a JavaScript core facet (host_data.mjs) forwarding to a Go local
 // object (HostDataExport) through the bridge.
 
-// HostData is the data of the worker at `address` (its JSON, as AddressParam writes it): `exportTo` packs it at `path`, with the server's part (its records and rows belonging to the address) from the JSONL file `server` (the NodeHost's part) and the Go host's from `kitServer` (D462).
+// HostData is the data of the worker at `address` (its JSON, as AddressParam writes it): `exportTo` packs it at `path`, with the server's part (its records and rows belonging to the address) from the JSONL file `server`.
 var HostData = mustRemote("chord.app.data", contracts.RemoteDeclaration{
 	Version: 1,
 	Params:  contracts.Params{contracts.Prop("address", contracts.Str())},
@@ -40,7 +40,7 @@ var HostData = mustRemote("chord.app.data", contracts.RemoteDeclaration{
 		return parseAddress(text)
 	},
 	Variants: []contracts.VariantEntry{contracts.Var("main", contracts.VariantDeclaration{Methods: []contracts.MethodEntry{
-		contracts.Meth("exportTo", contracts.NewMethod(contracts.Obj(contracts.Prop("path", contracts.Str()), contracts.Prop("manifest", contracts.Str()), contracts.Prop("server", contracts.Str()), contracts.Prop("kitServer", contracts.Str())))),
+		contracts.Meth("exportTo", contracts.NewMethod(contracts.Obj(contracts.Prop("path", contracts.Str()), contracts.Prop("manifest", contracts.Str()), contracts.Prop("server", contracts.Str())))),
 	}})},
 })
 
@@ -92,7 +92,7 @@ var HostDataExport = mustLocal("chord.app.data.export", contracts.LocalDeclarati
 	Version: 1,
 	Params:  contracts.Params{},
 	Members: []contracts.LocalEntry{
-		contracts.Mem("exportTo", contracts.NewMethod(contracts.Obj(contracts.Prop("token", contracts.Str()), contracts.Prop("path", contracts.Str()), contracts.Prop("manifest", contracts.Str()), contracts.Prop("server", contracts.Str()), contracts.Prop("kitServer", contracts.Str())))),
+		contracts.Mem("exportTo", contracts.NewMethod(contracts.Obj(contracts.Prop("token", contracts.Str()), contracts.Prop("path", contracts.Str()), contracts.Prop("manifest", contracts.Str()), contracts.Prop("server", contracts.Str())))),
 	},
 })
 
@@ -130,7 +130,7 @@ func HostDataFacet(dir string, kit store.Store, token string) host.Facet {
 						}
 						// The plugins' store is the NodeHost's own file (store.sqlite), read from a snapshot taken while the kit's store (kit.sqlite) is
 						// held: PackRunning.
-						return nil, PackRunning(ctx, dir, kit, manifest, object.Value("server").(string), object.Value("kitServer").(string), object.Value("path").(string))
+						return nil, PackRunning(ctx, dir, kit, manifest, object.Value("server").(string), object.Value("path").(string))
 					},
 				},
 			}}, nil

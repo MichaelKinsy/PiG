@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url"
 import { QJS_EXPORTS, QuickJSInstance, QuickJSTrap, quickjsWasi, type QuickJSHooks } from "../src/codemode/quickjs.ts"
 
 const here = dirname(fileURLToPath(import.meta.url))
-const quickjsWasmPath = join(here, "..", "..", "..", "..", "..", "codemode", "assets", "quickjs.wasm")
+const quickjsWasmPath = join(here, "..", "..", "..", "..", "..", "codemode", "assets", "raw", "quickjs.wasm")
 const module = new (WebAssembly.Module as unknown as new (bytes: Uint8Array) => WebAssembly.Module)(readFileSync(quickjsWasmPath))
 
 const enc = new TextEncoder()

@@ -1,6 +1,7 @@
 package cellpack
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -25,7 +26,7 @@ func goCellFixture(t *testing.T, content string) (fstest.MapFS, Manifest) {
 func TestExtractLeavesAnIdenticalCellBinaryInPlace(t *testing.T) {
 	fsys, m := goCellFixture(t, "BINARY")
 	dest := t.TempDir()
-	if err := extract(fsys, m, dest); err != nil {
+	if err := extract(fsys, m, dest, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	out := extractedBinaryPath(dest, "go/aaaa/runner")
@@ -33,7 +34,7 @@ func TestExtractLeavesAnIdenticalCellBinaryInPlace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := extract(fsys, m, dest); err != nil {
+	if err := extract(fsys, m, dest, io.Discard); err != nil {
 		t.Fatalf("second extract: %v", err)
 	}
 	after, err := os.Stat(out)
@@ -52,7 +53,7 @@ func TestExtractSucceedsWhenTheIdenticalBinaryCannotBeReplaced(t *testing.T) {
 	}
 	fsys, m := goCellFixture(t, "BINARY")
 	dest := t.TempDir()
-	if err := extract(fsys, m, dest); err != nil {
+	if err := extract(fsys, m, dest, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	dir := filepath.Dir(extractedBinaryPath(dest, "go/aaaa/runner"))
@@ -60,7 +61,7 @@ func TestExtractSucceedsWhenTheIdenticalBinaryCannotBeReplaced(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
-	if err := extract(fsys, m, dest); err != nil {
+	if err := extract(fsys, m, dest, io.Discard); err != nil {
 		t.Fatalf("extract over an identical, unreplaceable binary: %v", err)
 	}
 }
@@ -77,7 +78,7 @@ func TestExtractReplacesADifferentCellBinary(t *testing.T) {
 		if err := os.WriteFile(out, []byte(stale), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := extract(fsys, m, dest); err != nil {
+		if err := extract(fsys, m, dest, io.Discard); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
 		if got, err := os.ReadFile(out); err != nil || string(got) != "NEW BINARY" {
@@ -88,7 +89,7 @@ func TestExtractReplacesADifferentCellBinary(t *testing.T) {
 		if err := os.Chmod(out, 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := extract(fsys, m, dest); err != nil {
+		if err := extract(fsys, m, dest, io.Discard); err != nil {
 			t.Fatal(err)
 		}
 		if info, err := os.Stat(out); err != nil || info.Mode().Perm()&0o100 == 0 {

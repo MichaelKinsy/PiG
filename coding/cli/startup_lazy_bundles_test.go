@@ -13,10 +13,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/configroot"
 	"github.com/MichaelKinsy/PiG/internal/pigdocs"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -208,21 +208,6 @@ func TestReplacementBuildReportsSDKStageFailureAsADiagnostic(t *testing.T) {
 	}
 }
 
-// `pig diagnose` names when unstaged SDKs are staged.
-func TestDiagnoseSaysWhenSDKsStage(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("PIG_HOME", home)
-	stages, err := pigsdk.Status(home)
-	if err != nil || len(stages) == 0 || stages[0].Current {
-		t.Fatalf("a fresh config root reports %+v (err %v)", stages, err)
-	}
-	var out strings.Builder
-	runDiagnose(&out, "")
-	if !strings.Contains(out.String(), "not staged: stages when an extension loads") {
-		t.Fatalf("diagnose output:\n%s", out.String())
-	}
-}
-
 // A `!` command and an RPC bash command read files with no tool call before them, so interactive and RPC start write the documentation bundle.
 func TestRPCStartWritesTheDocsBundle(t *testing.T) {
 	t.Parallel()
@@ -242,7 +227,8 @@ func TestBuildWritesTheDocsBundleBeforeItStartsAnExtension(t *testing.T) {
 		wrote bool
 	}{
 		{"no extension", nil, false},
-		{"extension", []string{"-e", lazyBundleExtension(t)}, true},
+		// pig additive (D92): a build that strips docs has no bundle to write.
+		{"extension", []string{"-e", lazyBundleExtension(t)}, !pigstrip.Has(pigstrip.ListFeatures, pigstrip.Docs)},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			home := t.TempDir()

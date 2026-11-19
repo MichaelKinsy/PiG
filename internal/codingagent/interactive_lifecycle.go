@@ -30,7 +30,7 @@ func (m *InteractiveMode) Stop(fullscreenExitOutput ...FullscreenExitOutput) err
 	}
 	m.isInitialized = false
 	// The owner loop no longer runs once Stop finished, also when Init ran without Run (PI_STARTUP_BENCHMARK), so a runtime closed later resets the UI in place instead of waiting for the loop.
-	m.runEnded.Store(true)
+	m.runEnded.end()
 	return err
 }
 

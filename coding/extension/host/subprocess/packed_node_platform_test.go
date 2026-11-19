@@ -58,7 +58,7 @@ func TestPackedNodeMembersUseNativeTransportAndSharedProcess(t *testing.T) {
 	}
 }
 
-// Packed and isolated Node cells use the same direct-node launcher and URL
+// Packed and isolated Node cells use the same direct-node launcher and bootstrap
 // rules. A POSIX shell artifact cannot launch a cell on native Windows.
 func TestPackedNodeLauncherUsesDirectNodeOnEveryPlatform(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "space ! percent% hash# unicode-é")
@@ -73,19 +73,12 @@ func TestPackedNodeLauncherUsesDirectNodeOnEveryPlatform(t *testing.T) {
 	if !usesNodeRuntime(cell.BinaryPath, "") {
 		t.Error("packed launcher not recognized as Node; Windows members would receive Unix sockets")
 	}
-	loaderURL, err := nodeFileURL(filepath.Join(filepath.Dir(cell.BinaryPath), "runtime", "register-loader.mjs"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []string{"node", "--import", loaderURL, filepath.Join(filepath.Dir(cell.BinaryPath), "runtime", "cell.mjs"), filepath.Join(filepath.Dir(cell.BinaryPath), "manifest.json"), exts[0].Entry, exts[1].Entry}
+	want := []string{"node", filepath.Join(filepath.Dir(cell.BinaryPath), "runtime", "node-cell.mjs"), filepath.Join(filepath.Dir(cell.BinaryPath), "manifest.json"), exts[0].Entry, exts[1].Entry}
 	for _, platform := range []string{"linux", "darwin", "windows"} {
 		cmd := buildExtCommandForGOOS(t.Context(), cell.BinaryPath, "", platform, func(name string) (string, error) { return name, nil })
 		if !reflect.DeepEqual(cmd.Args, want) {
 			t.Errorf("%s command = %q, want %q", platform, cmd.Args, want)
 		}
-	}
-	if !strings.HasPrefix(loaderURL, "file://") || !strings.Contains(loaderURL, "%23") || !strings.Contains(loaderURL, "%25") {
-		t.Fatalf("loader module specifier was not URL encoded: %q", loaderURL)
 	}
 	warm, err := buildNodePackedCell(t.Context(), root, "packed:node", exts)
 	if err != nil || warm == nil || !warm.Cached {

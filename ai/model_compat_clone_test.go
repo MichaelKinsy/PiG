@@ -52,12 +52,3 @@ func TestCloneCompatAvoidsScalarJSONRoundTrip(t *testing.T) {
 		t.Fatalf("scalar clone uses %.0f allocations; JSON round trip uses %.0f", got, reference)
 	}
 }
-
-func BenchmarkCloneCatalogCompat(b *testing.B) {
-	b.ReportAllocs()
-	for b.Loop() {
-		for _, model := range GeneratedModels {
-			_ = cloneCompat(model.Compat)
-		}
-	}
-}

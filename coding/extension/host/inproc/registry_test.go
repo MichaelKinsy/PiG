@@ -212,6 +212,37 @@ func TestHasHandlers_AcrossMultipleExtensions(t *testing.T) {
 	}
 }
 
+// HasHandlersThatMayAwait counts the handlers that can pend: a handler registered as one that returns without awaiting does not, whatever the path of its extension, and
+// every other handler does, in this extension or another one.
+func TestHasHandlersThatMayAwaitLeavesOutTheHandlersThatReturnWithoutAwaiting(t *testing.T) {
+	returnsWithoutAwait := func(path string) extension.Extension {
+		ext := newFakeExtension(path)
+		ext.AddEventHandlerReturningWithoutAwait("session_start", 1, func(...any) (any, error) { return nil, nil })
+		return ext
+	}
+	for _, tc := range []struct {
+		name string
+		exts []extension.Extension
+		want bool
+	}{
+		{"no extension", nil, false},
+		{"one handler that returns without awaiting", []extension.Extension{returnsWithoutAwait("builtin:mcp")}, false},
+		{"the same under another path", []extension.Extension{returnsWithoutAwait("/ext/a")}, false},
+		{"a handler that can pend", []extension.Extension{extWithHandler("builtin:mcp", "session_start")}, true},
+		{"a mixed set across extensions", []extension.Extension{returnsWithoutAwait("builtin:mcp"), extWithHandler("/ext/a", "session_start")}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := inproc.NewRunner(tc.exts, ".")
+			if got := r.HasHandlersThatMayAwait("session_start"); got != tc.want {
+				t.Errorf("HasHandlersThatMayAwait(session_start) = %v, want %v", got, tc.want)
+			}
+			if r.HasHandlersThatMayAwait("tool_call") {
+				t.Error("HasHandlersThatMayAwait(tool_call) = true with no tool_call handler")
+			}
+		})
+	}
+}
+
 // TestStubSurfaces_OnlyExpectedAreStubbed: \u03b5.2c lights up Commands,
 // Flags, Shortcuts (in addition to \u03b5.2b's Tools, GetToolDefinition,
 // HasHandlers). The remaining stub is MessageRenderer for \u03b5.2e.

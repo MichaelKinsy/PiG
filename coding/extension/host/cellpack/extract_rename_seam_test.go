@@ -2,6 +2,7 @@ package cellpack
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -25,7 +26,7 @@ func TestExtractRenameRefusal(t *testing.T) {
 			t.Fatal(err)
 		}
 		renameFile = func(string, string) error { return denied }
-		if err := extract(fsys, m, dest); !errors.Is(err, syscall.EACCES) {
+		if err := extract(fsys, m, dest, io.Discard); !errors.Is(err, syscall.EACCES) {
 			t.Fatalf("extract = %v, want the refusal", err)
 		}
 		if entries, _ := filepath.Glob(filepath.Join(filepath.Dir(out), ".extract-*")); len(entries) != 0 {
@@ -47,7 +48,7 @@ func TestExtractRenameRefusal(t *testing.T) {
 			}
 			return denied
 		}
-		if err := extract(fsys, m, dest); err != nil {
+		if err := extract(fsys, m, dest, io.Discard); err != nil {
 			t.Fatalf("extract = %v, want the peer's file adopted", err)
 		}
 	})

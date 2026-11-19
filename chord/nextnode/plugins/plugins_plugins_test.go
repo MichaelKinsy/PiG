@@ -594,6 +594,36 @@ func TestPluginsRolloutKeepsDirtyAPluginWhoseBuiltKindNoStepShipped(t *testing.T
 	}
 }
 
+// D607: a step's Reload receives `applied`, the set of each of the step's kinds as this rollout left it (Pi's step reads `plugins.current(kind)` right after its ship, plugins.ts:274-283).
+// The argument holds exactly the step's kinds, and each is the built plugin's script, equal to what Current answers after the rollout.
+func TestPluginsRolloutHandsTheStepTheSetsItsRolloutLeftForItsKinds(t *testing.T) {
+	root := tempRoot(t)
+	writePlugin(t, root, "a", "@test/a", map[string]string{"worker.ts": "export default { setup: () => {} };", "server.ts": "export default { setup: () => {} };"}, nil)
+	c := pcNew(t, root)
+	c.build(t)
+	built := c.build(t, "@test/a")
+	got := map[string]map[string][]PluginScript{}
+	record := func(name string, kinds ...string) RolloutStep {
+		return RolloutStep{Name: name, Kinds: kinds, Reload: func(_ *Built, applied map[string][]PluginScript, _ context.Context) (StepResult, error) {
+			got[name] = applied
+			report := pcReport()
+			return StepResult{Hosts: []RolloutHost{{Kind: RolloutReported, Host: name, Report: *report}}}, nil
+		}}
+	}
+	c.rollout(t, []RolloutStep{record("worker", "worker"), record("both", "worker", "server")}, built)
+	if len(got["worker"]) != 1 || len(got["both"]) != 2 {
+		t.Fatalf("applied kinds: worker step %d, both step %d, want 1 and 2", len(got["worker"]), len(got["both"]))
+	}
+	for step, sets := range got {
+		for kind, scripts := range sets {
+			current, ok := c.Current(kind)
+			if !ok || len(scripts) != 1 || !reflect.DeepEqual(scripts, current) {
+				t.Fatalf("step %s kind %s: applied %v, current %v (%v), want the one script the rollout shipped", step, kind, scripts, current, ok)
+			}
+		}
+	}
+}
+
 // plugins.test.ts › rollout › stops at a step that rejects, clearing no mark; a change during the build keeps its mark.
 func TestPluginsRolloutStopsAtAStepThatRejectsClearingNoMarkAChangeDuringTheBuildKeepsItsMark(t *testing.T) {
 	root := tempRoot(t)

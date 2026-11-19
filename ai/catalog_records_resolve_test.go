@@ -4,6 +4,8 @@ import (
 	"runtime"
 	"sync"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/benchalloc"
 )
 
 var resolveSink int
@@ -56,19 +58,20 @@ func BenchmarkResolveCatalogRecordAllAfterGC(b *testing.B) {
 	}
 }
 
+// BenchmarkCatalogModelJSONAll encodes every built-in model as the RPC model object, on the live catalog: the production path reads each record through the baseline cache of its built-in row, which only a model of the shipped catalog takes. Its allocs/op is allocations per 1,000 catalog entries, measured over the loop by runtime.ReadMemStats (internal/benchalloc), so a refresh that adds entries does not move the row while a record that costs more to encode does.
 func BenchmarkCatalogModelJSONAll(b *testing.B) {
-	b.ReportAllocs()
 	models := make([]*Model, len(GeneratedModels))
 	for i := range GeneratedModels {
 		models[i] = GeneratedModels[i].ToModel()
 	}
-	b.ResetTimer()
-	for b.Loop() {
-		for _, model := range models {
-			data, _, _ := CatalogModelJSON(model)
-			resolveSink += len(data)
-		}
-	}
+	b.Run("per-1000-entries", func(b *testing.B) {
+		benchalloc.Per1000Entries(b, len(models), func() {
+			for _, model := range models {
+				data, _, _ := CatalogModelJSON(model)
+				resolveSink += len(data)
+			}
+		})
+	})
 }
 
 // Many goroutines read rows of every chunk in interleaved order, with a collection every 500 reads, and each record equals the one read before they started.

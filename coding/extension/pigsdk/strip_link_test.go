@@ -126,3 +126,34 @@ func TestTypeEngineIsLinkedOnlyWhileAnSDKIsEmbedded(t *testing.T) {
 		t.Errorf("the extension host links the type engine without pigsdk")
 	}
 }
+
+// D92: with features: extension-sdk-go stripped, the typed upgrade analysis (coding/cli/extension_upgrade_analyze.go: the go command build of the analysis driver, its run, and the rewrite build check) is not linked into the binary: coding/cli of a pig_strip_extension_sdk_go build holds none of its symbols, and the stock build holds them.
+func TestStripExtensionSDKGoBuildOmitsTheUpgradeAnalysis(t *testing.T) {
+	if testing.Short() {
+		t.Skip("builds the cli package in -short mode")
+	}
+	symbols := func(tags string) string {
+		archive := filepath.Join(t.TempDir(), "cli.a")
+		args := []string{"build", "-o", archive}
+		if tags != "" {
+			args = append(args, "-tags", tags)
+		}
+		if out, err := exec.Command("go", append(args, pigModule+"/coding/cli")...).CombinedOutput(); err != nil {
+			t.Fatalf("go %s: %v\n%s", strings.Join(args, " "), err, out)
+		}
+		out, err := exec.Command("go", "tool", "nm", archive).Output()
+		if err != nil {
+			t.Fatalf("go tool nm: %v", err)
+		}
+		return string(out)
+	}
+	stock, stripped := symbols(""), symbols("pig_strip_extension_sdk_go")
+	for _, symbol := range []string{"cli.runAnalysisDriver", "cli.classifyRewriteBuild", "extensionUpgrader).withGoCompile"} {
+		if !strings.Contains(stock, symbol) {
+			t.Errorf("the stock coding/cli does not hold %s", symbol)
+		}
+		if strings.Contains(stripped, symbol) {
+			t.Errorf("a pig_strip_extension_sdk_go build of coding/cli holds %s", symbol)
+		}
+	}
+}

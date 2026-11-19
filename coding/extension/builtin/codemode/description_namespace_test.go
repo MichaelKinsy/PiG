@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/builtin/codemode"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 // tool.ts DESCRIPTION_INTRO and describeGlobals of 1.1.0, which the catalog cases of tool-search.test.ts only match in
@@ -29,10 +30,17 @@ func TestCodemodeDescriptionDocumentsDescribeNamespaceAndAlwaysCarriesTheSearchG
 // describeGlobals(true) adds one line for `models` that points to CODEMODE_DOCS_PATH instead of declaring the API.
 func TestCodemodeDescriptionNamesTheModelsGlobalInOneLine(t *testing.T) {
 	docs := codemode.DocsPath()
-	if docs == "" {
+	citation := " Read " + docs + " first."
+	if pigstrip.Has(pigstrip.ListFeatures, pigstrip.Docs) {
+		// pig additive (D92): a build that strips docs writes no page, so the line points to none.
+		if docs != "" {
+			t.Errorf("DocsPath() = %q in a build that strips docs", docs)
+		}
+		citation = ""
+	} else if docs == "" {
 		t.Error("DocsPath() is empty; upstream CODEMODE_DOCS_PATH is join(getDocsPath(), \"codemode.md\")")
 	}
-	want := descriptionIntro + "\n\n" + describeGlobals + "\n- `models`: classifiers and image generation. Read " + docs + " first."
+	want := descriptionIntro + "\n\n" + describeGlobals + "\n- `models`: classifiers and image generation." + citation
 	if got := mustDescription(t, nil, codemode.DescriptionOptions{Models: true}); got != want {
 		t.Errorf("description:\n%q\nwant\n%q", got, want)
 	}

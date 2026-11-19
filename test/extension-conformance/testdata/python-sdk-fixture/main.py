@@ -1740,7 +1740,7 @@ def new_extension() -> pig_sdk.Extension:
 
     def report_session_actions(hctx):
         parts = []
-        for name, call in (("new", lambda: hctx.new_session()), ("fork", lambda: hctx.fork("entry")), ("navigate", lambda: hctx.navigate_tree("entry")), ("switch", lambda: hctx.switch_session("/s.jsonl")), ("reload", lambda: hctx.reload())):
+        for name, call in (("wait", lambda: hctx.wait_for_idle()), ("new", lambda: hctx.new_session()), ("fork", lambda: hctx.fork("entry")), ("navigate", lambda: hctx.navigate_tree("entry")), ("switch", lambda: hctx.switch_session("/s.jsonl")), ("reload", lambda: hctx.reload())):
             try:
                 call()
                 parts.append("%s=allowed" % name)
@@ -1760,6 +1760,47 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("event_session_actions_on", "Subscribe to the event named by the argument with a handler that calls the session actions", event_session_actions_on)
     ext.command("event_session_actions_stored", "Call the session actions through the context an event handler kept", event_session_actions_stored)
+
+    # tool_call_cancel_on subscribes to tool_call with a handler that waits for the cancel signal and then answers (D650 claim 6).
+    def tool_call_cancel_on(ctx, _args):
+        def handler(hctx, _data):
+            hctx.notify("cancel_wait", "info")
+            while not hctx.is_cancelled():
+                time.sleep(0.005)
+            hctx.notify("cancel_seen", "info")
+            return {"block": True, "reason": "answered after the abort"}
+
+        ext.on_event("tool_call", handler)
+
+    ext.command("tool_call_cancel_on", "Subscribe to tool_call with a handler that waits for the cancel signal", tool_call_cancel_on)
+    # session_actions_tool makes the same calls, and the wait, through the context of a tool's execute: Pi's createContext() object, so every one is refused.
+    ext.tool("session_actions_tool", "Call the session actions through the tool's context", {"type": "object", "properties": {}}, lambda tctx, _args: {"content": "tool_actions:" + report_session_actions(tctx)})
+
+    # wait_idle_command waits for the run from a command context (runner.ts createCommandContext); wait_idle_with_session from a withSession callback's context.
+    def wait_idle_command(ctx, _args):
+        text = "done"
+        try:
+            ctx.wait_for_idle()
+        except Exception as error:
+            text = "error:%s" % error
+        ctx.notify("wait_idle:" + text, "info")
+
+    def wait_idle_with_session(ctx, _args):
+        # The callback runs while this command's switch_session call is in flight, so the notice is sent once the call returned.
+        text = ["never ran"]
+
+        def with_session(replaced):
+            text[0] = "done"
+            try:
+                replaced.wait_for_idle()
+            except Exception as error:
+                text[0] = "error:%s" % error
+
+        ctx.switch_session("/s.jsonl", {"withSession": with_session})
+        ctx.notify("with_session_wait:" + text[0], "info")
+
+    ext.command("wait_idle_command", "Wait for the run from a command", wait_idle_command)
+    ext.command("wait_idle_with_session", "Wait for the run from a withSession callback", wait_idle_with_session)
     ext.command("session_actions_unbound", "Report what unbound session actions answer", session_actions_unbound)
     ext.command("active_tools_get", "Report the active tools", lambda ctx, _args: ctx.notify("active_tools:%s" % ",".join(ctx.get_active_tools()), "info"))
     # mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
@@ -1977,6 +2018,15 @@ def new_extension() -> pig_sdk.Extension:
         second = ask("tool_signal:later")
         return {"content": "tool_signal:%s:%s:%s" % (aborted, first, second)}
 
+    # aborted_entry_probe is called with its run already aborted: it echoes the nonce, reports whether its signal was aborted on its first line, and makes a host call after that, which the host answers (TestConformance_ToolCalledAbortedEntersWithItsSignalAborted).
+    def aborted_entry_probe(ctx, params):
+        aborted = str(ctx.is_cancelled()).lower()
+        try:
+            answer = ctx.input("aborted_entry:%s" % params["nonce"], "p")[0]
+        except Exception as error:
+            answer = "failed: %s" % error
+        return {"content": "aborted_entry:%s:%s:%s" % (params["nonce"], aborted, answer)}
+
     # signal_nested_probe shows that the host keeps answering a nested tool call's host calls after the abort, as Pi's in-process calls are.
     def signal_nested_probe(ctx, _params):
         try:
@@ -1997,6 +2047,7 @@ def new_extension() -> pig_sdk.Extension:
     ext.tool("abort_tool", "Wait for the abort signal", {"type": "object", "properties": {}}, abort_tool)
     ext.tool("hang_tool", "Ignore the abort signal", {"type": "object", "properties": {}}, hang_tool)
     ext.tool("signal_host_probe", "Await host dialogs across the abort", {"type": "object", "properties": {}}, signal_host_probe)
+    ext.tool("aborted_entry_probe", "Report the signal a tool starts with", {"type": "object", "properties": {}}, aborted_entry_probe)
     ext.tool("signal_nested_probe", "Run abort_tool as a nested tool call", {"type": "object", "properties": {}}, signal_nested_probe)
     ext.command(
         "abort_probe",
@@ -2384,6 +2435,23 @@ def new_extension() -> pig_sdk.Extension:
 
     ext.command("io_wait_settled", "Make agent_settled wait on a socket read", io_wait_settled)
 
+    name_wait_addr: list[str] = []
+    ext.command("io_wait_name", "Make the session_info_changed handler wait on a socket read", lambda ctx, args: name_wait_addr.append(args))
+
+    # io_wait_input and io_wait_start subscribe an input / before_agent_start handler that waits on a socket read first and then notifies "<event>:<text or prompt>".
+    def io_wait_event(event: str, member: str):
+        def arm(ctx: pig_sdk.Context, args: str) -> None:
+            def handler(hctx, data):
+                io_wait(args)
+                hctx.notify("%s:%s" % (event, data.get(member, "")), "info")
+
+            ext.on_event(event, handler)
+
+        return arm
+
+    ext.command("io_wait_input", "Make an input handler wait on a socket read", io_wait_event("input", "text"))
+    ext.command("io_wait_start", "Make a before_agent_start handler wait on a socket read", io_wait_event("before_agent_start", "prompt"))
+
     ext.command("command_error", "Return a command error", command_error)
 
     def command_awaited_error(ctx: pig_sdk.Context, args: str) -> None:
@@ -2682,6 +2750,21 @@ def new_extension() -> pig_sdk.Extension:
             execute=view_show,
         ))
 
+    # D521: bigint_tool registers a tool whose schema declares a bigint parameter and answers the kind of value it receives for it and the value.
+    def bigint_tool_probe(ctx, _args):
+        def bigint_arg(_ctx, params):
+            value = params["n"]
+            return {"content": ("string" if isinstance(value, str) else "other") + ":" + str(value)}
+
+        ctx.register_tool(pig_sdk.ToolDefinition(
+            name="bigint_arg",
+            label="bigint_arg",
+            description="Report the kind and value of n",
+            parameters={"type": "object", "required": ["n"], "properties": {"n": {"type": "bigint"}}},
+            execute=bigint_arg,
+        ))
+
+    ext.command("bigint_tool", "Register the tool that reports what a bigint argument arrives as", bigint_tool_probe)
     ext.command("ui_view_tool", "Register the tool that shows a titled view", view_tool_probe)
 
     # D614 grid node: the probe every SDK fixture implements the same way (conformance TestConformance_UIViewGrid). The argument is
@@ -3132,6 +3215,51 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, lambda hctx, data: hctx.notify("event_field:%s.%s=%s" % (name, field, json.dumps(data[field], separators=(",", ":")) if field in data else "absent"), "info"))
 
     ext.command("event_field_probe", "Report a field of the events named by the argument `<event> <field>`", event_field_probe)
+
+    def event_level_edit_probe(ctx, args):
+        # `<event> <top|deep>`: subscribe to the event with a handler that edits it in place and returns nothing. `top` assigns a member of the event itself (probeTop); `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text block, else a string content, else a `probe` member. Every edit writes `other-event-edit`.
+        name, level = args.split()
+        edited = "other-event-edit"
+
+        def make(hctx, data):
+            if level == "top":
+                data["probeTop"] = edited
+                return
+            target = data.get("message")
+            if target is None and isinstance(data.get("messages"), list) and data["messages"]:
+                target = next((m for m in data["messages"] if isinstance(m, dict) and m.get("role") == "user"), data["messages"][0])
+            if not isinstance(target, dict):
+                return
+            content = target.get("content")
+            first = content[0] if isinstance(content, list) and content else None
+            if isinstance(first, dict) and first.get("type") == "text":
+                first["text"] = edited
+            elif isinstance(content, str):
+                target["content"] = edited
+            else:
+                target["probe"] = edited
+
+        ext.on_event(name, make)
+
+    ext.command("event_level_edit_probe", "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place", event_level_edit_probe)
+    def event_member_probe(ctx, args):
+        # `<event> <set|delete|once> <member> [json]`: a handler that assigns the member the JSON, deletes it, or (once) assigns it in its first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there.
+        name, op, member, *rest = args.split(None, 3)
+        value = json.loads(rest[0]) if rest else None
+        calls = [0]
+
+        def make(hctx, data):
+            calls[0] += 1
+            if op == "delete":
+                data.pop(member, None)
+            elif op == "once" and calls[0] > 1:
+                hctx.notify("member_probe_stale:%s:%s" % (name, "true" if member in data and data[member] == value else "false"), "info")
+            else:
+                data[member] = value
+
+        ext.on_event(name, make)
+
+    ext.command("event_member_probe", "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event", event_member_probe)
     event_probe_on_offs: dict = {}
 
     event_probe_results: dict = {}
@@ -3372,6 +3500,30 @@ def new_extension() -> pig_sdk.Extension:
         ext.on_event(name, make)
 
     ext.command("event_edit_probe", "Subscribe to the event named by the argument with a handler that edits the event in place and returns nothing", event_edit_probe)
+
+    def event_assign_probe(ctx, args):
+        # Subscribe to the event named by the argument with a handler that ASSIGNS a new value to the event's input (tool_call), messages (context) or entries (turn_end) instead of editing the old value in place, and returns nothing.
+        name, _, variant = args.strip().partition(" ")
+        edited = "other-event-edit"
+
+        def assign(hctx, data):
+            if name == "tool_call":
+                data["input"] = {"command": edited}
+            elif name == "context":
+                if variant == "bad":
+                    data["messages"] = "oops"
+                elif variant == "badmsg":
+                    data["messages"] = [42]
+                else:
+                    data["messages"] = [{"role": "user", "content": [{"type": "text", "text": edited}], "timestamp": 1}]
+            elif name == "turn_end":
+                data["entries"] = [{"type": "custom", "customType": edited}]
+            else:
+                raise RuntimeError("event_assign_probe has no event " + name)
+
+        ext.on_event(name, assign)
+
+    ext.command("event_assign_probe", "Subscribe to the event named by the argument with a handler that assigns a new value to the event's input, messages or entries", event_assign_probe)
     ext.command("event_probe_off", "Unsubscribe the event_probe_on handlers of the event named by the argument", event_probe_on_off)
     def event_payload_probe(ctx, args):
         name = args.strip()
@@ -3570,6 +3722,35 @@ def new_extension() -> pig_sdk.Extension:
             pass
 
     ext.command("stale-probe", "Report cwd, mode, hasUI and model", stale_probe)
+
+    def stale_members(ctx: pig_sdk.Context, args: str = "") -> None:
+        """Call the members that fail with the stale message: each outcome is one line, and the command fails with every line when one carries the message."""
+        lines: list[str] = []
+        stale = False
+
+        def member(name, call) -> None:
+            nonlocal stale
+            try:
+                outcome = "ok:%s" % (call(),)
+            except Exception as error:  # noqa: BLE001 - the outcome is the report
+                outcome = "raises:%s:%s" % (type(error).__name__, error)
+            stale = stale or "This extension ctx is stale" in outcome
+            lines.append("%s=%s" % (name, outcome))
+
+        member("theme", lambda: type(ctx.theme).__name__)
+        member("width", lambda: ctx.width)
+        member("height", lambda: ctx.height)
+        member("sessionName", lambda: ctx.session_name)
+        member("setWidgetLines", lambda: ctx.set_widget("stale-members", ["x"]))
+        member("setWidgetView", lambda: ctx.set_widget("stale-members-view", kit.View(kit.Text("x", 0, 0))))
+        member("setWidgetRenderer", lambda: ctx.set_widget_renderer("stale-members-renderer", lambda width: ["x"]))
+        member("onUpdate", lambda: ctx.on_update("x"))
+        member("getSettings", lambda: type(ctx.get_settings()).__name__)
+        if stale:
+            raise RuntimeError("stale-members\n" + "\n".join(lines))
+        ctx.notify("members\n" + "\n".join(lines), "info")
+
+    ext.command("stale-members", "Call the members that fail with the stale message", stale_members)
     ext.command("signal-wait", "Wait for ctx.signal to abort", signal_wait)
     ext.command("usage-probe", "Report context usage", lambda ctx, args: ctx.notify(json.dumps(ctx.get_context_usage()), "info"))
 
@@ -4172,12 +4353,21 @@ def new_extension() -> pig_sdk.Extension:
 
     def session_shutdown(ctx, data):
         ctx.notify("session_shutdown:" + str(data.get("reason", "")), "info")
+        # The handler's own context is still active (Pi invalidates after the handlers ran): the stale-members test reads every member from here.
+        if data.get("reason") == "stale-members-test":
+            stale_members(ctx)
         if data.get("targetSessionFile"):
             ctx.notify("target:" + data["targetSessionFile"], "info")
 
     ext.on_event("session_start", session_start)
     ext.on_event("session_shutdown", session_shutdown)
-    ext.on_event("session_info_changed", lambda ctx, data: ctx.notify("session_info_changed:" + str(data.get("name", "")), "info"))
+    def session_info_changed(ctx, data):
+        # io_wait_name arms the handler to wait on a socket read first, as a handler that awaits does in Pi.
+        if name_wait_addr:
+            io_wait(name_wait_addr[0])
+        ctx.notify("session_info_changed:" + str(data.get("name", "")), "info")
+
+    ext.on_event("session_info_changed", session_info_changed)
     for name in ("ui_prompt_start", "ui_prompt_end"):
         ext.on_event(name, ui_prompt_event)
     ext.on_event(

@@ -98,7 +98,7 @@
    "call:coding/mcpext/cli.go#RunMcpCommand"
   ],
   "evidence": [
-   "test:coding/mcp_session_registered_upstream_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
+   "test:coding/mcp_session_registered_upstream_node_test.go#TestAgentSessionMCPServersRegisteredByExtensionsPrefersTheMCPJSONServerOverARegisteredServer",
    "test:coding/mcpext/connection_test.go#TestMCPConnectionsAsksOAuthServersThatKeepRejectingRequestsForANewSignIn"
   ],
   "async": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine.",

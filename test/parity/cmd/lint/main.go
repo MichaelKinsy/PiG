@@ -83,6 +83,12 @@
 //     sequence (or one OSC number) with a reason, the recorded Pi runs and at
 //     least two distinct recorded positions, under a `# floating-evidence:`
 //     comment: a sequence that never moves is compared, not skipped.
+//     erasures_only narrows a window to its erase-in-display sequences (ESC[2J,
+//     ESC[3J) and does not combine with floating. write_kinds reduces a window to
+//     the kinds of its writes (frame, standalone cursor placement, title, other
+//     sequences) and does not combine with erasures_only; collapse_frame_runs
+//     (only with write_kinds) counts a run of frames as one entry and needs a
+//     `# frame-count-evidence:` comment naming two recorded Pi runs that differ.
 package main
 
 import (
@@ -186,10 +192,14 @@ type jsonPigOnlyRecordRule struct {
 }
 
 type sequenceWindowBlock struct {
-	Window   string                  `toml:"window"`
-	From     string                  `toml:"from"`
-	Until    string                  `toml:"until"`
-	Floating []floatingSequenceBlock `toml:"floating"`
+	Window       string                  `toml:"window"`
+	From         string                  `toml:"from"`
+	Until        string                  `toml:"until"`
+	Floating     []floatingSequenceBlock `toml:"floating"`
+	ErasuresOnly bool                    `toml:"erasures_only"`
+	WriteKinds   bool                    `toml:"write_kinds"`
+	// CollapseFrameRuns is checked with WriteKinds: runner/transcript_sequences.go counts a run of frames as one entry only for a window that compares write kinds.
+	CollapseFrameRuns bool `toml:"collapse_frame_runs"`
 }
 
 type floatingSequenceBlock struct {
@@ -244,6 +254,7 @@ type tmuxBlock struct {
 	CaptureEndRegex     string          `toml:"capture_end_regex"`
 	CaptureStartLast    bool            `toml:"capture_start_last"`
 	CaptureHistory      bool            `toml:"capture_history"`
+	PreTuiLines         int             `toml:"pre_tui_lines"`
 	CaptureJoinWrapped  bool            `toml:"capture_join_wrapped"`
 	CWD                 string          `toml:"cwd"`
 	GitBranch           string          `toml:"git_branch"`
@@ -266,6 +277,7 @@ type tmuxStepBlock struct {
 
 	FrameWatch *frameWatchBlock `toml:"frame_watch"`
 	FinalFrame *finalFrameBlock `toml:"final_frame"`
+	Signal     string           `toml:"signal"`
 }
 
 type finalFrameBlock struct {
@@ -461,7 +473,7 @@ func decodeScenarioWithUnknownKeyLint(path, source string, sc *scenario, violati
 func lintScenario(path, source string, sc *scenario, known map[string]bool, knownDivergences map[string]bool) []violation {
 	var out []violation
 
-	hasEq := sc.Assert.OutputEqual || sc.Assert.OutputNormalizedEqual || sc.Assert.OutputLayoutEqual || sc.Assert.EscapedOutputEqual
+	hasEq := sc.Assert.OutputEqual || sc.Assert.OutputNormalizedEqual || sc.Assert.OutputLayoutEqual || sc.Assert.EscapedOutputEqual || len(sc.Assert.TranscriptSequencesEqual) > 0
 	isTmux := sc.Driver == "interactive-tmux" || sc.Driver == "headless-terminal"
 	isBootOnly := strings.HasPrefix(sc.Description, "boot-only:")
 	isDeferred := hasTag(sc.Tags, "deferred")
@@ -470,6 +482,9 @@ func lintScenario(path, source string, sc *scenario, known map[string]bool, know
 
 	if sc.Tmux.CaptureHistory && sc.Driver != "interactive-tmux" {
 		out = append(out, violation{path, "history-driver", "capture_history requires interactive-tmux"})
+	}
+	if sc.Tmux.PreTuiLines < 0 || sc.Tmux.PreTuiLines > 0 && sc.Driver != "interactive-tmux" {
+		out = append(out, violation{path, "pre-tui-driver", "pre_tui_lines is a count of lines printed before an interactive-tmux binary starts"})
 	}
 	if sc.Assert.ChangelogHeadersComplete && (sc.Driver != "interactive-tmux" || !sc.Tmux.CaptureHistory) {
 		out = append(out, violation{path, "changelog-history", "changelog_headers_complete requires complete tmux history"})
@@ -738,6 +753,18 @@ func lintTranscriptSequences(path, source string, sc *scenario) []violation {
 			bad("transcript-sequences-window", "transcript_sequences_equal window %q replaces from and until", w.Window)
 		case w.Window == "" && w.From == "" && w.Until == "":
 			bad("transcript-sequences-window", "transcript_sequences_equal needs a window name or a from or until marker: the whole stream is not a stable comparison")
+		}
+		if w.WriteKinds && w.ErasuresOnly {
+			bad("transcript-sequences-write-kinds", "transcript_sequences_equal write_kinds and erasures_only are two reductions of the window; name one")
+		}
+		if w.CollapseFrameRuns && !w.WriteKinds {
+			bad("transcript-sequences-write-kinds", "transcript_sequences_equal collapse_frame_runs belongs to write_kinds")
+		}
+		if w.CollapseFrameRuns && !strings.Contains(source, "# frame-count-evidence:") {
+			bad("frame-count-evidence-missing", "scenario %q collapses frame runs without a '# frame-count-evidence:' comment naming two recorded Pi runs with different frame counts and the reply whose timing moves them", sc.Name)
+		}
+		if w.ErasuresOnly && len(w.Floating) > 0 {
+			bad("transcript-sequences-erasures", "transcript_sequences_equal erasures_only compares the erase sequences alone, and floating names sequences left out of a full comparison")
 		}
 		for _, f := range w.Floating {
 			floats++

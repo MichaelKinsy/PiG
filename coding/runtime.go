@@ -370,7 +370,6 @@ func (rt *Runtime) startSessionWithFactory(opts SessionStartOptions, create func
 		SessionDir:             opts.SessionDir,
 		SessionID:              opts.SessionID,
 		NoSession:              opts.NoSession,
-		Transport:              ai.Transport(rt.Services().Settings().Transport),
 		runnerShared:           true,
 		extensionHost:          rt.extensionHost,
 	})

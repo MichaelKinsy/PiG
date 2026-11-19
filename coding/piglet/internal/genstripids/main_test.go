@@ -1,3 +1,9 @@
+//go:build !pig_strip_changelog && !pig_strip_codemode && !pig_strip_mcp && !pig_strip_pig_login && !pig_strip_tool_search
+
+// The generator reads the IDs from the registrations compiled into its own binary, so these tests compare the committed table with what
+// a stock build registers: a build that compiles out a tool, a command or a built-in extension has fewer registrations and cannot.
+// The tags above are the ones that remove a registration; make piglet-strip-tests fails when another tag does, and joins this list.
+
 package main
 
 import (

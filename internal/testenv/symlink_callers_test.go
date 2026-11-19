@@ -164,6 +164,9 @@ var fileSymlinkCallers = map[string]string{
 	"env/daemon/list_test.go::TestListFilesListsSymbolicLinksWithoutFollowingThem":                                                                             "a link to a missing target and directory links, one of them a loop; the listing reports each as a link without following it",
 	"env/list_files_oracle_test.go::writeGenerated":                                                                                                            "links to random tree names (files, directories, missing names) and to \".\", each compared with Pi's listing",
 	"internal/codingagent/context_files_symlink_test.go::TestLoadProjectContextFilesNestedWorktreeSymlinkedContext":                                            "file link; AGENTS.md in a nested worktree links to the main repo's file (#10681)",
+	"coding/extension/host/runtimecell/sdk_tree_memo_test.go::TestSDKTreeHashIsTheHashOfTheFilesWhereverItIsAnsweredFrom":                                      "file link; the staged SDK tree hash must see a file link appear or replace a file (the memo hashes files, not directory links)",
+	"coding/extension/host/runtimecell/sdk_tree_memo_test.go::TestStagedSDKHashFollowsEveryChangeOfASizeATimeOrTheFiles":                                       "file link; the staged SDK tree hash must see a file link appear or replace a file (the memo hashes files, not directory links)",
+	"coding/extension/host/runtimecell/sdk_tree_memo_test.go::TestStagedSDKHashDoesNotAnswerToWhatTheHashIgnores":                                              "file link; the staged SDK tree hash must see a file link appear or replace a file (the memo hashes files, not directory links)",
 }
 
 // Windows-building tests keep Symlink for file links only, so the directory-link behavior they exercise runs on a stock Windows host.

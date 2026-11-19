@@ -65,6 +65,7 @@ func TestStreamingMessageLetsGoOfItsBlocksWhenItEnds(t *testing.T) {
 
 // TestStreamingMessageHoldsOnlyItsLastFrame: what the block holds is what its segments kept at the frame last drawn, one entry for each segment that kept something, however many frames were drawn.
 func TestStreamingMessageHoldsOnlyItsLastFrame(t *testing.T) {
+	pauseGC(t) // a collection between a segment's render and the block's pin frees that segment's memos, and the count below holds both; a WeakRef target is kept until its job ends
 	mdCaseSetup(t)
 	var calls []string
 	block := NewAssistantMessageComponent(nil, false, countingMarkdownTheme(&calls), "", nil, nil, "", "")

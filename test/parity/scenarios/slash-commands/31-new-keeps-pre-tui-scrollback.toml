@@ -1,0 +1,50 @@
+# Behavior family: slash-commands
+# Surface: /new keeps the terminal scrollback above the TUI
+#
+# Upstream evidence (Pi 0.84 tui.ts doRender, interactive-mode.ts handleNewSession): the launch shell prints five lines
+# before the TUI starts, as a package install or a wrapper script does. After /new Pi clears its chat container and
+# requests an ordinary render, which repaints only from the first changed row, so the five lines stay in the terminal's
+# scrollback. PiG repainted the new transcript with a forced full redraw (ESC[2J ESC[H ESC[3J) that erased them.
+# The crop of 03-new-session starts at the confirmation line, so it never saw the history above the frame.
+# This scenario captures the retained scrollback in regular TUI mode (fullscreen mode uses the alternate screen, which
+# has no scrollback), cropped to the five lines, and requires the same escaped text from both binaries. The crop that
+# starts at the first of those lines is not taken for the ready pattern (pre_tui_lines), so /new is sent after the TUI is up.
+
+name = "31-new-keeps-pre-tui-scrollback"
+description = "After /new the lines printed before the TUI started are still in the scrollback, as in Pi."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+pre_tui_lines = 5
+capture_history = true
+ready_pattern_pig = "Warning: No models available."
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "PRE-TUI-LINE-1"
+capture_end = "PRE-TUI-LINE-5"
+
+[[tmux.steps]]
+keys = ["/new", "Enter"]
+wait_contains = ["✓ New session started"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions", "--tui-mode", "regular"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions", "--tui-mode", "regular"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["PRE-TUI-LINE-1", "PRE-TUI-LINE-5"]
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 1

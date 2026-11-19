@@ -245,6 +245,48 @@ function replaceMessageInPlace(target, source) {
   Object.assign(target, source);
 }
 
+// eventEditMessages are the message objects of an event a handler may edit in place, by the position the reply names them at (_pigEventEdits): message_end has one. The reply is about these objects, so a handler that assigns another message to the event changes nothing, as in Pi (the event is made for each handler).
+function eventEditMessages(name, event) {
+  if (name === "message_start" || name === "message_end") return [event.message];
+  if (name === "agent_end") return Array.isArray(event.messages) ? event.messages : [];
+  if (name === "turn_end") return [event.message, ...(Array.isArray(event.toolResults) ? event.toolResults : [])];
+  return [];
+}
+
+// snapshotEventMessages is the JSON text of each message as the handler received it, or undefined for a value that is no object.
+function snapshotEventMessages(messages) {
+  return messages.map((message) => (message && typeof message === "object" ? JSON.stringify(message) : undefined));
+}
+
+// eventMessageEdits names the messages whose JSON text the handler changed, with the message as it left it, or is undefined when it changed none.
+function eventMessageEdits(messages, before) {
+  const edits = [];
+  for (let at = 0; at < messages.length; at++) {
+    if (before[at] !== undefined && JSON.stringify(messages[at]) !== before[at]) edits.push({ at, message: messages[at] });
+  }
+  return edits.length > 0 ? edits : undefined;
+}
+
+// MEMBER_EVENTS are the events whose own members a handler may assign, reassign or delete for the later handlers of the dispatch: Pi hands every handler of an emit the one event object (runner.ts emit).
+const MEMBER_EVENTS = new Set(["message_start", "message_update", "turn_start", "agent_start", "agent_end"]);
+
+// eventMemberEdits names the members the handler left different from the ones it received, as the second form of the reply's entries: {member, value} for one it added or whose value is another object or primitive (identity), {member, deleted: true} for one it deleted or set to undefined. It is undefined when the handler changed none. The event is the handler's own copy of the payload, so a member another handler left is already in `before`.
+function eventMemberEdits(event, before) {
+  let edits;
+  for (const name of Object.keys(before)) {
+    if (!Object.hasOwn(event, name)) (edits ??= []).push({ member: name, deleted: true });
+    else if (event[name] !== before[name]) (edits ??= []).push(memberEdit(name, event[name]));
+  }
+  for (const name of Object.keys(event)) {
+    if (!Object.hasOwn(before, name)) (edits ??= []).push(memberEdit(name, event[name]));
+  }
+  return edits;
+}
+
+function memberEdit(name, value) {
+  return JSON.stringify(value) === undefined ? { member: name, deleted: true } : { member: name, value };
+}
+
 // messageNumbers is the number the host gave each message object this process holds: an object that crosses to another process (pi.events, xref) names its message by it, and the receiving process resolves the number to its own object (resolveMessage), so the message is === the receiver's own payload message, as in Pi's one realm.
 const messageNumbers = new WeakMap();
 
@@ -453,6 +495,10 @@ function contextMessagesEncoding(messages) {
 // process startup time. require() of an ES module is synchronous, as the
 // ctx.sessionManager and ctx.modelRegistry reads that need them are.
 let piSessionModule;
+// The registerTool calls of this process still waiting for the host, and its setActiveTools calls the host has not finished, in every
+// runtime it serves: the host asks each extension's prepareLoadout hooks before it finishes either (Connection.nestedRequest).
+let registerToolWaits = 0;
+let setActiveToolsInFlight = 0;
 function piSession() {
   piSessionModule ??= requireModule("./shims/pi-dist/pi-coding-agent/core/session-manager.js");
   return piSessionModule;
@@ -1167,7 +1213,9 @@ function quitDrainState(drain) {
       // An aborted request whose author the host goes on awaiting: Pi awaits the run's end at stdin's end (dispose awaits session.abort()), and its process exits when its loop empties, which is what an author that holds no timer and no I/O leaves.
       held ||= request.authorHeld && !request.forwarding && request.controller?.signal.aborted === true;
       // A run handler or a tool the run awaits that has not answered at stdin's end: Pi's dispose awaits the aborted run (agent-session.ts abort -> waitForIdle), which awaits that handler, and a promise that settles nothing holds no handle, so the process exits when its loop empties (Pi 1.5.2: 15 ms over RPC). A handler with a timer, a socket or a host call keeps the loop and reports nothing here.
-      held ||= !request.forwarding && (request.toolCall || RUN_AWAITED_EVENTS.has(request.event));
+      // The abort that Pi's dispose makes in the tick stdin ends (agent-session-runtime.ts dispose awaits session.abort(), whose synchronous prefix aborts the run's signal) reaches this process after runtime_input_end, which the host sends when stdin ends. While this runtime's run signal is active and not aborted, and this request has not been cancelled, an empty loop only means that abort is still on its way, and a handler or tool that waits for nothing but its signal is woken by it. The report waits for it: the run_signal and cancel frames refresh this state, and the transports stay referenced meanwhile (reportQuitExit), so this process lives to read them.
+      const abortComing = runtime.runSignal !== undefined && !runtime.runSignal.controller.signal.aborted && request.controller?.signal.aborted !== true;
+      held ||= !request.forwarding && !abortComing && (request.toolCall || RUN_AWAITED_EVENTS.has(request.event));
       commands ||= request.command && !request.drainReported;
       tail ||= request.quitTail;
       // The request waits on this runtime's transport, which is not a drained loop.
@@ -1223,6 +1271,12 @@ function armRequestWindow(owner, early = false) {
       return;
     }
     owner.turned = true;
+    // pig divergence (D86 cured): the window of an input, before_agent_start or command handler closing unanswered is the handler awaiting a timer, I/O or another real wait, which is what Pi's loop serves stdin during. The caller that holds stdin for the handler (rpcAwaitHandler) is released by this blocked report, once. A command that awaits waitForIdle is reported by the host (Conn.settleBlockedCall): Pi's call returns at once while the Session is idle.
+    if (owner.reportsWait && !owner.waitReported && !(owner.command && awaitsWaitForIdle(owner.connection, owner.id))) {
+      owner.waitReported = true;
+      if (!owner.connection.closed) owner.connection.requestState(owner.id, "blocked", "external_io");
+    }
+    if (owner.reportsWait && !owner.command) return;
     // A command's suspension decides only what stdin's end makes of it. Reporting it before then would latch a continuation that Pi runs before it reads stdin's end, so the report waits for runtime_input_end (releaseCommandSuspensions).
     if (owner.command && !owner.quit && !drain.inputEnded) {
       owner.unreportedAt = hostCallEpoch(owner);
@@ -1555,6 +1609,12 @@ export class Connection {
     }
     // Pi runs an event's handlers inside the extension API call that emitted it (agent-session.ts setSessionName, setThinkingLevel: void runner.emit). The host admits such an event only once a handler starts, while its call lane still applies this process's earlier write, so an event that arrives during a synchronous call, after a write that has not settled, starts here, nested in the wait.
     if (env.type === "request" && env.request?.method === "event" && this.syncWaits > 0 && this.nestedEvent?.(env)) return;
+    // The host asks every prepareLoadout hook while it refreshes the registry on a registerTool, before it answers it. While a
+    // registerTool of any extension this process serves waits, or while it waits on any synchronous call after a setActiveTools the
+    // host has not finished (a call it then makes runs on the same lane, behind it), the hook (synchronous in Pi, agent-session.ts
+    // _applyToolLoadout from setActiveToolsByName and _refreshToolRegistry) starts nested in that wait, or the call and the refresh
+    // wait on each other.
+    if (env.type === "request" && env.request?.method === "tool_prepare_loadout" && (registerToolWaits > 0 || (setActiveToolsInFlight > 0 && isWaiting())) && this.nestedRequest?.(env)) return;
     if (env.type === "request" && ["provider_sync", "provider_object_callback_sync", "autocomplete.sync", "facet_sync", "tool_reaches_tools"].includes(env.request?.method)) {
       this.requestState(env.id, "started");
       try { this.respond(env.id, this.syncHandler(env.request)); }
@@ -1930,28 +1990,28 @@ class RuntimeContext {
     this.runtime.extensionRuntime.assertActive();
     return this.runtime.promptWritten ? this.runtime.callSync("getSystemPromptOptions") ?? {} : this.runtime.state.systemPromptOptions ?? {};
   }
-  // runner.ts:993-1016: the command context's methods throw synchronously when stale, so none is async.
-  waitForIdle() {
-    this.runtime.extensionRuntime.assertActive();
-    const operation = this.runtime.call("waitForIdle", {});
-    // The command's acknowledgment waits for the call like any other host call of the handler, so a handler that goes on in microtasks once it returned is not taken for suspended (acknowledgeInvocation).
-    const owner = this.runtime.activeRequest();
-    if (owner) {
-      const tracked = operation.then(() => {}, () => {});
-      owner.pendingHostCalls.add(tracked);
-      void tracked.then(() => owner.pendingHostCalls.delete(tracked));
-    }
-    return operation;
-  }
 }
 
 // COMMAND_ONLY_CALLS are the host calls of the members addCommandContextMembers adds. Only a command context sends them, so the call frame says so (the host refuses them without it).
-const COMMAND_ONLY_CALLS = new Set(["newSession", "fork", "navigateTree", "switchSession", "reload"]);
+const COMMAND_ONLY_CALLS = new Set(["waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload"]);
 
-// addCommandContextMembers gives target the members only Pi's command context has (runner.ts createCommandContext:1004-1038): newSession, fork, navigateTree, switchSession and reload. Pi's createContext() object, which every event, tool and shortcut handler receives, has none of them, so a call through it throws the TypeError of a missing function, and `typeof` says "undefined", whenever it is made. A request's context is a command context only for a command handler and a withSession callback (startRequest, createReplacedSessionContext); the other contexts never get the members, so a context an event handler kept cannot gain them later.
+// addCommandContextMembers gives target the members only Pi's command context has (runner.ts createCommandContext:1004-1038): waitForIdle, newSession, fork, navigateTree, switchSession and reload. Pi's createContext() object, which every event, tool and shortcut handler receives, has none of them, so a call through it throws the TypeError of a missing function, and `typeof` says "undefined", whenever it is made. A request's context is a command context only for a command handler and a withSession callback (startRequest, createReplacedSessionContext); the other contexts never get the members, so a context an event handler kept cannot gain them later.
 // pig divergence (D617): the Go, Python, Rust and Lisp SDKs have one static Context type with these methods on it and answer a call from another context with a not_a_command_context error; this runtime has Pi's dynamic shape and never sends one.
 function addCommandContextMembers(target, context) {
   const members = {
+    // runner.ts:993-1016: the command context's methods throw synchronously when stale, so none is async.
+    waitForIdle() {
+      this.runtime.extensionRuntime.assertActive();
+      const operation = this.runtime.call("waitForIdle", {});
+      // The command's acknowledgment waits for the call like any other host call of the handler, so a handler that goes on in microtasks once it returned is not taken for suspended (acknowledgeInvocation).
+      const owner = this.runtime.activeRequest();
+      if (owner) {
+        const tracked = operation.then(() => {}, () => {});
+        owner.pendingHostCalls.add(tracked);
+        void tracked.then(() => owner.pendingHostCalls.delete(tracked));
+      }
+      return operation;
+    },
     newSession(options = {}) {
       this.runtime.extensionRuntime.assertActive();
       const { withSession, setup, ...rest } = options ?? {};
@@ -2797,7 +2857,11 @@ export class Runtime {
         this.fireAndForget("setThinkingLevel", { level });
       }),
       setActiveTools: action((tools) => {
-        this.fireAndForget("setActiveTools", { tools });
+        const operation = this.fireAndForget("setActiveTools", { tools });
+        if (operation) {
+          setActiveToolsInFlight++;
+          operation.finally(() => { setActiveToolsInFlight--; });
+        }
         this.promptWritten = true;
       }),
       setModel: async (model) => {
@@ -2950,7 +3014,9 @@ export class Runtime {
     }
     this.tools.set(definition.name, definition);
     if (this.conn) {
-      this.callSync("registerTool", this.toolDeclaration(definition));
+      registerToolWaits++;
+      try { this.callSync("registerTool", this.toolDeclaration(definition)); }
+      finally { registerToolWaits--; }
       this.promptWritten = true;
     }
   }
@@ -3358,6 +3424,23 @@ export class Runtime {
     releaseGroup(this.group);
   }
 
+  // Applies the notifications and call results the serve loop has not read yet and that arrived before the first request among them:
+  // the frame its waiter holds, then the queue, in order. That request and what follows it stay for the loop, which starts them once
+  // the wait ends, as Pi's later handlers run after the call that made the process wait.
+  applyUnreadPrefix(conn) {
+    const applied = [];
+    const handedOff = conn.takeHandedOff((frame) => frame.type === "call_result" || frame.type === "notify");
+    if (handedOff !== undefined) applied.push(handedOff);
+    // A request the loop was handed and has not started waits ahead of everything queued.
+    if (conn.handedOff === undefined) {
+      while (conn.queue.length > 0 && (conn.queue[0].type === "call_result" || conn.queue[0].type === "notify")) applied.push(conn.queue.shift());
+    }
+    for (const frame of applied) {
+      if (frame.type === "call_result") conn.resolveCall(frame);
+      else if (frame.notify) this.handleNotify(frame.notify);
+    }
+  }
+
   attachConnection(socket) {
     const conn = new Connection(socket);
     conn.nestedEvent = (env) => {
@@ -3372,6 +3455,17 @@ export class Runtime {
       // The handler's synchronous prefix has run; the rest waits for the synchronous call that emitted the event to return, as Pi's handler suspends inside that call (agent-session.ts sendCustomMessage, setSessionName). The host hears the suspension it waits for before it answers the call (Session.dispatchUnawaitedEvent, the RPC run preparation), unless the handler reported it already.
       const request = this.requestRecords.get(env.id);
       if (request && !request.settled && !request.suspensionReported) conn.requestState(env.id, "blocked", "host_call");
+      return true;
+    };
+    // A request whose handler runs synchronously starts nested in a synchronous call: left to the serve loop it would wait behind
+    // the very call that waits for it. The notifications the host sent before it and the results of earlier calls apply first, as the
+    // serve loop would apply them, up to a request that waits unstarted: that request and the frames behind it stay for the loop, as
+    // Pi's handlers that have not started yet run after the call. The handler runs as its own request, so a host call it makes is
+    // filed under that request and not behind the call being waited on.
+    conn.nestedRequest = (env) => {
+      // They apply once the request is active, so a host call a notification's handler makes is filed under it, not behind the
+      // call being waited on.
+      this.startRequest(env, { nested: true, before: () => this.applyUnreadPrefix(conn) });
       return true;
     };
     conn.applyQueuedStateUpdates = () => {
@@ -3475,7 +3569,7 @@ export class Runtime {
   }
 
   // startRequest starts a host request's handler; it runs synchronously until the handler's first await.
-  startRequest(env) {
+  startRequest(env, { nested = false, before = undefined } = {}) {
     // The delta of an event stream applies where the frame is read, in arrival order (event-stream.mjs).
     if (env.request?.stream) (this.eventReplicas ??= new EventReplicas()).apply(env.request);
     this.conn.requestState(env.id, "started");
@@ -3501,7 +3595,7 @@ export class Runtime {
     // own when it resolves.
     const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
     const quitTail = drainFor(this.group).active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
-    const request = { id: env.id, toolCall: env.request?.method === "tool_call", toolCallId: env.request?.method === "tool_call" ? env.request.tool_call_id : undefined, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", authorHeld: AUTHOR_HELD_REQUESTS.has(env.request?.method), event: env.request?.method === "event" ? env.request.event : undefined };
+    const request = { id: env.id, nested, toolCall: env.request?.method === "tool_call", toolCallId: env.request?.method === "tool_call" ? env.request.tool_call_id : undefined, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail, command: env.request?.method === "command", authorHeld: AUTHOR_HELD_REQUESTS.has(env.request?.method), event: env.request?.method === "event" ? env.request.event : undefined };
     this.requestRecords.set(env.id, request);
     this.conn?.callEpochs?.set(env.id, 0);
     if (quitting) enterQuitDrain(drainFor(this.group));
@@ -3509,7 +3603,9 @@ export class Runtime {
     if (PROMPT_END_MODES.has(this.ready?.mode) && this.runSignal === undefined) armTurnWindow(request);
     const task = this.requestContext.run(request, outsideTimer(async () => {
       try {
-        if (this.loadedPromise && env.request?.method !== "events.dispatch") await this.loadedPromise;
+        before?.();
+        // A request nested in a synchronous wait does not wait for the onLoaded handlers: it may be asked from inside one.
+        if (this.loadedPromise && env.request?.method !== "events.dispatch" && !nested) await this.loadedPromise;
         await this.handleRequest(env.id, env.request || {}, requestCtx);
       } finally {
         if (env.request?.method === "event") this.loadHighlightLanguagesAfterStartup(env.request.event);
@@ -4929,6 +5025,8 @@ export class Runtime {
           return;
         }
         this.applyRunSignal(args ?? {});
+        // The run's abort or end is what a held handler's report waited for (quitDrainState): the transports reportQuitExit referenced stop keeping this process alive, so its loop can drain again and report.
+        refreshQuitDrain(drainFor(this.group));
         return;
       }
       case "invalidate": {
@@ -5603,10 +5701,12 @@ export class Runtime {
           if (!cmd) throw new Error(`unknown command: ${request.tool}`);
           const owner = this.requestContext.getStore();
           if (owner?.id === id) owner.command = true;
-          if (owner?.id === id && this.contextValues.mode === "rpc") armRequestWindow(owner, true);
+          if (owner?.id === id && this.contextValues.mode === "rpc") {
+            owner.reportsWait = true;
+            armRequestWindow(owner, true);
+          }
           const pending = cmd.handler?.(request.args ?? "", ctx);
           if (owner?.id === id) Promise.resolve(pending).then(() => { owner.handlerSettled = true; }, () => { owner.handlerSettled = true; });
-          if (this.contextValues.mode === "rpc") await this.acknowledgeInvocation(id, pending);
           await pending;
           await this.respond(id, null);
           return;
@@ -5616,6 +5716,7 @@ export class Runtime {
           const handlers = this.handlers.get(request.event) ?? [];
           const selected = handlers.find(({ id: handlerId }) => handlerId === request.handler_id);
           if (!selected) throw new Error(`unknown event handler ${request.handler_id} for ${request.event}`);
+          // pig divergence (D657): one request frame for each handler, decoded for this call, so a write to the payload reaches no other handler (the message objects of a message event are shared per process, D541). Pi hands every handler of an emit the one event object.
           const event = request.args ?? {};
           if (Array.isArray(request.message_seqs)) shareEventMessages(request.event, event, request.message_seqs);
           // Upstream preparation.fileOps holds Set<string> values; the wire
@@ -5629,9 +5730,11 @@ export class Runtime {
           if (fileOps) {
             for (const key of ["read", "written", "edited"]) fileOps[key] = new Set(fileOps[key] ?? []);
           }
-          // pig additive (D19): preserve boundary mutations alongside handler errors.
+          // pig additive (D19): preserve boundary mutations alongside handler errors. A turn_end handler also edits the turn's messages in place (Pi hands every handler the turn's message objects, agent-session.ts _dispatchTurnEndBoundary): the reply carries the ones it left different, beside the boundary members.
           if (request.event === "agent_before_settle" || request.event === "turn_end") {
             const entries = event.entries;
+            const messages = eventEditMessages(request.event, event);
+            const before = snapshotEventMessages(messages);
             let result;
             let error;
             try {
@@ -5641,10 +5744,11 @@ export class Runtime {
             } catch (err) {
               error = err instanceof Error ? err : new Error(String(err));
             }
-            await this.respond(id, { _pigBoundaryEntries: entries, _pigBoundaryResult: result }, error);
+            const edits = eventMessageEdits(messages, before);
+            await this.respond(id, { _pigBoundaryEntries: entries, _pigBoundaryResult: result, ...(edits ? { _pigEventEdits: edits } : {}) }, error);
             return;
           }
-          // Pi hands every tool_call handler the one event object, and a handler edits event.input in place (runner.ts emitToolCall). The host cannot share the object, so the reply carries the input the handler left, when it differs from the one it received, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so a handler that assigns a new object to event.input changes nothing the tool receives.
+          // Pi hands every tool_call handler the one event object, and a handler edits event.input in place (runner.ts emitToolCall). The host cannot share the object, so the reply carries the input the handler left, when it differs from the one it received, even if the handler failed. The tool runs with the object the event carried (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so a handler that assigns a new object to event.input changes nothing the tool receives; the next handlers read the assigned object, which the reply carries apart from the edit.
           if (request.event === "tool_call") {
             const input = event.input;
             const before = JSON.stringify(input);
@@ -5657,7 +5761,9 @@ export class Runtime {
               error = err instanceof Error ? err : new Error(`Extension failed, blocking execution: ${String(err)}`);
             }
             const edited = JSON.stringify(input) !== before;
-            await this.respond(id, { ...(edited ? { _pigToolCallInput: input } : {}), _pigToolCallResult: result }, error);
+            // A handler that assigns a new object to event.input leaves it in the one event the next handlers receive (runner.ts emitToolCall), and the tool still runs with the object it carried.
+            const assigned = event.input !== input;
+            await this.respond(id, { ...(edited ? { _pigToolCallInput: input } : {}), ...(assigned ? { _pigToolCallEventInput: event.input } : {}), _pigToolCallResult: result }, error);
             return;
           }
           if (request.event === "before_agent_start") {
@@ -5682,6 +5788,7 @@ export class Runtime {
               this.extensionRuntime.assertActive();
               return renderCurrentSystemPrompt();
             };
+            this.armHandlerWaitWindow(id);
             let result;
             let error;
             try {
@@ -5693,9 +5800,10 @@ export class Runtime {
             return;
           }
           // Pi hands every message_end handler the one message and stores that object (runner.ts emitMessageEnd, agent-session.ts appendMessage), so a handler's in-place edit of event.message is the message the next handlers, turn_end, agent_end and the entry hold. The host cannot share the object, so the reply carries the message the handler left, when it differs from the one it received, even if the handler failed (the host writes it into the message, as it does a tool_call's edited input).
-          if (request.event === "message_end") {
-            const message = event.message;
-            const before = message && typeof message === "object" ? JSON.stringify(message) : undefined;
+          if (request.event === "message_start" || request.event === "message_end" || request.event === "agent_end") {
+            const messages = eventEditMessages(request.event, event);
+            const before = snapshotEventMessages(messages);
+            const membersBefore = MEMBER_EVENTS.has(request.event) ? { ...event } : undefined;
             let result;
             let error;
             try {
@@ -5707,8 +5815,10 @@ export class Runtime {
             } catch (err) {
               error = err instanceof Error ? err : new Error(String(err));
             }
-            const edited = before !== undefined && JSON.stringify(message) !== before;
-            await this.respond(id, { ...(edited ? { _pigMessageEndMessage: message } : {}), _pigMessageEndResult: result }, error);
+            const messageEdits = eventMessageEdits(messages, before);
+            const memberEdits = membersBefore ? eventMemberEdits(event, membersBefore) : undefined;
+            const edits = messageEdits || memberEdits ? [...(messageEdits ?? []), ...(memberEdits ?? [])] : undefined;
+            await this.respond(id, { ...(edits ? { _pigEventEdits: edits } : {}), _pigEventResult: result }, error);
             return;
           }
           // Pi hands every tool_result handler the one currentEvent, so a member a handler assigns on it (content, details, isError, structuredContent, usage) is what the next handler sees, and an edit made to an object the caller handed over (a block of the content, a member of the details) is in the caller's result too (runner.ts emitToolResult, agent-session.ts _afterToolCall). The host cannot share the event, so the reply names the members the handler left different from the ones it received, with their new values, and, of those, the ones it edited in the very object it received instead of replacing; the reply carries them also when the handler threw.
@@ -5765,13 +5875,23 @@ export class Runtime {
           }
           const messages = event.messages;
           const snapshot = Array.isArray(messages) ? messages.slice() : undefined;
+          // message_update, turn_start and agent_start (message_start and agent_end replied above): a member a handler assigns, reassigns or deletes is what the later handlers of the dispatch see (runner.ts emit), so the reply carries the members it left different, also from a handler that threw.
+          const membersBefore = MEMBER_EVENTS.has(request.event) ? { ...event } : undefined;
           // A reply for a list the handler left as it was, with no edit to any message, omits the list: the host already holds it.
           const encodedBefore = snapshot && (request.event === "context" || request.event === "context_with_system") ? contextMessagesEncoding(messages) : undefined;
+          if (request.event === "input") this.armHandlerWaitWindow(id);
           let pending;
           try {
             pending = selected.handler(event, ctx);
           } catch (err) {
             // A context handler that throws before its first await fails as one that rejects: its edit of a message is kept.
+            if (membersBefore) {
+              const memberEdits = eventMemberEdits(event, membersBefore);
+              if (memberEdits) {
+                await this.respond(id, { _pigEventEdits: memberEdits }, err instanceof Error ? err : new Error(String(err)));
+                return;
+              }
+            }
             if (request.event !== "context" || !snapshot) throw err;
             pending = Promise.reject(err);
           }
@@ -5791,6 +5911,13 @@ export class Runtime {
           try {
             result = await pending;
           } catch (err) {
+            if (membersBefore) {
+              const memberEdits = eventMemberEdits(event, membersBefore);
+              if (memberEdits) {
+                await this.respond(id, { _pigEventEdits: memberEdits }, err instanceof Error ? err : new Error(String(err)));
+                return;
+              }
+            }
             if (request.event !== "context" || !snapshot) throw err;
             // Pi hands a context handler a filtered copy of the list over the one set of message objects (runner.ts emitContext): an edit to a message stays after a throw and a change to the list does not, so the reply of a failed handler carries the messages it was handed, as it left them.
             await this.respond(id, { messages: snapshot, _pigContextUnchanged: true }, err instanceof Error ? err : new Error(String(err)));
@@ -5812,7 +5939,8 @@ export class Runtime {
               result = { operations: { handle } };
             }
           }
-          await this.respond(id, result);
+          const memberEdits = membersBefore ? eventMemberEdits(event, membersBefore) : undefined;
+          await this.respond(id, memberEdits ? { _pigEventEdits: memberEdits, _pigEventResult: result } : result);
           return;
         }
         case "ui.view.intent": {
@@ -5959,7 +6087,9 @@ export class Runtime {
     if (owner?.id === id) {
       owner.cancelled ||= !owner.settled && cancelsHostCalls(owner.controller);
       owner.settled = true;
-      if (owner.pendingHostCalls.size > 0) await Promise.all([...owner.pendingHostCalls]);
+      // A request nested in a synchronous wait answers at once: its fire-and-forget calls went out before the answer, and their
+      // results cannot settle until the wait it is nested in ends.
+      if (owner.pendingHostCalls.size > 0 && !owner.nested) await Promise.all([...owner.pendingHostCalls]);
       owner.responded = true;
     }
     this.conn.respond(id, result, error);
@@ -6248,7 +6378,7 @@ export class Runtime {
     };
   }
 
-  // runLoadedHandlers runs the pi.onLoaded handlers in order, each to completion. Requests wait for them (startRequest), the loop does not, so a handler's host calls are answered.
+  // runLoadedHandlers runs the pi.onLoaded handlers in order, each to completion. Requests wait for them (startRequest), except a tool_prepare_loadout started nested in a synchronous wait (Connection.nestedRequest), which may run before them; the loop does not, so a handler's host calls are answered.
   async runLoadedHandlers() {
     const handlers = this.loadedHandlers;
     this.loadedHandlers = [];
@@ -6313,6 +6443,14 @@ export class Runtime {
   armSettleTailWindow(id, ctx) {
     const owner = this.requestContext.getStore();
     if (owner?.id === id && ctx.mode === "rpc") armRequestWindow(owner);
+  }
+
+  // pig divergence (D86 cured): Pi's prompt() awaits its input and before_agent_start handlers inside its own continuation, so its RPC loop reads the next stdin line once such a handler awaits a timer, I/O or another real wait, and not while it only runs microtasks. The host holds stdin until the handler is reported suspended, and this runtime has no other report for these handlers, so it arms the handler's event-loop window as a command's is armed, before the handler runs: a handler still unanswered when the window closes (and with no short host call pending) sends the report; one that settles in its microtasks or in the check phase of the line's iteration sends none.
+  armHandlerWaitWindow(id) {
+    const owner = this.requestContext.getStore();
+    if (owner?.id !== id || this.contextValues.mode !== "rpc") return;
+    owner.reportsWait = true;
+    armRequestWindow(owner, true);
   }
 
   // Host-backed synchronous effects belong to the handler's prefix, not its suspension. Flush them before releasing the caller that awaits invocation. A handler whose Promise has already settled never entered an awaited operation: its response releases the caller with the result, as Pi continues a settled await before its next input event.

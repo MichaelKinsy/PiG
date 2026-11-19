@@ -25,6 +25,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 mod agent_session_runtime;
 mod extension_runner;
+mod extension_runner_signal;
 
 fn text(value: &Value) -> &str {
     value.as_str().unwrap_or_default()
@@ -2625,6 +2626,15 @@ pub fn new_extension() -> Extension {
         "Runs the createExtensionRuntime and ExtensionRunner script.",
         empty_schema(),
         |ctx, args| match extension_runner::extension_runner_script(ctx, &args) {
+            Ok(report) => ToolResult::text(report.to_string()),
+            Err(error) => ToolResult::Error(error.to_string()),
+        },
+    );
+    ext.tool(
+        "extension_runner_signal",
+        "Runs the two-run signal script of the ExtensionRunner.",
+        empty_schema(),
+        |ctx, args| match extension_runner_signal::extension_runner_signal_script(ctx, &args) {
             Ok(report) => ToolResult::text(report.to_string()),
             Err(error) => ToolResult::Error(error.to_string()),
         },

@@ -20,7 +20,7 @@ func TestHarnessEntryKillAcrossIsolationModes(t *testing.T) {
 			dir := t.TempDir()
 			binaryPID, entryPID, argsFile := filepath.Join(dir, "bin.pid"), filepath.Join(dir, "entry.pid"), filepath.Join(dir, "args")
 			stub := filepath.Join(dir, "pig")
-			script := "#!/bin/sh\nprintf '%s\\n' \"$@\" > '" + argsFile + "'\necho $$ > '" + binaryPID + ".tmp' && mv '" + binaryPID + ".tmp' '" + binaryPID + "'\ntrap '' TERM\nwhile :; do sleep 0.1; done\n"
+			script := "#!/bin/sh\ntrap '' TERM\nprintf '%s\\n' \"$@\" > '" + argsFile + "'\necho $$ > '" + binaryPID + ".tmp' && mv '" + binaryPID + ".tmp' '" + binaryPID + "'\nwhile :; do sleep 0.1; done\n"
 			if err := os.WriteFile(stub, []byte(script), 0o700); err != nil {
 				t.Fatal(err)
 			}

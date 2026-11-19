@@ -87,8 +87,19 @@ func finishTranscript(ctx context.Context, session, path, scenario, side string,
 
 // awaitTranscriptDone waits for the reader's trailer and checks the transcript holds exactly the bytes the trailer counts.
 func awaitTranscriptDone(path, scenario, side string, timeout time.Duration) error {
+	return awaitTranscriptDoneOn(context.Background(), wallClock, path, scenario, side, timeout)
+}
+
+// errTranscriptReaderLive marks a wait that ended without the trailer: the reader may still be writing into the directory of the transcript, so that directory must not be removed.
+var errTranscriptReaderLive = errors.New("the reader may still be writing")
+
+// transcriptDonePoll is the pause between looks for the trailer.
+const transcriptDonePoll = 10 * time.Millisecond
+
+// awaitTranscriptDoneOn is awaitTranscriptDone on a clock and under ctx. A wait that ends without the trailer, by the timeout or by ctx, wraps errTranscriptReaderLive.
+func awaitTranscriptDoneOn(ctx context.Context, clock captureClock, path, scenario, side string, timeout time.Duration) error {
 	prefix := "transcript reader did not finish: " + scenario + " " + side + ": "
-	deadline := time.Now().Add(timeout)
+	deadline := clock.now().Add(timeout)
 	for {
 		raw, err := os.ReadFile(path + transcriptDoneSuffix)
 		if err == nil {
@@ -108,9 +119,21 @@ func awaitTranscriptDone(path, scenario, side string, timeout time.Duration) err
 		if !errors.Is(err, fs.ErrNotExist) {
 			return errors.New(prefix + err.Error())
 		}
-		if time.Now().After(deadline) {
-			return fmt.Errorf("%sno trailer after %s", prefix, timeout)
+		if !clock.now().Before(deadline) {
+			return fmt.Errorf("%sno trailer after %s: %w", prefix, timeout, errTranscriptReaderLive)
 		}
-		time.Sleep(10 * time.Millisecond)
+		if err := clock.wait(ctx, transcriptDonePoll); err != nil {
+			return fmt.Errorf("%sno trailer: %w: %w", prefix, err, errTranscriptReaderLive)
+		}
 	}
+}
+
+// transcriptReaderAttached reports whether the transcript reader was started on session's pane, given the outcome of startTmuxSession. A start that succeeded ran its pipe-pane, which starts the reader. A start that failed after the session was created may or may not have got as far, and the pane says: it holds a pipe exactly when the reader was started and has not yet seen end of input, and nothing has closed the pipe on this path.
+func transcriptReaderAttached(session string, startErr error) bool {
+	if startErr == nil {
+		return true
+	}
+	//nolint:gosec // G204 (class a): program is literal tmux; args are fixed list-panes with a harness-generated session.
+	out, err := exec.Command("tmux", tmuxArgs("list-panes", "-s", "-t", session, "-F", "#{pane_pipe}")...).Output()
+	return err == nil && strings.Contains(string(out), "1")
 }

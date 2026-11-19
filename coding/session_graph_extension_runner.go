@@ -205,22 +205,29 @@ type graphScopedModel struct {
 	ThinkingLevel string          `json:"thinkingLevel"`
 }
 
-// graphSignalState is the answer of getSignal: whether the signal has aborted.
+// graphSignalState is the answer of getSignal: whether the signal has aborted, and, from an SDK that tells runs apart, which run it is.
+// Run is the token of the signal object the client's function returned: a positive integer that is new whenever the function returns another object than the one of the last answer, and never repeats in a client process. EndedAborted is present with a new Run when the signal of the previous answer had aborted. A client that sends no Run, or an explicit zero, keeps the old rule: the wire cannot tell its runs apart. (A Run is positive, so zero means no token and is not a malformed answer; the SDKs before D235's cure send none.)
 type graphSignalState struct {
-	Aborted bool `json:"aborted"`
+	Aborted      bool   `json:"aborted"`
+	Run          uint64 `json:"run,omitempty"`
+	EndedAborted bool   `json:"endedAborted,omitempty"`
 }
 
-// graphSignal is the context of the run the extension's getSignal reports. The wire answers only the state of the run (none, live, aborted), and the host tells runs apart by the context object it reads: it numbers a context it has not seen as a new run, and watches it with context.AfterFunc, which fires at once for a cancelled one and syncs again. A context made per read would turn an aborted run into a new run on every sync, without end.
-// Pi's `agent.signal` is `activeRun?.abortController.signal` (agent.ts:345-347) and `abort()` aborts that controller (agent.ts:350-352): one signal object from the start of a run to its end, cancelled in place by the abort, and none (undefined) while no run is active. So a run here is one context, from the first read that reports it live or aborted until a read reports no run, and the abort cancels it. A run that follows another with no read of "no run" between is told apart only when the first was aborted; the wire carries no run identity.
+// graphSignal is the context of the run the extension's getSignal reports. The host tells runs apart by the context object it reads: it numbers a context it has not seen as a new run, and watches it with context.AfterFunc, which fires at once for a cancelled one and syncs again. A context made per read would turn an aborted run into a new run on every sync, without end.
+// Pi's `agent.signal` is `activeRun?.abortController.signal` (agent.ts:345-347) and `abort()` aborts that controller (agent.ts:350-352): one signal object from the start of a run to its end, cancelled in place by the abort, and none (undefined) while no run is active. So a run here is one context, from the first read that reports it live or aborted until a read reports no run, and the abort cancels it. Pi starts a new run only after the old one ended, with a new object (agent.ts:518-527). An answer with a Run token tells runs apart: a token other than the held one is a new run, and the run it replaces is cancelled first when the client says it ended aborted. An answer without a token carries no run identity: a run that follows another with no read of "no run" between is told apart only when the first was aborted.
 type graphSignal struct {
 	mu     sync.Mutex
 	run    context.Context
 	cancel context.CancelFunc
+	// token is the Run of the last answer that had one (a Run other than zero), hasToken whether there was one.
+	token    uint64
+	hasToken bool
 }
 
 // read asks the extension for the state of the run and returns the context of the run it answers, nil for no run or when the extension cannot answer (the held run is kept: nothing says it ended). A context whose parent is Background holds nothing to release, so a run that ends live is dropped, not cancelled: cancelling it would abort a run Pi never aborted.
 // The lock is held across the extension's answer. The extension answers on its own thread, so two reads can be in flight together and their answers come back in either order; applied out of order, a late "live" would follow an "aborted" and begin a run that nothing aborts. The answer does not re-enter the tracker: it is a request to the extension's own connection, answered on the extension's thread, and a getSignal function that read this runner's own ctx.signal would call itself in Pi too.
-// pig divergence (D235): a session-graph client's two live runs with no read of "no run" between them share one context; the wire carries no run identity.
+// pig divergence (D235): a session-graph client whose SDK sends no Run token (or zero) has two live runs with no read of "no run" between them share one context; the wire carries no run identity.
+// A client that returns another signal object on every call (a derived signal) has a new token on every read. A token other than the held one makes a new context only when the answer is live or the held context has not been cancelled, so an aborted run is one context however many tokens the client mints for it: the cancel fires the watcher's sync at once, and a context made for every aborted read would read, renumber and read again without end. The reads of such a client are one per request and at most two per abort, and a read makes at most one context.
 func (s *graphSignal) read(ask func() (*graphSignalState, error)) context.Context {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -231,6 +238,15 @@ func (s *graphSignal) read(ask func() (*graphSignalState, error)) context.Contex
 	if state == nil {
 		s.run, s.cancel = nil, nil
 		return nil
+	}
+	if state.Run != 0 {
+		if s.run != nil && s.hasToken && state.Run != s.token && (!state.Aborted || s.run.Err() == nil) {
+			if state.EndedAborted {
+				s.cancel()
+			}
+			s.run, s.cancel = context.WithCancel(callbackBackground())
+		}
+		s.token, s.hasToken = state.Run, true
 	}
 	if s.run == nil || (!state.Aborted && s.run.Err() != nil) {
 		s.run, s.cancel = context.WithCancel(callbackBackground())

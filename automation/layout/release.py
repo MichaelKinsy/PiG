@@ -175,7 +175,7 @@ def owned(name):
     if '/runtime-node/shims/' in name and name.rsplit('/', 1)[-1] != 'pi-ai-bridge.mjs':
         return False
     logical=original(name)
-    if GENERATED.fullmatch(logical) or logical in ('parity/coverage.md','parity/normalization-inventory.json'):
+    if GENERATED.fullmatch(logical) or logical in ('parity/coverage.md','parity/normalization-inventory.json','parity/generated/coverage.md','parity/generated/normalization-inventory.json'):
         return False
     return Path(name).suffix in SUFFIXES or '/' not in name or name.startswith('.github/')
 

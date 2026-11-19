@@ -4,6 +4,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os/exec"
 	"slices"
@@ -84,6 +85,34 @@ func tmuxSessionProcesses(ctx context.Context, session string) (map[int]bool, er
 	}
 	retainDescendants(owned, processes)
 	return owned, nil
+}
+
+// tmuxTeardown ends one tmux run: its session, and whatever the session started that can still write into the run's temp root.
+type tmuxTeardown struct {
+	session, transcriptPath, scenario, side string
+	// started is whether the session exists. readerStarted is whether the transcript reader was started on its pane: the reader is a child of the tmux server, not of a pane, so awaitOwnedProcesses never sees it. It comes from the start path and not from a later look at the pane, because a pane whose pipe finishTranscript closed, or whose reader is still writing its tail, no longer shows a pipe, and a look at the pane would miss exactly the reader that is alive.
+	started, readerStarted bool
+	// clock paces the wait for the reader's trailer; budget bounds it (the runner's cleanup budget).
+	clock  captureClock
+	budget time.Duration
+}
+
+// end kills the session and returns once nothing the run started can still write into its temp root: the pane's processes have exited (they are only observed, see awaitOwnedProcesses), and, when a reader was started, its trailer exists. The reader writes the trailer as tmux closes the pane's pipe, which the kill does, and the trailer is its last write into the root, so waiting for it needs no signal and leaves nothing behind. A reader that does not finish within the budget is an error that names it; the caller must not remove the root as if it had.
+func (td tmuxTeardown) end(ctx context.Context) error {
+	var owned map[int]bool
+	var inspectErr error
+	if td.started {
+		owned, inspectErr = tmuxSessionProcesses(ctx, td.session)
+	}
+	killSession(td.session)
+	var exitErr, readerErr error
+	if td.started && inspectErr == nil {
+		exitErr = awaitOwnedProcesses(ctx, owned)
+	}
+	if td.readerStarted {
+		readerErr = awaitTranscriptDoneOn(ctx, td.clock, td.transcriptPath, td.scenario, td.side, td.budget)
+	}
+	return errors.Join(inspectErr, exitErr, readerErr)
 }
 
 // awaitOwnedProcesses only observes exit. It never sends a stronger signal to conceal a product shutdown failure.

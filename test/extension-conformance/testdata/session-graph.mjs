@@ -2,6 +2,7 @@
 import { DefaultPackageManager, DefaultResourceLoader, ModelRegistry, ModelRuntime, ProjectTrustStore, SessionManager, SettingsManager, createAgentSession, createCodemodeExtension, createMcpExtension, createToolSearchExtension, createAgentSessionFromServices, createAgentSessionServices, getAgentDir, hasTrustRequiringProjectResources } from "@earendil-works/pi-coding-agent";
 import { createAssistantMessageEventStream, createProvider } from "@earendil-works/pi-ai";
 import { extensionRunnerScript } from "./extension-runner.mjs";
+import { extensionRunnerSignalScript } from "./extension-runner-signal.mjs";
 import { agentSessionRuntimeScript } from "./agent-session-runtime.mjs";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -1113,5 +1114,9 @@ export default function (pi) {
   pi.registerTool({
     name: "extension_runner", label: "extension_runner", description: "Runs the createExtensionRuntime and ExtensionRunner script.", parameters: { type: "object" },
     execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await extensionRunnerScript(params).catch((e) => { throw new Error(String(e.stack)); })) }] }),
+  });
+  pi.registerTool({
+    name: "extension_runner_signal", label: "extension_runner_signal", description: "Runs the two-run signal script of the ExtensionRunner.", parameters: { type: "object" },
+    execute: async (_id, params) => ({ content: [{ type: "text", text: JSON.stringify(await extensionRunnerSignalScript(params).catch((e) => { throw new Error(String(e.stack)); })) }] }),
   });
 }

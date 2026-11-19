@@ -1,6 +1,7 @@
 package codemode
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"os"
@@ -44,7 +45,15 @@ func TestModelsGlobalArgumentErrorsMatchPi(t *testing.T) {
 	if result.IsError || len(result.Content) != 2 {
 		t.Fatalf("result = %+v", result.Content)
 	}
-	text := strings.ReplaceAll(result.Content[1].(ai.TextContent).Text, DocsPath(), "<DOCS>")
+	text := result.Content[1].(ai.TextContent).Text
+	if docs := DocsPath(); docs != "" {
+		text = strings.ReplaceAll(text, docs, "<DOCS>")
+	} else {
+		// pig additive (D92): a build that strips docs writes no page, so no error points to one.
+		for _, citation := range []string{` See \"Classify\" in <DOCS>.`, ` See \"Generate images\" in <DOCS>.`} {
+			golden = bytes.ReplaceAll(golden, []byte(citation), nil)
+		}
+	}
 	var got, want map[string]any
 	if err := json.Unmarshal([]byte(text), &got); err != nil {
 		t.Fatalf("script value %q: %v", text, err)

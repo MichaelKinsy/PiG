@@ -5,14 +5,14 @@ import (
 	"testing"
 )
 
-// Pi v1.5.2 runner.ts:1004-1038 gives only the command context newSession, fork, navigateTree, switchSession and reload.
+// Pi v1.5.2 runner.ts:1004-1038 gives only the command context waitForIdle, newSession, fork, navigateTree, switchSession and reload.
 func TestCommandOnlyCallsAreThePiCommandContextSessionActions(t *testing.T) {
-	for _, method := range []string{"newSession", "fork", "navigateTree", "switchSession", "reload"} {
+	for _, method := range []string{"waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload"} {
 		if !commandOnlyCall(method) {
 			t.Errorf("%s is not command-only", method)
 		}
 	}
-	for _, method := range []string{"waitForIdle", "sendMessage", "ui.notify", "exec"} {
+	for _, method := range []string{"sendMessage", "ui.notify", "exec", "isIdle"} {
 		if commandOnlyCall(method) {
 			t.Errorf("%s is command-only", method)
 		}

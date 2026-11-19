@@ -11,7 +11,17 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/orderedjson"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
+
+// skipStrippedAPI skips the row of an API this build strips (a pig_strip_<api> tag): the code the row exercises is not in the binary, so the
+// row has nothing to compare; the rows of every other API in the same table run.
+func skipStrippedAPI(t *testing.T, api string) {
+	t.Helper()
+	if pigstrip.Has(pigstrip.ListAPIs, api) {
+		t.Skipf("API %s is stripped from this build", api)
+	}
+}
 
 // providerWireRow is one request of a wire-body table: the model, the stream options and the Context, as the JSON both sides read.
 type providerWireRow struct {
@@ -215,6 +225,7 @@ func checkProviderWireRows(t *testing.T, rows []providerWireRow) {
 	want := piPayloads(t, "testdata/provider_wire_body.mjs", rows)
 	for i, row := range rows {
 		t.Run(row.Name, func(t *testing.T) {
+			skipStrippedAPI(t, row.API)
 			got, failure := providerWireBody(t, row)
 			if message, none := strings.CutPrefix(want[i], "no request: "); none {
 				// Pi ended the stream before any request: PiG sends none either and ends with the same message.

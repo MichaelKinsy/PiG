@@ -71,13 +71,14 @@ func (h *Host) supersedeGenerations(ctx context.Context) (unacknowledged []unack
 
 // runtimeProcess identifies the process that hosts me: the generations of one Node process share its thread.
 func (me *managedExt) runtimeProcess() any {
+	share := me.processShare()
 	switch {
 	case me.packedProcess != nil && me.packedProcess.share != nil:
 		return me.packedProcess.share
 	case me.packedProcess != nil:
 		return me.packedProcess.spawner()
-	case me.share != nil:
-		return me.share
+	case share != nil:
+		return share
 	}
 	return me
 }

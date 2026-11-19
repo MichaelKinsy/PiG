@@ -1100,6 +1100,18 @@ func (r *Runner) HasHandlers(eventType string) bool {
 	return false
 }
 
+// HasHandlersThatMayAwait is HasHandlers for the handlers that can pend: one registered with Extension.AddEventHandlerReturningWithoutAwait returns without awaiting, so the
+// runner's await of it settles in microtasks and the event loop takes no turn (Pi core/extensions/runner.ts:1103-1110); every other handler, a subprocess extension's among
+// them, can pend. A runner with only handlers of the first kind for an event answers false.
+func (r *Runner) HasHandlersThatMayAwait(eventType string) bool {
+	for i := range r.extensions {
+		if r.extensions[i].HasEventHandlersThatMayAwait(eventType) {
+			return true
+		}
+	}
+	return false
+}
+
 // Shortcuts returns all extension shortcuts after applying built-in conflicts.
 // Reserved editor-global bindings reject an extension shortcut. Other built-in
 // conflicts warn and allow the extension. Extension-to-extension conflicts use
@@ -1221,7 +1233,7 @@ func (r *Runner) MessageRenderer(customType string) extension.MessageRenderer {
 func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
 	count := 0
 	for i := range r.extensions {
-		if r.extensions[i].MarkdownTransformer != nil {
+		if r.extensions[i].MarkdownTransformerRegistration() != nil {
 			count++
 		}
 	}
@@ -1231,7 +1243,7 @@ func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
 	// The list is the one allocation, whatever the number of transformers: a registration holds its wrapper. Pi makes one arrow function per transformer on every call (runner.ts getMarkdownTransformers) from the registration's two members, which do not change, and a Go function has no identity, so a wrapper made by the call and the registration's cannot be told apart.
 	transformers := make([]extension.MarkdownTransformer, 0, count)
 	for i := range r.extensions {
-		if registration := r.extensions[i].MarkdownTransformer; registration != nil {
+		if registration := r.extensions[i].MarkdownTransformerRegistration(); registration != nil {
 			transformers = append(transformers, registration.Scoped())
 		}
 	}
@@ -1628,7 +1640,12 @@ func (r *Runner) EmitToolCall(ctx context.Context, event extension.ToolCallEvent
 			continue
 		}
 		for i, handler := range handlers {
-			handlerResult, err := callHandler(handler, event, dispatchCtx)
+			// A subprocess handler that assigned event.input left the next handlers that input (eventwire.Dispatch.Detach); the call's own input stays.
+			current := event
+			if detached, ok := wire.Detached().(extension.CustomToolCallEvent); ok {
+				current = detached
+			}
+			handlerResult, err := callHandler(handler, current, dispatchCtx)
 			if !snapshot.jsonOnly[i] {
 				// A handler that holds the event's Go values may have edited its input.
 				wire.Changed()

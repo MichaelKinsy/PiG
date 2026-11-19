@@ -40,7 +40,9 @@ import (
 //     returns a failed run as it does for any backend error (Pi's `run` catches the executor's throw, read.ts:83-87): the
 //     cause is a real one, no store seam is needed.
 //   - `await flushed()` after a group is `flushed(host)` then waiting for the store's OnCommitted listener to report the
-//     last seq (`commitLog.reported`): the listener runs on a goroutine of the store.
+//     last seq (`commitLog.reported`): the listener runs on a goroutine of the store. The same holds for the `await` of a
+//     commit before a group, after which Pi has its announcement delivered (a microtask of that commit's turn): `group` waits
+//     for the last seq to be reported before it counts.
 //   - `screen.list.value` thrown is the error of Member("list").Value().
 
 func mustColumns(name string, options store.ColumnSetOptions) *store.ColumnSet {
@@ -445,9 +447,14 @@ func (w *tlWorld) inOneGroup(calls ...func()) {
 	w.commits.waitReported(w.store.LastSeq())
 }
 
-// group queues the two owners' commits behind the filler's and checks they formed one group.
+// group queues the two owners' commits behind the filler's and checks they formed one group. Its baseline is taken once the
+// listener reported every commit made before it (a case's `sessions.write(put)`): Pi's `await` of such a commit returns after
+// its announcement ran (`#committed` queues the microtask in the turn that settles the commit, ahead of the later hops of the
+// awaiting chain), Go's runs on a goroutine of the store, and the filler's commit adopted before it started is announced WITH
+// it: one notification over the earlier commit and the filler, a jump of two that is no group of the commit queue's.
 func (w *tlWorld) group(first, second func()) {
 	w.t.Helper()
+	w.commits.waitReported(w.store.LastSeq())
 	before := w.commits.grouped()
 	w.queued(first, second)
 	if got := w.commits.grouped(); got != before+1 {

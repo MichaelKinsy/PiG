@@ -786,7 +786,6 @@ func (m *InteractiveMode) runOAuthLogout(ctx context.Context, provider string) e
 	}
 
 	m.updateProviderInfo()
-	m.tuiInst.ForceFullRender()
 	m.tuiInst.Render()
 	return nil
 }

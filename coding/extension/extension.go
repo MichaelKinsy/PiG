@@ -108,7 +108,8 @@ type Extension struct {
 	ToolRenderers []ToolRendererResolver
 
 	// MarkdownTransformer is the extension's display-only Markdown transform and the surfaces it runs on,
-	// if it registered one; a later registration replaces an earlier one. Nil when it registered none.
+	// if it registered one; a later registration replaces an earlier one. Nil when it registered none. A shared Extension is read through
+	// MarkdownTransformerRegistration: a restart of its process replaces it (ReplaceDeclarations).
 	// upstream: types.ts Extension.markdownTransformer
 	MarkdownTransformer *MarkdownTransformerRegistration
 
@@ -167,6 +168,25 @@ type registeredEventHandler struct {
 	handler HandlerFn
 	// jsonOnly reports that the handler reads its event only through the event's JSON encoding.
 	jsonOnly bool
+	// returnsWithoutAwait reports that the handler never awaits before it returns, so its dispatch cannot pend.
+	returnsWithoutAwait bool
+}
+
+// HasEventHandlersThatMayAwait reports whether e has a handler for event that was not registered as one that returns without awaiting (AddEventHandlerReturningWithoutAwait):
+// a legacy Handlers entry, a JSON handler of a subprocess extension and a handler added with AddEventHandler can pend.
+func (e *Extension) HasEventHandlersThatMayAwait(event string) bool {
+	state := e.handlerState
+	if state == nil {
+		return len(e.Handlers[event]) > 0
+	}
+	state.mu.RLock()
+	defer state.mu.RUnlock()
+	for _, handler := range state.handlers[event] {
+		if !handler.returnsWithoutAwait {
+			return true
+		}
+	}
+	return false
 }
 
 type eventHandlerState struct {
@@ -199,6 +219,14 @@ func (e *Extension) AddEventHandler(event string, id int, handler HandlerFn) {
 // AddJSONEventHandler is AddEventHandler for a handler that reads its event only through the event's JSON encoding, as a subprocess extension's handler does. A dispatcher may hand such a handler an event whose Go values are not all materialized when its encoding is complete.
 func (e *Extension) AddJSONEventHandler(event string, id int, handler HandlerFn) {
 	e.addEventHandler(event, registeredEventHandler{id: id, handler: handler, jsonOnly: true})
+}
+
+// AddEventHandlerReturningWithoutAwait is AddEventHandler for a handler that returns without awaiting anything: in Pi, a handler whose function is not async or never
+// awaits, so that the runner's `await handler(event, ctx)` settles in microtasks and the event loop takes no turn (core/extensions/runner.ts:1103-1110). A host that runs the handlers of
+// an event asks HasEventHandlersThatMayAwait whether any of them can pend. A Go handler that blocks on the user, the terminal or another goroutine must not be
+// registered with it.
+func (e *Extension) AddEventHandlerReturningWithoutAwait(event string, id int, handler HandlerFn) {
+	e.addEventHandler(event, registeredEventHandler{id: id, handler: handler, returnsWithoutAwait: true})
 }
 
 func (e *Extension) addEventHandler(event string, registered registeredEventHandler) {

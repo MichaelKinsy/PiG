@@ -483,6 +483,12 @@ func appendPlainJSONString(dst []byte, s string) ([]byte, bool) {
 // file was rewritten under the Session) yields the entry's base members alone, and the failure is counted in staleReads. A large read decodes
 // its lines on several goroutines, each a contiguous run of the file, joined before it returns.
 func (s *Session) readSlotsLocked(indexes []int32) []SessionEntry {
+	return s.readSlotsStaleLocked(indexes, nil)
+}
+
+// readSlotsStaleLocked is readSlotsLocked that, when stale is not nil, stores in it the slot index plus one of a line that no longer holds
+// its entry (the first to be found, when several do not), for a read that returns an error for it.
+func (s *Session) readSlotsStaleLocked(indexes []int32, stale *atomic.Int64) []SessionEntry {
 	s.slotReads.Add(int64(len(indexes)))
 	out := make([]SessionEntry, len(indexes))
 	order := make([]int, len(indexes))
@@ -525,6 +531,9 @@ func (s *Session) readSlotsLocked(indexes []int32) []SessionEntry {
 			}
 			if entry == nil {
 				s.staleReads.Add(1)
+				if stale != nil {
+					stale.CompareAndSwap(0, int64(indexes[k])+1)
+				}
 				entry = RawEntry{Type: slot.typ(), ID: s.idOf(slot), ParentID: s.parentPtrLocked(int(indexes[k]))}
 			}
 			out[k] = entry
@@ -952,13 +961,15 @@ func (r *recordSource) close() {
 }
 
 // noteFlushedLocked records where the first write of a session file put each entry: lines are the header and then the entries of the first
-// len(lines)-1 slots, also written to snapshot when it is not nil. The file becomes the Session's backing file, and snapshot its snapshot.
-// The caller holds s.mu for writing.
+// len(lines)-1 slots, also written to snapshot. The file becomes the Session's backing file, and snapshot its snapshot. A write that made no
+// snapshot locates nothing: the entries stay resident (or packed in memory), as every entry is in Pi, because a place in a file that another
+// program can change is no place to read an entry back from. The caller holds s.mu for writing.
 func (s *Session) noteFlushedLocked(path string, lines [][]byte, snapshot *sessionSnapshot) {
+	if snapshot == nil {
+		return
+	}
 	if s.backing != "" && s.backing != path || len(lines) == 0 || len(lines)-1 > len(s.slots) {
-		if snapshot != nil {
-			snapshot.close()
-		}
+		snapshot.close()
 		return
 	}
 	s.snapshot = snapshot
@@ -973,8 +984,8 @@ func (s *Session) noteFlushedLocked(path string, lines [][]byte, snapshot *sessi
 	s.backing = path
 }
 
-// noteAppendedLocked records where an append put entry's line raw, at off in the snapshot or else the backing file, when it went to the
-// backing file and entry is still the one its id names. The caller holds s.mu for writing.
+// noteAppendedLocked records where an append put entry's line raw, at off in the snapshot, when it went to the backing file and entry is
+// still the one its id names. The caller holds s.mu for writing.
 func (s *Session) noteAppendedLocked(path string, entry SessionEntry, off int64, raw []byte) {
 	if path != s.backing || off < 0 {
 		return

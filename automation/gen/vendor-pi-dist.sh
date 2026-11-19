@@ -75,24 +75,21 @@ while IFS= read -r file; do
 done < <(cd "$schema/dist" && find . -name '*.js' | sed 's#^\./##' | sort)
 
 # pi-ai: the whole release (its compat entry is what Pi serves for the pi-ai
-# root), except the builtin API implementations, which are bridge stubs.
-bridged_apis="anthropic-messages azure-openai-responses bedrock-converse-stream google-generative-ai google-vertex mistral-conversations openai-codex-responses openai-completions openai-responses pi-messages"
-sdk_only="google-shared"
+# root), except the builtin API implementations and google-shared, which vendor-pi-ai-apis.mjs writes: bridge stand-ins
+# plus the Pi modules they re-export from (D74).
+own_apis=$(node "$root/automation/gen/vendor-pi-ai-apis.mjs" --names)
 (cd "$ai/dist" && find . \( -name '*.js' -o -path './providers/data/*.json' \) | sed 's#^\./##' | sort) | while read -r file; do
   case "$file" in
     utils/json-parse.js | api/openrouter-images.js) continue ;;
   esac
   name=${file#api/}
   name=${name%.js}
-  if [ "$file" = "api/$name.js" ] && [[ " $bridged_apis $sdk_only " == *" $name "* ]]; then
+  if [ "$file" = "api/$name.js" ] && [[ " $own_apis " == *" $name "* ]]; then
     continue
   fi
   copy "$ai/dist" "$dist/pi-ai" "$file"
 done
-for api in $bridged_apis; do
-  printf '// PiG: the %s implementation runs in PiG'"'"'s host (D74); see automation/gen/vendor-pi-dist.sh.\nimport { bridgeApi } from "../../../pi-ai-bridge.mjs";\nexport const { stream, streamSimple } = bridgeApi("%s");\n' "$api" "$api" >"$dist/pi-ai/api/$api.js"
-done
-printf '// PiG: image generation has no host provider (D74); see automation/gen/vendor-pi-dist.sh.\nimport { bridgeImages } from "../../../pi-ai-bridge.mjs";\nexport const generateImages = bridgeImages("openrouter-images");\n' >"$dist/pi-ai/api/openrouter-images.js"
+node "$root/automation/gen/vendor-pi-ai-apis.mjs" "$shims" "$ai" "$agent/node_modules/@google/genai"
 sed 's#^\(import .* from \)"@earendil-works/pi-telemetry";$#\1"../pi-telemetry/index.js";#' "$ai/dist/telemetry.js" >"$dist/pi-ai/telemetry.js"
 sed 's#^import { parse as partialParse } from "partial-json";$#import { parse as partialParse } from "../../../partial-json/dist/index.js";#' \
   "$ai/dist/utils/json-parse.js" >"$dist/pi-ai/utils/json-parse.js"
@@ -105,8 +102,9 @@ while IFS= read -r file; do
     prefix="$prefix/.."
     case "$rest" in */*) rest=${rest%/*} ;; *) break ;; esac
   done
-  sed -i -e "s#\(from \)\"@earendil-works/pi-schema\";\$#\1\"$prefix/pi-schema/index.js\";#" \
+  sed -i.bak -e "s#\(from \)\"@earendil-works/pi-schema\";\$#\1\"$prefix/pi-schema/index.js\";#" \
     -e "s#\(from \)\"@earendil-works/pi-schema/formats\";\$#\1\"$prefix/pi-schema/formats/index.js\";#" "$dist/pi-ai/$file"
+  rm -f "$dist/pi-ai/$file.bak"
 done < <(cd "$dist/pi-ai" && grep -lE 'from "@earendil-works/pi-schema(/formats)?";$' -r . --include=*.js | sed 's#^\./##' | sort)
 
 # Every other copied pi-ai module that imports typebox (any a later Pi adds) reaches the vendored typebox shims by its own depth.
@@ -117,9 +115,10 @@ while IFS= read -r file; do
     prefix="$prefix/.."
     case "$rest" in */*) rest=${rest%/*} ;; *) break ;; esac
   done
-  sed -i -e "s#^\(import .* from \)\"typebox\";\$#\1\"$prefix/typebox.mjs\";#" \
+  sed -i.bak -e "s#^\(import .* from \)\"typebox\";\$#\1\"$prefix/typebox.mjs\";#" \
     -e "s#^\(import .* from \)\"typebox/value\";\$#\1\"$prefix/typebox-value.mjs\";#" \
     -e "s#^\(import .* from \)\"typebox/compile\";\$#\1\"$prefix/typebox-compile.mjs\";#" "$dist/pi-ai/$file"
+  rm -f "$dist/pi-ai/$file.bak"
 done < <(cd "$dist/pi-ai" && grep -lE '^import .* from "typebox(/value|/compile)?";$' -r . --include=*.js | sed 's#^\./##' | sort)
 
 

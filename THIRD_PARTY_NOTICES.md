@@ -251,7 +251,7 @@ Upstream Pi identifies portions of its ANSI utility as derived from these projec
 
 Source: <https://github.com/highlightjs/highlight.js/tree/11.9.0>
 
-Distributed file: `internal/codingagent/export/assets/vendor/highlight.min.js`
+Distributed file: `internal/codingagent/export/assets/src/highlight.min.js`, embedded as `internal/codingagent/export/assets/vendor/highlight.min.js.gz`
 
 ```text
 BSD 3-Clause License
@@ -289,7 +289,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Source: <https://github.com/markedjs/marked/tree/v18.0.11>
 
-Distributed file: `internal/codingagent/export/assets/vendor/marked.min.js`
+Distributed file: `internal/codingagent/export/assets/src/marked.min.js`, embedded as `internal/codingagent/export/assets/vendor/marked.min.js.gz`
 
 ```text
 Marked
@@ -334,7 +334,7 @@ This software is provided by the copyright holders and contributors “as is” 
 
 Source: <https://github.com/tats-u/markdown-cjk-friendly/tree/main/packages/marked-cjk-friendly>
 
-Distributed files: `internal/codingagent/export/assets/vendor/marked-cjk-friendly.min.js`, which the exported HTML embeds, and `coding/extension/host/subprocess/runtime-node/shims/marked-cjk-friendly/`, the unmodified `dist/index.js`, `package.json` and `LICENSE` that pi-tui's Markdown component imports in Node extensions. PiG's Markdown renderer ports the package's `emStrong` rules to Go in `tui/markdown_marked.go` and `tui/markdown_cjk.go`.
+Distributed files: `internal/codingagent/export/assets/src/marked-cjk-friendly.min.js`, which the exported HTML embeds (as `internal/codingagent/export/assets/vendor/marked-cjk-friendly.min.js.gz`), and `coding/extension/host/subprocess/runtime-node/shims/marked-cjk-friendly/`, the unmodified `dist/index.js`, `package.json` and `LICENSE` that pi-tui's Markdown component imports in Node extensions. PiG's Markdown renderer ports the package's `emStrong` rules to Go in `tui/markdown_marked.go` and `tui/markdown_cjk.go`.
 
 ```text
 MIT License
@@ -715,6 +715,10 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
+## @google/genai 2.32.0 (three enum declarations)
+
+Pi's `api/google-shared` module imports the `FinishReason`, `FunctionCallingConfigMode` and `ThinkingLevel` enums from `@google/genai`, which PiG does not ship to extensions. `coding/extension/host/subprocess/runtime-node/shims/google-genai-enums.mjs` holds those three declarations, copied byte for byte from `dist/node/index.mjs` of the npm package `@google/genai@2.32.0` (integrity `sha512-+PDtco2/Z0ONdzCGekCoCT+O1VJS9xJQNN4XzQpXG/t3El/SWWMkCWlFRO1KmivOHPa4Q0VjUYu1HBKCZ/v33Q==`) by `automation/gen/vendor-pi-ai-apis.mjs`, with the package's licence header. The package is licensed under the Apache License, Version 2.0; the file keeps its notice (`Copyright 2025 Google LLC`, `SPDX-License-Identifier: Apache-2.0`) and the canonical text is in `LICENSES/Apache-2.0.txt`. The package has no `NOTICE` file.
+
 ## Independent Node SDK dependencies
 
 `automation/gen/vendor-pi-dist.sh` copies the following exact production dependencies from the locked Pi 0.87.1 installation. Paths are relative to `coding/extension/host/subprocess/runtime-node/shims/`. Each package retains its published manifest and complete license. The Photon package includes its published WebAssembly image-processing asset; it is not an extension runtime.
@@ -761,7 +765,7 @@ The generated `tui/widthx/unicode_tables.go` derives character properties and em
 
 ## quickjs-wasi 3.6.2 and the codemode prelude
 
-`codemode/assets/quickjs.wasm` is the unmodified `quickjs.wasm` of the npm package `quickjs-wasi@3.6.2` (SHA-256 `d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9`), the engine that upstream's codemode package runs. The module contains QuickJS-NG (MIT, copyright Ben Noordhuis, Saúl Ibarra Corretgé, Fabrice Bellard and Charlie Gordon) and wasi-libc from wasi-sdk 30. PiG hosts it with wazero (Apache-2.0, `LICENSES/Apache-2.0.txt`). `codemode/assets/prelude.js` is upstream's `PRELUDE_SOURCE` (MIT, copyright (c) 2025 Mario Zechner). `codemode/assets/PROVENANCE.md` records the source and the refresh procedure.
+`codemode/assets/raw/quickjs.wasm` (embedded as `codemode/assets/quickjs.wasm.zst`) is the unmodified `quickjs.wasm` of the npm package `quickjs-wasi@3.6.2` (SHA-256 `d4c9375f2b1ca4dc95f72c8aa2982a7a9951ac8011490d79c6582df732b4bbd9`), the engine that upstream's codemode package runs. The module contains QuickJS-NG (MIT, copyright Ben Noordhuis, Saúl Ibarra Corretgé, Fabrice Bellard and Charlie Gordon) and wasi-libc from wasi-sdk 30. PiG hosts it with wazero (Apache-2.0, `LICENSES/Apache-2.0.txt`). `codemode/assets/prelude.js` is upstream's `PRELUDE_SOURCE` (MIT, copyright (c) 2025 Mario Zechner). `codemode/assets/PROVENANCE.md` records the source and the refresh procedure.
 
 ```text
 MIT License

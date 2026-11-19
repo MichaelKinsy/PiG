@@ -1,0 +1,54 @@
+{
+	"abortedThenLive": {
+		"entries": [
+			[
+				"signal_turn_start",
+				{
+					"currentAbortEvents": 0,
+					"currentAborted": false,
+					"heldAbortEvents": 1,
+					"heldAborted": true,
+					"signalIsHeld": false
+				}
+			],
+			[
+				"signal_message_start",
+				{
+					"currentAbortEvents": 1,
+					"currentAborted": true,
+					"heldAbortEvents": 1,
+					"heldAborted": true,
+					"signalIsHeld": false
+				}
+			]
+		],
+		"errors": [],
+		"loadErrors": []
+	},
+	"twoLiveRuns": {
+		"entries": [
+			[
+				"signal_turn_start",
+				{
+					"currentAbortEvents": 0,
+					"currentAborted": false,
+					"heldAbortEvents": 0,
+					"heldAborted": false,
+					"signalIsHeld": false
+				}
+			],
+			[
+				"signal_message_start",
+				{
+					"currentAbortEvents": 1,
+					"currentAborted": true,
+					"heldAbortEvents": 0,
+					"heldAborted": false,
+					"signalIsHeld": false
+				}
+			]
+		],
+		"errors": [],
+		"loadErrors": []
+	}
+}

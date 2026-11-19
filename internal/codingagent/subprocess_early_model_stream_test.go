@@ -34,7 +34,7 @@ func TestEarlyModelStreamServesAPICallsWithoutASession(t *testing.T) {
 	}))
 	defer server.Close()
 	bridge := &earlyStreamBridge{}
-	WireEarlyModelStream(bridge, "")
+	WireEarlyModelStream(bridge)
 	if bridge.stream == nil {
 		t.Fatal("WireEarlyModelStream did not install a streamModel action")
 	}

@@ -149,3 +149,89 @@ func TestBuiltinChatCatalogSharesTheGeneratedCatalog(t *testing.T) {
 		t.Fatalf("stripping %s from %s: %d models, window %v; want a copy of the rest", api, gapped, len(got), len(got) > 0 && windowOfGeneratedModels(got))
 	}
 }
+
+// providerOfAPI is the first bundled provider with a model on api.
+func providerOfAPI(t *testing.T, api ai.API) string {
+	t.Helper()
+	for i := range ai.GeneratedModels {
+		if ai.GeneratedModels[i].API == api {
+			return ai.GeneratedModels[i].Provider
+		}
+	}
+	t.Fatalf("no bundled model on %s", api)
+	return ""
+}
+
+func catalogHasAPI(models []ai.GeneratedModel, api ai.API) bool {
+	for i := range models {
+		if models[i].API == api {
+			return true
+		}
+	}
+	return false
+}
+
+// A Piglet that strips an API (a build tag, or its strip list applied at startup) pays no allocation for a catalog lookup: the catalog compares the strip generation and does not copy the stripped IDs on every call.
+func TestBuiltinChatCatalogDoesNotAllocateWhileAnAPIIsStripped(t *testing.T) {
+	undo := pigstrip.Strip(pigstrip.ListAPIs, string(ai.APIOpenAICompletions))
+	defer undo()
+	builtinChatCatalogSink = builtinChatCatalog("anthropic")
+	if allocs := testing.AllocsPerRun(20, func() { builtinChatCatalogSink = builtinChatCatalog("anthropic") }); allocs != 0 {
+		t.Fatalf("builtinChatCatalog = %v allocations with an API stripped, want 0", allocs)
+	}
+}
+
+// A strip recorded between two lookups is seen by the next one, and its undo too: the catalog never serves a model of a stripped API.
+func TestBuiltinChatCatalogSeesAStripBetweenTwoLookups(t *testing.T) {
+	api := ai.APIOpenAICompletions
+	provider := providerOfAPI(t, api)
+	if !catalogHasAPI(builtinChatCatalog(provider), api) {
+		t.Fatalf("%s lists no %s model before the strip", provider, api)
+	}
+	undo := pigstrip.Strip(pigstrip.ListAPIs, string(api))
+	if catalogHasAPI(builtinChatCatalog(provider), api) {
+		t.Fatalf("%s still lists a %s model after the strip", provider, api)
+	}
+	again := pigstrip.Strip(pigstrip.ListAPIs, string(api))
+	again()
+	if catalogHasAPI(builtinChatCatalog(provider), api) {
+		t.Fatalf("a strip that recorded nothing, undone, brought back a %s model of %s", api, provider)
+	}
+	undo()
+	if !catalogHasAPI(builtinChatCatalog(provider), api) {
+		t.Fatalf("%s lists no %s model after the strip is undone", provider, api)
+	}
+}
+
+// Lookups racing a Strip never read a torn catalog, and once the Strip has returned every later lookup omits the API.
+func TestBuiltinChatCatalogLookupsRaceAStrip(t *testing.T) {
+	api := ai.APIOpenAICompletions
+	provider := providerOfAPI(t, api)
+	stop := make(chan struct{})
+	var readers sync.WaitGroup
+	for range 4 {
+		readers.Go(func() {
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+					_ = builtinChatCatalog(provider)
+					_ = builtinChatModels(provider)
+				}
+			}
+		})
+	}
+	for range 50 {
+		undo := pigstrip.Strip(pigstrip.ListAPIs, string(api))
+		if catalogHasAPI(builtinChatCatalog(provider), api) {
+			t.Error("a lookup after the strip returned a model of the stripped API")
+		}
+		undo()
+		if !catalogHasAPI(builtinChatCatalog(provider), api) {
+			t.Error("a lookup after the undo omitted the API")
+		}
+	}
+	close(stop)
+	readers.Wait()
+}

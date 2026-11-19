@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/pigstrip"
 )
 
 type agentSessionOp struct {
@@ -135,7 +136,12 @@ func agentSessionScenarios() []agentSessionScenario {
 				case 3:
 					scenario.Ops = append(scenario.Ops, agentSessionOp{Op: pick([]string{"abort", "toolDef", "handlers"}), ToolName: pick([]string{"read", "bash", "nope"}), Event: pick([]string{"input", "context", "tool_call"})})
 				case 4:
-					scenario.Ops = append(scenario.Ops, agentSessionOp{Op: pick([]string{"navigate", "navigate", "exportJsonl", "exportHtml"}), Index: rng.IntN(12), Label: pick([]string{"", "", "L"}), Ref: pick([]string{"", "dark", "light", "nope"})})
+					op := agentSessionOp{Op: pick([]string{"navigate", "navigate", "exportJsonl", "exportHtml"}), Index: rng.IntN(12), Label: pick([]string{"", "", "L"}), Ref: pick([]string{"", "dark", "light", "nope"})}
+					if op.Op == "exportHtml" && pigstrip.Has(pigstrip.ListFeatures, pigstrip.ExportHTML) {
+						// A Piglet Binary built with pig_strip_export_html has no HTML export (D92): its ExportToHTML says so where Pi writes the file, so the scenario exports the JSONL file instead.
+						op.Op = "exportJsonl"
+					}
+					scenario.Ops = append(scenario.Ops, op)
 				case 5:
 					op := agentSessionOp{Op: pick([]string{"setScoped", "setScoped", "refresh"}), Scoped: []agentSessionScoped{}}
 					if op.Op == "setScoped" {

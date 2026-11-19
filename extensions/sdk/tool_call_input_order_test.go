@@ -13,7 +13,7 @@ func TestToolCallInputEditKeepsTheHostsMemberOrder(t *testing.T) {
 	if err := json.Unmarshal(source, &input); err != nil {
 		t.Fatal(err)
 	}
-	call := newToolCallInput(input, source)
+	call := newToolCallInput(map[string]any{"input": input}, source)
 	if edited, ok := call.edit(); ok {
 		t.Fatalf("an untouched input counted as an edit: %s", edited.(json.RawMessage))
 	}
@@ -36,7 +36,7 @@ func TestToolCallInputEditKeepsTheHostsMemberOrder(t *testing.T) {
 // Without the host's text there is no order to keep, and members are sorted.
 func TestToolCallInputEditWithoutSourceIsSorted(t *testing.T) {
 	input := map[string]any{"b": 1.0}
-	call := newToolCallInput(input, nil)
+	call := newToolCallInput(map[string]any{"input": input}, nil)
 	input["a"] = 2.0
 	edited, ok := call.edit()
 	if !ok || string(edited.(json.RawMessage)) != `{"a":2,"b":1}` {

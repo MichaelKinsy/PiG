@@ -28,11 +28,14 @@ import (
 // detection (or to capture if no ready pattern is set). This isolates
 // binary+runtime startup from shell init overhead since tmux exec's the
 // binary directly.
-type tmuxDriver struct{}
+type tmuxDriver struct {
+	// teardownClock paces the wait for the transcript reader when a run ends. The zero value is the wall clock; a test drives it.
+	teardownClock captureClock
+}
 
 func (tmuxDriver) Name() string { return "interactive-tmux" }
 
-func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenario) (result Result) {
+func (d tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenario) (result Result) {
 	t.Helper()
 	cfg := sc.Tmux
 
@@ -64,19 +67,23 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 
 	session := fmt.Sprintf("parity-%s-%s-%s-%s", parityRunID(), sc.Name, bin.Label, uniqueID())
 	registerSession(session)
-	started := false
+	started, readerStarted := false, false
+	transcriptPath := filepath.Join(tc.tempRoot, "terminal-transcript.log")
 	defer func() {
 		// Cleanup must remain observable after the scenario context is cancelled.
-		cleanupCtx, cancel := context.WithTimeout(context.Background(), processExitTimeout(t))
+		budget := processExitTimeout(t)
+		cleanupCtx, cancel := context.WithTimeout(context.Background(), budget)
 		defer cancel()
-		var owned map[int]bool
-		var err error
-		if started {
-			owned, err = tmuxSessionProcesses(cleanupCtx, session)
+		clock := d.teardownClock
+		if clock.now == nil {
+			clock = wallClock
 		}
-		killSession(session)
-		if started && err == nil {
-			err = awaitOwnedProcesses(cleanupCtx, owned)
+		err := tmuxTeardown{
+			session: session, transcriptPath: transcriptPath, scenario: sc.Name, side: bin.Label,
+			started: started, readerStarted: readerStarted, clock: clock, budget: budget,
+		}.end(cleanupCtx)
+		if errors.Is(err, errTranscriptReaderLive) {
+			tc.keep("the transcript reader may still be writing into it")
 		}
 		result.Err = errors.Join(result.Err, err)
 	}()
@@ -163,7 +170,7 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	// host HTTP_PROXY otherwise leaks into one binary.
 	envPrefix := tmuxEnvPrefix(os.Getenv("GOCOVERDIR"))
 	exitStatusPath := filepath.Join(tc.tempRoot, "process-exit-status")
-	cmdStr := envPrefix + strings.Join(quoted, " ") + "; exit_code=$?; printf '%s\\n' \"$exit_code\" > " + shellQuote(exitStatusPath+".tmp") + " && mv " + shellQuote(exitStatusPath+".tmp") + " " + shellQuote(exitStatusPath) + "; sleep 999"
+	cmdStr := envPrefix + preTuiLinesCommand(cfg.PreTuiLines) + strings.Join(quoted, " ") + "; exit_code=$?; printf '%s\\n' \"$exit_code\" > " + shellQuote(exitStatusPath+".tmp") + " && mv " + shellQuote(exitStatusPath+".tmp") + " " + shellQuote(exitStatusPath) + "; sleep 999"
 	// Working directory: prepend `cd <dir> && …` so the binary launches in
 	// the scenario cwd (resolved relative to the scenario source path) or
 	// the default cwd fixture. The directory is copied per binary under the
@@ -190,9 +197,9 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	}
 	cmdStr = "cd " + shellQuote(snap) + " && " + cmdStr
 
-	transcriptPath := filepath.Join(tc.tempRoot, "terminal-transcript.log")
 	t0, created, err := startTmuxSession(ctx, session, cmdStr, transcriptPath, cfg)
 	started = created
+	readerStarted = created && transcriptReaderAttached(session, err)
 	if err != nil {
 		return Result{Err: err}
 	}
@@ -210,9 +217,16 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 	var finalFrameSpecs []TmuxFinalFrame
 	if ready != "" {
 		timeout := time.Duration(cfg.ReadyTimeoutSeconds) * time.Second
-		readyOK = waitForPaneOrCapture(ctx, session, ready, cfg.CaptureStart, timeout)
+		// A capture_start that the launch shell itself prints (pre_tui_lines) is on screen before the TUI exists, so it cannot stand in for the ready pattern.
+		earlyCapture := cfg.CaptureStart
+		if cfg.PreTuiLines > 0 {
+			earlyCapture = ""
+		}
+		readyOK = waitForPaneOrCapture(ctx, session, ready, earlyCapture, timeout)
 		if !readyOK {
 			operationErr = fmt.Errorf("ready pattern %q not reached within %s", ready, timeout)
+			// A wait that timed out leaves the process in an unknown state. Every wait failure defers the probe, which runs after the final capture and before the session teardown deferred at the top; a run whose waits pass defers nothing.
+			defer hangProbe{session, transcriptPath, bin}.record(&result)
 		}
 	}
 	elapsed := time.Since(t0).Milliseconds()
@@ -250,6 +264,9 @@ func (tmuxDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scen
 					err = fmt.Errorf("[[tmux.steps]] step %d: %w", index+1, err)
 				}
 				operationErr = err
+				if errors.As(err, new(waitTimeoutError)) {
+					defer hangProbe{session, transcriptPath, bin}.record(&result)
+				}
 				break
 			}
 			if step.FinalFrame != nil {
@@ -409,20 +426,25 @@ func runTmuxStep(ctx context.Context, session, transcriptPath, label string, ste
 	if err := sendTmuxKeys(ctx, session, step.Keys); err != nil {
 		return watched, err
 	}
+	if step.Signal != "" {
+		if err := signalTmuxProgram(ctx, session, step.Signal); err != nil {
+			return watched, err
+		}
+	}
 	if len(step.WaitContains) > 0 {
 		if !waitForPaneAllSince(ctx, session, transcriptPath, step.WaitContains, baseline, true, timeout) {
-			return watched, fmt.Errorf("step output %q not reached within %s", step.WaitContains, timeout)
+			return watched, waitTimeoutError{fmt.Errorf("step output %q not reached within %s", step.WaitContains, timeout)}
 		}
 	}
 	if len(visible) > 0 || len(step.WaitNotContains) > 0 {
 		if !waitForPaneState(ctx, session, visible, step.WaitNotContains, timeout) {
-			return watched, fmt.Errorf("visible step state includes=%q excludes=%q not reached within %s", visible, step.WaitNotContains, timeout)
+			return watched, waitTimeoutError{fmt.Errorf("visible step state includes=%q excludes=%q not reached within %s", visible, step.WaitNotContains, timeout)}
 		}
 	}
 	if step.WaitStableMilliseconds > 0 {
 		window := time.Duration(step.WaitStableMilliseconds) * time.Millisecond
 		if !waitForPaneQuiescent(ctx, func() string { return capturePaneVisible(ctx, session) }, window, tmuxQuiescencePoll, timeout) {
-			return watched, fmt.Errorf("visible pane did not stay unchanged for %s within %s", window, timeout)
+			return watched, waitTimeoutError{fmt.Errorf("visible pane did not stay unchanged for %s within %s", window, timeout)}
 		}
 	}
 	if step.SettleSeconds > 0 {
@@ -1068,6 +1090,41 @@ func sendTmuxKeys(ctx context.Context, session string, keys []string) error {
 	return nil
 }
 
+// signalTmuxProgram sends the signal a step names ("TERM" or "HUP") to the program the pane's launch shell is running: the shell's only child, since the shell runs the program in the foreground and writes its exit status after it. A pane whose shell has no child (the program ended already) or several is an error, because the signal would not have reached what the scenario means.
+func signalTmuxProgram(ctx context.Context, session, name string) error {
+	sig := syscall.SIGTERM
+	if name == "HUP" {
+		sig = syscall.SIGHUP
+	}
+	//nolint:gosec // G204 (class a): program is literal tmux; args are fixed display-message -p -t <harness session>.
+	out, err := exec.CommandContext(ctx, "tmux", tmuxArgs("display-message", "-p", "-t", session, "#{pane_pid}")...).Output()
+	if err != nil {
+		return fmt.Errorf("pane pid of %s: %w", session, err)
+	}
+	shell, err := strconv.Atoi(strings.TrimSpace(string(out)))
+	if err != nil {
+		return fmt.Errorf("pane pid of %s: %w", session, err)
+	}
+	//nolint:gosec // G204 (class a): program is literal pgrep; the argument is the integer pane pid.
+	children, _ := exec.CommandContext(ctx, "pgrep", "-P", strconv.Itoa(shell)).Output()
+	pids := strings.Fields(string(children))
+	if len(pids) != 1 {
+		return fmt.Errorf("signal %s: the pane's shell %d has %d child process(es), want the program alone", name, shell, len(pids))
+	}
+	pid, err := strconv.Atoi(pids[0])
+	if err != nil {
+		return fmt.Errorf("signal %s: child pid %q: %w", name, pids[0], err)
+	}
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return fmt.Errorf("signal %s: %w", name, err)
+	}
+	if err := process.Signal(sig); err != nil {
+		return fmt.Errorf("signal %s to process %d: %w", name, pid, err)
+	}
+	return nil
+}
+
 func coalesceTmuxKeys(keys []string) []string {
 	coalesced := make([]string, 0, len(keys))
 	for index := 0; index < len(keys); {
@@ -1208,4 +1265,12 @@ func tmuxProcessRunning(pid int) bool {
 	}
 	err = process.Signal(syscall.Signal(0))
 	return err == nil || errors.Is(err, syscall.EPERM)
+}
+
+// preTuiLinesCommand prints n numbered lines before the binary starts, as a package installer or a wrapper script would.
+func preTuiLinesCommand(n int) string {
+	if n <= 0 {
+		return ""
+	}
+	return "i=1; while [ $i -le " + strconv.Itoa(n) + " ]; do printf 'PRE-TUI-LINE-%d\\n' $i; i=$((i+1)); done; "
 }

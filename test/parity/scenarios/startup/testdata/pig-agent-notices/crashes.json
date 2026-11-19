@@ -1,0 +1,11 @@
+[
+  {
+    "timestamp": "2099-06-15T12:00:00.000Z",
+    "version": "0.0.0",
+    "kind": "uncaught_exception",
+    "message": "Boom",
+    "stack": null,
+    "sessionFile": null,
+    "cwd": "/"
+  }
+]

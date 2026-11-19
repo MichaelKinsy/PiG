@@ -43,7 +43,7 @@
    "call:coding/session_extension_host.go#ExtensionHostSessionActions"
   ],
   "evidence": [
-   "test:coding/codemode_session_upstream_test.go#TestUpstreamAgentSessionCodemodeTool",
+   "test:coding/codemode_session_upstream_node_test.go#TestUpstreamAgentSessionCodemodeTool",
    "test:coding/sdk_session_manager_upstream_test.go#TestUpstreamSDKSessionManagerBashCurrentState"
   ],
   "rationale": "AgentSession.systemPrompt is the Go method Session.SystemPrompt; types reviewed against the upstream declaration; tests are upstream-ported files attributed by go/types (methodrefs)."

@@ -171,6 +171,8 @@ type Extension struct {
 	providerOperations map[string]providerOperations
 	toolMu             sync.RWMutex
 	toolConn           *conn
+	// toolPublishMu orders the registerTool calls to the host with the table changes they publish (lock order: toolPublishMu, then toolMu). toolMu is released before the host call: the host asks the tool's hooks (tool_prepare_loadout, tool_reaches_tools) while it answers the call, and those read the tables under toolMu.
+	toolPublishMu sync.Mutex
 	// footer is the host's footer data (guarded by mu).
 	footer           footerSnapshot
 	toolFuncs        map[string]ToolFunc
@@ -178,6 +180,8 @@ type Extension struct {
 	toolBatches      toolBatchOrders
 	// requestStarts keeps the handlers of the requests that run extension code (startsInArrivalOrder) starting in the order the requests arrive: the tool_call requests of a parallel batch (agent-loop.ts:619-647, 820-837) and the event and command requests of concurrent emits (runner.ts:1096-1125).
 	requestStarts jsloop.Lane
+	// startObserver is set by tests of this package before the extension serves, never while it runs. It is called with the method and id of each request that takes a place, after the earlier places were released and before this one is.
+	startObserver func(method, id string)
 	// children are the child agent sessions this extension created and has not disposed (child_session.go).
 	children           childSessions
 	commandFuncs       map[string]CommandFunc
@@ -803,14 +807,16 @@ func (e *Extension) validateToolSchema(name string, schema Schema) {
 
 // ToolPromptSnippet sets the registered tool's optional system-prompt summary and refreshes a running Session.
 func (e *Extension) ToolPromptSnippet(name, snippet string) {
-	e.toolMu.Lock()
-	defer e.toolMu.Unlock()
-	for i := range e.tools {
-		if e.tools[i].Name == name {
-			e.tools[i].PromptSnippet = snippet
-			e.publishTool(e.tools[i])
+	e.changeTools(func() []toolDef {
+		var updated []toolDef
+		for i := range e.tools {
+			if e.tools[i].Name == name {
+				e.tools[i].PromptSnippet = snippet
+				updated = append(updated, e.tools[i])
+			}
 		}
-	}
+		return updated
+	})
 }
 
 // ToolWithPrepareArguments registers a tool with a local pre-validation argument transform. A nil schema panics before registration.
@@ -1404,6 +1410,16 @@ func startsInArrivalOrder(req *requestMsg) bool {
 	return false
 }
 
+// passStart waits until the handler of every earlier request was invoked or its request ended without one, then lets startObserver see that this request's handler is next and hands the place on. The order it keeps is the order of invocation: what a handler runs first is up to the scheduler.
+// pig divergence (D658): the place is handed on before the handler's first statement runs, so a descheduled thread can be overtaken; Pi runs a handler to its first await in invocation order.
+func (e *Extension) passStart(id, method string, place *jsloop.Place) {
+	place.Wait()
+	if e.startObserver != nil {
+		e.startObserver(method, id)
+	}
+	place.Release()
+}
+
 func (e *Extension) stopRequests() error {
 	e.stopWidthDeliveries()
 	e.themeFeed.stop()
@@ -1511,6 +1527,8 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 	// mirrors upstream's per-request error isolation (a thrown handler error in
 	// the TS runtime rejects one call, it does not tear down the runtime).
 	var boundaryData map[string]any
+	// boundaryEdits are the messages a turn_end handler edited in place, each at its position (event_edits_reply.go); nil for the other boundary.
+	var boundaryEdits func() []any
 	// order is the member order of the objects of an event as the host sent them; the objects a handler hands back are written in it.
 	var order *json.ObjectOrder
 	var promptOptions map[string]any
@@ -1528,12 +1546,19 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			diagnosticf("extension: recovered from panic in %s %q: %v\n%s\n", req.Method, name, r, debug.Stack())
 			var result any
 			if boundaryData != nil {
-				result = map[string]any{"_pigBoundaryEntries": boundaryData["entries"], "_pigBoundaryResult": nil}
+				var edits []any
+				if boundaryEdits != nil {
+					edits = boundaryEdits()
+				}
+				result = boundaryReply(boundaryData, nil, edits)
 			}
 			if toolCall != nil {
 				reply := map[string]any{"_pigToolCallResult": nil}
 				if edited, ok := toolCall.edit(); ok {
 					reply["_pigToolCallInput"] = edited
+				}
+				if assigned, ok := toolCall.assigned(); ok {
+					reply["_pigToolCallEventInput"] = assigned
 				}
 				result = reply
 			}
@@ -1621,7 +1646,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 		}
 		// agent-loop.ts:619-647: the handlers of a batch start in source order.
-		ctx.place.Pass()
+		e.passStart(id, "tool_call", ctx.place)
 		ctx.start.begin()
 		result, err := handler(ctx, params)
 		// A handler whose dialog was answered before another's responds after it, as Pi's continuations run in the order of the answers.
@@ -1667,7 +1692,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			_ = unmarshalFrameMember(req.Args, &args)
 		}
 		// runner.ts:1096-1125: the handlers of concurrent requests start in arrival order.
-		ctx.place.Pass()
+		e.passStart(id, "command", ctx.place)
 		err := handler(ctx, args)
 		_ = e.conn.respond(id, nil, err)
 
@@ -1687,6 +1712,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			}
 			data = req.streamData
 		} else if len(req.Args) > 0 {
+			// pig divergence (D657): a handler gets its own copy of the event payload: the fused decode below clones a master for each handler, the other decode reads the request's own frame. Pi hands every handler of an emit the one event object.
 			if e.conn.fused {
 				// Fused extensions share one decode of a payload; each handler gets its own copy.
 				var release func()
@@ -1705,7 +1731,7 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				Input json.RawMessage `json:"input"`
 			}
 			_ = unmarshalFrameMember(req.Args, &source)
-			toolCall = newToolCallInput(data["input"], source.Input)
+			toolCall = newToolCallInput(data, source.Input)
 		}
 		// sentMember is the member of the event as the host sent it, decoded again: the handler may have edited its copy.
 		sentMember := func(member string) any {
@@ -1715,6 +1741,10 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				}
 			}
 			return master[member]
+		}
+		if req.Event == "turn_end" {
+			objects, _ := captureEventObjects(req.Event, data)
+			boundaryEdits = func() []any { return objects.edits(req.Event, req.Args) }
 		}
 		if req.Event == "before_provider_request" || req.Event == "before_provider_headers" {
 			member := "payload"
@@ -1726,10 +1756,17 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 				return providerHookReply(req.Event, object, result, func() any { return sentMember(member) })
 			}
 		}
-		if req.Event == "message_end" {
-			object := data["message"]
+		// The members of the event as the handler receives them, to find the ones it assigns, reassigns or deletes (event_members_reply.go).
+		var members memberSnapshot
+		var memberEdits []any
+		trackMembers := memberEvent(req.Event)
+		if trackMembers {
+			members = snapshotMembers(data)
+		}
+		if req.Event == "message_start" || req.Event == "message_end" || req.Event == "agent_end" {
+			objects, _ := captureEventObjects(req.Event, data)
 			editReply = func(result any) any {
-				return messageEndReply(object, result, func() any { return sentMember("message") })
+				return eventEditsReply(result, append(objects.edits(req.Event, req.Args), memberEdits...))
 			}
 		}
 		if req.Event == "tool_result" {
@@ -1759,8 +1796,13 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 		}
 		// The member order of the objects of the event came with the decode, so no object has to be captured before the handler runs.
 		// runner.ts:1096-1125: the handlers of concurrent emits start in arrival order.
-		ctx.place.Pass()
+		e.passStart(id, "event", ctx.place)
 		result, err := handler(ctx, data)
+		if trackMembers {
+			if memberEdits = members.edits(data); memberEdits != nil && editReply == nil {
+				editReply = func(result any) any { return eventEditsReply(result, memberEdits) }
+			}
+		}
 		if req.Event == "user_bash" && err == nil {
 			result, err = e.userBashEventResult(result)
 		}
@@ -1791,6 +1833,9 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			if edited, ok := toolCall.edit(); ok {
 				reply["_pigToolCallInput"] = edited
 			}
+			if assigned, ok := toolCall.assigned(); ok {
+				reply["_pigToolCallEventInput"] = assigned
+			}
 			result = reply
 		}
 		// pig additive (D19): return boundary mutations separately from the handler result and error.
@@ -1798,7 +1843,11 @@ func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) 
 			if err != nil {
 				result = nil
 			}
-			result = map[string]any{"_pigBoundaryEntries": data["entries"], "_pigBoundaryResult": result}
+			var edits []any
+			if boundaryEdits != nil {
+				edits = boundaryEdits()
+			}
+			result = boundaryReply(data, result, edits)
 		}
 		_ = e.conn.respond(id, handedBack(req.Event, result, order), err)
 		// A Context a handler kept must not hold the event's payload: ObjectKeys reads byte order from here on.
@@ -2703,16 +2752,29 @@ func (e *Extension) stopWidthDeliveries() {
 	e.widthMu.Unlock()
 }
 
-// toolCallInput is the input a tool_call handler received. The tool runs with that object (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so an edit counts only when the handler changed its members; assigning another value to event["input"] changes nothing the tool receives. source is the input as the host wrote it, which gives the member order an edit keeps.
+// toolCallInput is the input a tool_call handler received. The tool runs with that object (agent-loop.ts prepareToolCall passes the same args to beforeToolCall and execute), so an edit counts only when the handler changed its members; assigning another value to event["input"] changes nothing the tool receives, and is the input the next handlers read (runner.ts emitToolCall hands them the one event). source is the input as the host wrote it, which gives the member order an edit keeps.
 type toolCallInput struct {
+	event  map[string]any
 	input  any
 	source json.RawMessage
 	before []byte
 }
 
-func newToolCallInput(input any, source json.RawMessage) *toolCallInput {
+func newToolCallInput(event map[string]any, source json.RawMessage) *toolCallInput {
+	input := event["input"]
 	before, _ := json.MarshalJS(input)
-	return &toolCallInput{input: input, source: source, before: before}
+	return &toolCallInput{event: event, input: input, source: source, before: before}
+}
+
+// assigned returns the value the handler assigned to event["input"], when it is another object than the one the event carried.
+func (t *toolCallInput) assigned() (any, bool) {
+	now := t.event["input"]
+	nowMap, nowOK := now.(map[string]any)
+	wasMap, wasOK := t.input.(map[string]any)
+	if nowOK && wasOK {
+		return now, reflect.ValueOf(nowMap).Pointer() != reflect.ValueOf(wasMap).Pointer()
+	}
+	return now, now != nil || t.input != nil
 }
 
 // edit returns the input as JSON when the handler left its members different from the ones it received. A retained member keeps the place it had, as an assignment to a JavaScript object leaves it.

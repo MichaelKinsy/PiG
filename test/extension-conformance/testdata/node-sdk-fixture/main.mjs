@@ -207,19 +207,20 @@ export default function (pi) {
     ctx.ui.notify(`unbound:${parts.join(",")}`, "info");
   }});
   // event_session_actions_on keeps the handler's context; event_session_actions_stored calls the actions through it after the handler's request ended. Pi's createContext() object has no such member (runner.ts:877-987), so Node's reports `undefined` and the call throws Pi's TypeError.
-  const sessionActionNames = ["newSession", "fork", "navigateTree", "switchSession", "reload"];
+  const sessionActionNames = ["waitForIdle", "newSession", "fork", "navigateTree", "switchSession", "reload"];
   const reportSessionActions = async (ctx) => {
     const parts = [];
-    for (const [name, call] of [["new", () => ctx.newSession()], ["fork", () => ctx.fork("entry")], ["navigate", () => ctx.navigateTree("entry")], ["switch", () => ctx.switchSession("/s.jsonl")], ["reload", () => ctx.reload()]]) {
+    for (const [name, call] of [["wait", () => ctx.waitForIdle()], ["new", () => ctx.newSession()], ["fork", () => ctx.fork("entry")], ["navigate", () => ctx.navigateTree("entry")], ["switch", () => ctx.switchSession("/s.jsonl")], ["reload", () => ctx.reload()]]) {
       try { await call(); parts.push(`${name}=allowed`); } catch (error) { parts.push(/is not a function/.test(error.message) ? `${name}=rejected` : `${name}=error:${error.message}`); }
     }
     return parts.join(",");
   };
   // sessionActionShape is what Pi's JavaScript shows of an event context: typeof of each member, and the synchronous error a call throws.
   const sessionActionShape = (ctx) => {
-    let thrown = "returned";
-    try { void Promise.resolve(ctx.switchSession("/s.jsonl")).catch(() => {}); } catch (error) { thrown = `${error.constructor.name}:${error.message}`; }
-    return `${sessionActionNames.map((name) => typeof ctx[name]).join(",")};${thrown}`;
+    let thrown = "returned", thrownSwitch = "returned";
+    try { void Promise.resolve(ctx.waitForIdle()).catch(() => {}); } catch (error) { thrown = `${error.constructor.name}:${error.message}`; }
+    try { void Promise.resolve(ctx.switchSession("/s.jsonl")).catch(() => {}); } catch (error) { thrownSwitch = `${error.constructor.name}:${error.message}`; }
+    return `${sessionActionNames.map((name) => typeof ctx[name]).join(",")};${thrown};${thrownSwitch}`;
   };
   let keptEventCtx;
   pi.registerCommand("event_session_actions_on", { description: "Subscribe to the event named by the argument with a handler that calls the session actions", handler: async (args) => {
@@ -232,6 +233,23 @@ export default function (pi) {
   pi.registerCommand("event_session_actions_stored", { description: "Call the session actions through the context an event handler kept", handler: async (_args, ctx) => {
     ctx.ui.notify(`stored_shape:${sessionActionShape(keptEventCtx)}`, "info");
     ctx.ui.notify(`stored_actions:${await reportSessionActions(keptEventCtx)}`, "info");
+  }});
+  // session_actions_tool makes the same calls through the context of a tool's execute: Pi's createContext() object (runner.ts:877-987), so none exists.
+  pi.registerTool({ name: "session_actions_tool", label: "session_actions_tool", description: "Call the session actions through the tool's context", parameters: { type: "object", properties: {} }, execute: async (_id, _params, _signal, _onUpdate, ctx) => ({ content: [{ type: "text", text: `tool_actions:${await reportSessionActions(ctx)}` }], details: {} }) });
+  // wait_idle_command waits for the run from a command context (runner.ts createCommandContext), and wait_idle_with_session from a withSession callback's context.
+  pi.registerCommand("wait_idle_command", { description: "Wait for the run from a command", handler: async (_args, ctx) => {
+    let text = "done";
+    try { await ctx.waitForIdle(); } catch (error) { text = `error:${error.message}`; }
+    ctx.ui.notify(`wait_idle:${text}`, "info");
+  }});
+  pi.registerCommand("wait_idle_with_session", { description: "Wait for the run from a withSession callback", handler: async (_args, ctx) => {
+    // The callback runs while this command's switchSession call is in flight, so the notice is sent once the call returned.
+    let text = "never ran";
+    await ctx.switchSession("/s.jsonl", { withSession: async (replaced) => {
+      text = "done";
+      try { await replaced.waitForIdle(); } catch (error) { text = `error:${error.message}`; }
+    } });
+    ctx.ui.notify(`with_session_wait:${text}`, "info");
   }});
   pi.registerCommand("active_tools_get", { description: "Report the active tools", handler: async (_args, ctx) => ctx.ui.notify(`active_tools:${pi.getActiveTools().join(",")}`, "info") });
   // mcp_register_run registers two MCP servers in one synchronous run and reads the active tools after each call (TestConformance_McpServerRegisteredAtRunTimeIsHandledInsideTheCall).
@@ -474,6 +492,18 @@ export default function (pi) {
       let second;
       try { second = await ctx.ui.input("tool_signal:later", "p"); } catch (error) { second = `failed: ${error?.message ?? error}`; }
       return { content: [{ type: "text", text: `tool_signal:${aborted}:${first}:${second}` }] };
+    },
+  });
+  // aborted_entry_probe is called with its run already aborted (TestConformance_ToolCalledAbortedEntersWithItsSignalAborted): Pi runs tool.execute with an aborted signal. It echoes the nonce it was given, reports whether its signal was aborted on its first line, and makes a host call after that, which the host answers.
+  pi.registerTool({
+    name: "aborted_entry_probe",
+    description: "Report the signal a tool starts with",
+    parameters: { type: "object", properties: {} },
+    async execute(_id, params, signal, _onUpdate, ctx) {
+      const aborted = signal.aborted;
+      let answer;
+      try { answer = await ctx.ui.input(`aborted_entry:${params.nonce}`, "p"); } catch (error) { answer = `failed: ${error?.message ?? error}`; }
+      return { content: [{ type: "text", text: `aborted_entry:${params.nonce}:${aborted}:${answer}` }] };
     },
   });
   // signal_nested_probe runs abort_tool as a nested call: the host keeps answering a tool's host calls after the abort, as Pi's in-process calls are.
@@ -1004,6 +1034,34 @@ export default function (pi) {
       socket.on("error", reject);
     }),
   });
+  let nameWaitAddr = "";
+  pi.registerCommand("io_wait_name", {
+    description: "Make the session_info_changed handler wait on a socket read",
+    handler: async (args) => { nameWaitAddr = String(args); },
+  });
+  // io_wait_input and io_wait_start subscribe an input / before_agent_start handler that waits on a socket read first and then notifies "<event>:<text or prompt>".
+  const ioWaitOnce = (addr) => new Promise((resolve, reject) => {
+    const [host, port] = addr.split(":");
+    const socket = ioWaitConnect({ host, port: Number(port) });
+    socket.setEncoding("utf8");
+    socket.on("connect", () => socket.write("waiting\n"));
+    socket.on("data", () => { socket.destroy(); resolve(); });
+    socket.on("error", reject);
+  });
+  pi.registerCommand("io_wait_input", {
+    description: "Make an input handler wait on a socket read",
+    handler: async (args) => {
+      const addr = String(args);
+      pi.on("input", async (event, ctx) => { await ioWaitOnce(addr); ctx.ui.notify(`input:${event.text}`, "info"); });
+    },
+  });
+  pi.registerCommand("io_wait_start", {
+    description: "Make a before_agent_start handler wait on a socket read",
+    handler: async (args) => {
+      const addr = String(args);
+      pi.on("before_agent_start", async (event, ctx) => { await ioWaitOnce(addr); ctx.ui.notify(`before_agent_start:${event.prompt}`, "info"); });
+    },
+  });
   pi.registerCommand("command_error", { description: "Return a command error", handler: async () => { throw new Error("command exploded"); } });
   pi.registerCommand("command_awaited_error", {
     description: "Return an error after awaited work",
@@ -1184,6 +1242,16 @@ export default function (pi) {
   pi.registerCommand("ui_view_events", { description: "Report how often the abilities watcher ran", handler: async (_args, ctx) => ctx.ui.notify(`view-events:${viewWatch.events}`, "info") });
   // D614: a view an agent's tool shows. The command registers the tool; the tool mounts a titled panel, hides it, shows it and
   // updates it with a focus request, the same way in every SDK fixture (conformance TestConformance_UIViewToolShowsAndFocuses).
+  // D521: bigint_tool registers a tool whose schema declares a bigint parameter and answers the kind of value it receives for it and the value.
+  pi.registerCommand("bigint_tool", { description: "Register the tool that reports what a bigint argument arrives as", handler: async () => {
+    pi.registerTool({
+      name: "bigint_arg",
+      label: "bigint_arg",
+      description: "Report the kind and value of n",
+      parameters: { type: "object", required: ["n"], properties: { n: { type: "bigint" } } },
+      async execute(_id, params) { return { content: [{ type: "text", text: `${typeof params.n === "string" ? "string" : "other"}:${params.n}` }] }; },
+    });
+  } });
   pi.registerCommand("ui_view_tool", { description: "Register the tool that shows a titled view", handler: async () => {
     pi.registerTool({
       name: "view_show",
@@ -1420,6 +1488,12 @@ export default function (pi) {
   pi.registerCommand("event_mutate_probe", { description: "Subscribe to the event named by the argument `<event> [mode]` with a handler that works on the event's payload (before_provider_request) or headers (before_provider_headers) as the mode says: no mode edits it in place and returns nothing, fail throws after the edit, replace edits nothing and returns a replacement, both edits it in place under a key of its own and returns the replacement, delete (headers) sets the header the first edit wrote to null", handler: async (args) => { const [name, mode] = String(args).trim().split(/\s+/); const key = mode === "fail" ? "inPlaceBeforeError" : mode === "both" ? "inPlaceAlongside" : "inPlace"; const headers = name === "before_provider_headers"; pi.on(name, async (event) => { if (headers) { if (mode === "delete") event.headers["x-pig-inPlace"] = null; else if (mode !== "replace") event.headers[`x-pig-${key}`] = "in-place-edit"; } else if (mode !== "replace") { event.payload[key] = "in-place-edit"; if (event.payload.zeta) event.payload.zeta[key] = "in-place-edit"; } if (mode === "fail") throw new Error("failed after the edit"); if (mode === "replace" || mode === "both") return headers ? { "x-pig-replaced": "returned" } : { replaced: "returned" }; }); } });
   pi.registerCommand("event_edit_probe", { description: "Subscribe to the event named by the argument `<event> <edit> [fail]` with a handler that makes one edit of the event's content, details, isError, message or messages (tool_result, message_end, context; message_start, turn_end and agent_end hold only the Node probe), returns nothing and, with fail, throws after the edit", handler: async (args) => { const [name, edit, fail] = String(args).trim().split(/\s+/); const edited = "other-event-edit"; const text = () => [{ type: "text", text: edited }]; pi.on(name, async (event) => { switch (`${name}/${edit}`) { case "tool_result/content-assign": event.content = text(); break; case "tool_result/details-assign": event.details = { k: edited }; break; case "tool_result/iserror-assign": event.isError = true; break; case "tool_result/content-deep": event.content[0].text = edited; break; case "tool_result/details-deep": event.details.k = edited; break; case "message_end/deep": case "message_start/deep": case "turn_end/deep": event.message.content[0].text = edited; break; case "agent_end/deep": event.messages[event.messages.length - 1].content[0].text = edited; break; case "message_end/content-assign": event.message.content = text(); break; case "message_end/message-assign": event.message = { role: "user", content: text(), timestamp: 1 }; break; case "context/deep": event.messages[0].content[0].text = edited; break; default: throw new Error(`event_edit_probe has no edit ${name}/${edit}`); } if (fail === "fail") throw new Error("failed after the edit"); }); } });
   pi.registerCommand("event_field_probe", { description: "Report a field of the events named by the argument `<event> <field>`", handler: async (args) => { const [name, field] = String(args).trim().split(/\s+/); pi.on(name, async (event, ctx) => { ctx.ui.notify(`event_field:${name}.${field}=${JSON.stringify(event[field]) ?? "absent"}`, "info"); }); } });
+  // event_level_edit_probe `<event> <top|deep>` subscribes to the event with a handler that edits it in place and returns nothing: `top` assigns a member of the event itself (probeTop), `deep` edits inside the message the event carries (the first user message of a `messages` list): the text of its first text block, else a string content, else a `probe` member. Every edit writes `other-event-edit` (TestInPlaceMessageEventEditsMatchPi).
+  pi.registerCommand("event_level_edit_probe", { description: "Subscribe to the event named by the argument `<event> <top|deep>` with a handler that edits the event itself or the message inside it in place", handler: async (args) => { const [name, level] = String(args).trim().split(/\s+/); const edited = "other-event-edit"; pi.on(name, async (event) => { if (level === "top") { event.probeTop = edited; return; } const list = event.messages; const target = event.message ?? (Array.isArray(list) ? (list.find((m) => m?.role === "user") ?? list[0]) : undefined); if (!target || typeof target !== "object") return; const first = Array.isArray(target.content) ? target.content[0] : undefined; if (first && typeof first === "object" && first.type === "text") first.text = edited; else if (typeof target.content === "string") target.content = edited; else target.probe = edited; }); } });
+  // event_member_probe `<event> <set|delete|once> <member> [json]` subscribes to the event with a handler that assigns the member the JSON, deletes it, or (once) assigns it in its first call only and reports `member_probe_stale:<event>:<bool>` whether a later call found it already there (TestInPlaceMessageEventEditsMatchPi).
+  pi.registerCommand("event_member_probe", { description: "Subscribe to the event named by the argument `<event> <set|delete|once> <member> [json]` with a handler that assigns, deletes or once assigns a member of the event", handler: async (args) => { const [, name, op, member, raw] = String(args).trim().match(/^(\S+)\s+(\S+)\s+(\S+)\s*([\s\S]*)$/); const value = raw === "" ? undefined : JSON.parse(raw); let calls = 0; pi.on(name, async (event, ctx) => { calls++; if (op === "delete") { delete event[member]; return; } if (op === "once" && calls > 1) { ctx.ui.notify(`member_probe_stale:${name}:${JSON.stringify(event[member]) === JSON.stringify(value)}`, "info"); return; } event[member] = value; }); } });
+  // event_assign_probe: `<event>`, a handler that ASSIGNS a new value to one member of the event (tool_call input, context messages, turn_end entries) instead of editing the old value in place, and returns nothing (TestAssignedEventMembersFollowPi).
+  pi.registerCommand("event_assign_probe", { description: "Subscribe to the event named by the argument with a handler that assigns a new value to the event's input, messages or entries", handler: async (args) => { const name = String(args).trim(); const edited = "other-event-edit"; pi.on(name, async (event) => { if (name === "tool_call") event.input = { command: edited }; else if (name === "context") event.messages = [{ role: "user", content: [{ type: "text", text: edited }], timestamp: 1 }]; else if (name === "turn_end") event.entries = [{ type: "custom", customType: edited }]; else throw new Error(`event_assign_probe has no event ${name}`); }); } });
   pi.registerCommand("event_probe_on", { description: "Subscribe to the event named by the argument", handler: async (args) => { const name = String(args).trim(); pi.on(name, async (_event, ctx) => { ctx.ui.notify(`event_probe_on:${name}`, "info"); }); } });
   pi.registerCommand("host_state_probe", {
     description: "Report the thinking level and the session commands",
@@ -1972,6 +2046,18 @@ export default function (pi) {
   } });
   let installedEditorFactory;
   pi.registerCommand("editor-install", { description: "Install a custom editor component", handler: async (_args, ctx) => { installedEditorFactory = (tui, theme, keybindings) => new CustomEditor(tui, theme, keybindings); ctx.ui.setEditorComponent(installedEditorFactory); } });
+  // An editor that refuses a provider with the "!" trigger, as an extension's own setAutocompleteProvider may throw.
+  pi.registerCommand("editor-install-refusing", { description: "Install a custom editor that refuses a rebuilt autocomplete provider", handler: async (_args, ctx) => {
+    ctx.ui.setEditorComponent((tui, theme, keybindings) => {
+      const editor = new CustomEditor(tui, theme, keybindings);
+      const take = editor.setAutocompleteProvider.bind(editor);
+      editor.setAutocompleteProvider = (provider) => {
+        if ((provider.triggerCharacters ?? []).includes("!")) throw new Error("EDITOR_SYNC_REFUSED");
+        take(provider);
+      };
+      return editor;
+    });
+  } });
   pi.registerCommand("editor-get-probe", { description: "Report the factory getEditorComponent returns", handler: async (_args, ctx) => { const got = ctx.ui.getEditorComponent(); ctx.ui.notify(`editor_get:${got === undefined ? "absent" : got === installedEditorFactory ? "installed" : "other"}:end`, "info"); } });
   pi.registerCommand("editor-clear", { description: "Restore the host's editor", handler: async (_args, ctx) => { installedEditorFactory = undefined; ctx.ui.setEditorComponent(undefined); } });
   pi.registerCommand("settings_probe", { description: "Report the effective settings", handler: async (_args, ctx) => ctx.ui.notify(`settings_probe:${JSON.stringify(pi.getSettings())}`, "info") });
@@ -2077,6 +2163,27 @@ export default function (pi) {
   pi.registerCommand("stale-probe", {
     description: "Report cwd, mode, hasUI and model",
     handler: (_args, ctx) => ctx.ui.notify(`stale:${ctx.cwd}|${ctx.mode}|${ctx.hasUI}|${ctx.model?.id ?? ""}`, "info"),
+  });
+  // stale-members calls the members Pi guards with assertActive (runner.ts:883-1037): each outcome is one line, and the command fails with every
+  // line when one carries the stale message, else it reports them. Node has no width, height or tool-update member on the context.
+  pi.registerCommand("stale-members", {
+    description: "Call the members that fail with the stale message",
+    handler: (_args, ctx) => {
+      const lines = [];
+      let stale = false;
+      const member = (name, call) => {
+        let outcome;
+        try { outcome = `ok:${call() ?? ""}`; } catch (error) { outcome = `throws:${error.message}`; }
+        stale = stale || outcome.includes("This extension ctx is stale");
+        lines.push(`${name}=${outcome}`);
+      };
+      member("theme", () => typeof ctx.ui.theme);
+      member("sessionName", () => ctx.sessionManager.getSessionName());
+      member("setWidgetLines", () => ctx.ui.setWidget("stale-members", ["x"]));
+      member("setWidgetView", () => ctx.ui.setWidget("stale-members-view", () => ({ render: () => ["x"], invalidate() {} })));
+      if (stale) throw new Error(`stale-members\n${lines.join("\n")}`);
+      ctx.ui.notify(`members\n${lines.join("\n")}`, "info");
+    },
   });
   pi.registerCommand("signal-probe", {
     description: "Report ctx.signal",
@@ -3046,7 +3153,20 @@ export default function (pi) {
     ctx.ui.notify(`session_shutdown:${event.reason ?? ""}`, "info");
     if (event.targetSessionFile) ctx.ui.notify(`target:${event.targetSessionFile}`, "info");
   });
-  pi.on("session_info_changed", async (event, ctx) => ctx.ui.notify(`session_info_changed:${event.name ?? ""}`, "info"));
+  pi.on("session_info_changed", async (event, ctx) => {
+    // io_wait_name arms the handler to wait on a socket read first, as a handler that awaits does in Pi.
+    if (nameWaitAddr) {
+      await new Promise((resolve, reject) => {
+        const [host, port] = nameWaitAddr.split(":");
+        const socket = ioWaitConnect({ host, port: Number(port) });
+        socket.setEncoding("utf8");
+        socket.on("connect", () => socket.write("waiting\n"));
+        socket.on("data", () => { socket.destroy(); resolve(); });
+        socket.on("error", reject);
+      });
+    }
+    ctx.ui.notify(`session_info_changed:${event.name ?? ""}`, "info");
+  });
   pi.on("session_before_compact", async (event, ctx) => ctx.ui.notify(`session_before_compact:${event.reason ?? ""}:${Boolean(event.willRetry)}`, "info"));
   pi.on("session_compact", async (event, ctx) => ctx.ui.notify(`session_compact:${event.reason ?? ""}:${Boolean(event.willRetry)}:${Boolean(event.fromExtension)}`, "info"));
   pi.on("session_compact_failed", async (event, ctx) => ctx.ui.notify(`session_compact_failed:${event.reason ?? ""}:${event.errorMessage ?? ""}:${Boolean(event.aborted)}:${Boolean(event.willRetry)}:${Boolean(event.fromExtension)}`, "info"));

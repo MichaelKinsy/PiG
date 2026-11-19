@@ -226,6 +226,17 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 	var convertErr error
 	var detachOutput []func()
 	var outputDetached bool
+	// detachWriter ends the JSON writer's subscriptions and its entry_appended line (print-mode.ts:44-52 disposeRuntime unsubscribes first); lines already queued still drain.
+	detachWriter := func() {
+		convertMu.Lock()
+		detaches := detachOutput
+		detachOutput = nil
+		outputDetached = true
+		convertMu.Unlock()
+		for _, detach := range detaches {
+			detach()
+		}
+	}
 	intCh := make(chan os.Signal, 2)
 	termSignals := []os.Signal{syscall.SIGTERM}
 	if runtime.GOOS != "windows" {
@@ -283,14 +294,7 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 			return
 		}
 		disposeOnce.Do(func() {
-			convertMu.Lock()
-			detaches := detachOutput
-			detachOutput = nil
-			outputDetached = true
-			convertMu.Unlock()
-			for _, detach := range detaches {
-				detach()
-			}
+			detachWriter()
 			// runtimeHost.dispose() awaits session.abort() before session_shutdown (agent-session-runtime.ts dispose, Pi main 7a53c310a, #9126):
 			// the abort flag is set while the signal's hold is still in place, so the killed tool's turn ends as aborted and starts no next request,
 			// and the interrupted run settles (its tool result and aborted assistant message are persisted) before any handler runs.
@@ -465,7 +469,14 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		}
 		var emitEntryAppended func(RPCEntryAppendedEvent)
 		if opts.Mode == "json" {
-			emitEntryAppended = func(event RPCEntryAppendedEvent) { writeJSONLine(jsonOut, event) }
+			// The entry_appended line is the writer's too (agent-session.ts appendEntry emits it to the Session's listeners): once the writer is detached, at the start of the final disposal, it has no listener (print-mode.ts disposeRuntime unsubscribes before runtimeHost.dispose).
+			emitEntryAppended = func(event RPCEntryAppendedEvent) {
+				convertMu.Lock()
+				defer convertMu.Unlock()
+				if !outputDetached {
+					writeJSONLine(jsonOut, event)
+				}
+			}
 		}
 		bindSessionAppendEntry(bridge, current, emitEntryAppended)
 		runner := session.ExtensionRunner()
@@ -572,6 +583,8 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		// Ordered teardown: shutdown hooks run while the Session is still open,
 		// then closing it ends the Session's event executor. The signal handlers stay until it is done.
 		finalDisposing.Store(true)
+		// print-mode.ts:44-52 disposeRuntime unsubscribes the writer BEFORE runtimeHost.dispose() emits session_shutdown: what a shutdown handler emits (entry_appended, session_info_changed, a custom message) is persisted but never written. Lines already queued still drain below.
+		detachWriter()
 		_ = rt.Close()
 		close(finalDisposed)
 		// Upstream's signal handler disposes the runtime and calls process.exit
@@ -579,9 +592,6 @@ func runPrintModeIn(ctx context.Context, rt *coding.Runtime, opts printModeOptio
 		// this path; waiting for it would make a full client pipe prevent exit.
 		// Ordinary cancellation still drains output.
 		convertMu.Lock()
-		for _, detach := range detachOutput {
-			detach()
-		}
 		if convertErr != nil {
 			runErr = convertErr
 		}

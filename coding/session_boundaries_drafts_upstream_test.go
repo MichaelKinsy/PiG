@@ -99,7 +99,7 @@ func TestUpstreamSessionBoundariesDrafts(t *testing.T) {
 			if replacement {
 				first, second = "answered original input", "answered replacement"
 			}
-			h = newBoundaryHarness(t, harnessOptions{contextWindow: 2000, maxTokens: 100, settings: `{"compaction":{"enabled":true,"keepRecentTokens":1,"reserveTokens":0}}`, extension: ext}, boundaryReply(first, ai.StopReasonStop, 0), boundaryCapture(t, &requests, second))
+			h = newBoundaryHarness(t, harnessOptions{contextWindow: 1000, maxTokens: 100, settings: `{"compaction":{"enabled":true,"keepRecentTokens":1,"reserveTokens":0}}`, extension: ext}, boundaryReply(first, ai.StopReasonStop, 0), boundaryCapture(t, &requests, second))
 			boundaryRecord(t, h, site, name)
 			if replacement {
 				if _, err := h.session.Inner().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: BuildUserContent("older input", nil), Timestamp: time.Now().UnixMilli() - 2}}); err != nil {

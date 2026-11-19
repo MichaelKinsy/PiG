@@ -1,0 +1,60 @@
+# Behavior family: slash-commands
+# Surface: /new over a transcript of 16 pairs, longer than the pane
+#
+# Upstream evidence (Pi 1.5.2, probed on the comparator with the harness of this scenario family): /new over a transcript of 16 pairs, longer than the pane: the transcript is longer than the pane, so the first changed row is above the viewport and Pi writes its clearing redraw.
+# Pi (interactive-mode.ts) clears its chat container and re-adds the new transcript, then requests an ordinary render; packages/tui/src/tui-main-screen.ts repaints from the first changed row, below the terminal's scrollback, unless that row is above the viewport.
+# The launch shell prints five numbered lines before the TUI starts (pre_tui_lines), as a package install or a wrapper script does. Both binaries run in the regular
+# TUI mode (--tui-mode regular), where the terminal's own scrollback exists: fullscreen is the alternate screen and has none. quietStartup is set in both agent
+# directories, so neither draws its startup header (the two headers differ: the version line and the logo) and the capture of the
+# retained history and the screen, from its first line to its last, is compared as it stands: escaped_output_equal over the whole capture, no crop, no normalization. A command that erased the
+# scrollback, or left a row of the old transcript below the new one, differs from Pi's capture.
+# PiG's replacement of the transcript was a forced full redraw (ESC[2J ESC[H ESC[3J) that erased the scrollback; it is now the differential repaint of Pi.
+# Both programs start from the resumed transcript (the ready pattern is its last row) and the command is typed and seen before Enter, so the echo that opens the raw-stream window is in both streams.
+
+name = "33-new-long-pre-tui-scrollback"
+description = "After /new over a transcript of 16 pairs, longer than the pane the capture of the scrollback and the screen equals Pi's."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/tui/src/tui-main-screen.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/scrollback-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/scrollback-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "--session", "sessions/cur.jsonl", "--tui-mode", "regular"]
+pi_args = ["--session-dir", "sessions", "--session", "sessions/cur.jsonl", "--tui-mode", "regular"]
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/scrollback-new-long"
+pre_tui_lines = 5
+capture_history = true
+ready_pattern_pig = "CUR-R16 answer 16"
+ready_pattern_pi = "CUR-R16 answer 16"
+ready_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["/new"]
+wait_visible_contains = ["/new"]
+wait_timeout_seconds = 25
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["✓ New session started"]
+wait_timeout_seconds = 8
+settle_seconds = 2
+
+[assert]
+runs = 3
+both_reach_ready = true
+both_contain = ["✓ New session started"]
+both_not_contain = ["unknown command", "panic:", "goroutine ", "PRE-TUI-LINE-1"]
+escaped_output_equal = true
+
+# The raw stream: the erase-in-display sequences (ESC[2J clears the screen, ESC[3J the terminal's scrollback) both binaries wrote from the command's first echo
+# to the end of the stream are the same list. The other bytes of the stream are not compared here: the footer holds each run's random directory and PiG sets a window title.
+[[assert.transcript_sequences_equal]]
+from = "/new"
+erasures_only = true

@@ -16,6 +16,10 @@ var stopProfiles = func() {}
 // stopModelServices cancels and drains Services-owned model work while extension transports are still available.
 var stopModelServices = func() {}
 
+// terminateSessionExtensions ends the extension processes of every live Session host the interactive Session factory tracks, the replacement Sessions' included (D70), which the startup host's shutdown does not reach. It is a no-op until Main wires it.
+// pig additive (D19): Pi's extensions run inside its process, so every process.exit ends them; here os.Exit would leave them running for as long as they take to end. It kills without session_shutdown, which Pi's fatal exit does not emit either, and costs nothing for a host whose processes already ended.
+var terminateSessionExtensions = func() {}
+
 // stopGCPolicy ends the live-heap watcher of the GC policy (D175 for print, json and rpc runs, D621 for interactive runs) and waits for it to return. It runs before stopProfiles,
 // which counts the goroutines left at exit. It is a no-op until Main applies the policy.
 var stopGCPolicy = func() {}
@@ -26,6 +30,7 @@ func exitProcess(code int) {
 	stopAutomaticExtensionCacheGC()
 	stopModelServices()
 	stopStartupExtensions()
+	terminateSessionExtensions()
 	// A settings write that a setter on another goroutine is performing finishes before the process ends.
 	codingagent.FlushSettingsWrites()
 	codingagent.RestoreStdout()

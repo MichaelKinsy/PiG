@@ -119,25 +119,22 @@ func (h *Host) TypeScriptRuntimeSelections() map[string]tsruntime.Selection {
 	return out
 }
 
-// typeScriptRuntimeCommand starts script (cli.mjs or cell.mjs) of the runtime tree with args on the selected runtime. Node names its
-// loader by file URL in --import; Bun reads no bunfig.toml (it would preload a project's modules), loads no .env file from the project
-// (Pi builds its Bun binaries with --no-compile-autoload-bunfig --no-compile-autoload-dotenv, scripts/build-binaries.sh:129-135) and
-// installs nothing; a host executable built from the tree takes the script's name as its first argument.
-func typeScriptRuntimeCommand(ctx context.Context, sel tsruntime.Selection, runtimeDir, script, loaderLabel string, args []string) *exec.Cmd {
-	loaderPath := filepath.Join(runtimeDir, "register-loader.mjs")
+// typeScriptRuntimeCommand starts script (cli.mjs or cell.mjs) of the runtime tree with args on the selected runtime. Node starts the
+// script's bootstrap entry (node-cli.mjs, node-cell.mjs), which registers the runtime's loader hooks and then imports the script, so the
+// command line holds no --import and process.execArgv in the extension, in a child it forks and in a worker thread is what the user
+// started Node with, as in Pi, which loads extensions inside its own process. Bun reads no bunfig.toml (it would preload a project's
+// modules), loads no .env file from the project (Pi builds its Bun binaries with --no-compile-autoload-bunfig
+// --no-compile-autoload-dotenv, scripts/build-binaries.sh:129-135) and installs nothing; a host executable built from the tree takes
+// the script's name as its first argument.
+func typeScriptRuntimeCommand(ctx context.Context, sel tsruntime.Selection, runtimeDir, script string, args []string) *exec.Cmd {
 	switch sel.Kind {
 	case tsruntime.KindBun:
-		bunArgs := []string{"--no-install", "--no-env-file", "--config=" + filepath.Join(runtimeDir, "shims", "bunfig.toml"), "--preload", loaderPath, filepath.Join(runtimeDir, script)}
+		bunArgs := []string{"--no-install", "--no-env-file", "--config=" + filepath.Join(runtimeDir, "shims", "bunfig.toml"), "--preload", filepath.Join(runtimeDir, "register-loader.mjs"), filepath.Join(runtimeDir, script)}
 		return runVerified(linkerexec.CommandContext(ctx, sel.Executable, append(bunArgs, args...)...), sel)
 	case tsruntime.KindExecutable:
 		return runVerified(linkerexec.CommandContext(ctx, sel.Executable, append([]string{strings.TrimSuffix(script, ".mjs")}, args...)...), sel)
 	}
-	loaderURL, urlErr := nodeFileURL(loaderPath)
-	cmd := linkerexec.CommandContext(ctx, "node", append([]string{"--import", loaderURL, filepath.Join(runtimeDir, script)}, args...)...)
-	if urlErr != nil && cmd.Err == nil {
-		cmd.Err = fmt.Errorf("%s %s: %w", loaderLabel, loaderPath, urlErr)
-	}
-	return cmd
+	return linkerexec.CommandContext(ctx, "node", append([]string{filepath.Join(runtimeDir, "node-"+script)}, args...)...)
 }
 
 // runVerified makes cmd start the file Verify checked, where the platform can start an open file (see tsruntime.Executable): the

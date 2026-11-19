@@ -7,6 +7,7 @@ import (
 	"context"
 	"io"
 	"os"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -83,20 +84,25 @@ func (m *InteractiveMode) initStartupTheme() {
 
 // waitForTerminalColors serves the owner loop until the latest terminal color query completed and its colors applied. Content that bakes theme colors into strings, such as the startup header, is built after this. Terminals answer the DA1 request right after the color replies, so this only takes the full timeout when a terminal answers nothing. Pi awaits the query on its event loop, so requested renders, including the first frame TUI.start requested, paint during the wait.
 //
-// The colors of a completed query apply, and the wait ends, before the next input is handled: in Pi both the query's `.then(apply)` and the continuation after `await waitForTerminalColors()` are microtasks, which run before Node reads more input. A reply that completes the query applies its colors while it is consumed (presentationTheme.consumeInput). A frame already handed to the owner loop, such as the first frame TUI.start requested when the terminal answers at once, paints before the wait returns: Init does not serve the owner loop again until it returns.
+// The colors of a completed query apply, and the wait ends, before the next input is handled: in Pi both the query's `.then(apply)` and the continuation after `await waitForTerminalColors()` are microtasks, which run before Node reads more input. A reply that completes the query applies its colors while it is consumed (presentationTheme.consumeInput). A frame already handed to the owner loop, such as the first frame TUI.start requested when the terminal answers at once, paints before the wait returns: Init does not serve the owner loop again until it returns. The frame the apply itself requests does not: its timer runs after the continuation (the header and the rest of init() built), and a frame painted between the apply and the header changes no row and writes a bare cursor placement, ESC[<n>G ESC[?25l, after the frame before it.
 func (m *InteractiveMode) waitForTerminalColors(ctx context.Context) error {
 	done := m.themeState.colorQuery
 	if done == nil {
 		return nil
 	}
+	// handed: a frame was due before this turn's apply, which is the only frame the end of the wait paints.
+	handed := m.startupFrameDue()
 	for {
 		m.theme().applyCompletedColorQueries()
 		select {
 		case <-done:
-			m.runScheduledRender()
+			if handed {
+				m.runScheduledRender()
+			}
 			return nil
 		default:
 		}
+		handed = m.startupFrameDue()
 		select {
 		case <-done:
 			continue
@@ -116,4 +122,10 @@ func (m *InteractiveMode) waitForTerminalColors(ctx context.Context) error {
 			m.runScheduledRender()
 		}
 	}
+}
+
+// startupFrameDue reports that the renderer's throttled frame has been armed and its deadline passed: the frame the owner loop would run now.
+func (m *InteractiveMode) startupFrameDue() bool {
+	due := m.frameDue.Load()
+	return due != 0 && time.Until(time.Unix(0, due)) <= 0
 }
