@@ -316,6 +316,23 @@ func TestModelCatalogProtocolWithTheCurrentClient(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
+	// A refresh with a key also asks the provider for the models that key may use (personalizeOpenRouterCatalog: GET <base>/models/user, openrouter.ai
+	// unless models.json moves it). Upstream's test lets that request reach openrouter.ai, which answers the made-up key with 401 and leaves the catalog as
+	// it is; a reset connection there failed this test in a gate run. The stand-in answers the same without the network, and any other host goes on to the
+	// real transport.
+	var userModelsMu sync.Mutex
+	var userModelsAuth []string
+	defaultTransport := http.DefaultTransport
+	http.DefaultTransport = catalogRoundTripper(func(request *http.Request) (*http.Response, error) {
+		if request.URL.Scheme == "https" && request.URL.Host == "openrouter.ai" && request.URL.Path == "/api/v1/models/user" {
+			userModelsMu.Lock()
+			userModelsAuth = append(userModelsAuth, request.Header.Get("authorization"))
+			userModelsMu.Unlock()
+			return &http.Response{StatusCode: http.StatusUnauthorized, Status: "401 Unauthorized", Header: http.Header{}, Body: http.NoBody, Request: request}, nil
+		}
+		return defaultTransport.RoundTrip(request)
+	})
+	t.Cleanup(func() { http.DefaultTransport = defaultTransport })
 	t.Setenv("PI_OFFLINE", "")
 	runtime, err := CreateModelRuntime(t.Context(), CreateModelRuntimeOptions{
 		Credentials: credentials, ModelsPath: new((*string)(nil)), CatalogBaseURL: server.URL, RefreshOnCreate: new(false),
@@ -328,6 +345,12 @@ func TestModelCatalogProtocolWithTheCurrentClient(t *testing.T) {
 	refresh := runtime.Refresh(t.Context(), ai.ModelsRefreshOptions{AllowNetwork: new(true), Force: new(true), Providers: []string{"openrouter"}})
 	if len(refresh.Errors) != 0 {
 		t.Fatalf("refresh errors = %v", refresh.Errors)
+	}
+	userModelsMu.Lock()
+	gotUserModelsAuth := slices.Clone(userModelsAuth)
+	userModelsMu.Unlock()
+	if !slices.Equal(gotUserModelsAuth, []string{"Bearer test-key"}) {
+		t.Fatalf("openrouter /models/user authorization headers = %q, want [Bearer test-key]", gotUserModelsAuth)
 	}
 
 	catalogURL := "/api/models/providers/openrouter?types=chat%2Cimage%2Cclassifier"

@@ -57,6 +57,14 @@ func TestMain(m *testing.M) {
 		_ = os.RemoveAll(testRoot)
 		os.Exit(2)
 	}
+	// Tests run offline by default and opt in where they mean to reach the network, as Pi's coding-agent suite does: its vitest.config.ts sets
+	// env: { PI_OFFLINE: "1" } for every test (line 12) and a test that wants the network calls allowNetwork() (test/test-network-env.ts), which here is
+	// t.Setenv("PI_OFFLINE", ""). Without it a registry refresh with no options asks pi-in-go.dev for the catalog.
+	if err := os.Setenv("PI_OFFLINE", "1"); err != nil {
+		fmt.Fprintln(os.Stderr, "set offline test mode:", err)
+		_ = os.RemoveAll(testRoot)
+		os.Exit(2)
+	}
 	if err := trustTestCertificateAuthority(testRoot); err != nil {
 		fmt.Fprintln(os.Stderr, "trust the test certificate authority:", err)
 		_ = os.RemoveAll(testRoot)
