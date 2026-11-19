@@ -10,6 +10,8 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
+func dataOf(s string) *byte { return unsafe.StringData(s) } //nolint:gosec // G103: the test compares the addresses of two strings.
+
 // The text is what ai.GetCurrentSystemPrompt renders for the sections, every section keeps its bytes, and every non-empty section value lies inside the text:
 // the prompt is one copy, not the sections and a joined text.
 func TestRenderSharingSectionsHoldsThePromptOnce(t *testing.T) {
@@ -31,14 +33,15 @@ func TestRenderSharingSectionsHoldsThePromptOnce(t *testing.T) {
 	if got := ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Sections: sections}}); got != want {
 		t.Fatalf("the sections render %d bytes after sharing, want %d", len(got), len(want))
 	}
-	start, end := uintptr(unsafe.Pointer(unsafe.StringData(text))), uintptr(unsafe.Pointer(unsafe.StringData(text)))+uintptr(len(text))
+	offset := 0
 	for i, section := range sections {
 		if *section.Value != before[i] {
 			t.Errorf("section %q changed its value", section.Name)
 		}
-		if p := uintptr(unsafe.Pointer(unsafe.StringData(*section.Value))); p < start || p >= end {
-			t.Errorf("section %q is not backed by the rendered text", section.Name)
+		if dataOf(*section.Value) != dataOf(text[offset:]) {
+			t.Errorf("section %q is not backed by the rendered text at offset %d", section.Name, offset)
 		}
+		offset += len(*section.Value) + 2
 	}
 }
 
