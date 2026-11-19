@@ -7154,7 +7154,7 @@
           "kind": "terminal_crop",
           "configuration": {
             "capture_start": "post-login-state:",
-            "capture_end": "post-login-state: current=openai/gpt-6.1-sol default=openai/gpt-6.1-sol"
+            "capture_end": "post-login-state: current=openai/gpt-6.2-sol default=openai/gpt-6.2-sol"
           },
           "reason": "Owned visible surface: API key login from unknown selects and persists the provider default",
           "limitations": "No claim about output outside this crop or transient terminal bytes."
