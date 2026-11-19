@@ -168637,7 +168637,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/auth_run.go#runAuthLoginCommand"
+        "call:coding/cli/auth_run.go#runAuthLoginSession"
       ],
       "evidence": [
         "test:coding/model_catalog_protocol_upstream_test.go#TestModelCatalogProtocolWithTheCurrentClient",
@@ -168660,7 +168660,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/auth_run.go#runAuthLoginCommand"
+        "call:coding/cli/auth_run.go#runAuthLoginSession"
       ],
       "evidence": [
         "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
@@ -168682,7 +168682,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/auth_run.go#runAuthLoginCommand"
+        "call:coding/cli/auth_run.go#runAuthLoginSession"
       ],
       "evidence": [
         "test:coding/cli/port_wave_10_package_command_paths_test.go#TestPortWave10ModelRuntimeCreation",
@@ -168855,7 +168855,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/auth_run.go#runAuthLoginCommand"
+        "call:coding/cli/auth_run.go#runAuthLoginSession"
       ],
       "evidence": [
         "test:coding/model_catalog_protocol_upstream_test.go#TestModelCatalogProtocolWithTheCurrentClient",
@@ -216884,7 +216884,7 @@
         "shape": "complete"
       },
       "production": [
-        "call:coding/cli/auth_commands.go#runLoginCommand"
+        "call:coding/cli/auth_commands.go#runLoginOptions"
       ],
       "evidence": [
         "test:coding/cli/config_builtin_upstream_test.go#TestUpstreamConfigCyclesProjectBuiltinExtensionOverridesInLocalMode",
