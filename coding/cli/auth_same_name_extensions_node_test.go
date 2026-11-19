@@ -36,7 +36,7 @@ func TestAuthLoginRoutesToTheExtensionThatDeclaredTheProviderWhenNamesCollide(t 
 				t.Fatal(err)
 			}
 
-			registry, err := discoverAuthContributions()
+			registry, err := discoverAuthContributions(t.Context())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -44,7 +44,7 @@ func TestAuthLoginRoutesToTheExtensionThatDeclaredTheProviderWhenNamesCollide(t 
 			if _, declared := registry.target("antigravity"); !declared {
 				t.Fatalf("inspection did not find the provider: targets=%v diagnostics=%v", registry.targets, registry.diagnostics)
 			}
-			provider, err := authProviderFromContribution("antigravity", &registry)
+			provider, err := authProviderFromContribution(t.Context(), "antigravity", &registry)
 			if err != nil {
 				t.Fatalf("login did not reach the declaring extension: %v", err)
 			}

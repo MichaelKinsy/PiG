@@ -1195,6 +1195,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-7c9ce6f](#bf-7c9ce6f) | Chord: a contract with an event member that crosses between a Go host and a Node host as data is rebuilt with… | PiG's own defect | All platforms | Unreleased |
 | [BF-7cca5ee](#bf-7cca5ee) | A Node extension can default-import TypeBox (`import Type from "typebox"`, and likewise `typebox/value`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-7d0621f](#bf-7d0621f) | fix(extension): keep Pi's three-parameter EmitBeforeAgentStart (prompt, images, options); a custom run's… | PiG's own defect | All platforms | Unreleased |
+| [BF-7d225e5](#bf-7d225e5) | `pig login` and `pig logout` end on Ctrl+C, SIGTERM and SIGHUP at the provider menu, the logout menu and… | PiG's own defect | All platforms | Unreleased |
 | [BF-7d34ee2](#bf-7d34ee2) | durable harness: `ConversationTranscript.LoadEarlier` and `FillGap` waited for good once an entry loader had… | PiG's own defect | All platforms | Unreleased |
 | [BF-7d798ce](#bf-7d798ce) | fix(testenv): the shared Cargo target is keyed by the absolute path of the SDK as well as its lock | PiG's own defect | All platforms | Unreleased |
 | [BF-7db4bd0](#bf-7db4bd0) | Resizing an image sends the smaller of the PNG and the JPEG at the configured quality instead of the PNG… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
@@ -18713,6 +18714,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `7d0621f995` (2026-10-09)
 - **Tests:** None recorded.
+
+### BF-7d225e5
+
+**`pig login` and `pig logout` end on Ctrl+C, SIGTERM and SIGHUP at the provider menu, the logout menu and…**
+
+- **Source:** PiG's own defect
+- **Symptom:** `pig login` and `pig logout` end on Ctrl+C, SIGTERM and SIGHUP at the provider menu, the logout menu and inside a provider's login.
+- **Root cause:** discoverAuthContributionsFor (auth_contributions.go:83) installed signal.NotifyContext for SIGINT and SIGTERM and held it until the contributions closed, so the runtime delivered both signals to a context nothing read; the login ran under context.Background (auth_commands.go:397), so nothing ended it.
+- **User impact:** Crash, hang or runaway process
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `7d225e5e36` (2026-11-19)
+- **Tests:** `coding/cli/auth_contributions_extension_failure_test.go::TestAuthContributionsReportUnresolvedExtensionsOnce`, `coding/cli/auth_device_id_test.go::TestCLILoginPassesTheDeviceID`, `coding/cli/auth_menu_choice_test.go::TestLogoutMenuTakesTheLeadingDigits`, `coding/cli/auth_same_name_extensions_node_test.go::TestAuthLoginRoutesToTheExtensionThatDeclaredTheProviderWhenNamesCollide`, `coding/cli/exit_restore_paths_test.go::TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal`, `coding/cli/login_signals_cancel_test.go::TestLoginEndsWhenItsContextEnds`, `coding/cli/login_signals_cancel_test.go::TestMenuPromptsEndWithTheContext`, `coding/cli/login_signals_cancel_test.go::TestReadLineContextReturnsTheLine` and 2 more in docs/bug-ledger.json
+- **Release note:** `pig login` and `pig logout` end on Ctrl+C, SIGTERM and SIGHUP at the provider menu, the logout menu and inside a provider's login. Ctrl+C and SIGTERM were ignored there before; the process now ends by the signal after its cleanup, as Pi's does. `pig auth login` restores the terminal before ending on SIGTERM and SIGHUP (it left the terminal raw), and Ctrl+C still prints "Login cancelled." and exits 1. Affects 0.5.0 through 0.7.0.
 
 ### BF-7d34ee2
 

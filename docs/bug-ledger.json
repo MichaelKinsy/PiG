@@ -32092,6 +32092,37 @@
       "tests": []
     },
     {
+      "id": "BF-7d225e5",
+      "title": "`pig login` and `pig logout` end on Ctrl+C, SIGTERM and SIGHUP at the provider menu, the logout menu and…",
+      "symptom": "`pig login` and `pig logout` end on Ctrl+C, SIGTERM and SIGHUP at the provider menu, the logout menu and inside a provider's login.",
+      "rootCause": "discoverAuthContributionsFor (auth_contributions.go:83) installed signal.NotifyContext for SIGINT and SIGTERM and held it until the contributions closed, so the runtime delivered both signals to a context nothing read; the login ran under context.Background (auth_commands.go:397), so nothing ended it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "`pig login` and `pig logout` end on Ctrl+C, SIGTERM and SIGHUP at the provider menu, the logout menu and inside a provider's login. Ctrl+C and SIGTERM were ignored there before; the process now ends by the signal after its cleanup, as Pi's does. `pig auth login` restores the terminal before ending on SIGTERM and SIGHUP (it left the terminal raw), and Ctrl+C still prints \"Login cancelled.\" and exits 1. Affects 0.5.0 through 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "7d225e5e36",
+          "date": "2026-11-19"
+        }
+      ],
+      "tests": [
+        "coding/cli/auth_contributions_extension_failure_test.go::TestAuthContributionsReportUnresolvedExtensionsOnce",
+        "coding/cli/auth_device_id_test.go::TestCLILoginPassesTheDeviceID",
+        "coding/cli/auth_menu_choice_test.go::TestLogoutMenuTakesTheLeadingDigits",
+        "coding/cli/auth_same_name_extensions_node_test.go::TestAuthLoginRoutesToTheExtensionThatDeclaredTheProviderWhenNamesCollide",
+        "coding/cli/exit_restore_paths_test.go::TestEveryExitPathReachableWhileATUIRunsRestoresTheTerminal",
+        "coding/cli/login_signals_cancel_test.go::TestLoginEndsWhenItsContextEnds",
+        "coding/cli/login_signals_cancel_test.go::TestMenuPromptsEndWithTheContext",
+        "coding/cli/login_signals_cancel_test.go::TestReadLineContextReturnsTheLine",
+        "coding/cli/login_signals_test.go::TestCommandSignalsCancelOnTheFirstAndEndOnTheSecond",
+        "test/integration/login_signal_pty_linux_test.go::TestLoginCommandsEndOnASignal"
+      ]
+    },
+    {
       "id": "BF-7d34ee2",
       "title": "durable harness: `ConversationTranscript.LoadEarlier` and `FillGap` waited for good once an entry loader had…",
       "symptom": "durable harness: `ConversationTranscript.LoadEarlier` and `FillGap` waited for good once an entry loader had panicked: the load that call ran stayed registered and never ended.",

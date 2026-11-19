@@ -57,3 +57,4 @@ f1df4eb0d8 Follow-up to unreleased work: the exit settlement of 48ba73df5 (2026-
 37edb6abc245a2794d15ad8319617a40fad8a4d9 Follow-up to unreleased work: the portlint allow marker on the millisecond truncation of inDateRange and a table test of the Date range ends; inDateRange is the function 5e006747d9 (2026-11-17, in no tag; v0.7.0 has no range check) added, and the marker is a comment, so no behaviour of a release changes
 c29b7c65d7 Follow-up to unreleased work: the drained report of a held tool or handler that 9c2edf72d9 (2026-11-14, in no tag) added counted it as held before the run abort reached the runtime, which the host writes after runtime_input_end, so a stdin end could exit 0 before the dispose ran; the report waits for the abort, found in review before any release
 91d00732f51b98fac2713958fad2f059fc47de4c Follow-up to unreleased work: PIG_TELEMETRY is in no release; the order changed before it shipped
+0bbc97bbbd see 7d225e5e36

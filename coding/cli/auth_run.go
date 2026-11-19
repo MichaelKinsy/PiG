@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -114,8 +113,20 @@ func runAuthCommandWith(args []string, env authRunEnv) int {
 	return code
 }
 
-// runAuthLoginCommand ports main.ts runAuthLoginCommand: it signs in to one provider and returns the exit code. Ctrl+C ends the login.
+// runAuthLoginCommand ports main.ts runAuthLoginCommand: it signs in to one provider and returns the exit code. Ctrl+C ends the login, as Pi's controller aborts it,
+// and the command returns once the terminal is restored. Pi has no handler for SIGTERM and SIGHUP; here they end the login the same way, so the secret prompt gives
+// the terminal back, and then end the process by the signal itself, which a parent sees as it would from a process with no handler.
 func runAuthLoginCommand(args []string, env authRunEnv) int {
+	signals := notifyCommandSignals(env.ctx, commandTerminationSignals()...)
+	code := runAuthLoginSession(signals, args, env)
+	if sig, fired := signals.Fired(); fired && sig != os.Interrupt {
+		exitProcessBySignal(sig)
+	}
+	signals.Stop()
+	return code
+}
+
+func runAuthLoginSession(signals *commandSignals, args []string, env authRunEnv) int {
 	cwd, err := processCwd()
 	if err != nil {
 		env.printError(err.Error())
@@ -126,7 +137,7 @@ func runAuthLoginCommand(args []string, env authRunEnv) int {
 		env.printError(err.Error())
 		return 1
 	}
-	createCtx, cancelCreate := context.WithTimeout(env.ctx, credentialPrintTimeout)
+	createCtx, cancelCreate := context.WithTimeout(signals.ctx, credentialPrintTimeout)
 	modelRuntime, err := coding.CreateModelRuntime(createCtx, coding.CreateModelRuntimeOptions{AuthPath: authJSONPath(env.agentDir), AllowModelNetwork: false})
 	cancelCreate()
 	if err != nil {
@@ -135,21 +146,10 @@ func runAuthLoginCommand(args []string, env authRunEnv) int {
 	}
 	defer modelRuntime.Close()
 
-	ctx, cancel := context.WithCancel(env.ctx)
-	defer cancel()
-	interrupts := make(chan os.Signal, 1)
-	signal.Notify(interrupts, os.Interrupt)
-	defer signal.Stop(interrupts)
-	go func() {
-		select {
-		case <-interrupts:
-			cancel()
-		case <-ctx.Done():
-		}
-	}()
+	ctx := signals.ctx
 	return RunAuthLogin(ctx, args, AuthLoginOptions{
 		ModelRuntime: modelRuntime,
-		Terminal:     CreateProcessLoginTerminal(cancel),
+		Terminal:     CreateProcessLoginTerminal(signals.cancel),
 		AgentDir:     env.agentDir,
 		CWD:          cwd,
 		GetDeviceID:  settingsManager.GetOrCreateDeviceID,

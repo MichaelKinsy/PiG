@@ -27,7 +27,7 @@ func (p *deviceIDRecorder) Login(callbacks ai.OAuthLoginCallbacks) (ai.OAuthCred
 // without it (#146).
 func TestCLILoginPassesTheDeviceID(t *testing.T) {
 	provider := &deviceIDRecorder{}
-	if _, err := runOAuthProviderLogin(provider, true, func() string { return "0b8f3f84-4c1a-4f0e-9e57-6f1d2b2c9a10" }); err != nil {
+	if _, err := runOAuthProviderLogin(t.Context(), provider, true, func() string { return "0b8f3f84-4c1a-4f0e-9e57-6f1d2b2c9a10" }); err != nil {
 		t.Fatal(err)
 	}
 	if provider.got != "0b8f3f84-4c1a-4f0e-9e57-6f1d2b2c9a10" {

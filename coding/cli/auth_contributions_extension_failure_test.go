@@ -33,7 +33,7 @@ func TestAuthContributionsReportUnresolvedExtensionsOnce(t *testing.T) {
 	writeStartupFixtureFile(t, filepath.Join(topLevel, "go.mod"), "module example.com/brokentop\n\ngo 1.26\n")
 	writeStartupFixtureFile(t, filepath.Join(topLevel, "extension.go"), "package brokentop\n")
 
-	registry, err := discoverAuthContributions()
+	registry, err := discoverAuthContributions(t.Context())
 	if err != nil {
 		t.Fatalf("authentication inventory failed on broken extensions: %v", err)
 	}
