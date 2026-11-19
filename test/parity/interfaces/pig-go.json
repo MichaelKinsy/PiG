@@ -28557,6 +28557,17 @@
       "shapeHash": "sha256:65244cb2d528d476942fbc2e7239e2fef213d50f77c560d3363bbe84e6872276"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#acquireSplice",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "acquireSplice",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cache *quotedStringCache) *stringSplice"
+      },
+      "shapeHash": "sha256:1b83c5c753b7454636fb8927f218e5728fa79fb7e0a6413a4c4bc304d1cb8bd7"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#acquiredCodexWebSocket",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "acquiredCodexWebSocket",
@@ -47620,6 +47631,17 @@
       "shapeHash": "sha256:ec8e9f2fff2a29b699b6a93f8ea07c37642b0fb5e61075cb97072dc0b2674461"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#keptSplice",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "keptSplice",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "struct{mu sync.Mutex; kept *stringSplice}"
+      },
+      "shapeHash": "sha256:6c1887460b1323a6b7a06f81643363b1a3bcebf760b9a58784a029fce29121a1"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#keyAbsent",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "keyAbsent",
@@ -59038,6 +59060,17 @@
       "shapeHash": "sha256:6d77b48327aaaac49cf7b1b4b7dc7493963035c46ee5a53b78ecad9547547a17"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#quotedEntryBytes",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "quotedEntryBytes",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "int"
+      },
+      "shapeHash": "sha256:8227b502038b08acf2c1eaddd782f2d370e26cf4bed2d3b8c74045d4c95e78d0"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#quotedString",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "quotedString",
@@ -60521,6 +60554,28 @@
         "type": "func(entry *codexWebSocketEntry)"
       },
       "shapeHash": "sha256:ac56600001d708d988a95ef8401418d90314728ff2cbe287b589e51871e6cecb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#releaseKeptSplice",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "releaseKeptSplice",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#releaseSplice",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "releaseSplice",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(splice *stringSplice)"
+      },
+      "shapeHash": "sha256:f7ae750f8aa8de4c3c2a556fc52be216184f019645f101e4a3e7c811aaab3639"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#remapMistralMember",
@@ -63196,6 +63251,17 @@
       "shapeHash": "sha256:d8e0ae479b27fe9855df0f78aaa82c659b92499b91e1d785f58e4d1f6d626f7f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#spliceEncoding",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "spliceEncoding",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "spliceEncoding"
+      },
+      "shapeHash": "sha256:1f6331e80ddc5e02332cdc63d7a30087cbeee15d20fb5d712996423d7ac2f98c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#spliceMessages",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "spliceMessages",
@@ -64272,6 +64338,17 @@
         "type": "func(skeleton []byte) (*requestBody, bool)"
       },
       "shapeHash": "sha256:dc00ea5a363763b24c12fa087fba502961cd8b75ffec2cff2854e41a8a05c9bb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#stringSplice.marshal",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "stringSplice.marshal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(payload any, marshal func(any) ([]byte, error)) (*requestBody, error)"
+      },
+      "shapeHash": "sha256:36aa57947a5c7c0d8e63444bc2f770788a02916bddc30e16ed15cae253b08a9a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#stringSplice.rewrite",
