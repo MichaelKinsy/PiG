@@ -16,9 +16,9 @@ import (
 
 // D146, two Session-replacing commands in flight. Pi starts every stdin line at once (rpc-mode.ts:833), and a replacement acts on whichever Session is current
 // when it starts (agent-session-runtime.ts:167-185 teardownCurrent and apply, :226-259 newSession, :187-194 finishSessionReplacement, rpc-mode.ts:456-463 and
-// :321-323 rebindSession): the second replacement shuts down the Session the first has not yet applied, or the first's own Session while its session_start
-// handler still runs, and the first's closing rebindSession binds the second's Session again. PiG runs the second after the first applied (the <-previous wait in
-// awaitReplacement), so every Session gets one session_shutdown and each replacement binds its Session twice (the replacement's own rebind and the RPC rebind).
+// :321 rebindSession, the runtime's callback): the second replacement shuts down the Session the first has not yet applied, or the first's own Session while its session_start
+// handler still runs. PiG runs the second after the first applied (the <-previous wait in
+// awaitReplacement), so every Session gets one session_shutdown and one session_start (the runtime's rebind callback is the only rebind, as Pi's).
 // testdata/d146-overlap-probe.mjs logs each session_start and session_shutdown with the Session id its ctx reports and holds the first replacement's first
 // session_start for one second (the longer handler); D146_TOUCH=1 makes that handler use the captured pi after the wait.
 
