@@ -45,23 +45,32 @@ func resultOrNil[R any](result R) any {
 // on registers call for event and returns the function that removes exactly that registration.
 // upstream: core/extensions/loader.ts:271-288 (on)
 func (a *api) on(event string, call extension.HandlerFn) func() {
+	return a.register(event, call, a.ext.AddEventHandler)
+}
+
+// register is on with the registration function that records the handler.
+func (a *api) register(event string, call extension.HandlerFn, add func(event string, id int, handler extension.HandlerFn)) func() {
 	a.assertActive()
 	a.mu.Lock()
 	a.nextHandler++
 	id := a.nextHandler
 	a.mu.Unlock()
-	a.ext.AddEventHandler(event, id, call)
+	add(event, id, call)
 	return func() { a.ext.RemoveEventHandler(event, id) }
 }
 
-func onEvent[E any](a *api, event string, handler extension.ExtensionHandlerNoResult[E]) func() {
-	return a.on(event, func(args ...any) (any, error) {
+func noResultCall[E any](event string, handler extension.ExtensionHandlerNoResult[E]) extension.HandlerFn {
+	return func(args ...any) (any, error) {
 		evt, ctx, _, err := handlerEvent[E](event, args)
 		if err != nil {
 			return nil, err
 		}
 		return nil, handler(ctx, evt)
-	})
+	}
+}
+
+func onEvent[E any](a *api, event string, handler extension.ExtensionHandlerNoResult[E]) func() {
+	return a.on(event, noResultCall(event, handler))
 }
 
 func onResult[E, R any](a *api, event string, handler func(ctx context.Context, evt E) (R, error)) func() {
@@ -98,6 +107,12 @@ func (a *api) OnResourcesDiscover(handler func(ctx context.Context, evt extensio
 
 func (a *api) OnSessionStart(handler extension.ExtensionHandlerNoResult[extension.SessionStartEvent]) func() {
 	return onEvent(a, "session_start", handler)
+}
+
+// OnSessionStartReturningWithoutAwait is OnSessionStart for a handler that returns without awaiting, as a Pi handler that is not async does: the runner's await of it
+// settles in microtasks and a host that binds the extensions asks the runner (Runner.HasHandlersThatMayAwait) before it serves the terminal for a handler that pends.
+func (a *api) OnSessionStartReturningWithoutAwait(handler extension.ExtensionHandlerNoResult[extension.SessionStartEvent]) func() {
+	return a.register("session_start", noResultCall("session_start", handler), a.ext.AddEventHandlerReturningWithoutAwait)
 }
 
 func (a *api) OnSessionInfoChanged(handler extension.ExtensionHandlerNoResult[extension.SessionInfoChangedEvent]) func() {

@@ -111772,6 +111772,17 @@
       "shapeHash": "sha256:13ba3b58a0d02dfd4bf08ac482a0bfd06ad6e0d2d09c1a320b25e0572dfe692d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#Extension.AddEventHandlerReturningWithoutAwait",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "Extension.AddEventHandlerReturningWithoutAwait",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(event string, id int, handler HandlerFn)"
+      },
+      "shapeHash": "sha256:13ba3b58a0d02dfd4bf08ac482a0bfd06ad6e0d2d09c1a320b25e0572dfe692d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#Extension.AddJSONEventHandler",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "Extension.AddJSONEventHandler",
@@ -111830,6 +111841,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#Extension.HasEventHandlers",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "Extension.HasEventHandlers",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(event string) bool"
+      },
+      "shapeHash": "sha256:a069791dad0ceff3a47995491e721a05a5d7bba95738665aefc05fa7ba426f02"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#Extension.HasEventHandlersThatMayAwait",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "Extension.HasEventHandlersThatMayAwait",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -114918,6 +114940,17 @@
       "shapeHash": "sha256:33f3f4b4a74a37edec5d2587e53a5ab6418e2e1d46a4b370d1c7e16084f97c6b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#OnSessionStartReturningWithoutAwait",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "OnSessionStartReturningWithoutAwait",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(api API, handler ExtensionHandlerNoResult[SessionStartEvent]) func()"
+      },
+      "shapeHash": "sha256:8d922f83c30c64fa396d7e22ba444068c58733c6f64cc27f440af88cb8dc1cf9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#OrderedExposures",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "OrderedExposures",
@@ -117358,6 +117391,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#SessionStartRegistrarWithoutAwait",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "SessionStartRegistrarWithoutAwait",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "SessionStartRegistrarWithoutAwait"
+      },
+      "shapeHash": "sha256:5a48ffe364f9be78f291a1559fc3afab4fcf25a0a20b7fd0c72451f26f051996"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#SessionTreeEvent",
@@ -124532,6 +124576,17 @@
       "shapeHash": "sha256:d5544b27684665f6a92367cad1bff537d5b726036b53bd6b3d72933d32c1ed5b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.OnSessionStartReturningWithoutAwait",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
+      "name": "api.OnSessionStartReturningWithoutAwait",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(handler github.com/MichaelKinsy/PiG/coding/extension.ExtensionHandlerNoResult[github.com/MichaelKinsy/PiG/coding/extension.SessionStartEvent]) func()"
+      },
+      "shapeHash": "sha256:d5544b27684665f6a92367cad1bff537d5b726036b53bd6b3d72933d32c1ed5b"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.OnSessionTree",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
       "name": "api.OnSessionTree",
@@ -125005,6 +125060,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.register",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
+      "name": "api.register",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(event string, call github.com/MichaelKinsy/PiG/coding/extension.HandlerFn, add func(event string, id int, handler github.com/MichaelKinsy/PiG/coding/extension.HandlerFn)) func()"
+      },
+      "shapeHash": "sha256:db9f15b69d262761ea7d791db6457bd0b54030aa4e4f4c918438238c79de1fc2"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.retire",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
       "name": "api.retire",
@@ -125113,6 +125179,17 @@
         "type": "func(ext *github.com/MichaelKinsy/PiG/coding/extension.Extension, runtime *github.com/MichaelKinsy/PiG/coding/extension.ExtensionRuntime, cwd string, bus github.com/MichaelKinsy/PiG/coding/extension.EventBus) *api"
       },
       "shapeHash": "sha256:3c2eeb4482a2bb6d5b42e391de90102169ac6ebb4a64f30dcb62999852ffc42b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#noResultCall",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
+      "name": "noResultCall",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func[E any](event string, handler github.com/MichaelKinsy/PiG/coding/extension.ExtensionHandlerNoResult[E]) github.com/MichaelKinsy/PiG/coding/extension.HandlerFn"
+      },
+      "shapeHash": "sha256:fb37dea3589e5bfddea62fdf804450399df6d5e40936f3397770f0ad10ffe518"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#notInitialized",
@@ -126680,6 +126757,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.HasHandlers",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
       "name": "Runner.HasHandlers",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(eventType string) bool"
+      },
+      "shapeHash": "sha256:95ff5059c86810ccac47d33432ad51e44c54d9536fe2e24533c704e4335cdd4e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.HasHandlersThatMayAwait",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.HasHandlersThatMayAwait",
       "kind": "function",
       "exported": true,
       "shape": {
@@ -275243,6 +275331,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.requestRenderPastHold",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.requestRenderPastHold",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.requestShutdown",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.requestShutdown",
@@ -277094,6 +277193,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.startupExpansionState",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.startupExpansionState",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.startupFrameDue",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.startupFrameDue",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -363095,9 +363205,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func() (earlierLookupsDiffer bool)"
+        "type": "func()"
       },
-      "shapeHash": "sha256:27f4607538b8ed20f04889ccf2e5f8ea21dc078e14214864b3eb28e940f41950"
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#LoadBuiltinTheme",
@@ -417358,9 +417468,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func() (earlierLookupsDiffer bool)"
+        "type": "func()"
       },
-      "shapeHash": "sha256:27f4607538b8ed20f04889ccf2e5f8ea21dc078e14214864b3eb28e940f41950"
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/internal/hljs#Registry.SupportsLanguage",

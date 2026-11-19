@@ -31,6 +31,12 @@ import (
 const (
 	startupBindChildEnv   = "PIG_TEST_STARTUP_BIND_CHILD"
 	startupBindHandlerEnv = "PIG_TEST_STARTUP_BIND_HANDLER"
+	// The values of startupBindHandlerEnv: no session_start handler, one that pends, one that returns without awaiting, both of those, one that adds an autocomplete provider.
+	startupBindNone                = "none"
+	startupBindPending             = "pending"
+	startupBindReturnsWithoutAwait = "returns-without-await"
+	startupBindMixed               = "mixed"
+	startupBindAddsProvider        = "adds-provider"
 )
 
 // Pi's init() awaits rebindCurrentSession() after setupEditorSubmitHandler (interactive-mode.ts:1127-1141) and run() shows the startup notices, among them
@@ -38,7 +44,7 @@ const (
 // microtasks, so a key typed ahead is not read, and no command it submits runs, before the notices. The key is held ready on the owner loop's input channel
 // before the bind starts; Init must leave it unread through the bind and the notices.
 func TestInitReadsNoTypedAheadKeyBeforeTheStartupNoticesWhenNoHandlerPends(t *testing.T) {
-	report := runStartupBindChild(t, false)
+	report := runStartupBindChild(t, startupBindNone)
 	if report.UnreadAfterBind == nil {
 		t.Fatalf("the child never reached the end of the bind: %+v", report)
 	}
@@ -47,10 +53,34 @@ func TestInitReadsNoTypedAheadKeyBeforeTheStartupNoticesWhenNoHandlerPends(t *te
 	}
 }
 
+// A session_start handler registered as one that returns without awaiting (Pi's built-in MCP extension has one: extensions/mcp/index.ts:1115-1152) still has its await settle
+// in microtasks, so a key typed ahead is not read before the notices and the event loop takes no turn that would paint the header's frame before init() ends. No path or name
+// of an extension decides it.
+func TestInitReadsNoTypedAheadKeyBeforeTheStartupNoticesWhenEveryHandlerReturnsWithoutAwaiting(t *testing.T) {
+	report := runStartupBindChild(t, startupBindReturnsWithoutAwait)
+	if report.UnreadAfterBind == nil {
+		t.Fatalf("the child never reached the end of the bind: %+v", report)
+	}
+	if !*report.UnreadAfterBind {
+		t.Fatal("Init served the terminal while it bound a session whose only session_start handler returns without awaiting")
+	}
+}
+
+// One handler that can pend among handlers that return without awaiting makes the bind pend: Pi's event loop reads stdin while it awaits that one.
+func TestInitReadsATypedAheadKeyWhenOneSessionStartHandlerPendsAmongHandlersThatReturnWithoutAwaiting(t *testing.T) {
+	report := runStartupBindChild(t, startupBindMixed)
+	if report.UnreadAfterBind == nil {
+		t.Fatalf("the child never reached the end of the bind: %+v", report)
+	}
+	if *report.UnreadAfterBind {
+		t.Fatal("Init left a typed-ahead key unread while a session_start handler that can pend ran next to one that returns without awaiting")
+	}
+}
+
 // When a session_start handler pends, Pi's event loop reads stdin while it awaits it (the submit handler of :1127-1128 is already set), so a key typed ahead
 // is read, and a /login it submits runs, before the notices: Pig serves the terminal while the handler runs.
 func TestInitReadsATypedAheadKeyWhileASessionStartHandlerPends(t *testing.T) {
-	report := runStartupBindChild(t, true)
+	report := runStartupBindChild(t, startupBindPending)
 	if report.UnreadAfterBind == nil {
 		t.Fatalf("the child never reached the end of the bind: %+v", report)
 	}
@@ -66,8 +96,8 @@ func TestInitReadsATypedAheadKeyWhileASessionStartHandlerPends(t *testing.T) {
 func TestInitInstallsTheAutocompleteProviderWhenTheBindEnds(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
-		handler bool
-	}{{"no handler pends", false}, {"a session_start handler pends", true}} {
+		handler string
+	}{{"no handler pends", startupBindNone}, {"a session_start handler pends", startupBindPending}} {
 		t.Run(tc.name, func(t *testing.T) {
 			report := runStartupBindChild(t, tc.handler)
 			if report.BeforeBind == nil || report.AfterBind == nil {
@@ -87,7 +117,7 @@ func TestInitInstallsTheAutocompleteProviderWhenTheBindEnds(t *testing.T) {
 // chain on the editor, so a provider an extension adds from session_start gives text typed before the bind ends a menu of the built-in commands plus its own
 // entries. The editor holds no provider until the bind's setup otherwise, and the add must install the chain it builds.
 func TestAProviderAddedFromSessionStartStandsOnTheBuiltInCommandsBeforeTheBindEnds(t *testing.T) {
-	report := runStartupBindChildMode(t, "2")
+	report := runStartupBindChild(t, startupBindAddsProvider)
 	if !strings.Contains(report.Popup, "fork") || !strings.Contains(report.Popup, "focus-added") {
 		t.Fatalf("the menu for /fo typed while session_start pends shows:\n%s\nwant the built-in fork and the extension's focus-added; the chain offers %q; %s", report.Popup, report.Chain, report.State)
 	}
@@ -110,16 +140,7 @@ type startupBindReport struct {
 	State           string
 }
 
-func runStartupBindChild(t *testing.T, handler bool) startupBindReport {
-	t.Helper()
-	if handler {
-		return runStartupBindChildMode(t, "1")
-	}
-	return runStartupBindChildMode(t, "0")
-}
-
-// runStartupBindChildMode runs the child with its session_start handler absent ("0"), pending until the held key is read ("1"), or adding an autocomplete provider and typing "/fo" ("2").
-func runStartupBindChildMode(t *testing.T, mode string) startupBindReport {
+func runStartupBindChild(t *testing.T, handler string) startupBindReport {
 	t.Helper()
 	master, err := os.OpenFile("/dev/ptmx", os.O_RDWR|syscall.O_NOCTTY|syscall.O_CLOEXEC, 0)
 	if err != nil {
@@ -149,7 +170,7 @@ func runStartupBindChildMode(t *testing.T, mode string) startupBindReport {
 	}
 	reportPath := filepath.Join(t.TempDir(), "report.json")
 	cmd := exec.CommandContext(ctx, executable, "-test.run=^TestInitStartupBindChild$", "-test.count=1", "-test.v")
-	cmd.Env = append(os.Environ(), startupBindChildEnv+"="+reportPath, startupBindHandlerEnv+"="+mode, "TERM=xterm-256color", "PIG_HOME="+t.TempDir())
+	cmd.Env = append(os.Environ(), startupBindChildEnv+"="+reportPath, startupBindHandlerEnv+"="+handler, "TERM=xterm-256color", "PIG_HOME="+t.TempDir())
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = slave, slave, slave
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: true}
 	if err := cmd.Start(); err != nil {
@@ -183,8 +204,8 @@ func runStartupBindChildMode(t *testing.T, mode string) startupBindReport {
 	return report
 }
 
-// TestInitStartupBindChild is the child half of the two tests above: the real Init on a pseudo-terminal with a real Session whose runner has no session_start
-// handler, or one that returns only once the held key has been read.
+// TestInitStartupBindChild is the child half of the tests above: the real Init on a pseudo-terminal with a real Session whose runner has no session_start
+// handler, one that returns without awaiting, one that returns only once the held key has been read, both of those, or one that adds an autocomplete provider.
 func TestInitStartupBindChild(t *testing.T) {
 	reportPath := os.Getenv(startupBindChildEnv)
 	if reportPath == "" {
@@ -213,49 +234,58 @@ func TestInitStartupBindChild(t *testing.T) {
 		fail("%v", err)
 	}
 	var mode *icodingagent.InteractiveMode
-	handlers := map[string][]extension.HandlerFn{"agent_start": {func(...any) (any, error) { return nil, nil }}}
-	if os.Getenv(startupBindHandlerEnv) == "1" {
-		handlers["session_start"] = []extension.HandlerFn{func(...any) (any, error) {
-			// The handler pends until the owner loop has read the held key, as a Node handler pends on I/O while stdin is read.
-			for mode.HeldStartupInputUnread() && t.Context().Err() == nil {
-				runtime.Gosched()
-			}
-			return nil, nil
-		}}
+	ext := extension.Extension{Path: "/startup-bind", Handlers: map[string][]extension.HandlerFn{"agent_start": {func(...any) (any, error) { return nil, nil }}}}
+	// The handler pends until the owner loop has read the held key, as a Node handler pends on I/O while stdin is read.
+	pends := func(...any) (any, error) {
+		for mode.HeldStartupInputUnread() && t.Context().Err() == nil {
+			runtime.Gosched()
+		}
+		return nil, nil
 	}
-	if os.Getenv(startupBindHandlerEnv) == "2" {
-		handlers["session_start"] = []extension.HandlerFn{func(args ...any) (any, error) {
-			ui, err := extension.FromContext(args[1].(context.Context)).UI()
-			if err != nil {
-				return nil, err
-			}
-			err = ui.AddAutocompleteProvider(func(_ context.Context, current *extension.AutocompleteProvider) (*extension.AutocompleteProvider, error) {
-				wrapped := *current
-				wrapped.GetSuggestions = func(ctx context.Context, lines []string, line, col int, force bool) (*extension.AutocompleteSuggestions, error) {
-					result, err := current.GetSuggestions(ctx, lines, line, col, force)
-					if err != nil {
-						return nil, err
-					}
-					if result == nil {
-						result = &extension.AutocompleteSuggestions{Prefix: lines[line]}
-					}
-					result.Items = append(result.Items, extension.AutocompleteItem{Value: "focus-added", Label: "focus-added"})
-					return result, nil
+	// The handler adds an autocomplete provider, as an extension does from session_start, then reports what the editor offers for "/fo" typed while the bind pends.
+	addsProvider := func(args ...any) (any, error) {
+		ui, err := extension.FromContext(args[1].(context.Context)).UI()
+		if err != nil {
+			return nil, err
+		}
+		err = ui.AddAutocompleteProvider(func(_ context.Context, current *extension.AutocompleteProvider) (*extension.AutocompleteProvider, error) {
+			wrapped := *current
+			wrapped.GetSuggestions = func(ctx context.Context, lines []string, line, col int, force bool) (*extension.AutocompleteSuggestions, error) {
+				result, err := current.GetSuggestions(ctx, lines, line, col, force)
+				if err != nil {
+					return nil, err
 				}
-				return &wrapped, nil
-			})
-			if err != nil {
-				return nil, err
+				if result == nil {
+					result = &extension.AutocompleteSuggestions{Prefix: lines[line]}
+				}
+				result.Items = append(result.Items, extension.AutocompleteItem{Value: "focus-added", Label: "focus-added"})
+				return result, nil
 			}
-			waitCtx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
-			defer cancel()
-			report.State = mode.EditorAutocompleteState(waitCtx)
-			report.Chain = mode.ChainAutocompleteOffers(waitCtx, "/fo")
-			report.Popup = mode.EditorPopupAfterTyping(waitCtx, "/fo")
-			return nil, nil
-		}}
+			return &wrapped, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		waitCtx, cancel := context.WithTimeout(t.Context(), testbudget.Wait(t))
+		defer cancel()
+		report.State = mode.EditorAutocompleteState(waitCtx)
+		report.Chain = mode.ChainAutocompleteOffers(waitCtx, "/fo")
+		report.Popup = mode.EditorPopupAfterTyping(waitCtx, "/fo")
+		return nil, nil
 	}
-	runner := inproc.NewRunner([]extension.Extension{{Path: "/startup-bind", Handlers: handlers}}, cwd)
+	returnsAtOnce := func(...any) (any, error) { return nil, nil }
+	switch os.Getenv(startupBindHandlerEnv) {
+	case startupBindPending:
+		ext.AddEventHandler("session_start", 1, pends)
+	case startupBindReturnsWithoutAwait:
+		ext.AddEventHandlerReturningWithoutAwait("session_start", 1, returnsAtOnce)
+	case startupBindMixed:
+		ext.AddEventHandlerReturningWithoutAwait("session_start", 1, returnsAtOnce)
+		ext.AddEventHandler("session_start", 2, pends)
+	case startupBindAddsProvider:
+		ext.AddEventHandler("session_start", 1, addsProvider)
+	}
+	runner := inproc.NewRunner([]extension.Extension{ext}, cwd)
 	model := &ai.Model{ID: "faux-1", DisplayName: "faux-1", Capabilities: ai.ModelCapabilities{ContextWindow: 100000}}
 	session, err := coding.NewSession(services, coding.SessionOptions{Model: model, SessionManager: manager, Runner: runner})
 	if err != nil {
@@ -268,7 +298,7 @@ func TestInitStartupBindChild(t *testing.T) {
 		StartupMark: func(label string) {
 			switch label {
 			case "pre-emit-session-start":
-				if os.Getenv(startupBindHandlerEnv) != "2" {
+				if os.Getenv(startupBindHandlerEnv) != startupBindAddsProvider {
 					mode.HoldStartupInput("k")
 				}
 				installed, offers := mode.EditorAutocompleteOffers("/fo")

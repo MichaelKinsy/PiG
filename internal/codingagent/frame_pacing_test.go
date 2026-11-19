@@ -575,6 +575,8 @@ func TestStartupNoticeWhenAdaptivePacingLacksTheScreenWriter(t *testing.T) {
 			t.Setenv(framePacingEnv, tc.pacingEnv)
 			r := startScreenWriterRun(t, tc.writerEnv, tc.terminal, "fullscreen", nil)
 			r.mode.showInitNotices()
+			// The notices ask for a frame, as Pi's showWarning does (interactive-mode.ts:4818); the frame draws them when the owner loop runs it.
+			r.mode.runRequestedFrame()
 			if got := strings.Count(reloadChatText(r.mode), "Warning: "+framePacingWithoutScreenWriterNotice); got != tc.notices {
 				t.Errorf("the transcript holds the notice %d times, want %d:\n%s", got, tc.notices, reloadChatText(r.mode))
 			}

@@ -22,6 +22,8 @@ func TestTreeNavigationNamedRenderStillPaintsDuringTheHold(t *testing.T) {
 		{"showManagedToolStatus", func(m *InteractiveMode) {
 			m.showManagedToolStatus(tools.ToolStatus{Type: "info", Message: "NAMED TOOL STATUS"})
 		}, "NAMED TOOL STATUS"},
+		{"showWarning", func(m *InteractiveMode) { m.showWarning("NAMED WARNING") }, "NAMED WARNING"},
+		{"appendBorderedNotice", func(m *InteractiveMode) { m.appendBorderedNotice(tui.NewText("NAMED BORDERED NOTICE")) }, "NAMED BORDERED NOTICE"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {

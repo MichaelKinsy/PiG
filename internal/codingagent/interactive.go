@@ -767,20 +767,18 @@ type InteractiveMode struct {
 	reloadTailInput [][]byte
 }
 
-// loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then, when a highlight lookup made before the load answers differently now (D618), repaints on the owner loop so code highlighted with the startup grammars picks up the rest. A mode that has stopped repaints nothing.
+// loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then, on the owner loop, invalidates the cached lines and requests a render, so code highlighted with the startup grammars picks up the rest. A mode that has stopped requests nothing.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
 func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 	ctx := m.backgroundCtx
 	m.backgroundTasks.Go(func() {
-		// pig divergence (D618): Pi invalidates and requests a render whenever the languages have loaded (interactive-mode.ts init), and its render
-		// writes a frame even when no row changed; here the repaint is for a screen that drew code before the load could have answered it
-		// differently, so a start that drew none writes no second frame.
-		if tui.LoadAllHighlightLanguages() {
-			_ = m.postToMain(ctx, func() {
-				m.tuiInst.Invalidate()
-				m.tuiInst.RequestRender()
-			})
-		}
+		tui.LoadAllHighlightLanguages()
+		_ = m.postToMain(ctx, func() {
+			m.tuiInst.Invalidate()
+			m.tuiInst.RequestRender()
+			// The start's last repaint request: a startup profile, and a pty child that must not be ready before it, wait for this label.
+			m.startupMark()("highlight-repaint-requested")
+		})
 		// After the repaint is queued, so the collection never delays it.
 		m.releaseStartupHeapWhenIdle(ctx)
 	})
@@ -922,6 +920,17 @@ func (m *InteractiveMode) releaseFrames() {
 	}
 	m.frameHold = false
 	m.tuiInst.CancelPendingRender()
+	m.tuiInst.RequestRender()
+}
+
+// requestRenderPastHold is the frame a status, a warning or a notice asks for. Pi requests it (ui.requestRender()), and the frame follows at the next turn of the
+// event loop. D270 holds the frames a /tree choice requested, but a status, a warning or a notice is not held: while the hold lasts it paints by name (Render),
+// outside the hold it only requests the frame. Owner loop only, as frameHold is.
+func (m *InteractiveMode) requestRenderPastHold() {
+	if m.frameHold {
+		m.tuiInst.Render()
+		return
+	}
 	m.tuiInst.RequestRender()
 }
 
@@ -2043,24 +2052,25 @@ func (m *InteractiveMode) Init(ctx context.Context) (err error) {
 	}
 	mark("post-emit-session-start")
 
-	// rebindCurrentSession showed the loaded resources after the built-in or extension-supplied header. Quiet startup suppresses help and resource
-	// listings, not the initial editor and footer.
-	m.tuiInst.Render()
-	mark("first-render-done")
+	// Pi's init() has no render between the bind and renderInitialMessages (interactive-mode.ts:1141-1162): everything the bind changed is asked for with
+	// requestRender and painted by the one renderNow at the end of init(). A render here wrote a frame and, with nothing changed since, a bare cursor
+	// placement after the next one.
 	// Upstream's rebindCurrentSession shows the startup changelog notice after the loaded resources (showStartupNoticesIfNeeded, interactive-mode.ts
 	// bindCurrentSessionExtensions), before init() renders the initial messages.
 	m.showStartupChangelog(m.changelogEntries, m.extensionChangelogUpdates)
 
 	m.renderInitialMessages()
+	// Pi's init() ends with `this.ui.renderNow()` (interactive-mode.ts:1162) after renderInitialMessages and the provider count: the one frame of the
+	// startup state. renderNow clears a render a request asked for before it (tui.ts:1025-1031), so the requests the bind made fall into it.
+	m.tuiInst.RenderNow()
+	m.loadRemainingHighlightLanguages()
 	// upstream: interactive-mode.ts run() shows the startup diagnostics, migrated credentials, the models.json error, the model fallback message and the
-	// crash notice once init() has rendered the initial messages.
+	// crash notice once init() has returned (:1230-1262): each asks for a render, and the frame that follows is a second one after the startup frame.
 	m.showInitNotices()
 	m.showCrashNotice()
 	if m.frontendStartupWarning != "" {
 		m.showWarning(m.frontendStartupWarning)
 	}
-	m.tuiInst.Render()
-	m.loadRemainingHighlightLanguages()
 
 	return nil
 }

@@ -31402,6 +31402,49 @@
       "tests": []
     },
     {
+      "id": "BF-7c140b3",
+      "title": "Starting the interactive mode no longer writes cursor placements between its frames or frames of its own that…",
+      "symptom": "A terminal that answers nothing used to see the header frame, two bare cursor placements (`ESC[\u003cn\u003eG ESC[?25l`), the window title, and the same again after each later frame: `frame, cursor, cursor, title, frame, cursor, frame, cursor, cursor`; it now sees Pi's `frame, cursor, title, frame, cursor, frame, cursor`.",
+      "rootCause": "PiG painted a frame right after binding the session and painted each startup notice, warning and status line at once, where Pi only requests a frame and lets the next one carry them; it also took a turn of the event loop for every `session_start` handler, because the registry could not tell a handler that returns without awaiting (the built-in MCP one) from one that can wait, and no test compared the kinds of write around the startup frames, only the bytes up to the first frame",
+      "rootCauseSource": "release note",
+      "userImpact": "Crash, hang or runaway process",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Starting the interactive mode no longer writes cursor placements between its frames or frames of its own that Pi does not write. A terminal that answers nothing used to see the header frame, two bare cursor placements (`ESC[\u003cn\u003eG ESC[?25l`), the window title, and the same again after each later frame: `frame, cursor, cursor, title, frame, cursor, frame, cursor, cursor`; it now sees Pi's `frame, cursor, title, frame, cursor, frame, cursor`. The start now builds the header, binds the extensions and paints one frame at the end of its start, as Pi does, and the notices that follow it (resource diagnostics, the model fallback message, the crash notice) each request a frame. A plain start also no longer waits on the built-in MCP extension: its `session_start` handler returns without awaiting what it starts, as Pi's does, and an extension handler can now say the same of itself, so the session binds without taking a turn of the event loop. A handler of a subprocess extension, which can always wait, keeps the wait.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "5edf81f2ab",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "7c140b3c41",
+          "date": "2026-11-17"
+        },
+        {
+          "hash": "b4b67844c7",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": [
+        "coding/extension/factoryload/session_start_without_await_test.go::TestSessionStartRegisteredAsReturningWithoutAwaitingDoesNotMakeTheRunnerAwait",
+        "coding/extension/factoryload/session_start_without_await_test.go::TestSessionStartReturningWithoutAwaitFallsBackToOnSessionStart",
+        "coding/extension/handler_await_test.go::TestHandlerRegistrationSurvivesRemovalAndReplacement",
+        "coding/extension/handler_await_test.go::TestHasEventHandlersThatMayAwaitAsksTheRegistrationOfEachHandler",
+        "coding/extension/host/inproc/registry_test.go::TestHasHandlersThatMayAwaitLeavesOutTheHandlersThatReturnWithoutAwaiting",
+        "coding/mcpext/session_start_without_await_test.go::TestBuiltinMCPSessionStartHandlerReturnsWithoutAwaiting",
+        "coding/piglet/session_start_without_await_test.go::TestPigletSessionStartHandlerReturnsWithoutAwaiting",
+        "internal/codingagent/bind_may_pend_test.go::TestBindMayPendAsksWhetherAHandlerCanPend",
+        "internal/codingagent/startup_bind_input_pty_test.go::TestInitReadsATypedAheadKeyWhenOneSessionStartHandlerPendsAmongHandlersThatReturnWithoutAwaiting",
+        "internal/codingagent/startup_bind_input_pty_test.go::TestInitReadsNoTypedAheadKeyBeforeTheStartupNoticesWhenEveryHandlerReturnsWithoutAwaiting",
+        "internal/codingagent/startup_bind_input_pty_test.go::TestInitStartupBindChild",
+        "internal/codingagent/startup_color_wait_render_test.go::TestFrameTheColorApplyRequestsIsNotPaintedBeforeTheWaitReturns",
+        "internal/codingagent/startup_write_kinds_pty_test.go::TestStartupWriteKindsChild",
+        "test/parity/scenarios/startup/31-startup-notices-follow-the-header.toml"
+      ]
+    },
+    {
       "id": "BF-7c24a92",
       "title": "extensions: when the Node process that several TypeScript or JavaScript extensions share was killed or…",
       "symptom": "extensions: when the Node process that several TypeScript or JavaScript extensions share was killed or crashed, an extension could be reported twice: first as disabled (`packed member connection closed; /reload restarts it`), then as crashed and restarting, so one exit read as an error that asked for `/reload` and a warning that the extension restarts by itself.",
@@ -41912,35 +41955,6 @@
       ]
     },
     {
-      "id": "BF-D618",
-      "title": "A start repaints after the highlight grammar load only when a highlight lookup made before it could have…",
-      "symptom": "none; Pi's repaint after the load is intended. (Pi-Bolt omits the frame too.)",
-      "rootCause": "the frame carries no row, yet it restarts any consumer's output-quiet wait, and it costs a render pass on the pinned core right after start. Measured on xd670 (core 103, interactive session, 15 rounds): wall 519 ms to 483 ms with CPU unchanged (Pi-Bolt 500 ms). The bytes PiG omits are bytes that do not change the terminal's state: the cursor is already at that row and hidden.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Wrong display",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D618",
-      "removeWhen": "Pi's renderer writes nothing for a render request that changes no row and moves no cursor, or the owner withdraws the approval.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "a726a597cc",
-          "date": "2026-11-11"
-        },
-        {
-          "hash": "e7a2839b83",
-          "date": "2026-11-11"
-        }
-      ],
-      "tests": [
-        "internal/codingagent/highlight_languages_load_test.go::TestLoadRemainingHighlightLanguagesPostsNoRepaintWhenNoLookupDiffers",
-        "internal/codingagent/highlight_languages_load_test.go::TestLoadRemainingHighlightLanguagesRepaintsOnTheOwnerLoop",
-        "tui/internal/hljs/load_reports_test.go::TestLoadAllLanguagesReportsEarlierLookupsThatDiffer"
-      ]
-    },
-    {
       "id": "BF-D619",
       "title": "A status-indicator or Loader animation step asks for its frame within min(40 ms, interval/2) while frames are…",
       "symptom": "none; Pi's frame per step is correct, only costlier.",
@@ -46607,6 +46621,25 @@
       "tests": [
         "coding/extension/host/subprocess/sdk_fingerprint_marker_test.go::TestBuilderRecordsTheSDKFingerprintByReplacingTheMarker"
       ]
+    },
+    {
+      "id": "BF-b2d5d74",
+      "title": "fix(codingagent): the grammar load always requests its render, as Pi does; only the invalidation is skipped…",
+      "symptom": "fix(codingagent): the grammar load always requests its render, as Pi does; only the invalidation is skipped when no lookup differs",
+      "rootCause": "the one cursor-only frame scenario 69 pinned for PiG was the post-bind render, not the grammar load: D618 had removed the load's own frame and the count stayed right by accident, so removing the post-bind render exposed the difference.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b2d5d747c8",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
     },
     {
       "id": "BF-b30b8aa",
@@ -62966,6 +62999,25 @@
       "tests": []
     },
     {
+      "id": "BF-f2be7ae",
+      "title": "fix(piglet): drop the untyped additive sentence from the session_start handler's comment",
+      "symptom": "fix(piglet): drop the untyped additive sentence from the session_start handler's comment",
+      "rootCause": "The sentence said only that Pi has no Piglet extension, which the divergence-consistency gate rejects as an untyped additive comment and which a reader of the handler does not need.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "f2be7ae869",
+          "date": "2026-11-17"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-f2c00f9",
       "title": "A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id…",
       "symptom": "A fused Go extension's built-in tool `execute` without an extension context (`createBashTool(cwd).execute(id, params)` and the other `create\u003cTool\u003eTool` forms) no longer fails with \"extension stopped while waiting for builtinTool.execute response\" when another extension in the same process stops while the tool runs.",
@@ -67558,11 +67610,6 @@
       "id": "D617",
       "title": "A command-only action (`waitForIdle` or a session action) called through a context that is not a command…",
       "entry": "BF-105a93f"
-    },
-    {
-      "id": "D618",
-      "title": "A start repaints after the highlight grammar load only when a highlight lookup made before it could have…",
-      "entry": "BF-D618"
     },
     {
       "id": "D619",

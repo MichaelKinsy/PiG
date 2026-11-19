@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/testbudget"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -350,6 +351,16 @@ type treeCaptureRenderer struct {
 func (r *treeCaptureRenderer) Render()          { r.capture() }
 func (r *treeCaptureRenderer) ForceFullRender() { r.capture() }
 
+// frameWriter is a renderer's terminal: onWrite runs with every write a frame makes on its way to the screen.
+type frameWriter struct{ onWrite func() }
+
+func (w frameWriter) Write(p []byte) (int, error) {
+	w.onWrite()
+	return len(p), nil
+}
+
+// The confirmation of a copy is a status, which asks for a frame as Pi's showStatus does (interactive-mode.ts:3972,3983). The dialog's loop runs that frame on
+// its deadline, so the confirmation is on the screen before the key that closes the dialog is read.
 func TestTreeCopyCompletionPaintsBeforeDialogCloses(t *testing.T) {
 	previous := tui.GetTUIKeybindings()
 	t.Cleanup(func() { tui.SetTUIKeybindings(previous) })
@@ -362,24 +373,27 @@ func TestTreeCopyCompletionPaintsBeforeDialogCloses(t *testing.T) {
 			input := make(chan []byte, 2)
 			input <- []byte("\x18")
 			m := &InteractiveMode{opts: InteractiveModeOptions{SessionHandle: &recordingCompactHandle{inner: session}}, chatContainer: tui.NewContainer(), editorContainer: tui.NewContainer(), editor: tui.NewEditor(), runCtx: ctx, backgroundCtx: ctx, uiTaskCh: make(chan func(), 1), modalInputCh: input, copyClipboard: func(string) error { return nil }}
+			root := tui.Component(m.chatContainer)
 			if editorSlot {
 				m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
+				root = m.layout
 			}
 			painted := false
-			base := tui.NewWithOutput(io.Discard, 120, 40)
-			base.SetRenderDispatcher(func(func()) {})
-			t.Cleanup(base.CancelPendingRender)
-			m.tuiInst = &treeCaptureRenderer{TuiMainScreen: base, capture: func() {
+			base := tui.NewWithOutput(frameWriter{func() {
 				if !painted && strings.Contains(stripANSITest(strings.Join(m.chatContainer.Render(120), "\n")), "Copied selected message to clipboard") {
 					painted = true
 					input <- []byte("\x1b")
 				}
-			}}
+			}}, 120, 40)
+			base.Add(root)
+			t.Cleanup(base.CancelPendingRender)
+			m.tuiInst = base
+			m.installRenderDispatcher()
 			finished := make(chan struct{})
 			go func() { defer close(finished); m.buildSlashContext(ctx).PickTreeEntry("") }()
 			select {
 			case <-finished:
-			case <-time.After(5 * time.Second):
+			case <-time.After(testbudget.Wait(t)):
 				input <- []byte("\x1b")
 				<-finished
 				cancel()

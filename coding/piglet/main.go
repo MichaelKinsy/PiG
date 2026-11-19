@@ -1889,65 +1889,62 @@ func buildExtensionWithOwner(initial *Piglet, owner func(extension.ToolInfo) str
 		ExtensionPath: "builtin:piglet",
 	}
 
-	// session_start handler: resolve + apply
-	ext.Handlers["session_start"] = []extension.HandlerFn{
-		func(args ...any) (any, error) {
-			if len(args) < 2 {
-				return nil, nil
-			}
-			ctx, _ := args[1].(context.Context)
-			if ctx == nil {
-				return nil, nil
-			}
-			extCtx := extension.FromContext(ctx)
-			if extCtx == nil {
-				return nil, nil
-			}
-			flagVal := extCtx.GetFlagValue("piglet")
-			resolvePiglet(flagVal)
-			applyScoping(extCtx, "session_start")
+	// session_start handler: resolve + apply. It returns without awaiting: it reads the flag, resolves the Piglet and scopes the tools, so the bind of a session that has no
+	// other session_start handler that can pend takes no turn of the event loop.
+	ext.AddEventHandlerReturningWithoutAwait("session_start", 0, func(args ...any) (any, error) {
+		if len(args) < 2 {
 			return nil, nil
-		},
-	}
+		}
+		ctx, _ := args[1].(context.Context)
+		if ctx == nil {
+			return nil, nil
+		}
+		extCtx := extension.FromContext(ctx)
+		if extCtx == nil {
+			return nil, nil
+		}
+		flagVal := extCtx.GetFlagValue("piglet")
+		resolvePiglet(flagVal)
+		applyScoping(extCtx, "session_start")
+		return nil, nil
+	})
 
 	// before_agent_start handler: reapply in case extensions registered new tools
-	ext.Handlers["before_agent_start"] = []extension.HandlerFn{
-		func(args ...any) (any, error) {
-			if len(args) < 2 {
-				return nil, nil
-			}
-			ctx, _ := args[1].(context.Context)
-			if ctx == nil {
-				return nil, nil
-			}
-			extCtx := extension.FromContext(ctx)
-			if extCtx == nil {
-				return nil, nil
-			}
-			flagVal := extCtx.GetFlagValue("piglet")
-			resolvePiglet(flagVal)
-			applyScoping(extCtx, "before_agent_start")
-			notifyHidden(extCtx)
-			// The agent learns the Piglet and its tool scope in one line.
-			if activePiglet != nil {
-				if options := extension.BeforeAgentStartOptions(ctx); options != nil {
-					trusted, err := extCtx.IsProjectTrusted()
-					line := AgentToolScopeLine(activePiglet, err == nil && !trusted)
-					if !strings.Contains(options.AppendSystemPrompt, line) {
-						options.AppendSystemPrompt = strings.TrimSpace(options.AppendSystemPrompt + "\n\n" + line)
-					}
+	ext.AddEventHandler("before_agent_start", 0, func(args ...any) (any, error) {
+		if len(args) < 2 {
+			return nil, nil
+		}
+		ctx, _ := args[1].(context.Context)
+		if ctx == nil {
+			return nil, nil
+		}
+		extCtx := extension.FromContext(ctx)
+		if extCtx == nil {
+			return nil, nil
+		}
+		flagVal := extCtx.GetFlagValue("piglet")
+		resolvePiglet(flagVal)
+		applyScoping(extCtx, "before_agent_start")
+		notifyHidden(extCtx)
+		// The agent learns the Piglet and its tool scope in one line.
+		if activePiglet != nil {
+			if options := extension.BeforeAgentStartOptions(ctx); options != nil {
+				trusted, err := extCtx.IsProjectTrusted()
+				line := AgentToolScopeLine(activePiglet, err == nil && !trusted)
+				if !strings.Contains(options.AppendSystemPrompt, line) {
+					options.AppendSystemPrompt = strings.TrimSpace(options.AppendSystemPrompt + "\n\n" + line)
 				}
 			}
+		}
 
-			// Return system prompt override if the piglet declares one.
-			if resolvedSystemPrompt != "" {
-				return &extension.BeforeAgentStartEventResult{
-					SystemPrompt: new(resolvedSystemPrompt),
-				}, nil
-			}
-			return nil, nil
-		},
-	}
+		// Return system prompt override if the piglet declares one.
+		if resolvedSystemPrompt != "" {
+			return &extension.BeforeAgentStartEventResult{
+				SystemPrompt: new(resolvedSystemPrompt),
+			}, nil
+		}
+		return nil, nil
+	})
 
 	// pig additive (D92): a Piglet that strips /piglet runs without the
 	// command, so no surface derived from the extension's commands offers it

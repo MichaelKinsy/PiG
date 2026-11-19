@@ -1098,6 +1098,18 @@ func (r *Runner) HasHandlers(eventType string) bool {
 	return false
 }
 
+// HasHandlersThatMayAwait is HasHandlers for the handlers that can pend: one registered with Extension.AddEventHandlerReturningWithoutAwait returns without awaiting, so the
+// runner's await of it settles in microtasks and the event loop takes no turn (Pi core/extensions/runner.ts:1103-1110); every other handler, a subprocess extension's among
+// them, can pend. A runner with only handlers of the first kind for an event answers false.
+func (r *Runner) HasHandlersThatMayAwait(eventType string) bool {
+	for i := range r.extensions {
+		if r.extensions[i].HasEventHandlersThatMayAwait(eventType) {
+			return true
+		}
+	}
+	return false
+}
+
 // Shortcuts returns all extension shortcuts after applying built-in conflicts.
 // Reserved editor-global bindings reject an extension shortcut. Other built-in
 // conflicts warn and allow the extension. Extension-to-extension conflicts use

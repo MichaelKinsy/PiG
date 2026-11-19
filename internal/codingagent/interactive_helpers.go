@@ -58,10 +58,10 @@ func debugLog(format string, args ...any) {
 	_, _ = fmt.Fprintf(f, format+"\n", args...)
 }
 
-// showWarning appends a padded, theme-colored warning with Pi's textual prefix.
+// showWarning appends a padded, theme-colored warning with Pi's textual prefix, then asks for a render as Pi's showWarning does (interactive-mode.ts:4812-4816).
 func (m *InteractiveMode) showWarning(msg string) {
 	m.appendChatBlock(themedNotice("warning", "Warning: "+msg, 1))
-	m.tuiInst.Render()
+	m.requestRenderPastHold()
 }
 
 // addTerminalInputListener registers a raw terminal input listener.
