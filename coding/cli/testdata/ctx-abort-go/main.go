@@ -1,7 +1,8 @@
-// Command ctx-abort-go is a Go-SDK extension that calls ctx.Abort() once, from a message_update handler the run awaits, and logs "abort" before the call, "returned" after it and each agent_end with the stop reason of its last assistant message.
+// Command ctx-abort-go is a Go-SDK extension that calls ctx.Abort() once, from a message_update handler the run awaits. It logs the state of ctx.signal before the call ("abort:<state>"), the state of the signal it held and of ctx.signal after the call ("returned:<held>:<now>"), what a second handler of the same event sees and does ("second:<state>", "second again:<state>"), and each agent_end with the stop reason of its last assistant message.
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync/atomic"
@@ -9,7 +10,7 @@ import (
 	"github.com/MichaelKinsy/PiG/extensions/sdk"
 )
 
-var fired atomic.Bool
+var fired, again atomic.Bool
 
 func logLine(line string) {
 	f, err := os.OpenFile(os.Getenv("ABORT_PROBE_LOG"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
@@ -19,13 +20,32 @@ func logLine(line string) {
 	}
 }
 
+func state(signal context.Context) string {
+	switch {
+	case signal == nil:
+		return "none"
+	case signal.Err() != nil:
+		return "aborted"
+	}
+	return "live"
+}
+
 func main() {
 	ext := sdk.New("ctx-abort-go")
 	ext.OnEvent("message_update", func(ctx sdk.Context, _ map[string]any) (any, error) {
 		if fired.CompareAndSwap(false, true) {
-			logLine("abort")
+			held := ctx.Signal()
+			logLine("abort:" + state(held))
 			ctx.Abort()
-			logLine("returned")
+			logLine("returned:" + state(held) + ":" + state(ctx.Signal()))
+		}
+		return nil, nil
+	})
+	ext.OnEvent("message_update", func(ctx sdk.Context, _ map[string]any) (any, error) {
+		if fired.Load() && again.CompareAndSwap(false, true) {
+			logLine("second:" + state(ctx.Signal()))
+			ctx.Abort()
+			logLine("second again:" + state(ctx.Signal()))
 		}
 		return nil, nil
 	})
