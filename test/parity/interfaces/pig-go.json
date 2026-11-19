@@ -34239,9 +34239,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[1663]catalogBaseline"
+        "type": "[1669]catalogBaseline"
       },
-      "shapeHash": "sha256:7dd23ea41e791a7573bacedebdd1701cca63bb393996a145cfacc4948df138e3"
+      "shapeHash": "sha256:0dde5cf2816d315cba5d4da25d64d593d84a9300b3d70892ce23c08a1adcead6"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#catalogRecordChunk",
@@ -43182,9 +43182,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[1663]GeneratedModel"
+        "type": "[1669]GeneratedModel"
       },
-      "shapeHash": "sha256:935bf0bb60fa598e65df2bde0022434e6b717212ff02d0c13af5469f12f5e840"
+      "shapeHash": "sha256:33cb065f6d243750b225ee0e52885d97e2a7ad84563c5e468dda7ca117d49ee9"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedStrings",
@@ -43226,9 +43226,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[911]generatedMapRef"
+        "type": "[917]generatedMapRef"
       },
-      "shapeHash": "sha256:4038119c8e6a4a7939a275cc5c4c58d9bf72e19c49b259962a4bd339430de8c6"
+      "shapeHash": "sha256:10000507de03086bd40f42e79e02ee02c3ad3d086f6d4faa2109b2b092720ab4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#generatedToolCallID",
@@ -55458,9 +55458,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, acquired *acquiredCodexWebSocket, first []byte, request codexRequest, requestBytes int, grammarProps map[string]string, useCachedContext bool, builder *assistantStreamBuilder, opts StreamOptions)"
+        "type": "func(ctx context.Context, acquired *acquiredCodexWebSocket, first []byte, readErr error, request codexRequest, requestBytes int, grammarProps map[string]string, useCachedContext bool, builder *assistantStreamBuilder, opts StreamOptions)"
       },
-      "shapeHash": "sha256:09e9e0de7a7cef10a2dbd4486158e969e50406f0a7ac9095f18ab58db35b8193"
+      "shapeHash": "sha256:4c2892d5ae0bd8f685c2f671752dbeb80f5ba118392577581d4d049b778936fd"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.convertMessages",
@@ -60012,9 +60012,9 @@
       "kind": "variable",
       "exported": false,
       "shape": {
-        "type": "[26]recordChunk"
+        "type": "[27]recordChunk"
       },
-      "shapeHash": "sha256:e3ed795c977a4cad29d2a1b30e7e40581009b826667f33b4e1b493dd71ef5ec4"
+      "shapeHash": "sha256:64a6f813efb633e5cf102ffd516bb433f4caf5a7cf5b74f58d79b8b125d58f72"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#recordCodexWebSocketFailure",
@@ -71699,6 +71699,17 @@
       "shapeHash": "sha256:0f2968a9388602eaa8f57d1f7e5b375c907427e157cbd7b1de81da8325f14ba3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#DefaultResourceLoader.newPackageManager",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "DefaultResourceLoader.newPackageManager",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() *github.com/MichaelKinsy/PiG/internal/packagemanager.PackageManager"
+      },
+      "shapeHash": "sha256:41cfedd57a5bf59464d26347184522c1b83140ce2261be763b51910a315aa1d8"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#DefaultResourceLoader.normalizeExtensionPaths",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "DefaultResourceLoader.normalizeExtensionPaths",
@@ -71895,17 +71906,6 @@
         "type": "ExtensionBindings"
       },
       "shapeHash": "sha256:c981b13399af15817ffc1411119dc71def7c3e1e9f59deb13a3cfbbd228cab68"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding#ExtensionBindings.hasBindings",
-      "package": "github.com/MichaelKinsy/PiG/coding",
-      "name": "ExtensionBindings.hasBindings",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() bool"
-      },
-      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ExtensionBindings.mergedWith",
@@ -76627,6 +76627,39 @@
       "shapeHash": "sha256:7299b045cf306f7bc6190a73a65ffe596ae4e3ca90fa9e042b59aa5cdfe5a6c9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#PackageCommandOutput",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "PackageCommandOutput",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "PackageCommandOutput"
+      },
+      "shapeHash": "sha256:32895033325144e0073d6ef1adae643d85ed432269f12bc24a8b4e9e7a494d5d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#PackageCommandOutputCapture",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "PackageCommandOutputCapture",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "github.com/MichaelKinsy/PiG/internal/packagemanager.CommandOutput"
+      },
+      "shapeHash": "sha256:240c03abf4ad09885b1d4b08e1c792b10705f5ceefae82c504a5502a5e04a60c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#PackageCommandOutputInherit",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "PackageCommandOutputInherit",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "github.com/MichaelKinsy/PiG/internal/packagemanager.CommandOutput"
+      },
+      "shapeHash": "sha256:240c03abf4ad09885b1d4b08e1c792b10705f5ceefae82c504a5502a5e04a60c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#PigVersion",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "PigVersion",
@@ -76713,6 +76746,28 @@
         "type": "func() error"
       },
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ProgressCallback",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ProgressCallback",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ProgressCallback"
+      },
+      "shapeHash": "sha256:bbc5616613df22c3ddf16a2634b1e036f8f63d71e09be083492cf0f9ccb50a69"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ProgressEvent",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ProgressEvent",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ProgressEvent"
+      },
+      "shapeHash": "sha256:b6f7f1110d602f3090975612ad964eb585bfef1b35eac0cea6841f10999f5902"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#PromptDisposition",
@@ -77472,6 +77527,17 @@
         "type": "func(ctx context.Context, path string, options ...*SwitchSessionOptions) (github.com/MichaelKinsy/PiG/coding/extension.CancelledResult, error)"
       },
       "shapeHash": "sha256:2335b818de188ec4ffe4a40e0a311151c28424de8c078071f8bf28459b986ead"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Runtime.TakeUnreportedDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Runtime.TakeUnreportedDiagnostics",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []AgentSessionRuntimeDiagnostic"
+      },
+      "shapeHash": "sha256:e7ba6e36c359642e4172ac70e6d6d14f78dd76078124a7cfe5b10914b3a15876"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Runtime.ValidateSwitchSession",
@@ -93545,6 +93611,17 @@
       "shapeHash": "sha256:af8be83f2bd2251e492c6b91ba388fd7356c2514002f8b192adb47dd271e0ba7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#cliBuild.runtimeDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "cliBuild.runtimeDiagnostics",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []github.com/MichaelKinsy/PiG/internal/codingagent.AgentSessionRuntimeDiagnostic"
+      },
+      "shapeHash": "sha256:3e4ce1362d4d122be03444ab5fdaf18a246201f699e842990d64d4ff3707f89a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#cliBuild.skills",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "cliBuild.skills",
@@ -94464,9 +94541,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, sources []string, resolvers ...github.com/MichaelKinsy/PiG/coding/extension/source.ResolveFunc) cliExtensionSet"
+        "type": "func(cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, packages *packageRun, sources []string, resolvers ...github.com/MichaelKinsy/PiG/coding/extension/source.ResolveFunc) cliExtensionSet"
       },
-      "shapeHash": "sha256:53f1357081b936f0d857635da31f7336d5551083d0fbb7fc57ea5d62de722249"
+      "shapeHash": "sha256:b2deea8ba88b6409a64cab7bae14ad98d7b8875f8d59a447a8b529db78e97dce"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#collectCLIPackageResources",
@@ -97208,6 +97285,17 @@
       "shapeHash": "sha256:7b834351636410bb5f47e994b9f171b688945e3c1c2be4970e4b30f8a31d86e9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#installPackagesForLoad",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "installPackagesForLoad",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(run *packageRun, cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager) ([]github.com/MichaelKinsy/PiG/internal/packagemanager.PackageInstallFailure, error)"
+      },
+      "shapeHash": "sha256:a61502f2e3d99332d2c54babc2343f58197bd564f4cf43be4c5f8af055910c39"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#installStartupTrace",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "installStartupTrace",
@@ -97360,6 +97448,17 @@
         "type": "func(ctx context.Context, path string, cwdOverride string, projectTrustUI func(cwd string) github.com/MichaelKinsy/PiG/coding/extension.ProjectTrustContext, options *github.com/MichaelKinsy/PiG/coding/extension.SwitchSessionOptions) (github.com/MichaelKinsy/PiG/coding/extension.CancelledResult, error)"
       },
       "shapeHash": "sha256:38e81872bdd14d67d4e81b9c4e51716e5c5656460cad633753262082b963871c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#interactiveRuntime.TakeUnreportedDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "interactiveRuntime.TakeUnreportedDiagnostics",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []github.com/MichaelKinsy/PiG/internal/codingagent.AgentSessionRuntimeDiagnostic"
+      },
+      "shapeHash": "sha256:3e4ce1362d4d122be03444ab5fdaf18a246201f699e842990d64d4ff3707f89a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#interactiveStart",
@@ -99122,6 +99221,17 @@
       "shapeHash": "sha256:6658c97f9f52e40af75d122603cb5d16dcafabfc8001c91bde19ae4134662e19"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newPackageRun",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "newPackageRun",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(mode appMode) *packageRun"
+      },
+      "shapeHash": "sha256:075cebf1d00f96a66c67d5249a4e335e51f692f67f5470042cf3d7f6f699d6fa"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#newProjectTrustContext",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "newProjectTrustContext",
@@ -99263,6 +99373,17 @@
         "type": "func(previous time.Duration) time.Duration"
       },
       "shapeHash": "sha256:54f412376319e834f0c3a46220bc34813ca4efb3c75809f044c33e567c9bb528"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#noModelFallbackMessage",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "noModelFallbackMessage",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(session *github.com/MichaelKinsy/PiG/coding.Session, message string) string"
+      },
+      "shapeHash": "sha256:c94d93d0bf281b71eadb5c8adfff2221a95cb3083b523a6d881f7c99e6b66140"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#nodeBufferFromMessage",
@@ -99692,6 +99813,50 @@
         "type": "packageCommand"
       },
       "shapeHash": "sha256:b3d1f2cc4ef8c4a4eaf25547aa1658f17919b6f8c187ce5444605ef57559ee37"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#packageRun",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "packageRun",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "packageRun"
+      },
+      "shapeHash": "sha256:92df682898a525a5e6d759137db165641ae42f4fefb7db4b2061b2840bd7a934"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#packageRun.manager",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "packageRun.manager",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager) *github.com/MichaelKinsy/PiG/internal/packagemanager.PackageManager"
+      },
+      "shapeHash": "sha256:2a739a128e635b2f161bd37d01f8ccaadf72e304224ed8d8e607f0976aaa5445"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#packageRun.progress",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "packageRun.progress",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() github.com/MichaelKinsy/PiG/internal/packagemanager.ProgressCallback"
+      },
+      "shapeHash": "sha256:a061b8be8ff82f5db635aa4156f70c76953dd1aa995ad49c50497b2288054a55"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#packageRun.stopAnnouncing",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "packageRun.stopAnnouncing",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#packageUpdate",
@@ -101625,9 +101790,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, source string) (github.com/MichaelKinsy/PiG/internal/packagemanager.ResolvedPaths, error)"
+        "type": "func(cwd string, agentDir string, sm *github.com/MichaelKinsy/PiG/internal/codingagent.SettingsManager, packages *packageRun, source string) (github.com/MichaelKinsy/PiG/internal/packagemanager.ResolvedPaths, error)"
       },
-      "shapeHash": "sha256:591b185af49073de7f44d641c4f1f3cc5e134aae0272bc3f2058d9720ce8f3da"
+      "shapeHash": "sha256:a0489ed4cc93144e90f8fc299f25bb1831c28a0b59b4faa5ff94fcead0ed75d4"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#resolveCLIResourceFlags",
@@ -102945,9 +103110,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(session *github.com/MichaelKinsy/PiG/coding.Session) *sync/atomic.Bool"
+        "type": "func(session *github.com/MichaelKinsy/PiG/coding.Session)"
       },
-      "shapeHash": "sha256:9fd9f223df0a8a75ec4582b326cdd02ab5c1a7ad1ae1c34ba6826d36f89b6946"
+      "shapeHash": "sha256:ce569a49c2cb29b087d430df0896ede167560e5c354ace1a7b094571fa8d9b76"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.newAdmission",
@@ -102959,17 +103124,6 @@
         "type": "func(session *github.com/MichaelKinsy/PiG/coding.Session, runner *github.com/MichaelKinsy/PiG/coding/extension/host/inproc.Runner, catalog headlessCommandCatalog, commands *rpcCommandJoin) *rpcAdmission"
       },
       "shapeHash": "sha256:3d60fd1d1c214489713d3a7a313e014df12fe6015776537bf2765ce3a65799b1"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.rebindAgain",
-      "package": "github.com/MichaelKinsy/PiG/coding/cli",
-      "name": "rpcHost.rebindAgain",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context) error"
-      },
-      "shapeHash": "sha256:1308e2e58e033a63ea9692ed75c8c737d1759c4953f8048cc0018fe7148bf370"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#rpcHost.state",
@@ -107878,6 +108032,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#toCodingAgentWarnings",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "toCodingAgentWarnings",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(warnings []extensionSetWarning) []github.com/MichaelKinsy/PiG/internal/codingagent.ExtensionWarning"
+      },
+      "shapeHash": "sha256:599f615c2868dc7c2fc123db39614e9795f908ad0002adb4ba7644beebc4196c"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#toPromptContextFiles",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "toPromptContextFiles",
@@ -112608,6 +112773,17 @@
       "shapeHash": "sha256:83e74a39bad930c6f93f5c196330229adaefb083b9c0c447986f2f2200df1ce8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.ReportRuntimeError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ExtensionRuntime.ReportRuntimeError",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(err *ExtensionError)"
+      },
+      "shapeHash": "sha256:8affd84e8c59104096ab029398c49057b20b88f1d0fee7d97ef827cc2593a2f4"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.SetContextFactory",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "ExtensionRuntime.SetContextFactory",
@@ -112661,6 +112837,17 @@
         "type": "func(listener func())"
       },
       "shapeHash": "sha256:a4b6f4628cb3b4a46b2829a13390b2658c2ee6cfbe63d555fdcefe53647441b2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.SetRuntimeErrorReporter",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ExtensionRuntime.SetRuntimeErrorReporter",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(report func(*ExtensionError))"
+      },
+      "shapeHash": "sha256:fcb59dcfc1fc70ba67789fd0716ea444f1578cfe5bb7f77cd075c86fea6d4a69"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ExtensionRuntime.TrackEventBusSubscription",
@@ -125071,6 +125258,17 @@
       "shapeHash": "sha256:db9f15b69d262761ea7d791db6457bd0b54030aa4e4f4c918438238c79de1fc2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.reportEventsError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
+      "name": "api.reportEventsError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(channel string, recovered any)"
+      },
+      "shapeHash": "sha256:4832cce7670a47613d07bf88c99650766bfc4b77bccc57d2091c3824f9f91608"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/factoryload#api.retire",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/factoryload",
       "name": "api.retire",
@@ -127192,6 +127390,17 @@
         "type": "func(ctx context.Context, extPath string, eventType string, err error)"
       },
       "shapeHash": "sha256:c42f2733a08fa56978db3366df985a8179fb613a9e31728ad415c4f7e8288e11"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.reportRuntimeError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
+      "name": "Runner.reportRuntimeError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err *github.com/MichaelKinsy/PiG/coding/extension.ExtensionError)"
+      },
+      "shapeHash": "sha256:6277fca04fa201b26b6bbfb29bea21bae0a6c8c9490a0d29fbdd338578ca6c5a"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.resolveCommands",
@@ -135763,6 +135972,17 @@
       "shapeHash": "sha256:ff6905ed5bb83f8296fba288081d1e3435462bd447a7c21d211a48a9a72b6656"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.applyHeld",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.applyHeld",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(env *Envelope) bool"
+      },
+      "shapeHash": "sha256:ccaf0a081f17c3b559793f8b88a51debeb897417af189e2738f0a5c9bddc3f53"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.autocompleteUnhold",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.autocompleteUnhold",
@@ -136258,6 +136478,17 @@
       "shapeHash": "sha256:c771594030cb4648fc042b896d9d92feb3b5df9faa1c5b43214fa39798839f14"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.noteReportRead",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.noteReportRead",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.observeOutbound",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Conn.observeOutbound",
@@ -136322,6 +136553,17 @@
         "type": "func(requestID string)"
       },
       "shapeHash": "sha256:2821d88ee06040aa50a25de57351e7094b704ff05ab52720ce90d64ff6e27731"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.reportApplied",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Conn.reportApplied",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Conn.reportProvisionalBlocks",
@@ -138656,6 +138898,17 @@
       "shapeHash": "sha256:eff13395ab87d0e34f3693b2574971dfc0372be3ed99fdc21b1063c50e02b091"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.applyReportError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.applyReportError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(me *managedExt, conn *Conn, args encoding/json.RawMessage)"
+      },
+      "shapeHash": "sha256:991d3a435ae1f121f00cc2d3aa5f7270182df0245607de4952e1f1f14ccf7a23"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.applyRuntimeDrain",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.applyRuntimeDrain",
@@ -140920,6 +141173,39 @@
         "type": "func(me *managedExt, conn *Conn, callID string, call *CallPayload, callCtx context.Context, result *CallResultPayload, err error)"
       },
       "shapeHash": "sha256:973a478273a8814e8588f461068be8d0445998a7091b95c555462cb33ae8d6cd"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.reportEventHandlerError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.reportEventHandlerError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(listener *busListener, channel string, err error)"
+      },
+      "shapeHash": "sha256:2a5de3c20510eba26a6db0a66536da6912da0385131e944ff51443e0fc46a63c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.reportExtensionError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.reportExtensionError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(owner *managedExt, event string, message string, stack string)"
+      },
+      "shapeHash": "sha256:5264b9b89f84cb205633d4ae7da6c6985409d17bd745921ab14c9b5d81599ccb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.reportOwner",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.reportOwner",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(me *managedExt, name string) *managedExt"
+      },
+      "shapeHash": "sha256:28ff515c8685dc769bcbc55decbd9460cf8ffa9d6a778d05d71e85af439effdf"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.reportViewRejection",
@@ -143441,6 +143727,17 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyReportError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "NotifyReportError",
+      "kind": "constant",
+      "exported": true,
+      "shape": {
+        "type": "untyped string"
+      },
+      "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#NotifyTerminalWrite",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "NotifyTerminalWrite",
@@ -144440,6 +144737,17 @@
         "type": "RenderToolResult"
       },
       "shapeHash": "sha256:ca2a5c41cad9951fcf82f72e319e50823d87964c823da6c440aebac55fd3fdb2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ReportErrorPayload",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "ReportErrorPayload",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "ReportErrorPayload"
+      },
+      "shapeHash": "sha256:7bf6be911303e64bda9975af28d22d848752b896c7a5379220afa5bb99c2ed8e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#RequestBuiltinToolCallback",
@@ -156157,6 +156465,17 @@
       "shapeHash": "sha256:1975adf195a0bdbd37b358df1bc08362c40943a518fc4b1e3aa304a5d285cfc5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hostEventBus.emissionsCreated",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "hostEventBus.emissionsCreated",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() uint64"
+      },
+      "shapeHash": "sha256:8c2c25c05be990d156af5316d0723444537851bde41d6afa6bcb371a541de271"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hostEventBus.endDispatch",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "hostEventBus.endDispatch",
@@ -156177,6 +156496,17 @@
         "type": "func(listeners []*busListener)"
       },
       "shapeHash": "sha256:ed6a6f04b36583161dc74c23742f74157c425e0f060e5a6379e8b91c8bbe1884"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hostEventBus.holdQuiesce",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "hostEventBus.holdQuiesce",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(conn *Conn, env *Envelope) bool"
+      },
+      "shapeHash": "sha256:a1a2e2ac3d67ae072315aa3955c08900c49128ddc43bac254f3edc968c4ed6de"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#hostEventBus.initLocked",
@@ -163404,6 +163734,83 @@
         "type": "func(channel string, err error)"
       },
       "shapeHash": "sha256:17102939eeb9b56fafce175d9b67aee1041c1810e1f5ac4af49a9516d5067f5e"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reportMark",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "reportMark",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "reportMark"
+      },
+      "shapeHash": "sha256:94e7efc7a78b5e5aaaaf3cea29e58c2004f947b482645c664a47c1ee28681484"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reportOrder",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "reportOrder",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "reportOrder"
+      },
+      "shapeHash": "sha256:fd91056972a3f0b5cbdf45d89d07c9f5358cda68ea12f4a2c31cf83a8233863d"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reportOrder.applied",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "reportOrder.applied",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reportOrder.holds",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "reportOrder.holds",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(id string) bool"
+      },
+      "shapeHash": "sha256:f1627669917a681a2d0de09c82296a20744a3daf51f53956333b1e782e2400d3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reportOrder.holdsEmission",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "reportOrder.holdsEmission",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(n uint64) bool"
+      },
+      "shapeHash": "sha256:82a72a3353a0180fba7fbbc8294cb77b6b225263b812973d967213a3c4a9d476"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reportOrder.pending",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "reportOrder.pending",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reportOrder.read",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "reportOrder.read",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(mark reportMark)"
+      },
+      "shapeHash": "sha256:e86b0703d34f6fb90f9ce03cd9730b4e08b644e24625b08d0d7ad73e3b01d81f"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#reportViewOnStderr",
@@ -171920,6 +172327,17 @@
       "shapeHash": "sha256:758ce22e45dfdf6fc33e2741b087afb8b9e35741d39eddc28a737baffb4341cb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewScrollComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewScrollComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewScrollComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "viewScrollComponent.settledLocked",
@@ -171984,6 +172402,17 @@
         "type": "func(i int, ch github.com/MichaelKinsy/PiG/tui.Component) bool"
       },
       "shapeHash": "sha256:277ff7b5c5e515dce03d0638755b0c3d44bfc2211eac1a9777a5fcbb5bc3287f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewScrollComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewScrollComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewScrollComponent.windowBufferLocked",
@@ -205182,6 +205611,17 @@
         "type": "func(sessionPath string, options *SwitchSessionRuntimeOptions) (CancelledResult, error)"
       },
       "shapeHash": "sha256:d3691c5cef1c3bd4cb13482b095877720d49fc896d5d792e38b53a06b85c68ce"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#AgentSessionRuntime.TakeUnreportedDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk",
+      "name": "AgentSessionRuntime.TakeUnreportedDiagnostics",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() []AgentSessionRuntimeDiagnostic"
+      },
+      "shapeHash": "sha256:e7ba6e36c359642e4172ac70e6d6d14f78dd76078124a7cfe5b10914b3a15876"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk#AgentSessionRuntime.apply",
@@ -255652,6 +256092,17 @@
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#printableASCIIPrefix",
+      "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
+      "name": "printableASCIIPrefix",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(s string) int"
+      },
+      "shapeHash": "sha256:2d54f34d6d9edb2f01d7606099f6fec545b0463378cec9cc94244c330f4d6fbc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx#propRanges",
       "package": "github.com/MichaelKinsy/PiG/extensions/sdk/tui/internal/widthx",
       "name": "propRanges",
@@ -263407,6 +263858,17 @@
       "shapeHash": "sha256:758ce22e45dfdf6fc33e2741b087afb8b9e35741d39eddc28a737baffb4341cb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEntryComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "CustomEntryComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEntryComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "CustomEntryComponent.settledLocked",
@@ -263460,6 +263922,17 @@
         "type": "func(i int, ch github.com/MichaelKinsy/PiG/tui.Component) bool"
       },
       "shapeHash": "sha256:277ff7b5c5e515dce03d0638755b0c3d44bfc2211eac1a9777a5fcbb5bc3287f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEntryComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "CustomEntryComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEntryComponent.windowBufferLocked",
@@ -265651,6 +266124,17 @@
       "shapeHash": "sha256:758ce22e45dfdf6fc33e2741b087afb8b9e35741d39eddc28a737baffb4341cb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtensionEditorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ExtensionEditorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtensionEditorComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ExtensionEditorComponent.settledLocked",
@@ -265704,6 +266188,17 @@
         "type": "func(i int, ch github.com/MichaelKinsy/PiG/tui.Component) bool"
       },
       "shapeHash": "sha256:277ff7b5c5e515dce03d0638755b0c3d44bfc2211eac1a9777a5fcbb5bc3287f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtensionEditorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ExtensionEditorComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ExtensionEditorComponent.windowBufferLocked",
@@ -266674,6 +267169,17 @@
       "shapeHash": "sha256:758ce22e45dfdf6fc33e2741b087afb8b9e35741d39eddc28a737baffb4341cb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#FirstTimeSetupComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "FirstTimeSetupComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#FirstTimeSetupComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "FirstTimeSetupComponent.settledLocked",
@@ -266732,6 +267238,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#FirstTimeSetupComponent.update",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "FirstTimeSetupComponent.update",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#FirstTimeSetupComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "FirstTimeSetupComponent.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -276871,6 +277388,17 @@
       "shapeHash": "sha256:7533c105db885e8ba205b4a2ecea5e51f48e790a965001819c6f0e02e24ad6c2"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showRuntimeDiagnostics",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.showRuntimeDiagnostics",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(diagnostics []AgentSessionRuntimeDiagnostic)"
+      },
+      "shapeHash": "sha256:f831f87921f107a2e6a016cc8d2692e2450dd4f8f637b4a8adc20853ff3c498d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showScopedModels",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.showScopedModels",
@@ -276902,17 +277430,6 @@
         "type": "func(newEntries []ChangelogEntry, extensionUpdates []extensionChangelogUpdate)"
       },
       "shapeHash": "sha256:d0f92246361a6bb40bc6b82b0dc54c405eff02c7dfe5d66f296f92269cefb4ba"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showStartupDiagnostics",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.showStartupDiagnostics",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.showStatus",
@@ -283757,17 +284274,6 @@
       "shapeHash": "sha256:edd532d1d68ae95410a862b39c3ca888a36d010f4e3ac49b121f2927c2dff107"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ReportDiagnostics",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "ReportDiagnostics",
-      "kind": "function",
-      "exported": true,
-      "shape": {
-        "type": "func(diagnostics []AgentSessionRuntimeDiagnostic)"
-      },
-      "shapeHash": "sha256:f831f87921f107a2e6a016cc8d2692e2450dd4f8f637b4a8adc20853ff3c498d"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#RequestAuthRuntime",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "RequestAuthRuntime",
@@ -287563,6 +288069,17 @@
       "shapeHash": "sha256:fb4e73137076f16d49ca19464b16aee3ff6926bbae9a0f825c437987ecc5bbeb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SessionSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "SessionSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SessionSelectorComponent.selectHighlighted",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "SessionSelectorComponent.selectHighlighted",
@@ -287726,6 +288243,17 @@
         "type": "func(i int, ch github.com/MichaelKinsy/PiG/tui.Component) bool"
       },
       "shapeHash": "sha256:277ff7b5c5e515dce03d0638755b0c3d44bfc2211eac1a9777a5fcbb5bc3287f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SessionSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "SessionSelectorComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SessionSelectorComponent.windowBufferLocked",
@@ -290621,6 +291149,17 @@
       "shapeHash": "sha256:758ce22e45dfdf6fc33e2741b087afb8b9e35741d39eddc28a737baffb4341cb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SettingsSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "SettingsSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SettingsSelectorComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "SettingsSelectorComponent.settledLocked",
@@ -290674,6 +291213,17 @@
         "type": "func(i int, ch github.com/MichaelKinsy/PiG/tui.Component) bool"
       },
       "shapeHash": "sha256:277ff7b5c5e515dce03d0638755b0c3d44bfc2211eac1a9777a5fcbb5bc3287f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SettingsSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "SettingsSelectorComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SettingsSelectorComponent.windowBufferLocked",
@@ -291776,6 +292326,17 @@
       "shapeHash": "sha256:758ce22e45dfdf6fc33e2741b087afb8b9e35741d39eddc28a737baffb4341cb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SteppedSubmenu.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "SteppedSubmenu.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SteppedSubmenu.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "SteppedSubmenu.settledLocked",
@@ -291829,6 +292390,17 @@
         "type": "func(i int, ch github.com/MichaelKinsy/PiG/tui.Component) bool"
       },
       "shapeHash": "sha256:277ff7b5c5e515dce03d0638755b0c3d44bfc2211eac1a9777a5fcbb5bc3287f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SteppedSubmenu.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "SteppedSubmenu.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#SteppedSubmenu.windowBufferLocked",
@@ -292766,6 +293338,17 @@
       "shapeHash": "sha256:758ce22e45dfdf6fc33e2741b087afb8b9e35741d39eddc28a737baffb4341cb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ThinkingSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ThinkingSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ThinkingSelectorComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "ThinkingSelectorComponent.settledLocked",
@@ -292819,6 +293402,17 @@
         "type": "func(i int, ch github.com/MichaelKinsy/PiG/tui.Component) bool"
       },
       "shapeHash": "sha256:277ff7b5c5e515dce03d0638755b0c3d44bfc2211eac1a9777a5fcbb5bc3287f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ThinkingSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ThinkingSelectorComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ThinkingSelectorComponent.windowBufferLocked",
@@ -293613,6 +294207,17 @@
       "shapeHash": "sha256:758ce22e45dfdf6fc33e2741b087afb8b9e35741d39eddc28a737baffb4341cb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#TrustSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "TrustSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#TrustSelectorComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "TrustSelectorComponent.settledLocked",
@@ -293671,6 +294276,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#TrustSelectorComponent.updateList",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "TrustSelectorComponent.updateList",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#TrustSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "TrustSelectorComponent.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -293908,6 +294524,17 @@
         "type": "func(bundle BugReportBundle, path string) (err error)"
       },
       "shapeHash": "sha256:e73fa5c3c64f2dca241f8bc36ec0339b81fa682d518a54417fc3055a3b55d770"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#WriteDiagnosticsToStderr",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "WriteDiagnosticsToStderr",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(diagnostics []AgentSessionRuntimeDiagnostic)"
+      },
+      "shapeHash": "sha256:f831f87921f107a2e6a016cc8d2692e2450dd4f8f637b4a8adc20853ff3c498d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#WriteRawStdout",
@@ -302182,6 +302809,17 @@
       "shapeHash": "sha256:758ce22e45dfdf6fc33e2741b087afb8b9e35741d39eddc28a737baffb4341cb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#earendilAnnouncementComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "earendilAnnouncementComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#earendilAnnouncementComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "earendilAnnouncementComponent.settledLocked",
@@ -302235,6 +302873,17 @@
         "type": "func(i int, ch github.com/MichaelKinsy/PiG/tui.Component) bool"
       },
       "shapeHash": "sha256:277ff7b5c5e515dce03d0638755b0c3d44bfc2211eac1a9777a5fcbb5bc3287f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#earendilAnnouncementComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "earendilAnnouncementComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#earendilAnnouncementComponent.windowBufferLocked",
@@ -305251,6 +305900,17 @@
       "shapeHash": "sha256:758ce22e45dfdf6fc33e2741b087afb8b9e35741d39eddc28a737baffb4341cb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#firstTimeSetupStartup.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "firstTimeSetupStartup.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#firstTimeSetupStartup.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "firstTimeSetupStartup.settledLocked",
@@ -305320,6 +305980,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#firstTimeSetupStartup.update",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "firstTimeSetupStartup.update",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#firstTimeSetupStartup.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "firstTimeSetupStartup.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -320794,6 +321465,17 @@
       "shapeHash": "sha256:3d07f1917e322a6e88479773987d9cf596405bf564f9de0a84e5a3590fca4f1c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "radiusLoginMenu.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "radiusLoginMenu.settledLocked",
@@ -320852,6 +321534,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.updateList",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "radiusLoginMenu.updateList",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#radiusLoginMenu.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "radiusLoginMenu.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -349834,6 +350527,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AssistantMessageComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AssistantMessageComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#AssistantMessageComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "AssistantMessageComponent.settledLocked",
@@ -349947,6 +350651,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#AssistantMessageComponent.updateContent",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "AssistantMessageComponent.updateContent",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AssistantMessageComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AssistantMessageComponent.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -350593,6 +351308,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AuthURL.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AuthURL.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#AuthURL.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "AuthURL.settledLocked",
@@ -350657,6 +351383,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#AuthURL.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "AuthURL.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#AuthURL.windowBufferLocked",
@@ -351462,6 +352199,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#BashExecutionComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "BashExecutionComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#BashExecutionComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "BashExecutionComponent.settledLocked",
@@ -351531,6 +352279,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#BashExecutionComponent.updateDisplay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "BashExecutionComponent.updateDisplay",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#BashExecutionComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "BashExecutionComponent.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -352122,6 +352881,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#BorderedLoader.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "BorderedLoader.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#BorderedLoader.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "BorderedLoader.settledLocked",
@@ -352175,6 +352945,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#BorderedLoader.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "BorderedLoader.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#BorderedLoader.windowBufferLocked",
@@ -352337,9 +353118,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
+        "type": "func(width int, parts [][]string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
+      "shapeHash": "sha256:75b371872d5d2e70644c802364524e128a51ca4b0a15d6eff864eeff4f00d969"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Box.notifyOwner",
@@ -352364,6 +353145,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Box.sealCacheLines",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Box.sealCacheLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Box.surfaceInvalidation",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "Box.surfaceInvalidation",
@@ -352373,6 +353165,17 @@
         "type": "func() *invalidatable"
       },
       "shapeHash": "sha256:deb652e2c386b2f7bbe2a3d20f7a94ca27a85b0e80bd235e59dd8d917a9391f3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Box.verifyCacheLines",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Box.verifyCacheLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#BranchSummaryMessage",
@@ -352568,9 +353371,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
+        "type": "func(width int, parts [][]string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
+      "shapeHash": "sha256:75b371872d5d2e70644c802364524e128a51ca4b0a15d6eff864eeff4f00d969"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#BranchSummaryMessageComponent.notifyOwner",
@@ -352595,6 +353398,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#BranchSummaryMessageComponent.sealCacheLines",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "BranchSummaryMessageComponent.sealCacheLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#BranchSummaryMessageComponent.surfaceInvalidation",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "BranchSummaryMessageComponent.surfaceInvalidation",
@@ -352609,6 +353423,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#BranchSummaryMessageComponent.updateDisplay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "BranchSummaryMessageComponent.updateDisplay",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#BranchSummaryMessageComponent.verifyCacheLines",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "BranchSummaryMessageComponent.verifyCacheLines",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -353767,9 +354592,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
+        "type": "func(width int, parts [][]string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
+      "shapeHash": "sha256:75b371872d5d2e70644c802364524e128a51ca4b0a15d6eff864eeff4f00d969"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#CompactionSummaryMessageComponent.notifyOwner",
@@ -353794,6 +354619,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#CompactionSummaryMessageComponent.sealCacheLines",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "CompactionSummaryMessageComponent.sealCacheLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#CompactionSummaryMessageComponent.surfaceInvalidation",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "CompactionSummaryMessageComponent.surfaceInvalidation",
@@ -353808,6 +354644,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#CompactionSummaryMessageComponent.updateDisplay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "CompactionSummaryMessageComponent.updateDisplay",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#CompactionSummaryMessageComponent.verifyCacheLines",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "CompactionSummaryMessageComponent.verifyCacheLines",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -354399,6 +355246,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ConfigSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ConfigSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ConfigSelectorComponent.selectFirstItem",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ConfigSelectorComponent.selectFirstItem",
@@ -354474,6 +355332,17 @@
         "type": "func(item *ResourceItem, enabled bool)"
       },
       "shapeHash": "sha256:d45d539ba5834e18846e2fbff489e2cddd38bbd6ab38268e929739a0cbe10840"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ConfigSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ConfigSelectorComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ConfigSelectorComponent.windowBufferLocked",
@@ -354982,6 +355851,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Container.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Container.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Container.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "Container.settledLocked",
@@ -355035,6 +355915,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Container.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Container.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Container.windowBufferLocked",
@@ -355719,6 +356610,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#CustomMessageComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "CustomMessageComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#CustomMessageComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "CustomMessageComponent.settledLocked",
@@ -355772,6 +356674,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#CustomMessageComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "CustomMessageComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#CustomMessageComponent.windowBufferLocked",
@@ -358755,6 +359668,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionInputComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ExtensionInputComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionInputComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ExtensionInputComponent.settledLocked",
@@ -358808,6 +359732,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionInputComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ExtensionInputComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionInputComponent.windowBufferLocked",
@@ -359525,6 +360460,17 @@
       "shapeHash": "sha256:3d07f1917e322a6e88479773987d9cf596405bf564f9de0a84e5a3590fca4f1c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ExtensionSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionSelectorComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ExtensionSelectorComponent.settledLocked",
@@ -359583,6 +360529,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionSelectorComponent.updateList",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ExtensionSelectorComponent.updateList",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ExtensionSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ExtensionSelectorComponent.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -361153,6 +362110,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#HStack.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "HStack.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#HStack.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "HStack.settledLocked",
@@ -361206,6 +362174,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#HStack.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "HStack.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#HStack.windowBufferLocked",
@@ -363177,6 +364156,17 @@
       "shapeHash": "sha256:4133273acc40beab81cec0992bfed90db1c47a216c95d3f2e6adcc05e5ac6b3c"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#LayoutRenderCache",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "LayoutRenderCache",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "LayoutRenderCache"
+      },
+      "shapeHash": "sha256:94ed330633dc1d042c1487269b3448b3ceb1a7d945645216986b73140651d137"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#LayoutViewport",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "LayoutViewport",
@@ -364354,6 +365344,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#LoginDialogComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "LoginDialogComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#LoginDialogComponent.setDeviceCodeStatusLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "LoginDialogComponent.setDeviceCodeStatusLocked",
@@ -364429,6 +365430,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#LoginDialogComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "LoginDialogComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#LoginDialogComponent.windowBufferLocked",
@@ -366092,6 +367104,17 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ModelSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorComponent.selectHighlighted",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ModelSelectorComponent.selectHighlighted",
@@ -366172,6 +367195,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorComponent.updateList",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ModelSelectorComponent.updateList",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ModelSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ModelSelectorComponent.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -368226,6 +369260,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#OAuthSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "OAuthSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#OAuthSelectorComponent.selectedBrandStyle",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "OAuthSelectorComponent.selectedBrandStyle",
@@ -368295,6 +369340,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#OAuthSelectorComponent.updateList",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "OAuthSelectorComponent.updateList",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#OAuthSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "OAuthSelectorComponent.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -369904,9 +370960,9 @@
       "kind": "function",
       "exported": true,
       "shape": {
-        "type": "func(root Component, width int, height int, requestRender func()) LayoutFrame"
+        "type": "func(root Component, width int, height int, requestRender func(), reusableOutput ...LayoutRenderCache) LayoutFrame"
       },
-      "shapeHash": "sha256:65192c3eba0bb3bd52c8f0751699d37cd0d1e0c98c5f7029232411a818a7d2bd"
+      "shapeHash": "sha256:778afbee3154c3b530c7b1a705483e2536b635286b04bfc2070fe7f796845aa1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#RenderOverflowError",
@@ -371020,6 +372076,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ScopedModelsList.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ScopedModelsList.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ScopedModelsList.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ScopedModelsList.settledLocked",
@@ -371089,6 +372156,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#ScopedModelsList.updateList",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ScopedModelsList.updateList",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ScopedModelsList.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ScopedModelsList.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -371922,6 +373000,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ScrollView.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ScrollView.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ScrollView.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ScrollView.settledLocked",
@@ -371986,6 +373075,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ScrollView.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ScrollView.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ScrollView.windowBufferLocked",
@@ -373011,6 +374111,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#SelectSubmenuComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "SelectSubmenuComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#SelectSubmenuComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "SelectSubmenuComponent.settledLocked",
@@ -373064,6 +374175,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#SelectSubmenuComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "SelectSubmenuComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#SelectSubmenuComponent.windowBufferLocked",
@@ -374331,6 +375453,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ShowImagesSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ShowImagesSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ShowImagesSelectorComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ShowImagesSelectorComponent.settledLocked",
@@ -374384,6 +375517,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ShowImagesSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ShowImagesSelectorComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ShowImagesSelectorComponent.windowBufferLocked",
@@ -374579,9 +375723,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(width int, childLines []string, hasBg bool, bgSample string) bool"
+        "type": "func(width int, parts [][]string, hasBg bool, bgSample string) bool"
       },
-      "shapeHash": "sha256:878868d5d4b6d894940642bfcabec50aa075a7894d402a18a3543700b076243f"
+      "shapeHash": "sha256:75b371872d5d2e70644c802364524e128a51ca4b0a15d6eff864eeff4f00d969"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#SkillInvocationMessageComponent.notifyOwner",
@@ -374606,6 +375750,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#SkillInvocationMessageComponent.sealCacheLines",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "SkillInvocationMessageComponent.sealCacheLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#SkillInvocationMessageComponent.surfaceInvalidation",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "SkillInvocationMessageComponent.surfaceInvalidation",
@@ -374620,6 +375775,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#SkillInvocationMessageComponent.updateDisplay",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "SkillInvocationMessageComponent.updateDisplay",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#SkillInvocationMessageComponent.verifyCacheLines",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "SkillInvocationMessageComponent.verifyCacheLines",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -375299,6 +376465,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Stack.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Stack.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Stack.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "Stack.settledLocked",
@@ -375352,6 +376529,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Stack.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Stack.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Stack.windowBufferLocked",
@@ -379182,6 +380370,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ThemeSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ThemeSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ThemeSelectorComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ThemeSelectorComponent.settledLocked",
@@ -379235,6 +380434,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ThemeSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ThemeSelectorComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ThemeSelectorComponent.windowBufferLocked",
@@ -380799,6 +382009,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ToolExecutionComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ToolExecutionComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#ToolExecutionComponent.setHeaderArgs",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ToolExecutionComponent.setHeaderArgs",
@@ -380879,6 +382100,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#ToolExecutionComponent.updateDefinition",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "ToolExecutionComponent.updateDefinition",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#ToolExecutionComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "ToolExecutionComponent.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -382361,6 +383593,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TreeSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TreeSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TreeSelectorComponent.setFilterMode",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TreeSelectorComponent.setFilterMode",
@@ -382425,6 +383668,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TreeSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TreeSelectorComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TreeSelectorComponent.visibleLines",
@@ -383802,6 +385056,17 @@
       "shapeHash": "sha256:63c1acc367a73561db377dfda6d21c3016248971290d89d0b4e3f9841f6d3091"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.armRenderLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.armRenderLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(force bool)"
+      },
+      "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.autoScrollSelection",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.autoScrollSelection",
@@ -384061,9 +385326,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(force bool) bool"
+        "type": "func(want uint32) bool"
       },
-      "shapeHash": "sha256:ce84ad4296791bd6b729f7068b0f780dc019f005493b48d792f0ded4fe01b508"
+      "shapeHash": "sha256:3de0fc5ab4220d24b1c64fbe32e6448d2029dd3e2be59c2b5e3182b2adb0b729"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.deferRenderWhileHeld",
@@ -385111,6 +386376,17 @@
       "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.requestViewRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.requestViewRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.resetRenderStateLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.resetRenderStateLocked",
@@ -385241,6 +386517,17 @@
         "type": "func(direction int)"
       },
       "shapeHash": "sha256:048fa808af31faea66f07e7beb68759c51bdae9b613f4bbf8b64af764afa9b27"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.searchHighlightRanges",
@@ -385532,6 +386819,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.updateSize",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiAltScreen.updateSize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiAltScreen.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiAltScreen.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -386596,6 +387894,17 @@
       "shapeHash": "sha256:63c1acc367a73561db377dfda6d21c3016248971290d89d0b4e3f9841f6d3091"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.armRenderLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.armRenderLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(force bool)"
+      },
+      "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.cancelPendingRenderLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.cancelPendingRenderLocked",
@@ -386767,9 +388076,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(force bool) bool"
+        "type": "func(want uint32) bool"
       },
-      "shapeHash": "sha256:ce84ad4296791bd6b729f7068b0f780dc019f005493b48d792f0ded4fe01b508"
+      "shapeHash": "sha256:3de0fc5ab4220d24b1c64fbe32e6448d2029dd3e2be59c2b5e3182b2adb0b729"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.deferRenderWhileHeld",
@@ -387476,6 +388785,17 @@
       "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.requestViewRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.requestViewRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.resolveFakeCursors",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.resolveFakeCursors",
@@ -387545,6 +388865,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.scheduleRenderLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.scheduleRenderLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.sealPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -387688,6 +389019,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.updateSize",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiMainScreen.updateSize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiMainScreen.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiMainScreen.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -388950,6 +390292,17 @@
       "shapeHash": "sha256:63c1acc367a73561db377dfda6d21c3016248971290d89d0b4e3f9841f6d3091"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.armRenderLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.armRenderLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(force bool)"
+      },
+      "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.build",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.build",
@@ -389154,9 +390507,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(force bool) bool"
+        "type": "func(want uint32) bool"
       },
-      "shapeHash": "sha256:ce84ad4296791bd6b729f7068b0f780dc019f005493b48d792f0ded4fe01b508"
+      "shapeHash": "sha256:3de0fc5ab4220d24b1c64fbe32e6448d2029dd3e2be59c2b5e3182b2adb0b729"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.deferRenderWhileHeld",
@@ -390006,6 +391359,17 @@
       "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.requestViewRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.requestViewRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.resolveFakeCursors",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.resolveFakeCursors",
@@ -390075,6 +391439,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.scheduleRenderLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.scheduleRenderLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.sealPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -390273,6 +391648,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.updateSize",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "TuiSurface.updateSize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#TuiSurface.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "TuiSurface.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -391062,6 +392448,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "UserMessageComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "UserMessageComponent.settledLocked",
@@ -391115,6 +392512,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "UserMessageComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageComponent.windowBufferLocked",
@@ -391777,6 +393185,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageSelectorComponent.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "UserMessageSelectorComponent.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageSelectorComponent.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "UserMessageSelectorComponent.settledLocked",
@@ -391830,6 +393249,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageSelectorComponent.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "UserMessageSelectorComponent.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#UserMessageSelectorComponent.windowBufferLocked",
@@ -392349,6 +393779,17 @@
       "shapeHash": "sha256:c68c6aa6f45c4c05505a10ee02c7d42786b7dcc6511a0db2c2b09e3cd3aebab8"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#VStack.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "VStack.sealPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#VStack.settledLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "VStack.settledLocked",
@@ -392402,6 +393843,17 @@
         "type": "func(i int, ch Component) bool"
       },
       "shapeHash": "sha256:41157f66c8c690913bbaea73af5505264ac8aec5db2b2a78c938f3a37d0b5361"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#VStack.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "VStack.verifyPublicLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#VStack.windowBufferLocked",
@@ -397742,6 +399194,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#frameRenderRequestNormal",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "frameRenderRequestNormal",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "uint32"
+      },
+      "shapeHash": "sha256:e2f4ed83633600c75852f5e9011eb898ae169826a443cebea091a9781a100848"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#frameRenderRequestView",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "frameRenderRequestView",
       "kind": "constant",
       "exported": false,
       "shape": {
@@ -409674,6 +411137,17 @@
       "shapeHash": "sha256:3761b936ed8c9cb76f1df40a5377f0fa44b7ad0da9aeb24658ce06eeb03ed42d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#sameChildLines",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "sameChildLines",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a []string, b []string) bool"
+      },
+      "shapeHash": "sha256:67180bcb3226514aa3ee74a6380dec7d0b8455c0e74b001bfd0f0c41d64f641f"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#sameComponent",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "sameComponent",
@@ -414723,6 +416197,17 @@
       "shapeHash": "sha256:63c1acc367a73561db377dfda6d21c3016248971290d89d0b4e3f9841f6d3091"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.armRenderLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.armRenderLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(force bool)"
+      },
+      "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.cancelPendingRenderLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.cancelPendingRenderLocked",
@@ -414872,9 +416357,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(force bool) bool"
+        "type": "func(want uint32) bool"
       },
-      "shapeHash": "sha256:ce84ad4296791bd6b729f7068b0f780dc019f005493b48d792f0ded4fe01b508"
+      "shapeHash": "sha256:3de0fc5ab4220d24b1c64fbe32e6448d2029dd3e2be59c2b5e3182b2adb0b729"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.deferRenderWhileHeld",
@@ -415471,6 +416956,17 @@
       "shapeHash": "sha256:c4a8f726ad8288230457066521e6c3e2f61046b104e7ebcbeb00b2f9c8d2d2dc"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.requestViewRender",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.requestViewRender",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.resolveFakeCursors",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.resolveFakeCursors",
@@ -415540,6 +417036,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.scheduleRenderLocked",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.scheduleRenderLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.sealPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.sealPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -415672,6 +417179,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.updateSize",
       "package": "github.com/MichaelKinsy/PiG/tui",
       "name": "tuiBase.updateSize",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#tuiBase.verifyPublicLocked",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "tuiBase.verifyPublicLocked",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -423147,6 +424665,17 @@
         "type": "untyped int"
       },
       "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#printableASCIIPrefix",
+      "package": "github.com/MichaelKinsy/PiG/tui/widthx",
+      "name": "printableASCIIPrefix",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(s string) int"
+      },
+      "shapeHash": "sha256:2d54f34d6d9edb2f01d7606099f6fec545b0463378cec9cc94244c330f4d6fbc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui/widthx#propRanges",
