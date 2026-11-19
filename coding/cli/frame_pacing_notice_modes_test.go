@@ -11,8 +11,8 @@ import (
 	"testing"
 )
 
-// What two runs of one mode never share: Session ids and times.
-var framePacingModesVolatile = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z|"timestamp":[0-9]+`)
+// What two runs of one mode never share: Session ids and times, the turn's measured duration among them (durationMs of the assistant message, whole milliseconds from the start of the request to its final message, as Pi measures it: event-stream.ts:99-129). The faux model's turn takes 0 ms on a quiet host and 1 ms or more when the host is busy.
+var framePacingModesVolatile = regexp.MustCompile(`[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z|"timestamp":[0-9]+|"durationMs":[0-9]+`)
 
 // Print, JSON and RPC mode read neither terminal.framePacing nor terminal.screenWriter and draw no frame, so the notice interactive mode shows when the adaptive frame pacing is selected without the screen writer (D625, codingagent showFramePacingNotice) is not theirs: such a run writes the bytes of a run that selects nothing, on stdout and on stderr, whether the settings file or PIG_FRAME_PACING selects the pacing.
 func TestFramePacingNoticeStaysOutOfPrintJSONAndRPC(t *testing.T) {
@@ -73,5 +73,26 @@ func TestFramePacingNoticeStaysOutOfPrintJSONAndRPC(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// The end of the assistant's message in the json subtest's two runs that select nothing, as the red of 2026-11-18 printed them while the host's load was 40 to 95: the first run's turn took 1 ms and the second's 0 ms; a starved run measured 24 ms. The log had replaced each run's "timestamp" with "-", so each run's own stands here. The expression leaves out both times and nothing beside them: the members around them stay, in their places, and so do members that only end in the same letters or hold a value that is not a count of milliseconds.
+func TestFramePacingModesVolatileCoversTheTimes(t *testing.T) {
+	end := func(timestamp, duration string) string {
+		return `{"type":"message_end","message":{"role":"assistant","content":[{"type":"text","text":"42"}],"api":"test-faux","provider":"test-faux","model":"faux-1","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":` + timestamp + `,"durationMs":` + duration + `,"thinkingLevel":"off"}}`
+	}
+	first := framePacingModesVolatile.ReplaceAllString(end("1794513125383", "1"), "-")
+	for _, later := range []struct{ timestamp, duration string }{{"1794513129017", "0"}, {"1794513129017", "24"}, {"1794513129017", "1"}} {
+		if got := framePacingModesVolatile.ReplaceAllString(end(later.timestamp, later.duration), "-"); got != first {
+			t.Errorf("two runs that differ only in their times compare as different:\n%s\n%s", first, got)
+		}
+	}
+	if want := `"stopReason":"stop",-,-,"thinkingLevel":"off"}}`; !strings.HasSuffix(first, want) {
+		t.Errorf("more than the times is left out of the comparison, or one of them is gone: %s\nwant it to end with %s", first, want)
+	}
+	for _, kept := range []string{`"durationMs":"x"`, `"totalDurationMs":5`, `"durationMs":null`} {
+		if got := framePacingModesVolatile.ReplaceAllString(kept, "-"); got != kept {
+			t.Errorf("%s is not a time and stays in the comparison, but it became %s", kept, got)
+		}
 	}
 }
