@@ -358,7 +358,7 @@ var termKnownScenarios = []termScenario{
 // termLeakingOracleScenarios are the fixture scenarios (indexes in testdata/alt-screen-oracle.json.gz) left out of the A == B equality: a
 // component renders a line wider than the screen in each, the clipped line leaks its SGR, and some engine shows other screens for A and B
 // as a result. TestAltScreenTermEngineCorpus records how each is shown to differ only by the leak.
-var termLeakingOracleScenarios = []int{173, 485}
+var termLeakingOracleScenarios = []int{173}
 
 // termRandomMix is a seeded mix of the edits TestAltScreenScrolledFramesShowEveryRow makes: lines added, extended, deleted, inserted and
 // changed (with wide text), the viewport scrolled, and the rows below the transcript changed.
@@ -466,8 +466,8 @@ func TestAltScreenTermEngineCorpus(t *testing.T) {
 	// do not give a terminal that size.
 	//
 	// Scenarios whose components render a line wider than the screen leak SGR (known-clipped-sgr-leak), and most of them still show the same
-	// screen in A and B and stay in the equality as they are. The two that show other screens in some engine (termLeakingOracleScenarios) are
-	// left out of it, and each is shown to differ only by the leak:
+	// screen in A and B and stay in the equality as they are. The one that shows other screens in some engine (termLeakingOracleScenarios) is
+	// left out of it, and it is shown to differ only by the leak:
 	//   - oracle-NNN-closed: the same scenario with every rendered line wider than the screen clipped to it and closed with a reset,
 	//     identically in A and B (a test-only transform of the lines the components render). It is in the equality: A and B are equal in all
 	//     five engines once the leak is closed, and a difference left over would be a finding.
