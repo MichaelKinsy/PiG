@@ -36,9 +36,9 @@ func dropLoaderExtension() extension.Extension {
 }
 
 func TestAgentSessionMCPToolsAfterResumeAndReloadKeepsRestoredToolsWhenAnExtensionDeactivatesOnlyItsOwnToolBeforeTheyRegister(t *testing.T) {
-	first := setupMCPResume(t, nil, []func() extension.Extension{dropLoaderExtension}, 0)
+	first := setupMCPResume(t, nil, []func() extension.Extension{dropLoaderExtension}, nil)
 	first.loadDocsSearch(t)
-	second := setupMCPResume(t, first.session.Inner(), []func() extension.Extension{dropLoaderExtension}, 0)
+	second := setupMCPResume(t, first.session.Inner(), []func() extension.Extension{dropLoaderExtension}, nil)
 	mcpWaitFor(t, "mcp__docs__search to be registered", func() bool { return second.hasTool("mcp__docs__search") })
 	mcpWaitFor(t, "mcp__docs__search to be active", func() bool {
 		return slices.Contains(second.session.ActiveToolNames(), "mcp__docs__search")
@@ -49,7 +49,7 @@ func TestAgentSessionMCPToolsAfterResumeAndReloadKeepsRestoredToolsWhenAnExtensi
 }
 
 func TestAgentSessionMCPToolsAfterResumeAndReloadKeepsToolsToolSearchLoadedAfterReloadWhenAnExtensionDeactivatesOnlyItsOwnTool(t *testing.T) {
-	h := setupMCPResume(t, nil, []func() extension.Extension{dropLoaderExtension}, 0)
+	h := setupMCPResume(t, nil, []func() extension.Extension{dropLoaderExtension}, nil)
 	h.loadDocsSearch(t)
 
 	h.reload(t)

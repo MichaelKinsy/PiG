@@ -7,7 +7,6 @@ import (
 	"slices"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -47,8 +46,10 @@ type mcpResumeSession struct {
 }
 
 // setupMCPResume is setup(sessionManager, extensionFactories, initializeDelayMs) of the test: a deferred `docs` server that
-// answers `initialize` after initializeDelay. sessionManager, when set, is the session the new Session resumes.
-func setupMCPResume(t *testing.T, sessionManager *icodingagent.Session, extensionFactories []func() extension.Extension, initializeDelay time.Duration) *mcpResumeSession {
+// answers `initialize` at once, or, with a non-nil initializeGate, once the test closes it (a delay is a wall-clock time that a
+// slow prompt outlasts, so a test that orders a prompt against the connect holds the answer with the gate). sessionManager,
+// when set, is the session the new Session resumes.
+func setupMCPResume(t *testing.T, sessionManager *icodingagent.Session, extensionFactories []func() extension.Extension, initializeGate <-chan struct{}) *mcpResumeSession {
 	t.Helper()
 	s := &mcpSession{calls: &mcpCallLog{}, notes: &mcpNotifications{}}
 	connected := &mcpConnectedNames{}
@@ -59,7 +60,7 @@ func setupMCPResume(t *testing.T, sessionManager *icodingagent.Session, extensio
 		LoadConfig: func(context.Context) mcpext.LoadedMcpConfig { return mcpext.LoadedMcpConfig{Servers: servers} },
 		CreateTransport: func(entry mcpext.McpServerEntry, _ string, _ mcp.AuthProvider) (mcp.Transport, error) {
 			connected.add(entry.Name)
-			client, server := mcpFakeServer(t, s.calls, func() []map[string]any { return mcpServerTools }, false, mcpFakeServerOptions{initializeDelay: initializeDelay})
+			client, server := mcpFakeServer(t, s.calls, func() []map[string]any { return mcpServerTools }, false, mcpFakeServerOptions{initializeGate: initializeGate})
 			s.mu.Lock()
 			s.servers = append(s.servers, server)
 			s.mu.Unlock()
@@ -128,11 +129,11 @@ func (s *mcpResumeSession) loadDocsSearch(t *testing.T) {
 }
 
 func TestAgentSessionMCPToolsAfterResumeAndReloadDeclaresToolsToolSearchLoadedAgainOnResumeOnceTheirServerConnects(t *testing.T) {
-	first := setupMCPResume(t, nil, nil, 0)
+	first := setupMCPResume(t, nil, nil, nil)
 	first.loadDocsSearch(t)
 
 	// The session restores its tools before the server connects again.
-	second := setupMCPResume(t, first.session.Inner(), nil, 0)
+	second := setupMCPResume(t, first.session.Inner(), nil, nil)
 	mcpWaitFor(t, "mcp__docs__search to be active", func() bool {
 		return slices.Contains(second.session.ActiveToolNames(), "mcp__docs__search")
 	})
@@ -161,7 +162,7 @@ func TestAgentSessionMCPToolsAfterResumeAndReloadRestoredToolsWhenAnExtensionSet
 		{name: "keeps", loadout: nil, kept: true},
 	} {
 		t.Run(tc.name+" restored tools when an extension sets the loadout before they register", func(t *testing.T) {
-			first := setupMCPResume(t, nil, nil, 0)
+			first := setupMCPResume(t, nil, nil, nil)
 			first.loadDocsSearch(t)
 
 			// Like plan mode restoring its tools, or an extension adding one to the current loadout.
@@ -182,7 +183,7 @@ func TestAgentSessionMCPToolsAfterResumeAndReloadRestoredToolsWhenAnExtensionSet
 					},
 				}
 			}
-			second := setupMCPResume(t, first.session.Inner(), []func() extension.Extension{setLoadout}, 0)
+			second := setupMCPResume(t, first.session.Inner(), []func() extension.Extension{setLoadout}, nil)
 			mcpWaitFor(t, "mcp__docs__search to be registered", func() bool { return second.hasTool("mcp__docs__search") })
 
 			if got := slices.Contains(second.session.ActiveToolNames(), "mcp__docs__search"); got != tc.kept {
@@ -193,13 +194,17 @@ func TestAgentSessionMCPToolsAfterResumeAndReloadRestoredToolsWhenAnExtensionSet
 }
 
 func TestAgentSessionMCPToolsAfterResumeAndReloadDoesNotActivateRestoredToolsThatRegisterAfterTheNextPromptStarts(t *testing.T) {
-	first := setupMCPResume(t, nil, nil, 0)
+	first := setupMCPResume(t, nil, nil, nil)
 	first.loadDocsSearch(t)
 
-	// The first prompt does not wait for servers without direct tools.
-	second := setupMCPResume(t, first.session.Inner(), nil, 200*time.Millisecond)
+	// The first prompt does not wait for servers without direct tools. Pi's test answers `initialize` after 200 ms
+	// (agent-session-mcp.test.ts:1253); the gate holds the answer until the prompt has returned, since a prompt that starts
+	// later than that after the request would find the server connected and its restored tool registered, and so active.
+	gate := make(chan struct{})
+	second := setupMCPResume(t, first.session.Inner(), nil, gate)
 	second.respond(mcpDone())
 	second.prompt(t, "go")
+	close(gate)
 	mcpWaitFor(t, "mcp__docs__search to be registered", func() bool { return second.hasTool("mcp__docs__search") })
 
 	if slices.Contains(second.session.ActiveToolNames(), "mcp__docs__search") {
@@ -208,7 +213,7 @@ func TestAgentSessionMCPToolsAfterResumeAndReloadDoesNotActivateRestoredToolsTha
 }
 
 func TestAgentSessionMCPToolsAfterResumeAndReloadDeclaresToolsToolSearchLoadedAgainAfterReload(t *testing.T) {
-	h := setupMCPResume(t, nil, nil, 0)
+	h := setupMCPResume(t, nil, nil, nil)
 	h.loadDocsSearch(t)
 
 	h.reload(t)

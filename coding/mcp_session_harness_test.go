@@ -72,11 +72,16 @@ func (l *mcpCallLog) all() []string {
 	return slices.Clone(l.calls)
 }
 
-// mcpFakeServerOptions are the options of createFakeServer: the server instructions and the delay of the answer to
-// `initialize`; a negative delay never answers.
+// mcpFakeServerOptions are the options of createFakeServer: the server instructions, the delay of the answer to
+// `initialize` (a negative delay never answers) and a gate that holds the answer.
 type mcpFakeServerOptions struct {
 	instructions    string
 	initializeDelay time.Duration
+	// initializeGate, when set, holds the answer to `initialize` until it is closed; the delay is then not used. A delay cannot
+	// force "the prompt starts before the server connects": its timer fires on its own thread as soon as the time has passed,
+	// so a prompt that starts later than that (a loaded host) finds the server connected. The test that orders a prompt
+	// against the connect closes the gate at the point it wants the server to answer.
+	initializeGate <-chan struct{}
 }
 
 // mcpFakeServer is createFakeServer of agent-session-mcp.test.ts: a minimal MCP server over an in-memory transport that
@@ -143,6 +148,14 @@ func mcpFakeServer(t testing.TB, calls *mcpCallLog, listTools func() []map[strin
 			_ = server.Send(context.Background(), mcp.NewResult(*message.ID, raw))
 		}
 		switch {
+		case message.Method == "initialize" && opts.initializeGate != nil:
+			go func() {
+				select {
+				case <-opts.initializeGate:
+					send(respond(message))
+				case <-t.Context().Done():
+				}
+			}()
 		case message.Method != "initialize" || opts.initializeDelay == 0:
 			// Upstream answers in a microtask, in arrival order: the request is handled here, in the delivery order, and only
 			// the reply leaves on its own goroutine (a listener must not Send to the transport that delivers to it).
@@ -208,6 +221,7 @@ type mcpSessionOptions struct {
 	autoEnableCodemode *bool
 	name               string
 	initializeDelay    time.Duration
+	initializeGate     <-chan struct{}
 	startupWait        *int
 	// config replaces the single configured server, for the tests of servers registered by extensions.
 	config *[]mcpext.McpServerEntry
@@ -276,7 +290,7 @@ func newMCPSession(t *testing.T, exposure extension.McpExposure, listTools func(
 	createTransport := opts.createTransport
 	if createTransport == nil && !opts.realTransport {
 		createTransport = func(mcpext.McpServerEntry, string, mcp.AuthProvider) (mcp.Transport, error) {
-			client, server := mcpFakeServer(t, s.calls, listTools, opts.resources, mcpFakeServerOptions{instructions: opts.instructions, initializeDelay: opts.initializeDelay})
+			client, server := mcpFakeServer(t, s.calls, listTools, opts.resources, mcpFakeServerOptions{instructions: opts.instructions, initializeDelay: opts.initializeDelay, initializeGate: opts.initializeGate})
 			s.mu.Lock()
 			s.servers = append(s.servers, server)
 			s.mu.Unlock()
