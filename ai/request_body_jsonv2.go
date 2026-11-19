@@ -101,12 +101,85 @@ func (s *stringSplice) encode(payload any, marshal func(any) ([]byte, error)) ([
 	if _, ok := payload.(requestStringEncoder); !ok {
 		return nil, false, nil
 	}
-	tokens := jsonv2.JoinMarshalers(jsonv2.MarshalToFunc(s.tokenString), jsonv2.MarshalToFunc(s.tokenRaw))
-	if messages, ok := payload.(requestMessageSplicer); ok && s.cache.messages != nil {
-		tokens = jsonv2.JoinMarshalers(messages.spliceMessages(s), tokens)
+	messages, withMessages := payload.(requestMessageSplicer)
+	withMessages = withMessages && s.cache.messages != nil
+	if kind := reflect.TypeOf(payload); s.encoding.options == nil || s.encoding.payload != kind || s.encoding.withMessages != withMessages {
+		tokens := jsonv2.JoinMarshalers(jsonv2.MarshalToFunc(s.tokenString), jsonv2.MarshalToFunc(s.tokenRaw))
+		if withMessages {
+			tokens = jsonv2.JoinMarshalers(messages.spliceMessages(s), tokens)
+		}
+		s.encoding = spliceEncoding{payload: kind, withMessages: withMessages, options: jsonv2.JoinOptions(requestBodyOptions, jsonv2.WithMarshalers(tokens))}
 	}
-	skeleton, err := encodeRequestBody(payload, jsonv2.JoinOptions(requestBodyOptions, jsonv2.WithMarshalers(tokens)))
+	skeleton, err := encodeRequestBody(payload, s.encoding.options)
 	return skeleton, true, err
+}
+
+// spliceEncoding is the options encode writes a payload under: the marshalers of the splice they were made for, which read what the request has put in it
+// (its cache, nonce and list of encodings) when they run, and the type cache the encoder fills as it meets each type of the payload. A splice kept for the next request
+// keeps them, so that request does not make them again, and a payload of another type, or one that takes the message cache where the last did not (or the reverse),
+// makes them again. The encoder makes a closure and a cache entry for each type it meets under options it has not seen: about 37 allocations of an anthropic request
+// and 39 of a completions request, and the entries are nodes of a hash trie with a seed of its own, so how many nodes a request allocated varied from request to request.
+// pig additive (D112): Pi's JSON.stringify keeps nothing between calls.
+type spliceEncoding struct {
+	payload      reflect.Type
+	withMessages bool
+	options      jsonv2.Options
+}
+
+// keptSplice holds the splice a request that succeeded left for the next request, at most one. A request that starts while a splice is kept takes it; a second request
+// that starts meanwhile finds none and makes its own, and of the two splices that come back the first to return is kept and the other dropped.
+var keptSplice struct {
+	mu   sync.Mutex
+	kept *stringSplice
+}
+
+// quotedEntryBytes is the size of one entry of a splice's list of encodings, the unit the bound on a kept splice counts in.
+var quotedEntryBytes = int(reflect.TypeFor[[]byte]().Size())
+
+// acquireSplice returns the kept splice, or a new one, for a request that reads cache, and takes it from the slot: until releaseSplice puts it back, no other request has it.
+// A kept splice holds no request's data (releaseSplice empties it), so what it hands out is a new splice with its encoding built.
+func acquireSplice(cache *quotedStringCache) *stringSplice {
+	keptSplice.mu.Lock()
+	splice := keptSplice.kept
+	keptSplice.kept = nil
+	keptSplice.mu.Unlock()
+	if splice == nil {
+		splice = new(stringSplice)
+	}
+	splice.cache, splice.nonce = cache, newSpliceNonce()
+	return splice
+}
+
+// releaseSplice empties the splice of everything its request put in it, and keeps it for the next request: its cache, nonce and list of encodings (the encodings themselves
+// are the cache's, the list is cleared so it holds none of them), the bytes of the last token and message record, the message copy of the marshalers and the walk's stack.
+// What stays is the splice's encoding (spliceEncoding), which holds no request's data, and the room of its buffers up to maxKeptRequestScratch (a splice with more is dropped, as
+// is one that arrives when another is kept already). Only a request that succeeded calls it: a request that returned an error or panicked leaves its splice to the collector.
+func releaseSplice(splice *stringSplice) {
+	clear(splice.quoted)
+	splice.quoted = splice.quoted[:0]
+	splice.cache, splice.nonce = nil, ""
+	clear(splice.tokenText[:cap(splice.tokenText)])
+	splice.tokenText = splice.tokenText[:0]
+	clear(splice.key.buf[:cap(splice.key.buf)])
+	clear(splice.key.keys[:cap(splice.key.keys)])
+	splice.key.reset()
+	splice.scratch.Reset()
+	splice.walking, splice.walkingBuf = nil, [walkingInline]walkedValue{}
+	if splice.scratch.Cap() > maxKeptRequestScratch || cap(splice.quoted)*quotedEntryBytes > maxKeptRequestScratch {
+		return
+	}
+	keptSplice.mu.Lock()
+	if keptSplice.kept == nil {
+		keptSplice.kept = splice
+	}
+	keptSplice.mu.Unlock()
+}
+
+// releaseKeptSplice drops the kept splice (ReleaseRequestCaches).
+func releaseKeptSplice() {
+	keptSplice.mu.Lock()
+	keptSplice.kept = nil
+	keptSplice.mu.Unlock()
 }
 
 // tokenString writes the token of a large string the cache can encode.
