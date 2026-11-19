@@ -51,6 +51,7 @@ func loadCarriedDependencies(root string) ([]carriedDependency, error) {
 	if _, err := os.Stat(script); os.IsNotExist(err) {
 		return nil, nil
 	}
+	//nolint:gosec // G204 (class a): program is literal node; the arguments are the repository's constant backports script path and the fixed --dependencies flag.
 	out, err := exec.Command("node", script, "--dependencies").Output()
 	if err != nil {
 		return nil, fmt.Errorf("list the dependencies %s carries: %w", backportsScript, err)
