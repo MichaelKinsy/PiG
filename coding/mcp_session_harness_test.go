@@ -55,6 +55,24 @@ var mcpServerTools = []map[string]any{
 	{"name": "shot", "description": "Returns an image.", "inputSchema": map[string]any{"type": "object", "properties": map[string]any{}}},
 }
 
+// mcpConnectedNames counts the connections of the fake server by server name (`connected` of the test).
+type mcpConnectedNames struct {
+	mu    sync.Mutex
+	names []string
+}
+
+func (c *mcpConnectedNames) add(name string) {
+	c.mu.Lock()
+	c.names = append(c.names, name)
+	c.mu.Unlock()
+}
+
+func (c *mcpConnectedNames) all() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.names)
+}
+
 type mcpCallLog struct {
 	mu    sync.Mutex
 	calls []string

@@ -149,7 +149,8 @@ func BenchmarkSessionReplacementPhases(b *testing.B) {
 // The factory hands the build's diagnostics to the Runtime, which keeps them for the process as Pi's AgentSessionRuntime does (agent-session-runtime.ts apply); a model fallback is one more warning in them (Pi c8c456c85c6e, main.ts createRuntime), and the option message stays only for the no-model guidance.
 // Pi: packages/coding-agent/src/main.ts:917-918 (the fallback warning pushed into the diagnostics); packages/coding-agent/src/core/agent-session-runtime.ts:109 (Runtime.diagnostics); packages/coding-agent/src/core/agent-session-runtime.ts:113 (Runtime.modelFallbackMessage).
 func TestSessionFactoryCarriesDiagnosticsAndModelFallbackToTheRuntime(t *testing.T) {
-	builder, cwd, agentDir := benchReplacementBuilder(t, 1)
+	// The subject, the diagnostics and the model fallback, needs no extension; one would add its own load diagnostic in a build that strips the Node extensions.
+	builder, cwd, agentDir := benchReplacementBuilder(t, 0)
 	ctx := context.Background()
 	build, err := builder.buildResources(ctx, cliBuildInput{CWD: cwd})
 	if err != nil {
