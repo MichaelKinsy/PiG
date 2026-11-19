@@ -172,17 +172,18 @@ func APIModuleStream(ctx context.Context, model *Model, stream func(context.Cont
 
 // apiModuleStreamAs is APIModuleStream for a module whose output message carries api, which is not the model's for every module (apiModuleOutputAPI).
 func apiModuleStreamAs(ctx context.Context, api API, model *Model, stream func(context.Context) (*AssistantMessageEventStream, error)) (*AssistantMessageEventStream, error) {
-	//portlint:allow clock the module's output literal takes Date.now() when its stream starts (lazy.ts:50 for setup); ai's clock seams are per-struct (oauth, bedrock backoff), none covers module streams
-	startedAt := time.Now().UnixMilli()
+	//portlint:allow clock the module's stream and its output literal take Date.now() and performance.now() when the module starts (event-stream.ts:98-99, google-generative-ai.ts:64 and :83; lazy.ts:50 for setup); ai's clock seams are per-struct (oauth, bedrock backoff), none covers module streams
+	started := time.Now()
 	inner, err := stream(ctx)
 	if err == nil {
 		return inner, nil
 	}
-	return apiModuleFailure(ctx, api, model, startedAt, err)
+	return apiModuleFailure(ctx, api, model, started, err)
 }
 
 // apiModuleFailure is the catch block of an API module's stream: the module's message ends its stream with the abort-aware stop reason. A lazySetupError or a missing model stays the returned error.
-func apiModuleFailure(ctx context.Context, api API, model *Model, startedAt int64, err error) (*AssistantMessageEventStream, error) {
+// started is the one reading of the clock at the module's call: it stamps the failed stream (wall time and monotonic reading) and then the message, so the message is timed from the call, as a module whose stream exists before its request is.
+func apiModuleFailure(ctx context.Context, api API, model *Model, started time.Time, err error) (*AssistantMessageEventStream, error) {
 	if _, setup := errors.AsType[*lazySetupError](err); setup || model == nil {
 		return nil, err
 	}
@@ -191,7 +192,8 @@ func apiModuleFailure(ctx context.Context, api API, model *Model, startedAt int6
 		reason = StopReasonAborted
 	}
 	builder := newObservedProviderBuilder(ctx, api, modelProviderID(model), model.ID)
-	builder.partial.Timestamp = startedAt
+	builder.stream.startedAt, builder.stream.startedMono = started.UnixMilli(), started
+	builder.partial.Timestamp = started.UnixMilli()
 	// google-generative-ai.ts:290 reports what its stream threw with formatProviderError(normalizeProviderError(error)), which names the
 	// cause of a fetch rejection. The request is made inside that try block, so a failure before the response headers is reported the
 	// same way as one after them (googleProvider.Stream sets the same on its own builder).

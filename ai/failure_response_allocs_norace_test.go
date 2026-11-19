@@ -11,8 +11,10 @@ import "testing"
 // with them (openai-completions, anthropic), 1 on google (the splice itself), none on openai-responses, which does not encode through a splice. Before that change the two
 // counts held a number that was not constant: each request made a type cache whose hash trie has a seed of its own, so a request allocated 0 to 3 nodes more or fewer, and the mean
 // of 200 requests sat near 257.9, which this test floored to 257 in 84 of 2000 processes to 258.
+// The google count is the one of a timed failure: its request fails before a stream exists, so the module's call stamps the failed stream and its message (apiModuleFailure) and the message always carries durationMs, which costs the value and the copy an observation makes. When the stream was stamped
+// after the request, a millisecond tick inside the request left the message untimed and 217 allocations, and the floor of the mean of 200 requests was 218 in most processes and 219 where the sync.Pool refills after a garbage collection outweighed the untimed requests.
 // The race detector's instrumentation changes the count, so the test runs without it.
-var failedRequestAllocs = map[string]float64{"openai-completions": 212, "openai-responses": 224, "anthropic": 219, "google": 218}
+var failedRequestAllocs = map[string]float64{"openai-completions": 212, "openai-responses": 224, "anthropic": 219, "google": 219}
 
 func TestFailedRequestAllocationsWithoutDeciderMatchTheLineBeforeTheSeam(t *testing.T) {
 	for _, tc := range failedRequestProviders {
