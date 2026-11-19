@@ -1390,7 +1390,7 @@ Parity allowance: the Pi comparison rows run the TypeScript fixture, whose handl
 
 Remove when: the Go, Rust, Python and Lisp runtimes report the end of a handler's own wait exactly, as the Node runtime does with its window, or PiG runs extensions on one shared event loop as Pi does.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:de90be1c91aeb5f9
 
 ## D87 PiG's versions of Pi's easter eggs
 
@@ -1709,7 +1709,7 @@ Parity allowance: no paired scenario runs a tool that ignores its signal, becaus
 
 Remove when: Pi stops awaiting aborted tool calls.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved text-sha256:b1bdc034cdf01952
 
 ## D113 A Session has no `extensionRunnerRef` cell
 

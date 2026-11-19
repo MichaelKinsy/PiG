@@ -11182,6 +11182,54 @@
       "tests": []
     },
     {
+      "id": "BF-332139a",
+      "title": "CI only: a pull request's secret scan now stops, with one error line, when it cannot compute the range of…",
+      "symptom": "CI only: a pull request's secret scan now stops, with one error line, when it cannot compute the range of commits to scan.",
+      "rootCause": "secret-scan-range.sh took the merge base inside the arguments of printf, where a failing command does not trip set -e, so a failed git merge-base left an empty first sha and the script still printed the range and exited 0; no test ran it without a merge base.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI only: a pull request's secret scan now stops, with one error line, when it cannot compute the range of commits to scan. The range script printed an open-ended `..\u003chead\u003e` and exited 0 when the base had no merge base with the head (unrelated histories, or a clone too shallow to reach the fork point), so the scan could cover no commits and pass; a missing or empty argument or a ref that is not a commit was not checked either. A pull request that adds no commit over its base is now reported as having nothing to scan. Released versions: none (CI only).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "332139af2f",
+          "date": "2026-11-15",
+          "pr": "510"
+        }
+      ],
+      "tests": [
+        "automation/ci/test_secret_scan_range.py",
+        "test/ci-images/merge_queue_test.go::TestSecretScanRunsInTheMergeGroup"
+      ]
+    },
+    {
+      "id": "BF-332139a-2",
+      "title": "CI only: a pull request's secret scan now covers what the pull request adds over its base (the merge base to…",
+      "symptom": "A batch pull request that merged member branches cut from an older main used to fail the scan on secret-shaped test values already on main, and, because the scan followed only the first parent (`--first-parent`), the commits inside a merged member branch were not scanned at all.",
+      "rootCause": "gitleaks-action scanned `\u003coldest pull request commit\u003e^..\u003cnewest\u003e` with --first-parent, which reaches back into main's history for an older-based member and skips every commit behind a merge, and no test built a batch of merged member branches",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI only: a pull request's secret scan now covers what the pull request adds over its base (the merge base to its head) instead of everything from the parent of its oldest commit. A batch pull request that merged member branches cut from an older main used to fail the scan on secret-shaped test values already on main, and, because the scan followed only the first parent (`--first-parent`), the commits inside a merged member branch were not scanned at all. Released versions: none (CI only).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "332139af2f",
+          "date": "2026-11-15",
+          "pr": "510"
+        }
+      ],
+      "tests": [
+        "automation/ci/test_secret_scan_range.py",
+        "test/ci-images/merge_queue_test.go::TestSecretScanRunsInTheMergeGroup"
+      ]
+    },
+    {
       "id": "BF-333229c",
       "title": "An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead…",
       "symptom": "An HTTP 413 from any provider is treated as request-size overflow, so the agent compacts and retries instead of showing a raw API error.",
@@ -11710,6 +11758,27 @@
       ],
       "tests": [
         "chord/next/host/host_example_13_test.go::TestExample13Relay",
+        "chord/next/link/ipc_test.go::TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
+      ]
+    },
+    {
+      "id": "BF-349684c-2",
+      "title": "fix(chord): a link end hands its queued messages over before any later one",
+      "symptom": "fix(chord): a link end hands its queued messages over before any later one",
+      "rootCause": "LinkEnd.OnMessage drained the queue outside the guard while deliver() already saw the listener and called it directly, so a message arriving during the hand-over reached the listener ahead of the queued ones. In the relay worker the reader goroutine delivered a hold before the queued hello (worker error: protocol_error handshake: hold before hello, a third worker forked), flaky under load (TestExample13Relay, portmap-5). Messages arriving during the hand-over now queue behind it and the goroutine that set the listener delivers them in order.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "349684cecf",
+          "date": "2026-11-06"
+        }
+      ],
+      "tests": [
         "chord/next/link/ipc_test.go::TestIPCLinkDeliversInArrivalOrderWhileTheQueueIsHandedOver"
       ]
     },
@@ -14433,6 +14502,30 @@
       ]
     },
     {
+      "id": "BF-40b509f",
+      "title": "CI only: the nightly run on main, a push to a `release/**` branch, a merge group and a dispatch run the full…",
+      "symptom": "CI only: the nightly run on main, a push to a `release/**` branch, a merge group and a dispatch run the full job set again.",
+      "rootCause": "the verdict job's job-level `if: github.event_name == 'pull_request'` skipped it outside a pull request, GitHub skips the jobs that need a skipped job transitively (Bookkeeping's `!cancelled()` did not carry over to the jobs that need Bookkeeping), and the CI result test expected the verdict to be skipped outside a pull request, so no test ran a non-pull-request plan through the job graph",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI only: the nightly run on main, a push to a `release/**` branch, a merge group and a dispatch run the full job set again. The `Pre-flight verdict` job ran only on a pull request, and a skipped job skips every job behind it, so every such run since the pre-flight landed ran `Changed paths` and `Bookkeeping` only and failed `CI result` on the verification jobs it skipped. The verdict job now runs on every event and waits for the pre-flight only on a pull request. Released versions: none (CI only).",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "40b509fbdf",
+          "date": "2026-11-18",
+          "pr": "544"
+        }
+      ],
+      "tests": [
+        "test/ci-images/merge_queue_test.go::TestCIResultRequiresEveryPlannedJob",
+        "test/ci-images/wait_preflight_wiring_test.go::TestANeededJobOfCIRunsOnEveryEvent"
+      ]
+    },
+    {
       "id": "BF-40b5a89",
       "title": "Assistant messages in session files and RPC output list `responseId` before `responseModel`, Codex's…",
       "symptom": "Assistant messages in session files and RPC output list `responseId` before `responseModel`, Codex's `endTurn` before `rawStopReason`, and `rawStopReason` before `errorMessage`, the order in which Pi's providers create them.",
@@ -16794,6 +16887,35 @@
         "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsChannel",
         "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessExitIsNotHeldByAProcessOutsideItsTreeThatHoldsItsOutput",
         "chord/nextnode/workers/workers_process_exit_unix_test.go::TestAWorkerProcessTellsWhatAProcessOutsideItsTreeWritesToItsOutputAfterItsExit"
+      ]
+    },
+    {
+      "id": "BF-48e1405",
+      "title": "A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event…",
+      "symptom": "A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A provider written with the Go, Python or Lisp extension SDK now reaches the host with each stream event showing the partial message as it was when the provider pushed the event, and with the stream's result as it was when the provider ended it. The SDK queued the event the provider pushed and a goroutine or thread encoded it later, so a provider that appended to its shared partial message right after a `Push` could have the host receive the later text (under load every `text_delta` showed the finished message), and in the Go SDK the encoder's read of the provider's map was a data race with the provider's writes. `Push` and `End` now take the event, and the result, at the call (the Go SDK encodes the event on the provider's goroutine; the Python and Lisp SDKs queue a copy), so the host sees each event as it was at the push, which is stronger than Pi's own guarantee (D615): Pi's consumer reads the shared message at its own turn, so after a synchronous burst of pushes or between microtask awaits it shows later changes. The event and the message the provider reads back (`Events()`, `result()`) are still its own objects, and a value of a kind JSON has no copy of (a lock, a cycle) ends the request instead of raising in the provider's `Push`. In the Python SDK the guarantee holds for a stream that uses the SDK's own `events()` and `result()`: a Python subclass that overrides either one is read as Pi's consumer reads it, so the host receives what the override yields or returns when the host asks, including later changes to a message the override shares. The Rust SDK takes the event by value and is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "48e14056cc",
+          "date": "2026-11-11",
+          "pr": "442"
+        }
+      ],
+      "tests": [
+        "extensions/sdk-py/tests/test_provider_stream_snapshot.py",
+        "extensions/sdk/provider_stream_snapshot_test.go::TestProviderStreamEndHandsTheHostTheResultAsItIs",
+        "extensions/sdk/provider_stream_snapshot_test.go::TestProviderStreamEventThatCannotBeEncodedFailsTheRequest",
+        "extensions/sdk/provider_stream_snapshot_test.go::TestProviderStreamForwardsEventsAsPushed",
+        "extensions/sdk/provider_stream_snapshot_test.go::TestPushedEventWireEqualsEncodingTheEventAndNotifyResultEqualsNotify",
+        "test/extension-conformance/provider_stream_snapshot_test.go::TestProviderStreamEventsShowThePartialAsPushed",
+        "test/extension-conformance/provider_stream_test.go::TestProviderProducersAcrossSDKs"
       ]
     },
     {
@@ -20143,6 +20265,30 @@
         "tui/key_csiu_text_test.go::TestTextInputIgnoresModifyOtherKeysText",
         "tui/scoped_models_list_test.go::TestScopedModels_SearchAcceptsKittyAndPasteInput",
         "tui/select_list_oracle_test.go::TestSelectListInputMatchesPi"
+      ]
+    },
+    {
+      "id": "BF-56b0e0f",
+      "title": "fix(nativeplatform): parse X11 displays that start with / or unix: as libxcb 1.16 does (#424)",
+      "symptom": "fix(nativeplatform): parse X11 displays that start with / or unix: as libxcb 1.16 does (#424)",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "56b0e0f8e2",
+          "date": "2026-11-11",
+          "pr": "424"
+        }
+      ],
+      "tests": [
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplayNumbersParseAsXcbDoes",
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11DisplaySpellingsConnectAsPiDoes",
+        "internal/nativeplatform/clipboard_x11_display_range_linux_test.go::TestX11SocketPathDisplaysParseAsXcbDoes"
       ]
     },
     {
@@ -28685,6 +28831,31 @@
       ]
     },
     {
+      "id": "BF-6d85c6b",
+      "title": "A routed `pi.events.emit` no longer lets its emitter run ahead of a listener extension process",
+      "symptom": "As in Pi, every continuation a listener queued runs before any microtask the emitter queues after `emit` returns, and the emitter's settle wait now covers every listener process of the emit: it used to end early when an earlier listener process had already answered (it was inside its own wait for an earlier emit of the same burst), failed or exited before the Host wrote the request of the next one, so that process's continuations could interleave with the emitter's later work.",
+      "rootCause": "An emission cannot settle while its dispatch loop still runs, so an extension's emit resumes only after every listener extension process has settled. Affects 0.3.0 through 0.7.0 (row 160).",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A routed `pi.events.emit` no longer lets its emitter run ahead of a listener extension process. As in Pi, every continuation a listener queued runs before any microtask the emitter queues after `emit` returns, and the emitter's settle wait now covers every listener process of the emit: it used to end early when an earlier listener process had already answered (it was inside its own wait for an earlier emit of the same burst), failed or exited before the Host wrote the request of the next one, so that process's continuations could interleave with the emitter's later work. PiG 0.3.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "6d85c6b039",
+          "date": "2026-11-14",
+          "pr": "491"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/event_bus_settle_test.go::TestDispatchEventEmissionSettlesWhenTheLoopEndsWithNoPendingListener",
+        "coding/extension/host/subprocess/event_bus_settle_test.go::TestDispatchEventEmissionStaysOpenUntilTheLoopHasRegisteredEveryListenerRealm",
+        "coding/extension/host/subprocess/event_bus_settle_test.go::TestHostEventBusEmitCallSettlesAfterEveryListenerRealm"
+      ]
+    },
+    {
       "id": "BF-6d9b403",
       "title": "The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto…",
       "symptom": "The /config selector keeps the first-seen order of groups that tie on origin, scope and source (auto resources from different base directories); it followed Go map order (`tui/config_selector.go` BuildResourceGroups, config-selector.ts buildGroups; regression `TestBuildResourceGroupsTiesKeepFirstSeenOrder`).",
@@ -33434,6 +33605,43 @@
       ]
     },
     {
+      "id": "BF-8291569",
+      "title": "fix(security): refuse a model whose api no provider serves; no request is sent (#481)",
+      "symptom": "fix(security): refuse a model whose api no provider serves; no request is sent (#481)",
+      "rootCause": "# Refuse a model whose api has no implementation, before any key or request",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8291569fc4",
+          "date": "2026-11-14",
+          "pr": "481"
+        }
+      ],
+      "tests": [
+        "ai/direct_simple_unknown_api_test.go::TestStreamSimpleRefusesAnUnknownAPINameWithPiText",
+        "ai/empty_api_refused_test.go::TestEmptyAPINameIsRefusedAtEveryStreamEntry",
+        "ai/provider_api_test.go::TestProviderCatalogServesAPI",
+        "ai/provider_api_test.go::TestProviderHasOwnStreamFor",
+        "coding/bare_model_default_host_test.go::TestBareModelSendsNothingToTheDefaultOpenAIHost",
+        "coding/bare_model_default_host_test.go::TestDefaultHostProxyControlSeesAChatCompletionsRequest",
+        "coding/cli/unknown_api_refused_binary_test.go::TestUnknownAPINameJSONModeSendsNothingAndReportsPiText",
+        "coding/cli/unknown_api_refused_binary_test.go::TestUnknownAPINamePrintSendsNothingAndReportsPiText",
+        "coding/cli/unknown_api_refused_binary_test.go::TestUnknownAPINameRPCSendsNothingAndReportsPiText",
+        "coding/cli/unknown_api_refused_binary_test.go::TestUnknownAPINameResumedSessionSendsNothing",
+        "coding/cli/unknown_api_refused_pty_linux_test.go::TestUnknownAPINameInteractiveShowsPiTextAndSendsNothing",
+        "coding/unknown_api_refused_test.go::TestBareModelIsRefusedAtItsRequest",
+        "coding/unknown_api_refused_test.go::TestCopilotModelWithNoCopilotAPIIsRefused",
+        "coding/unknown_api_refused_test.go::TestRegisteredAPINameRunsItsImplementationUntilUnregistered",
+        "coding/unknown_api_refused_test.go::TestUnknownAPINameIsRefusedBeforeAnyRequest",
+        "test/parity/scenarios/model-runtime-store-catalog/33-unknown-api-name-refused.toml"
+      ]
+    },
+    {
       "id": "BF-82ca8da",
       "title": "On Windows, the host reports the load error of a Node extension that exits right after it sends the error",
       "symptom": "The host could report `process_exited` and lose the error.",
@@ -37155,6 +37363,27 @@
       "tests": []
     },
     {
+      "id": "BF-92101db",
+      "title": "A host whose parent link had closed before `Connect` registered it (a server that refused the WebSocket at…",
+      "symptom": "The host used to keep the dead link, bind every hold to it and wait on it, and the next `Connect` left a hold that was already set where it was.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A host whose parent link had closed before `Connect` registered it (a server that refused the WebSocket at once, a proxy that reset it) no longer keeps the dead link as its parent: its references wait for the next link, a hold with no other route fails at once with `no route to server`, and the next good `Connect` holds the references again. The host used to keep the dead link, bind every hold to it and wait on it, and the next `Connect` left a hold that was already set where it was. A WebSocket link made over a socket that had closed already is a closed link too; it used to stay open over the closed socket.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "92101db09d",
+          "date": "2026-11-16",
+          "pr": "525"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-9236042",
       "title": "chord: a host object reading a live query, a count or a list could stay loading for ever, and `Host.Load`…",
       "symptom": "chord: a host object reading a live query, a count or a list could stay loading for ever, and `Host.Load` with it, when the first run of its read was adopted between the reader's classification and the registration of the wake: the attempt checked the reader and followed it in two sections with a task between them, so the adoption made the reader ready and told nobody (one run in about 18,000 of a loaded test).",
@@ -37175,6 +37404,29 @@
       "tests": [
         "chord/next/host/host_open_readers_go_test.go::TestOpeningReadersFollowsAReaderInTheSectionThatFoundItNotReadyNotAfterAnAdoptionCouldLandBetween",
         "chord/next/host/host_open_readers_go_test.go::TestStartBarrierAHostObjectWhoseReaderWasAdoptedBetweenItsCheckAndItsFollowGoesLive"
+      ]
+    },
+    {
+      "id": "BF-923e33c",
+      "title": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits",
+      "symptom": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits.",
+      "rootCause": "The exit of a SIGINT stops the Session and the resume hint, then ends the extension processes, as a normal quit does. Affects 0.2.0 through 0.7.0.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When SIGINT ends interactive mode (exit status 130), PiG now ends its extension processes before it exits. The runtime process of a Node extension whose event loop was still alive, for example one that holds a timer, stayed behind after a quit by keys that was still waiting for an extension's session_shutdown handler. Nothing more is written to the session file at that exit. PiG 0.2.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "923e33c9fa",
+          "date": "2026-11-14",
+          "pr": "487"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_sigint_extension_processes_linux_test.go::TestInteractiveSigintExitEndsTheExtensionProcesses"
       ]
     },
     {
@@ -43988,6 +44240,34 @@
       ]
     },
     {
+      "id": "BF-a4c21e4",
+      "title": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session…",
+      "symptom": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering.",
+      "rootCause": "An extension that needs the turn to have ended cannot wait for it inside the handler the turn awaits, because the turn is waiting for that handler: it waits outside it, with `ctx.waitForIdle()` in a command handler (Pi offers that call on the command context only) or by acting from an `agent_settled` handler.",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "An extension that calls `ctx.abort()` from an event handler in interactive mode no longer stops the session from answering. The abort action waited for the turn to end, and the turn waited for the handler that made the call, so the call never returned: the turn stayed open and no later prompt was answered. The call now starts the abort and returns, as in Pi, for extensions of the Node, Go, Python, Rust and Lisp SDKs, and the run's `ctx.signal` is already aborted when it returns, even while the interactive loop is busy with earlier work. An extension that needs the turn to have ended cannot wait for it inside the handler the turn awaits, because the turn is waiting for that handler: it waits outside it, with `ctx.waitForIdle()` in a command handler (Pi offers that call on the command context only) or by acting from an `agent_settled` handler. Present in 0.2.0 through 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "a4c21e483c",
+          "date": "2026-11-14",
+          "pr": "480"
+        }
+      ],
+      "tests": [
+        "coding/cli/extension_abort_interactive_test.go::TestExtensionAbortFromAHandlerInInteractiveMode",
+        "internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortAbortsTheRunSignalBeforeItReturnsWhileTheOwnerLoopIsBusy",
+        "internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortDoesNotCancelALaterRun",
+        "internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortTwiceInOneTurnIsIdempotent",
+        "internal/codingagent/interactive_extension_abort_reply_test.go::TestExtensionAbortWithNoRunActiveLeavesTheNextRunLive",
+        "internal/codingagent/interactive_extension_abort_test.go::TestExtensionAbortReturnsToAHandlerTheRunAwaits"
+      ]
+    },
+    {
       "id": "BF-a4e084f",
       "title": "Fullscreen mode no longer leaves the `Model scope: …` startup notice in the shell after exit; it shows in…",
       "symptom": "Fullscreen mode no longer leaves the `Model scope: …` startup notice in the shell after exit; it shows in the header instead.",
@@ -48294,6 +48574,28 @@
       "tests": []
     },
     {
+      "id": "BF-b978381",
+      "title": "fix(chord/workers): the rollout lists every retried worker (#489)",
+      "symptom": "fix(chord/workers): the rollout lists every retried worker (#489)",
+      "rootCause": "The rollout step lists a failed worker whose start was already running when it retried it.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "b978381eda",
+          "date": "2026-11-14",
+          "pr": "489"
+        }
+      ],
+      "tests": [
+        "chord/nextnode/workers/workers_rollout_test.go::TestTheRolloutStepListsAFailedWorkerWhoseStartWasAlreadyRunningWhenItRetriedIt"
+      ]
+    },
+    {
       "id": "BF-b99457f",
       "title": "`tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a…",
       "symptom": "`tool_search` and codemode tool search match Chinese, Japanese and Korean queries: each such character is a search term, where Pi's tokenizer dropped them (earendil-works/pi#10816; D173).",
@@ -51368,6 +51670,96 @@
       ]
     },
     {
+      "id": "BF-c952885-3",
+      "title": "A full disk or a killed process during a credential write could sign you out of every provider",
+      "symptom": "A full disk or a killed process during a credential write could sign you out of every provider.",
+      "rootCause": "auth.json was written in place (opened, truncated, written), so a full disk, a size limit or a killed process during the write left it empty or cut short. It is now replaced through a temporary file in the same directory (private from creation, fsynced, renamed over the file, directory flushed), so such a failure leaves the old file whole. The mode, the owner where the process may set it, and the extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them are kept; a symlinked auth.json is followed; on Windows ReplaceFileW keeps the replaced file's DACL. A read-only auth.json is refused as before. A file with more than one hard link, or whose extended attributes cannot be carried over, is written in place as before, as in Pi, and so are a single file mounted into a container, a file in a directory that cannot be written, and a device or named pipe.",
+      "rootCauseSource": "release note",
+      "userImpact": "Credential or permission exposure",
+      "platform": "Windows, macOS, Linux",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A full disk or a killed process during a credential write could sign you out of every provider. `auth.json` was rewritten in place, so a write that stopped half way left it empty or cut short, and the next login or token refresh then saved a file holding that one provider. The file is now replaced as a whole through a temporary file in the same directory, so where it can be replaced a failed write leaves the old file untouched. A file that exists keeps its mode, owner (where pig may set it), extended attributes (the POSIX ACL on Linux, the user's attributes on macOS) where the file system takes them, exactly the access it had (an ACL the directory would hand a new file is not added), a symlinked `auth.json` and, on Windows, its access rights; a file that does not exist yet gets the mode that is asked for with your umask taken out, as in Pi. pig replaces a file only when that changes nothing but the file itself: where a credential file cannot be replaced atomically, for example a single file mounted into a container, a file in a directory pig cannot write into, a file with more than one hard link, a file whose extended attributes cannot be carried over, or a device or named pipe, pig writes it in place as before, as Pi does, and the debug log (`PIG_DEBUG`) says so. That guarantee does not cover an in-place write: one that fails half way can still leave the file empty or cut short, as before.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "c9528855cf",
+          "date": "2026-11-15",
+          "pr": "488"
+        }
+      ],
+      "tests": [
+        "ai/auth_compromised_persist_test.go::TestRefreshedCredentialSurvivesALockTakenMeanwhile",
+        "ai/auth_in_place_test.go::TestCredentialWritesGoInPlaceThroughAHardLink",
+        "ai/auth_pi_lock_test.go::TestAuthStorageModifierPersistsItsCredentialAfterTheLockWasTaken",
+        "ai/auth_takeover_same_provider_upstream_test.go::TestAuthStorageTakeoverSameProviderLastWriterWinsLikePiUpstream",
+        "ai/auth_write_failure_test.go::TestCredentialWriteThatFailsLeavesEveryProvider",
+        "automation/ci/bugledger/corrections_test.go::TestACorrectionForAnEntryTheLedgerDoesNotHaveFailsTheCheckAndTheGenerator",
+        "automation/ci/bugledger/corrections_test.go::TestACorrectionThatIsMalformedFailsTheGenerator",
+        "automation/ci/bugledger/corrections_test.go::TestACorrectionThatRepeatsWhatTheGeneratorDerivesFailsTheCheck",
+        "automation/ci/bugledger/corrections_test.go::TestAReviewedCorrectionReplacesTheRootCauseOfItsEntryAndNoOther",
+        "coding/mcpext/config_in_place_test.go::TestMcpCredentialStoreIsWrittenInPlaceThroughAHardLink",
+        "internal/atomicfile/acl_linux_test.go::TestWriteFileKeepsExactlyTheAccessOfTheFileItReplaces",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileCreatesPrivateAndKeepsMode",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileFollowsSymlink",
+        "internal/atomicfile/atomicfile_test.go::TestWriteFileRefusesReadOnlyFile",
+        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupFinishesAReplacementThatStoppedHalfWay",
+        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
+        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsSyncDirectoryDoesNotFail",
+        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsWriteFileCreatesANewFile",
+        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsWriteFileFailsWhenTheHandleIsNeverClosed",
+        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsWriteFileFollowsASymbolicLink",
+        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsWriteFileReplacesAnExistingFileAndLeavesNoTemporaryFile",
+        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsWriteFileWaitsOutAHandleHeldWithoutDeleteSharing",
+        "internal/atomicfile/atomicfile_windows_test.go::TestWindowsWriteFileWritesADeviceInPlace",
+        "internal/atomicfile/carry_access_test.go::TestCarryAccessChoosesTheCallsByWhatTheReadBackShows",
+        "internal/atomicfile/carry_access_test.go::TestCarryAccessReturnsAFailedReadBack",
+        "internal/atomicfile/carry_decision_test.go::TestWriteFileWritesInPlaceWhereTheTemporaryFileCannotTakeTheAccess",
+        "internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsInheritanceDoesNotReachAProtectedFileAfterAWrite",
+        "internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsSecurityDescriptorMatrix",
+        "internal/atomicfile/descriptor_matrix_windows_test.go::TestWindowsWriteFileOfANewFileGivesTheStoresDescriptor",
+        "internal/atomicfile/inplace_test.go::TestWriteFileCannotCreateAFileInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileKeepsTheFileWhenTheRenameFailsForAnotherReason",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReplacesAPlainFileAndReportsNothing",
+        "internal/atomicfile/inplace_test.go::TestWriteFileReportsARealFailureOfTheInPlaceWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceInADirectoryItCannotWrite",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceThroughAHardLink",
+        "internal/atomicfile/inplace_test.go::TestWriteFileWritesInPlaceWhereTheRenameIsRefused",
+        "internal/atomicfile/linknode_test.go::TestWriteFileThroughALinkEndsWhereAnInPlaceWriteEnds",
+        "internal/atomicfile/nonregular_test.go::TestWriteFileWritesANonRegularTargetInPlace",
+        "internal/atomicfile/replace_backup_test.go::TestCarryVerdict",
+        "internal/atomicfile/replace_backup_test.go::TestIgnoreOwnerRefusal",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupCarriesTheDescriptorAroundTheMoveOfAHalfWayReplacement",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupCarriesTheOldDescriptorOntoTheNewFile",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupFinishesAReplacementThatCouldNotMoveTheReplacement",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenNothingCanBeMoved",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupKeepsBothFilesWhenTheOldFileCannotBeRestored",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupLeavesTheFileWhereBothKeepTheirNames",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRemovesTheBackupAfterASuccess",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOldFileWhenTheAccessDiffersAfterTheReplacement",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOldFileWhenTheCarryFails",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupRestoresTheOriginalWhenItCannotFinish",
+        "internal/atomicfile/replace_backup_test.go::TestReplaceKeepingBackupSucceedsWhenOnlyTheAutoInheritedFlagDiffers",
+        "internal/atomicfile/replace_backup_test.go::TestWriteFileKeepsTheTemporaryFileOfAReplacementThatKeptFiles",
+        "internal/atomicfile/symlink_test.go::TestWriteFileFailsLikeWriteFileSyncForALinkItCannotFollow",
+        "internal/atomicfile/symlink_test.go::TestWriteFileFollowsAChainOfLinksToAMissingTarget",
+        "internal/atomicfile/symlink_test.go::TestWriteFileFollowsALinkToAMissingTarget",
+        "internal/atomicfile/syncdir_test.go::TestWriteFileReportsADirectorySyncFailure",
+        "internal/atomicfile/syncdir_test.go::TestWriteFileToleratesAFileSystemThatCannotSyncADirectory",
+        "internal/atomicfile/umask_test.go::TestWriteFileGivesANewFileTheModeOpenGives",
+        "internal/atomicfile/umask_test.go::TestWriteFileNewFileHelper",
+        "internal/atomicfile/xattr_grow_test.go::TestGetXattrReadsAnAttributeThatGrowsBetweenTheCalls",
+        "internal/atomicfile/xattr_test.go::TestWriteFileCarriesExtendedAttributesOver",
+        "internal/atomicfile/xattr_test.go::TestWriteFileKeepsAPosixACL",
+        "internal/atomicfile/xattr_test.go::TestWriteFileReplacesWhereTheFileSystemHasNoAttributes",
+        "internal/atomicfile/xattr_test.go::TestWriteFileWritesInPlaceWhenAnAttributeCannotBeCarried",
+        "internal/codingagent/state_file_mode_test.go::TestStateFileWriterHelper",
+        "internal/codingagent/state_file_mode_test.go::TestStateFilesGetPiModeUnderUmask",
+        "internal/fsretry/transient_codes_test.go::TestTransientWindowsCode",
+        "internal/fsretry/transient_windows_test.go::TestTransientRenameClassifiesWindowsErrors"
+      ]
+    },
+    {
       "id": "BF-c96c624",
       "title": "A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the…",
       "symptom": "A Piglet Binary with a fused extension no longer leaves a log file in the temporary directory after the session ends, and creates none unless an extension handler fails.",
@@ -54431,6 +54823,30 @@
       ]
     },
     {
+      "id": "BF-d5bf039",
+      "title": "Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning)…",
+      "symptom": "Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning) and in its alert comment can no longer break out of its cell: a fence, a mention, an HTML tag, a link or a pipe in it stays text, and a backtick in it cannot close the code span.",
+      "rootCause": "The verdict reason and a warning's file in the comment table, and the reason quoted in an alert comment, now go through one code span helper, so pull-request text cannot open markup, mentions or links in the pre-flight comment.",
+      "rootCauseSource": "commit",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text of a pull request shown in the pre-flight's comment table (the reason of a verdict, a file of a warning) and in its alert comment can no longer break out of its cell: a fence, a mention, an HTML tag, a link or a pipe in it stays text, and a backtick in it cannot close the code span.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d5bf03999e",
+          "date": "2026-11-15",
+          "pr": "494"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestAlertBodyQuotesTheReasonInertly",
+        "automation/ci/preflight/print_inert_test.go::TestCellFenceOutgrowsTheBackticksInTheText"
+      ]
+    },
+    {
       "id": "BF-d5e4cbc",
       "title": "An extension's `setModel` of a model id that a registered provider object does not list answered `model not…",
       "symptom": "An extension's `setModel` of a model id that a registered provider object does not list answered `model not found` in every SDK.",
@@ -55010,6 +55426,60 @@
       "commitsFrom": "release note",
       "tests": [
         "internal/codingagent/cache_warmer_format_oracle_test.go::TestCacheWarmerPureFunctionsMatchPi"
+      ]
+    },
+    {
+      "id": "BF-d83abef",
+      "title": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn…",
+      "symptom": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end` and `agent_end` before `session_shutdown`.",
+      "rootCause": "A quit while a turn streams keeps the interrupted turn in the session, as Pi does (rows 135, 145).",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end` and `agent_end` before `session_shutdown`. PiG exited at once: the interrupted turn was missing from the session file, and extensions saw `session_shutdown` in the middle of the turn. A `!` command that is still running is not waited for, and nothing of the interrupted turn is drawn after the screen was restored. PiG 0.2.0 through 0.7.0 have the defect.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d83abefe16",
+          "date": "2026-11-14",
+          "pr": "483"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_provider_abort_quit_linux_test.go::TestInteractiveQuitWhileABuiltInProviderTurnStreams",
+        "coding/cli/interactive_quit_streaming_turn_linux_test.go::TestInteractiveQuitSkipsTheDeferredStartOfASettledAction",
+        "coding/runtime_dispose_settlement_test.go::TestEmitQuitShutdownContextDoesNotAbortTheRunASignalHolds",
+        "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown",
+        "internal/codingagent/agent_settled_deferral_test.go::TestAgentSettledDropsDeferredStartsOnceExitIsRequested",
+        "internal/codingagent/interactive_quit_deferred_start_test.go::TestQuitAfterTheReleaseOfADeferredStartBeginsNoTurn"
+      ]
+    },
+    {
+      "id": "BF-d87a0c3",
+      "title": "CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's \"Update branch\"…",
+      "symptom": "CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's \"Update branch\" button adds.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "CI: the pre-flight no longer rejects a pull request for the merge of `main` that GitHub's \"Update branch\" button adds. That commit is GitHub's and cannot carry a `Signed-off-by` line, so the `signoff` check failed every pull request kept current that way. The check now exempts it, and only it: two parents, committed and verified by GitHub, the second parent on the base branch, and the tree git's own merge of the two parents writes. A merge made by hand, a merge of another branch and a merge with a conflict resolution or an edit still need the line, as does every commit the pull request adds.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "d87a0c3b83",
+          "date": "2026-11-12",
+          "pr": "475"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/merges_test.go::TestAllCommitsParametersAreValidated",
+        "automation/ci/preflight/merges_test.go::TestSignoffExemptsOnlyGitHubsUpdateBranchMerge",
+        "automation/ci/preflight/merges_test.go::TestSignoffIsUndecidedWhenGitCannotTellAboutAMerge",
+        "automation/ci/preflight/scanner_test.go::TestMergeTree"
       ]
     },
     {
@@ -63790,6 +64260,256 @@
       ]
     },
     {
+      "id": "BF-f2e59f4",
+      "title": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could…",
+      "symptom": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could start a workflow command on the runner, in the `::command::` form and in the legacy `##[command]` form.",
+      "rootCause": "It fails closed. Pull-request text can no longer start a workflow command in the pre-flight log lines, in either the :: or the legacy ##[ form.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "Text of a pull request that the pre-flight prints (a path, a ledger reason or cite, a commit subject) could start a workflow command on the runner, in the `::command::` form and in the legacy `##[command]` form. Every line the tool prints is now inert.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f2e59f4980",
+          "date": "2026-11-14",
+          "pr": "492"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestInertKeepsTextReadable",
+        "automation/ci/preflight/print_inert_test.go::TestLogfPrintsAnErrorOnOneLine",
+        "automation/ci/preflight/print_inert_test.go::TestMergeableLogLineIsOneLine",
+        "automation/ci/preflight/print_inert_test.go::TestRunErrorOnStderrIsOneLine",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestMatches",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestParse",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestValidate",
+        "automation/ci/preflight/reviewed/tooling_test.go::TestParseToolingAndInTooling",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestAdmissionRequiresTheNamedCommitToChangeTheFile",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitCheckFindingTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitFilesAreAnInputOfTheCheck",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestLedgerRowsOfTooManyCommitsAskToSplit",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestAdmittedExpectationTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestAdmittedExpectationTextIsInertInTheComment",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestClippedNoticeIsNotAStoredVerdict",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextOfThePullRequestIsInert",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFittingCommentStoresTheWholeVerdicts",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestShortenedCommentIsNotReusedAsTheVerdicts",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestUnreadableLedgerTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_test.go::TestAdmittedExpectationIsPrintedAndAsksForNothing",
+        "automation/ci/preflight/rules_ledger_test.go::TestReviewedLedgerFetchedAtTheHeadCommit",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationDivergenceRowOfARecordInThePR",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationReviewedLedger",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationRowAndTrailerTogether",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationSkipsToolingDirectoriesOfMain",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationToolingPrefixOfThePullRequestDoesNotCount",
+        "automation/ci/preflight/rules_tooling_test.go::TestToolingNoteTextCannotStartAWorkflowCommand"
+      ]
+    },
+    {
+      "id": "BF-f2e59f4-2",
+      "title": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that…",
+      "symptom": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that file, as the line lint requires, so the two gates judge alike.",
+      "rootCause": "It fails closed. Pull-request text can no longer start a workflow command in the pre-flight log lines, in either the :: or the legacy ##[ form.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pre-flight `test-expectation` check admits a reviewed ledger row only when the named commit changed that file, as the line lint requires, so the two gates judge alike.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f2e59f4980",
+          "date": "2026-11-14",
+          "pr": "492"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestInertKeepsTextReadable",
+        "automation/ci/preflight/print_inert_test.go::TestLogfPrintsAnErrorOnOneLine",
+        "automation/ci/preflight/print_inert_test.go::TestMergeableLogLineIsOneLine",
+        "automation/ci/preflight/print_inert_test.go::TestRunErrorOnStderrIsOneLine",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestMatches",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestParse",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestValidate",
+        "automation/ci/preflight/reviewed/tooling_test.go::TestParseToolingAndInTooling",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestAdmissionRequiresTheNamedCommitToChangeTheFile",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitCheckFindingTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitFilesAreAnInputOfTheCheck",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestLedgerRowsOfTooManyCommitsAskToSplit",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestAdmittedExpectationTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestAdmittedExpectationTextIsInertInTheComment",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestClippedNoticeIsNotAStoredVerdict",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextOfThePullRequestIsInert",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFittingCommentStoresTheWholeVerdicts",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestShortenedCommentIsNotReusedAsTheVerdicts",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestUnreadableLedgerTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_test.go::TestAdmittedExpectationIsPrintedAndAsksForNothing",
+        "automation/ci/preflight/rules_ledger_test.go::TestReviewedLedgerFetchedAtTheHeadCommit",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationDivergenceRowOfARecordInThePR",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationReviewedLedger",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationRowAndTrailerTogether",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationSkipsToolingDirectoriesOfMain",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationToolingPrefixOfThePullRequestDoesNotCount",
+        "automation/ci/preflight/rules_tooling_test.go::TestToolingNoteTextCannotStartAWorkflowCommand"
+      ]
+    },
+    {
+      "id": "BF-f2e59f4-3",
+      "title": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on…",
+      "symptom": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on main, as the line lint does, so a ledger row for such a file is no longer required by one gate and stale for the other.",
+      "rootCause": "It fails closed. Pull-request text can no longer start a workflow command in the pre-flight log lines, in either the :: or the legacy ##[ form.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "The pre-flight `test-expectation` check skips the tooling directories of `test/testdata-provenance.toml` on main, as the line lint does, so a ledger row for such a file is no longer required by one gate and stale for the other.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f2e59f4980",
+          "date": "2026-11-14",
+          "pr": "492"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestInertKeepsTextReadable",
+        "automation/ci/preflight/print_inert_test.go::TestLogfPrintsAnErrorOnOneLine",
+        "automation/ci/preflight/print_inert_test.go::TestMergeableLogLineIsOneLine",
+        "automation/ci/preflight/print_inert_test.go::TestRunErrorOnStderrIsOneLine",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestMatches",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestParse",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestValidate",
+        "automation/ci/preflight/reviewed/tooling_test.go::TestParseToolingAndInTooling",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestAdmissionRequiresTheNamedCommitToChangeTheFile",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitCheckFindingTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitFilesAreAnInputOfTheCheck",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestLedgerRowsOfTooManyCommitsAskToSplit",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestAdmittedExpectationTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestAdmittedExpectationTextIsInertInTheComment",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestClippedNoticeIsNotAStoredVerdict",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextOfThePullRequestIsInert",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFittingCommentStoresTheWholeVerdicts",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestShortenedCommentIsNotReusedAsTheVerdicts",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestUnreadableLedgerTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_test.go::TestAdmittedExpectationIsPrintedAndAsksForNothing",
+        "automation/ci/preflight/rules_ledger_test.go::TestReviewedLedgerFetchedAtTheHeadCommit",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationDivergenceRowOfARecordInThePR",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationReviewedLedger",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationRowAndTrailerTogether",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationSkipsToolingDirectoriesOfMain",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationToolingPrefixOfThePullRequestDoesNotCount",
+        "automation/ci/preflight/rules_tooling_test.go::TestToolingNoteTextCannotStartAWorkflowCommand"
+      ]
+    },
+    {
+      "id": "BF-f2e59f4-4",
+      "title": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole…",
+      "symptom": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole text and only the printed line is cut.",
+      "rootCause": "It fails closed. Pull-request text can no longer start a workflow command in the pre-flight log lines, in either the :: or the legacy ##[ form.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A shortened notice of the pre-flight is no longer stored as a complete verdict: the record keeps the whole text and only the printed line is cut.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f2e59f4980",
+          "date": "2026-11-14",
+          "pr": "492"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestInertKeepsTextReadable",
+        "automation/ci/preflight/print_inert_test.go::TestLogfPrintsAnErrorOnOneLine",
+        "automation/ci/preflight/print_inert_test.go::TestMergeableLogLineIsOneLine",
+        "automation/ci/preflight/print_inert_test.go::TestRunErrorOnStderrIsOneLine",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestMatches",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestParse",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestValidate",
+        "automation/ci/preflight/reviewed/tooling_test.go::TestParseToolingAndInTooling",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestAdmissionRequiresTheNamedCommitToChangeTheFile",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitCheckFindingTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitFilesAreAnInputOfTheCheck",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestLedgerRowsOfTooManyCommitsAskToSplit",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestAdmittedExpectationTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestAdmittedExpectationTextIsInertInTheComment",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestClippedNoticeIsNotAStoredVerdict",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextOfThePullRequestIsInert",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFittingCommentStoresTheWholeVerdicts",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestShortenedCommentIsNotReusedAsTheVerdicts",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestUnreadableLedgerTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_test.go::TestAdmittedExpectationIsPrintedAndAsksForNothing",
+        "automation/ci/preflight/rules_ledger_test.go::TestReviewedLedgerFetchedAtTheHeadCommit",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationDivergenceRowOfARecordInThePR",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationReviewedLedger",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationRowAndTrailerTogether",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationSkipsToolingDirectoriesOfMain",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationToolingPrefixOfThePullRequestDoesNotCount",
+        "automation/ci/preflight/rules_tooling_test.go::TestToolingNoteTextCannotStartAWorkflowCommand"
+      ]
+    },
+    {
+      "id": "BF-f2e59f4-5",
+      "title": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no…",
+      "symptom": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no warnings or notices; it now recomputes.",
+      "rootCause": "It fails closed. Pull-request text can no longer start a workflow command in the pre-flight log lines, in either the :: or the legacy ##[ form.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "When a report was too long for its comment, the next unchanged run reused the shortened record and printed no warnings or notices; it now recomputes.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f2e59f4980",
+          "date": "2026-11-14",
+          "pr": "492"
+        }
+      ],
+      "tests": [
+        "automation/ci/preflight/print_inert_test.go::TestInertKeepsTextReadable",
+        "automation/ci/preflight/print_inert_test.go::TestLogfPrintsAnErrorOnOneLine",
+        "automation/ci/preflight/print_inert_test.go::TestMergeableLogLineIsOneLine",
+        "automation/ci/preflight/print_inert_test.go::TestRunErrorOnStderrIsOneLine",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestMatches",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestParse",
+        "automation/ci/preflight/reviewed/reviewed_test.go::TestValidate",
+        "automation/ci/preflight/reviewed/tooling_test.go::TestParseToolingAndInTooling",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestAdmissionRequiresTheNamedCommitToChangeTheFile",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitCheckFindingTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestCommitFilesAreAnInputOfTheCheck",
+        "automation/ci/preflight/rules_ledger_commit_test.go::TestLedgerRowsOfTooManyCommitsAskToSplit",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestAdmittedExpectationTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestAdmittedExpectationTextIsInertInTheComment",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestClippedNoticeIsNotAStoredVerdict",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFindingTextOfThePullRequestIsInert",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestFittingCommentStoresTheWholeVerdicts",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestShortenedCommentIsNotReusedAsTheVerdicts",
+        "automation/ci/preflight/rules_ledger_print_test.go::TestUnreadableLedgerTextCannotStartAWorkflowCommand",
+        "automation/ci/preflight/rules_ledger_test.go::TestAdmittedExpectationIsPrintedAndAsksForNothing",
+        "automation/ci/preflight/rules_ledger_test.go::TestReviewedLedgerFetchedAtTheHeadCommit",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationDivergenceRowOfARecordInThePR",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationReviewedLedger",
+        "automation/ci/preflight/rules_ledger_test.go::TestRuleTestExpectationRowAndTrailerTogether",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationSkipsToolingDirectoriesOfMain",
+        "automation/ci/preflight/rules_tooling_test.go::TestRuleTestExpectationToolingPrefixOfThePullRequestDoesNotCount",
+        "automation/ci/preflight/rules_tooling_test.go::TestToolingNoteTextCannotStartAWorkflowCommand"
+      ]
+    },
+    {
       "id": "BF-f32ec14",
       "title": "fix(chord): a link end keeps nothing of the queue it handed over",
       "symptom": "fix(chord): a link end keeps nothing of the queue it handed over",
@@ -65532,6 +66252,34 @@
       ]
     },
     {
+      "id": "BF-f9d4cff",
+      "title": "A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of…",
+      "symptom": "A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of 400 past 64 MiB live heap.",
+      "rootCause": "",
+      "rootCauseSource": "",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A `-p`, `--mode json` or `--mode rpc` run over a large session no longer sometimes keeps the Go GC target of 400 past 64 MiB live heap. The check that returns to the default 100 waited for a cleanup after each collection, and that cleanup could run late or miss the collection that found the large heap; on a 66 MB session about 1 run in 13 under CPU load exited at target 400 with a peak RSS 1.37-1.80x that of `GOGC=100`. A goroutine now reads the live heap every 5 ms (every second while no collection finishes), so the fallback fires once a read finds the latest finished collection's live heap above 64 MiB. A later collection can replace that value before the next read, so a read can miss a short-lived peak, but the fallback no longer waits on a cleanup. Output is unchanged.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "f9d4cffd85",
+          "date": "2026-11-11",
+          "pr": "454"
+        }
+      ],
+      "tests": [
+        "internal/gcpolicy/alloc_test.go::TestApplyAllocatesLittleBeforeTheFirstCollection",
+        "internal/gcpolicy/gcpolicy_test.go::TestApplyFallsBackAboveTheLiveHeapLimit",
+        "internal/gcpolicy/gcpolicy_test.go::TestApplyFallsBackWithoutACleanup",
+        "internal/gcpolicy/gcpolicy_test.go::TestApplyLeavesAUserGOGC",
+        "internal/gcpolicy/gcpolicy_test.go::TestStopWaitsForTheWatcher",
+        "internal/gcpolicy/gcpolicy_test.go::TestStopWithAUserGOGC"
+      ]
+    },
+    {
       "id": "BF-fa0eadb",
       "title": "A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and…",
       "symptom": "A Lisp extension no longer ignores an `events.dispatch` request that the host sends after registration and before `ready`: the request was read and dropped, so the host waited for an answer that never came.",
@@ -66992,6 +67740,29 @@
       ],
       "tests": [
         "coding/extension/host/subprocess/retained_factory_bus_test.go::TestGoFactoryReloadRetainedMembersBesideAChangedMemberDeliverOnce",
+        "coding/extension/host/subprocess/retained_factory_bus_test.go::TestGoFactoryReloadWithFactoryTimeSubscriptionsCompletesAndDeliversOnce",
+        "test/extension-conformance/events_bridge_reload_test.go::TestNativeEventBusReloadKeepsEveryFactoryTimeListenerOnce"
+      ]
+    },
+    {
+      "id": "BF-fcb3ef3-2",
+      "title": "fix(extension): admit each retained packed member after the members before it have registered",
+      "symptom": "fix(extension): admit each retained packed member after the members before it have registered",
+      "rootCause": "A reload that keeps a packed process wrote the admissions of every retained member before the host accepted the first connection. The runner starts each admitted factory on its own goroutine, and a factory that calls the host before it returns (pi.events.on, as the factories of Pi do) waits for the host to serve the connection of its own member. The host serves the connections in member order, so when a later member took the factory turn of the runner first, the host waited for an earlier member that could not start its factory, and /reload never returned.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "fcb3ef3f9d",
+          "date": "2026-11-16"
+        }
+      ],
+      "tests": [
+        "coding/extension/host/subprocess/reload_fused_events_test.go::TestHostReloadFusedFactoriesWithFactoryTimeSubscriptionsDeliverOnce",
         "coding/extension/host/subprocess/retained_factory_bus_test.go::TestGoFactoryReloadWithFactoryTimeSubscriptionsCompletesAndDeliversOnce",
         "test/extension-conformance/events_bridge_reload_test.go::TestNativeEventBusReloadKeepsEveryFactoryTimeListenerOnce"
       ]
