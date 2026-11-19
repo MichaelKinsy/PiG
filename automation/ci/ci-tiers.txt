@@ -13,6 +13,10 @@
 # its shard, in both runs. The optional fourth column names the make target a linux row runs in the light run when that
 # is a subset of the full run's (default: ci-<shard>). .github/AGENTS.md renders this table.
 #
+# Every row is a shard of the linux matrix, so a shard that fails fails "Linux verification" and with it "CI result", the required
+# check: every row blocks the merge, alloc-ratchet (the allocation baseline of the hot packages a change touches) included.
+# No ruleset change is needed for a row to block.
+#
 # job | shard | tier | light-run make target
 linux | portmap-1 | queue
 linux | portmap-2 | queue
@@ -44,7 +48,7 @@ windows | extension-conformance-2 | queue
 windows | extension-conformance-4 | queue
 windows | native-3 | queue
 windows | native-2 | queue
-windows | native-1 | pr
+windows | native-1 | queue
 windows | extension-conformance-1 | queue
 windows | extension-conformance-3 | queue
 windows | extension-conformance-5 | queue
@@ -55,7 +59,7 @@ windows | extension-host-2 | queue
 windows | extension-host-3 | queue
 windows | extension-host-4 | queue
 windows | extension-host-5 | queue
-macos | native | pr
+macos | native | queue
 macos | cli-1 extension-host-3 packages | queue
 macos | cli-2 cli-8 extension-host-2 extension-host-5 | queue
 macos | cli-4 cli-7 extension-host-1 | queue
@@ -66,4 +70,4 @@ single | chord | queue
 single | durable-cf-host | queue
 single | durable-contract | queue
 single | android | pr
-single | node-loader | pr
+single | node-loader | queue

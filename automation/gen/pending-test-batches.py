@@ -104,14 +104,28 @@ def baseline_mapping(commit, mapping_path):
     raise RuntimeError(f"{commit} has neither {mapping_path} nor {legacy}")
 
 
+def baseline_version(commit):
+    """The Pi version the baseline commit pinned: its mapping file is named for it, not for the current pin."""
+    result = subprocess.run(["git", "show", f"{commit}:.upstream/pin"], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"{commit} has no .upstream/pin; pass --baseline-version")
+    for line in result.stdout.splitlines():
+        key, _, value = line.partition("=")
+        if key.strip() == "version":
+            return value.strip()
+    raise RuntimeError(f"{commit}:.upstream/pin has no version line; pass --baseline-version")
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--baseline-commit", required=True)
-    parser.add_argument("--version", default=pinlib.committed().version)
+    parser.add_argument("--baseline-version", help="the Pi version the baseline commit pinned (default: read from its .upstream/pin)")
+    parser.add_argument("--version", default=pinlib.committed().version, help="the current Pi version (default: the committed pin)")
     parser.add_argument("--out", default="docs/parity/pending-tests-batches.md")
     args = parser.parse_args()
+    args.baseline_version = args.baseline_version or baseline_version(args.baseline_commit)
     mapping_path = f"test/parity/interfaces/test-mapping-v{args.version}.json"
-    baseline = json.loads(baseline_mapping(args.baseline_commit, mapping_path))
+    baseline = json.loads(baseline_mapping(args.baseline_commit, f"test/parity/interfaces/test-mapping-v{args.baseline_version}.json"))
     current_bytes = Path(mapping_path).read_bytes()
     current = {entry["path"]: entry for entry in json.loads(current_bytes)["entries"]}
     inventory = json.loads(Path(f"test/parity/interfaces/upstream-tests-v{args.version}.json").read_text())
@@ -145,12 +159,12 @@ def main():
     disposition_counts = collections.Counter(entry["disposition"] for entry in obligations)
     out = [
         "# Upstream test porting batches", "", "## Dispatch contract", "",
-        f"Baseline: `{args.baseline_commit}`, Pi {args.version}. This document partitions every baseline pending and partial test file exactly once: **{disposition_counts['pending']} pending + {disposition_counts['partial']} partial = {len(obligations)} files**, across **{len(batches)} batches**. Counts come from `upstream-tests-v{args.version}.json`; they are case sites, not expanded `it.each` matrices or a count of cases still missing in partial files.", "",
+        f"Baseline: `{args.baseline_commit}`, the Pi build {args.baseline_version}. This document partitions every baseline pending and partial test file exactly once: **{disposition_counts['pending']} pending + {disposition_counts['partial']} partial = {len(obligations)} files**, across **{len(batches)} batches**. Counts come from `upstream-tests-v{args.version}.json`; they are case sites, not expanded `it.each` matrices or a count of cases still missing in partial files.", "",
         "Hot-path batches come first. Target Go packages combine existing evidence locations with the owning production area; they are navigation targets, not proof of closure. New harness execution/runtime packages need their separate API and production callers, not substitutions from the older agent loop. Read the mapping rationale to enumerate missing cases before changing a partial entry.", "",
         "Assign one owner per upstream test file. Keep closed files in their original batches so no baseline obligation disappears. Dispatch only rows still pending or partial. Test-file assignments do not authorize simultaneous edits to shared Go packages, SDK protocols, or generated ledgers; the lead coordinates those collisions and serializes integration and shared inventory updates.", "",
         f"Current mapping SHA-256: `{hashlib.sha256(current_bytes).hexdigest()}`. Current dispositions below are a generated snapshot; the JSON mapping remains authoritative.", "",
         "Regenerate after integration:", "", "```bash",
-        f"python3 automation/gen/pending-test-batches.py --baseline-commit {args.baseline_commit} --version {args.version}",
+        f"python3 automation/gen/pending-test-batches.py --baseline-commit {args.baseline_commit} --baseline-version {args.baseline_version} --version {args.version}",
         "```", "", "## Batch index", "",
         "| Batch | Priority | Area | Files | Upstream case sites | Still pending/partial |",
         "|---|---|---|---:|---:|---:|",

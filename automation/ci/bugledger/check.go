@@ -32,12 +32,12 @@ func readCommitted(root string) (*Ledger, []byte, error) {
 }
 
 // verify compares the committed ledger with the one the history implies. Without strict it tolerates a stale commit list, so the commit that adds a fix and the commit that regenerates the ledger need not be the same.
-func verify(root string, generated *Ledger, genJSON []byte, genPage string, strict bool) error {
+func verify(root string, generated *Ledger, genJSON []byte, genPage string, strict bool, extra []string) error {
 	committed, committedJSON, err := readCommitted(root)
 	if err != nil {
 		return err
 	}
-	var problems []string
+	problems := slices.Clone(extra)
 	have := map[string]int{}
 	for _, e := range committed.Entries {
 		have[identity(e)]++

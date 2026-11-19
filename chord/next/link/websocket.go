@@ -73,6 +73,13 @@ func WebSocketLink(socket WebSocketLike) Link {
 		end.end()
 	})
 	removeError = socket.AddEventListener(WebSocketError, func(any) { end.end() })
+	// A socket that closed between the state read above and the `close` listener reached nobody: a Go socket closes on a
+	// goroutine of its own, between any two statements of whoever made the link, where Pi's webSocketLink() runs to completion
+	// before any socket event (packages/chord/src/link/websocket.ts:52). The state is read again once the listeners are
+	// registered; a socket that closes after this read tells the listener.
+	if socket.ReadyState() > socketOpen {
+		end.end()
+	}
 	return end
 }
 

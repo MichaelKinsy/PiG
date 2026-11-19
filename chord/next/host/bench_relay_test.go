@@ -752,22 +752,54 @@ type relayPause struct {
 	seconds int
 }
 
+// relayThrottledResult is what one run of the scenario measured; relayThrottled reports the mean over its iterations.
+type relayThrottledResult struct {
+	recovered                 int           // virtual ms from the stall's end until the tab caught up
+	wireBytes                 int64         // bytes the throttle delivered until then
+	heap                      int64         // heap growth during the pause
+	outside, during           time.Duration // time of the commits made outside and during the pause
+	outsideCount, duringCount int
+	longestHandling           time.Duration
+}
+
 // relayThrottled runs relayThrottledRun once per iteration, each on a fresh fixture: the scenario consumes its tab and
 // worker (a stalled link, a streamed reply, a reset producer), so an iteration cannot continue the previous one.
+// Each metric is the mean over the benchmark's iterations, reported once after the loop: ReportMetric keeps only the last
+// value it is given. The commit times are pooled over every iteration (total time over total commits).
 func relayThrottled(b *testing.B, relayed bool, pause relayPause) {
 	b.ReportAllocs()
+	var iterations int
+	var recoveredSum, wireSum, heapSum, longestSum float64
+	var outside, during time.Duration
+	var outsideCount, duringCount int
 	for b.Loop() {
 		b.StopTimer()
-		relayThrottledRun(b, relayed, pause)
+		result := relayThrottledRun(b, relayed, pause)
 		b.StartTimer()
+		iterations++
+		recoveredSum += float64(result.recovered) / 1000
+		wireSum += float64(result.wireBytes)
+		heapSum += float64(result.heap) / 1024
+		longestSum += float64(result.longestHandling.Microseconds())
+		outside += result.outside
+		outsideCount += result.outsideCount
+		during += result.during
+		duringCount += result.duringCount
 	}
+	n := float64(max(iterations, 1))
+	b.ReportMetric(recoveredSum/n, "s-to-catch-up")
+	b.ReportMetric(wireSum/n, "wire-B-until-then")
+	b.ReportMetric(heapSum/n, "heap-KiB-during-pause")
+	b.ReportMetric(float64(outside.Microseconds())/float64(max(outsideCount, 1)), "commit-us-outside")
+	b.ReportMetric(float64(during.Microseconds())/float64(max(duringCount, 1)), "commit-us-during")
+	b.ReportMetric(longestSum/n, "longest-handling-us")
 }
 
 // relayThrottledRun is a tab throttled to 64 KiB/s holding the 500 KB document view of a worker that streams a reply at 100
 // tokens/s, in virtual time (10 ms steps): 2 s of streaming, the pause, 10 s more of streaming, then until the tab caught
 // up. relayed: through a server (it forwards at once, the worker folds the tab origin's ops); direct: on the worker (it
 // folds the ops in its pending queues). The fixture is built and closed with the timer stopped; only the scenario is timed.
-func relayThrottledRun(b *testing.B, relayed bool, pause relayPause) {
+func relayThrottledRun(b *testing.B, relayed bool, pause relayPause) relayThrottledResult {
 	b.Helper()
 	var throttle *throttledLink
 	if relayed {
@@ -793,8 +825,7 @@ func relayThrottledRun(b *testing.B, relayed bool, pause relayPause) {
 			defer server.mu.Unlock()
 			return server.workers[0].host, server.workers[0].end
 		}
-		runThrottled(b, relayed, pause, throttle, tab, producerOf, settle)
-		return
+		return runThrottled(b, relayed, pause, throttle, tab, producerOf, settle)
 	}
 	direct := benchRelayDirectOf(b, "document", func(end link.Link) link.Link {
 		throttle = newThrottledLink(end, 64*1024)
@@ -806,10 +837,10 @@ func relayThrottledRun(b *testing.B, relayed bool, pause relayPause) {
 			transported(direct.ends...)
 		}
 	}
-	runThrottled(b, relayed, pause, throttle, direct.tab, func() (Host, *timedLink) { return direct.worker, direct.end }, settle)
+	return runThrottled(b, relayed, pause, throttle, direct.tab, func() (Host, *timedLink) { return direct.worker, direct.end }, settle)
 }
 
-func runThrottled(b *testing.B, relayed bool, pause relayPause, throttle *throttledLink, tab Host, producerOf func() (Host, *timedLink), settle func()) {
+func runThrottled(b *testing.B, relayed bool, pause relayPause, throttle *throttledLink, tab Host, producerOf func() (Host, *timedLink), settle func()) relayThrottledResult {
 	b.Helper()
 	session := "D"
 	if relayed {
@@ -884,14 +915,14 @@ func runThrottled(b *testing.B, relayed bool, pause relayPause, throttle *thrott
 		}
 	}
 	b.StopTimer()
-	b.ReportMetric(float64(recovered)/1000, "s-to-catch-up")
-	b.ReportMetric(float64(throttle.deliveredBytes()-delivered0), "wire-B-until-then")
-	b.ReportMetric(float64(heap)/1024, "heap-KiB-during-pause")
-	b.ReportMetric(float64(outside.Microseconds())/float64(max(outsideCount, 1)), "commit-us-outside")
-	b.ReportMetric(float64(during.Microseconds())/float64(max(duringCount, 1)), "commit-us-during")
-	b.ReportMetric(float64(providerEnd.longestHandling().Microseconds()), "longest-handling-us")
+	result := relayThrottledResult{
+		recovered: recovered, wireBytes: int64(throttle.deliveredBytes() - delivered0), heap: heap,
+		outside: outside, during: during, outsideCount: outsideCount, duringCount: duringCount,
+		longestHandling: providerEnd.longestHandling(),
+	}
 	store.Release()
 	view.Release()
+	return result
 }
 
 // BenchmarkRelaySlowTabs is "A tab throttled to 64 KiB/s, a reply streamed at 100 tokens/s into the 500 KB view (virtual

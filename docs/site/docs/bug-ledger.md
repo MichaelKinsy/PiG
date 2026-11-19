@@ -863,6 +863,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-644a9f2-2](#bf-644a9f2-2) | A Node extension's `ctx.ui.custom` factory can call `tui.showOverlay`, `tui.hideOverlay` and `tui.setFocus`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-644b3e0](#bf-644b3e0) | A codemode script that calls `text()` tens of thousands of times no longer blocks the process: adjacent text… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-644ea9d](#bf-644ea9d) | A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project… | PiG's own defect | All platforms | Unreleased |
+| [BF-647a448](#bf-647a448) | A Chord WebSocket link made over a socket that closed while the link registered its listeners is a closed… | PiG's own defect | All platforms | Unreleased |
 | [BF-648ff3e](#bf-648ff3e) | A child session's `message_update` event carries the message so far and the assistant event's `partial`, as… | PiG's own defect | All platforms | 0.5.2 |
 | [BF-648ff3e-10](#bf-648ff3e-10) | `pig --list-models` now prints only the models the model runtime reports as available, as Pi does | PiG's own defect | All platforms | 0.5.2 |
 | [BF-648ff3e-100](#bf-648ff3e-100) | `ctx.abort()` aborts the run's `ctx.signal`, and the signal a tool receives, before it returns in a Node… | PiG's own defect | All platforms | 0.5.2 |
@@ -1795,7 +1796,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bd00797](#bf-bd00797) | The same for a Node `before_agent_start` handler: a `get_state` sent while it awaits I/O is answered at once… | PiG's own defect | All platforms | Unreleased |
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-bd8849d](#bf-bd8849d) | Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run… | PiG's own defect | All platforms | Unreleased |
+| [BF-bd8849d](#bf-bd8849d) | Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run… | A Pi defect that PiG fixed first | All platforms | Unreleased |
 | [BF-bd9ac3b](#bf-bd9ac3b) | Releasing a session's services no longer leaves the model selector's catalog refresh running | PiG's own defect | All platforms | Unreleased |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-be0c55b](#bf-be0c55b) | fix(extensions): a quit whose dispose cannot return waits for every runtime that holds, as Pi's one loop does | PiG's own defect | All platforms | Unreleased |
@@ -14074,6 +14075,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `644ea9d058` (2026-11-12)
 - **Tests:** None recorded.
 - **Release note:** A Piglet whose `discovery.extensions` leaves out `user` no longer runs the user's extensions before a project trust decision. When the project had config that needs one (for example `.pig/mcp.json`), the pre-trust pass loaded `~/.pig/agent/extensions` with a fixed user scope, so an ambient extension's factory ran in a Piglet that discovers none (it did not join the session), and a closed Piglet Binary built without the Node runtime failed to start. The pre-trust pass now reads the scopes the Piglet's discovery allows for an untrusted project; stock pig still loads user extensions there, as Pi does.
+
+### BF-647a448
+
+**A Chord WebSocket link made over a socket that closed while the link registered its listeners is a closed…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A Chord WebSocket link made over a socket that closed while the link registered its listeners is a closed link too; it used to stay open over the closed socket, because the close came after the link read the socket's state and before its `close` listener existed.
+- **Root cause:** A Chord WebSocket link made over a socket that closed while the link registered its listeners is a closed link too; it used to stay open over the closed socket, because the close came after the link read the socket's state and before its `close` listener existed.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `647a44808a` (2026-11-19)
+- **Tests:** `chord/next/host/host_connect_closed_link_test.go::TestHostConnectAfterALinkClosedAtOnceHoldsTheReferencesAgainOverTheNextGoodLink`, `chord/next/host/host_connect_closed_link_test.go::TestHostConnectOverALinkClosedBeforeKeepsNoParentSoTheNextConnectIsTaken`, `chord/next/host/host_connect_closed_link_test.go::TestHostConnectOverAWebSocketRefusedBeforeItsLinkWrappedItKeepsNoParent`, `chord/next/host/host_connect_closed_link_test.go::TestHostConnectOverAWebSocketRefusedBeforeTheHostConnectedItsLinkKeepsNoParent`, `chord/next/link/websocket_test.go::TestWebSocketLinksOverAFakeSocket`
+- **Release note:** A Chord WebSocket link made over a socket that closed while the link registered its listeners is a closed link too; it used to stay open over the closed socket, because the close came after the link read the socket's state and before its `close` listener existed.
 
 ### BF-648ff3e
 
@@ -27064,14 +27079,16 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run…**
 
-- **Source:** PiG's own defect
+- **Source:** A Pi defect that PiG fixed first (divergence D247)
 - **Symptom:** Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them.
-- **Root cause:** Not recorded.
+- **Root cause:** the quit waits for the interrupted run on the owner loop; a turn started from a handler's message would run provider requests and tools after the user asked to leave, and its own `agent_settled` could send the next one.
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Fix commits:** `694685ee71` (2026-11-05), `bd8849d729` (2026-11-05), `c28332bfcb` (2026-11-05)
-- **Tests:** `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
+- **Pi issue:** none recorded
+- **Removed when Pi fixes it:** PiG starts the turn from such a message and waits for it as the pinned Pi does, or Pi drops a message sent from `agent_settled` once its dispose has begun.
+- **Fix commits:** `00d787634a` (2026-11-05), `694685ee71` (2026-11-05), `bd8849d729` (2026-11-05), `c28332bfcb` (2026-11-05), `9a1349c782` (2026-11-07), `9c5d79a1e6` (2026-11-08)
+- **Tests:** `coding/cli/interactive_provider_abort_quit_linux_test.go::TestInteractiveQuitWhileABuiltInProviderTurnStreams`, `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
 - **Release note:** Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.2's order (Pi #9124, D247).
 
 ### BF-bd9ac3b
@@ -35727,6 +35744,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 | D230 | `pig config` lists declared Package members that are missing from disk, marked `missing` | [BF-825b4ab](#bf-825b4ab) |
 | D235 | A session-graph client's runs share one ctx.signal when its SDK sends no run token, and when two runs were… | [BF-b290bc0](#bf-b290bc0) |
+| D247 | An interactive quit starts no turn from a message an agent_settled handler sends while it waits for the… | [BF-bd8849d](#bf-bd8849d) |
 | D266 | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | [BF-D266](#bf-d266) |
 | D267 | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | [BF-D267](#bf-d267) |
 | D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |

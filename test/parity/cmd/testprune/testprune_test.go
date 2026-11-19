@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/automation/ci/preflight/reviewed"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -124,7 +125,7 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 	}
 
 	edit("second", "make the test pass")
-	problems, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, nil)
+	problems, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,13 +133,13 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 		t.Fatalf("an expectation edited with its code passed review: %q", problems)
 	}
 
-	if problems, err := checkCoEdits(dir, base+"..HEAD", time.Now().Add(time.Hour), piNames, nil); err != nil || len(problems) != 0 {
+	if problems, err := checkCoEdits(dir, base+"..HEAD", time.Now().Add(time.Hour), piNames, nil, nil); err != nil || len(problems) != 0 {
 		t.Fatalf("a commit authored before the ratchet date was reviewed: %v %q", err, problems)
 	}
 
 	mid := gitIn(t, dir, "rev-parse", "HEAD")
 	edit("third", "follow Pi\n\nPi-Behavior-Change: packages/coding-agent/src/core/a.ts:42")
-	problems, err = checkCoEdits(dir, mid+"..HEAD", time.Time{}, piNames, nil)
+	problems, err = checkCoEdits(dir, mid+"..HEAD", time.Time{}, piNames, nil, nil)
 	if err != nil || len(problems) != 0 {
 		t.Fatalf("a Pi-cited change was rejected: %v %q", err, problems)
 	}
@@ -148,7 +149,7 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 	write(t, dir, "pkg/a.go", "package pkg\n\nfunc A() string { return \"third\" }\n\nfunc unrelated() {}\n")
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-q", "-m", "refactor")
-	problems, err = checkCoEdits(dir, tip+"..HEAD", time.Time{}, piNames, nil)
+	problems, err = checkCoEdits(dir, tip+"..HEAD", time.Time{}, piNames, nil, nil)
 	if err != nil || len(problems) != 0 {
 		t.Fatalf("a refactor that keeps every expected value was rejected: %v %q", err, problems)
 	}
@@ -157,7 +158,7 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 	for i, message := range []string{"follow nobody\n\nPi-Behavior-Change: extensions/sdk-ts/src/index.ts:3", "follow nobody\n\nPi-Behavior-Change: invented.ts:1"} {
 		before := gitIn(t, dir, "rev-parse", "HEAD")
 		edit(fmt.Sprintf("uncited-%d", i), message)
-		if problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames, nil); err != nil || len(problems) != 1 {
+		if problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames, nil, nil); err != nil || len(problems) != 1 {
 			t.Fatalf("%q passed as a Pi citation: %v %q", message, err, problems)
 		}
 	}
@@ -167,7 +168,7 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 		write(t, dir, "pkg/a_test.go", "package pkg\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\t// "+comment+"\n\tif A() != \""+value+"\" {\n\t\tt.Fatal(\"bad\")\n\t}\n}\n")
 		gitIn(t, dir, "add", ".")
 		gitIn(t, dir, "commit", "-q", "-m", "change "+value)
-		problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames, nil)
+		problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -189,7 +190,7 @@ func TestCheckCoEditsRequiresAPiCitation(t *testing.T) {
 	write(t, dir, "pkg/a_test.go", "package pkg\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\t// see helper.ts:4\n\tif A() != \"fifth\" || where != \"pkg/moved/place\" {\n\t\tt.Fatal(\"bad\")\n\t}\n}\n")
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-q", "-m", "move a path")
-	if problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames, nil); err != nil || len(problems) != 0 {
+	if problems, err := checkCoEdits(dir, before+"..HEAD", time.Time{}, piNames, nil, nil); err != nil || len(problems) != 0 {
 		t.Fatalf("a moved path counted as a changed expected value: %v %q", err, problems)
 	}
 }
@@ -458,14 +459,14 @@ func TestCheckCoEditsLedger(t *testing.T) {
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-q", "-m", "change")
 	tip := gitIn(t, dir, "rev-parse", "HEAD")
-	run := func(l ...reviewEntry) []string {
-		p, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, l)
+	run := func(l ...reviewed.Entry) []string {
+		p, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, l, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 		return p
 	}
-	good := reviewEntry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
+	good := reviewed.Entry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
 	if p := run(good); len(p) != 0 {
 		t.Fatalf("matching entry rejected: %v", p)
 	}
@@ -487,7 +488,7 @@ func TestCheckCoEditsLedger(t *testing.T) {
 	if p := run(bad); len(p) != 1 || !strings.Contains(p[0], "does not name a Pi file") {
 		t.Fatalf("unknown Pi file accepted: %v", p)
 	}
-	if p := run(good, reviewEntry{Path: "pkg/gone_test.go", Commit: tip[:10], Class: "NOBEHAVIOR", Reason: "r"}); len(p) != 1 || !strings.Contains(p[0], "stale") {
+	if p := run(good, reviewed.Entry{Path: "pkg/gone_test.go", Commit: tip[:10], Class: "NOBEHAVIOR", Reason: "r"}); len(p) != 1 || !strings.Contains(p[0], "stale") {
 		t.Fatalf("stale entry accepted: %v", p)
 	}
 }
@@ -508,8 +509,8 @@ func TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation(t *testing.T) {
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-q", "-m", "change\n\nPi-Behavior-Change: packages/x/a.ts:12")
 	tip := gitIn(t, dir, "rev-parse", "HEAD")
-	run := func(l ...reviewEntry) []string {
-		p, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, l)
+	run := func(l ...reviewed.Entry) []string {
+		p, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, l, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -518,7 +519,7 @@ func TestCheckCoEditsLedgerEntryOutranksTheCommitsOwnCitation(t *testing.T) {
 	if p := run(); len(p) != 0 {
 		t.Fatalf("a cited commit is a finding: %v", p)
 	}
-	entry := reviewEntry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "NOBEHAVIOR", Reason: "the cited Pi line did not change"}
+	entry := reviewed.Entry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "NOBEHAVIOR", Reason: "the cited Pi line did not change"}
 	if p := run(entry); len(p) != 0 {
 		t.Fatalf("an entry for a cited commit was refused or left stale: %v", p)
 	}
@@ -546,15 +547,15 @@ func TestLedgerSurvivesSquashMerge(t *testing.T) {
 	gitIn(t, dir, "add", ".")
 	gitIn(t, dir, "commit", "-q", "-m", "change")
 	tip := gitIn(t, dir, "rev-parse", "HEAD")
-	entry := reviewEntry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
+	entry := reviewed.Entry{Path: "pkg/a_test.go", Commit: tip[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
 
 	lint := func(rangeSpec string) (problems, prunable []string) {
 		t.Helper()
-		problems, err := checkCoEdits(dir, rangeSpec, time.Time{}, piNames, []reviewEntry{entry})
+		problems, err := checkCoEdits(dir, rangeSpec, time.Time{}, piNames, []reviewed.Entry{entry}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
-		prunable, err = prunableEntries(dir, rangeSpec, []reviewEntry{entry})
+		prunable, err = prunableEntries(dir, rangeSpec, []reviewed.Entry{entry})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -587,7 +588,7 @@ func TestLedgerSurvivesSquashMerge(t *testing.T) {
 	}
 
 	// An entry whose commit is in range and matches no finding still fails.
-	entry = reviewEntry{Path: "README.md", Commit: gitIn(t, dir, "rev-parse", "HEAD")[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
+	entry = reviewed.Entry{Path: "README.md", Commit: gitIn(t, dir, "rev-parse", "HEAD")[:10], Class: "CITE", Cite: "packages/x/a.ts:12", Reason: "r"}
 	if p, pr := lint(squashed + "..HEAD"); len(p) != 1 || !strings.Contains(p[0], "stale") || len(pr) != 0 {
 		t.Fatalf("in-range entry matching nothing: problems %v prunable %v", p, pr)
 	}
@@ -620,5 +621,67 @@ func TestLoadPiGoldenBasesNamesTheManifestThatDoesNotParse(t *testing.T) {
 	write(t, dir, provenanceFile, "[[golden]]\npaths = [\"a/testdata/x.golden\"]\nowner = \"pi\"\"\n")
 	if _, err := loadPiGoldenBases(dir); err == nil || !strings.Contains(err.Error(), provenanceFile) || !strings.Contains(err.Error(), "line 3") {
 		t.Fatalf("err = %v, want it to name %s and line 3", err, provenanceFile)
+	}
+}
+
+// A tooling directory is outside the expected-value rule; a product path with the same edit still needs its citation.
+func TestCheckCoEditsSkipsOnlyListedToolingDirectories(t *testing.T) {
+	piNames := map[string]bool{"a.ts": true}
+	dir := t.TempDir()
+	gitIn(t, dir, "init", "-q", "-b", "main")
+	paths := []string{"agent", "tui", "automation/ci/preflight", "automation/ci/other"}
+	for _, p := range paths {
+		write(t, dir, p+"/a.go", "package pkg\n\nfunc A() string { return \"first\" }\n")
+		write(t, dir, p+"/a_test.go", "package pkg\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\tif A() != \"first\" {\n\t\tt.Fatal(\"bad\")\n\t}\n}\n")
+	}
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-q", "-m", "base")
+	base := gitIn(t, dir, "rev-parse", "HEAD")
+	for _, p := range paths {
+		write(t, dir, p+"/a.go", "package pkg\n\nfunc A() string { return \"second\" }\n")
+		write(t, dir, p+"/a_test.go", "package pkg\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) {\n\tif A() != \"second\" {\n\t\tt.Fatal(\"bad\")\n\t}\n}\n")
+	}
+	gitIn(t, dir, "add", ".")
+	gitIn(t, dir, "commit", "-q", "-m", "change")
+	tooling := []reviewed.Tooling{{Prefix: "automation/ci/preflight/", Reason: "CI tooling owned by PiG; no upstream Pi behaviour to cite"}}
+	problems, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, nil, tooling)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := strings.Join(problems, "\n")
+	for _, want := range []string{"agent/a_test.go", "tui/a_test.go", "automation/ci/other/a_test.go"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%s needs a citation but passed: %q", want, problems)
+		}
+	}
+	if strings.Contains(got, "automation/ci/preflight/") || len(problems) != 3 {
+		t.Errorf("the listed tooling directory was reviewed, or another path slipped: %q", problems)
+	}
+	if problems, err := checkCoEdits(dir, base+"..HEAD", time.Time{}, piNames, nil, nil); err != nil || len(problems) != 4 {
+		t.Errorf("without a tooling list all four paths need a citation: %v %q", err, problems)
+	}
+}
+
+func TestCheckToolingRejectsEntriesThatWidenTheScope(t *testing.T) {
+	tracked := []string{"automation/ci/preflight/a_test.go", "agent/a_test.go"}
+	cases := []struct {
+		name  string
+		entry reviewed.Tooling
+		want  string
+	}{
+		{"product directory", reviewed.Tooling{Prefix: "agent/", Reason: "r"}, "product code stays under the rule"},
+		{"all of automation", reviewed.Tooling{Prefix: "automation/", Reason: "r"}, "product code stays under the rule"},
+		{"no trailing slash", reviewed.Tooling{Prefix: "automation/ci/preflight", Reason: "r"}, "ends with a slash"},
+		{"parent escape", reviewed.Tooling{Prefix: "automation/ci/../../agent/", Reason: "r"}, "product code stays under the rule"},
+		{"no reason", reviewed.Tooling{Prefix: "automation/ci/preflight/"}, "has no reason"},
+		{"no file", reviewed.Tooling{Prefix: "automation/ci/gone/", Reason: "r"}, "matches no tracked file"},
+	}
+	for _, tc := range cases {
+		if got := strings.Join(checkTooling([]reviewed.Tooling{tc.entry}, tracked), "\n"); !strings.Contains(got, tc.want) {
+			t.Errorf("%s: problems %q lack %q", tc.name, got, tc.want)
+		}
+	}
+	if p := checkTooling([]reviewed.Tooling{{Prefix: "automation/ci/preflight/", Reason: "r"}}, tracked); len(p) != 0 {
+		t.Errorf("a valid entry was reported: %q", p)
 	}
 }

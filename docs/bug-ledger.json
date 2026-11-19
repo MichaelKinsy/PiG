@@ -23545,6 +23545,32 @@
       "tests": []
     },
     {
+      "id": "BF-647a448",
+      "title": "A Chord WebSocket link made over a socket that closed while the link registered its listeners is a closed…",
+      "symptom": "A Chord WebSocket link made over a socket that closed while the link registered its listeners is a closed link too; it used to stay open over the closed socket, because the close came after the link read the socket's state and before its `close` listener existed.",
+      "rootCause": "A Chord WebSocket link made over a socket that closed while the link registered its listeners is a closed link too; it used to stay open over the closed socket, because the close came after the link read the socket's state and before its `close` listener existed.",
+      "rootCauseSource": "release note",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A Chord WebSocket link made over a socket that closed while the link registered its listeners is a closed link too; it used to stay open over the closed socket, because the close came after the link read the socket's state and before its `close` listener existed.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "647a44808a",
+          "date": "2026-11-19"
+        }
+      ],
+      "tests": [
+        "chord/next/host/host_connect_closed_link_test.go::TestHostConnectAfterALinkClosedAtOnceHoldsTheReferencesAgainOverTheNextGoodLink",
+        "chord/next/host/host_connect_closed_link_test.go::TestHostConnectOverALinkClosedBeforeKeepsNoParentSoTheNextConnectIsTaken",
+        "chord/next/host/host_connect_closed_link_test.go::TestHostConnectOverAWebSocketRefusedBeforeItsLinkWrappedItKeepsNoParent",
+        "chord/next/host/host_connect_closed_link_test.go::TestHostConnectOverAWebSocketRefusedBeforeTheHostConnectedItsLinkKeepsNoParent",
+        "chord/next/link/websocket_test.go::TestWebSocketLinksOverAFakeSocket"
+      ]
+    },
+    {
       "id": "BF-648ff3e",
       "title": "A child session's `message_update` event carries the message so far and the assistant event's `partial`, as…",
       "symptom": "A child session's `message_update` event carries the message so far and the assistant event's `partial`, as Pi's `AgentSession.subscribe` hands them to a listener, where RPC mode's trimmed shape left both out.",
@@ -48977,15 +49003,21 @@
       "id": "BF-bd8849d",
       "title": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run…",
       "symptom": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them.",
-      "rootCause": "",
-      "rootCauseSource": "",
+      "rootCause": "the quit waits for the interrupted run on the owner loop; a turn started from a handler's message would run provider requests and tools after the user asked to leave, and its own `agent_settled` could send the next one.",
+      "rootCauseSource": "divergence record",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
-      "class": "own",
+      "class": "ahead-of-pi",
+      "divergence": "D247",
+      "removeWhen": "PiG starts the turn from such a message and waits for it as the pinned Pi does, or Pi drops a message sent from `agent_settled` once its dispose has begun.",
       "fixedIn": "Unreleased",
       "releaseNote": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.2's order (Pi #9124, D247).",
       "origin": "release note",
       "commits": [
+        {
+          "hash": "00d787634a",
+          "date": "2026-11-05"
+        },
         {
           "hash": "694685ee71",
           "date": "2026-11-05"
@@ -48997,9 +49029,18 @@
         {
           "hash": "c28332bfcb",
           "date": "2026-11-05"
+        },
+        {
+          "hash": "9a1349c782",
+          "date": "2026-11-07"
+        },
+        {
+          "hash": "9c5d79a1e6",
+          "date": "2026-11-08"
         }
       ],
       "tests": [
+        "coding/cli/interactive_provider_abort_quit_linux_test.go::TestInteractiveQuitWhileABuiltInProviderTurnStreams",
         "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
       ]
     },
@@ -67914,6 +67955,11 @@
       "id": "D235",
       "title": "A session-graph client's runs share one ctx.signal when its SDK sends no run token, and when two runs were…",
       "entry": "BF-b290bc0"
+    },
+    {
+      "id": "D247",
+      "title": "An interactive quit starts no turn from a message an agent_settled handler sends while it waits for the…",
+      "entry": "BF-bd8849d"
     },
     {
       "id": "D266",

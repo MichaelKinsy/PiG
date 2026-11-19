@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -25,6 +26,7 @@ class PendingTestBatchesTests(unittest.TestCase):
             for dispositions in ([], ["pending", "partial", "ported"]):
                 with self.subTest(version=explicit_version, dispositions=dispositions), tempfile.TemporaryDirectory() as directory:
                     version = explicit_version or pin.version
+                    baseline_version = "0.9.0" if explicit_version else "0.5.0+aaaaaaaa"
                     entries = [{"path": f"packages/agent/test/case-{index}.test.ts", "disposition": disposition} for index, disposition in enumerate(dispositions)]
                     baseline = json.dumps({"entries": entries}).encode()
                     root = Path(directory)
@@ -36,19 +38,31 @@ class PendingTestBatchesTests(unittest.TestCase):
                     out = root / "batches.md"
                     argv = ["pending-test-batches.py", "--baseline-commit", "baseline", "--out", str(out)]
                     if explicit_version:
-                        argv.extend(("--version", explicit_version))
-                    with contextlib.chdir(root), contextlib.redirect_stdout(io.StringIO()), mock.patch.object(pinlib, "committed", return_value=pin), mock.patch.object(batches, "baseline_mapping", return_value=baseline) as read_baseline, mock.patch.object(sys, "argv", argv):
+                        argv.extend(("--version", explicit_version, "--baseline-version", baseline_version))
+                    with contextlib.chdir(root), contextlib.redirect_stdout(io.StringIO()), mock.patch.object(pinlib, "committed", return_value=pin), mock.patch.object(batches, "baseline_version", return_value=baseline_version), mock.patch.object(batches, "baseline_mapping", return_value=baseline) as read_baseline, mock.patch.object(sys, "argv", argv):
                         batches.main()
                         first = out.read_bytes()
                         batches.main()
                         self.assertEqual(first, out.read_bytes())
-                    read_baseline.assert_called_with("baseline", f"test/parity/interfaces/test-mapping-v{version}.json")
+                    read_baseline.assert_called_with("baseline", f"test/parity/interfaces/test-mapping-v{baseline_version}.json")
                     text = first.decode()
-                    self.assertIn(f"--baseline-commit baseline --version {version}", text)
+                    self.assertIn(f"--baseline-commit baseline --baseline-version {baseline_version} --version {version}", text)
+                    self.assertIn(f"the Pi build {baseline_version}.", text)
                     pending = [entry for entry in entries if entry["disposition"] in ("pending", "partial")]
                     self.assertIn(f"= {len(pending)} files", text)
                     for entry in entries:
                         self.assertEqual(text.count(f"`{entry['path']}`"), int(entry in pending))
+
+    def test_baseline_version_is_the_version_the_baseline_commit_pinned(self):
+        pin_file = "# comment\nref=v1.4.0\ncommit=" + "a" * 40 + "\npackage_version=1.4.0\nversion=1.4.0\n"
+        done = subprocess.CompletedProcess([], 0, stdout=pin_file, stderr="")
+        with mock.patch.object(batches.subprocess, "run", return_value=done) as run:
+            self.assertEqual(batches.baseline_version("baseline"), "1.4.0")
+        run.assert_called_once()
+        self.assertEqual(run.call_args.args[0], ["git", "show", "baseline:.upstream/pin"])
+        missing = subprocess.CompletedProcess([], 128, stdout="", stderr="fatal")
+        with mock.patch.object(batches.subprocess, "run", return_value=missing), self.assertRaisesRegex(RuntimeError, "no .upstream/pin"):
+            batches.baseline_version("baseline")
 
 
 if __name__ == "__main__":
