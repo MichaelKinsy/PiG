@@ -206,15 +206,15 @@ func (b *loginPtyBuffer) String() string {
 
 // loginRun is one pig, started as the session leader of a pseudo-terminal.
 type loginRun struct {
-	t        *testing.T
-	cmd      *exec.Cmd
-	master   *os.File
-	out      *loginPtyBuffer
-	waited   chan struct{}
+	t      *testing.T
+	cmd    *exec.Cmd
+	master *os.File
+	out    *loginPtyBuffer
+	waited chan struct{}
 	// readerDone closes when the reader goroutine has collected the terminal's output to its end.
 	readerDone chan struct{}
 	dir        string
-	agentDir string
+	agentDir   string
 }
 
 // loginRunEnv is the whole environment of a pig under test: every variable that names a home or an agent directory is its own scratch directory, no credential or
