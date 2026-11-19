@@ -92528,9 +92528,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(id string, registry **authContributionRegistry) (github.com/MichaelKinsy/PiG/ai.OAuthProviderInterface, error)"
+        "type": "func(ctx context.Context, id string, registry **authContributionRegistry) (github.com/MichaelKinsy/PiG/ai.OAuthProviderInterface, error)"
       },
-      "shapeHash": "sha256:6fd3a73e730dd75067fa881530a0e91e32ee8e950117861afd16a8b202964f76"
+      "shapeHash": "sha256:f269651192cfbfca1e0fb307ecc4b219fd030ae191aa46b7cc2601df50244cf7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#authRegistrationProjection",
@@ -94854,6 +94854,50 @@
       "shapeHash": "sha256:9ecf4ca3632e19dd360a7496562e9e31a8d9eecb5f5040f6ad44f43a4a54ac7a"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#commandSignals",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "commandSignals",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "commandSignals"
+      },
+      "shapeHash": "sha256:89f3a100d26dc4c78774607669ecff9068000bcf6931e1baf9440c2ac5c98b40"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#commandSignals.Fired",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "commandSignals.Fired",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() (os.Signal, bool)"
+      },
+      "shapeHash": "sha256:8ec60103c56f3405aaf8f29bb077e3fadd7243cb5596d73fa69258558466d422"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#commandSignals.Stop",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "commandSignals.Stop",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#commandSignals.watch",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "commandSignals.watch",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#commandSuspendSource",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "commandSuspendSource",
@@ -94863,6 +94907,17 @@
         "type": "commandSuspendSource"
       },
       "shapeHash": "sha256:4f5de52caf220c5d0894df38450f05d34e903c535c3466116810d9a1fe5070db"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#commandTerminationSignals",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "commandTerminationSignals",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() []os.Signal"
+      },
+      "shapeHash": "sha256:2e07a93c5db4e40ce361f297f15409da37ee5dbc8b39771636e43f98d5fed5fc"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#commandWord",
@@ -95547,15 +95602,26 @@
       "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#dieBySignal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "dieBySignal",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func(sig os.Signal)"
+      },
+      "shapeHash": "sha256:95a5155162afcb167d2c507127d7de2e8827231b7b949e176ae42a4f29791dd0"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#discoverAuthContributions",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "discoverAuthContributions",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func() (*authContributionRegistry, error)"
+        "type": "func(ctx context.Context) (*authContributionRegistry, error)"
       },
-      "shapeHash": "sha256:053ff4ad82423748185e25ad09014a496f5341ff04e9bfda53602f23fd437e7c"
+      "shapeHash": "sha256:94b3073d4a790ba37332c80a3a9e6f89f140ec724f265876a8e0b22ea7e3a410"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#discoverAuthContributionsFor",
@@ -95564,9 +95630,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(targetID string) (*authContributionRegistry, error)"
+        "type": "func(parent context.Context, targetID string) (*authContributionRegistry, error)"
       },
-      "shapeHash": "sha256:4878983810823e1b5cb3c54513efe070289de482fff4184a7bc2d83ae898ad2b"
+      "shapeHash": "sha256:dbf3b08f50f14052fda88d9f68c4bf458166b1d5ccfbcac5736f8437a41dd4c7"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#discoverExtensionConfigs",
@@ -95853,6 +95919,17 @@
         "type": "func(code int)"
       },
       "shapeHash": "sha256:aa97d7aa1aed1d7a407a289e04410c0d7fef99388bc8e86c28109aabd5eda6bc"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#exitProcessBySignal",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "exitProcessBySignal",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(sig os.Signal)"
+      },
+      "shapeHash": "sha256:95a5155162afcb167d2c507127d7de2e8827231b7b949e176ae42a4f29791dd0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#explicitBuiltinPaths",
@@ -98457,9 +98534,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(id string, registry **authContributionRegistry) error"
+        "type": "func(ctx context.Context, id string, registry **authContributionRegistry) error"
       },
-      "shapeHash": "sha256:ebdd7485ff613496bfcfcfb09ffb927758a0a16b09a04abfe6f89199a1510648"
+      "shapeHash": "sha256:952d36a8c4194adb90c2eb1d0579ae7d73ebb07b18e945f83154403de6ee0ef2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#loadFinalSubprocessExtensions",
@@ -98548,6 +98625,17 @@
         "type": "loginCommand"
       },
       "shapeHash": "sha256:ee017f6ee001f490f008188adfe0b9f6c8beb60e3e3e06fdc10206264add05f9"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#loginError",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "loginError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, args ...any)"
+      },
+      "shapeHash": "sha256:bc5e604231fec418263125b8f862abcdfd40143a0db102d4d04b1179aecc3dd2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#loginPreviewGlyphFreeEnabled",
@@ -98933,6 +99021,17 @@
         "type": "loginRequest"
       },
       "shapeHash": "sha256:da8fdf929b33d659c482402e63cfaa028c3c508340718c725c2cd5e6a2349c8c"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#loginWithContext",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "loginWithContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, provider github.com/MichaelKinsy/PiG/ai.OAuthProviderInterface, callbacks github.com/MichaelKinsy/PiG/ai.OAuthLoginCallbacks) (github.com/MichaelKinsy/PiG/ai.OAuthCredentials, error)"
+      },
+      "shapeHash": "sha256:d15dcbddaf312a21a1ddc497775651ee7b962d978ef9a75460f8328c02f781e2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#lstatPinned",
@@ -99538,6 +99637,17 @@
         "type": "func(sig os.Signal) (syscall.Signal, bool)"
       },
       "shapeHash": "sha256:609fccfd0af8e7b0a657007a51603175a5ff159d8cdd2e14434386caec7143c0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#notifyCommandSignals",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "notifyCommandSignals",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(parent context.Context, signals ...os.Signal) *commandSignals"
+      },
+      "shapeHash": "sha256:ad8026981865f5a4cb2c03bb52b81450796cc6cdca79c312a7e51ab35d21a273"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#omitReplacedExtensions",
@@ -101157,6 +101267,17 @@
       "shapeHash": "sha256:7e43a8ec8952a80f7f99a689ccaef2bd723bdb6e05222cfd55e1e9bdf4fb510b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#readLineContext",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "readLineContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, r io.Reader) (string, error)"
+      },
+      "shapeHash": "sha256:d408ab6db7c680a81243d67697b4132cb57747a773455d8355a793768136cfd6"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#readPipedStdin",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "readPipedStdin",
@@ -101380,6 +101501,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#releaseDocsLeases",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "releaseDocsLeases",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#releaseForExit",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "releaseForExit",
       "kind": "function",
       "exported": false,
       "shape": {
@@ -101922,9 +102054,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(input string, registry **authContributionRegistry) (github.com/MichaelKinsy/PiG/ai.OAuthProviderInterface, error)"
+        "type": "func(ctx context.Context, input string, registry **authContributionRegistry) (github.com/MichaelKinsy/PiG/ai.OAuthProviderInterface, error)"
       },
-      "shapeHash": "sha256:bf2e570c8b6232678c94c2f5c96bd8d3ddcd3c41f4bcfda8828f6ba86c25b168"
+      "shapeHash": "sha256:968947ae36829173b8e2fca19062d5bc2e9b32833f68ec65ef7f3eb24966d276"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#resolveLogoutProvider",
@@ -101933,9 +102065,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(store *github.com/MichaelKinsy/PiG/ai.AuthStorage, input string) (string, error)"
+        "type": "func(ctx context.Context, store *github.com/MichaelKinsy/PiG/ai.AuthStorage, input string) (string, error)"
       },
-      "shapeHash": "sha256:da391c5be978c18a83075c154731da31f61f9fde46473ddb224bc09996af3323"
+      "shapeHash": "sha256:291e5b2ee141fbac55c38f3ddb5278f4f15e9e0598d99103f30f34e0a7787880"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#resolveModelScopeFromModels",
@@ -105304,6 +105436,17 @@
       "shapeHash": "sha256:9857bb82b8775b693614321dc09a11e0f4174dd38375fe9129cec17cb592224b"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runAuthLoginSession",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "runAuthLoginSession",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(signals *commandSignals, args []string, env authRunEnv) int"
+      },
+      "shapeHash": "sha256:3d5d5bccc24cb33a53811215acdd84571dcb4102c36d3c268e9351f9a2aa3f68"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runAuthLogoutCommand",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "runAuthLogoutCommand",
@@ -105480,6 +105623,17 @@
       "shapeHash": "sha256:8ee5f839267d1214102aa5ab88740adfb463514bbcef9a1833603cb2bd6cbd88"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runLoginOptions",
+      "package": "github.com/MichaelKinsy/PiG/coding/cli",
+      "name": "runLoginOptions",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, opts *loginCLIOptions) int"
+      },
+      "shapeHash": "sha256:aad18f85dbc132b6f3a6a6a37e8aa7ccd84c2dba338b89fe63b93788d2644372"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runMcpCommand",
       "package": "github.com/MichaelKinsy/PiG/coding/cli",
       "name": "runMcpCommand",
@@ -105497,9 +105651,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(provider github.com/MichaelKinsy/PiG/ai.OAuthProviderInterface, noInput bool, getDeviceID func() string) (github.com/MichaelKinsy/PiG/ai.OAuthCredentials, error)"
+        "type": "func(ctx context.Context, provider github.com/MichaelKinsy/PiG/ai.OAuthProviderInterface, noInput bool, getDeviceID func() string) (github.com/MichaelKinsy/PiG/ai.OAuthCredentials, error)"
       },
-      "shapeHash": "sha256:6bc4631d33dc652087b4f68ac6a5a58ad02a62a5f60a3cb33a8aba84572affe7"
+      "shapeHash": "sha256:05ad939f78eedc9d5399bbb23bb095d5daef71164a5ea5149277b7451aca6577"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runPackageCommand",
@@ -105563,9 +105717,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(provider github.com/MichaelKinsy/PiG/ai.OAuthProviderInterface, callbacks github.com/MichaelKinsy/PiG/ai.OAuthLoginCallbacks) (github.com/MichaelKinsy/PiG/ai.OAuthCredentials, error)"
+        "type": "func(ctx context.Context, provider github.com/MichaelKinsy/PiG/ai.OAuthProviderInterface, callbacks github.com/MichaelKinsy/PiG/ai.OAuthLoginCallbacks) (github.com/MichaelKinsy/PiG/ai.OAuthCredentials, error)"
       },
-      "shapeHash": "sha256:50b4615a65f0f7bcb54393bddcfa256fa5c5c9eb44c9d3f48411c86860ec2ff8"
+      "shapeHash": "sha256:d15dcbddaf312a21a1ddc497775651ee7b962d978ef9a75460f8328c02f781e2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/cli#runParsedAuthCommand",
