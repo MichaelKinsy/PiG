@@ -275,7 +275,7 @@ func requireD146Final(t *testing.T, pair d146Pair, out d146Outcome) {
 // D146, recorded from the pinned Pi, and a PIN: it goes red the day Pi changes what it does with two replacements in flight, which is when D146's remove-when is checked.
 // With the first replacement's session_start handler the longer one, Pi answers the second command first, in one write and with the second written while that handler runs, for new_session + new_session,
 // new_session + switch_session and fork + new_session. Sent in one write, Pi sends session_shutdown to the outgoing Session twice (once per command) and never to the
-// first replacement's Session, and binds the final Session three times. Sent while the first replacement's handler runs, the second command's session_shutdown reaches the first replacement's Session
+// first replacement's Session, and binds each replacement's Session once. Sent while the first replacement's handler runs, the second command's session_shutdown reaches the first replacement's Session
 // while its session_start handler still runs, and a handler that uses its captured pi after that gets the stale-context extension_error.
 func TestPiOverlappingReplacementsD146(t *testing.T) {
 	if testing.Short() {
@@ -287,7 +287,12 @@ func TestPiOverlappingReplacementsD146(t *testing.T) {
 				t.Run(fmt.Sprintf("%s/%s/touch=%v", pair.name, g.name, touch), func(t *testing.T) {
 					out := runD146(t, "pi", pair, g.during, touch)
 					requireD146Final(t, pair, out)
-					want := d146Shape{Order: "b,a", Starts: map[string]int{"first": 1, "final": 3}}
+					// Starts: Pi beffcde92dea (#12230, #10470) makes the runtime's callback the only rebind of a replacement: AgentSessionRuntime.finishSessionReplacement
+					// (agent-session-runtime.ts:187-190) calls the callback set at rpc-mode.ts:317-319, whose rebindSession (:321) binds the extensions of the Session
+					// that replacement applied, and the closing `await rebindSession()` after runtimeHost.newSession/switchSession/fork (rpc-mode.ts:456-463, :625-647) is gone.
+					// Two replacements are two rebinds, one per Session, so each Session gets one session_start: first 1, final 1. Before the commit each command
+					// also ended with that explicit rebind, which binds whichever Session is current by then (the final one): four rebinds, first 1, final 3.
+					want := d146Shape{Order: "b,a", Starts: map[string]int{"first": 1, "final": 1}}
 					if !g.during {
 						want.Shutdowns = map[string]string{"source": pair.reasons[0] + "," + pair.reasons[1] + ","}
 					} else {
@@ -308,7 +313,7 @@ func TestPiOverlappingReplacementsD146(t *testing.T) {
 }
 
 // D146, pig. The same pairs, written the same two ways, are answered in the order they were sent and every Session gets its session_shutdown once: the source by the
-// first command, the first replacement's Session by the second, after its session_start handlers returned; the final Session binds twice and no extension_error is
+// first command, the first replacement's Session by the second, after its session_start handlers returned; each replacement's Session binds once and no extension_error is
 // written, because the second replacement starts when the first applied (the <-previous wait of awaitReplacement), not while the first replacement's handler runs.
 // mutation-checked: the select on previous before replace (the start-after-previous wait) removed; see D146's Evidence for what the run does then.
 func TestRPCOverlappingReplacementsRunOneAfterTheOtherD146(t *testing.T) {
@@ -324,7 +329,10 @@ func TestRPCOverlappingReplacementsRunOneAfterTheOtherD146(t *testing.T) {
 					want := d146Shape{
 						Order:     "a,b",
 						Shutdowns: map[string]string{"source": pair.reasons[0] + ",", "first": pair.reasons[1] + ","},
-						Starts:    map[string]int{"first": 2, "final": 2},
+						// One rebind per replacement, the runtime's callback (rpcHost.bind), so each Session gets one session_start: the second rebind of each command
+						// (rpcHost.rebindAgain, `err = host.rebindAgain(ctx)` in awaitReplacement's replace functions) was deleted by the follow of Pi beffcde92dea
+						// (4da149a979), which made it two per Session.
+						Starts: map[string]int{"first": 1, "final": 1},
 					}
 					if got := out.shape(); !reflect.DeepEqual(got, want) {
 						t.Fatalf("pig's run of %s, %s, touch=%v:\n got %+v\nwant %+v\nevents %+v", pair.name, g.name, touch, got, want, out.events)
