@@ -285,10 +285,11 @@ func (c *quotedStringCache) beginRequest() {
 	}
 }
 
-// ReleaseRequestCaches forgets every encoding the request caches hold: large strings and finalized messages. The next request encodes what it sends again, as it would have the first time; a build that runs meanwhile finds nothing to splice and encodes its values itself, so its body is the same.
+// ReleaseRequestCaches forgets every encoding the request caches hold: large strings and finalized messages, and the splice the last request kept for the next. The next request encodes what it sends again, as it would have the first time; a build that runs meanwhile finds nothing to splice and encodes its values itself, so its body is the same.
 // pig additive (D112): an interactive session that went idle calls it from its idle collection (D172), so the encodings of the conversation it sent do not stay live while it waits.
 func ReleaseRequestCaches() {
 	requestStrings.release()
+	releaseKeptSplice()
 }
 
 func (c *quotedStringCache) release() {

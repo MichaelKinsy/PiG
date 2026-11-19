@@ -24,3 +24,15 @@ func marshalRequestBody(body any) ([]byte, error) {
 func (s *stringSplice) encode(any, func(any) ([]byte, error)) ([]byte, bool, error) {
 	return nil, false, nil
 }
+
+// spliceEncoding is what encode keeps with a splice between requests: nothing in this build.
+type spliceEncoding struct{}
+
+// acquireSplice is a new splice for a request that reads cache: this build keeps none (request_body_jsonv2.go).
+func acquireSplice(cache *quotedStringCache) *stringSplice {
+	return &stringSplice{cache: cache, nonce: newSpliceNonce()}
+}
+
+func releaseSplice(*stringSplice) {}
+
+func releaseKeptSplice() {}

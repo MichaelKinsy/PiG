@@ -23,7 +23,11 @@ func spliceMessages[M any](s *stringSplice, keyOf func(*messageKey, *M) bool) *j
 	held := new(M)
 	return jsonv2.MarshalToFunc(func(encoder *jsontext.Encoder, message M) error {
 		*held = message
-		return tokenMessage(s, encoder, held, keyOf)
+		err := tokenMessage(s, encoder, held, keyOf)
+		// The marshalers are kept with the splice (spliceEncoding): the copy holds no message once the message is written.
+		var none M
+		*held = none
+		return err
 	})
 }
 

@@ -25,6 +25,8 @@ type stringSplice struct {
 	// walking holds the pointers, maps and slices the walk is inside, so a payload that refers to itself is left as it is below the repeat. It lives in walkingBuf until a payload nests deeper, so an ordinary payload allocates nothing for it.
 	walking    []walkedValue
 	walkingBuf [walkingInline]walkedValue
+	// encoding is what encode keeps with the splice from one request to the next (spliceEncoding).
+	encoding spliceEncoding
 }
 
 // walkingInline is the nesting depth that needs no allocation; a deeper payload grows the slice.
@@ -134,6 +136,7 @@ func opaque(t reflect.Type) bool {
 }
 
 // marshalSpliced is marshal(payload) with the encoding of each large string in the payload taken from cache; a nil cache takes none. marshal must write the payload as marshalRequestBody does and must carry a string through without reading it. A payload whose skeleton does not hold every token as a whole JSON string is marshalled as it is, so a marshaler that rewrites a string costs the cache and never changes the body.
+// The splice that does the work is the one the last successful request left (acquireSplice); a request that fails, or panics, drops it instead of keeping it.
 func marshalSpliced(payload any, cache *quotedStringCache, marshal func(any) ([]byte, error)) (*requestBody, error) {
 	if cache != nil {
 		cache.beginRequest()
@@ -141,9 +144,22 @@ func marshalSpliced(payload any, cache *quotedStringCache, marshal func(any) ([]
 			cache.messages.beginRequest()
 		}
 	}
-	splice := &stringSplice{cache: cache, nonce: newSpliceNonce()}
+	splice := acquireSplice(cache)
+	body, err := splice.marshal(payload, marshal)
+	if err == nil {
+		releaseSplice(splice)
+	}
+	return body, err
+}
+
+// marshal is marshalSpliced on the splice acquireSplice returned.
+func (splice *stringSplice) marshal(payload any, marshal func(any) ([]byte, error)) (*requestBody, error) {
+	cache := splice.cache
 	if cache != nil {
-		splice.quoted = make([][]byte, 0, cache.tokens.Load())
+		// The list of encodings is the splice's own from the last request, emptied by releaseSplice, and holds as many as the last request's.
+		if tokens := cache.tokens.Load(); int64(cap(splice.quoted)) < tokens {
+			splice.quoted = make([][]byte, 0, tokens)
+		}
 		defer func() { cache.tokens.Store(int64(len(splice.quoted))) }()
 	}
 	// The encoder that can write a token where it meets a large string does so without copying the payload; any other marshaler is given a copy of the payload that holds the tokens.

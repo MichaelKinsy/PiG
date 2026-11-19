@@ -741,7 +741,7 @@ allocs = 7
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkOpenAICompletionsAffinityRequest"
-allocs = 325
+allocs = 289
 
 [[benchmark]]
 package = "./ai"
@@ -1021,7 +1021,7 @@ allocs = 103
 [[benchmark]]
 package = "./ai"
 benchmark = "BenchmarkRequestLargeWriteFollowUp/completions"
-allocs = 72
+allocs = 26
 
 [[benchmark]]
 package = "./ai"
