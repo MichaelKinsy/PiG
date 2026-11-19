@@ -3010,24 +3010,24 @@ func applyRequestSuspension(ctx context.Context, state RequestStatePayload) {
 	}
 }
 
-// dispatchBarrier queues a marker behind the frames the read loop has passed to the host and returns a channel that closes once the host dispatched them. It is called on the read loop, so every frame read before the caller's is ahead of the marker.
-func (c *Conn) dispatchBarrier(ctx context.Context) <-chan struct{} {
+// dispatchBarrier queues a marker behind the frames the read loop has passed to the host and returns the marker, whose done channel closes once the host dispatched them. It is called on the read loop, so every frame read before the caller's is ahead of the marker. The caller that makes the request receives the marker through an atomic: a request that ends before its reply is read (its context ended, the connection failed) returns while the read loop may still be here.
+func (c *Conn) dispatchBarrier(ctx context.Context) *dispatchMark {
 	mark := &dispatchMark{done: make(chan struct{})}
 	select {
 	case c.inCh <- &Envelope{barrier: mark}:
 	case <-ctx.Done():
 		mark.release()
 	}
-	return mark.done
+	return mark
 }
 
-// awaitReplyDispatch waits until the host dispatched the frames that dispatched's marker was queued behind, or the connection ends. A nil dispatched is a request whose reply was not read.
-func awaitReplyDispatch(c *Conn, dispatched <-chan struct{}) {
-	if dispatched == nil {
+// awaitReplyDispatch waits until the host dispatched the frames that mark was queued behind, or the connection ends. A nil mark is a request whose reply was not read.
+func awaitReplyDispatch(c *Conn, mark *dispatchMark) {
+	if mark == nil {
 		return
 	}
 	select {
-	case <-dispatched:
+	case <-mark.done:
 	case <-c.Done():
 	}
 }
