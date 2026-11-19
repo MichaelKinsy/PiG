@@ -72,6 +72,10 @@ func (r swapRuntime) ImportFromJsonl(ctx context.Context, path, cwdOverride stri
 	return r.rt.ImportFromJsonl(ctx, path, cwdOverride)
 }
 
+func (r swapRuntime) TakeUnreportedDiagnostics() []icodingagent.AgentSessionRuntimeDiagnostic {
+	return r.rt.TakeUnreportedDiagnostics()
+}
+
 func (r swapRuntime) ExtensionCommandActions(session icodingagent.InteractiveSessionHandle) extension.CommandActions {
 	current, ok := session.(*coding.Session)
 	if !ok {
