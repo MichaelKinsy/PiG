@@ -214,7 +214,7 @@ type loginRun struct {
 	// readerDone closes when the reader goroutine has collected the terminal's output to its end.
 	readerDone chan struct{}
 	dir        string
-	agentDir string
+	agentDir   string
 }
 
 // loginRunEnv is the whole environment of a pig under test: every variable that names a home or an agent directory is its own scratch directory, no credential or
