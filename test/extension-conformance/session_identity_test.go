@@ -75,15 +75,15 @@ func TestContextSessionIdentityAcrossSDKs(t *testing.T) {
 				if !ok {
 					t.Fatal("session-identity command missing")
 				}
-				*h.notify = nil
+				h.ui.ClearRecorded()
 				if err := command.Handler(h.runner.DispatchContext(t.Context()), ""); err != nil {
 					t.Fatal(err)
 				}
-				if len(*h.notify) != 1 {
-					t.Fatalf("notifications = %v", *h.notify)
+				if len(h.ui.Recorded()) != 1 {
+					t.Fatalf("notifications = %v", h.ui.Recorded())
 				}
 				var got []*string
-				if err := json.Unmarshal([]byte(strings.TrimSuffix((*h.notify)[0], ":info")), &got); err != nil {
+				if err := json.Unmarshal([]byte(strings.TrimSuffix(h.ui.Recorded()[0], ":info")), &got); err != nil {
 					t.Fatal(err)
 				}
 				if !reflect.DeepEqual(got, want) {

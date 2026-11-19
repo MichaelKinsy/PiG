@@ -85,7 +85,7 @@ func TestConformance_CommandOnlySessionActionsRefusedFromEventContext(t *testing
 			// noticeWith is the last notice that starts with prefix, "" before there is one.
 			noticeWith := func(prefix string) string {
 				var got string
-				for _, notice := range *h.notify {
+				for _, notice := range h.ui.Recorded() {
 					if strings.HasPrefix(notice, prefix) {
 						got = notice
 					}
@@ -131,7 +131,7 @@ func TestConformance_CommandOnlySessionActionsRefusedFromEventContext(t *testing
 				}},
 			}
 			for _, step := range emits {
-				*h.notify = nil
+				h.ui.ClearRecorded()
 				runConformanceCommandArgs(t, h, "event_session_actions_on", step.event)
 				if err := step.emit(); err != nil {
 					t.Fatalf("%s emit: %v", step.event, err)
@@ -152,7 +152,7 @@ func TestConformance_CommandOnlySessionActionsRefusedFromEventContext(t *testing
 
 			// The handler's request has ended. A context it kept is still an event context: Pi's createContext() object never gains the members, so a call through it
 			// later is refused as well, and no host action runs.
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			runConformanceCommand(t, h, "event_session_actions_stored")
 			pollUntilConformance(t, "the SDK never reported the session actions of the event context a handler kept", func() bool {
 				return noticeWith("stored_actions:") != ""
@@ -182,7 +182,7 @@ func TestConformance_CommandOnlySessionActionsRefusedFromEventContext(t *testing
 			noHostActions("a tool's execute context")
 
 			// From a command context the wait is served, and the call returns when the host's wait does: the command has not finished while the run it waits for has not.
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			release := make(chan struct{})
 			gate.Store(&release)
 			commandDone := make(chan error, 1)
@@ -217,7 +217,7 @@ func TestConformance_CommandOnlySessionActionsRefusedFromEventContext(t *testing
 				}
 				return extension.CancelledResult{}, options.WithSession(&extension.ReplacedSessionContext{})
 			})
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			before := waitRuns.Load()
 			runConformanceCommand(t, h, "wait_idle_with_session")
 			pollUntilConformance(t, "the withSession callback never reported its wait", func() bool { return noticeWith("with_session_wait:") != "" })

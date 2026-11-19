@@ -178,7 +178,7 @@ func TestConformance_EventUnsubscribeEveryEvent(t *testing.T) {
 			for _, event := range subscribedEventNames {
 				delivered := func() int {
 					count := 0
-					for _, n := range *h.notify {
+					for _, n := range h.ui.Recorded() {
 						if strings.TrimSuffix(n, ":info") == "event_probe_on:"+event {
 							count++
 						}
@@ -191,7 +191,7 @@ func TestConformance_EventUnsubscribeEveryEvent(t *testing.T) {
 						t.Fatalf("emit %s: %v", event, err)
 					}
 				}
-				*h.notify = (*h.notify)[:0]
+				h.ui.ClearRecorded()
 				runConformanceCommandArgs(t, h, "event_probe_on", event)
 				emit()
 				pollUntilConformance(t, event+": the subscribed handler never ran", func() bool { return delivered() == 1 })

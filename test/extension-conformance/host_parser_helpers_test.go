@@ -31,13 +31,13 @@ func TestConformance_HostParserHelpersAgreeAcrossSDKs(t *testing.T) {
 	inputs := hostParserHelperInputs()
 	run := func(t *testing.T, h *harness, command, prefix, args string) map[string]any {
 		t.Helper()
-		before := len(*h.notify)
+		before := len(h.ui.Recorded())
 		if !h.runner.ExecuteCommand(context.Background(), command, args) {
 			t.Fatalf("fixture has no %s command", command)
 		}
 		var reported string
 		pollUntilConformance(t, command+": no report", func() bool {
-			for _, n := range (*h.notify)[before:] {
+			for _, n := range h.ui.Recorded()[before:] {
 				if rest, ok := strings.CutPrefix(n, prefix); ok {
 					reported = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 					return true

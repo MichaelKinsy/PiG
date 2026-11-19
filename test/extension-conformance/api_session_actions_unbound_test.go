@@ -29,13 +29,13 @@ func TestConformance_ExtensionUnboundSessionActions(t *testing.T) {
 			if h.bridge == nil {
 				t.Skip("no host bridge for " + tc.name)
 			}
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			runConformanceCommand(t, h, "session_actions_unbound")
 			pollUntilConformance(t, "the SDK never reported its unbound session actions", func() bool {
-				return slices.ContainsFunc(*h.notify, func(s string) bool { return len(s) > 8 && s[:8] == "unbound:" })
+				return slices.ContainsFunc(h.ui.Recorded(), func(s string) bool { return len(s) > 8 && s[:8] == "unbound:" })
 			})
 			var got string
-			for _, notice := range *h.notify {
+			for _, notice := range h.ui.Recorded() {
 				if len(notice) > 8 && notice[:8] == "unbound:" {
 					got = notice
 				}

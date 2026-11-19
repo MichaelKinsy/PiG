@@ -57,7 +57,7 @@ func TestConformance_ToolExecutionUpdateDeltas(t *testing.T) {
 			var failures []string
 			removeListener := h.runner.AddErrorListener(func(err *extension.ExtensionError) { failures = append(failures, err.Error) })
 			defer removeListener()
-			*h.notify = (*h.notify)[:0]
+			h.ui.ClearRecorded()
 			runConformanceCommandArgs(t, h, "event_payload_probe", "tool_execution_update")
 			for index, event := range events {
 				if _, err := h.runner.Emit(ctx, event); err != nil {
@@ -67,7 +67,7 @@ func TestConformance_ToolExecutionUpdateDeltas(t *testing.T) {
 			var reported []string
 			pollUntilConformance(t, "the handler did not report every tool_execution_update", func() bool {
 				reported = reported[:0]
-				for _, n := range *h.notify {
+				for _, n := range h.ui.Recorded() {
 					if rest, ok := strings.CutPrefix(n, prefix); ok {
 						reported = append(reported, strings.TrimSuffix(rest, ":info"))
 					}

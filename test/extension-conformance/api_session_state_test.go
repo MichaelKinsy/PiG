@@ -76,10 +76,10 @@ func TestConformance_ExtensionAPIThinkingLevel(t *testing.T) {
 				pollUntilConformance(t, "the host never applied "+string(level), func() bool {
 					return api.GetThinkingLevel() == level
 				})
-				*h.notify = (*h.notify)[:0]
+				h.ui.ClearRecorded()
 				runConformanceCommand(t, h, "thinking_get")
 				pollUntilConformance(t, "the SDK never reported "+string(level), func() bool {
-					return slices.ContainsFunc(*h.notify, func(n string) bool { return strings.HasPrefix(n, "thinking_get:"+string(level)) })
+					return slices.ContainsFunc(h.ui.Recorded(), func(n string) bool { return strings.HasPrefix(n, "thinking_get:"+string(level)) })
 				})
 			}
 		})
@@ -148,7 +148,7 @@ func TestConformance_ExtensionAPISetModel(t *testing.T) {
 			if got := session.Model().ID; got != start.ID {
 				t.Fatalf("the Session starts on %s, want %s", got, start.ID)
 			}
-			*h.notify = (*h.notify)[:0]
+			h.ui.ClearRecorded()
 			runConformanceCommandArgs(t, h, "model_set", "anthropic/"+target.ID)
 			pollUntilConformance(t, "the SDK never reported the switch", func() bool {
 				return slices.Contains(h.ui.Recorded(), "model_set:true:info")
@@ -208,14 +208,14 @@ func TestConformance_ExtensionAPIGetSessionName(t *testing.T) {
 
 			readName := func() *string {
 				t.Helper()
-				*h.notify = nil
+				h.ui.ClearRecorded()
 				runConformanceCommand(t, h, "session-identity")
 				var got []*string
 				pollUntilConformance(t, "the SDK never reported its session identity", func() bool {
-					return len(*h.notify) == 1
+					return len(h.ui.Recorded()) == 1
 				})
-				if err := json.Unmarshal([]byte(strings.TrimSuffix((*h.notify)[0], ":info")), &got); err != nil || len(got) != 4 {
-					t.Fatalf("identity = %v (%v)", *h.notify, err)
+				if err := json.Unmarshal([]byte(strings.TrimSuffix(h.ui.Recorded()[0], ":info")), &got); err != nil || len(got) != 4 {
+					t.Fatalf("identity = %v (%v)", h.ui.Recorded(), err)
 				}
 				return got[3]
 			}
@@ -294,10 +294,10 @@ func TestConformance_ExtensionAPIGetSettings(t *testing.T) {
 				t.Fatal(err)
 			}
 			pollUntilConformance(t, "the SDK never reported the host's settings", func() bool {
-				*h.notify = nil
+				h.ui.ClearRecorded()
 				runConformanceCommand(t, h, "settings_probe")
 				time.Sleep(100 * time.Millisecond)
-				for _, n := range *h.notify {
+				for _, n := range h.ui.Recorded() {
 					if rest, ok := strings.CutPrefix(n, "settings_probe:"); ok {
 						var reported any
 						if json.Unmarshal([]byte(strings.TrimSuffix(rest, ":info")), &reported) == nil && reflect.DeepEqual(reported, want) {

@@ -45,16 +45,16 @@ func TestReplicatedReadsAreLocalAcrossSDKs(t *testing.T) {
 			probe := func(arg string) (replicaReport, []string) {
 				t.Helper()
 				h.wire.drain()
-				*h.notify = nil
+				h.ui.ClearRecorded()
 				if err := command.Handler(h.runner.DispatchContext(t.Context()), arg); err != nil {
 					t.Fatal(err)
 				}
-				if len(*h.notify) != 1 {
-					t.Fatalf("notifications = %v", *h.notify)
+				if len(h.ui.Recorded()) != 1 {
+					t.Fatalf("notifications = %v", h.ui.Recorded())
 				}
 				var report replicaReport
-				if err := json.Unmarshal([]byte(strings.TrimSuffix((*h.notify)[0], ":info")), &report); err != nil {
-					t.Fatalf("report %q: %v", (*h.notify)[0], err)
+				if err := json.Unmarshal([]byte(strings.TrimSuffix(h.ui.Recorded()[0], ":info")), &report); err != nil {
+					t.Fatalf("report %q: %v", h.ui.Recorded()[0], err)
 				}
 				return report, replicaReadCalls(h.wire.drain())
 			}

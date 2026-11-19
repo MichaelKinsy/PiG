@@ -84,12 +84,12 @@ func TestExecRejectionsAcrossSDKs(t *testing.T) {
 			if !ok {
 				t.Fatal("exec-reject-probe command missing")
 			}
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			if err := command.Handler(h.runner.DispatchContext(t.Context()), string(probe)); err != nil {
 				t.Fatal(err)
 			}
-			if !slices.Equal(*h.notify, want) {
-				t.Errorf("exec outcomes\n got %q\nwant %q", *h.notify, want)
+			if !slices.Equal(h.ui.Recorded(), want) {
+				t.Errorf("exec outcomes\n got %q\nwant %q", h.ui.Recorded(), want)
 			}
 		})
 	}

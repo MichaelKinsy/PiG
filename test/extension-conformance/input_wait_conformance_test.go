@@ -60,7 +60,7 @@ func TestConformance_InputAndBeforeAgentStartDoNotHoldTheCallerWhileTheyWait(t *
 				releaseBound := min(budget, 20*time.Second)
 				peer := newIOWaitPeer(t)
 				runConformanceCommandArgs(t, h, event.command, peer.addr())
-				*h.notify = nil
+				h.ui.ClearRecorded()
 
 				acknowledged := make(chan struct{})
 				ctx := invocation.WithAcknowledgment(t.Context(), func() { close(acknowledged) })
@@ -79,8 +79,8 @@ func TestConformance_InputAndBeforeAgentStartDoNotHoldTheCallerWhileTheyWait(t *
 					t.Fatalf("releasing the caller ended the handler: %v", err)
 				default:
 				}
-				if slices.Contains(*h.notify, event.notify+":info") {
-					t.Fatalf("the handler's notification arrived before its wait ended: %v", *h.notify)
+				if slices.Contains(h.ui.Recorded(), event.notify+":info") {
+					t.Fatalf("the handler's notification arrived before its wait ended: %v", h.ui.Recorded())
 				}
 				if _, err := conn.Write([]byte("go\n")); err != nil {
 					t.Fatal(err)
@@ -93,7 +93,7 @@ func TestConformance_InputAndBeforeAgentStartDoNotHoldTheCallerWhileTheyWait(t *
 				case <-time.After(budget):
 					t.Fatal("the emission did not end after the peer answered")
 				}
-				waitFor(t, func() bool { return slices.Contains(*h.notify, event.notify+":info") })
+				waitFor(t, func() bool { return slices.Contains(h.ui.Recorded(), event.notify+":info") })
 			})
 		}
 	}

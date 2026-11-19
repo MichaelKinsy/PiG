@@ -264,13 +264,13 @@ func TestConformance_CompactionUsageHelpersAgreeAcrossSDKs(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		before := len(*h.notify)
+		before := len(h.ui.Recorded())
 		if !h.runner.ExecuteCommand(context.Background(), "compact_usage_probe", string(args)) {
 			t.Fatal("fixture has no compact_usage_probe command")
 		}
 		var reported string
 		pollUntilConformance(t, "compact_usage_probe: no report", func() bool {
-			for _, n := range (*h.notify)[before:] {
+			for _, n := range h.ui.Recorded()[before:] {
 				if rest, ok := strings.CutPrefix(n, "compact:"); ok {
 					reported = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 					return true

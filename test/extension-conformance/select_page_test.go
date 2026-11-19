@@ -38,7 +38,7 @@ func TestSelectPageIndexAcrossSDKs(t *testing.T) {
 				t.Fatal("select-page-probe command missing")
 			}
 			for _, row := range rows {
-				*h.notify = nil
+				h.ui.ClearRecorded()
 				args, err := json.Marshal(map[string]any{"data": row.data, "selected": row.selected, "count": row.count, "page": row.page})
 				if err != nil {
 					t.Fatal(err)
@@ -53,8 +53,8 @@ func TestSelectPageIndexAcrossSDKs(t *testing.T) {
 				case <-time.After(30 * time.Second):
 					t.Fatalf("%s: the probe did not return", row.name)
 				}
-				if want := []string{row.want + ":info"}; !slices.Equal(*h.notify, want) {
-					t.Errorf("%s: outcome = %q, want %q", row.name, *h.notify, want)
+				if want := []string{row.want + ":info"}; !slices.Equal(h.ui.Recorded(), want) {
+					t.Errorf("%s: outcome = %q, want %q", row.name, h.ui.Recorded(), want)
 				}
 			}
 		})

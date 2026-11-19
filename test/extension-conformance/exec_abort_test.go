@@ -138,7 +138,7 @@ func TestExecAbortAcrossSDKs(t *testing.T) {
 					name = "aborted-before-the-call"
 				}
 				pidFile := filepath.Join(t.TempDir(), "pid")
-				*h.notify = nil
+				h.ui.ClearRecorded()
 				probe := execAbortProbe(t, pidFile, pre)
 				done := make(chan error, 1)
 				go func() { done <- command.Handler(h.runner.DispatchContext(t.Context()), probe) }()
@@ -154,16 +154,16 @@ func TestExecAbortAcrossSDKs(t *testing.T) {
 					t.Fatalf("%s: the call was still waiting %v after the abort: the SDK left the command running", name, execAbortCallTimeout)
 				}
 				got := ""
-				if len(*h.notify) == 1 {
-					got = strings.TrimSuffix((*h.notify)[0], ":info")
+				if len(h.ui.Recorded()) == 1 {
+					got = strings.TrimSuffix(h.ui.Recorded()[0], ":info")
 				}
 				if pre {
 					// Pi spawns the command and kills it at once, so what it wrote before the kill is not fixed.
 					if !strings.HasPrefix(got, "exec-abort:killed=true;code=143;stdout=") {
-						t.Errorf("%s: outcome = %q, want killed with code 143", name, *h.notify)
+						t.Errorf("%s: outcome = %q, want killed with code 143", name, h.ui.Recorded())
 					}
-				} else if !slices.Equal(*h.notify, []string{execAbortWant + ":info"}) {
-					t.Errorf("%s: outcome = %q, want %q", name, *h.notify, execAbortWant)
+				} else if !slices.Equal(h.ui.Recorded(), []string{execAbortWant + ":info"}) {
+					t.Errorf("%s: outcome = %q, want %q", name, h.ui.Recorded(), execAbortWant)
 				}
 				pid := readExecAbortPid(pidFile)
 				if !pre && pid == 0 {

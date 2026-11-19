@@ -432,7 +432,7 @@ func TestConformance_EventPayloadAndResultAcrossSDKs(t *testing.T) {
 			payloads := func(event string) []map[string]any {
 				var found []map[string]any
 				prefix := "event_payload:" + event + ":"
-				for _, n := range *h.notify {
+				for _, n := range h.ui.Recorded() {
 					if rest, ok := strings.CutPrefix(n, prefix); ok {
 						var payload map[string]any
 						if err := json.Unmarshal([]byte(strings.TrimSuffix(rest, ":info")), &payload); err != nil {

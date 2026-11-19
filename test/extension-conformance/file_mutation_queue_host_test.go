@@ -36,7 +36,7 @@ func startQueueProbe(t *testing.T, h *harness, settleMs int, tasks ...map[string
 	if err != nil {
 		t.Fatal(err)
 	}
-	before := len(*h.notify)
+	before := len(h.ui.Recorded())
 	run := &queueProbeRun{started: time.Now(), done: make(chan struct{})}
 	go func() {
 		defer close(run.done)
@@ -50,7 +50,7 @@ func startQueueProbe(t *testing.T, h *harness, settleMs int, tasks ...map[string
 		}
 		deadline := time.Now().Add(20 * time.Second)
 		for time.Now().Before(deadline) {
-			for _, n := range (*h.notify)[before:] {
+			for _, n := range h.ui.Recorded()[before:] {
 				if rest, found := strings.CutPrefix(n, "file_queue:"); found {
 					var got struct {
 						Log    []string `json:"log"`

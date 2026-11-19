@@ -112,7 +112,7 @@ func TestExecLimitsAcrossSDKs(t *testing.T) {
 			if row.posixOnly && runtime.GOOS == "windows" {
 				continue
 			}
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			done := make(chan error, 1)
 			go func() {
 				done <- command.Handler(h.runner.DispatchContext(t.Context()), execLimitsProbe(t, row.stream, row.text, row.maxBuffer))
@@ -126,12 +126,12 @@ func TestExecLimitsAcrossSDKs(t *testing.T) {
 				t.Fatalf("%s: the call did not return", row.name)
 			}
 			got := ""
-			if len(*h.notify) == 1 {
-				got = strings.TrimSuffix((*h.notify)[0], ":info")
+			if len(h.ui.Recorded()) == 1 {
+				got = strings.TrimSuffix(h.ui.Recorded()[0], ":info")
 			}
 			if strings.HasPrefix(row.want, "rejected:") {
 				if !strings.HasPrefix(got, "rejected:") || !strings.Contains(got, "maxBuffer must be an integer between 0 and") {
-					t.Errorf("%s: outcome = %q, want a rejection naming the maxBuffer range", row.name, *h.notify)
+					t.Errorf("%s: outcome = %q, want a rejection naming the maxBuffer range", row.name, h.ui.Recorded())
 				}
 				continue
 			}

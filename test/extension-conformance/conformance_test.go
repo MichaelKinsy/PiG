@@ -724,7 +724,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 		t.Fatalf("tool_is_error result type = %T, want agent.AgentToolResult", softResult)
 	}
 
-	*h.notify = nil
+	h.ui.ClearRecorded()
 	h.ui.ClearStatuses()
 	cmd, ok := findCommand(h.runner, "ping")
 	if !ok {
@@ -764,13 +764,13 @@ func captureRecording(t *testing.T, h *harness) recording {
 		t.Fatalf("status command: %v", err)
 	}
 	waitFor(t, func() bool { return len(h.ui.Recorded()) > 0 && len(h.ui.Statuses()) > 0 })
-	commandNotify := append([]string(nil), (*h.notify)...)
+	commandNotify := append([]string(nil), h.ui.Recorded()...)
 	statusUpdates := h.ui.Statuses()
 
 	statusBurst := captureStatusBurst(ctx, t, h)
 
 	// The paged-log read runs before append_entry below: the harness serves a fixed three-entry log and records appends without adding them, while Pi's pi.appendEntry adds the entry to the log the next read sees (agent-session.ts:3406-3411), as the Node runtime now does.
-	*h.notify = nil
+	h.ui.ClearRecorded()
 	sessionLogCtx := ctx
 	if h.host == nil {
 		cc := h.runner.CreateCommandContext()
@@ -783,8 +783,8 @@ func captureRecording(t *testing.T, h *harness) recording {
 	if err := sessionLogCmd.Handler(sessionLogCtx, ""); err != nil {
 		t.Fatalf("session-log-probe command: %v", err)
 	}
-	waitFor(t, func() bool { return len(*h.notify) > 0 })
-	sessionLogProbe := (*h.notify)[0]
+	waitFor(t, func() bool { return len(h.ui.Recorded()) > 0 })
+	sessionLogProbe := h.ui.Recorded()[0]
 
 	*h.actions = nil
 	for _, name := range []string{"send_message", "send_message_default", "send_message_no_turn", "send_user_message", "set_session_name", "append_entry"} {
@@ -798,7 +798,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	}
 	waitFor(t, func() bool { return len(*h.actions) >= 6 })
 	actionCalls := append([]string(nil), (*h.actions)...)
-	*h.notify = nil
+	h.ui.ClearRecorded()
 	loginCmd, ok := findCommand(h.runner, "login-probe")
 	if !ok {
 		t.Fatal("login-probe command not registered")
@@ -811,7 +811,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	loginDefinition := loginDefinitions[0]
 	loginError := h.ui.Recorded()[0]
 
-	*h.notify = nil
+	h.ui.ClearRecorded()
 	spriteCmd, ok := findCommand(h.runner, "sprite-probe")
 	if !ok {
 		t.Fatal("sprite-probe command not registered")
@@ -824,7 +824,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	spriteDefinition := h.ui.SpriteDefinitions()[0]
 	spriteError := h.ui.Recorded()[recordedBefore]
 
-	*h.notify = nil
+	h.ui.ClearRecorded()
 	if _, err := h.runner.Emit(ctx, extension.SessionStartEvent{Type: "session_start", Reason: "startup"}); err != nil {
 		t.Fatalf("session_start emit: %v", err)
 	}
@@ -846,10 +846,10 @@ func captureRecording(t *testing.T, h *harness) recording {
 	if _, err := h.runner.Emit(ctx, extension.TurnEndEvent{Type: "turn_end", Message: wireAgentMessage(map[string]any{"role": "assistant", "content": []any{}}), MessageEntryID: "assistant-entry", ToolResultEntryIds: []string{"tool-entry"}}); err != nil {
 		t.Fatalf("turn_end emit: %v", err)
 	}
-	waitFor(t, func() bool { return len(*h.notify) >= 7 })
-	sessionEventNotify := append([]string(nil), (*h.notify)...)
+	waitFor(t, func() bool { return len(h.ui.Recorded()) >= 7 })
+	sessionEventNotify := append([]string(nil), h.ui.Recorded()...)
 
-	*h.notify = nil
+	h.ui.ClearRecorded()
 	var boundaryErrors []*extension.ExtensionError
 	removeBoundaryListener := h.runner.AddErrorListener(func(err *extension.ExtensionError) { boundaryErrors = append(boundaryErrors, err) })
 	boundary, err := h.runner.EmitBoundary(ctx, &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", Outcome: extension.AgentActivityCompleted},
@@ -869,10 +869,10 @@ func captureRecording(t *testing.T, h *harness) recording {
 	if !boundary.Valid || !boundary.Continue || len(boundary.Entries) != 6 || boundary.Entries[0].CustomType != "conformance-boundary" {
 		t.Fatalf("boundary mutation/error/result chain: %+v", boundary)
 	}
-	waitFor(t, func() bool { return len(*h.notify) > 1 })
-	agentBeforeSettle := fmt.Sprintf("%s:result=%d:%t", (*h.notify)[0], len(boundary.Entries), boundary.Continue)
+	waitFor(t, func() bool { return len(h.ui.Recorded()) > 1 })
+	agentBeforeSettle := fmt.Sprintf("%s:result=%d:%t", h.ui.Recorded()[0], len(boundary.Entries), boundary.Continue)
 	// The drafts as the host decoded them, after the handler's own report of the drafts it was handed: a null member and an absent one stay apart both ways.
-	agentBeforeSettleDrafts := boundaryDraftsLine(t, (*h.notify)[1], boundary.Entries)
+	agentBeforeSettleDrafts := boundaryDraftsLine(t, h.ui.Recorded()[1], boundary.Entries)
 
 	projectTrust, projectTrustErrors, err := inproc.EmitProjectTrust(h.runner, ctx, extension.ProjectTrustEvent{
 		Type: "project_trust",
@@ -894,7 +894,7 @@ func captureRecording(t *testing.T, h *harness) recording {
 	// reads both and notifies a deterministic summary. The inproc baseline
 	// dispatches command handlers directly, so attach a CommandContext
 	// (the subprocess SDKs build their own Context over the wire).
-	*h.notify = nil
+	h.ui.ClearRecorded()
 	probeCmd, ok := findCommand(h.runner, "context-probe")
 	if !ok {
 		t.Fatal("context-probe command not registered")
@@ -907,8 +907,8 @@ func captureRecording(t *testing.T, h *harness) recording {
 	if err := probeCmd.Handler(probeCtx, ""); err != nil {
 		t.Fatalf("context-probe command: %v", err)
 	}
-	waitFor(t, func() bool { return len(*h.notify) > 0 })
-	contextProbe := (*h.notify)[0]
+	waitFor(t, func() bool { return len(h.ui.Recorded()) > 0 })
+	contextProbe := h.ui.Recorded()[0]
 
 	// Each dialog reports ui_prompt_start/ui_prompt_end without awaiting
 	// handlers, so the reports arrive alongside the command's own summary.
@@ -4156,9 +4156,9 @@ func TestConformance_Geometry(t *testing.T) {
 
 			var got string
 			pollUntilConformance(t, "geometry never reported", func() bool {
-				*h.notify = (*h.notify)[:0]
+				h.ui.ClearRecorded()
 				runConformanceCommand(t, h, "report_geometry")
-				for _, n := range *h.notify {
+				for _, n := range h.ui.Recorded() {
 					if strings.HasPrefix(n, "geometry:") {
 						got = n
 						return true

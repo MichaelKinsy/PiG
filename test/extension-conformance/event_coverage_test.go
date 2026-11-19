@@ -73,7 +73,7 @@ func TestConformance_EventDelivery(t *testing.T) {
 			ctx := context.Background()
 			delivered := func() []string {
 				var found []string
-				for _, n := range *h.notify {
+				for _, n := range h.ui.Recorded() {
 					if rest, ok := strings.CutPrefix(n, "event_probe_on:"); ok {
 						found = append(found, strings.TrimSuffix(rest, ":info"))
 					}

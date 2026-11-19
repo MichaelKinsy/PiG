@@ -49,12 +49,12 @@ func TestLispSessionActionsReachTheHostActions(t *testing.T) {
 		record("switch:%s", path)
 		return extension.CancelledResult{}, errors.New("switch refused")
 	})
-	*h.notify = nil
+	h.ui.ClearRecorded()
 	runConformanceCommand(t, h, "session_actions_bound")
 	const want = "bound:new=true,fork=true,navigate=true,switch=error:session_error: switch refused:info"
 	var got string
 	pollUntilConformance(t, "the Lisp SDK never reported its bound session actions", func() bool {
-		for _, notice := range *h.notify {
+		for _, notice := range h.ui.Recorded() {
 			if strings.HasPrefix(notice, "bound:") {
 				got = notice
 				return true

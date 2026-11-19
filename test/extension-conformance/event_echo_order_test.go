@@ -71,7 +71,7 @@ func TestConformance_HandedBackEventObjectsKeepTheirMemberOrder(t *testing.T) {
 				}
 				const prefix = "event_keys:before_provider_request:"
 				report := func() (string, bool) {
-					for _, n := range *h.notify {
+					for _, n := range h.ui.Recorded() {
 						if rest, ok := strings.CutPrefix(n, prefix); ok {
 							return strings.TrimSuffix(rest, ":info"), true
 						}

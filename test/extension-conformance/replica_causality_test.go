@@ -52,14 +52,14 @@ func TestARegistryWriteIsVisibleToTheNextModelReadAcrossSDKs(t *testing.T) {
 			}
 			run := func(name string) string {
 				t.Helper()
-				*h.notify = nil
+				h.ui.ClearRecorded()
 				if err := command.Handler(h.runner.DispatchContext(t.Context()), name); err != nil {
 					t.Fatal(err)
 				}
-				if len(*h.notify) != 1 {
-					t.Fatalf("notifications = %v", *h.notify)
+				if len(h.ui.Recorded()) != 1 {
+					t.Fatalf("notifications = %v", h.ui.Recorded())
 				}
-				return strings.TrimSuffix((*h.notify)[0], ":info")
+				return strings.TrimSuffix(h.ui.Recorded()[0], ":info")
 			}
 			run("Registry Name init")
 			pollUntilConformance(t, "the registry never held the provider the SDK registered", func() bool {

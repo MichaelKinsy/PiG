@@ -34,7 +34,7 @@ func TestConformance_UnawaitedEventDoesNotWaitForAWaitingHandler(t *testing.T) {
 			releaseBound := min(budget, 20*time.Second)
 			peer := newIOWaitPeer(t)
 			runConformanceCommandArgs(t, h, "io_wait_name", peer.addr())
-			*h.notify = nil
+			h.ui.ClearRecorded()
 
 			acknowledged := make(chan struct{})
 			ctx := invocation.WithAcknowledgment(t.Context(), func() { close(acknowledged) })
@@ -56,8 +56,8 @@ func TestConformance_UnawaitedEventDoesNotWaitForAWaitingHandler(t *testing.T) {
 				t.Fatalf("releasing the caller ended the handler: %v", err)
 			default:
 			}
-			if got := slices.Contains(*h.notify, "session_info_changed:waited:info"); got {
-				t.Fatalf("the handler's notification arrived before its wait ended: %v", *h.notify)
+			if got := slices.Contains(h.ui.Recorded(), "session_info_changed:waited:info"); got {
+				t.Fatalf("the handler's notification arrived before its wait ended: %v", h.ui.Recorded())
 			}
 			if _, err := conn.Write([]byte("go\n")); err != nil {
 				t.Fatal(err)
@@ -70,7 +70,7 @@ func TestConformance_UnawaitedEventDoesNotWaitForAWaitingHandler(t *testing.T) {
 			case <-time.After(budget):
 				t.Fatal("the emission did not end after the peer answered")
 			}
-			waitFor(t, func() bool { return strings.Join(*h.notify, ",") == "session_info_changed:waited:info" })
+			waitFor(t, func() bool { return strings.Join(h.ui.Recorded(), ",") == "session_info_changed:waited:info" })
 		})
 	}
 }

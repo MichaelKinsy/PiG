@@ -22,7 +22,7 @@ type contextEdit struct {
 // first three messages; the second handler reports the length of the list and the content of the first three messages.
 func contextEditsOf(t *testing.T, h *harness, phase string) (edits contextEdit) {
 	t.Helper()
-	*h.notify = (*h.notify)[:0]
+	h.ui.ClearRecorded()
 	runConformanceCommandArgs(t, h, "event_isolation_probe", phase)
 	user := func(content string) extension.AgentMessage {
 		return wireAgentMessage(map[string]any{"role": "user", "content": content, "timestamp": float64(1700000000000)})
@@ -40,7 +40,7 @@ func contextEditsOf(t *testing.T, h *harness, phase string) (edits contextEdit) 
 	}
 	reports := func(prefix string) []string {
 		var out []string
-		for _, n := range *h.notify {
+		for _, n := range h.ui.Recorded() {
 			if rest, ok := strings.CutPrefix(n, prefix); ok {
 				out = append(out, strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end"))
 			}
@@ -117,7 +117,7 @@ func TestConformance_ContextListEditsInASessionReachTheNextExtension(t *testing.
 			})
 			for _, phase := range []string{"context", "context_with_system"} {
 				t.Run(phase, func(t *testing.T) {
-					*h.notify = (*h.notify)[:0]
+					h.ui.ClearRecorded()
 					runConformanceCommandArgs(t, h, "event_isolation_probe", phase)
 					messages := []extension.AgentMessage{wireAgentMessage(map[string]any{"role": "user", "content": "orig", "timestamp": float64(1700000000000)})}
 					ctx := boundarywire.WithContextEncodings(context.Background(), &boundarywire.Encodings{})
@@ -132,7 +132,7 @@ func TestConformance_ContextListEditsInASessionReachTheNextExtension(t *testing.
 					}
 					var peerRead string
 					pollUntilConformance(t, "the peer reports", func() bool {
-						for _, n := range *h.notify {
+						for _, n := range h.ui.Recorded() {
 							if rest, ok := strings.CutPrefix(n, "event_isolation_peer:"); ok {
 								peerRead = strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end")
 								return true

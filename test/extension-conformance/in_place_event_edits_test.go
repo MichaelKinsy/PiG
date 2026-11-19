@@ -185,7 +185,7 @@ func reportedField(t *testing.T, h *harness, event, field string) any {
 	t.Helper()
 	prefix := "event_field:" + event + "." + field + "="
 	var reported any
-	for _, line := range *h.notify {
+	for _, line := range h.ui.Recorded() {
 		rest, ok := strings.CutPrefix(line, prefix)
 		if !ok {
 			continue

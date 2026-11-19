@@ -62,7 +62,7 @@ func TestConformance_NativeToolCallHandlerHonouringTheCancelEndsTheRunAfterTheAb
 			t.Cleanup(func() { _ = session.Close() })
 			coding.BindSessionExtensionActions(h.runner, h.bridge, func() *coding.Session { return session }, extension.ContextActions{}, nil)
 
-			noticed := func(want string) bool { return slices.Contains(*h.notify, want+":info") }
+			noticed := func(want string) bool { return slices.Contains(h.ui.Recorded(), want+":info") }
 			runConformanceCommand(t, h, "tool_call_cancel_on")
 			prompt := make(chan struct{})
 			go func() {

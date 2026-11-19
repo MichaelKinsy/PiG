@@ -84,11 +84,11 @@ func TestConformance_EventHandlersDoNotShareTheirPayload(t *testing.T) {
 			})
 			for _, probe := range events {
 				t.Run(probe.name, func(t *testing.T) {
-					*h.notify = (*h.notify)[:0]
+					h.ui.ClearRecorded()
 					runConformanceCommandArgs(t, h, "event_isolation_probe", probe.name)
 					reports := func(prefix string) []string {
 						var out []string
-						for _, n := range *h.notify {
+						for _, n := range h.ui.Recorded() {
 							if rest, ok := strings.CutPrefix(n, prefix); ok {
 								out = append(out, strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end"))
 							}
@@ -140,11 +140,11 @@ func TestConformance_EventHandlersDoNotShareTheirPayload(t *testing.T) {
 			})
 			for _, probe := range events {
 				t.Run(probe.name, func(t *testing.T) {
-					*h.notify = (*h.notify)[:0]
+					h.ui.ClearRecorded()
 					runConformanceCommandArgs(t, h, "event_isolation_probe", probe.name)
 					reports := func(prefix string) []string {
 						var out []string
-						for _, n := range *h.notify {
+						for _, n := range h.ui.Recorded() {
 							if rest, ok := strings.CutPrefix(n, prefix); ok {
 								out = append(out, strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end"))
 							}

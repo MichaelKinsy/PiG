@@ -102,16 +102,16 @@ func TestSessionMirrorHoldsOnlyWhatTheHostAppendedAcrossSDKs(t *testing.T) {
 				if !ok {
 					t.Fatalf("missing %s command", name)
 				}
-				*h.notify = nil
+				h.ui.ClearRecorded()
 				if err := command.Handler(context.Background(), args); err != nil {
 					t.Fatalf("%s: %v", name, err)
 				}
-				if len(*h.notify) != 1 {
-					t.Fatalf("%s: notifications %v", name, *h.notify)
+				if len(h.ui.Recorded()) != 1 {
+					t.Fatalf("%s: notifications %v", name, h.ui.Recorded())
 				}
-				return strings.TrimSuffix((*h.notify)[0], ":info")
+				return strings.TrimSuffix(h.ui.Recorded()[0], ":info")
 			}
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			command, ok := findCommand(h.runner, "append-entries-probe")
 			if !ok {
 				t.Fatal("missing append-entries-probe command")

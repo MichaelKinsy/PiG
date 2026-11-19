@@ -73,7 +73,7 @@ func TestConformance_ToolResultGuardsAgreeAcrossSDKs(t *testing.T) {
 					h.host.Shutdown("test done")
 				}
 			})
-			*h.notify = (*h.notify)[:0]
+			h.ui.ClearRecorded()
 			runConformanceCommandArgs(t, h, "tool_result_guards_probe", "")
 			for i, tool := range tools {
 				want := tool
@@ -84,7 +84,7 @@ func TestConformance_ToolResultGuardsAgreeAcrossSDKs(t *testing.T) {
 				var reports []string
 				pollUntilConformance(t, tool+": the handler never reported its guards", func() bool {
 					reports = reports[:0]
-					for _, n := range *h.notify {
+					for _, n := range h.ui.Recorded() {
 						if rest, ok := strings.CutPrefix(n, "tool_result_guards:"); ok {
 							reports = append(reports, strings.TrimSuffix(strings.TrimSuffix(rest, ":info"), ":end"))
 						}

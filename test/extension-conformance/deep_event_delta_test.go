@@ -115,7 +115,7 @@ func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 					}
 				}
 				prefix := "event_payload:" + name + ":"
-				*h.notify = (*h.notify)[:0]
+				h.ui.ClearRecorded()
 				failures = failures[:0]
 				h.wire.frames.keepEventFrames(name)
 				runConformanceCommandArgs(t, h, "event_payload_probe", name)
@@ -157,7 +157,7 @@ func TestDeepEventStreamDeltasReachEverySDK(t *testing.T) {
 				var reported []string
 				if !awaitCondition(testbudget.Context(t), func() bool {
 					reported = reported[:0]
-					for _, n := range *h.notify {
+					for _, n := range h.ui.Recorded() {
 						if rest, ok := strings.CutPrefix(n, prefix); ok {
 							reported = append(reported, strings.TrimSuffix(rest, ":info"))
 						}

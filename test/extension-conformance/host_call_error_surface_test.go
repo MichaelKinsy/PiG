@@ -48,13 +48,13 @@ func TestHostCallErrorSurfaceAcrossSDKs(t *testing.T) {
 				code = "navigate_error"
 			}
 			want := "host_error:navigate_error: boom|" + code + ":info"
-			*h.notify = nil
+			h.ui.ClearRecorded()
 			runConformanceCommand(t, h, "host_error_probe")
 			pollUntilConformance(t, "the SDK never reported the host error", func() bool {
-				return slices.ContainsFunc(*h.notify, func(s string) bool { return strings.HasPrefix(s, "host_error:") })
+				return slices.ContainsFunc(h.ui.Recorded(), func(s string) bool { return strings.HasPrefix(s, "host_error:") })
 			})
 			var got string
-			for _, notice := range *h.notify {
+			for _, notice := range h.ui.Recorded() {
 				if strings.HasPrefix(notice, "host_error:") {
 					got = notice
 				}
