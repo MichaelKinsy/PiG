@@ -1,0 +1,3 @@
+### Fixed
+
+- A host whose parent link had closed before `Connect` registered it (a server that refused the WebSocket at once, a proxy that reset it) no longer keeps the dead link as its parent: its references wait for the next link, a hold with no other route fails at once with `no route to server`, and the next good `Connect` holds the references again. The host used to keep the dead link, bind every hold to it and wait on it, and the next `Connect` left a hold that was already set where it was. A WebSocket link made over a socket that had closed already is a closed link too; it used to stay open over the closed socket. <!-- fix: 4ee52b8b9b -->

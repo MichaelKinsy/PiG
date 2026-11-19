@@ -25,7 +25,7 @@ func newStreamingRoutingMode(t *testing.T) (*InteractiveMode, context.Context, f
 	provider := &blockingProvider{started: make(chan struct{}), release: make(chan struct{})}
 	model := &ai.Model{ID: "m", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 800000}}
 	m.opts.Model = model
-	m.agent = mustNewAgent(agent.AgentOptions{Model: model})
+	m.setAgent(mustNewAgent(agent.AgentOptions{Model: model}))
 	m.chatContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.slashRegistry = NewSlashRegistry()

@@ -2366,3 +2366,31 @@ commit = "b4b67844c7569aa9d0d8239e9f36dd2c17b54054"
 class = "NOBEHAVIOR"
 cite = ""
 reason = "The test counted the handlers of the Runner by extension path (HasHandlersOutsideBuiltinMCP) and its expected value for an extension that is not the built-in MCP one stayed; the commit replaces the question with PiG's own property, HasHandlersThatMayAwait: a handler registered through AddEventHandlerReturningWithoutAwait no longer counts as one that may await, whatever the path of its extension. Pi has no such property (its bind awaits every handler's promise; the handler of extensions/mcp/index.ts:1115-1152 is a plain function, which is why PiG's registration says so), so the changed expectation is PiG's own API and not a behaviour of Pi that changed."
+
+[[entry]]
+path = "ai/auth_pi_lock_test.go"
+commit = "241a0a8c599c4951bf031fc1c6e63ff07494e854"
+class = "CITE"
+cite = "packages/coding-agent/src/core/auth-storage.ts:188"
+reason = "Pi withLockAsync (auth-storage.ts:188) writes the modifier's result with writeFileSync as long as its heartbeat has not reported a compromise yet, and throws only after it has (throwIfCompromised, TestAuthStorageLockCompromisedDuringModifyUpstream). The Go test that expected no write whenever the lock file had been removed inside the modifier is renamed and now expects the modifier's credential and the other providers in the file; the reported-compromise case stays an error and is covered by the upstream test."
+
+[[entry]]
+path = "chord/nextnode/plugins/plugins_node_lifecycle_test.go"
+commit = "3090be6e3aef3fe0ea59cf69ae7afc53cd7ccc82"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The one value the pre-flight counts as changed is a string the test itself prints and waits for, not an expectation of behavior: the probe call that Close has to wait for printed `slow call running` and now prints `held call running`, and the test's OnOutput watches for that line to know the call has started. The call itself changed from a 2 s setTimeout to a wait on a file the test creates, which is why it is named `held`. The 200 ms stop grace is the same in the old and the new test, and no duration is an expected value. The production change of the commit is a test seam only: NodeHost.startAfter, which Close calls where it called time.NewTimer, defaults to afterTimer, the same wall-time timer (a Reset of the single timer became stopping it and starting a timer for closeTimeout plus the grace, with the same lengths and the same kill), so Close behaves as before outside a test that replaces the seam. Pi has no such host or test (its workers stop a child with one GRACE kill, workers.ts #shutdown), and no Pi line is behind the sentinel, so no Pi-derived expectation moved."
+
+[[entry]]
+path = "coding/extension/host/subprocess/socket_runtime_dir_test.go"
+commit = "6fe688207d8dee14cd2a64fbc01a4fb8278a2a7a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "The one value the lint counts as changed is a length the test computes, not an expectation of behavior: the worst-case socket path of the kept socket directory was written with the literal leaf `e-9999.sock` and is now written with the constant worstRuntimeSocketLeaf, the longest leaf of the new per-generation socket path (`<count>.s`, at most 9 bytes), because newSocketPath replaced the per-name path `e-<counter>.sock` in host.go, packed_go.go, platform.go and retention.go. The path of a socket is a PiG host detail: Pi has no subprocess extension host and makes no sockets, so no Pi line is behind the value and no Pi-derived expectation moved."
+
+[[entry]]
+path = "test/parity/cmd/portmapcheck/replaycache_test.go"
+commit = "979e2190db1e5fe49a5da192970b54cf159ba79a"
+class = "NOBEHAVIOR"
+cite = ""
+reason = "A tool-internal expectation of PiG's portmapcheck, not Pi behavior: the cache server now hands a shared-cache hit out as a copy in the run's private cache (the review thread at replaycacheserver.go:226 asked for it: a go cache trim could delete the shared file mid-replay), so TestCacheServerAnswersOnlyWhatItCanVerify expects the DiskPath of the hit under the store, not under the shared cache, and TestServerReadsTheLayoutOfGo compares that path relative to the store with go's own path relative to its cache. The expected value moves from the shared file's path to the copy's; the bytes, size and output id are unchanged."

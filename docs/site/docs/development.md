@@ -38,6 +38,8 @@ After editing `coding/extension/host/subprocess/runtime-node/`, run `go generate
 
 `make generate` vendors Pi's runtime for this host from the installed pinned Pi (`make vendor-pi-dist`, which needs `make parity-deps`) and then packs it (`make node-runtime`). `make vendor-pi-dist-drift` and `make node-runtime-drift` fail when either step is stale, and CI's bookkeeping job runs both. The observation oracles (`automation/gen/regenerate-observation-oracles.sh`) are recordings under a pinned Node, not derivations. `make generate` does not re-record them, and their timestamps are not drift.
 
+`make generate` vendors Pi's runtime for this host from the installed pinned Pi (`make vendor-pi-dist`, which needs `make parity-deps`) and then packs it (`make node-runtime`). `make vendor-pi-dist-drift` and `make node-runtime-drift` fail when either step is stale, and CI's bookkeeping job runs both. The observation oracles (`automation/gen/regenerate-observation-oracles.sh`) are recordings under a pinned Node, not derivations. `make generate` does not re-record them, and their timestamps are not drift.
+
 ## Release version
 
 Change the PiG release version with `make set-version VERSION=x.y.z`. Use `SET_VERSION_ARGS=--dry-run` to inspect the diff without writing files. The command updates the release pin, Standard development version, and changelog heading, then runs the version consistency tests. It preserves Go module requirements and checksums so `main` continues to resolve published dependencies between releases. It leaves Unreleased entries in place unless you pass `SET_VERSION_ARGS=--move-unreleased`.

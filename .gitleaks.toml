@@ -40,6 +40,8 @@ regexes = [
   '''^v4Internal\.AmzSignedHeadersKey$''',
   # Keybinding lists in Pi's SDK helper fixtures (test/parity/sdk-bulk): modifier combos joined by "/", e.g. "Alt+X/Ctrl+Shift+F5/Alt+/".
   '''^(?i)(?:(?:ctrl|shift|alt|meta|super|cmd)\+)*(?:escape|enter|tab|up|down|left|right|f\d{1,2}|[a-z0-9]|/)(?:/(?:(?:ctrl|shift|alt|meta|super|cmd)\+)*(?:escape|enter|tab|up|down|left|right|f\d{1,2}|[a-z0-9]|/))+$''',
+  # The fake API token of automation/ci/preflight/record_status_retry_test.go before it became "test-token-fixed" (commit f73299a96d42). The file no longer holds it; a full-history scan still reads it there.
+  '''^tok-SECRET-123$''',
 ]
 paths = [
   # Stored archive fixture: "key" fields are UUIDv7 document keys, not credentials.
