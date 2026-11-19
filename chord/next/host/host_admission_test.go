@@ -2100,28 +2100,7 @@ func TestAdmissionANamedQuery(t *testing.T) {
 		chordStore := memoryStore(t)
 		address := Server.Address(nil)
 		h := newHost(t, HostOptions{Address: &address, Principal: serverPrincipal(), Store: chordStore, OnError: func(HostError) {}})
-		shelf := DefineFacet(func(host FacetHost, _ FacetSelf) error {
-			return host.Serve(admShelf, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
-				self := plain.(StoreSelf)
-				rows := self.Table(admItemsTable)
-				mapped := func(row store.Row, _ PartnerRow) (delta.JsonValue, error) {
-					if failing.get() {
-						return nil, errors.New("the mapping is unavailable")
-					}
-					return row, nil
-				}
-				return contracts.Implementation{Members: contracts.VariantImplementation{
-					Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"items": self.Queries(rows, QueriesOptions{Map: mapped},
-						map[string]QueryBuilder{"all": {Build: func(delta.JsonValue) *store.Query {
-							return store.NewQuery(admItemsTable).OrderBy(func(e, _ store.ColumnRefs) *store.ColumnRef { return e["id"] }, "")
-						}}})},
-					Methods: map[string]contracts.MethodFunction{"put": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
-						_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, tx.Put(rows, jsonObject("id", args)) }, ctx)
-						return nil, err
-					}},
-				}}, nil
-			}, ServeOptions{})
-		})
+		shelf := admShelfFacet(failing)
 		plugins := func(reader Facet) []HostFacet {
 			return []HostFacet{{Name: "@test/shelf", Facet: shelf}, {Name: "@test/reader", Facet: reader}}
 		}
@@ -2190,6 +2169,33 @@ var (
 		Variants:    []contracts.VariantEntry{contracts.Var("one", contracts.VariantDeclaration{State: []contracts.Property{contracts.Prop("label", contracts.Str())}})},
 	}))
 )
+
+// admShelfFacet is a facet serving Shelf: its `items` queries the rows ordered by id (the mapping fails while `failing` is set), its
+// `put` writes a row.
+func admShelfFacet(failing *admFlag) Facet {
+	return DefineFacet(func(host FacetHost, _ FacetSelf) error {
+		return host.Serve(admShelf, func(_ *delta.JsonObject, plain Self) (contracts.Implementation, error) {
+			self := plain.(StoreSelf)
+			rows := self.Table(admItemsTable)
+			mapped := func(row store.Row, _ PartnerRow) (delta.JsonValue, error) {
+				if failing.get() {
+					return nil, errors.New("the mapping is unavailable")
+				}
+				return row, nil
+			}
+			return contracts.Implementation{Members: contracts.VariantImplementation{
+				Queries: map[string]map[string]contracts.NamedQuery[delta.JsonValue, delta.JsonValue]{"items": self.Queries(rows, QueriesOptions{Map: mapped},
+					map[string]QueryBuilder{"all": {Build: func(delta.JsonValue) *store.Query {
+						return store.NewQuery(admItemsTable).OrderBy(func(e, _ store.ColumnRefs) *store.ColumnRef { return e["id"] }, "")
+					}}})},
+				Methods: map[string]contracts.MethodFunction{"put": func(args delta.JsonValue, ctx context.Context) (delta.JsonValue, error) {
+					_, err := self.Tx(func(tx documents.Tx) (any, error) { return nil, tx.Put(rows, jsonObject("id", args)) }, ctx)
+					return nil, err
+				}},
+			}}, nil
+		}, ServeOptions{})
+	})
+}
 
 // admReaderFacet is a facet serving Reader, whose admission reads the shelf's items live.
 func admReaderFacet() Facet {
