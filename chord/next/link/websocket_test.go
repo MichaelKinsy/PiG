@@ -98,6 +98,18 @@ func (socket *fakeSocket) emit(event link.WebSocketEvent, data any) {
 	}
 }
 
+// closesAtListener is a socket that closes (its close event goes to nobody) at the moment its link registers the `close`
+// listener: its ReadyState reads open until then.
+type closesAtListener struct{ *fakeSocket }
+
+func (socket *closesAtListener) AddEventListener(event link.WebSocketEvent, listener func(data any)) (remove func()) {
+	remove = socket.fakeSocket.AddEventListener(event, listener)
+	if event == link.WebSocketClose {
+		socket.readyState = socketClosed
+	}
+	return remove
+}
+
 func (socket *fakeSocket) listenerCount() int {
 	socket.mu.Lock()
 	defer socket.mu.Unlock()
@@ -135,6 +147,26 @@ func TestWebSocketLinksOverAFakeSocket(t *testing.T) {
 			if !closed {
 				t.Fatalf("state %d gave an open link", state)
 			}
+		}
+	})
+
+	t.Run("give a closed link for a socket that closed while the link registered its listeners", func(t *testing.T) {
+		// A Go socket closes on a goroutine of its own, between any two statements of whoever made the link, and a close
+		// before the link's `close` listener existed reached nobody (a browser's events come after the code that made the
+		// socket): the state is read again after the listeners are registered.
+		socket := &closesAtListener{newFakeSocket(socketOpen)}
+		var closes int
+		end := link.WebSocketLink(socket)
+		end.OnClose(func() { closes++ })
+		if closes != 1 {
+			t.Fatalf("closes = %d, want one close that told the listener at once", closes)
+		}
+		end.Send([]byte{1})
+		if len(socket.sent) != 0 {
+			t.Fatalf("sent = %v over the closed socket, want nothing", socket.sent)
+		}
+		if count := socket.listenerCount(); count != 2 {
+			t.Fatalf("listeners = %d, want only the `close` and `error` handlers that stay until the socket's own close", count)
 		}
 	})
 
