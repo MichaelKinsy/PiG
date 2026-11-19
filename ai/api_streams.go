@@ -40,13 +40,13 @@ func apiStreams(api API) *ProviderStreams {
 
 // apiStream is the API module's stream. Every module asserts request authentication inside the try block of its stream (for example openai-responses.ts:155-157, mistral-conversations.ts:137-138, pi-messages.ts:366-367), so a missing key ends the returned stream with the abort-aware stop reason (`options?.signal?.aborted ? "aborted" : "error"`) instead of failing the lazy setup.
 func apiStream(ctx context.Context, api API, model *Model, transcript TranscriptContext, options StreamOptions) (*AssistantMessageEventStream, error) {
-	//portlint:allow clock each API module stamps its output with Date.now() when its stream starts (e.g. openai-responses.ts, mistral-conversations.ts output literals); ai's clock seams are per-struct (oauth, bedrock backoff), none covers module streams
-	startedAt := time.Now().UnixMilli()
+	//portlint:allow clock each API module creates its stream and stamps its output with Date.now() and performance.now() when it starts (event-stream.ts:98-99; e.g. openai-responses.ts, mistral-conversations.ts output literals); ai's clock seams are per-struct (oauth, bedrock backoff), none covers module streams
+	started := time.Now()
 	outAPI := apiModuleOutputAPI(api, model)
 	provider, err := apiStreamProvider(api, model, options)
 	if err != nil {
 		// Every failure before the request, a missing key or a provider that cannot be built, ends the module's own stream; only a lazySetupError is a setup rejection.
-		return apiModuleFailure(ctx, outAPI, model, startedAt, err)
+		return apiModuleFailure(ctx, outAPI, model, started, err)
 	}
 	// Each API module reads model.reasoning where it builds the request (openai-completions.ts: `model.reasoning && compat.supportsDeveloperRole`, `options.reasoningEffort && model.reasoning`).
 	// bedrock-converse-stream.ts buildAdditionalModelRequestFields and streamSimple read model.reasoning the same way.

@@ -31346,9 +31346,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, api API, model *Model, startedAt int64, err error) (*AssistantMessageEventStream, error)"
+        "type": "func(ctx context.Context, api API, model *Model, started time.Time, err error) (*AssistantMessageEventStream, error)"
       },
-      "shapeHash": "sha256:d1fb86dc1f340d748eede240c94b0c1b790a9b8ff0cbb8ab0398e072e6e017a5"
+      "shapeHash": "sha256:3d4505bd473c76dd254da097c65ac2ded1195bad41add8077dbd514e501acfa5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#apiModuleOutputAPI",
