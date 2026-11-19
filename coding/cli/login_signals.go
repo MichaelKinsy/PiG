@@ -35,6 +35,7 @@ func notifyCommandSignals(parent context.Context, signals ...os.Signal) *command
 		}
 	}
 	signal.Notify(s.incoming, listened...)
+	//portlint:allow golifetime watch ends on the first signal pair or when Stop closes stopped, which every command path calls
 	go s.watch()
 	return s
 }

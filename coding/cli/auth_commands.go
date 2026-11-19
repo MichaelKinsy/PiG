@@ -75,7 +75,7 @@ func runLoginCommand(args []string) int {
 	if !ok {
 		return -1
 	}
-	signals := notifyCommandSignals(context.Background(), commandTerminationSignals()...)
+	signals := notifyCommandSignals(context.Background(), commandTerminationSignals()...) //portlint:allow ctxbackground `pig login` and `pig logout` are a process entry point with no caller context: this is the root every step of the command runs under; Pi's cli.ts has no AbortSignal of its own
 	code := runLoginOptions(signals.ctx, opts)
 	if sig, fired := signals.Fired(); fired {
 		exitProcessBySignal(sig)
