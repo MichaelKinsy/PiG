@@ -4450,10 +4450,10 @@ func (h *Host) toolExecuteFunc(toolName string, target toolTarget) extension.Too
 		defer cancel()
 		// upstream: agent-loop.ts executeToolCallsParallel: a call's tool_execution_end follows its own execute promise, which settles in the order the extension's runtime answers. The read loop reads the answers in that order, so it records the call's place before the goroutine that waits for the answer runs.
 		// The calls the extension made before it answered are dispatched before the result continues: a held call is then in the hold when the agent moves on to tool_execution_end, as its position in Pi's chain requires (jsloop.Turns).
-		var dispatched <-chan struct{}
-		arrived := func() { dispatched = conn.dispatchBarrier(reqCtx) }
+		var dispatched atomic.Pointer[dispatchMark]
+		arrived := func() { dispatched.Store(conn.dispatchBarrier(reqCtx)) }
 		if slot := agent.ToolSettleFromContext(ctx, toolCallID); slot != nil {
-			arrived = func() { dispatched = conn.dispatchBarrier(reqCtx); slot.Settle() }
+			arrived = func() { dispatched.Store(conn.dispatchBarrier(reqCtx)); slot.Settle() }
 		}
 		reqCtx = withRequestArrived(reqCtx, arrived)
 		// upstream: agent-loop.ts:619-647: the edit and write calls after this one in the batch register in the file mutation queue once this tool's synchronous
@@ -4500,12 +4500,7 @@ func (h *Host) toolExecuteFunc(toolName string, target toolTarget) extension.Too
 				ChildSession:  target.childSession,
 			},
 		}, toolUpdateSink(onUpdate))
-		if dispatched != nil {
-			select {
-			case <-dispatched:
-			case <-conn.Done():
-			}
-		}
+		awaitReplyDispatch(conn, dispatched.Load())
 		if errors.Is(err, ErrToolAborted) {
 			return extension.AgentToolResult{}, err
 		}
@@ -5035,8 +5030,8 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 
 		var resp *Envelope
 		var err error
-		// dispatched holds, for a session_start only, the channel that closes once the host dispatched the frames the handler sent before its reply (see the session_start case below).
-		var dispatched *<-chan struct{}
+		// dispatched holds, for a session_start only, where the read loop leaves the marker that closes once the host dispatched the frames the handler sent before its reply (see the session_start case below). The request can end before its reply is read, so the read loop and this goroutine share it through an atomic.
+		var dispatched *atomic.Pointer[dispatchMark]
 		request := func() error {
 			payload := &RequestPayload{
 				Method:      "event",
@@ -5076,9 +5071,9 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 					// install is a notice, which the read loop passes to the dispatcher in order but the reply does not wait for: the reply holds until the notices
 					// the handler sent before it are dispatched, so the bind that follows the emit finds the editor installed.
 					// The escaping closure captures a slot of its own, so no other event pays a heap object for it.
-					slot := new(<-chan struct{})
+					slot := new(atomic.Pointer[dispatchMark])
 					dispatched = slot
-					requestCtx = withRequestArrived(requestCtx, func() { *slot = conn.dispatchBarrier(parent) })
+					requestCtx = withRequestArrived(requestCtx, func() { slot.Store(conn.dispatchBarrier(parent)) })
 				}
 				resp, err = conn.Request(requestCtx, envelope)
 			}
@@ -5091,7 +5086,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			_ = request()
 		}
 		if dispatched != nil {
-			awaitReplyDispatch(conn, *dispatched)
+			awaitReplyDispatch(conn, dispatched.Load())
 		}
 		// The reply's frame is reused once the handler holds nothing of it: what leaves is a copy of its result.
 		defer releaseResponse(resp)
