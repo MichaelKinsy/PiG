@@ -55,7 +55,8 @@ const catalogRefreshTimeout = 15 * time.Second // upstream: cli/auth-login.ts:re
 
 // RunAuthLogin runs `pig auth login <provider>` in the terminal and returns the process exit code. ctx ends the login, e.g. on Ctrl+C.
 func RunAuthLogin(ctx context.Context, args []string, options AuthLoginOptions) int {
-	modelRuntime, terminal := options.ModelRuntime, options.Terminal
+	modelRuntime := options.ModelRuntime
+	terminal := &settlingTerminal{LoginTerminal: options.Terminal}
 	request, message := parseLoginRequest(args)
 	if message != "" {
 		terminal.Error(message)
@@ -90,6 +91,8 @@ func RunAuthLogin(ctx context.Context, args []string, options AuthLoginOptions) 
 	}
 	_, err := modelRuntime.Login(ctx, provider.ID, authType, createLoginInteraction(provider.ID, authType, request, terminal),
 		ai.LoginOptions{GetDeviceID: options.GetDeviceID})
+	// The login that ends with ctx leaves its prompt behind (settlingTerminal): nothing goes on, prints or ends the command until the prompt has given the terminal back.
+	terminal.settle()
 	if err != nil {
 		message := err.Error()
 		if _, ok := errors.AsType[*codingagent.CredentialSynchronizationError](err); ok {
@@ -112,6 +115,54 @@ func RunAuthLogin(ctx context.Context, args []string, options AuthLoginOptions) 
 		configureRadiusMcpServer(provider, options)
 	}
 	return 0
+}
+
+// settlingTerminal is the terminal of one login with a count of its secret prompts that were asked and have not returned. A secret prompt owns the terminal's mode
+// from its raw entry to its restore, and it runs inside the login, on a goroutine of the model runtime that the runtime abandons when ctx ends (ai.awaitModelsOperation,
+// Pi's raceWithAbortSignal). Pi's readSecret restores in the abort listener, which runs before the abort reaches anything else; here the restore runs on that abandoned
+// goroutine, concurrent with the command's own end, which under load exited first and left the terminal raw. settle is the join: Secret is the only prompt that changes
+// the terminal's mode, and it returns once ctx ends without waiting for input (readSecret restores on ctx.Done), so the wait is bounded; a second signal still ends
+// the process at once (commandSignals.watch).
+type settlingTerminal struct {
+	LoginTerminal
+
+	mu     sync.Mutex
+	active int
+	// idle is open while settle waits for active to reach zero.
+	idle chan struct{}
+}
+
+func (t *settlingTerminal) Secret(ctx context.Context, message string) (string, error) {
+	t.mu.Lock()
+	t.active++
+	t.mu.Unlock()
+	defer t.returned()
+	return t.LoginTerminal.Secret(ctx, message)
+}
+
+func (t *settlingTerminal) returned() {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.active--
+	if t.active == 0 && t.idle != nil {
+		close(t.idle)
+		t.idle = nil
+	}
+}
+
+// settle returns once no secret prompt of this login is in progress. A prompt asked after settle sees ctx ended and returns before it touches the terminal.
+func (t *settlingTerminal) settle() {
+	t.mu.Lock()
+	if t.active == 0 {
+		t.mu.Unlock()
+		return
+	}
+	if t.idle == nil {
+		t.idle = make(chan struct{})
+	}
+	idle := t.idle
+	t.mu.Unlock()
+	<-idle
 }
 
 // parseLoginRequest parses the arguments of `pig auth login`, or returns the message that ends the command.

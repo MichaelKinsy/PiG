@@ -211,7 +211,9 @@ type loginRun struct {
 	master   *os.File
 	out      *loginPtyBuffer
 	waited   chan struct{}
-	dir      string
+	// readerDone closes when the reader goroutine has collected the terminal's output to its end.
+	readerDone chan struct{}
+	dir        string
 	agentDir string
 }
 
@@ -252,6 +254,7 @@ func startLoginRun(t *testing.T, bin, dir string, env []string, args ...string) 
 	}
 	run := &loginRun{t: t, master: master, out: &loginPtyBuffer{}, waited: make(chan struct{}), dir: dir, agentDir: filepath.Join(dir, "agent")}
 	readerDone := make(chan struct{})
+	run.readerDone = readerDone
 	go func() {
 		defer close(readerDone)
 		buf := make([]byte, 32<<10)
@@ -341,6 +344,12 @@ func (r *loginRun) ended() syscall.WaitStatus {
 	case <-time.After(testbudget.Wait(r.t)):
 		r.t.Fatalf("pig still running after the signal; terminal:\n%s", r.out.String())
 	}
+	// The pig has ended, but the bytes it wrote last can still be in the pseudo-terminal: its output is the reader goroutine's, complete once the master reports the end.
+	select {
+	case <-r.readerDone:
+	case <-time.After(testbudget.Wait(r.t)):
+		r.t.Fatalf("the terminal output did not end after pig did; terminal:\n%s", r.out.String())
+	}
 	return r.cmd.ProcessState.Sys().(syscall.WaitStatus)
 }
 
@@ -388,6 +397,8 @@ type loginSignalCase struct {
 	// reach drives the pig to the point where it waits.
 	reach func(r *loginRun)
 	polls bool
+	// after is what the pig prints after the signal, with the terminal's echo of ^C removed; "" leaves it unchecked.
+	after string
 }
 
 const loginSignalSeed = `{"anthropic":{"type":"oauth","refresh":"r","access":"a","expires":4102444800000},"github-copilot":{"type":"oauth","refresh":"r","access":"a","expires":4102444800000}}`
@@ -422,7 +433,8 @@ func TestLoginCommandsEndOnASignal(t *testing.T) {
 		{name: "enterprise question (pig auth login)", auth: true, args: []string{"auth", "login", "github-copilot"}, provider: "github-copilot", reach: func(r *loginRun) {
 			r.expect(`GitHub Enterprise URL/domain \(company\.ghe\.com\): `)
 		}},
-		{name: "API key prompt (pig auth login --api-key)", auth: true, args: []string{"auth", "login", "groq", "--api-key"}, provider: "groq", reach: func(r *loginRun) {
+		// The secret prompt gives the terminal back and ends its line, then the login says why it ended: Pi's abort listener runs before anything else sees the abort.
+		{name: "API key prompt (pig auth login --api-key)", auth: true, args: []string{"auth", "login", "groq", "--api-key"}, provider: "groq", after: "\r\nLogin cancelled.\r\n", reach: func(r *loginRun) {
 			r.expect(`Enter Groq API key: `)
 		}},
 	}
@@ -468,6 +480,9 @@ func TestLoginCommandsEndOnASignal(t *testing.T) {
 					if !tc.auth && strings.TrimSpace(strings.ReplaceAll(after, "^C", "")) != "" {
 						t.Errorf("pig printed %q after the signal; cli.ts prints nothing", after)
 					}
+				}
+				if tc.after != "" && strings.ReplaceAll(after, "^C", "") != tc.after {
+					t.Errorf("pig printed %q after the signal, want %q", after, tc.after)
 				}
 				if !run.cooked() {
 					t.Errorf("the terminal is not cooked after the signal")
