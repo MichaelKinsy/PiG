@@ -5059,24 +5059,6 @@ snippet = "ctx = context.Background()"
 
 [[hit]]
 check = "ctxbackground"
-file = "coding/cli/auth_commands.go"
-func = "runLoginCommand"
-snippet = "_, err = store.Modify(context.Background(), provider.ID(), func(*ai.Credential) (*ai.Credential, error) { return &credential, nil })"
-
-[[hit]]
-check = "ctxbackground"
-file = "coding/cli/auth_commands.go"
-func = "runLoginCommand"
-snippet = "if err := store.Delete(context.Background(), providerID); err != nil {"
-
-[[hit]]
-check = "ctxbackground"
-file = "coding/cli/auth_contributions.go"
-func = "discoverAuthContributionsFor"
-snippet = "ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)"
-
-[[hit]]
-check = "ctxbackground"
 file = "coding/cli/auth_run.go"
 func = "runAuthCheck"
 snippet = "ctx := context.Background()"
