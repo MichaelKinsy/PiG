@@ -97,7 +97,7 @@ type peerClosedSocket struct {
 func newPeerClosedSocket(conn *websocket.Conn) *peerClosedSocket {
 	socket := &peerClosedSocket{exSocket: newExSocket(conn)}
 	// Registered before the link's own, so the state reads closed when the link's handler runs.
-	socket.exSocket.AddEventListener(link.WebSocketClose, func(any) {
+	socket.AddEventListener(link.WebSocketClose, func(any) {
 		socket.stateMu.Lock()
 		socket.gone = true
 		socket.stateMu.Unlock()
