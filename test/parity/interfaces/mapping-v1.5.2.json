@@ -115643,8 +115643,8 @@
       ],
       "evidence": [
         "test:chord/next/documents/transaction_writes_test.go#TestTablesInATransactionUpdateAndUpdateWhereRunTheTablesExample",
-        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
-        "test:chord/next/host/host_example_20_test.go#TestExample20Tables"
+        "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
+        "test:chord/next/host/host_named_query_test.go#TestNamedQueryTheMappingsProjectionGetsOnlyTheColumnsReadsAndPartnerReadsListAlsoWhenTheQueryOrdersOrMatchesByOthers"
       ]
     },
     {
@@ -117373,9 +117373,9 @@
         "call:chord/nextnode/app/files.go#filesObject"
       ],
       "evidence": [
-        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
-        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit"
+        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -117396,9 +117396,9 @@
         "call:chord/nextnode/app/files.go#filesObject"
       ],
       "evidence": [
-        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
-        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit"
+        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119715,9 +119715,9 @@
         "call:chord/nextnode/app/files_index.go#NewFilesIndex"
       ],
       "evidence": [
-        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
-        "test:chord/next/host/host_example_22_test.go#TestExample22Migrations"
+        "test:chord/next/host/host_example_22_test.go#TestExample22Migrations",
+        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport"
       ]
     },
     {
@@ -119737,9 +119737,9 @@
         "call:chord/nextnode/app/files_index.go#NewFilesIndex"
       ],
       "evidence": [
-        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_example_20_test.go#TestExample20Tables",
-        "test:chord/next/host/host_example_22_test.go#TestExample22Migrations"
+        "test:chord/next/host/host_example_22_test.go#TestExample22Migrations",
+        "test:chord/next/host/host_example_25_test.go#TestExample25ExportImport"
       ]
     },
     {
@@ -119759,9 +119759,9 @@
         "call:chord/nextnode/app/files.go#filesObject"
       ],
       "evidence": [
-        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
-        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit"
+        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },
@@ -119782,9 +119782,9 @@
         "call:chord/nextnode/app/files.go#filesObject"
       ],
       "evidence": [
-        "test:chord/next/host/host_admission_test.go#TestAdmissionANamedQuery",
         "test:chord/next/host/host_attempt_test.go#TestAttemptEndingRejectsTheirCallersAtOnceTheHandlerRunsOnWithItsContextAbortedAndCannotCommit",
-        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit"
+        "test:chord/next/host/host_batch_test.go#TestDeliveryReportsADeliveryThatThrowsAndStillDeliversTheLaterFramesOfTheCommit",
+        "test:chord/next/host/host_events_test.go#TestEventFlushLetsAListenerStopReleaseSubscribeStartATransactionAndEmitACallDueWhenItStoppedIsSkipped"
       ],
       "asyncContract": "An awaited Promise is a blocking Go call that returns the value or error; AbortSignal is the context.Context argument; no detached goroutine."
     },

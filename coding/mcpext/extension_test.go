@@ -70,6 +70,11 @@ func (l *callLog) all() []string {
 type fakeServerOptions struct {
 	instructions    string
 	initializeDelay time.Duration
+	// initializeGate, when set, holds the answer to `initialize` until it is closed; the delay is then not used. A delay cannot
+	// force "the prompt starts before the server connects": its timer fires on its own thread as soon as the time has passed,
+	// so a prompt that starts later than that (a loaded host) finds the server connected. The test that orders a prompt
+	// against the connect closes the gate at the point it wants the server to answer.
+	initializeGate <-chan struct{}
 	// raw answers a method with exactly this JSON, so a test controls the member order and the members a server sends.
 	raw map[string]string
 }
@@ -144,6 +149,11 @@ func createFakeServer(calls *callLog, listTools func() []map[string]any, resourc
 			_ = server.Send(context.Background(), mcp.NewResult(*message.ID, raw))
 		}
 		switch {
+		case message.Method == "initialize" && opts.initializeGate != nil:
+			go func() {
+				<-opts.initializeGate
+				send()
+			}()
 		case message.Method != "initialize" || opts.initializeDelay == 0:
 			go send()
 		case opts.initializeDelay > 0:
@@ -640,7 +650,8 @@ func TestAgentSessionMCPDoesNotActivateAnotherExtensionsToolNamedCodemode(t *tes
 }
 
 // slowHarness is setupSlow() of agent-session-mcp.test.ts: a server named `slow` (by default) whose answer to
-// `initialize` takes initializeDelay, without waiting for it.
+// `initialize` takes initializeDelay, or, with config.initializeGate, comes only when the test closes the gate
+// (initializeDelay is then 0), without waiting for it.
 type slowHarness struct {
 	*sessionHarness
 	calls *callLog
@@ -652,12 +663,25 @@ type slowConfig struct {
 	name         string
 	instructions string
 	startupWait  *int
+	// initializeGate holds the server's answer to `initialize` until the test closes it. A test that orders a prompt against
+	// the connect needs it: a delay is a wall-clock time that a slow prompt outlasts.
+	initializeGate chan struct{}
 }
 
 func setupSlow(t *testing.T, config slowConfig, initializeDelay time.Duration) *slowHarness {
 	t.Helper()
 	if config.name == "" {
 		config.name = "slow"
+	}
+	if gate := config.initializeGate; gate != nil {
+		// A test that ends before it closes the gate must not leave the server's goroutine waiting for it.
+		t.Cleanup(func() {
+			select {
+			case <-gate:
+			default:
+				close(gate)
+			}
+		})
 	}
 	h := &sessionHarness{host: newFakeHost(), calls: &callLog{}, servers: &serverSet{}, notes: &notifications{}}
 	h.host.registerBuiltin(mcpext.CodemodeToolName, "builtin:codemode")
@@ -671,7 +695,7 @@ func setupSlow(t *testing.T, config slowConfig, initializeDelay time.Duration) *
 			return mcpext.LoadedMcpConfig{Servers: []mcpext.McpServerEntry{entry}}
 		},
 		CreateTransport: func(mcpext.McpServerEntry, string, mcp.AuthProvider) (mcp.Transport, error) {
-			client, server := createFakeServer(h.calls, func() []map[string]any { return serverTools }, false, fakeServerOptions{instructions: config.instructions, initializeDelay: initializeDelay})
+			client, server := createFakeServer(h.calls, func() []map[string]any { return serverTools }, false, fakeServerOptions{instructions: config.instructions, initializeDelay: initializeDelay, initializeGate: config.initializeGate})
 			_ = server.Start()
 			return client, nil
 		},
@@ -723,18 +747,39 @@ func TestAgentSessionMCPDoesNotHoldTheFirstPromptForCodemodeServersThatAreStillC
 }
 
 func TestAgentSessionMCPListsAServerBeforeItConnectsAndAddsItsSummaryWithTheNextPrompt(t *testing.T) {
-	h := setupSlow(t, slowConfig{instructions: "Slow docs.\nMore."}, 30*time.Millisecond)
+	// Pi's test answers `initialize` after 30 ms (agent-session-mcp.test.ts:790) and relies on the first prompt starting
+	// before then. Here the delay's timer fires on its own thread, so a first prompt that starts later than that (a loaded
+	// host) finds the server connected: it lists the server with its summary at once (the pin below is that case). The gate
+	// holds the answer until the first prompt has run.
+	gate := make(chan struct{})
+	h := setupSlow(t, slowConfig{instructions: "Slow docs.\nMore.", initializeGate: gate}, 0)
 
 	h.prompt()
 	first, ok := h.serversSection()
 	if !ok || !slices.Contains(strings.Split(first, "\n"), "- mcp__slow (codemode)") {
 		t.Fatalf("first section = %q, want the server listed by name only", first)
 	}
+	close(gate)
 	waitFor(t, "the server's tools", func() bool { return toolRegistered(h.host, "mcp__slow__search") })
 	h.prompt()
 	second, _ := h.serversSection()
 	if !strings.Contains(second, "- mcp__slow (codemode): Slow docs.") || strings.Contains(second, "More.") {
 		t.Fatalf("second section = %q", second)
+	}
+}
+
+// Not in Pi's suite: the other half of what the test above rests on. Every prompt lists the servers as they are when it
+// starts (extensions/mcp/index.ts:1177-1185), so a server that connected before the first prompt is listed with its summary.
+func TestAgentSessionMCPListsAServerThatConnectedBeforeThePromptWithItsSummary(t *testing.T) {
+	gate := make(chan struct{})
+	h := setupSlow(t, slowConfig{instructions: "Slow docs.\nMore.", initializeGate: gate}, 0)
+	close(gate)
+	waitFor(t, "the server's tools", func() bool { return toolRegistered(h.host, "mcp__slow__search") })
+
+	h.prompt()
+
+	if section, _ := h.serversSection(); !strings.Contains(section, "- mcp__slow (codemode): Slow docs.") || strings.Contains(section, "More.") {
+		t.Fatalf("section = %q, want the connected server listed with its summary", section)
 	}
 }
 
