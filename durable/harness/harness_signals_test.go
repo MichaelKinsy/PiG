@@ -4,7 +4,9 @@
 // Go mappings forced by language mechanics. A TypeScript expectation of `undefined` is a nil pointer here (JSON null in
 // the comparison). A Promise.all of three tx.signal() calls starts all three reads before the first write; the calls
 // run on goroutines, entered in call order (internal/entered), with the first one's storage read held until all three
-// are in, as the three reads are in flight in Pi.
+// are in, as the three reads are in flight in Pi. A Pi test that awaits one delivery and then the next runs on a thread
+// where the task the first delivery woke cannot end before the second is decided; a goroutine has no such order, so
+// sigAskHeld holds the woken task until the test has the answer that the task's end would change.
 
 package harness
 
@@ -102,6 +104,23 @@ var sigAsk = durable.DefineTask(durable.TaskDefinition[sigAskInput, stepState, s
 	},
 })
 
+// sigAskHeld is sigAsk with its `answered` phase held until hold settles: the task ends no sooner, so a delivery before
+// then finds it open.
+func sigAskHeld(hold *deferredGate) durable.Task[sigAskInput, stepState, sigAskResult, any] {
+	definition := *sigAsk.Definition
+	answered := definition.Phases["answered"]
+	definition.Phases = map[string]durable.PhaseHandler[sigAskInput, stepState, sigAskResult, any]{
+		"ask": definition.Phases["ask"],
+		"answered": func(ctx context.Context, task sigAskRecord, runtime sigAskRuntime) error {
+			if err := hold.wait(ctx); err != nil {
+				return err
+			}
+			return answered(ctx, task, runtime)
+		},
+	}
+	return durable.DefineTask(definition)
+}
+
 // sigStart creates a conversation-owned Ask in root.
 func sigStart(t *testing.T, root Conversation, input sigAskInput) durable.TaskId {
 	t.Helper()
@@ -198,7 +217,11 @@ func TestDefineSignal(t *testing.T) {
 
 func TestSignalDelivery(t *testing.T) {
 	t.Run("answers not_found, invalid, delivered, duplicate, and closed", func(t *testing.T) {
-		opened := tkOpenRoot(t, []durable.AnyTask{sigAsk.Erased()})
+		// A delivery to a task that ended is closed, and the key's value went with the task (its memos drop when it ends), so
+		// the second delivery is duplicate only while the task has not ended: the woken task is held until it is answered.
+		ended := deferred()
+		defer ended.resolve()
+		opened := tkOpenRoot(t, []durable.AnyTask{sigAskHeld(ended).Erased()})
 		harness := opened.harness
 		id := sigStart(t, opened.root, sigAskInput{Keys: []string{"a"}})
 		if got := sigSignal(t, harness, 999_999, "a", "x"); got != durable.SignalNotFound {
@@ -226,11 +249,29 @@ func TestSignalDelivery(t *testing.T) {
 		if got := sigSignal(t, harness, id, "a", "again"); got != durable.SignalDuplicate {
 			t.Fatalf("second: %s", got)
 		}
+		ended.resolve()
 		if outcome := tkWaitOutcome(t, harness, id); outcome.Status != durable.OutcomeCompleted {
 			t.Fatalf("outcome %s", describeOutcome(outcome))
 		}
 		if got := sigSignal(t, harness, id, "b", "late"); got != durable.SignalClosed {
 			t.Fatalf("late: %s", got)
+		}
+		mustClose(t, harness)
+	})
+
+	t.Run("answers closed, not duplicate, for a key that held a value once the task ended", func(t *testing.T) {
+		opened := tkOpenRoot(t, []durable.AnyTask{sigAsk.Erased()})
+		harness := opened.harness
+		id := sigStart(t, opened.root, sigAskInput{Keys: []string{"a"}})
+		if got := sigSignal(t, harness, id, "a", "yes"); got != durable.SignalDelivered {
+			t.Fatalf("first: %s", got)
+		}
+		if outcome := tkWaitOutcome(t, harness, id); outcome.Status != durable.OutcomeCompleted {
+			t.Fatalf("outcome %s", describeOutcome(outcome))
+		}
+		// The memos of the key dropped with the task: what the first subtest holds the task open for.
+		if got := sigSignal(t, harness, id, "a", "again"); got != durable.SignalClosed {
+			t.Fatalf("after the end: %s", got)
 		}
 		mustClose(t, harness)
 	})
