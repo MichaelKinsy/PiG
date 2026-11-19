@@ -18,6 +18,41 @@ type noLong struct{}
 
 func (noLong) blockedBy(*blocker) {}
 
+// releasing is a `blocked` that releases its decision from inside the section that settles it: `settle` names its blocker there,
+// before it resolves its verdict, so the release and the verdict are both there when the waiter selects.
+type releasing struct{ decision *Decision }
+
+func (r releasing) blockedBy(*blocker) { r.decision.release() }
+
+// namesBlocker is a `blocked` that tells when its waiter named a blocker: the wait it reports has begun.
+type namesBlocker struct{ named chan struct{} }
+
+func (n *namesBlocker) blockedBy(found *blocker) {
+	if found == nil {
+		return
+	}
+	select {
+	case n.named <- struct{}{}:
+	default:
+	}
+}
+
+// unservedDecision declares, in a section of h, a decision that asks for a type nobody serves.
+func unservedDecision(t *testing.T, h *chordHost) *Decision {
+	t.Helper()
+	var decision *Decision
+	var err error
+	h.enter(func() {
+		decision = newDecision(decisionOwner{host: h, label: "test.route", caller: h.own(), moved: func() {}})
+		err = decision.declare(func(self AdmitSelf) (any, error) {
+			self.Get(admMissing, jsonObject())
+			return self.Derive(nil, func([]any) (delta.JsonValue, error) { return Allow("v"), nil }), nil
+		}, background)
+	})
+	must(t, err)
+	return decision
+}
+
 func TestDecisionSettleWait(t *testing.T) {
 	made := func(t *testing.T) (*chordHost, *Decision) {
 		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "write"})
@@ -58,25 +93,71 @@ func TestDecisionSettleWait(t *testing.T) {
 		}
 	})
 
-	t.Run("a waiter that waits on a request nobody serves returns once the decision is released", func(t *testing.T) {
+	t.Run("a waiter on a request nobody serves gets the parked verdict at once: it has nothing to wait for", func(t *testing.T) {
+		// Pi's `settle` returns the unsettled verdict of a check that is not live without waiting (admission.ts:238-258): a type
+		// nobody serves parks the attempt, it does not park the waiter.
 		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "write"})
 		h := s.h.(*chordHost)
+		decision := unservedDecision(t, h)
+		found := decision.settleWait(noLong{}, background)
+		if found.kind != verdictParked || !found.firstPass || found.cause == nil {
+			t.Fatalf("verdict = %+v, want parked at the first pass with its cause", found)
+		}
+		h.enter(decision.release)
+	})
+
+	t.Run("a waiter that waits on a live query's first run returns once the decision is released", func(t *testing.T) {
+		// The query's first run waits behind a commit that is held, so the waiter is parked in `settle` when the release comes: it
+		// does not depend on which of the two goroutines reaches the host first. The probe says when the waiter named its blocker,
+		// and the release is the test's next step.
+		chordStore, _, holdNext := faultyStore(t)
+		address := Server.Address(nil)
+		h := newHost(t, HostOptions{Address: &address, Principal: serverPrincipal(), Store: chordStore, OnError: func(HostError) {}}).(*chordHost)
+		mustLoad(t)(h.Load([]HostFacet{{Name: "@test/shelf", Facet: admShelfFacet(&admFlag{})}}, background))
+		shelf := mustGet(t, h, admShelf, jsonObject())
+		_, err := shelf.Call("put", "a", background)
+		must(t, err)
 		var decision *Decision
-		var err error
 		h.enter(func() {
 			decision = newDecision(decisionOwner{host: h, label: "test.route", caller: h.own(), moved: func() {}})
 			err = decision.declare(func(self AdmitSelf) (any, error) {
-				self.Get(admMissing, jsonObject())
-				return self.Derive(nil, func([]any) (delta.JsonValue, error) { return Allow("v"), nil }), nil
+				items := self.LiveQuery(self.Get(admShelf, jsonObject()).Queries("items")["all"], jsonObject(), 3)
+				return self.Derive([]any{items}, func([]any) (delta.JsonValue, error) { return Allow("v"), nil }), nil
 			}, background)
 		})
 		must(t, err)
-		waiter := make(chan *verdict)
-		go func() { waiter <- decision.settleWait(noLong{}, background) }()
+		held := holdNext()
+		// Released at the test's end whatever failed: the host's close waits for the held commit.
+		t.Cleanup(held.Release)
+		writing := make(chan error, 1)
+		go func() { _, err := shelf.Call("put", "b", background); writing <- err }()
+		receive(t, held.Entered())
+		naming := &namesBlocker{named: make(chan struct{}, 8)}
+		waiter := make(chan *verdict, 1)
+		go func() { waiter <- decision.settleWait(naming, background) }()
+		receive(t, naming.named)
 		h.enter(decision.release)
-		found := <-waiter
+		// Returned while the commit is still held: the release ended the wait, not the query's first run.
+		found := receive(t, waiter)
 		if found.kind != verdictBroken || !errors.Is(found.err, ErrDecisionReleased) {
 			t.Fatalf("verdict = %+v, want broken, ErrDecisionReleased", found)
+		}
+		held.Release()
+		must(t, receive(t, writing))
+		closeHosts(t, h)
+	})
+
+	t.Run("a release in the turn of the verdict wins: the waiter gets released, never the verdict", func(t *testing.T) {
+		s := admServed(t, admDocCode{Built: &admLog{}}, admOptions{Mode: "write"})
+		h := s.h.(*chordHost)
+		// The release and the verdict are both ready when the wait selects, and select picks one at random: each decision is a
+		// toss, and half of them gave the waiter the parked verdict before the release was preferred.
+		for i := range 200 {
+			decision := unservedDecision(t, h)
+			found := decision.settleWait(releasing{decision}, background)
+			if found.kind != verdictBroken || !errors.Is(found.err, ErrDecisionReleased) {
+				t.Fatalf("decision %d: verdict = %+v, want broken, ErrDecisionReleased", i, found)
+			}
 		}
 	})
 

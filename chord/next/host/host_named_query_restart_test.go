@@ -137,16 +137,19 @@ type prHosted struct {
 	counts   func() map[string]float64
 	// declared are the old code's named queries (Pi's `declared`).
 	declared *instances[OwnQuery]
+	// errors is what the host reported (`onError`): no case asserts it; one that fails prints it.
+	errors *hostErrors
 }
 
 func prHost(t *testing.T, chordStore *store.ChordStore) *prHosted {
 	t.Helper()
 	_, ctx, counts := meteredHost(t)
-	host := newHost(t, HostOptions{Store: chordStore, OnError: func(HostError) {}})
+	errs := &hostErrors{}
+	host := newHost(t, HostOptions{Store: chordStore, OnError: errs.push})
 	declared := &instances[OwnQuery]{}
 	_, err := host.Load([]HostFacet{prProviderPlugin(false, declared), prOthers}, background)
 	must(t, err)
-	hosted := &prHosted{Host: host, store: chordStore, gates: mustGet(t, host, prGates, jsonObject()), provider: mustGet(t, host, prProvider, jsonObject()), meter: ctx, counts: counts, declared: declared}
+	hosted := &prHosted{Host: host, store: chordStore, gates: mustGet(t, host, prGates, jsonObject()), provider: mustGet(t, host, prProvider, jsonObject()), meter: ctx, counts: counts, declared: declared, errors: errs}
 	for id, text := range map[float64]string{1: "first", 2: "second"} {
 		hosted.gate(t, background, id)
 		if _, err := hosted.provider.Call("put", jsonObject("id", id, "text", text), background); err != nil {
@@ -337,6 +340,20 @@ func TestNamedQueryProvidersRestartAListsMoreDuringTheMigrationWaitsForTheSucces
 	// the reload starts is held; the other owner's commit and the `more` come behind it.
 	chordStore, _, holdNextCommit := faultyStore(t)
 	h := prHost(t, chordStore)
+	// What the host reported, on failure only: the calls below fail with `ended` and say no more (the gate run on ac54a50746,
+	// 2026-11-18, failed at the two calls once and was not reproduced).
+	t.Cleanup(func() {
+		if !t.Failed() {
+			return
+		}
+		reports := h.errors.All()
+		if len(reports) == 0 {
+			t.Log("host reports: none")
+		}
+		for _, report := range reports {
+			t.Logf("host report: %s object=%q query=%q member=%q error=%v failure=%v/%v", report.Kind, report.Object, report.Query, report.Member, report.Error, report.Failure.Kind, report.Failure.Error)
+		}
+	})
 	screen := mustGet(t, h.Host, prScreen, jsonObject())
 	qrWant(t, "items", qrValue(t, screen, "items"), `{"rows":[{"id":1,"text":"first"}],"moreAfter":true}`)
 	held := holdNextCommit()

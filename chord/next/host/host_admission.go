@@ -350,7 +350,8 @@ func (d *Decision) now(ctx context.Context) *verdict {
 
 // ErrDecisionReleased is the cause of the broken verdict a released decision's waiters get (`settle`, `settleWait`): the
 // decision ended under them, nothing it asked failed. A caller tells a release from a genuinely broken admit by
-// `errors.Is(verdict.err, ErrDecisionReleased)`; neither an allow nor a denial is made of it. (Pi's promise of a released
+// `errors.Is(verdict.err, ErrDecisionReleased)`; neither an allow nor a denial is made of it, and a verdict that resolves in the
+// turn of the release (the readers the release closes end the promise) is not what a waiter gets. (Pi's promise of a released
 // decision never settles: there is no Pi cause to port.)
 var ErrDecisionReleased = errors.New("admission decision released")
 
@@ -361,9 +362,11 @@ func (d *Decision) endedError() *data.ChordError {
 
 // settleWait is `settle` for a caller outside a section (a route's task: Pi's `await decision.settle(...)`): it BLOCKS until
 // the verdict is there, or until ctx is cancelled or the decision is released, which cancels what it waits under (a broken
-// verdict with the reason: ctx's cause, or `released`). It takes its own sections; never call it inside one. Part D's
-// `settle`. Pi's promise of a released decision never settles; a Go task must not block for ever, so the wait ends the way
-// every wait of an attempt does, through a context.
+// verdict with the reason: ctx's cause, or `released`). A release wins over a verdict that resolves in the same turn: the
+// readers it closes end the promise (parked, waiting on a closed reader) as it cancels the wait, and the waiter of a released
+// decision gets `released`, not that verdict. It takes its own sections; never call it inside one. Part D's `settle`. Pi's
+// promise of a released decision never settles; a Go task must not block for ever, so the wait ends the way every wait of an
+// attempt does, through a context.
 func (d *Decision) settleWait(long blocked, ctx context.Context) *verdict {
 	waiting, stop := chordctx.WithCancel(ctx)
 	defer stop(nil)
@@ -386,6 +389,11 @@ func (d *Decision) settleWait(long blocked, ctx context.Context) *verdict {
 	parking.Park(waiting)
 	select {
 	case <-promise.done:
+		// Both are ready when the release came in the turn that resolved the verdict (the readers it closes end the promise), and
+		// select picks one at random: the release wins, so the waiter never gets the verdict of a decision that ended under it.
+		if cause := context.Cause(waiting); errors.Is(cause, ErrDecisionReleased) {
+			return &verdict{kind: verdictBroken, err: data.AsChordError(cause, d.owner.label)}
+		}
 		return promise.value
 	case <-waiting.Done():
 		return &verdict{kind: verdictBroken, err: data.AsChordError(context.Cause(waiting), d.owner.label)}
