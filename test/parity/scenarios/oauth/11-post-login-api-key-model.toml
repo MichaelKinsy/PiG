@@ -2,6 +2,7 @@
 # Enter a synthetic key with no inherited authentication. No inference request or network key validation occurs.
 # The observer replaces the completion status; 13-post-login-api-key-status compares that notice separately.
 # Compare the real command-context and persisted-settings report exactly.
+# Default model: Pi e56d35ce5ece sets defaultModelPerProvider for openai, azure and openai-codex to gpt-6.2-sol (core/model-resolver.ts:24-26; the parity oracle carries it as a backport). Pig and pi print the same completion line and report openai/gpt-6.2-sol as the current and the default model.
 name = "11-post-login-api-key-model"
 description = "API key login from unknown selects and persists the provider default"
 covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/core/model-resolver.ts"]
@@ -15,7 +16,7 @@ ready_pattern_pig = "(auto)"
 ready_pattern_pi = "(auto)"
 ready_timeout_seconds = 30
 capture_start = "post-login-state:"
-capture_end = "post-login-state: current=openai/gpt-6.1-sol default=openai/gpt-6.1-sol"
+capture_end = "post-login-state: current=openai/gpt-6.2-sol default=openai/gpt-6.2-sol"
 settle_seconds = 1
 cwd = "../selectors/testdata/login-empty-project"
 
@@ -30,10 +31,10 @@ keys = ["openai", "Enter"]
 wait_contains = ["API key"]
 [[tmux.steps]]
 keys = ["parity-key", "Enter"]
-wait_contains = ["Saved API key for OpenAI. Selected gpt-6.1-sol."]
+wait_contains = ["Saved API key for OpenAI. Selected gpt-6.2-sol."]
 [[tmux.steps]]
 keys = ["/post-login-state", "Enter"]
-wait_visible_contains = ["post-login-state: current=openai/gpt-6.1-sol default=openai/gpt-6.1-sol"]
+wait_visible_contains = ["post-login-state: current=openai/gpt-6.2-sol default=openai/gpt-6.2-sol"]
 
 [env]
 pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/pi-agent-noauth", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
@@ -45,6 +46,6 @@ pi_extensions = ["../../testdata/post-login-state.ts"]
 
 [assert]
 both_reach_ready = true
-both_contain = ["post-login-state: current=openai/gpt-6.1-sol default=openai/gpt-6.1-sol"]
+both_contain = ["post-login-state: current=openai/gpt-6.2-sol default=openai/gpt-6.2-sol"]
 output_equal = true
 runs = 3
