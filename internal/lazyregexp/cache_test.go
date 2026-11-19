@@ -51,3 +51,24 @@ func TestCacheCachesNothingForAPanickingCompile(t *testing.T) {
 		t.Fatalf("the cache holds %d expressions after a panic, want none", len(cache.entries))
 	}
 }
+
+var cacheSink *Cache[string]
+
+// The package-level caches are made at process start and most runs never use one: a cache holds no storage for its entries until it is first used.
+func TestNewCacheAllocatesOnlyTheCache(t *testing.T) {
+	if allocs := testing.AllocsPerRun(50, func() { cacheSink = NewCache[string](256) }); allocs > 1 {
+		t.Fatalf("NewCache allocates %v objects, want the cache alone", allocs)
+	}
+}
+
+// A key the cache has not seen is a miss on a cache that holds nothing yet, and the first expression it holds is the one compiled for that key.
+func TestCacheFirstGetOnAFreshCache(t *testing.T) {
+	cache := NewCache[string](2)
+	if cache.entries != nil {
+		t.Fatalf("a fresh cache holds %d entries storage, want none", len(cache.entries))
+	}
+	first := cache.Get("a", regexp.MustCompile)
+	if again := cache.Get("a", func(string) *regexp.Regexp { t.Fatal("compiled a cached key"); return nil }); again != first {
+		t.Fatal("the first key was not cached")
+	}
+}

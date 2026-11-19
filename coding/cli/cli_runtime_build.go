@@ -694,8 +694,9 @@ func (b *cliRuntimeBuilder) loadPromptResources(build *cliBuild, agentToolNames 
 	}
 	promptOptions.AppendSystemPrompt = resolvedPrompts.append
 
+	// The prompt text is rendered from the sections, whose values then lie inside it: one copy of a prompt that holds the project context files, not two.
 	build.SystemPromptSections = prompts.BuildSystemPromptSections(promptOptions)
-	build.SystemPrompt = prompts.BuildDefaultPrompt(promptOptions)
+	build.SystemPrompt = prompts.RenderSharingSections(build.SystemPromptSections)
 
 	extContextFiles := make([]extension.SystemPromptContextFile, 0, len(promptCtxFiles))
 	for _, cf := range promptCtxFiles {
