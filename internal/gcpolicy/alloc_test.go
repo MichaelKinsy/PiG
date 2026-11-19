@@ -15,6 +15,9 @@ import (
 // allocChildEnv marks the process TestApplyAllocatesLittleBeforeTheFirstCollection starts to measure in.
 const allocChildEnv = "PIG_GCPOLICY_ALLOC_CHILD"
 
+// watcherDeadline bounds the failure of a watcher that never reports a turn.
+const watcherDeadline = 10 * time.Second
+
 // D175: a run that finishes before its first collection pays for the watcher's goroutine, its timer and its two channels and nothing
 // else. The first read of runtime/metrics builds the runtime's metric table (12,704 bytes in 72 objects for Apply and a watcher that
 // polled for 60 ms, 672 bytes in 11 with the table already built), and a run whose heap never reaches a collection has no live heap to
@@ -49,14 +52,33 @@ func TestApplyAllocatesLittleBeforeTheFirstCollection(t *testing.T) {
 	defer debug.SetGCPercent(debug.SetGCPercent(DefaultPercent))
 	threads, _ := runtime.ThreadCreateProfile(nil)
 	var before, waiting, polled, after runtime.MemStats
+	// The watcher reports each turn through watcherTurn and the test waits for those events, never for a duration. The channel, its hook and the
+	// failure deadline exist before the first measurement; the channel has room for every turn, so the hook allocates nothing and never blocks.
+	// The deadline is only the failure path of a watcher that never starts: a passing run does not wait for it.
+	turns := make(chan struct{}, 16)
+	watcherTurn = func() { turns <- struct{}{} }
+	defer func() { watcherTurn = nil }()
+	deadline := time.NewTimer(watcherDeadline)
+	defer deadline.Stop()
+	await := func(what string, count int) {
+		t.Helper()
+		for range count {
+			select {
+			case <-turns:
+			case <-deadline.C:
+				t.Fatalf("the watcher did not report %s within %v", what, watcherDeadline)
+			}
+		}
+	}
 	runtime.ReadMemStats(&before)
 	if before.NumGC != 0 {
 		t.Fatalf("%d collections ran before the measurement", before.NumGC)
 	}
 	stop := Apply()
-	time.Sleep(2 * minPoll) // The watcher has made its timer, parked on it and polled once.
+	await("its start", 1)      // The watcher goroutine runs and has made its timer.
+	await("its first poll", 1) // It parked on the timer, woke, polled once and set the timer again.
 	runtime.ReadMemStats(&waiting)
-	time.Sleep(8 * minPoll) // More polls: the waits double from minPoll.
+	await("three more polls", 3) // The waits double from minPoll.
 	runtime.ReadMemStats(&polled)
 	stop()
 	runtime.ReadMemStats(&after)
@@ -69,7 +91,7 @@ func TestApplyAllocatesLittleBeforeTheFirstCollection(t *testing.T) {
 	bytes, objects := after.TotalAlloc-before.TotalAlloc, after.Mallocs-before.Mallocs
 	pollBytes, pollObjects := polled.TotalAlloc-waiting.TotalAlloc, polled.Mallocs-waiting.Mallocs
 	t.Logf("Apply, a watcher that polled for %v and stop allocated %d bytes in %d objects, the polls after the first wait %d bytes in %d objects",
-		10*minPoll, bytes, objects, pollBytes, pollObjects)
+		minPoll*(1+2+4+8), bytes, objects, pollBytes, pollObjects)
 	const maxBytes, maxObjects = 2048, 24
 	if bytes > maxBytes || objects > maxObjects {
 		t.Fatalf("Apply and a watcher that saw no collection allocated %d bytes in %d objects, want at most %d in %d", bytes, objects, maxBytes, maxObjects)
