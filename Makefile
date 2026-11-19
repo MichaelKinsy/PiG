@@ -171,7 +171,11 @@ node-runtime: ## Regenerate the embedded Node runtime archive and content digest
 node-runtime-drift: ## Fail when the embedded Node runtime archive or digest differs from runtime-node (regenerate with make node-runtime)
 	go test -count=1 ./coding/extension/host/subprocess -run "^TestNodeRuntimeArchiveMatchesSources$$"
 
-.PHONY: node-runtime-drift
+# The shims follow the installed oracle, the archive follows the shims: the two gates cover the two links, and make generate runs both writers in that order.
+vendor-pi-dist-drift: parity-deps ## Fail when the vendored Pi runtime (runtime-node/shims) differs from what make vendor-pi-dist writes from the installed oracle (regenerate with make vendor-pi-dist, then make node-runtime)
+	@./automation/ci/vendor-pi-dist-drift.sh
+
+.PHONY: node-runtime-drift vendor-pi-dist-drift
 
 build: node-runtime ## Compile every package (go build ./...)
 	go build -buildvcs=false ./...
@@ -205,11 +209,12 @@ build-env-daemons: ## Cross-build the pi-env daemon for every remote system SshC
 generate: export LC_ALL := C
 generate help-text: export FORCE_COLOR := 0
 
-generate: ## Regenerate committed inventories, coverage, catalogs, help, and docs mirrors
+generate: ## Regenerate committed inventories, coverage, catalogs, help, docs mirrors, the vendored Pi runtime and its embedded archive (needs the pinned Pi oracle: make parity-deps)
 	@$(MAKE) divergences
 	@$(MAKE) piglet-strip-ids
 	@$(MAKE) sdk-bundles
 	@$(MAKE) model-catalogs
+	@$(MAKE) vendor-pi-dist
 	@$(MAKE) node-runtime
 	@$(MAKE) highlight-grammars
 	@$(MAKE) help-text
@@ -569,6 +574,8 @@ go-fix-clean: ## Fail when go fix would change any file of the root module or of
 # every version pin, reuse lint, and govulncheck. It fails on any miss.
 compliance: ## Check badge and OpenSSF evidence: files, pins, workflow hardening, REUSE, govulncheck
 	@python3 -B -m unittest discover -s automation/ci -p test_go_pin.py
+	@python3 -B -m unittest discover -s automation/ci -p test_secret_scan_range.py
+	@python3 -B -m unittest discover -s automation/ci -p test_wait_preflight.py
 	@./automation/ci/check-compliance.py $(COMPLIANCE_ARGS)
 
 # divergence-consistency enforces AGENTS.md rule #4. Every divergence
@@ -683,7 +690,7 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 
 ##@ Gates
 
-check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs lint-sdk-py test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard gui-import-guard divergences-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check model-data-check perf-scoreboard-check module-size alloc-baseline-changed ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules lint-rust test-sdk-rs lint-sdk-py test-sdk-py test-sdk-py-311 test-sdk-lisp test-sdk-ts test-term-engines typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard gui-import-guard divergences-drift node-runtime-drift vendor-pi-dist-drift autofix-check port-lint any-trap perf-lint race-coverage check-contracts-fast source-hygiene fixture-guard module-pins test-provenance docs-drift bug-ledger-check model-data-check perf-scoreboard-check module-size alloc-baseline-changed ## All deterministic build, lint, unit, race, and drift gates
 
 check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo

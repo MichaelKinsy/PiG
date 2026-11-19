@@ -46,7 +46,7 @@ copy() {
 node "$root/automation/gen/pi-post-release-backports.mjs" --verify-packages "pi-ai=$ai" "pi-coding-agent=$agent" "pi-mcp=$mcp" "pi-tui=$tui" || { echo "vendor-pi-dist: the installed Pi does not carry the post-release backports exactly once; run make parity-deps (pin.py install-oracle --force)" >&2; exit 1; }
 
 # The oracle builds are read-only, and cp keeps their modes: make what an earlier run copied owner-writable so rm can remove it.
-if [ -e "$shims" ]; then chmod -R u+w "$shims"; fi # every copy, including the third-party packages the dependency vendoring wrote
+if [ -e "$shims" ]; then chmod -R u+w "$shims"; fi # every copy, including the third-party packages the dependency vendoring wrote and removes again below
 rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/marked-cjk-friendly" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib" "$shims/marked-cjk-friendly/dist" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 printf '{\n  "type": "module"\n}\n' >"$dist/package.json"
