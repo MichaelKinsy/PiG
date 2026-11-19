@@ -278,6 +278,7 @@ func (m *InteractiveMode) emitAgentSettledFor(runner *inproc.Runner, aborted boo
 	deferred := m.deferredSettledActions
 	m.deferredSettledActions = nil
 	m.settledMu.Unlock()
+	// pig divergence (D247): deferred agent_settled starts are dropped once exit is requested (Pi 1.5.2 runs them); the quit settle would wait for the run they start.
 	if m.requestExit.Load() {
 		return
 	}

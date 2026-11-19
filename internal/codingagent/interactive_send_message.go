@@ -98,7 +98,7 @@ func (m *InteractiveMode) startCustomTurn(agentMsg agent.AgentMessage, followUp 
 			if m.agent == nil {
 				return
 			}
-			// The action was released before a quit key set requestExit: the quit settles the interrupted run on the owner loop (settleRunAtQuit) and would wait for a turn started here (D247).
+			// pig divergence (D247): an action released after exit was requested begins no turn (Pi 1.5.2 runs it). The action was released before a quit key set requestExit: the quit settles the interrupted run on the owner loop (settleRunAtQuit) and would wait for a turn started here.
 			if m.requestExit.Load() {
 				return
 			}

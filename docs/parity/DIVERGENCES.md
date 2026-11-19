@@ -3209,7 +3209,7 @@ SCRUTINIZED:approved text-sha256:0ba27c5f9987df68
 
 Remove when: PiG starts the turn from such a message and waits for it as the pinned Pi does, or Pi drops a message sent from `agent_settled` once its dispose has begun.
 
-Call-site markers: `coding/runtime_replacement.go` (`EmitQuitShutdown`), `internal/codingagent/interactive_extensions.go`, `internal/codingagent/interactive_input.go`, `internal/codingagent/interactive_send_message.go`.
+Call-site markers: `internal/codingagent/interactive_extensions.go` (`deliverUserMessageAfter`), `internal/codingagent/interactive_send_message.go` (`startCustomTurn`), `internal/codingagent/interactive_turn.go` (`emitAgentSettledFor`).
 
 Evidence: `TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown` (Pi's regression test, plus the order an extension's `session_shutdown` handler observes); `TestInteractiveQuitWhileABuiltInProviderTurnStreams` (the quit keys against openai-completions, anthropic-messages and openai-responses streams); `TestAgentSettledDropsDeferredStartsOnceExitIsRequested`, `TestQuitAfterTheReleaseOfADeferredStartBeginsNoTurn` and `TestInteractiveQuitSkipsTheDeferredStartOfASettledAction` (the drop; main #483).
 

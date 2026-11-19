@@ -80,7 +80,7 @@ func (m *InteractiveMode) deliverUserMessageAfter(content any, deliverAs extensi
 		if m.agent == nil {
 			return
 		}
-		// A start posted before a quit key set requestExit must not begin a turn the quit settle would wait for (D247).
+		// pig divergence (D247): a start posted before a quit key set requestExit begins no turn (Pi 1.5.2 runs it); the quit settle would wait for it.
 		if m.requestExit.Load() {
 			return
 		}
