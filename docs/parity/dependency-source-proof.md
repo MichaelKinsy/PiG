@@ -2,7 +2,7 @@
 
 Pi-owned source can inherit observable defaults from an exactly pinned dependency. `test/parity/dependency-sources.json` records reviewed dependency source snapshots for that case. It does not grant a divergence or a general allowance for the dependency.
 
-The divergence guard accepts an exact `upstream: node_modules/<package>/<file>:<symbol>` reference only after it validates the snapshot. It requires the package version to match an exact dependency pin in the current upstream package manifest. It requires the snapshot SHA-256 to match the recorded digest. It rejects missing files, duplicate references, ranges, traversal, malformed records and stale pins or digests. It then checks the named symbol and the literal value with the same rules as a Pi-owned source reference. Numeric comparison recognizes equivalent integer exponent notation, including Undici's `10e3` spelling of 10000.
+The divergence guard accepts an exact `upstream: node_modules/<package>/<file>:<symbol>` reference only after it validates the snapshot. It requires the package version to match the exact dependency pin in force: the one in the current upstream package manifest, or, where a `dependency(...)` entry of `automation/gen/pi-post-release-backports.mjs` replaces that pin for the same Pi package (the entry's `from` still equals the manifest's pin), the entry's version, whose archive integrity the record must equal. A snapshot of any other version is rejected. It requires the snapshot SHA-256 to match the recorded digest. It rejects missing files, duplicate references, ranges, traversal, malformed records and stale pins or digests. It then checks the named symbol and the literal value with the same rules as a Pi-owned source reference. Numeric comparison recognizes equivalent integer exponent notation, including Undici's `10e3` spelling of 10000.
 
 CI reads the reviewed snapshot offline. It does not trust an ambient node_modules installation or fetch mutable source during a gate run. The recorded npm archive integrity identifies the archive used for capture; capture verifies its SHA-512 before extracting source. Changing the source and its digest requires code review, just as changing a pinned mirror or a parity oracle does. These syntactic checks do not replace behavioral tests.
 
@@ -10,10 +10,10 @@ CI reads the reviewed snapshot offline. It does not trust an ambient node_module
 
 | Property | Proof |
 |---|---|
-| Upstream owner | `.upstream/current/packages/coding-agent/package.json` |
-| Exact dependency | `undici` 8.12.3 |
-| Source | `test/parity/dependency-sources/undici/8.12.3/lib/core/connect.js` |
-| License | `test/parity/dependency-sources/undici/8.12.3/LICENSE` |
+| Upstream owner | `.upstream/current/packages/coding-agent/package.json` (undici 8.12.3), whose pin Pi efbcd5adb moves to 8.12.4: the post-release backports script carries that as a `dependency(...)` entry |
+| Exact dependency | `undici` 8.12.4, the pin in force: the guard takes the carried version while the mirror still pins the version the entry replaces (8.12.3) and the record's integrity equals the entry's |
+| Source | `test/parity/dependency-sources/undici/8.12.4/lib/core/connect.js` |
+| License | `test/parity/dependency-sources/undici/8.12.4/LICENSE` |
 | Symbol | `buildConnector` |
 | Rule | Default connection timeout is 10000ms; the connector clears the timer on `secureConnect` for TLS and `connect` for TCP |
 | Literal consumer | `ai/http_transport.go:defaultHTTPConnectTimeout` |
@@ -119,25 +119,25 @@ The oracle carries the commit's behaviour: the SDK, the three compiled adapters 
 6. Review the default, completion event and error/cancellation behavior in the new source.
 7. Run the guard tests, transport tests and provider scenario before accepting the update.
 
-The capture for 8.12.3 uses:
+The capture for 8.12.4 uses (`lib/core/connect.js` and `LICENSE` are byte-identical in 8.12.3, whose archive has SHA-256 `e03fa2ed347527c915026c04810d3b9bcf9893a2176b314aa4c29c945612d18c`; the 8.12.4 archive has `26058cdb2174623666e823e6b44ccfef8d5c1955107f979b8083904b61a0ce6e`):
 
 ```sh
 work=$(mktemp -d)
 export work
-curl -fsS https://registry.npmjs.org/undici/8.12.3 -o "$work/package.json"
-curl -fsS https://registry.npmjs.org/undici/-/undici-8.12.3.tgz -o "$work/package.tgz"
+curl -fsS https://registry.npmjs.org/undici/8.12.4 -o "$work/package.json"
+curl -fsS https://registry.npmjs.org/undici/-/undici-8.12.4.tgz -o "$work/package.tgz"
 python3 - <<'PY'
 import base64, hashlib, json, os, pathlib, tarfile
 work = pathlib.Path(os.environ['work'])
 metadata = json.loads((work / 'package.json').read_text())
 archive = (work / 'package.tgz').read_bytes()
-assert metadata['version'] == '8.12.3'
+assert metadata['version'] == '8.12.4'
 integrity = 'sha512-' + base64.b64encode(hashlib.sha512(archive).digest()).decode()
 assert integrity == metadata['dist']['integrity']
 with tarfile.open(work / 'package.tgz') as package:
     for name in ['lib/core/connect.js', 'LICENSE']:
         source = package.extractfile('package/' + name).read()
-        target = pathlib.Path('test/parity/dependency-sources/undici/8.12.3') / name
+        target = pathlib.Path('test/parity/dependency-sources/undici/8.12.4') / name
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(source)
         print(name, hashlib.sha256(source).hexdigest())

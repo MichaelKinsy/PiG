@@ -14,7 +14,7 @@
   "minimatch": "11.0.5",
   "undici": "6.29.1",
   "@earendil-works/pi-coding-agent": {
-   "undici": "8.12.2"
+   "undici": "8.12.4"
   }
  }
 }

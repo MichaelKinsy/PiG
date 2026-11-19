@@ -148,3 +148,63 @@ func TestDependencyLiteralProofAcceptsANodeRuntimeSource(t *testing.T) {
 		t.Fatal("Node source proof accepted for another Node release")
 	}
 }
+
+// A dependency a recorded Pi commit moves past the pin (a dependency entry of the post-release backports script) is pinned at its carried
+// version in force: a snapshot of that version is admitted, and only while the mirror still pins the version the entry replaces.
+func TestDependencyLiteralProofFollowsTheCarriedPin(t *testing.T) {
+	const integrity = "sha512-" + "8Mx+uNKKER2bA4AdtedkqRbwUCIJFr2nJckXRe5yrDqzePqwLP7VNcctN8/XdmDSbF7mS+jJKIszlL+vbam1VA=="
+	fixture := func(t *testing.T, mirrorPin, recordVersion, recordIntegrity, carry string) (string, string) {
+		root, mirror := dependencyProofFixture(t)
+		source := []byte("function buildConnector() { const timeout = 10e3; return timeout; }\n")
+		digest := sha256.Sum256(source)
+		raw, err := json.Marshal([]map[string]string{{"reference": "node_modules/undici/lib/core/connect.js", "manifest": "packages/coding-agent/package.json", "package": "undici", "version": recordVersion,
+			"source": "test/parity/dependency-sources/connect.js", "sha256": hex.EncodeToString(digest[:]), "integrity": recordIntegrity}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		files := map[string]string{
+			"test/parity/dependency-sources.json":                  string(raw),
+			".upstream/current/packages/coding-agent/package.json": `{"dependencies":{"undici":"` + mirrorPin + `"}}`,
+		}
+		if carry != "" {
+			files["automation/gen/pi-post-release-backports.mjs"] = "if (process.argv[2] === \"--dependencies\") process.stdout.write(JSON.stringify(" + carry + "));\n"
+		}
+		for name, body := range files {
+			path := filepath.Join(root, filepath.FromSlash(name))
+			if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(body), 0600); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return root, mirror
+	}
+	entry := func(from, to, integrity string) string {
+		return `[{id:"efbcd5adb",package:"pi-coding-agent",name:"undici",from:"` + from + `",to:"` + to + `",integrity:"` + integrity + `",dependencies:{}}]`
+	}
+	environment, err := loadEnv(fixture(t, "8.12.3", "8.12.4", integrity, entry("8.12.3", "8.12.4", integrity)))
+	if err != nil {
+		t.Fatalf("carried pin rejected: %v", err)
+	}
+	source := []byte("package ai\nimport \"time\"\n// upstream: node_modules/undici/lib/core/connect.js:buildConnector\nconst connectTimeout = 10 * time.Second\n")
+	if hits, problems, err := scanSource("ai/transport.go", source, environment, []check{magicLiteral}); err != nil || len(hits) != 0 || len(problems) != 0 {
+		t.Fatalf("verified carried dependency rejected: hits=%v problems=%v error=%v", hits, problems, err)
+	}
+	other := "sha512-" + strings.Repeat("A", 86) + "=="
+	for _, tc := range []struct{ name, pin, version, integrity, carry string }{
+		{"no carry, record past the pin", "8.12.3", "8.12.4", integrity, ""},
+		{"carry, record at the mirror pin it replaces", "8.12.3", "8.12.3", integrity, entry("8.12.3", "8.12.4", integrity)},
+		{"carry, record at a third version", "8.12.3", "8.12.5", integrity, entry("8.12.3", "8.12.4", integrity)},
+		{"carry replaces a version the mirror no longer pins", "8.12.6", "8.12.4", integrity, entry("8.12.3", "8.12.4", integrity)},
+		{"carry names another archive", "8.12.3", "8.12.4", other, entry("8.12.3", "8.12.4", integrity)},
+		{"carry of another package", "8.12.3", "8.12.4", integrity, strings.Replace(entry("8.12.3", "8.12.4", integrity), `name:"undici"`, `name:"semver"`, 1)},
+	} {
+		if _, err := loadEnv(fixture(t, tc.pin, tc.version, tc.integrity, tc.carry)); err == nil {
+			t.Errorf("%s: accepted", tc.name)
+		}
+	}
+	if _, err := loadEnv(fixture(t, "8.12.3", "8.12.3", integrity, "")); err != nil {
+		t.Fatalf("the mirror pin without a carry no longer works: %v", err)
+	}
+}

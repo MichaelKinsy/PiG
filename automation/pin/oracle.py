@@ -218,10 +218,31 @@ def carried_dependencies(pin: Pin | None = None) -> list[dict]:
     return [dict(dep) for dep in _dependencies_of(str(BACKPORTS), hashlib.sha256(BACKPORTS.read_bytes()).hexdigest())]
 
 
+def peer_range_admits(range_: str, version: str) -> bool:
+    """Whether `version` satisfies a peer range written as space-separated comparators (`>=5 <9`); any other form is not read, so it admits nothing."""
+    def numbers(text: str) -> list[int] | None:
+        parts = text.split(".")
+        return [int(part) for part in parts] if len(parts) <= 3 and all(part.isdigit() for part in parts) else None
+    have = numbers(version)
+    comparators = range_.split()
+    if have is None or not comparators:
+        return False
+    for comparator in comparators:
+        operator = next((op for op in (">=", "<=", ">", "<") if comparator.startswith(op)), None)
+        bound = numbers(comparator[len(operator):]) if operator else None
+        if bound is None:
+            return False
+        bound += [0] * (3 - len(bound))
+        have3 = have + [0] * (3 - len(have))
+        if not {">=": have3 >= bound, "<=": have3 <= bound, ">": have3 > bound, "<": have3 < bound}[operator]:
+            return False
+    return True
+
+
 def carried_closure(lock: dict, carried: list[dict]) -> dict:
     """The closure the oracle installs: `lock` (the frozen closure, left as it is) with each carried dependency in place of the version
     the pin installs. The dependency's entry takes the carried version, archive and integrity, and the entry of the Pi package that pins
-    it names the carried version: the two changes Pi's lock has at the carried commit. `npm ci` of the result verifies the archive
+    it names the carried version: the two changes Pi's lock has at the carried commit. A peer range of another package that admits both versions stays as it is. `npm ci` of the result verifies the archive
     against the integrity. Everything else stays the frozen closure's, so the carried version must stand where the pinned one stood,
     with the same dependencies of its own; any other shape stops the build and names the entry (a pin that already holds the commit
     has no pinned version left to replace: `make pin-bump` deletes the entry with the commit's blocks)."""
@@ -249,6 +270,8 @@ def carried_closure(lock: dict, carried: list[dict]) -> dict:
         for key, item in packages.items():
             for field in ("dependencies", "optionalDependencies", "peerDependencies"):
                 if name not in item.get(field, {}):
+                    continue
+                if field == "peerDependencies" and peer_range_admits(item[field][name], dep["from"]) and peer_range_admits(item[field][name], dep["to"]):
                     continue
                 if not key.endswith("node_modules/" + owner) or field != "dependencies" or item[field][name] != dep["from"]:
                     raise PinError(f"{what}: {key or 'the root'} needs {name} {item[field][name]} ({field}); the entry replaces the exact pin {dep['from']} of {owner} and nothing else")
