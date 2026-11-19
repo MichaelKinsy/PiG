@@ -30,6 +30,8 @@ git commit --signoff
 
 The sign-off certifies that you have the right to submit the contribution under the project license. It is not a copyright assignment or a cryptographic signature.
 
+One commit needs no sign-off: the merge of `main` that GitHub's **Update branch** button adds to a pull request. GitHub commits it, nobody can add the line to it, and it holds no contribution of its own. The pre-flight exempts it only when it has exactly two parents, GitHub committed it and verifies its signature, its second parent is on the base branch, and its tree is the one git's own merge of the two parents writes; a merge you make yourself, a merge of another branch, and a merge with a conflict resolution or an edit need the line like every other commit, and so does every commit the pull request adds on either side of the merge.
+
 ### Signing off a commit afterwards
 
 If a commit you authored lacks the sign-off and its history cannot be rewritten, add a later commit to the same pull request that signs it off. Author it as the same identity (name and email) as the unsigned commit, or as another identity that `automation/ci/dco-identities.txt` lists as the same person, with an empty change and a remediation block in the message:
@@ -137,6 +139,9 @@ installing software.
 12. Describe the problem, change, verification, and any divergence in the pull request.
 
 A documentation-only or mechanical change can explain why it does not need an issue.
+
+A pull request that adds a feature can carry fix-titled commits that repair code the same pull request adds, and commits already public cannot be retitled. Nothing released was broken, so `Fix: yes` would force a bug-ledger entry and a `### Fixed` line that are not true, and `Fix: no` fails the pre-flight for the titles. Ask a maintainer for a `fix-title-exempt` entry in `automation/ci/preflight/config.yaml`: the maintainer adds it in a separate, reviewed pull request, because the pre-flight reads main's configuration. The entry names your pull request, a written reason, and the exact full shas it exempts. A fix-titled commit you push later is not exempt until a maintainer reviews the list again, and the exemption never covers a changelog `### Fixed` line or a `Fix: yes` answer. A fix of something that shipped is never exempt: it gets its ledger entry.
+
 
 Maintainers squash-merge pull requests, which keeps you as the commit author, so you appear on GitHub's contributors page. When a maintainer lands your change inside a larger commit, the commit carries a `Co-authored-by:` trailer for you.
 

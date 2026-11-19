@@ -108,6 +108,8 @@ shared  ./automation/ci/divguard
 shared  ./automation/ci/perflint
 shared  ./automation/ci/portlint
 shared  ./automation/ci/portlint/checks
+shared  ./automation/ci/preflight
+shared  ./automation/ci/preflight/reviewed
 shared  ./automation/ci/stripmatrix
 shared  ./automation/portlens
 shared  ./bench/durableperf
