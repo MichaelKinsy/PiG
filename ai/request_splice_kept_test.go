@@ -369,10 +369,10 @@ func TestAKeptSpliceIsRebuiltForAnotherPayloadTypeOrMessageCache(t *testing.T) {
 		withMessages bool
 	}
 	orders := map[string][2]step{
-		"anthropic then completions":    {{anthropic, true}, {completions, true}},
-		"completions then anthropic":    {{completions, true}, {anthropic, true}},
-		"messages then none":            {{anthropic, true}, {anthropic, false}},
-		"none then messages":            {{anthropic, false}, {anthropic, true}},
+		"anthropic then completions":     {{anthropic, true}, {completions, true}},
+		"completions then anthropic":     {{completions, true}, {anthropic, true}},
+		"messages then none":             {{anthropic, true}, {anthropic, false}},
+		"none then messages":             {{anthropic, false}, {anthropic, true}},
 		"completions messages then none": {{completions, true}, {completions, false}},
 		"completions none then messages": {{completions, false}, {completions, true}},
 	}
