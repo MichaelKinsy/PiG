@@ -1723,6 +1723,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-af56fab-2](#bf-af56fab-2) | A list item at a marker indent of three spaces or more (` - d`) followed by a line indented four spaces (` -… | PiG's own defect | All platforms | Unreleased |
 | [BF-af56fab-3](#bf-af56fab-3) | Rendering Markdown at width 0 gives the rows Pi gives instead of padding them to one cell | PiG's own defect | All platforms | Unreleased |
 | [BF-af66ca5](#bf-af66ca5) | The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by… | PiG's own defect | All platforms | 0.7.0 |
+| [BF-af90a4b](#bf-af90a4b) | A custom model defined in `models.json` under a built-in provider that omits `api` or `baseUrl` now inherits… | PiG's own defect | All platforms | Unreleased |
 | [BF-afa1dd5](#bf-afa1dd5) | Amazon Bedrock `requestMetadata` keeps its keys' insertion order on the wire, as Pi's AWS SDK writes the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-afa1dd5-2](#bf-afa1dd5-2) | `make port-lint` has three more checks: `regexpinfunc` (a constant pattern compiled inside a function)… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-afb14da](#bf-afb14da) | fix(chord/nextnode/plugins): the Node host is the child of the Go side, as Pi's forked worker is of its server | PiG's own defect | All platforms | Unreleased |
@@ -26099,6 +26100,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `af66ca50b1` (2026-10-28)
 - **Tests:** `test/ci-images/version_literals_test.go::TestBuildAutomationNamesNoUnrecordedVersionLiteral`
 - **Release note:** The CI image version-literal test no longer reports the Pi part of an image tag (`1.4.0.b3a29f11`, written by `make pin-sync` and checked by `make pin-check`) as a hard-coded version when the pinned commit starts with a letter.
+
+### BF-af90a4b
+
+**A custom model defined in `models.json` under a built-in provider that omits `api` or `baseUrl` now inherits…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A direct stream for a `models.json` custom model that set `api` and omitted `baseUrl` under a built-in provider with several APIs could send the request, with that provider's key, to another vendor's host (for example, `opencode-go` with `anthropic-messages` went to `api.anthropic.com`), while omitting `api` failed with `No API provider registered for api: undefined` and RPC `get_state` reported empty `api` and `baseUrl`.
+- **Root cause:** ModelRegistry.Resolve built custom models.json entries from the raw definition without filling omitted api and baseUrl from the provider's composed catalog defaults and dropped an extension provider's baseUrl overlay when dynamic.Models was nil
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `af90a4b18a` (2026-11-20)
+- **Tests:** `coding/cli/model_custom_defaults_test.go::TestPrintModeCustomModelWithoutAPIReachesLocalEndpointAndPreservesMetadata`, `coding/cli/model_custom_defaults_test.go::TestPrintModeEndToEndCustomModelWithoutAPIUsesInheritedDefaults`, `coding/cli/model_custom_defaults_test.go::TestSelectStartupModelCustomModelInheritsBuiltInDefaults`, `coding/model_custom_defaults_test.go::TestBuildModelCustomModelUnderBuiltInProviderInheritsDefaults`, `coding/model_custom_defaults_test.go::TestBuildModelOpenCodeGoAnthropicCustomModelRoutesToProviderHostNotAnthropic`, `internal/codingagent/model_registry_custom_defaults_test.go::TestResolveCustomModelUnderBuiltInProviderInheritsDefaults`
+- **Release note:** A custom model defined in `models.json` under a built-in provider that omits `api` or `baseUrl` now inherits the provider's composed defaults in `coding.BuildModel`, `--model`, saved default model startup, and RPC `get_state`, matching `ModelRuntime.GetModel` and upstream Pi. Before, a direct stream for a `models.json` custom model that set `api` and omitted `baseUrl` under a built-in provider with several APIs could send the request, with that provider's key, to another vendor's host (for example, `opencode-go` with `anthropic-messages` went to `api.anthropic.com`), while omitting `api` failed with `No API provider registered for api: undefined` and RPC `get_state` reported empty `api` and `baseUrl`. A `models.json` custom model under a provider whose base URL an extension overrides (without declaring extension models) now uses the extension's base URL in `coding.BuildModel` and `--model` too, as the model runtime and Pi do. Affects 0.7.0.
 
 ### BF-afa1dd5
 

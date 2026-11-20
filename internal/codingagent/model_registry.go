@@ -594,6 +594,18 @@ func (r *ModelRegistry) Resolve(providerID, modelID string) (ModelEntry, bool) {
 	if entry, found, owned := r.resolveRadiusModel(providerID, modelID); owned {
 		return entry, found
 	}
+	entry, ok, needsDefaults := r.resolveLocked(providerID, modelID)
+	if needsDefaults {
+		// provider-composer.ts:218,224,338 (modelFromJson / findModelDefaults): a models.json custom model under a built-in provider inherits omitted api and baseUrl from the provider's composed model list.
+		if composed := r.GetProviderModelDataByID(providerID, modelID); composed != nil {
+			entry.API = firstModelValue(entry.API, string(composed.ProviderMeta.API))
+			entry.BaseURL = firstModelValue(entry.BaseURL, composed.ProviderMeta.BaseURL)
+		}
+	}
+	return entry, ok
+}
+
+func (r *ModelRegistry) resolveLocked(providerID, modelID string) (ModelEntry, bool, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	var configured *providerConfig
@@ -608,7 +620,7 @@ func (r *ModelRegistry) Resolve(providerID, modelID string) (ModelEntry, bool) {
 			if !found {
 				entry := r.resolveProviderDefaults(providerID, dynamic)
 				entry.ModelID = modelID
-				return entry, true
+				return entry, true, false
 			}
 			entry := r.resolveModelDef(providerID, dynamic, definition)
 			if override, exists := dynamic.ModelOverrides[modelID]; exists {
@@ -620,21 +632,26 @@ func (r *ModelRegistry) Resolve(providerID, modelID string) (ModelEntry, bool) {
 				}
 			}
 			entry.Headers = r.composeRequestHeadersLocked(nil, providerID, modelID, configured, &dynamic)
-			return entry, true
+			return entry, true, entry.API == "" || entry.BaseURL == ""
 		}
 		entry := r.resolveProviderDefaults(providerID, dynamic)
 		entry.ModelID = modelID
+		needsDefaults := false
 		if configured != nil {
 			entry = r.mergeProviderDefaultsLocked(entry, *configured)
 			if definition, found := findModelDefinition(configured.Models, modelID); found {
 				entry = r.resolveModelDef(providerID, *configured, definition)
+				if dynamic.BaseURL != "" {
+					entry.BaseURL = dynamic.BaseURL
+				}
+				needsDefaults = entry.API == "" || entry.BaseURL == ""
 			}
 			if override, exists := configured.ModelOverrides[modelID]; exists {
 				r.applyOverride(&entry, override)
 			}
 		}
 		entry.Headers = r.composeRequestHeadersLocked(nil, providerID, modelID, configured, &dynamic)
-		return entry, true
+		return entry, true, needsDefaults
 	}
 	if configured != nil {
 		if definition, found := findModelDefinition(configured.Models, modelID); found {
@@ -643,27 +660,27 @@ func (r *ModelRegistry) Resolve(providerID, modelID string) (ModelEntry, bool) {
 				r.applyOverride(&entry, override)
 			}
 			entry.Headers = r.composeRequestHeadersLocked(nil, providerID, modelID, configured, nil)
-			return entry, true
+			return entry, true, entry.API == "" || entry.BaseURL == ""
 		}
 		if override, exists := configured.ModelOverrides[modelID]; exists {
 			if _, generated := ai.LookupModelExact(providerID + "/" + modelID); generated {
 				entry := r.resolveProviderDefaults(providerID, *configured)
 				entry.ModelID = modelID
 				r.applyOverride(&entry, override)
-				return entry, true
+				return entry, true, false
 			}
 		}
 		if providerHasDefaults(*configured) {
 			entry := r.resolveProviderDefaults(providerID, *configured)
 			entry.ModelID = modelID
 			entry.Headers = r.composeRequestHeadersLocked(nil, providerID, modelID, configured, nil)
-			return entry, true
+			return entry, true, false
 		}
 	}
 	if hasEnvAuth(providerID) {
-		return ModelEntry{ProviderID: providerID, ModelID: modelID, APIKey: resolveAPIKeyFromEnv(providerID)}, true
+		return ModelEntry{ProviderID: providerID, ModelID: modelID, APIKey: resolveAPIKeyFromEnv(providerID)}, true, false
 	}
-	return ModelEntry{}, false
+	return ModelEntry{}, false, false
 }
 
 func findModelDefinition(models []modelDefinition, modelID string) (modelDefinition, bool) {
