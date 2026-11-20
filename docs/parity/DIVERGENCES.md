@@ -3130,4 +3130,4 @@ Evidence: `TestCompactionUnknownWindowNoThresholdCompaction` in `coding/compacti
 
 Remove when: Pi guards `contextWindow <= 0` in `_checkCompaction` (or `shouldCompact`) so `_checkCompaction`'s threshold branch matches `_exceedsCompactionThreshold`.
 
-SCRUTINIZED:pending-owner-review
+SCRUTINIZED:approved
