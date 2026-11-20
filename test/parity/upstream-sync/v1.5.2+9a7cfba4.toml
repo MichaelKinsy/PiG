@@ -1,0 +1,24 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+9a7cfba4"
+
+[[files]]
+path = "packages/tui/src/components/editor.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/editor_enter_command_name_upstream_test.go#TestUpstreamEditorEnterSubmitsOnlyFromTheSlashCommandNameMenu", "test:tui/editor_enter_command_name_oracle_test.go#TestEditorEnterOnAMenuSubmitsOnlyACommandNameLikePi"]
+rationale = "9a7cfba47 (#12312, issue #12309): Enter on an open autocomplete menu submitted the prompt whenever the completion's prefix started with \"/\", so a Tab menu for an absolute path (look at /tmp/x/fi) or a command argument (/open /tm) completed the text and sent the unfinished prompt. Enter now submits only from the command-name menu: the prefix starts with \"/\" and the text before the cursor, read before the completion is applied, is a slash command with no space (isInSlashCommandNameContext, which the Tab dispatcher shares). Editor.AutocompleteAccept and Editor.inSlashCommandNameContext are the Go counterparts, and Pi's three cases are ported."
+oracle = "carried: 9a7cfba47 (pi-tui/components/editor.js: the confirm handler, isInSlashCommandNameContext and the Tab dispatcher)"
+
+[[files]]
+path = "packages/tui/test/editor.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/editor_enter_command_name_upstream_test.go#TestUpstreamEditorEnterSubmitsOnlyFromTheSlashCommandNameMenu"]
+rationale = "9a7cfba47: the three cases (Enter on a Tab path menu with a / prefix completes without submitting, the same on an argument menu, Enter on a Tab slash command menu submits the command) are ported with Pi's inputs and expected results."
+
+[[files]]
+path = "packages/tui/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "9a7cfba47: the Unreleased entry of Pi's tui changelog for the Enter fix. PiG's user-visible change is its own changelog.d fragment."
