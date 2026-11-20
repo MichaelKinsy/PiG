@@ -40,9 +40,12 @@ keys = ["/resume"]
 wait_visible_contains = ["/resume"]
 wait_timeout_seconds = 25
 
+# Picker wait, as in 40-resume-fit, which failed in the final gate run (tip b44ebd97df) with the title alone: a key typed while the picker still loads reaches Pi's picker before its unfiltered list is drawn, and Pi's scrollback then differs from PiG's by one row.
+# The step waits for the loaded list: the title, "◉ Current Folder" and the row "ZEBRA-Q1" (the other session's first message), all three in the loaded frame of both products (checked on a capture of each).
+# Measured 2026-11-20 on ec6219b8d2 with the pinned Pi: this wait, 0 of 50 pairs differed (25 on a quiet host, 25 under 12 CPU spinners); the title-only wait, 0 of 50 in the same iterations.
 [[tmux.steps]]
 keys = ["Enter"]
-wait_visible_contains = ["Resume Session (Current Folder)"]
+wait_visible_contains = ["Resume Session (Current Folder)", "◉ Current Folder", "ZEBRA-Q1"]
 wait_timeout_seconds = 8
 
 [[tmux.steps]]
