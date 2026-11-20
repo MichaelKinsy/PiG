@@ -198,6 +198,9 @@ type ConnectionOptions struct {
 	OnTools func(*Connection)
 	// OnChange is called when the state, error, or tools change.
 	OnChange func(*Connection)
+	// OnChannel receives validated opted-in channel messages, in transport order.
+	// It must enqueue without awaiting a model turn or making MCP requests.
+	OnChannel func(extension.SendMessagePayload, *extension.SendMessageOptions)
 	// Log receives the server's log messages (`notifications/message`).
 	Log *McpServerLog
 	// ClientName and ClientVersion identify this client to servers. Defaults:
@@ -225,6 +228,7 @@ type Connection struct {
 	settled       func(context.Context)
 	onTools       func(*Connection)
 	onChange      func(*Connection)
+	onChannel     func(extension.SendMessagePayload, *extension.SendMessageOptions)
 	log           *McpServerLog
 	clientName    string
 	clientVersion string
@@ -256,6 +260,7 @@ func NewConnection(options ConnectionOptions) (*Connection, error) {
 		createTransport: options.CreateTransport,
 		onTools:         options.OnTools,
 		onChange:        options.OnChange,
+		onChannel:       options.OnChannel,
 		log:             options.Log,
 		clientName:      options.ClientName,
 		clientVersion:   options.ClientVersion,
@@ -661,6 +666,22 @@ func (c *Connection) connectOnce(ctx context.Context) (*mcp.Client, error) {
 	})
 	if c.log != nil {
 		client.OnNotification("notifications/message", func(params json.RawMessage) { c.log.Write(c.Entry.Name, params) })
+	}
+	// Register before Connect: a server may push immediately after initialized.
+	if c.Entry.Channel && c.onChannel != nil {
+		client.OnNotification("notifications/claude/channel", func(params json.RawMessage) {
+			caps := client.ServerCapabilities()
+			if caps == nil {
+				return
+			}
+			if _, declared := caps.Experimental["claude/channel"]; !declared || c.lifetime.Err() != nil {
+				return
+			}
+			source := c.Name()
+			if message, ok := channelMessage(source, params); ok {
+				c.onChannel(message, channelOptions(source))
+			}
+		})
 	}
 	var stdio *mcp.StdioTransport
 	fail := func(err error) (*mcp.Client, error) {

@@ -139,6 +139,12 @@ func ToolRendererResolver(toolName string, next func() *extension.ToolRenderers)
 	return nil
 }
 
+// RenderChannel keeps attributed server input visually distinct with user-message styling.
+func RenderChannel(source string, content any, outputPad int) tui.Component {
+	markdownTheme := tui.MarkdownThemeFor(tui.ActiveTheme())
+	return tui.NewUserMessageComponent("← "+source+"\n"+fmt.Sprint(content), &markdownTheme, outputPad, nil, "", "")
+}
+
 // Terminal is the terminal presentation to set as [mcpext.Options].Terminal: the tool renderers, the resolver and the
 // `/mcp` manager view.
 func Terminal() *mcpext.Terminal {

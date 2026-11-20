@@ -148,6 +148,10 @@ type AgentMessage struct {
 	// Custom message types (bash execution, branch summary, etc.)
 	Custom map[string]any // raw JSON for custom types
 
+	// QueueGroup coalesces adjacent pending messages with the same nonempty
+	// group even in one-at-a-time mode. Admission-only; never serialized.
+	QueueGroup string `json:"-"`
+
 	// source is the object a System or Custom message was decoded from, when its JSON.stringify text differs from the text the fields encode to. Custom encodes its current members in the order of the decoded object.
 	source *messageSource
 }

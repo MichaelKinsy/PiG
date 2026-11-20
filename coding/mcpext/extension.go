@@ -353,6 +353,8 @@ type Extension struct {
 	host    Host
 	options Options
 
+	// channelMu serializes admission across servers in callback-arrival order.
+	channelMu         sync.Mutex
 	mu                sync.Mutex
 	servers           []*server
 	configuredEntries []McpServerEntry
@@ -918,6 +920,15 @@ func (e *Extension) createConnection(s *server, isCurrent func() bool) (*Connect
 			return token(ctx, provider)
 		},
 		Log: e.getServerLog(),
+		OnChannel: func(message extension.SendMessagePayload, options *extension.SendMessageOptions) {
+			e.channelMu.Lock()
+			defer e.channelMu.Unlock()
+			if isCurrent() {
+				if sender, ok := e.host.(channelSender); ok {
+					sender.SendChannel(message, options)
+				}
+			}
+		},
 		OnTools: func(connection *Connection) {
 			if isCurrent() {
 				e.registerTools(connection)

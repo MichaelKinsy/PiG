@@ -12,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/mcpchannel"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -542,8 +543,8 @@ func (m *InteractiveMode) addCustomEntryToChat(entry CustomEntry) {
 // appendCustomMessage mounts a CustomMessageComponent for a displayed custom message, as upstream interactive-mode.ts:3861-3872
 // does: the registered renderer (if any) is handed to the component, which rebuilds it when expansion or padding changes.
 func (m *InteractiveMode) appendCustomMessage(message CustomMessageEntry) {
-	var renderer tui.MessageRenderer
-	if m.newRunner != nil {
+	renderer := mcpChannelRenderer(message)
+	if renderer == nil && m.newRunner != nil {
 		if registered := m.newRunner.MessageRenderer(message.CustomType); registered != nil {
 			customMessage := extension.CustomMessage{
 				CustomType: message.CustomType,
@@ -579,6 +580,7 @@ func customMessageEntryOf(custom map[string]any) (entry CustomMessageEntry, disp
 	return CustomMessageEntry{
 		SessionEntryBase: SessionEntryBase{Type: "custom_message", Timestamp: time.UnixMilli(timestamp).UTC().Format(time.RFC3339Nano)},
 		CustomType:       customType, Content: custom["content"], Display: display, Details: custom["details"],
+		MCPChannelSource: mcpchannel.MessageSource(custom),
 	}, display
 }
 

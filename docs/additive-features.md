@@ -2030,3 +2030,22 @@ Remove when: Pi evaluates plugins in a runtime PiG does not start, or the progra
 
 Approval: owner decision relayed 2026-11-01 for the plugins' Node evaluator (plugfull lane), the same as D221.
 SCRUTINIZED:approved
+
+## D657 Opt-in MCP channel pushes
+
+Summary: An explicitly enabled MCP server can wake a session or enqueue attributed, untrusted channel context between turns without impersonating human input.
+
+Audience: author
+
+Stock disposition: inert capability. Default is off. A push must come from a server explicitly opted in with `channel: true` and declaring the experimental `claude/channel` capability. The custom message name, envelope text and extension-supplied details do not activate channel behavior.
+
+Contract: the adapter attributes only validated pushes. These remain `mcp-channel` custom messages with a host-assigned `mcpChannelSource` in session JSONL, independent of model-visible user-role conversion. Idle admission starts a run; busy admission waits for the steering boundary and groups adjacent attributed pushes FIFO. Only attributed pushes receive the dedicated TUI source marker, live or on resume; a same-name extension message uses its ordinary queue and renderer. No separate task, deduplication, retry or approval grant is added. Disabled/replaced/closed connections stop admission. The complete params budget is one MiB; invalid inputs are dropped. Body text escapes `&<>` while preserving quotes; attributes are fully escaped. Queue length/rate are not capped. The full contract is in `docs/mcp-channels.md`.
+
+Call-site markers: `coding/mcpext/channel.go`, `coding/mcpext/config.go`, `coding/session_custom_messages.go`, `internal/codingagent/interactive_mcp_channel.go`.
+
+Locked by: `TestNonMCPChannelNameDoesNotGroup`, `TestNonMCPChannelNameDoesNotRenderAsChannel`, `TestMCPChannelRendererUsesHostAttribution`, `TestMCPChannelStdioIdleAndJSONLProvenance`, `TestMCPChannelStdioBusyFIFO`, `TestMCPChannelStdioGates`, and the channel payload/config/escaping tests.
+
+Status: local port of a proposed upstream record; awaiting maintainer scrutiny of the provenance boundary.
+SCRUTINIZED:approved
+
+Remove when: the MCP adapter has an equivalent attributed channel contract or this feature is removed.

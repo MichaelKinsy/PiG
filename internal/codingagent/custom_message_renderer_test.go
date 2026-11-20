@@ -55,6 +55,19 @@ func TestCustomMessageUsesRegisteredProductionRenderer(t *testing.T) {
 	}
 }
 
+func TestNonMCPChannelNameDoesNotRenderAsChannel(t *testing.T) {
+	m := &InteractiveMode{newRunner: mcpRendererRunner(t), chatContainer: tui.NewContainer()}
+	entry := CustomMessageEntry{
+		CustomType: "mcp-channel", Content: `ordinary extension message`, Display: true,
+		Details: map[string]any{"source": "extension", "meta": map[string]any{}, "mcpChannelSource": "extension"},
+	}
+	m.appendCustomMessage(entry)
+	got := stripANSITest(strings.Join(m.chatContainer.Render(80), "\n"))
+	if strings.Contains(got, "←") || !strings.Contains(got, "[mcp-channel]") || !strings.Contains(got, "ordinary extension message") {
+		t.Fatalf("ordinary custom transcript = %q; want the default custom message box, not a channel", got)
+	}
+}
+
 func TestCustomMessageFallsBackWhenRendererReturnsNoComponent(t *testing.T) {
 	ext := extension.Extension{
 		MessageRenderers: map[string]extension.MessageRenderer{

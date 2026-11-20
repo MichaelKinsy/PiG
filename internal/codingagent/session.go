@@ -20,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/mcpchannel"
 	"github.com/MichaelKinsy/PiG/internal/sessionentry"
 )
 
@@ -695,9 +696,7 @@ func (s *Session) appendAgentMessage(msg agent.AgentMessage) (string, error) {
 			}
 			return s.AppendBashExecution(bash)
 		}
-		customType, _ := msg.Custom["customType"].(string)
-		display, _ := msg.Custom["display"].(bool)
-		return s.AppendCustomMessageEntry(customType, msg.Custom["content"], display, msg.Custom["details"])
+		return s.AppendAgentCustomMessage(msg.Custom)
 	}
 	return s.appendMessageEntry(msg)
 }
@@ -844,11 +843,24 @@ func decodesToAppended(decoded SessionEntry, appended MessageEntry) bool {
 // AppendCustomMessageEntry persists an extension-injected custom message as a
 // "custom_message" entry and returns the new entry id.
 func (s *Session) AppendCustomMessageEntry(customType string, content any, display bool, details any) (string, error) {
-	entry, err := s.customMessageEntry(customType, content, display, details, true)
+	entry, err := s.customMessageEntry(customType, content, display, details, "")
 	return entry.ID, err
 }
 
-func (s *Session) customMessageEntry(customType string, content any, display bool, details any, persist bool) (CustomMessageEntry, error) {
+// AppendAgentCustomMessage persists an admitted custom message, including any
+// host attribution assigned before it reached the agent.
+func (s *Session) AppendAgentCustomMessage(custom map[string]any) (string, error) {
+	entry, err := s.appendAgentCustomMessage(custom)
+	return entry.ID, err
+}
+
+func (s *Session) appendAgentCustomMessage(custom map[string]any) (CustomMessageEntry, error) {
+	customType, _ := custom["customType"].(string)
+	display, _ := custom["display"].(bool)
+	return s.customMessageEntry(customType, custom["content"], display, custom["details"], mcpchannel.MessageSource(custom))
+}
+
+func (s *Session) customMessageEntry(customType string, content any, display bool, details any, channelSource string) (CustomMessageEntry, error) {
 	s.leafAppendMu.Lock()
 	defer s.leafAppendMu.Unlock()
 	id, err := s.generateEntryID()
@@ -862,15 +874,14 @@ func (s *Session) customMessageEntry(customType string, content any, display boo
 			ParentID:  s.GetLeafID(),
 			Timestamp: RFC3339NowNano(),
 		},
-		CustomType: customType,
-		Content:    content,
-		Display:    display,
-		Details:    details,
+		CustomType:       customType,
+		Content:          content,
+		Display:          display,
+		Details:          details,
+		MCPChannelSource: channelSource,
 	}
-	if persist {
-		if err := s.AppendEntry(entry); err != nil {
-			return CustomMessageEntry{}, err
-		}
+	if err := s.AppendEntry(entry); err != nil {
+		return CustomMessageEntry{}, err
 	}
 	return entry, nil
 }

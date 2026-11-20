@@ -822,9 +822,7 @@ func (s *Session) persistMessage(msg agent.AgentMessage) error {
 	if in := s.inner; in != nil {
 		var id string
 		if msg.Custom != nil {
-			customType, _ := msg.Custom["customType"].(string)
-			display, _ := msg.Custom["display"].(bool)
-			id, err = in.AppendCustomMessageEntry(customType, msg.Custom["content"], display, msg.Custom["details"])
+			id, err = in.AppendAgentCustomMessage(msg.Custom)
 		} else {
 			id, err = in.AppendMessage(msg)
 		}
