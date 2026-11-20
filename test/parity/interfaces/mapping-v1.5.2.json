@@ -313692,9 +313692,9 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.Init"
       ],
       "evidence": [
-        "test:tui/tui_alt_screen_layout_root_test.go#TestViewportTUIFullRedrawsAndRenderNowThroughTheInterface",
-        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences",
-        "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach"
+        "test:internal/codingagent/startup_grammar_load_frame_test.go#TestAFrameHeldForTheGrammarLoadIsPaintedWhenTheLoadPanics",
+        "test:internal/codingagent/startup_grammar_load_frame_test.go#TestAKeyTypedWhileTheGrammarLoadRunsIsPaintedByTheLoadsEnd",
+        "test:tui/tui_alt_screen_layout_root_test.go#TestViewportTUIFullRedrawsAndRenderNowThroughTheInterface"
       ]
     },
     {
@@ -313714,9 +313714,9 @@
         "call:internal/codingagent/interactive.go#InteractiveMode.Init"
       ],
       "evidence": [
-        "test:tui/tui_alt_screen_layout_root_test.go#TestViewportTUIFullRedrawsAndRenderNowThroughTheInterface",
-        "test:tui/tui_interface_members_test.go#TestTUIInterfaceMountsChildrenInOrderAndReportsItsPreferences",
-        "test:internal/codingagent/transcript_render_retention_test.go#TestFinishedTranscriptRowsRetainOnlyAFixedRecordEach"
+        "test:internal/codingagent/startup_grammar_load_frame_test.go#TestAFrameHeldForTheGrammarLoadIsPaintedWhenTheLoadPanics",
+        "test:internal/codingagent/startup_grammar_load_frame_test.go#TestAKeyTypedWhileTheGrammarLoadRunsIsPaintedByTheLoadsEnd",
+        "test:tui/tui_alt_screen_layout_root_test.go#TestViewportTUIFullRedrawsAndRenderNowThroughTheInterface"
       ]
     },
     {
