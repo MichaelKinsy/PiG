@@ -263,9 +263,6 @@ func (m *InteractiveMode) emitAgentSettledEvent() {
 }
 
 // emitAgentSettledFor dispatches agent_settled with aborted, whether the run ended because it was aborted (upstream agent-session.ts _emitAgentSettled reads _agentRunAbortRequested).
-// The actions the handlers deferred start after the last handler returned, unless exit is requested: the quit settles the interrupted run on the owner loop (settleRunAtQuit) and
-// waits for the Session to be idle, so a run started now would hold the quit for a whole provider turn. Pi's quit does not wait for the run at all (1.5.0 agent-session-runtime.ts
-// dispose, interactive-mode.ts shutdown ends in process.exit(0)): the deferred message is dropped, and nothing of it reaches a provider or the session file.
 func (m *InteractiveMode) emitAgentSettledFor(runner *inproc.Runner, aborted bool) {
 	m.settledMu.Lock()
 	m.emittingAgentSettled = true
@@ -278,10 +275,6 @@ func (m *InteractiveMode) emitAgentSettledFor(runner *inproc.Runner, aborted boo
 	deferred := m.deferredSettledActions
 	m.deferredSettledActions = nil
 	m.settledMu.Unlock()
-	// pig divergence (D247): deferred agent_settled starts are dropped once exit is requested (Pi 1.5.2 runs them); the quit settle would wait for the run they start.
-	if m.requestExit.Load() {
-		return
-	}
 	for _, action := range deferred {
 		action()
 	}

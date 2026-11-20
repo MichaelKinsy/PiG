@@ -1413,6 +1413,10 @@ func (m *InteractiveMode) settleActiveRun() error {
 // settleRunAtQuit is the first step of Pi's dispose, `await this.session.abort()` (agent-session-runtime.ts dispose, agent-session.ts abort), for the quit by keys, whose dispose runs on the owner loop after the TUI stopped (finishInteractiveShutdown). Pi's loop turns under that await: the aborted run publishes its last events, which the extensions handle and the session file takes, agent_settled follows, and only then is the Session idle (_emitAgentSettled resolves the idle wait) and session_shutdown emitted. Here the run needs the owner loop to end: Session.RunAgentPrompt waits until the loop acknowledged its flush, and the turn's cleanup is posted to the loop. So the mode aborts the run and serves the loop, as settleActiveRun does for a replacement, until the run's goroutine has returned, which is after its agent_settled handlers. A dispose that awaited the run on the loop without serving it never ended.
 //
 // A user's bash command is not joined: Pi's abort does not wait for it.
+//
+// A message an agent_settled handler of the interrupted run sent (pi.sendUserMessage, a custom message that triggers a turn) starts its run once the handlers returned, and Pi's idle wait
+// resolves only after that run's own settle (agent-session.ts _emitAgentSettled awaits the deferred actions before _resolveIdleWaitIfIdle): the quit joins every run that follows, up to
+// the end of its agent_settled handlers, and only the first is aborted. The posted start is flushed through the owner loop before the check for a following run.
 func (m *InteractiveMode) settleRunAtQuit() {
 	m.queueMu.Lock()
 	settled, ended, session := m.turnSettled, m.turnEnded, m.opts.SessionHandle
@@ -1424,17 +1428,28 @@ func (m *InteractiveMode) settleRunAtQuit() {
 		return
 	}
 	_ = m.serveOwnerLoopUntil(func(ctx context.Context) error {
-		if err := waitForSessionIdle(ctx, settled, session); err != nil {
-			return err
-		}
-		if ended != nil {
-			select {
-			case <-ended:
-			case <-ctx.Done():
-				return ctx.Err()
+		for {
+			if err := waitForSessionIdle(ctx, settled, session); err != nil {
+				return err
 			}
+			if ended != nil {
+				select {
+				case <-ended:
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}
+			if err := m.runOnMainAndWait(ctx, func() error { return nil }); err != nil {
+				return err
+			}
+			m.queueMu.Lock()
+			nextSettled, nextEnded := m.turnSettled, m.turnEnded
+			m.queueMu.Unlock()
+			if nextEnded == ended {
+				return nil
+			}
+			settled, ended = nextSettled, nextEnded
 		}
-		return nil
 	})
 }
 

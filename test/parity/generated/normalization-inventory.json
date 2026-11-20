@@ -1764,6 +1764,75 @@
       ]
     },
     {
+      "scenario": "test/parity/scenarios/extensions-runtime/115-quit-settled-send-user-message-ctrl-c.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A user message sent from the agent_settled handler of a run that Ctrl+C twice aborts starts its turn, and the quit waits for it",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "QUIT_SETTLED_BEGIN",
+            "capture_end": "QUIT_SETTLED_END"
+          },
+          "reason": "Owned visible surface: A user message sent from the agent_settled handler of a run that Ctrl+C twice aborts starts its turn, and the quit waits for it",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/115-quit-settled-send-user-message-ctrl-d.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A user message sent from the agent_settled handler of a run that Ctrl+D aborts starts its turn, and the quit waits for it",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "QUIT_SETTLED_BEGIN",
+            "capture_end": "QUIT_SETTLED_END"
+          },
+          "reason": "Owned visible surface: A user message sent from the agent_settled handler of a run that Ctrl+D aborts starts its turn, and the quit waits for it",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
+      "scenario": "test/parity/scenarios/extensions-runtime/115-quit-settled-send-user-message-slash-quit.toml",
+      "transforms": [
+        {
+          "kind": "output_normalized_equal",
+          "reason": "Declared plain-text/layout surface: A user message sent from the agent_settled handler of a run that /quit aborts starts its turn, and the quit waits for it",
+          "limitations": "ANSI, CR, trailing spaces and outer blank rows are not equality evidence."
+        },
+        {
+          "kind": "terminal_crop",
+          "configuration": {
+            "capture_start": "QUIT_SETTLED_BEGIN",
+            "capture_end": "QUIT_SETTLED_END"
+          },
+          "reason": "Owned visible surface: A user message sent from the agent_settled handler of a run that /quit aborts starts its turn, and the quit waits for it",
+          "limitations": "No claim about output outside this crop or transient terminal bytes."
+        },
+        {
+          "kind": "cwd_snapshot_digits",
+          "reason": "D2: per-run cwd digits vary; preserve digit count so path width, truncation and surrounding cells remain compared."
+        }
+      ]
+    },
+    {
       "scenario": "test/parity/scenarios/extensions-runtime/12-subprocess-tool-ui-cancel.toml",
       "transforms": [
         {

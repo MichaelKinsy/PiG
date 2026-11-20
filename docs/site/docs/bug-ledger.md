@@ -1339,6 +1339,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-8d46bf8-3](#bf-8d46bf8-3) | Tool search and codemode resolve a local `$ref` in one pass over the schema instead of parsing it once per… | PiG's own defect | All platforms | Unreleased |
 | [BF-8d4e7f2](#bf-8d4e7f2) | A full disk or a killed process while pig saved `keybindings.json`, `mcp.json` or the settings file during… | PiG's own defect | All platforms | Unreleased |
 | [BF-8d6fb83](#bf-8d6fb83) | A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links… | A fix Pi shipped that PiG ported | All platforms | 0.7.0 |
+| [BF-8d89f33](#bf-8d89f33) | fix(divergence): D247 carries a source marker at each site that drops the start | PiG's own defect | All platforms | Unreleased |
 | [BF-8defe80](#bf-8defe80) | In the Go extension SDK, a tool or command that the host cancelled right after sending its request could… | PiG's own defect | All platforms | Unreleased |
 | [BF-8e21230](#bf-8e21230) | Closing a durable Harness releases the pi-ai resources of the provider sessions its tasks used, after the… | PiG's own defect | All platforms | Unreleased |
 | [BF-8e3613d](#bf-8e3613d) | Text typed over an extension's autocomplete provider and followed at once by Enter no longer skips the menu… | A Pi defect that PiG fixed first | All platforms | 0.7.0 |
@@ -1811,7 +1812,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bd00797](#bf-bd00797) | The same for a Node `before_agent_start` handler: a `get_state` sent while it awaits I/O is answered at once… | PiG's own defect | All platforms | Unreleased |
 | [BF-bd3e8ab](#bf-bd3e8ab) | On arm64 and other CPUs with a fused multiply-add, Kimi, Radius and xAI OAuth credentials store the `expires`… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-bd3e8ab-2](#bf-bd3e8ab-2) | On arm64 and other CPUs with a fused multiply-add, the cache-warming expected savings (shown by `/session`… | PiG's own defect | All platforms | 0.5.0 |
-| [BF-bd8849d](#bf-bd8849d) | Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run… | A Pi defect that PiG fixed first | All platforms | Unreleased |
+| [BF-bd8849d](#bf-bd8849d) | Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run… | PiG's own defect | All platforms | Unreleased |
 | [BF-bd9ac3b](#bf-bd9ac3b) | Releasing a session's services no longer leaves the model selector's catalog refresh running | PiG's own defect | All platforms | Unreleased |
 | [BF-bdb7ad8](#bf-bdb7ad8) | A single server-sent-event line larger than 32 MiB (for example a base64 image chunk) no longer fails the… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-be0c55b](#bf-be0c55b) | fix(extensions): a quit whose dispose cannot return waits for every runtime that holds, as Pi's one loop does | PiG's own defect | All platforms | Unreleased |
@@ -1829,6 +1830,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-bf9911e](#bf-bf9911e) | Append ops from the Chord delta tracker and `DiffRevisions` own their text, as under Pi, instead of holding a… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-bfae6a0](#bf-bfae6a0) | Fullscreen double-click selection no longer splits paths and tokens at `~`, `.`, `\`, `+` and `_`: the word… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-c019ea9](#bf-c019ea9) | A panic in a background goroutine of an interactive session no longer ends PiG with only a stderr dump | PiG's own defect | All platforms | 0.5.0 |
+| [BF-c04e543](#bf-c04e543) | fix(interactive): a quit runs the turn of a message an agent_settled handler sends, and waits for it, as Pi… | PiG's own defect | All platforms | Unreleased |
 | [BF-c05aa12](#bf-c05aa12) | A `turn_end` or `agent_before_settle` handler that returns a `context_edit` draft without the `replacement`… | PiG's own defect | All platforms | Unreleased |
 | [BF-c0d8731](#bf-c0d8731) | tui: a renderer that draws on its own frame timer (one with no render dispatcher: the `tui.alt` screen of an… | PiG's own defect | All platforms | Unreleased |
 | [BF-c1055c4](#bf-c1055c4) | Package manifest globs match as Node's `fs.globSync` does in Pi: brace sets and sequences, extglobs such as… | PiG's own defect | Windows, macOS | 0.5.0 |
@@ -20718,6 +20720,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Tests:** None recorded.
 - **Release note:** A bare URL in Markdown ends at CJK punctuation, so `https://example.com。后面的中文` links `https://example.com` and keeps the rest as text. The URL took the punctuation and the text after it into the link. Carried forward from Pi fa168515 (earendil-works/pi#10933), past the 1.4.0+b3a29f11 pin.
 
+### BF-8d89f33
+
+**fix(divergence): D247 carries a source marker at each site that drops the start**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(divergence): D247 carries a source marker at each site that drops the start
+- **Root cause:** Mark the three requestExit checks (deliverUserMessageAfter, startCustomTurn, emitAgentSettledFor) with the pig divergence (D247) form, and let the record's Call-site markers line name exactly those three files.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `8d89f3358a` (2026-11-19)
+- **Tests:** None recorded.
+
 ### BF-8defe80
 
 **In the Go extension SDK, a tool or command that the host cancelled right after sending its request could…**
@@ -27313,17 +27328,15 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 
 **Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run…**
 
-- **Source:** A Pi defect that PiG fixed first (divergence D247)
+- **Source:** PiG's own defect
 - **Symptom:** Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them.
-- **Root cause:** the quit waits for the interrupted run on the owner loop; a turn started from a handler's message would run provider requests and tools after the user asked to leave, and its own `agent_settled` could send the next one.
+- **Root cause:** Not recorded.
 - **User impact:** Wrong output or ordering
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
-- **Pi issue:** none recorded
-- **Removed when Pi fixes it:** PiG starts the turn from such a message and waits for it as the pinned Pi does, or Pi drops a message sent from `agent_settled` once its dispose has begun.
-- **Fix commits:** `00d787634a` (2026-11-05), `694685ee71` (2026-11-05), `bd8849d729` (2026-11-05), `c28332bfcb` (2026-11-05), `9a1349c782` (2026-11-07), `9c5d79a1e6` (2026-11-08)
-- **Tests:** `coding/cli/interactive_provider_abort_quit_linux_test.go::TestInteractiveQuitWhileABuiltInProviderTurnStreams`, `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
-- **Release note:** Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.2's order (Pi #9124, D247).
+- **Fix commits:** `694685ee71` (2026-11-05), `bd8849d729` (2026-11-05), `c28332bfcb` (2026-11-05)
+- **Tests:** `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
+- **Release note:** Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.2's order (Pi #9124).
 
 ### BF-bd9ac3b
 
@@ -27559,6 +27572,19 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `c019ea9155` (2026-10-06, #163)
 - **Tests:** `internal/codingagent/agent_env_isolation_test.go::TestPackageTestsDoNotReachTheExportedAgentDirectory`, `internal/codingagent/settings_secret_input_test.go::TestMaskedLoginErrorDoesNotEnterFramesOrSession`, `internal/npmpublish/main_test.go::TestMain`, `internal/npmpublish/main_test.go::TestPackageTestsDoNotReachTheExportedAgentDirectory`, `internal/testenv/agent_dir_guard_test.go::TestAgentDirGuardFailsWhenATestTouchesTheSeededDirectories`, `internal/testenv/tempscope_test.go::TestRequireIsolatedAgentEnvAcceptsOnlyTheScopedDirectories`, `internal/testenv/tempscope_test.go::TestScopeTempDirIsolatesAgentDirectoryEnvironment`, `test/ci-images/verification_shards_test.go::TestGroupedTestsDoNotRunWhenTheAgentDirectoriesCannotBeSeeded` and 2 more in docs/bug-ledger.json
 - **Release note:** A panic in a background goroutine of an interactive session no longer ends PiG with only a stderr dump. PiG restores the terminal, prints the error, records it in `crashes.json` and exits 1, as Pi does for an uncaught exception. Any other goroutine panic or runtime fatal error is copied to `<agent dir>/crash-output/` and becomes a crash record at the next start.
+
+### BF-c04e543
+
+**fix(interactive): a quit runs the turn of a message an agent_settled handler sends, and waits for it, as Pi…**
+
+- **Source:** PiG's own defect
+- **Symptom:** fix(interactive): a quit runs the turn of a message an agent_settled handler sends, and waits for it, as Pi does
+- **Root cause:** Probed with the pinned Pi () under tmux with a faux provider: the user quits (Ctrl+D, Ctrl+C twice, /quit) while a tool runs, and the agent_settled handler of the aborted run calls pi.sendUserMessage("second"). Pi starts the turn of that message in 15 of 15 runs (5 per key), emits session_shutdown after that turn's agent_settled, exits 0, and the session file holds the message. PiG (, main #483) dropped the message in 15 of 15 runs.
+- **User impact:** Behavior differed from Pi
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `c04e54356d` (2026-11-19)
+- **Tests:** `coding/cli/interactive_quit_streaming_turn_linux_test.go::TestInteractiveQuitRunsTheDeferredStartOfASettledAction`, `internal/codingagent/agent_settled_deferral_test.go::TestAgentSettledStartsDeferredStartsOnceExitIsRequested`, `internal/codingagent/interactive_quit_deferred_start_test.go::TestQuitAfterTheReleaseOfADeferredStartStillBeginsTheTurn`, `internal/codingagent/interactive_quit_following_run_test.go::TestQuitByKeysJoinsTheRunOfAMessageTheSettledHandlerSent`, `test/parity/scenarios/extensions-runtime/115-quit-settled-send-user-message-ctrl-c.toml`, `test/parity/scenarios/extensions-runtime/115-quit-settled-send-user-message-ctrl-d.toml`, `test/parity/scenarios/extensions-runtime/115-quit-settled-send-user-message-slash-quit.toml`
 
 ### BF-c05aa12
 
@@ -30243,7 +30269,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Platform:** All platforms
 - **Fixed in:** Unreleased
 - **Fix commits:** `d83abefe16` (2026-11-14, #483)
-- **Tests:** `coding/cli/interactive_provider_abort_quit_linux_test.go::TestInteractiveQuitWhileABuiltInProviderTurnStreams`, `coding/cli/interactive_quit_streaming_turn_linux_test.go::TestInteractiveQuitSkipsTheDeferredStartOfASettledAction`, `coding/runtime_dispose_settlement_test.go::TestEmitQuitShutdownContextDoesNotAbortTheRunASignalHolds`, `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`, `internal/codingagent/agent_settled_deferral_test.go::TestAgentSettledDropsDeferredStartsOnceExitIsRequested`, `internal/codingagent/interactive_quit_deferred_start_test.go::TestQuitAfterTheReleaseOfADeferredStartBeginsNoTurn`
+- **Tests:** `coding/cli/interactive_provider_abort_quit_linux_test.go::TestInteractiveQuitWhileABuiltInProviderTurnStreams`, `coding/runtime_dispose_settlement_test.go::TestEmitQuitShutdownContextDoesNotAbortTheRunASignalHolds`, `coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown`
 - **Release note:** Quitting interactive mode with ctrl+c twice, ctrl+d or `/quit` while a turn is streaming now ends the turn first, as Pi does: the interrupted assistant message is written to the session file as the provider's stream ended it (for a built-in provider the text received so far, with stop reason `aborted`), and extensions receive `message_end`, `turn_end` and `agent_end` before `session_shutdown`. PiG exited at once: the interrupted turn was missing from the session file, and extensions saw `session_shutdown` in the middle of the turn. A `!` command that is still running is not waited for, and nothing of the interrupted turn is drawn after the screen was restored. PiG 0.2.0 through 0.7.0 have the defect.
 
 ### BF-d87a0c3
@@ -36131,7 +36157,6 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 | D230 | `pig config` lists declared Package members that are missing from disk, marked `missing` | [BF-825b4ab](#bf-825b4ab) |
 | D235 | A session-graph client's runs share one ctx.signal when its SDK sends no run token, and when two runs were… | [BF-b290bc0](#bf-b290bc0) |
-| D247 | An interactive quit starts no turn from a message an agent_settled handler sends while it waits for the… | [BF-bd8849d](#bf-bd8849d) |
 | D266 | An image block with an empty `mimeType` is named `image/unknown` in tool cards, where Pi names it with the… | [BF-D266](#bf-d266) |
 | D267 | The plugins' `npm install` ends with its command, not with the processes that hold the command's output pipes | [BF-D267](#bf-d267) |
 | D268 | The extension SDKs read tool arguments of any depth the host can send; Pi's runtime fails at a depth set by… | [BF-c551a63](#bf-c551a63) |

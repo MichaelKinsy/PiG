@@ -36285,6 +36285,25 @@
       "tests": []
     },
     {
+      "id": "BF-8d89f33",
+      "title": "fix(divergence): D247 carries a source marker at each site that drops the start",
+      "symptom": "fix(divergence): D247 carries a source marker at each site that drops the start",
+      "rootCause": "Mark the three requestExit checks (deliverUserMessageAfter, startCustomTurn, emitAgentSettledFor) with the pig divergence (D247) form, and let the record's Call-site markers line name exactly those three files.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "8d89f3358a",
+          "date": "2026-11-19"
+        }
+      ],
+      "tests": []
+    },
+    {
       "id": "BF-8defe80",
       "title": "In the Go extension SDK, a tool or command that the host cancelled right after sending its request could…",
       "symptom": "In the Go extension SDK, a tool or command that the host cancelled right after sending its request could start with its context still open and its host calls sent: the cancel frame was read before the main loop armed the request and was applied only later.",
@@ -49384,21 +49403,15 @@
       "id": "BF-bd8849d",
       "title": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run…",
       "symptom": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them.",
-      "rootCause": "the quit waits for the interrupted run on the owner loop; a turn started from a handler's message would run provider requests and tools after the user asked to leave, and its own `agent_settled` could send the next one.",
-      "rootCauseSource": "divergence record",
+      "rootCause": "",
+      "rootCauseSource": "",
       "userImpact": "Wrong output or ordering",
       "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D247",
-      "removeWhen": "PiG starts the turn from such a message and waits for it as the pinned Pi does, or Pi drops a message sent from `agent_settled` once its dispose has begun.",
+      "class": "own",
       "fixedIn": "Unreleased",
-      "releaseNote": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.2's order (Pi #9124, D247).",
+      "releaseNote": "Quitting through `Runtime.Close` or the interactive quit during a tool call now waits for the interrupted run to settle before `session_shutdown` and disposal, so the aborted tool result and the final assistant message are saved and extensions see `session_shutdown` after them. Print mode's termination-signal shutdown and RPC shutdown keep Pi 1.5.2's order (Pi #9124).",
       "origin": "release note",
       "commits": [
-        {
-          "hash": "00d787634a",
-          "date": "2026-11-05"
-        },
         {
           "hash": "694685ee71",
           "date": "2026-11-05"
@@ -49410,18 +49423,9 @@
         {
           "hash": "c28332bfcb",
           "date": "2026-11-05"
-        },
-        {
-          "hash": "9a1349c782",
-          "date": "2026-11-07"
-        },
-        {
-          "hash": "9c5d79a1e6",
-          "date": "2026-11-08"
         }
       ],
       "tests": [
-        "coding/cli/interactive_provider_abort_quit_linux_test.go::TestInteractiveQuitWhileABuiltInProviderTurnStreams",
         "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
       ]
     },
@@ -49861,6 +49865,33 @@
         "test/ci-images/verification_shards_test.go::TestGroupedTestsDoNotRunWhenTheAgentDirectoriesCannotBeSeeded",
         "test/ci-images/verification_shards_test.go::TestGroupedTestsIsolateAndGuardTheAgentDirectories",
         "test/ci-images/verification_shards_test.go::TestIsUnderDirComparesFileIdentity"
+      ]
+    },
+    {
+      "id": "BF-c04e543",
+      "title": "fix(interactive): a quit runs the turn of a message an agent_settled handler sends, and waits for it, as Pi…",
+      "symptom": "fix(interactive): a quit runs the turn of a message an agent_settled handler sends, and waits for it, as Pi does",
+      "rootCause": "Probed with the pinned Pi () under tmux with a faux provider: the user quits (Ctrl+D, Ctrl+C twice, /quit) while a tool runs, and the agent_settled handler of the aborted run calls pi.sendUserMessage(\"second\"). Pi starts the turn of that message in 15 of 15 runs (5 per key), emits session_shutdown after that turn's agent_settled, exits 0, and the session file holds the message. PiG (, main #483) dropped the message in 15 of 15 runs.",
+      "rootCauseSource": "commit",
+      "userImpact": "Behavior differed from Pi",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "origin": "commit",
+      "commits": [
+        {
+          "hash": "c04e54356d",
+          "date": "2026-11-19"
+        }
+      ],
+      "tests": [
+        "coding/cli/interactive_quit_streaming_turn_linux_test.go::TestInteractiveQuitRunsTheDeferredStartOfASettledAction",
+        "internal/codingagent/agent_settled_deferral_test.go::TestAgentSettledStartsDeferredStartsOnceExitIsRequested",
+        "internal/codingagent/interactive_quit_deferred_start_test.go::TestQuitAfterTheReleaseOfADeferredStartStillBeginsTheTurn",
+        "internal/codingagent/interactive_quit_following_run_test.go::TestQuitByKeysJoinsTheRunOfAMessageTheSettledHandlerSent",
+        "test/parity/scenarios/extensions-runtime/115-quit-settled-send-user-message-ctrl-c.toml",
+        "test/parity/scenarios/extensions-runtime/115-quit-settled-send-user-message-ctrl-d.toml",
+        "test/parity/scenarios/extensions-runtime/115-quit-settled-send-user-message-slash-quit.toml"
       ]
     },
     {
@@ -55506,11 +55537,8 @@
       ],
       "tests": [
         "coding/cli/interactive_provider_abort_quit_linux_test.go::TestInteractiveQuitWhileABuiltInProviderTurnStreams",
-        "coding/cli/interactive_quit_streaming_turn_linux_test.go::TestInteractiveQuitSkipsTheDeferredStartOfASettledAction",
         "coding/runtime_dispose_settlement_test.go::TestEmitQuitShutdownContextDoesNotAbortTheRunASignalHolds",
-        "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown",
-        "internal/codingagent/agent_settled_deferral_test.go::TestAgentSettledDropsDeferredStartsOnceExitIsRequested",
-        "internal/codingagent/interactive_quit_deferred_start_test.go::TestQuitAfterTheReleaseOfADeferredStartBeginsNoTurn"
+        "coding/runtime_dispose_settlement_test.go::TestRuntimeCloseDuringToolSettlesTheInterruptedTurnBeforeShutdown"
       ]
     },
     {
@@ -68805,11 +68833,6 @@
       "id": "D235",
       "title": "A session-graph client's runs share one ctx.signal when its SDK sends no run token, and when two runs were…",
       "entry": "BF-b290bc0"
-    },
-    {
-      "id": "D247",
-      "title": "An interactive quit starts no turn from a message an agent_settled handler sends while it waits for the…",
-      "entry": "BF-bd8849d"
     },
     {
       "id": "D266",

@@ -8,13 +8,12 @@ import (
 )
 
 // An action an agent_settled handler deferred is released once the last handler returned and posts its start to the owner loop. When a quit key sets requestExit between that post and
-// the owner loop running it, the start must not begin a turn: the quit settles the interrupted run on the owner loop (settleRunAtQuit, D247) and would wait for the new turn to end. Pi
-// never starts it: its quit ends in process.exit(0) without waiting for the run (1.5.0 interactive-mode.ts shutdown, agent-session-runtime.ts dispose).
+// the owner loop running it, the start still begins its turn, and the quit waits for that turn: the pinned Pi, quit while the handler of the interrupted run sends a user message,
+// runs the turn and emits session_shutdown after its agent_settled (scenario 115-quit-settled-send-user-message-*).
 //
 // The interleaving is forced without a sleep: no owner loop drains uiTaskCh, so the posted start waits in the channel; the test sets requestExit, then takes the task out of the
-// channel and runs it itself. The control row runs the same task with requestExit unset and must start a turn (runGen is bumped by startTurn), which shows the harness reaches the start.
-// Removing the requestExit check from either posted closure turns the exit rows red.
-func TestQuitAfterTheReleaseOfADeferredStartBeginsNoTurn(t *testing.T) {
+// channel and runs it itself. Both rows must start a turn (runGen is bumped by startTurn); the row without exit shows the harness reaches the start.
+func TestQuitAfterTheReleaseOfADeferredStartStillBeginsTheTurn(t *testing.T) {
 	starts := []struct {
 		name string
 		post func(m *InteractiveMode) error
@@ -44,14 +43,8 @@ func TestQuitAfterTheReleaseOfADeferredStartBeginsNoTurn(t *testing.T) {
 				m.requestExit.Store(exit)
 				task := <-m.uiTaskCh
 				task()
-				if exit {
-					if m.runGen != 0 {
-						t.Fatalf("a turn started after exit was requested: runGen = %d", m.runGen)
-					}
-					return
-				}
 				if m.runGen != 1 {
-					t.Fatalf("control: the start began no turn: runGen = %d, want 1", m.runGen)
+					t.Fatalf("the start began no turn (exit requested: %v): runGen = %d, want 1", exit, m.runGen)
 				}
 				m.queueMu.Lock()
 				ended := m.turnEnded
@@ -59,7 +52,7 @@ func TestQuitAfterTheReleaseOfADeferredStartBeginsNoTurn(t *testing.T) {
 				select {
 				case <-ended:
 				case <-time.After(5 * time.Second):
-					t.Fatal("control: the started run did not end")
+					t.Fatal("the started run did not end")
 				}
 			})
 		}
