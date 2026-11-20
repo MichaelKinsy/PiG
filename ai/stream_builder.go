@@ -10,6 +10,8 @@ import (
 )
 
 type assistantStreamBuilder struct {
+	// pig additive (D237): openAITrace holds missing-finish evidence; nil outside the HTTP path.
+	openAITrace  *openAIStreamTrace
 	ctx          context.Context
 	stream       *AssistantMessageEventStream
 	partial      *AssistantMessage

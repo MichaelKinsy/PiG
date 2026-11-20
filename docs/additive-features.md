@@ -2030,3 +2030,22 @@ Remove when: Pi evaluates plugins in a runtime PiG does not start, or the progra
 
 Approval: owner decision relayed 2026-11-01 for the plugins' Node evaluator (plugfull lane), the same as D221.
 SCRUTINIZED:approved
+
+## D237 Missing-finish completions stream diagnostics
+
+Summary: A failed completions stream retains redacted request identity, timings and bounded recent SSE evidence in its message diagnostics without changing the error text.
+
+Audience: author
+
+Stock disposition: product-neutral diagnostics. Observation shares the existing reader's lifetime; no product provider, separate task, retry or setting is selected.
+
+Contract: the failed message receives `stream_ended_without_finish_reason`; error text stays `Stream ended without finish_reason`. Recent records are redacted, with a three-record ring and at most 2 KiB per retained record; emitted record evidence totals at most 2 KiB including truncation markers. UTF-8 is not split. The first value of each permitted header is redacted and bounded to 256 bytes; credential-looking header names are excluded. DONE presence, status, counters and timing are retained. Successful and explicitly finish-optional streams get no diagnostic. Redaction is heuristic, not a guarantee against sensitive model prose. Metadata is not model input.
+
+Call-site markers: `ai/openai_stream_trace.go`, `ai/openai.go`, `ai/openai_stream_decoder.go`, `ai/stream_builder.go`.
+
+Locked by: the missing-finish, empty/DONE-only, finish-optional, normal-completion, redaction and UTF-8/budget tests in `ai/openai_stream_trace_test.go`, and `python3 scripts/probe-stream-no-finish.py --pig ./bin/pig`.
+
+Status: local port of a proposed upstream record; awaiting maintainer scrutiny. D237 is provisional and may be renumbered.
+
+Remove when: Pi provides equivalent retained evidence or this diagnostic is removed.
+SCRUTINIZED:approved

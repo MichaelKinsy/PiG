@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -69,6 +70,46 @@ func checkResponsesAllowEmpty(t *testing.T, module, apiName string, api ai.API, 
 	compareResponses(t, module, apiName, api, run, probes, false)
 }
 
+// stripD237Diagnostics returns message without its D237 `stream_ended_without_finish_reason` diagnostics entries when api is openai-completions
+// (docs/additive-features.md:2070-2090); an emptied `diagnostics` key is dropped. Other entries and other apis are kept. The input is not modified.
+func stripD237Diagnostics(api ai.API, message map[string]any) map[string]any {
+	out, _ := stripD237DiagnosticsUsed(api, message)
+	return out
+}
+
+// stripD237DiagnosticsUsed is stripD237Diagnostics that also reports whether it removed an entry (the allowance was used).
+func stripD237DiagnosticsUsed(api ai.API, message map[string]any) (map[string]any, bool) {
+	entries, ok := message["diagnostics"].([]any)
+	if api != ai.APIOpenAICompletions || !ok {
+		return message, false
+	}
+	kept := []any{}
+	for _, entry := range entries {
+		if m, ok := entry.(map[string]any); ok && m["type"] == "stream_ended_without_finish_reason" {
+			continue
+		}
+		kept = append(kept, entry)
+	}
+	if len(kept) == len(entries) {
+		return message, false
+	}
+	out := maps.Clone(message)
+	if len(kept) == 0 {
+		delete(out, "diagnostics")
+	} else {
+		out["diagnostics"] = kept
+	}
+	return out, true
+}
+
+// comparableMessageJSON is the message encoding compareResponses compares for one probe: the D237 allowance applied to PiG's side only.
+// It reports whether the allowance removed something.
+func comparableMessageJSON(api ai.API, message map[string]any) ([]byte, bool) {
+	message, used := stripD237DiagnosticsUsed(api, message)
+	encoded, _ := json.Marshal(map[string]any{"message": message})
+	return encoded, used
+}
+
 // generatedToolCallID matches the id D120 generates for a streamed tool call that carries none.
 var generatedToolCallID = regexp.MustCompile(`"id":"[^"]*_\d{13}_\d+"`)
 
@@ -95,7 +136,7 @@ func compareResponses(t *testing.T, module, apiName string, api ai.API, run func
 	if err := json.Unmarshal(output, &want); err != nil {
 		t.Fatal(err)
 	}
-	failures, answered := 0, 0
+	failures, answered, d237Used := 0, 0, 0
 	classes := map[string]int{}
 	barrier := readbarrier.New(t)
 	for i, p := range probes {
@@ -214,6 +255,13 @@ func compareResponses(t *testing.T, module, apiName string, api ai.API, run func
 			_ = json.Unmarshal(raw, &message)
 			delete(message, "timestamp")
 			delete(message, "durationMs")
+			// D237 (docs/additive-features.md:2070-2090): PiG's additive `diagnostics` member on a completions stream that ends without finish_reason; Pi has none.
+			// Allowed on the PiG side only and only for that entry on openai-completions; any other entry or api still differs.
+			var used bool
+			message, used = stripD237DiagnosticsUsed(api, message)
+			if used {
+				d237Used++
+			}
 		}
 		server.Close()
 		gotParts := map[string]any{"events": events, "message": message}
@@ -264,6 +312,7 @@ func compareResponses(t *testing.T, module, apiName string, api ai.API, run func
 	for class, count := range classes {
 		t.Logf("%3d  %s", count, class)
 	}
+	t.Logf("PARITY-ALLOWANCE D237-diagnostics used=%d of=%d api=%s", d237Used, len(probes), apiName)
 	if failures > 0 {
 		t.Errorf("%d of %d probes differ from Pi", failures, len(probes))
 	}
