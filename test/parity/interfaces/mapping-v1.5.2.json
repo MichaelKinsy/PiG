@@ -34212,7 +34212,8 @@
       ],
       "evidence": [
         "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
-        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream",
+        "test:internal/codingagent/llama/provider_images_native_test.go#TestAIClassifierModelCarriesImageInputOfDecisionModels"
       ]
     },
     {
@@ -81140,7 +81141,8 @@
       ],
       "evidence": [
         "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
-        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream",
+        "test:internal/codingagent/llama/provider_images_native_test.go#TestAIClassifierModelCarriesImageInputOfDecisionModels"
       ]
     },
     {
@@ -91853,7 +91855,8 @@
       ],
       "evidence": [
         "test:ai/classifier_models_upstream_test.go#TestClassifierModelsUpstream",
-        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream"
+        "test:ai/typesafe_system_one_upstream_test.go#TestTypesafeSystemOneUpstream",
+        "test:internal/codingagent/llama/provider_images_native_test.go#TestAIClassifierModelCarriesImageInputOfDecisionModels"
       ]
     },
     {
@@ -170383,8 +170386,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
-        "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:tui/editor_literal_input_upstream_test.go#TestEditorHistoryAndSubmissionUseJavaScriptTrim"
+        "test:tui/editor_enter_command_name_upstream_test.go#TestUpstreamEditorEnterSubmitsOnlyFromTheSlashCommandNameMenu",
+        "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo"
       ]
     },
     {
@@ -296637,8 +296640,8 @@
       ],
       "evidence": [
         "test:internal/codingagent/interactive_startup_input_upstream_test.go#TestUpstreamInteractiveStartupInput",
-        "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo",
-        "test:tui/editor_literal_input_upstream_test.go#TestEditorHistoryAndSubmissionUseJavaScriptTrim"
+        "test:tui/editor_enter_command_name_upstream_test.go#TestUpstreamEditorEnterSubmitsOnlyFromTheSlashCommandNameMenu",
+        "test:tui/editor_kill_undo_upstream_test.go#TestUpstreamEditorUndo"
       ]
     },
     {
@@ -309649,7 +309652,7 @@
       "evidence": [
         "test:tui/autocomplete_wrappers_upstream_test.go#TestUpstreamAutocompleteSkillSlash",
         "test:tui/editor_completion_upstream_test.go#TestUpstreamEditorCompletionCommandWithoutArgumentCompleter",
-        "test:tui/autocomplete_test.go#TestEditor_AcceptReturnsNoSubmitForArg"
+        "test:tui/editor_enter_command_name_upstream_test.go#TestUpstreamEditorEnterSubmitsOnlyFromTheSlashCommandNameMenu"
       ]
     },
     {
