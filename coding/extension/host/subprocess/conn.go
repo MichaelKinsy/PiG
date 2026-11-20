@@ -3010,12 +3010,14 @@ func applyRequestSuspension(ctx context.Context, state RequestStatePayload) {
 	}
 }
 
-// dispatchBarrier queues a marker behind the frames the read loop has passed to the host and returns the marker, whose done channel closes once the host dispatched them. It is called on the read loop, so every frame read before the caller's is ahead of the marker. The caller that makes the request receives the marker through an atomic: a request that ends before its reply is read (its context ended, the connection failed) returns while the read loop may still be here.
+// dispatchBarrier queues a marker behind the frames the read loop has passed to the host and returns the marker, whose done channel closes once the host dispatched them. It is called on the read loop, so every frame read before the caller's is ahead of the marker. The caller that makes the request receives the marker through an atomic: a request that ends before its reply is read (its context ended, the connection failed) returns while the read loop may still be here. The marker is released without being queued when the caller's context ends or the connection's lifetime does (Close, a failure, the end of Start's context), as every other wait of the read loop ends with the connection: the host's incoming loop may not take another frame, and the read loop, which Done and Close join, must not wait for it. Retire keeps the lifetime until the peer closed, so the replies it still reads stay ordered.
 func (c *Conn) dispatchBarrier(ctx context.Context) *dispatchMark {
 	mark := &dispatchMark{done: make(chan struct{})}
 	select {
 	case c.inCh <- &Envelope{barrier: mark}:
 	case <-ctx.Done():
+		mark.release()
+	case <-c.lifetime.Done():
 		mark.release()
 	}
 	return mark

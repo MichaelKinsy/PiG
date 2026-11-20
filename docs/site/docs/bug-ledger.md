@@ -86,6 +86,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-083db0c](#bf-083db0c) | A `pig_strip_codemode` build no longer links the code mode sandbox or wazero through tool search | PiG's own defect | All platforms | Unreleased |
 | [BF-084fa64](#bf-084fa64) | fix(interactive): call GetSourcePackageKey with the string scope; extension changelog fragment | PiG's own defect | All platforms | Unreleased |
 | [BF-086395a](#bf-086395a) | `coding.DefaultAgentDir()` (Pi's `getAgentDir`) now returns the directory named by `PIG_CODING_AGENT_DIR`… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-0885ded](#bf-0885ded) | A connection to an extension process ends when it is closed or fails even while the host's queue of incoming… | PiG's own defect | All platforms | Unreleased |
 | [BF-08ab103](#bf-08ab103) | fix(childwait): the zero-byte read's OVERLAPPED is heap allocated and pinned; the child's pipe end can be… | PiG's own defect | All platforms | Unreleased |
 | [BF-08bf076](#bf-08bf076) | An extension login callback (`onPrompt`, `onSelect`, `onManualCodeInput`) whose prompt fails for a reason… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-08edd46](#bf-08edd46) | A terminal that went away while an extension's remote editor, an extension title, a clipboard copy (OSC 52)… | PiG's own defect | All platforms | 0.7.0 |
@@ -3371,6 +3372,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `086395a8bd` (2026-10-11)
 - **Tests:** `coding/services_test.go::TestDefaultAgentDirHonorsTheAgentDirVariable`
 - **Release note:** `coding.DefaultAgentDir()` (Pi's `getAgentDir`) now returns the directory named by `PIG_CODING_AGENT_DIR` (`PI_CODING_AGENT_DIR` with `PIG_USE_PI_DIRS=1`), tilde expanded, as the `pig` binary does; before, SDK embedders, `--skill` loading, the default skills directory and the interactive default ignored the variable and used `$PIG_HOME/agent`.
+
+### BF-0885ded
+
+**A connection to an extension process ends when it is closed or fails even while the host's queue of incoming…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A connection to an extension process ends when it is closed or fails even while the host's queue of incoming frames is full.
+- **Root cause:** Conn.dispatchBarrier waits to queue its marker on the incoming channel in a select that ended only with the context of the request that made the call (dispatchBarrier came with 2f03eb55db in 0.5.2 for tool calls, and the session_start handler uses it since 33d17edd37), while every other wait of the read loop ends with the connection and Close and Done join the read loop, so a full queue with a host that did not take a frame held the read loop for good.
+- **User impact:** An operation failed or was rejected
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0885ded590` (2026-11-19)
+- **Tests:** `coding/extension/host/subprocess/dispatch_barrier_closed_connection_test.go::TestAFailedConnectionEndsItsReadLoopWhileItWaitsToQueueTheDispatchMarker`, `coding/extension/host/subprocess/dispatch_barrier_closed_connection_test.go::TestCloseEndsTheReadLoopWhileTheIncomingLoopWaitsForAHeldCall`
+- **Release note:** A connection to an extension process ends when it is closed or fails even while the host's queue of incoming frames is full. When an extension had sent more frames than the host had taken and the reply to a `session_start` handler request or a tool call was read behind them, the connection's read loop waited to queue its dispatch marker until the host took a frame, and only the context of that request ended the wait. A connection that failed in that state stayed open for the host (its `Done` never closed), and `Close` of a live one did not return while the host's incoming loop waited for a call that only the close ends, such as a call held behind the embedder's background gate. The wait now ends with the connection as every other wait of the read loop does; a connection that is only retired keeps its replies ordered until the peer closed.
 
 ### BF-08ab103
 
