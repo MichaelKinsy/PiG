@@ -75087,6 +75087,17 @@
       "shapeHash": "sha256:e1746e8a8ddf56980f27a9d4dd513ee4e40a7307f8da3a00ef55669012f0696e"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.resolveLocked",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "ModelRegistry.resolveLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, modelID string) (github.com/MichaelKinsy/PiG/internal/codingagent.ModelEntry, bool, bool)"
+      },
+      "shapeHash": "sha256:975ceb674bedc84e2fa5b8a346d460265e3fbe7e8682fb71591f55047e11a25a"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.resolveModelDef",
       "package": "github.com/MichaelKinsy/PiG/coding",
       "name": "ModelRegistry.resolveModelDef",
@@ -282193,6 +282204,17 @@
         "type": "func(entry ModelEntry, provider providerConfig) ModelEntry"
       },
       "shapeHash": "sha256:3cd9130d1976aa8a7e7fcdf6ec16e836e4ebe31655fa27fd18c840ec4213b9d1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.resolveLocked",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "ModelRegistry.resolveLocked",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, modelID string) (ModelEntry, bool, bool)"
+      },
+      "shapeHash": "sha256:0174d39505e87777b1248ec114a6dba3f9c791979e0057bad7c27ce1a3c12479"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#ModelRegistry.resolveModelDef",

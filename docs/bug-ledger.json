@@ -46870,6 +46870,33 @@
       ]
     },
     {
+      "id": "BF-af90a4b",
+      "title": "A custom model defined in `models.json` under a built-in provider that omits `api` or `baseUrl` now inherits…",
+      "symptom": "A direct stream for a `models.json` custom model that set `api` and omitted `baseUrl` under a built-in provider with several APIs could send the request, with that provider's key, to another vendor's host (for example, `opencode-go` with `anthropic-messages` went to `api.anthropic.com`), while omitting `api` failed with `No API provider registered for api: undefined` and RPC `get_state` reported empty `api` and `baseUrl`.",
+      "rootCause": "ModelRegistry.Resolve built custom models.json entries from the raw definition without filling omitted api and baseUrl from the provider's composed catalog defaults and dropped an extension provider's baseUrl overlay when dynamic.Models was nil",
+      "rootCauseSource": "release note",
+      "userImpact": "An operation failed or was rejected",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A custom model defined in `models.json` under a built-in provider that omits `api` or `baseUrl` now inherits the provider's composed defaults in `coding.BuildModel`, `--model`, saved default model startup, and RPC `get_state`, matching `ModelRuntime.GetModel` and upstream Pi. Before, a direct stream for a `models.json` custom model that set `api` and omitted `baseUrl` under a built-in provider with several APIs could send the request, with that provider's key, to another vendor's host (for example, `opencode-go` with `anthropic-messages` went to `api.anthropic.com`), while omitting `api` failed with `No API provider registered for api: undefined` and RPC `get_state` reported empty `api` and `baseUrl`. A `models.json` custom model under a provider whose base URL an extension overrides (without declaring extension models) now uses the extension's base URL in `coding.BuildModel` and `--model` too, as the model runtime and Pi do. Affects 0.7.0.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "af90a4b18a",
+          "date": "2026-11-20"
+        }
+      ],
+      "tests": [
+        "coding/cli/model_custom_defaults_test.go::TestPrintModeCustomModelWithoutAPIReachesLocalEndpointAndPreservesMetadata",
+        "coding/cli/model_custom_defaults_test.go::TestPrintModeEndToEndCustomModelWithoutAPIUsesInheritedDefaults",
+        "coding/cli/model_custom_defaults_test.go::TestSelectStartupModelCustomModelInheritsBuiltInDefaults",
+        "coding/model_custom_defaults_test.go::TestBuildModelCustomModelUnderBuiltInProviderInheritsDefaults",
+        "coding/model_custom_defaults_test.go::TestBuildModelOpenCodeGoAnthropicCustomModelRoutesToProviderHostNotAnthropic",
+        "internal/codingagent/model_registry_custom_defaults_test.go::TestResolveCustomModelUnderBuiltInProviderInheritsDefaults"
+      ]
+    },
+    {
       "id": "BF-afa1dd5",
       "title": "Amazon Bedrock `requestMetadata` keeps its keys' insertion order on the wire, as Pi's AWS SDK writes the…",
       "symptom": "Amazon Bedrock `requestMetadata` keeps its keys' insertion order on the wire, as Pi's AWS SDK writes the object.",
