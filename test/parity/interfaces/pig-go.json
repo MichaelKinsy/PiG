@@ -275749,6 +275749,17 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.releaseGrammarLoadHold",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.releaseGrammarLoadHold",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.releaseStartupHeapWhenIdle",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.releaseStartupHeapWhenIdle",
@@ -310760,6 +310771,17 @@
         "type": "func(probe *github.com/MichaelKinsy/PiG/internal/nodefs.PathProbe, dir string) *ContextFile"
       },
       "shapeHash": "sha256:ee6fa43a5c92aef0dc1c88d7a5cf4a5976eaba9b73c6b6f8aacf7133438d2694"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loadHighlightLanguages",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "loadHighlightLanguages",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#loadKeybindingsFile",

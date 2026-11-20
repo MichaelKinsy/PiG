@@ -2172,6 +2172,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-e4252b4](#bf-e4252b4) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-e42ae82](#bf-e42ae82) | `SettingsManager` structured getters (settings-manager.ts getBranchSummarySettings, getRetrySettings… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-e44a3a9](#bf-e44a3a9) | fix(chord/nextnode/workers): a child is idle by a flag, not by a zero time | PiG's own defect | All platforms | Unreleased |
+| [BF-e4583be](#bf-e4583be) | A start whose first frame was slow, as on a loaded machine, no longer writes a third frame, a bare cursor… | PiG's own defect | All platforms | Unreleased |
 | [BF-e48a02f](#bf-e48a02f) | fix(tui): filterable list drops the label when no cell remains (Pi select-list) | PiG's own defect | All platforms | Unreleased |
 | [BF-e4b5861](#bf-e4b5861) | fix(view): a second size of an image is a placement only while its first placement is not drawn | PiG's own defect | All platforms | Unreleased |
 | [BF-e4b9bd5](#bf-e4b9bd5) | A Node extension's `ctx.getContextUsage()` returned the value of the host's last dispatch, so a timer between… | PiG's own defect | All platforms | Unreleased |
@@ -32311,6 +32312,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `e44a3a919d` (2026-10-31)
 - **Tests:** None recorded.
+
+### BF-e4583be
+
+**A start whose first frame was slow, as on a loaded machine, no longer writes a third frame, a bare cursor…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A start whose first frame was slow, as on a loaded machine, no longer writes a third frame, a bare cursor placement, after the frame that shows the startup notice (for example "No models available").
+- **Root cause:** Pi's notice frame and the grammar load's repaint request are one frame because the import blocks the one loop that runs the timer; PiG ran them on two goroutines, so a frame that was already due ran before the request and the request then painted a frame of its own.
+- **User impact:** Wrong display
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `e4583be5aa` (2026-11-20)
+- **Tests:** `internal/codingagent/startup_grammar_load_frame_test.go::TestAFrameDueWhileTheGrammarLoadRunsWaitsForTheLoadsContinuation`, `internal/codingagent/startup_grammar_load_frame_test.go::TestAFrameHeldForTheGrammarLoadIsPaintedWhenTheLoadPanics`, `internal/codingagent/startup_grammar_load_frame_test.go::TestTheFrameHoldEndsWhenTheModeStopsWhileTheGrammarLoadRuns`
+- **Release note:** A start whose first frame was slow, as on a loaded machine, no longer writes a third frame, a bare cursor placement, after the frame that shows the startup notice (for example "No models available"). Pi runs that frame after the syntax grammars have loaded and asks for one frame for both; PiG now keeps a due frame until the grammar load's repaint request has arrived and draws the same single frame. Nothing changes on the screen; only the bytes written to the terminal do.
 
 ### BF-e48a02f
 

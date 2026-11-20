@@ -60375,6 +60375,30 @@
       "tests": []
     },
     {
+      "id": "BF-e4583be",
+      "title": "A start whose first frame was slow, as on a loaded machine, no longer writes a third frame, a bare cursor…",
+      "symptom": "A start whose first frame was slow, as on a loaded machine, no longer writes a third frame, a bare cursor placement, after the frame that shows the startup notice (for example \"No models available\").",
+      "rootCause": "Pi's notice frame and the grammar load's repaint request are one frame because the import blocks the one loop that runs the timer; PiG ran them on two goroutines, so a frame that was already due ran before the request and the request then painted a frame of its own.",
+      "rootCauseSource": "commit",
+      "userImpact": "Wrong display",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A start whose first frame was slow, as on a loaded machine, no longer writes a third frame, a bare cursor placement, after the frame that shows the startup notice (for example \"No models available\"). Pi runs that frame after the syntax grammars have loaded and asks for one frame for both; PiG now keeps a due frame until the grammar load's repaint request has arrived and draws the same single frame. Nothing changes on the screen; only the bytes written to the terminal do.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "e4583be5aa",
+          "date": "2026-11-20"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/startup_grammar_load_frame_test.go::TestAFrameDueWhileTheGrammarLoadRunsWaitsForTheLoadsContinuation",
+        "internal/codingagent/startup_grammar_load_frame_test.go::TestAFrameHeldForTheGrammarLoadIsPaintedWhenTheLoadPanics",
+        "internal/codingagent/startup_grammar_load_frame_test.go::TestTheFrameHoldEndsWhenTheModeStopsWhileTheGrammarLoadRuns"
+      ]
+    },
+    {
       "id": "BF-e48a02f",
       "title": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
       "symptom": "fix(tui): filterable list drops the label when no cell remains (Pi select-list)",
