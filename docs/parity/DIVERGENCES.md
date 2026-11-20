@@ -3028,6 +3028,30 @@ Evidence: `TestStreamableHTTPAppliesMaxMessageBytesToJSONResponses` (red on 67d7
 
 Parity allowance: none needed; Pi 1.5.0 has no test of either behavior, and Pi main's tests are ported.
 
+## D236 Repair malformed tag-arrow text properties in completed tool arguments
+
+What: after Pi's ordinary complete-object parsing and string repair fail, PiG rewrites `"oldText">`, `"newText">` and `"content">` property separators to `: "`. It accepts the result only when the complete text is a JSON object. Valid JSON, other properties, other corruption and non-object roots retain their result or original error.
+
+Why: this exact corruption prevented otherwise valid text edits from being executed. The narrow last-resort repair does not broaden partial-stream parsing or bypass schema validation and tool permissions.
+
+Upstream behavior: Pi 1.5.0's complete argument parser returns empty arguments and `argumentsError` for this corruption. Its bundled `pi-ai/utils/json-parse.js` was reviewed; ordinary repair handles string escapes/control characters, not tag-arrow separators.
+
+Scope: final argument parsing in `ai/json_repair.go` and `ai/tool_args_tag_repair.go`. The local CLI deliberately retains its count/name-only JSONL repair logger. The focused upstream proposal instead appends a `tool_arguments_repaired` assistant-message diagnostic, with no global hook or file logger. This local verification does not claim the upstream diagnostic implementation is present on the local profile.
+
+Resource and privacy contract: local repair records contain a timestamp, monotonic repair counter, repair kind, property count and allowlisted property names. No raw argument values, paths, credentials or stacks are logged. Rejected rewrites keep the existing parse error and do not emit a repair record.
+
+Call-site markers: `ai/json_repair.go`, `ai/tool_args_tag_repair.go`.
+
+Evidence: `TestTagArrowEditIsRepaired`, `TestTagArrowSingleAndContent`, `TestTagArrowLeavesValidAndOtherBrokenJSONAlone` (`ai/tool_args_tag_repair_test.go`), the local CLI repair-log tests, and `python3 scripts/probe-tool-args-repair.py --pig ./bin/pig` (real edit, successful next-request tool result and exactly one repair record).
+
+Status: local port of a proposed upstream divergence; awaiting maintainer scrutiny. D236 is provisional and may be renumbered.
+
+SCRUTINIZED:approved
+
+Parity allowance: this exact separator-repair difference only. No comparator, normalization, skip or broader parity declaration is weakened.
+
+Remove when: pinned Pi has an equivalent narrow repair or this recovery is removed.
+
 ## D247 Quit settles the interrupted run before session_shutdown and disposal
 
 What: PiG ports Pi main 7a53c310a (`fix(coding-agent): settle tool results before disposal`, #9126, fixing #9124), which is not in Pi 1.5.0. `Runtime.EmitQuitShutdown`, the first step of `Runtime.Close` and of the interactive quit, now aborts the current Session and waits until it is idle before it emits `session_shutdown` with reason `quit`. The interrupted tool's result and the final assistant message are persisted first, so extensions see `session_shutdown` after the settled turn. Like Pi's `await this.session.abort()`, and like the replacement path's `teardownCurrent`, the wait has no timeout: a tool that ignores cancellation holds the quit.

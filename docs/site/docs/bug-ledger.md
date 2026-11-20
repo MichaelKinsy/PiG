@@ -62,6 +62,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-093cf5c](#bf-093cf5c) | Provider error text is written the way Pi writes it | PiG's own defect | All platforms | 0.5.0 |
 | [BF-098e33d](#bf-098e33d) | Extension `ctx.ui.theme.fg`, `bg` and `getBgAnsi` throw `Unknown theme color: <token>` in every SDK for a… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a3094a](#bf-0a3094a) | fix(codingagent): hold the exit record's owner with a channel, not a replaceable write function | PiG's own defect | All platforms | Unreleased |
+| [BF-0a31d1f](#bf-0a31d1f) | Malformed completed tool-call arguments whose `oldText`, `newText`, or `content` property separator lost `… | PiG's own defect | All platforms | Unreleased |
 | [BF-0a3e8ce](#bf-0a3e8ce) | In print and JSON mode, SIGTERM or SIGHUP no longer hangs when a Go, Python or Rust extension's… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-0a51e9d](#bf-0a51e9d) | Fix in shipped code | PiG's own defect | All platforms | Unreleased |
 | [BF-0aa31c4](#bf-0aa31c4) | Extensions that import `@earendil-works/pi-ai/models` (for example for `clampThinkingLevel`) load in the Node… | A fix Pi shipped that PiG ported | All platforms | 0.5.2 |
@@ -2265,6 +2266,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fixed in:** Unreleased
 - **Fix commits:** `0a3094a85a` (2026-11-03)
 - **Tests:** `internal/codingagent/exit_ending_test.go::TestBeforeExitWaitsForTheLineInFlight`, `internal/codingagent/exit_ending_test.go::TestRecordEndingLoserBlocksUntilTheOwnersLineIsOnDisk`
+
+### BF-0a31d1f
+
+**Malformed completed tool-call arguments whose `oldText`, `newText`, or `content` property separator lost `…**
+
+- **Source:** PiG's own defect
+- **Symptom:** Malformed completed tool-call arguments whose `oldText`, `newText`, or `content` property separator lost `: "` into `>` (for example `"newText">...`) are now repaired after standard JSON parsing and string repair fail, while valid JSON, other properties, partial streams, and non-object roots keep their original result or error.
+- **Root cause:** Not recorded.
+- **User impact:** Lost or altered data
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `0a31d1f868` (2026-11-18)
+- **Tests:** `ai/tool_args_tag_repair_test.go::TestTagArrowEditIsRepaired`, `ai/tool_args_tag_repair_test.go::TestTagArrowLeavesValidAndOtherBrokenJSONAlone`, `ai/tool_args_tag_repair_test.go::TestTagArrowSingleAndContent`, `coding/cli/tool_args_repair_log_test.go::TestToolArgumentsRepairIsLogged`
+- **Release note:** Malformed completed tool-call arguments whose `oldText`, `newText`, or `content` property separator lost `: "` into `>` (for example `"newText">...`) are now repaired after standard JSON parsing and string repair fail, while valid JSON, other properties, partial streams, and non-object roots keep their original result or error.
 
 ### BF-0a3e8ce
 
@@ -24623,6 +24638,7 @@ Each divergence record is accounted for here. A divergence that fixes a Pi defec
 | D228 | Terminal.app: plain Up dequeues a queued message, and Up recall elsewhere says once that the text is a copy | [BF-2359a0a](#bf-2359a0a) |
 | D231 | PiG follows Pi main 1708b4788 ahead of the v1.5.0 pin: RPC mode acts on an idle `ctx.shutdown()` | [BF-0cced6a](#bf-0cced6a) |
 | D233 | A Streamable HTTP application/json reply is capped at maxMessageBytes, and an HTTP error body keeps its first… | [BF-d4e641b](#bf-d4e641b) |
+| D236 | Repair malformed tag-arrow text properties in completed tool arguments | deliberate difference |
 | D247 | Quit settles the interrupted run before session_shutdown and disposal | [BF-D247](#bf-d247) |
 | D615 | The Go, Python, Lisp and Rust SDKs show the host each provider stream event as it was when the provider… | deliberate difference |
 | D651 | Credential files are replaced through a temporary file where that changes nothing but the inode, where Pi… | [BF-26b210c](#bf-26b210c) |

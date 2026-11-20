@@ -72,6 +72,21 @@ func parseToolCallArguments(text string) (JsonObject, schemaObjectOrder, string)
 		}
 		parseErr = errors.New("Tool arguments must be a JSON object")
 	}
+	// pig divergence (D236): last resort for tag-arrow text properties; see tool_args_tag_repair.go. The original
+	// error is kept when the rewrite does not yield a JSON object.
+	if fixed, keys := repairTagArrowProperties(text); keys != nil {
+		if repaired := repairJSON(fixed); repaired != fixed {
+			if _, ok := jsonParseValue(repaired); ok {
+				fixed = repaired
+			}
+		}
+		if _, ok := jsonParseValue(fixed); ok {
+			if object, order, nonObject := parseStreamingJsonValue(fixed); object != nil && nonObject == nil {
+				reportToolArgumentsRepair(ToolArgumentsRepair{Kind: "tag-arrow", Count: len(keys), Keys: keys})
+				return object, order, ""
+			}
+		}
+	}
 	return JsonObject{}, nil, parseErr.Error() + "\n\nReceived arguments:\n" + text
 }
 
