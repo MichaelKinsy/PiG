@@ -418,7 +418,7 @@ func (s *Session) appendExtensionEntry(customType string, data any) error {
 
 // recordNestedCalls records the calls a tool made through `ctx.executeTool()` and their usage on its result message.
 //
-// upstream: agent-session.ts:1062-1074 (_handleAgentEvent, `message_start` of a toolResult). Go difference forced by the agent loop (agent/agent_loop.go startEventMessage): message_start carries its own copy of the message, while message_end shares the message with the transcript and the persisted entry. The record is taken at message_start and applied to that copy for listeners, then applied to the shared message at message_end, before anything reads or persists it.
+// upstream: agent-session.ts:1062-1074 (_handleAgentEvent, `message_start` of a toolResult). Go difference forced by the agent loop (agent.AgentMessage.EventView): message_start carries its own copy of the message, while message_end shares the message with the transcript and the persisted entry. The record is taken at message_start and applied to that copy for listeners, then applied to the shared message at message_end, before anything reads or persists it.
 func (s *Session) recordNestedCalls(event agent.AgentEvent) {
 	nested := s.loadout.nested.Load()
 	if nested == nil {

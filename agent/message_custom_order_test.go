@@ -100,7 +100,7 @@ func replaceCustomInPlace(target, replacement AgentMessage) {
 // copy keeps its members and their order (Pi's replacement reaches the object message_end shares, and a listener of message_start holds a snapshot here).
 func TestStartEventMessageOfACustomMessageKeepsItsMembersAndOrderAcrossAReplacement(t *testing.T) {
 	original := decodeCustom(t, `{"role":"custom","customType":"c","content":"x","display":true,"timestamp":1}`).WithOrderRecord()
-	start := startEventMessage(original)
+	start := original.EventView()
 	before := customOrderJSON(t, start)
 	replaceCustomInPlace(original, decodeCustom(t, `{"timestamp":2,"display":false,"customType":"c","role":"custom","content":"y"}`))
 	if got := customOrderJSON(t, start); got != before {
@@ -115,7 +115,7 @@ func TestStartEventMessageOfACustomMessageKeepsItsMembersAndOrderAcrossAReplacem
 // A listener may read the message_start copy while the replacement of the message_end message is adopted; the two share no memory.
 func TestStartEventMessageOfACustomMessageIsRaceFreeWithAReplacement(t *testing.T) {
 	original := decodeCustom(t, `{"role":"custom","customType":"c","content":"x","display":true,"timestamp":1}`).WithOrderRecord()
-	start := startEventMessage(original)
+	start := original.EventView()
 	replacement := decodeCustom(t, `{"timestamp":2,"display":false,"customType":"c","role":"custom","content":"y"}`)
 	var wg sync.WaitGroup
 	wg.Go(func() {
