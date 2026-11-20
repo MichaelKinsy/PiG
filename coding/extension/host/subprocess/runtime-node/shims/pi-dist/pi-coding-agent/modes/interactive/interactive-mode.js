@@ -3649,7 +3649,9 @@ export class InteractiveMode {
         await this.runtimeHost.dispose();
         const resumeCommand = formatResumeCommand(this.sessionManager);
         if (resumeCommand) {
-            process.stdout.write(`${chalk.dim("To resume this session:")} ${resumeCommand}\n`);
+            // Pi 63dec2621 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+            // Own line so the command can be selected with a triple-click (#12237).
+            process.stdout.write(`${chalk.dim("To resume this session:")}\n${resumeCommand}\n`);
         }
         process.exit(0);
     }

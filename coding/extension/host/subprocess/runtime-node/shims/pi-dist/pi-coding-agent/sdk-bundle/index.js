@@ -16823,7 +16823,8 @@ ${message}`, ["Yes", "No"], opts, {
     await this.runtimeHost.dispose();
     const resumeCommand = formatResumeCommand(this.sessionManager);
     if (resumeCommand) {
-      process.stdout.write(`${chalk6.dim("To resume this session:")} ${resumeCommand}
+      process.stdout.write(`${chalk6.dim("To resume this session:")}
+${resumeCommand}
 `);
     }
     process.exit(0);

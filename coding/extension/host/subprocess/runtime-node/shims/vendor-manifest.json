@@ -14834,8 +14834,8 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "dist/modes/interactive/interactive-mode.js",
-      "sourceSha256": "ccee398d83c99b0149db7935e2f07799c2a625ade35e09c248cc13d9d62dca31",
-      "sha256": "109a12a687b926e62fd3e59af6c0c47c1117d8cc21b585cfc4f1e3c5c5190319",
+      "sourceSha256": "99a3763c2c7e08565bc362e49d651ba57c2415368a8092c8a48edfa356840c34",
+      "sha256": "a45f9b40ee520324bfc3a228583d078fda4e755b012f13aefbda38fa8405f79c",
       "rewrite": "module specifiers; D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
@@ -15291,7 +15291,7 @@
         "version": "1.5.2",
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
-      "sha256": "b6ec73328b1e4aff8d4344feb0acd36d1b348d7352e9e18c7b9085f411a94607",
+      "sha256": "a37c2a3fa134d2aafecbeb9c7a3a5f994340d6e2b8bc79a1d35883fa9b3f41d7",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -15301,7 +15301,7 @@
         "version": "1.5.2",
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
-      "sha256": "d24057cbd4cfd33317b6e93162cc64f3fe26f985ef2af95ce5c0c87209a0d646",
+      "sha256": "0e7c97175bcdb6057449bd330887b45bbe0d37d4ff5242617b7589fbc8216d9d",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
