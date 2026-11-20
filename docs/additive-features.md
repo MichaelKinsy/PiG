@@ -2045,6 +2045,6 @@ Call-site markers: `extensions/sdk/context.go`, `coding/extension/host/subproces
 
 Locked by: `TestReloadPreservesStockMethodTypeAndCall`, `TestReloadContinuationUsesOneReloadCallAndOldContextStaysStale` (`extensions/sdk/reload_continue_test.go`), `TestReloadOnlyContinuationRetainsRunningTools`, `TestReloadContinuationUsesNewRuntimeExactlyOnce` (`coding/extension/host/subprocess/reload_continue_test.go`), `TestDeferredReloadFailurePrefixesOneLineAndKeepsContinuation`, `TestPendingReloadWaitsForTheActiveTurn` (`internal/codingagent/reload_continuation_test.go`), `TestGoReloadContinuationIsNextUserTurn` (`coding/cli/reload_continue_test.go`), `TestGoReloadContinuationRestartsChangedCodeInInteractiveMode`, `TestGoReloadContinuationFailureStillResumesInteractiveMode`, and `TestGoMultipleReloadContinuationsWaitForEachInteractiveTurn` (`coding/cli/reload_continue_interactive_test.go`).
 
-SCRUTINIZED:pending-owner-review
+SCRUTINIZED:approved
 
 Remove when: Pi has an equivalent continuation option or this Go convenience is removed.
