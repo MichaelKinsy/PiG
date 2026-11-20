@@ -3122,7 +3122,7 @@ Pi bug: no: intentional guard in PiG.
 
 Scope: user-initiated model switches (`SetModel`, `SetModelOnMain`, `BeginModelChange` with `ModelSelectSourceUser`, and `beginModelCycle`) in `coding`. Extension-sourced switches (`ExtensionSetModel`) and non-user `BeginModelChange` retain Pi's unrefused behavior.
 
-SCRUTINIZED:pending-owner-review
+SCRUTINIZED:approved
 
 Remove when: upstream Pi refuses user-initiated model switches whose target `contextWindow` is below the session's known context tokens, or PiG drops the manual-switch guard.
 
