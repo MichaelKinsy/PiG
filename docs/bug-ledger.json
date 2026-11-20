@@ -29595,38 +29595,6 @@
       ]
     },
     {
-      "id": "BF-D239",
-      "title": "An abort ends the turn only; a running compaction finishes, and `/compact-cancel` stops it",
-      "symptom": "none; intentional policy difference. Pi has no `/compact-cancel` slash command (`packages/coding-agent/src/core/slash-commands.ts`).",
-      "rootCause": "Aborting a slow turn or hitting Escape should not discard an expensive in-flight compaction summary, and a second `/compact` should report the active compaction rather than cancelling it.",
-      "rootCauseSource": "divergence record",
-      "userImpact": "Behavior differed from Pi",
-      "platform": "All platforms",
-      "class": "ahead-of-pi",
-      "divergence": "D239",
-      "removeWhen": "Pi stops cancelling a compaction on abort, or this behaviour is withdrawn.",
-      "fixedIn": "Unreleased",
-      "origin": "divergence",
-      "commits": [
-        {
-          "hash": "444697d465",
-          "date": "2026-11-19"
-        }
-      ],
-      "tests": [
-        "coding/session_compaction_no_cancel_on_abort_test.go::TestAbortCompactionStillCancelsARunningCompaction",
-        "coding/session_compaction_no_cancel_on_abort_test.go::TestAwaitedAbortWaitsForARunningCompaction",
-        "coding/session_compaction_no_cancel_on_abort_test.go::TestRequestAbortLeavesARunningCompactionRunning",
-        "coding/session_compaction_no_cancel_on_abort_test.go::TestSecondCompactionRequestIsRefusedAndTheFirstCompletes",
-        "internal/codingagent/interactive_compaction_d239_test.go::TestNavigateTreeDuringCompactionRefusesWithoutCancelling",
-        "internal/codingagent/interactive_compaction_d239_test.go::TestSecondCompactShowsAlreadyCompacting",
-        "internal/codingagent/interactive_compaction_d239_test.go::TestSettleReplacedSessionCancelsCompaction",
-        "internal/codingagent/interactive_compaction_d239_test.go::TestSettleRunAtQuitCancelsCompaction",
-        "internal/codingagent/interactive_test.go::TestCompactCancelCommandCancelsOnlyARunningCompaction",
-        "internal/codingagent/interactive_test.go::TestInteractiveMode_EscDoesNotCancelCompactionWhileAgentIsIdle"
-      ]
-    },
-    {
       "id": "BF-D247",
       "title": "Quit settles the interrupted run before session_shutdown and disposal",
       "symptom": "the quit disposes the runtime while a turn is still running and does not wait for it to settle, so the turn's last messages are not saved and a stored assistant tool call can be left without its result ([#9124](https://github.com/earendil-works/pi/issues/9124)); a later Pi change awaits the abort first.",
@@ -48650,8 +48618,7 @@
     },
     {
       "id": "D239",
-      "title": "An abort ends the turn only; a running compaction finishes, and `/compact-cancel` stops it",
-      "entry": "BF-D239"
+      "title": "An abort ends the turn only; a running compaction finishes, and `/compact-cancel` stops it"
     },
     {
       "id": "D247",
