@@ -1032,6 +1032,7 @@ func (s *Session) promptCompactionDueLocked(ctx context.Context) (func(context.C
 			}
 			return false, nil
 		}
+		// pig divergence (D654): shares checkCompactionDecision's contextWindow <= 0 threshold skip on pre-prompt checks.
 		if _, err := s.checkCompactionDecision(ctx, la, false, deferCompaction); err != nil {
 			return nil, err
 		}
@@ -3340,6 +3341,10 @@ func (s *Session) checkCompactionDecision(ctx context.Context, assistantMsg *age
 		contextTokens = estimate.Tokens
 	default:
 		contextTokens = directContextTokens
+	}
+	// pig divergence (D654): Pi's shared _checkCompaction uses contextWindow ?? 0 and calls shouldCompact(tokens, 0, settings), which returns true for both post-answer and pre-prompt checks; PiG skips threshold compaction when contextWindow <= 0 (matching Pi's separate _exceedsCompactionThreshold helper).
+	if contextWindow <= 0 {
+		return false, nil
 	}
 	if compaction.ShouldCompact(contextTokens, contextWindow, settings) {
 		return compact(ctx, "threshold", false)
