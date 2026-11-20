@@ -9,7 +9,8 @@ import (
 	"strings"
 	"syscall"
 	"testing"
-	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/execfile"
 )
 
 // A Node extension runs the harness entry of the materialized runtime (packed or isolated), not the one in the source tree: it starts the entry again the way pi-subagents does (process.execPath process.argv[1] ...), and SIGKILL of that entry must end the binary the entry runs.
@@ -20,8 +21,9 @@ func TestHarnessEntryKillAcrossIsolationModes(t *testing.T) {
 			dir := t.TempDir()
 			binaryPID, entryPID, argsFile := filepath.Join(dir, "bin.pid"), filepath.Join(dir, "entry.pid"), filepath.Join(dir, "args")
 			stub := filepath.Join(dir, "pig")
-			script := "#!/bin/sh\ntrap '' TERM\nprintf '%s\\n' \"$@\" > '" + argsFile + "'\necho $$ > '" + binaryPID + ".tmp' && mv '" + binaryPID + ".tmp' '" + binaryPID + "'\nwhile :; do sleep 0.1; done\n"
-			if err := os.WriteFile(stub, []byte(script), 0o700); err != nil {
+			termFile := filepath.Join(dir, "term")
+			script := "#!/bin/sh\ntrap 'echo > " + termFile + "' TERM\nprintf '%s\\n' \"$@\" > '" + argsFile + "'\necho $$ > '" + binaryPID + ".tmp' && mv '" + binaryPID + ".tmp' '" + binaryPID + "'\nwhile :; do sleep 0.1; done\n"
+			if err := execfile.Write(stub, os.O_CREATE|os.O_TRUNC, 0o700, execfile.Bytes([]byte(script))); err != nil {
 				t.Fatal(err)
 			}
 			ext := filepath.Join(dir, "respawn.mjs")
@@ -50,23 +52,18 @@ export default function (pi) {
 			if raw, err := os.ReadFile(argsFile); err != nil || strings.TrimSpace(string(raw)) != "--extension-arg" {
 				t.Fatalf("binary argv = %q (%v), want exactly the arguments the extension passed", raw, err)
 			}
+			supervisor := harnessSupervisor(t, binary, entry)
 			if err := syscall.Kill(entry, syscall.SIGTERM); err != nil {
 				t.Fatal(err)
 			}
-			time.Sleep(300 * time.Millisecond)
+			awaitHarnessFile(t, termFile)
 			if !harnessChildAlive(binary) {
 				t.Fatal("the binary ended on TERM, which it traps")
 			}
 			if err := syscall.Kill(entry, syscall.SIGKILL); err != nil {
 				t.Fatal(err)
 			}
-			deadline := time.Now().Add(5 * time.Second)
-			for harnessChildAlive(binary) {
-				if time.Now().After(deadline) {
-					t.Fatal("the binary survived SIGKILL of the harness entry")
-				}
-				time.Sleep(20 * time.Millisecond)
-			}
+			awaitHarnessBinaryEnd(t, binary, supervisor)
 		})
 	}
 }
