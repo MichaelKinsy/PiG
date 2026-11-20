@@ -219,7 +219,7 @@ func peerObserverSource(t *testing.T) string {
 
 // observePiG runs one row against one harness: the editing handler and an observer of the same extension (the SDK fixture's commands), a Node extension that only
 // observes, and a Session over a real provider that receives two prompts.
-func observePiG(t *testing.T, tc harnessCase, row messageEventRow) messageEventObservation {
+func observePiG(t *testing.T, tc harnessCase, row messageEventRow, holdConsumer bool) messageEventObservation {
 	t.Helper()
 	h := tc.make(t)
 	t.Cleanup(func() {
@@ -247,7 +247,7 @@ func observePiG(t *testing.T, tc harnessCase, row messageEventRow) messageEventO
 	if row.deepApplies() && row.event != "turn_start" && row.event != "agent_start" {
 		runConformanceCommandArgs(t, h, "event_field_probe", row.event+" "+field)
 	}
-	observed, requests, entries, events := runTwoPrompts(t, h)
+	observed, requests, entries, events := runTwoPrompts(t, h, holdConsumer)
 
 	var o messageEventObservation
 	for _, line := range observed {
@@ -370,7 +370,7 @@ type sessionEventSeen struct {
 
 // runTwoPrompts sends two prompts through a real Session over the harness's Runner and a provider on a recording server, and returns the notifications the handlers
 // made, the bodies of the two requests, the message entries the session holds, and the events its listeners received.
-func runTwoPrompts(t *testing.T, h *harness) (observed []string, requests [][]byte, entries []sessionEntryMessage, events []sessionEventSeen) {
+func runTwoPrompts(t *testing.T, h *harness, holdConsumer bool) (observed []string, requests [][]byte, entries []sessionEntryMessage, events []sessionEventSeen) {
 	t.Helper()
 	var mu sync.Mutex
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -401,9 +401,16 @@ func runTwoPrompts(t *testing.T, h *harness) (observed []string, requests [][]by
 		t.Fatal(err)
 	}
 	done := make(chan struct{})
+	// With holdConsumer the consumer of Events reads nothing until both prompts have finished, so every event it reads was published before, and read after, the
+	// handlers' edits.
+	release := make(chan struct{})
+	events0 := session.Events()
 	go func() {
 		defer close(done)
-		for event := range session.Events() {
+		if holdConsumer {
+			<-release
+		}
+		for event := range events0 {
 			// The events a listener (the UI, the RPC stream) receives are the Go objects the extension handlers were handed a decode of: the message each carries is what
 			// the stream writes, so the edit is in the stream when the message holds it.
 			kind, role, carried := "", "", []byte(nil)
@@ -448,6 +455,7 @@ func runTwoPrompts(t *testing.T, h *harness) (observed []string, requests [][]by
 			break
 		}
 	}
+	close(release)
 	for _, entry := range session.Entries() {
 		var decoded struct {
 			Type    string
@@ -553,7 +561,7 @@ func TestInPlaceMessageEventEditsMatchPi(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, row := range messageEventRows() {
 				t.Run(row.name(), func(t *testing.T) {
-					got := observePiG(t, tc, row)
+					got := observePiG(t, tc, row, false)
 					want := wantObservation(pi, tc.name, row.name())
 					t.Logf("pig %-22s A=%v B=%v entries=%v requests=%v events=%v stale=%v", row.name(), got.A, got.B, got.Entries, got.Requests, got.Events, got.Stale)
 					if reason, pending := pendingFor(tc.name, row.name()); pending {
@@ -568,5 +576,45 @@ func TestInPlaceMessageEventEditsMatchPi(t *testing.T) {
 				})
 			}
 		})
+	}
+}
+
+// TestHeldEventsConsumerReadsTheMessageAsPublished is the failing shape of the data race: a turn_end handler of a Node extension (the packed SDK over a subprocess)
+// edits the assistant message's content in place while the consumer of Session.Events has read nothing yet. The consumer then reads the message_end event of that
+// message after the edit, and must read the text the message had when the event was published, as Pi's listeners, running at the event, read it.
+func TestHeldEventsConsumerReadsTheMessageAsPublished(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping conformance suite in short mode (builds subprocess fixtures)")
+	}
+	t.Parallel()
+	var row messageEventRow
+	for _, r := range messageEventRows() {
+		if r.name() == "turn_end/deep" {
+			row = r
+		}
+	}
+	if row.name() != "turn_end/deep" {
+		t.Fatal("the turn_end/deep row is missing")
+	}
+	ran := false
+	for _, tc := range sdkHarnessCases() {
+		if tc.name != "subprocess-node-packed" {
+			continue
+		}
+		ran = true
+		t.Run(tc.name, func(t *testing.T) {
+			got := observePiG(t, tc, row, true)
+			for _, e := range got.Events {
+				if e == "message_end:assistant" {
+					t.Errorf("the held consumer's message_end of the assistant message shows the turn_end handler's later edit %q (events with the edit: %v)", inPlaceEdited, got.Events)
+				}
+			}
+			if !slices.Contains(got.Entries, "assistant") {
+				t.Errorf("the session's entry of the assistant message lacks the edit (entries with it: %v): the handler's edit did not run", got.Entries)
+			}
+		})
+	}
+	if !ran {
+		t.Fatal("the subprocess-node-packed harness case is missing")
 	}
 }
