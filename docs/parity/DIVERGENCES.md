@@ -4462,9 +4462,9 @@ Pi bug: not reported upstream, and Pi's main still has the unguarded pair (`agen
 
 Scope: `coding` (`Session.checkCompactionDecision`, so every run that checks a reply: `Send`, the agent loop's post-reply check and the retry paths that call it). Who has a window of 0: a model a Go embedder builds without `ContextWindow`; a model an extension registers with no `contextWindow` (`extension.ProviderModelConfig`, no default); a virtual model whose limits are unset and whose answering physical model cannot be resolved. Who does not: a model of `models.json` (the schema defaults the window to 128000), a catalog model, and a llama.cpp model (`contextWindowOf` falls back to 128000 and never returns 0).
 
-Owner decision: the reviewer ruled on 2026-11-19 that the fix of pull request #548 joins 0.8.0; the record awaits the owner's approval (`make divergence-approve ID=D660`, run by the owner).
+Owner decision: the reviewer ruled on 2026-11-20, by owner principle (decision 29), that the fix of pull request #548 joins 0.8.0 and approved this record the same day.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:99338ada10bede4a, by principle (owner decision 29)
 
 Remove when: Pi guards the post-reply check against a window of 0 (checked on Pi main on 2026-11-19: not yet; `agent-session.ts:3135`, `:3251`).
 

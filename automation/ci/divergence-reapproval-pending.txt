@@ -7,4 +7,3 @@
 # its pull request. Sorted by class: behaviour, scope, remove-when, owner-field, editorial, new. Within a class the
 # generator listed them in reading order: tokens-changed, large-insert, medium, owner-statement-after, small.
 D614 new added on the release line by 633aaa0 (Mount plugin UI views over D107 in every extension SDK (D614)), first merge 19321a064 Merge the plugin UI port fixes (lint, port-lint, embedder docs, regenerated bund
-D660 new added on this branch for the fix of pull request #548 (a reply from a model with an unknown context window starts no threshold compaction); the reviewer ruled the fix joins 0.8.0 and the record awaits the owner's read
