@@ -742,6 +742,9 @@ type InteractiveMode struct {
 	renderWakeCh     <-chan time.Time
 	// frameDue is the deadline of the throttled frame the renderer armed and the loop has not run yet, in Unix nanoseconds, and 0 when there is none (armFrameTimer, runScheduledRender).
 	frameDue atomic.Int64
+	// grammarLoadPending is true from the start of the startup grammar load until its continuation has run on the owner loop, and the loop leaves a due frame
+	// until then (runScheduledRender, loadRemainingHighlightLanguages). One mode's flag; no other mode and no non-interactive start sets it.
+	grammarLoadPending atomic.Bool
 
 	// Extension errors reported from any goroutine wait here until the main
 	// loop shows them; extensionErrorWakeCh (capacity 1) wakes the loop.
@@ -769,21 +772,47 @@ type InteractiveMode struct {
 	reloadTailInput [][]byte
 }
 
+// loadHighlightLanguages registers every syntax language. It is a variable so that a test can hold the load while the frames around it run; no other code sets it.
+var loadHighlightLanguages = tui.LoadAllHighlightLanguages
+
 // loadRemainingHighlightLanguages registers every syntax language on a task the mode owns (a grammar is decoded when its language is first used), then, on the owner loop, invalidates the cached lines and requests a render, so code highlighted with the startup grammars picks up the rest. A mode that has stopped requests nothing.
+//
+// Pi's import runs on its one event loop, so a frame that the start requests meanwhile (a timer) runs after the continuation that invalidates and requests a render, and the requests are one frame. The task runs beside the owner loop, so the loop leaves a due frame until the continuation has run (grammarLoadPending, runScheduledRender): the grammar load is finite CPU work with no wait on the loop, so the hold ends with it, as Pi's blocked loop ends with the import. Every end of the task lifts it: the continuation, a stopped mode whose continuation cannot be posted, and a load that panics.
 // upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:init
 func (m *InteractiveMode) loadRemainingHighlightLanguages() {
 	ctx := m.backgroundCtx
+	m.grammarLoadPending.Store(true)
 	m.backgroundTasks.Go(func() {
-		tui.LoadAllHighlightLanguages()
-		_ = m.postToMain(ctx, func() {
+		loaded := false
+		defer func() {
+			// The load did not return: the uncaught handler runs, and the frame it held is the owner loop's again.
+			if !loaded && m.postToMain(ctx, m.releaseGrammarLoadHold) != nil {
+				m.grammarLoadPending.Store(false)
+			}
+		}()
+		loadHighlightLanguages()
+		loaded = true
+		if m.postToMain(ctx, func() {
 			m.tuiInst.Invalidate()
 			m.tuiInst.RequestRender()
 			// The start's last repaint request: a startup profile, and a pty child that must not be ready before it, wait for this label.
 			m.startupMark()("highlight-repaint-requested")
-		})
+			m.releaseGrammarLoadHold()
+		}) != nil {
+			// A stopped mode has no loop to hold.
+			m.grammarLoadPending.Store(false)
+		}
 		// After the repaint is queued, so the collection never delays it.
 		m.releaseStartupHeapWhenIdle(ctx)
 	})
+}
+
+// releaseGrammarLoadHold ends the hold the grammar load put on the due frame and runs the frame that waited. Owner loop only.
+func (m *InteractiveMode) releaseGrammarLoadHold() {
+	m.grammarLoadPending.Store(false)
+	if m.frameDue.Load() != 0 {
+		m.runScheduledRender()
+	}
 }
 
 // startVersionCheck starts run()'s unawaited version check. A newer release posts its notice to the UI loop.
@@ -896,9 +925,10 @@ func (m *InteractiveMode) armFrameTimer(due time.Time) {
 
 // runScheduledRender runs the renderer's due throttled frame, if any, on the
 // main loop. A frame wakes a parked spinner ticker, whose next tick re-checks
-// whether the session still animates (D172).
+// whether the session still animates (D172). While the startup grammar load runs the frame waits for the load's continuation, which runs it
+// (releaseGrammarLoadHold), as a timer waits for Pi's blocked loop.
 func (m *InteractiveMode) runScheduledRender() {
-	if m.frameHold {
+	if m.frameHold || m.grammarLoadPending.Load() {
 		return
 	}
 	m.allowFramePacing()
