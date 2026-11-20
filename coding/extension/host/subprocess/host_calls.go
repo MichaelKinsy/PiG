@@ -435,6 +435,11 @@ func (h *Host) runCall(me *managedExt, conn *Conn, callID string, call *CallPayl
 	defer endExecSignal()
 
 	h.endSyncRunHold(conn, call)
+	// pig additive (D19): a generation awaiting its own reload must live long enough to answer its tool; an external reload still drains tools synchronously.
+	if call.Method == "reload" {
+		me.reloadCalls.Add(1)
+		defer me.reloadCalls.Add(-1)
+	}
 	var result *CallResultPayload
 	var err error
 	switch {

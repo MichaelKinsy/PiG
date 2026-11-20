@@ -7,7 +7,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 )
 
-// commandGate counts the command requests running on one extension generation and runs a callback when the last of them returns.
+// commandGate counts requests running on one extension generation and runs a callback when the last of them returns.
 type commandGate struct {
 	mu      sync.Mutex
 	running int
@@ -33,7 +33,7 @@ func (g *commandGate) end() {
 	}
 }
 
-// afterIdle runs fn when no command is running and reports true, or reports false at once when the generation is idle and the caller acts itself.
+// afterIdle runs fn when no counted request is running and reports true, or reports false at once when the generation is idle and the caller acts itself.
 func (g *commandGate) afterIdle(fn func()) bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -44,7 +44,7 @@ func (g *commandGate) afterIdle(fn func()) bool {
 	return true
 }
 
-// generationRetirement is the stop of a replaced generation that a running command deferred. Whichever of the command's return and Shutdown comes first runs it, once.
+// generationRetirement is the stop of a replaced generation that a running command or tool deferred. Whichever of the request's return and Shutdown comes first runs it, once.
 type generationRetirement struct {
 	once sync.Once
 	run  func()
@@ -52,23 +52,27 @@ type generationRetirement struct {
 
 func (r *generationRetirement) do() { r.once.Do(r.run) }
 
-// retireGeneration stops a replaced or removed generation. A generation with a command still running keeps running until that command returns: Pi's old extension instance outlives the reload its command awaits (agent-session.ts:3575-3625, one process), so `await ctx.reload()` resolves in it. The stop then runs as a Host task, and Shutdown runs any still pending. Once Shutdown has collected the pending stops, nothing would run a new one, so the generation stops at once. It reports whether the stop was deferred; the caller reaps an immediate stop itself.
+// retireGeneration stops a replaced or removed generation. Running commands retain it until they return. Tools retain it only while the generation awaits its own reload, so `await ctx.reload()` can resolve in its handler (agent-session.ts:3575-3625, one process). An external reload stops and drains tools synchronously. A deferred stop runs as a Host task, and Shutdown runs any still pending. It reports whether the stop was deferred; the caller reaps an immediate stop itself.
 func (h *Host) retireGeneration(old *managedExt, stop func()) (deferred bool) {
 	retirement := &generationRetirement{run: func() {
 		stop()
 		old.reap()
 	}}
-	// The gate takes the callback and the stop becomes visible to Shutdown under one hold of retirementMu, so an immediate stop is never also collected by Shutdown, and a command that returns at once waits here before it starts the task.
+	// The gate takes the callback and the stop becomes visible to Shutdown under one hold of retirementMu, so an immediate stop is never also collected by Shutdown, and a request that returns at once waits here before it starts the task.
 	h.retirementMu.Lock()
 	if !h.retirementsClosed {
-		deferred = old.commands.afterIdle(func() { h.goRetirement(retirement) })
+		gate := &old.commands
+		if old.reloadCalls.Load() > 0 {
+			gate = &old.requests
+		}
+		deferred = gate.afterIdle(func() { h.goRetirement(retirement) })
 	}
 	if deferred {
 		if h.retirements == nil {
 			h.retirements = make(map[*generationRetirement]struct{})
 		}
 		h.retirements[retirement] = struct{}{}
-		// The reload invalidated the old runner (agent-session.ts:3660-3664), so the running command's captured pi and ctx throw Pi's stale message (runner.ts:721-735) once `await ctx.reload()` resolves, members it answers locally included. The notify is queued before the reply to that reload and, under retirementMu, before the deferred stop's shutdown frame. An immediate stop needs none: the runtime ends with its connection.
+		// The reload invalidated the old runner (agent-session.ts:3660-3664), so the running handler's captured pi and ctx throw Pi's stale message (runner.ts:721-735) once `await ctx.reload()` resolves, members it answers locally included. The notify is queued before the reply to that reload and, under retirementMu, before the deferred stop's shutdown frame. An immediate stop needs none: the runtime ends with its connection.
 		invalidateGeneration(old)
 	}
 	h.retirementMu.Unlock()

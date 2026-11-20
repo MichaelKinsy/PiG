@@ -113,6 +113,20 @@ See [Extension authoring](extension-authoring.md) and [Extension API parity](ext
 
 PiG loads session history for an extension only when the extension reads it. A persisted session is read from its local JSONL file and reconciled with the host cursor. If the file is unavailable, the host sends ordered pages of at most 4 MB. Later appends use the same bounded path.
 
+## Go SDK: reload and continue
+
+Use `ctx.Reload()` to reload without a continuation. To reload and submit a follow-up user message, pass one options value:
+
+```go
+err := ctx.Reload(sdk.ReloadOptions{ContinueWith: "Continue with the refreshed extensions."})
+```
+
+This Go SDK convenience uses the reload host call's optional `continueWith` string (D658). In print/RPC modes and an idle interactive session, the host awaits reload and then submits the string once through the replacement runtime with `deliverAs: "followUp"`. An empty string sends nothing. A synchronous reload failure sends nothing. A submission failure reaches the caller; a successful reload is not rolled back.
+
+During an interactive model turn, the call instead schedules the reload and returns success immediately, so a tool does not deadlock waiting for the agent that is awaiting it. After the agent and all settled handlers finish, the owner loop runs the real reload and submits the continuation through the current runtime. If the deferred reload fails, the continuation still arrives, prefixed with one line: `[reload failed: <error>]`. Shutdown cancels pending work. Separate reload calls are not deduplicated.
+
+The old context becomes stale when the real reload takes place. A scheduled return is admission, not confirmation that replacement code is already loaded. Do not use the old context after replacement. Existing direct `Reload()` calls still compile. Nonvariadic method values or interfaces need a wrapper/adapter for the new variadic signature. Interactive reload without a continuation retains Pi's streaming refusal and warning-only completion. A client must keep the session alive until the resulting run settles.
+
 ## Reload
 
 `/reload` resolves the same extension inputs as startup and preserves their first-seen order. Pig reuses valid build artifacts and calls the factory of every configured, embedded, fused, and built-in extension again, as Pi does. Module state follows Pi's loader: a TypeScript or CommonJS extension is evaluated again, so its module state resets, and an ES module extension (`.mjs`, or `.js` under `"type": "module"`) keeps its module and its state. Pi keeps running an edited ES module extension's old code until it restarts. When a reload starts, Pig evaluates each edited local ES module again, with each local ES module that imports one, and keeps every other module's instance, so extensions that import one edited module share its new evaluation and an edit that breaks the module fails its load as an edited TypeScript extension's does; an installed package or a CommonJS module keeps its module until a restart (D93). A Go or Rust extension keeps its package state until an edit of its source rebuilds it, and a Python extension keeps its modules until a module it uses changes. A Python extension uses each module its factory imports, also one that another extension imported first, each module that a used module imports, and each module in its directory that no factory imported, unless a nested extension directory holds it. An edit to a module that several extensions use reloads all of them. An unedited extension that uses no edited module keeps its module state. A module that an extension imports only from code outside its own modules after its factory returned, or through a loader that bypasses `import`, can keep its old code until the extension reloads for another reason. A package installed under an extension's directory outside `site-packages` or `dist-packages` counts as that extension's own source. It starts and validates replacements, checks registration, and publishes the successful set. A failed extension is removed and reported while other extensions load.

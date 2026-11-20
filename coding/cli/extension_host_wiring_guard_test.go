@@ -6,6 +6,7 @@ import (
 	"maps"
 	"reflect"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -48,23 +49,59 @@ type hostCallbackAllowance struct {
 	deprecated string
 }
 
-// checkHostCallbackBindings fails for every field mode leaves unbound without an allowance, and for every allowance whose field is bound, so a closed gap must delete its entry.
-func checkHostCallbackBindings(t *testing.T, mode string, bridge *subprocess.UIBridge, allowed map[string]hostCallbackAllowance) {
+// checkHostCallbackBindings fails for every field mode leaves unbound without an allowance, and for every allowance whose field is bound, so a closed gap must delete its entry. It reports whether the ReloadContinuation allowance was used (the field unbound and allowed).
+func checkHostCallbackBindings(t *testing.T, mode string, bridge *subprocess.UIBridge, allowed map[string]hostCallbackAllowance) bool {
 	t.Helper()
 	unbound := unboundHostCallbacks(t, bridge)
+	for _, problem := range hostCallbackBindingProblems(mode, unbound, allowed) {
+		t.Error(problem)
+	}
+	_, ok := allowed["ReloadContinuation"]
+	return ok && slices.Contains(unbound, "ReloadContinuation")
+}
+
+// hostCallbackBindingProblems is the failure list checkHostCallbackBindings reports for the unbound fields of one mode.
+func hostCallbackBindingProblems(mode string, unbound []string, allowed map[string]hostCallbackAllowance) []string {
+	var problems []string
 	for _, name := range unbound {
 		if _, ok := allowed[name]; !ok {
-			t.Errorf("%s mode leaves HostCallbacks.%s unbound: every extension that reaches it gets the host's fallback instead of the Session's answer", mode, name)
+			problems = append(problems, fmt.Sprintf("%s mode leaves HostCallbacks.%s unbound: every extension that reaches it gets the host's fallback instead of the Session's answer", mode, name))
 		}
 	}
 	for name, allowance := range allowed {
 		if allowance.upstream == "" && allowance.gap == "" && allowance.deprecated == "" {
-			t.Errorf("%s mode allowance for HostCallbacks.%s has no reason", mode, name)
+			problems = append(problems, fmt.Sprintf("%s mode allowance for HostCallbacks.%s has no reason", mode, name))
 		}
 		if !slices.Contains(unbound, name) {
-			t.Errorf("%s mode binds HostCallbacks.%s now; delete its allowance", mode, name)
+			problems = append(problems, fmt.Sprintf("%s mode binds HostCallbacks.%s now; delete its allowance", mode, name))
 		}
 	}
+	return problems
+}
+
+// The allowance is merged into the headless checks only: an interactive-mode check that leaves ReloadContinuation unbound still fails, and a headless check that leaves another field unbound still fails.
+func TestReloadContinuationAllowanceCanFail(t *testing.T) {
+	interactive := mergedAllowances(headlessFooterAllowances, deprecatedHostCallbackAllowances)
+	headless := mergedAllowances(interactive, headlessReloadContinuationAllowances)
+	has := func(problems []string, field string) bool {
+		return slices.ContainsFunc(problems, func(p string) bool { return strings.Contains(p, "HostCallbacks."+field+" unbound") })
+	}
+	t.Run("interactive still fails", func(t *testing.T) {
+		if problems := hostCallbackBindingProblems("interactive", []string{"ReloadContinuation"}, interactive); !has(problems, "ReloadContinuation") {
+			t.Errorf("problems = %v, want ReloadContinuation reported", problems)
+		}
+	})
+	t.Run("headless allows it", func(t *testing.T) {
+		if problems := hostCallbackBindingProblems("print", []string{"ReloadContinuation"}, headless); has(problems, "ReloadContinuation") {
+			t.Errorf("problems = %v, want ReloadContinuation allowed", problems)
+		}
+	})
+	t.Run("headless with another field unbound still fails", func(t *testing.T) {
+		problems := hostCallbackBindingProblems("print", []string{"ReloadContinuation", "Shutdown"}, headless)
+		if !has(problems, "Shutdown") || has(problems, "ReloadContinuation") {
+			t.Errorf("problems = %v, want only Shutdown reported", problems)
+		}
+	})
 }
 
 // Pi's footer factory receives the footer data provider (types.ts:197-203); print mode binds no UI (runner.ts:323-335 noOpUIContext.setFooter) and RPC mode ignores the factory (rpc-mode.ts:210-212), so no extension reaches the footer data outside the TUI.
@@ -72,6 +109,28 @@ var headlessFooterAllowances = map[string]hostCallbackAllowance{
 	"GetGitBranch":              {upstream: "runner.ts:335, rpc-mode.ts:210-212: no footer factory runs outside the TUI"},
 	"GetExtensionStatuses":      {upstream: "runner.ts:335, rpc-mode.ts:210-212: no footer factory runs outside the TUI"},
 	"GetAvailableProviderCount": {upstream: "runner.ts:335, rpc-mode.ts:210-212: no footer factory runs outside the TUI"},
+}
+
+// headlessReloadContinuationAllowances is the one callback print (text, json) and RPC mode leave unbound besides the others listed here. Headless modes reload via actions.Reload + SendUserMessage (D658); ReloadContinuation is an interactive-only deferral bound only by interactive mode (internal/codingagent/interactive_reload.go); Pi has no such callback (types.ts:454 `reload(): Promise<void>`).
+var headlessReloadContinuationAllowances = map[string]hostCallbackAllowance{
+	"ReloadContinuation": {gap: "D658: headless modes reload via actions.Reload + SendUserMessage; interactive-only deferral, no Pi counterpart (types.ts:454)"},
+}
+
+// The reload-continuation allowance names exactly one field, and a bare bridge still reports every other callback past it, so no other unbound field slips through.
+func TestHeadlessReloadContinuationAllowanceIsNarrow(t *testing.T) {
+	if names := slices.Collect(maps.Keys(headlessReloadContinuationAllowances)); !slices.Equal(names, []string{"ReloadContinuation"}) {
+		t.Fatalf("allowance names = %v, want exactly [ReloadContinuation]", names)
+	}
+	unbound := unboundHostCallbacks(t, subprocess.NewUIBridge(func() {}))
+	var unallowed []string
+	for _, name := range unbound {
+		if _, ok := headlessReloadContinuationAllowances[name]; !ok {
+			unallowed = append(unallowed, name)
+		}
+	}
+	if want := reflect.TypeFor[subprocess.HostCallbacks]().NumField() - 1; len(unallowed) != want {
+		t.Fatalf("a bare bridge has %d unbound callbacks outside the allowance, want %d: %v", len(unallowed), want, unallowed)
+	}
 }
 
 // deprecatedHostCallbackAllowances are fields published in v0.2.0 that no extension call reads; they stay as deprecated aliases and no mode binds them.
@@ -90,6 +149,8 @@ func mergedAllowances(sets ...map[string]hostCallbackAllowance) map[string]hostC
 
 // Print and JSON mode bind the Session to their extensions as print-mode.ts rebindSession does (print-mode.ts:74-104 over agent-session.ts:3275-3408 _bindExtensionCore). The guard runs the real mode and inspects the bridge its binding left behind.
 func TestPrintModesBindEveryHostCallback(t *testing.T) {
+	used, modes := 0, 0
+	defer func() { t.Logf("PARITY-ALLOWANCE ReloadContinuation-headless used=%d of=%d", used, modes) }()
 	for _, mode := range []string{"text", "json"} {
 		t.Run(mode, func(t *testing.T) {
 			host := printModeTestHost(t, ai.NewFauxProvider(ai.FauxConfig{}))
@@ -101,9 +162,12 @@ func TestPrintModesBindEveryHostCallback(t *testing.T) {
 			if result.err != nil {
 				t.Fatalf("print mode: %v\n%s", result.err, result.stderr)
 			}
-			checkHostCallbackBindings(t, mode, bridge, mergedAllowances(headlessFooterAllowances, deprecatedHostCallbackAllowances, map[string]hostCallbackAllowance{
+			modes++
+			if checkHostCallbackBindings(t, mode, bridge, mergedAllowances(headlessFooterAllowances, deprecatedHostCallbackAllowances, map[string]hostCallbackAllowance{
 				"Shutdown": {upstream: "print-mode.ts:76-104 binds no shutdownHandler, so agent-session.ts:3365-3367 ctx.shutdown() does nothing"},
-			}))
+			}, headlessReloadContinuationAllowances)) {
+				used++
+			}
 		})
 	}
 }
@@ -139,7 +203,11 @@ func TestRPCModeBindsEveryHostCallback(t *testing.T) {
 	runner := inproc.NewRunner(nil, services.CWD())
 	detach := h.bindExtensionActions(session, st, runner, func() *coding.Session { return session })
 	defer detach()
-	checkHostCallbackBindings(t, "rpc", bridge, mergedAllowances(headlessFooterAllowances, deprecatedHostCallbackAllowances))
+	used := 0
+	if checkHostCallbackBindings(t, "rpc", bridge, mergedAllowances(headlessFooterAllowances, deprecatedHostCallbackAllowances, headlessReloadContinuationAllowances)) {
+		used++
+	}
+	t.Logf("PARITY-ALLOWANCE ReloadContinuation-headless used=%d of=1", used)
 }
 
 // Every mode's build loads its extensions, then flushes the virtual models they queued into the model runtime before the local refresh and model resolution, as Pi's createAgentSessionServices does (agent-session-services.ts:182-193): a failed registration becomes the startup error diagnostic `Extension "<path>" error: <message>`, and later registrations and removals apply at once (runner.ts:497-541).
