@@ -24,3 +24,14 @@ func TestReconcileLeavesAMarkerOfAnotherPIDNamespaceAlone(t *testing.T) {
 		t.Fatalf("exit.log = %q", text)
 	}
 }
+
+// The marker this process writes names its PID namespace, which is what a session in another namespace on the same host compares.
+func TestSessionMarkerHeaderNamesThePIDNamespace(t *testing.T) {
+	ns := pidNamespace()
+	if ns == "" {
+		t.Skip("no PID namespace link")
+	}
+	if header := ownMarkerHeader(t); header.PIDNS != ns {
+		t.Fatalf("header pidns = %q, want %q", header.PIDNS, ns)
+	}
+}
