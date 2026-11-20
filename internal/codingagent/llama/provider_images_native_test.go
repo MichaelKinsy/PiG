@@ -6,7 +6,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// The ai classifier model the provider publishes carries the input and System One compat of a decision model that takes images (D664).
+// The ai classifier model the provider publishes carries the input and System One compat of a decision model that takes images.
 func TestAIClassifierModelCarriesImageInputOfDecisionModels(t *testing.T) {
 	model := toPiClassifierModel(LlamaModelInfo{ID: "clef", Architecture: &LlamaModelArchitecture{InputModalities: []string{"text", "image"}, OutputModalities: []string{"decisions"}}}, "http://localhost:8080", 0)
 	got := model.aiModel()

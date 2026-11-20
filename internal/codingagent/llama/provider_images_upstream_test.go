@@ -14,7 +14,7 @@ import (
 )
 
 // Ports the case of packages/coding-agent/test/llama-extension.test.ts "sends images to decision models that advertise image input as data URLs"
-// (Pi main 5799e217e, #12282), served by a mock llama-server. Pi at the pin registers every classifier as text-only (D664).
+// (Pi main 5799e217e, #12282), served by a mock llama-server. Pi at the pin registers every classifier as text-only.
 
 type systemOneCall struct {
 	header http.Header

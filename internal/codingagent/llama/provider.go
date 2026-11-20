@@ -361,8 +361,7 @@ func toPiClassifierModel(model LlamaModelInfo, serverURL string, cachedContextWi
 		Input:         []string{"text"},
 		ContextWindow: contextWindowOf(model, cachedContextWindow),
 	}
-	// pig divergence (D664): a decision model that reports image input takes images as data URLs. Pi at the pin hardcodes input ["text"],
-	// so models.classify() refuses the images of such a model (Pi main 5799e217e, #12282).
+	// Ports provider.ts toPiClassifierModel at Pi 5799e217e (#12282): a decision model that reports image input takes images as data URLs.
 	if isDecisionModel(model) && model.Architecture.includesInput("image") {
 		sendImageOptInHeader := false
 		result.Input = []string{"text", "image"}
@@ -499,7 +498,7 @@ func (m ClassifierModel) aiModel() ai.ClassifierModel {
 		Input:         m.Input,
 		Cost:          ai.ModelCost{Input: m.Cost.Input, Output: m.Cost.Output, CacheRead: m.Cost.CacheRead, CacheWrite: m.Cost.CacheWrite},
 		ContextWindow: m.ContextWindow,
-		Compat:        m.Compat, // pig divergence (D664): the image input of a decision model reaches the ai model
+		Compat:        m.Compat,
 	}
 }
 

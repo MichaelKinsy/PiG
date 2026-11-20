@@ -2786,6 +2786,37 @@ mirrorSource("e56d35ce5ece", "packages/coding-agent/src/core/model-resolver.ts",
 // not carried: packages/ai catalog/providers/openai-codex.ts, packages/ai test and CHANGELOG: the package ships none of them; the generated data carries the change.
 // END backport cead615b48b8
 
+// BEGIN backport 5799e217e
+// 5799e217e (#12335, #12282): a llama.cpp decision classifier whose server reports image input is registered with input ["text", "image"] and the System One compat that sends the images as data URLs.
+// not carried: packages/coding-agent/test/llama-extension.test.ts and CHANGELOG.md: the package ships neither.
+patch("5799e217e", "pi-coding-agent/extensions/llama/provider.js", [
+    [` * answers from next-token label probabilities.
+ */
+function toPiClassifierModel(model, serverUrl, cachedContextWindow) {
+    const decision = isDecisionModel(model);
+    return {`, ` * answers from next-token label probabilities and takes no images. llama.cpp reads System One images
+ * from the \`images\` list of data URLs, not from TypeSafe's \`assets\`.
+ */
+function toPiClassifierModel(model, serverUrl, cachedContextWindow) {
+    ${note("5799e217e").trim()}
+    const decision = isDecisionModel(model);
+    const image = decision && model.architecture?.input_modalities?.includes("image") === true;
+    return {`],
+    [`        input: ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: contextWindowOf(model, cachedContextWindow),
+    };
+}
+function isLlamaClassifierModel`, `        input: image ? ["text", "image"] : ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: contextWindowOf(model, cachedContextWindow),
+        ...(image && { compat: { imageInput: "images", sendImageOptInHeader: false } }),
+    };
+}
+function isLlamaClassifierModel`],
+]);
+// END backport 5799e217e
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

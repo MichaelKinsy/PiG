@@ -23602,6 +23602,30 @@
       ]
     },
     {
+      "id": "BF-64373de",
+      "title": "A llama.cpp decision classifier whose server reports image input, such as Clef with its `mmproj`, now takes…",
+      "symptom": "A llama.cpp decision classifier whose server reports image input, such as Clef with its `mmproj`, now takes images: `models.classify()` sends them to `/v1/systemone` as data URLs instead of failing with \"does not support image input\".",
+      "rootCause": "PiG registered every llama.cpp classifier model with input text only and no System One compat, as Pi did, so the classifier refused the images of a decision model the server had said accepts them.",
+      "rootCauseSource": "release note",
+      "userImpact": "Wrong output or ordering",
+      "platform": "All platforms",
+      "class": "own",
+      "fixedIn": "Unreleased",
+      "releaseNote": "A llama.cpp decision classifier whose server reports image input, such as Clef with its `mmproj`, now takes images: `models.classify()` sends them to `/v1/systemone` as data URLs instead of failing with \"does not support image input\". Decision models without image input and the next-token fallback for chat models stay text-only.",
+      "origin": "release note",
+      "commits": [
+        {
+          "hash": "64373deac1",
+          "date": "2026-11-19"
+        }
+      ],
+      "tests": [
+        "internal/codingagent/llama/provider_images_native_test.go::TestAIClassifierModelCarriesImageInputOfDecisionModels",
+        "internal/codingagent/llama/provider_images_upstream_test.go::TestProviderRefusesImagesForClassifiersThatTakeNone",
+        "internal/codingagent/llama/provider_images_upstream_test.go::TestProviderSendsImagesToDecisionModelsThatAdvertiseImageInputAsDataURLs"
+      ]
+    },
+    {
       "id": "BF-6445df7",
       "title": "PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the…",
       "symptom": "PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the oracle corpus, where PiG used to use Go's `image/png`.",
