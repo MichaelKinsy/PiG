@@ -2045,6 +2045,7 @@ Call-site markers: `ai/openai_stream_trace.go`, `ai/openai.go`, `ai/openai_strea
 
 Locked by: the missing-finish, empty/DONE-only, finish-optional, normal-completion, redaction and UTF-8/budget tests in `ai/openai_stream_trace_test.go`, and `python3 scripts/probe-stream-no-finish.py --pig ./bin/pig`.
 
-Status: local port of a proposed upstream record; awaiting maintainer scrutiny (SCRUTINIZED marker intentionally absent). D237 is provisional and may be renumbered.
+Status: local port of a proposed upstream record; awaiting maintainer scrutiny. D237 is provisional and may be renumbered.
 
 Remove when: Pi provides equivalent retained evidence or this diagnostic is removed.
+SCRUTINIZED:pending-owner-review
