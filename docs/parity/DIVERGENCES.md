@@ -254,7 +254,7 @@ Replaced values (audited against upstream 0.87.1; `pi-identity-patches.mjs` appl
 - ChatGPT sign-in: the agent name that `pi-ai/auth/oauth/openai-chatgpt.js` sends (`AGENT_NAME_HINT`) is `PiG` (`chatgptAgentName` in `identity.json`), where Pi sends `Pi`.
 - Child processes: `AI_AGENT=pi` → `AI_AGENT=pig` (Pi's `cli/setup.ts` and `rpc-entry.ts` export it so tools name the launching agent). `PI_CODING_AGENT=true` is unchanged, because Pi extensions read it to detect the harness.
 - Pi-owned endpoints the vendored Node code would call, routed as the Go host does (D62, D64): the version check (`utils/version-check.js`), the remote model catalog overlay (`core/remote-catalog-provider.js`), the install report (`interactive-mode.js`) and the managed installer API (`package-manager-cli.js`) go to `https://pi-in-go.dev`. The bug-report upload (`core/bug-report-upload.js`) refuses, because PiG never uploads bug reports (D62). The Radius share upload (`session-share.js` `tryShareViaRadius`) returns "unavailable", because PiG never sends a Radius token to Radius's share gateway (D64). None of these run in a PiG session today (the Go host implements the interactive commands), so the patches close paths that an extension could reach by importing Pi's `InteractiveMode`, `getLatestPiRelease`, `withRemoteCatalog` or `uploadBugReport`.
-- MCP OAuth: the client-metadata document that `pi-coding-agent/extensions/mcp/oauth.js` names is served from `https://pi-in-go.dev/oauth/client.json` (the hosted origin in `identity.json`, D64), where Pi names `https://pi.dev/oauth/client.json`.
+- MCP OAuth: the client-metadata document that `pi-coding-agent/extensions/mcp/oauth.js` names names `https://pi-in-go.dev/oauth/client.json` (the hosted origin in `identity.json`, D64), where Pi names `https://pi.dev/oauth/client.json`. PiG's client sends that URL as its `client_id` and as the client-metadata document it names (`coding/mcpext/oauth.go`, `TestMCPOAuthCIMDUsesPisDocumentWhenAuthorizationResponsesNameTheirIssuer`). The document itself is not part of this repository: it must be served at that URL, and until it is, MCP sign-in by client-metadata document does not work for PiG users. Its publication is a release gate outside this repository.
 
 Kept as Pi sends them, by design: GitHub Copilot's `GitHubCopilotChat/0.35.0`, `Editor-Version`, `Editor-Plugin-Version` and `Copilot-Integration-Id` headers and Anthropic OAuth's `claude-cli/…` user agent, because those providers accept requests only from the client they name; Radius's `radius.pi.dev` gateway, model catalog and `pi-gateway` OAuth client id, which the user selects by logging in to the `radius` provider (Pi's own product, the same in the Go host); Pi documentation and migration-guide links printed as text and the update notification's changelog link; `pi-messages` (a protocol name). The guard test `TestVendoredRuntimeCarriesNoPiIdentityOutsideTheAllowlist` scans every vendored file and lists each remaining literal with its reason.
 
@@ -279,7 +279,7 @@ Locked by: `internal/coding/pigidentity` `TestIdentityValuesAreThePiGBrand`, `Te
 
 PORT_MAP path: `packages/ai/src/utils/identity.ts`, `packages/coding-agent/src/core/client-identity.ts`, `packages/coding-agent/src/core/telemetry.ts` (setting/env gate ported; the install-report ping it also gates is D64), `packages/ai/src/auth/oauth/openai-codex.ts`, `packages/ai/src/auth/oauth/xai.ts`, `packages/coding-agent/src/cli/setup.ts`.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:a8cfdf0dc58940f8, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D27 Word segmentation always uses ICU's warm dictionary-engine cache
 
@@ -558,7 +558,7 @@ Locked by: `internal/codingagent/selfupdate_test.go`
 `coding/pigletbuild/native_build_test.go`
 (`TestPigletBinaryBuildArgsBakesReleaseVersionOnly`).
 PORT_MAP path: n/a (standalone-binary self-replace has no upstream pi equivalent; the update notification mirrors upstream `showNewVersionNotification`).
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:5a18015a8be27489, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D44 Positive image capability for Herdr intermediaries
 
@@ -964,20 +964,20 @@ SCRUTINIZED:approved text-sha256:6bd33c34b784faf6
 
 ## D64 PiG's hosted endpoints live on pi-in-go.dev
 
-What: upstream 0.99.2 points its hosted endpoints at pi.dev and uploads shared-session artifacts to Earendil's Radius gateway at `radius.pi.dev`. PiG serves its hosted paths from `https://pi-in-go.dev` through the private PiG platform repository. The install report and the managed installer API keep Pi's response shapes at the PiG host. PiG's version check does not call pi-in-go.dev: it reads the update manifest of the latest GitHub Release (D39, `internal/codingagent/selfupdate.go`). The installer API serves PiG GitHub Release archives and returns 404 for npm-only `package.json` and `package-lock.json` paths because PiG has no npm package.
+What: upstream 0.99.2 points its hosted endpoints at pi.dev and uploads shared-session artifacts to Earendil's Radius gateway at `radius.pi.dev`. PiG serves its hosted paths from `https://pi-in-go.dev` through the private PiG platform repository. The install report and the managed installer API keep Pi's response shapes at the PiG host. PiG's version check does not call pi-in-go.dev: it reads the update manifest of the latest GitHub Release (D39, `internal/codingagent/selfupdate.go`). The installer API serves PiG GitHub Release archives and returns 404 for npm-only `package.json` and `package-lock.json` paths because PiG has no npm package. The hosted endpoints PiG calls are the install report (`/api/report-install`), the managed installer API, the session share upload (`/v1/artifacts`), the remote model catalog overlay (`/api/models/providers/<provider>`) and the MCP OAuth client-metadata document (`/oauth/client.json`, D26; it must be served there, a release gate outside this repository).
 
 Pi's `/share` uploads an organization-visible JSONL artifact to Radius only when Radius auth is available, then otherwise falls back to a private GitHub gist. PiG always requires the explicit `/share` command, displays a persistent privacy notice before the request, and uploads the same `exportSessionForShare` JSONL shape to `https://pi-in-go.dev/v1/artifacts?visibility=unlisted&title=PiG+session`. PiG needs neither Radius nor `gh` login for this path. The PiG platform stores at most 8 MiB per artifact, gives it an unlisted `https://pi-in-go.dev/session/p_<id>` URL, and expires it after 30 days. `PI_SHARE_GATEWAY_URL` explicitly replaces the complete upload URL; `PI_INSTALLER_API_BASE` keeps its upstream meaning for the installer.
 
 Pi's `sessionShareDestination` setting (`auto`, `gist`, `radius`; Pi cea25743) selects Pi's Radius-or-gist fallback, a forced GitHub gist, or Radius only with the error "Radius authentication is not configured. Run '/login radius' first.". PiG keeps the setting in `SettingsManager` (`GetSessionShareDestination`, `SetSessionShareDestination`) so a settings file shared with Pi keeps the value, but its `/share` uploads to the PiG gateway for every value, and `/settings` has no "Session share destination" item, because that item would change nothing.
 
-Pi's built-in providers read a remote model-catalog overlay from `https://pi.dev/api/models/providers/<provider>` (remote-catalog-provider.ts:DEFAULT_CATALOG_BASE_URL). PiG reads the same route from `https://pi-in-go.dev` and never calls pi.dev for it. `CreateModelRuntimeOptions.CatalogBaseURL` (Pi's `catalogBaseUrl`) replaces the endpoint. The request, the `?types=` query, the 4 hour freshness window, etag revalidation and the 404/501 unavailable path are Pi's; the `User-Agent` is PiG's (D65), so a server that serves `pi/` agents the catalog for the version in their User-Agent (Pi's catalog protocol, which no longer redirects them to a `pi-version` URL since Pi 62752fd4c) does not recognize PiG and serves it the default catalog. A host that does not serve the route leaves the bundled catalog, exactly as Pi's unavailable overlay does. PiG's generated catalogs carry the generation time of the pinned data (`ai.GeneratedModelDataGeneratedAt`, written by cmd/gen-models), so a stored remote catalog applies only when its `Last-Modified` is later, as in Pi (`getBuiltinModelDataGeneratedAt`).
+Pi's built-in providers read a remote model-catalog overlay from `https://pi.dev/api/models/providers/<provider>` (remote-catalog-provider.ts:DEFAULT_CATALOG_BASE_URL). PiG reads the same route from `https://pi-in-go.dev` and never calls pi.dev for it. `CreateModelRuntimeOptions.CatalogBaseURL` (Pi's `catalogBaseUrl`) replaces the endpoint. The request, the `?types=` query, the 4 hour freshness window, etag revalidation and the 404/501 unavailable path are Pi's; the `User-Agent` is PiG's (D65; `TestRemoteCatalogProviderUpstream` in `internal/codingagent/remote_catalog_provider_upstream_test.go` asserts that it contains `pig/<version>`), so a server that serves `pi/` agents the catalog for the version in their User-Agent (Pi's catalog protocol, which no longer redirects them to a `pi-version` URL since Pi 62752fd4c) does not recognize PiG and serves it the default catalog. A host that does not serve the route leaves the bundled catalog, exactly as Pi's unavailable overlay does. PiG's generated catalogs carry the generation time of the pinned data (`ai.GeneratedModelDataGeneratedAt`, written by cmd/gen-models), so a stored remote catalog applies only when its `Last-Modified` is later, as in Pi (`getBuiltinModelDataGeneratedAt`).
 
-Pi's `reportInstallTelemetry` (interactive-mode.ts:1472-1489, the `fetch` at :1481) sends its anonymous install/update ping to `https://pi.dev/api/report-install?version=<version>`. PiG sends the identical ping — only the `version` query parameter, plus PiG's own `User-Agent` — to `https://pi-in-go.dev/api/report-install?version=<version>` instead, fired at the same two occasions Pi fires it (a fresh install, and an update whose changelog has new entries), gated by the same `enableInstallTelemetry` setting and `PIG_TELEMETRY`/`PI_TELEMETRY` (PiG's name wins when both are set, D2) and `PI_OFFLINE` env overrides, with the same 5s timeout and fire-and-forget error handling. `PIG_INSTALL_TELEMETRY_URL` explicitly replaces the endpoint (tests use it to point at a local server; there is no upstream equivalent).
+Pi's `reportInstallTelemetry` (interactive-mode.ts:1465-1480, the `fetch` at :1474) sends its anonymous install/update ping to `https://pi.dev/api/report-install?version=<version>`. PiG sends the identical ping — only the `version` query parameter, plus PiG's own `User-Agent` — to `https://pi-in-go.dev/api/report-install?version=<version>` instead, fired at the same two occasions Pi fires it (a fresh install, and an update whose changelog has new entries), gated by the same `enableInstallTelemetry` setting and `PIG_TELEMETRY`/`PI_TELEMETRY` (PiG's name wins when both are set, D2) and `PI_OFFLINE` env overrides, with the same 5s timeout and fire-and-forget error handling. `PIG_INSTALL_TELEMETRY_URL` explicitly replaces the endpoint (tests use it to point at a local server; there is no upstream equivalent).
 
 
 Why: PiG is not an Earendil product. Sending PiG users or Session data to pi.dev, radius.pi.dev, or an implicit third-party gist would misattribute PiG traffic and depend on a service PiG does not operate. The owner chose `pi-in-go.dev` on 2026-09-23 and approved the explicit, privacy-noted PiG share gateway on 2026-09-24 (delivery/OWNER-DECISIONS.md).
 
-Observable effect: the `/share` command description is "Share session with an unlisted 30-day link" instead of "Share session via a Radius artifact or a GitHub gist" (slash-commands.ts:27). `/share` shows what Session data will be uploaded, runs the request behind an Escape-cancellable loader, and prints a 30-day unlisted PiG URL instead of a Radius or GitHub-gist URL. Anyone with that URL can read the artifact. The install/update ping goes to `pi-in-go.dev` instead of `pi.dev`; the PiG-hosted endpoint stores one Analytics Engine data point per call (the version and arrival time only) and rate-limits at 10 calls/minute per client. PiG does not read Pi's `PI_SHARE_VIEWER_URL`, so `--help` does not list it or its pi.dev default. Other hosted endpoint clients use `pi-in-go.dev` instead of `pi.dev` as they land.
+Observable effect: the `/share` command description is "Share session with an unlisted 30-day link" instead of "Share session via a Radius artifact or a GitHub gist" (slash-commands.ts:27). `/share` shows what Session data will be uploaded, runs the request behind an Escape-cancellable loader, and prints a 30-day unlisted PiG URL instead of a Radius or GitHub-gist URL. Anyone with that URL can read the artifact. The install/update ping goes to `pi-in-go.dev` instead of `pi.dev`. PiG does not read Pi's `PI_SHARE_VIEWER_URL`, so `--help` does not list it or its pi.dev default.
 
 Call sites:
 - `internal/codingagent/session_share.go`: `defaultShareGatewayURL`, `shareGatewayURL`, and `shareSession`.
@@ -1002,7 +1002,7 @@ Why not: Pi's cases assert a GitHub gist request and a Radius authentication err
 
 Remove when: never, unless PiG's owner selects another PiG-operated host, or returns `/share` to Pi's Radius/GitHub flow (update this entry and every call-site marker then).
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:54b8a71e3b7e06c7, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D65 PiG identifies itself as `pig/<coding.Version>`
 
@@ -1097,7 +1097,7 @@ Parity allowance: no paired scenario asserts module-scope state across `/reload`
 
 Remove when: Pig re-invokes TS/JS extension factories inside a retained Node runtime on session replacement (the additive `subprocess.RuntimeRetention` host API exists for it), reusing each module's cached factory as Pi's module-level extension cache does for a replacement in the same working directory (`loader.ts:136-157,566-599`), or when upstream reload and session replacement re-evaluate every extension module.
 
-SCRUTINIZED:approved. The owner approved the session-replacement scope on 2026-09-29 (WSL QUESTIONS 04:50Z, lead note 04:50Z).
+SCRUTINIZED:approved 2026-11-20 text-sha256:9001dbe950acd993. The owner approved the session-replacement scope on 2026-09-29 (WSL QUESTIONS 04:50Z, lead note 04:50Z), approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review").
 Owner decision 2026-11-17: the in-flight handler clause approved (option a).
 
 ## D73 Live main-process object identity does not cross into Node extensions
@@ -1166,7 +1166,7 @@ Parity allowance: no paired scenario runs an extension's direct provider call; t
 
 Remove when: PiG ships the vendor SDKs to extensions and runs upstream's API implementations, or upstream removes the compat entry point's global dispatch.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:7715a83ebbcf846d, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D78 SDK Provider object carriers
 
@@ -1350,7 +1350,7 @@ SCRUTINIZED:approved 2026-11-17 text-sha256:474dbe3eed4a4610
 
 ## D86 RPC settle tail and command admission: a handler of a runtime that cannot report its wait is taken to wait once it outlives a quantum
 
-What: in RPC mode Pi emits `agent_settled` in the microtasks that follow a published `agent_end`, so its stdin reader, which runs between macrotasks, reads no line between them (`agent-session.ts:1044-1058,1752-1777`, `rpc-mode.ts:355-360,801-808,833`). When an `agent_before_settle` or `agent_settled` handler, or an extension command, awaits a timer, I/O or another real wait, Pi reads stdin while it waits (`rpc-mode.ts:801-808,833`: `activeCommands++`, the `finally` that decrements it, and `void handleInputLine(line)` start every line without waiting for the one before). PiG reads stdin on its own goroutine, so `rpcSettleGate` holds each stdin batch, and stdin's end, from a published `agent_end` until `agent_settled` is written, and `rpcAwaitHandler` admits the next line only once a command, an input handler or a before_agent_start handler suspended or finished. The gate is open during a compaction, an auto-retry delay, a new run, an extension dialog and a settle-tail handler that waits. A Node runtime reports the end of its event-loop window for a command, an input handler, a before_agent_start handler and the settle tail: a window that closes with the handler unanswered is the handler awaiting a timer, I/O or another real wait, and is reported as blocked, which releases `rpcAwaitHandler`; a handler that only runs microtasks never closes its window unanswered, so it holds stdin as in Pi. The host sees a Node handler's waits exactly. A Go, Rust, Python or Lisp handler blocks in the language's own call (`net/http`, a socket read, a sleep), which nothing but the language tells from computing, so the host takes such a handler to be waiting once it has run for `subprocess.HandlerWaitQuantum` (250 ms) without answering: it acknowledges the invocation as suspended, which admits the next stdin line, and counts a settle-tail handler as waiting, which opens the gate. A handler that answers within the quantum is Pi's microtask-only continuation and holds stdin as before. After stdin's end, a running handler of such a runtime counts as waiting at once, so shutdown does not wait for it.
+What: in RPC mode Pi emits `agent_settled` in the microtasks that follow a published `agent_end`, so its stdin reader, which runs between macrotasks, reads no line between them (`agent-session.ts:1143-1165` `_emitAgentSettled`, called from the run's `finally` at `:1995-2001`; `rpc-mode.ts:792-798,824`). When an `agent_before_settle` or `agent_settled` handler, or an extension command, awaits a timer, I/O or another real wait, Pi reads stdin while it waits (`rpc-mode.ts:792-798,824`: `activeCommands++`, the `finally` that decrements it, and `void handleInputLine(line)` start every line without waiting for the one before). PiG reads stdin on its own goroutine, so `rpcSettleGate` holds each stdin batch, and stdin's end, from a published `agent_end` until `agent_settled` is written, and `rpcAwaitHandler` admits the next line only once a command, an input handler or a before_agent_start handler suspended or finished. The gate is open during a compaction, an auto-retry delay, a new run, an extension dialog and a settle-tail handler that waits. A Node runtime reports the end of its event-loop window for a command, an input handler, a before_agent_start handler and the settle tail: a window that closes with the handler unanswered is the handler awaiting a timer, I/O or another real wait, and is reported as blocked, which releases `rpcAwaitHandler`; a handler that only runs microtasks never closes its window unanswered, so it holds stdin as in Pi. The host sees a Node handler's waits exactly. A Go, Rust, Python or Lisp handler blocks in the language's own call (`net/http`, a socket read, a sleep), which nothing but the language tells from computing, so the host takes such a handler to be waiting once it has run for `subprocess.HandlerWaitQuantum` (250 ms) without answering: it acknowledges the invocation as suspended, which admits the next stdin line, and counts a settle-tail handler as waiting, which opens the gate. A handler that answers within the quantum is Pi's microtask-only continuation and holds stdin as before. After stdin's end, a running handler of such a runtime counts as waiting at once, so shutdown does not wait for it.
 
 Why: the host learns of a wait only from a runtime's report, and those runtimes have no equivalent of the Node window that closes unresponded. Without a bound, a Go handler that awaits the network (the LangSmith extension's `agent_settled` PATCH with `LANGSMITH_TRACING_BACKGROUND=false`) left every later stdin line unanswered for as long as the wait lasted, where the same handler in Node answers `get_state` during it. Without the gate, a command sent on seeing `agent_end` would be answered before `agent_settled`, which Pi never does for a handler that does not wait.
 
@@ -1390,7 +1390,7 @@ Parity allowance: the Pi comparison rows run the TypeScript fixture, whose handl
 
 Remove when: the Go, Rust, Python and Lisp runtimes report the end of a handler's own wait exactly, as the Node runtime does with its window, or PiG runs extensions on one shared event loop as Pi does.
 
-SCRUTINIZED:approved text-sha256:de90be1c91aeb5f9
+SCRUTINIZED:approved 2026-11-20 text-sha256:450511aa73b0f212, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D87 PiG's versions of Pi's easter eggs
 
@@ -1546,7 +1546,7 @@ Parity allowance: after an edit and `/reload`, the factory of an ES module exten
 
 Remove when: Pi's loader evaluates an edited ES module extension again on `/reload` (upstream issue drafted 2026-10-04).
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:783e0989f7e233e4, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D94 Subprocess editor working status runs from host snapshots
 
@@ -1691,13 +1691,13 @@ SCRUTINIZED:approved text-sha256:3ef7266621580d74
 
 ## D111 Abort abandons a non-cooperative extension tool after a grace period
 
-What: Abort abandons a non-cooperative extension tool after a grace period: Pi awaits it indefinitely; a subprocess call must not block the agent loop forever. When a run aborts while an extension tool runs, PiG cancels the `tool_call` request, so the tool's AbortSignal fires (Node `AbortSignal`, Go `ctx.Done()`, Rust and Python `is_cancelled`), and waits `ToolAbortGrace` (3 s) for the tool to settle. A tool that settles within the grace period behaves exactly as in Pi: Pi's `executePreparedToolCall` awaits `tool.execute` and makes its result, or its thrown message, the tool result (`packages/agent/src/agent-loop.ts:831-853`). A tool that has not settled when the grace period ends fails with Pi's abort text `createErrorToolResult("Operation aborted")` (`agent-loop.ts:633,751,770`), the session is free, and the tool's late answer is discarded. Pi awaits such a tool indefinitely and stays "Working" through every further Escape.
+What: Abort abandons a non-cooperative extension tool after a grace period: Pi awaits it indefinitely; a subprocess call must not block the agent loop forever. When a run aborts while an extension tool runs, PiG cancels the `tool_call` request, so the tool's AbortSignal fires (Node `AbortSignal`, Go `ctx.Done()`, Rust and Python `is_cancelled`), and waits `ToolAbortGrace` (3 s) for the tool to settle. A tool that settles within the grace period behaves exactly as in Pi: Pi's `executePreparedToolCall` awaits `tool.execute` and makes its result, or its thrown message, the tool result (`packages/agent/src/agent-loop.ts:824-860`). A tool that has not settled when the grace period ends fails with Pi's abort text `createErrorToolResult("Operation aborted")` (`agent-loop.ts:626,721,750`), the session is free, and the tool's late answer is discarded. Pi awaits such a tool indefinitely and stays "Working" through every further Escape.
 
 Pi bug: Pi awaits an aborted extension tool call without a limit, so a tool that never settles holds the agent loop and the Session until the process ends.
 
 Why: an extension tool runs in another process. A tool that never settles would hold the agent loop, and with it the Session, until the process ends, and the user has no way to recover the Session.
 
-Scope: only an extension tool call (`tool_call`) of the subprocess host, which covers every SDK in its own process, packed, and fused. A tool that settles within the grace period, built-in tools, in-process extensions, provider streams and `user_bash` operations keep Pi's behavior and are not waived. For a provider stream that means no bound: the abort of a turn reaches the author of an extension's `streamSimple` (a `provider_stream_simple` request), like the author of a native Provider's stream, as a signal-only cancel, which aborts the author's signal and ends nothing. The host forwards what the author's stream gives afterwards and waits for the author's own end (its terminal event, its result, or its error), which decides the turn's final message, because Pi's consumer has no check of the signal (`packages/agent/src/agent-loop.ts:424-478`). An author that never reacts holds the turn until the process ends, as in Pi. Every SDK does the same, in its own process, packed, and fused (`TestAbortedProviderTurnKeepsWhatTheAuthorsStreamGives` in `test/extension-conformance/provider_stream_cancel_test.go`). A call whose context has already ended when it reaches the host is sent to the extension, as Pi runs `tool.execute` with an aborted signal (subagent-extension.test.ts "returns aborted task details when the signal is already aborted": five aborted task results): the request frame carries `signal_aborted`, the tool starts with its signal aborted and its host calls are answered, the signal-only cancel follows the request, and the grace period below runs from the call's start. Only a direct call of the tool and an abort that lands between the agent's gate and the host's write reach the host this way: Pi's agent loop and a nested `executeTool` answer `Operation aborted` without entering the tool when the signal is already aborted (`agent-loop.ts:633,751,770`), and PiG's gates do the same, so they never send it. The state the tool runs against is written first; a call whose frames cannot be queued within the grace period (the writer's queue stays full) ends as `Operation aborted`; a frame already queued waits for its write as every request does, and the call ends with the connection's failure when the peer stops reading (the heartbeat, D56): the tool call returns the connection's failure, an `ExtensionUnresponsiveError` or the `TransportError` of the write the failed connection ended, wrapped as `sync extension state for tool <name>` or `tool <name>`. A connection that is closing or closed (a shutdown, a reload, a replacement) takes no call: it is not sent and waits no grace period. The abort cancels nothing but the tool's signal, as Pi's does (`agent-loop.ts:817-853`): the host sends a signal-only cancel (`CancelPayload.signal_only`), so the tool's pending and later host calls (dialogs, notifications, session reads, `exec`) are answered, and only its nested tool calls (`executeTool`, built-in tool `execute` and `localExec` called under the request) take the abort, as the signal they run with (`runner.ts:998`, `options.signal ?? signal`). What the tool still awaits when the grace period ends is cancelled then: that is the whole of this divergence for a tool that awaits a host call, which Pi would await indefinitely.
+Scope: only an extension tool call (`tool_call`) of the subprocess host, which covers every SDK in its own process, packed, and fused. A tool that settles within the grace period, built-in tools, in-process extensions, provider streams and `user_bash` operations keep Pi's behavior and are not waived. For a provider stream that means no bound: the abort of a turn reaches the author of an extension's `streamSimple` (a `provider_stream_simple` request), like the author of a native Provider's stream, as a signal-only cancel, which aborts the author's signal and ends nothing. The host forwards what the author's stream gives afterwards and waits for the author's own end (its terminal event, its result, or its error), which decides the turn's final message, because Pi's consumer has no check of the signal (`packages/agent/src/agent-loop.ts:424-478`). An author that never reacts holds the turn until the process ends, as in Pi. Every SDK does the same, in its own process, packed, and fused (`TestAbortedProviderTurnKeepsWhatTheAuthorsStreamGives` in `test/extension-conformance/provider_stream_cancel_test.go`). A call whose context has already ended when it reaches the host is sent to the extension, as Pi runs `tool.execute` with an aborted signal (subagent-extension.test.ts "returns aborted task details when the signal is already aborted": five aborted task results): the request frame carries `signal_aborted`, the tool starts with its signal aborted and its host calls are answered, the signal-only cancel follows the request, and the grace period below runs from the call's start. Only a direct call of the tool and an abort that lands between the agent's gate and the host's write reach the host this way: Pi's agent loop and a nested `executeTool` answer `Operation aborted` without entering the tool when the signal is already aborted (`agent-loop.ts:626,721,750`), and PiG's gates do the same, so they never send it. The state the tool runs against is written first; a call whose frames cannot be queued within the grace period (the writer's queue stays full) ends as `Operation aborted`; a frame already queued waits for its write as every request does, and the call ends with the connection's failure when the peer stops reading (the heartbeat, D56): the tool call returns the connection's failure, an `ExtensionUnresponsiveError` or the `TransportError` of the write the failed connection ended, wrapped as `sync extension state for tool <name>` or `tool <name>`. A connection that is closing or closed (a shutdown, a reload, a replacement) takes no call: it is not sent and waits no grace period. The abort cancels nothing but the tool's signal, as Pi's does (`agent-loop.ts:824-860`): the host sends a signal-only cancel (`CancelPayload.signal_only`), so the tool's pending and later host calls (dialogs, notifications, session reads, `exec`) are answered, and only its nested tool calls (`executeTool`, built-in tool `execute` and `localExec` called under the request) take the abort, as the signal they run with (`runner.ts:1002`, `options.signal ?? signal`). What the tool still awaits when the grace period ends is cancelled then: that is the whole of this divergence for a tool that awaits a host call, which Pi would await indefinitely.
 
 Owner decision: 2026-10-09, owner Michael Kinsy, ruling on robust-ext F6 (option A, refined: grace period, then `Operation aborted`, the same rule for every SDK).
 
@@ -1709,7 +1709,7 @@ Parity allowance: no paired scenario runs a tool that ignores its signal, becaus
 
 Remove when: Pi stops awaiting aborted tool calls.
 
-SCRUTINIZED:approved text-sha256:b1bdc034cdf01952
+SCRUTINIZED:approved 2026-11-20 text-sha256:1fce819c0acb5f61, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D113 A Session has no `extensionRunnerRef` cell
 
@@ -2173,15 +2173,15 @@ SCRUTINIZED:approved text-sha256:a51e50b6b794c2c9
 
 ## D146 RPC stdin end answers a Session-replacing command that Pi leaves unanswered
 
-What: Pi dispatches every stdin line at once (`rpc-mode.ts:833`), so `new_session`, `fork`, `clone`, `switch_session` and `export_html` answer after a later command of the same batch that is not a replacement (a `get_state`), in Pi and in PiG. When stdin ends while a replacement still awaits `createRuntime`, Pi exits at once (`rpc-mode.ts:826-828` calls `shutdown`, `:744-755`) and never answers the command. PiG finishes the replacement and writes its response before it shuts down. Measured on the previous pin (Pi 1.4.0's `rpc-mode.ts` is unchanged): `printf '{"id":"1","type":"new_session"}\n{"id":"2","type":"get_state"}\n' | pi --mode rpc` prints only the `get_state` response. An extension command in the same batch as a pending replacement runs after the replacement, as before, because PiG finishes the replacement first (Pi's replacement reaches its `session_shutdown` before such a command's handler).
+What: Pi dispatches every stdin line at once (`rpc-mode.ts:824`), so `new_session`, `fork`, `clone`, `switch_session` and `export_html` answer after a later command of the same batch that is not a replacement (a `get_state`), in Pi and in PiG. When stdin ends while a replacement still awaits `createRuntime`, Pi exits at once (`rpc-mode.ts:817-818` calls `shutdown`, `:735-747`) and never answers the command. PiG finishes the replacement and writes its response before it shuts down. Measured on the previous pin (Pi 1.4.0's `rpc-mode.ts` is unchanged): `printf '{"id":"1","type":"new_session"}\n{"id":"2","type":"get_state"}\n' | pi --mode rpc` prints only the `get_state` response. An extension command in the same batch as a pending replacement runs after the replacement, as before, because PiG finishes the replacement first (Pi's replacement reaches its `session_shutdown` before such a command's handler).
 
-Two replacements in flight together differ: Pi starts the second at once (`rpc-mode.ts:833`, `:456-463` `new_session`, `:625-635` `switch_session` and `fork`), and each acts on the Session that is current when it starts (`agent-session-runtime.ts:167-178` `teardownCurrent`, `:180-185` `apply`, `:187-194` `finishSessionReplacement`, `:226-259` `newSession`). Measured on Pi 1.5.2 for `new_session` + `new_session`, `new_session` + `switch_session` and `fork` + `new_session`, in one write and 50 ms apart, with an extension that logs `session_start` and `session_shutdown`: (1) in one write the outgoing Session gets `session_shutdown` twice (`:212`, `:245`, once per command) and the first replacement's Session none, because `apply` overwrote it and nothing disposes it; (2) 50 ms apart, while the first replacement's `session_start` handler runs, that Session gets `session_shutdown` and is disposed under the handler (`agent-session.ts:1477-1488`), and a handler that uses its captured `pi` afterwards gets the `extension_error` `This extension ctx is stale after session replacement or reload.` (`extensions/runner.ts:729-740`); (3) when the first replacement's `session_start` handler is the longer one, Pi answers the second command first. Pi's outcome is the same in every run of `TestPiOverlappingReplacementsD146`. The active Session and the Session files afterwards are the same as PiG's. PiG runs the second replacement after the first applied (the wait on `previous` in `awaitReplacement`): each Session gets one `session_shutdown`, one `session_start` each, no `extension_error`, and the answers come in the order sent.
+Two replacements in flight together differ: Pi starts the second at once (`rpc-mode.ts:824`, `:459-463` `new_session`, `:624-634` `switch_session` and `fork`), and each acts on the Session that is current when it starts (`agent-session-runtime.ts:186-197` `teardownCurrent`, `:199-204` `apply`, `:206-212` `finishSessionReplacement`, `:245-279` `newSession`). Measured on Pi 1.5.2 for `new_session` + `new_session`, `new_session` + `switch_session` and `fork` + `new_session`, in one write and 50 ms apart, with an extension that logs `session_start` and `session_shutdown`: (1) in one write the outgoing Session gets `session_shutdown` twice (`:190` in `teardownCurrent`, once per command) and the first replacement's Session none, because `apply` overwrote it and nothing disposes it; (2) 50 ms apart, while the first replacement's `session_start` handler runs, that Session gets `session_shutdown` and is disposed under the handler (`agent-session.ts:1477-1488`, v1.5.2), and a handler that uses its captured `pi` afterwards gets the `extension_error` `This extension ctx is stale after session replacement or reload.` (`extensions/runner.ts:729-740`, v1.5.2); (3) when the first replacement's `session_start` handler is the longer one, Pi answers the second command first. Pi's outcome is the same in every run of `TestPiOverlappingReplacementsD146`. The active Session and the Session files afterwards are the same as PiG's. PiG runs the second replacement after the first applied (the wait on `previous` in `awaitReplacement`): each Session gets one `session_shutdown`, one `session_start` each, no `extension_error`, and the answers come in the order sent.
 
 Why: A script that pipes commands and closes stdin gets no answer to its replacement command from Pi, and cannot tell a failure from a drop. This is a Pi bug under the owner's rule that confirmed bugs are fixed whether or not Pi has them. Running the second of two replacements after the first applied is a CURE of a Pi defect under the owner's rule of 2026-11-13T22:52:04Z: it breaks no Pi-compatible use, because the final Session and the Session files are the same. A client can observe only the order of the two responses when the first replacement's `session_start` handler is the longer one (PiG: request order, Pi: the second first) and the extension events (one `session_shutdown` per Session).
 
-Pi bug: Pi's second Session-replacing command overlaps the first (`rpc-mode.ts:833`, `agent-session-runtime.ts:167-185`, `:226-259`) and acts on whichever Session is current, so a Session gets `session_shutdown` twice, or none, or while its `session_start` handler runs, and that handler's captured context is then stale. Not reported upstream: no upstream issue records it. A draft for the owner to file is in `docs/parity/gap-closure/ledger-coding-agent-pi-issue-drafts.md` (D146).
+Pi bug: Pi's second Session-replacing command overlaps the first (`rpc-mode.ts:824`, `agent-session-runtime.ts:186-204`, `:245-279`) and acts on whichever Session is current, so a Session gets `session_shutdown` twice, or none, or while its `session_start` handler runs, and that handler's captured context is then stale. Not reported upstream: no upstream issue records it. A draft for the owner to file is in `docs/parity/gap-closure/ledger-coding-agent-pi-issue-drafts.md` (D146).
 
-Scope: `coding/cli/rpc_mode.go` (`awaitReplacement`, `finishReplacements`, the stdin-end wait). Replacements of one batch chain through `rpcAwaitInOrder`: each starts after the previous applied and answers after it. Pi starts them at once (`rpc-mode.ts:456-463`, `agent-session-runtime.ts:226-259`): its second replacement shuts down the Session the first has not yet applied or bound, so Pi sends `session_shutdown` twice to the outgoing Session and none to the first replacement's, or one while that Session's `session_start` handler still runs (stale ctx, `extension_error`), and answers the second first when the first's handlers run longer. PiG delivers each event once and answers in request order; the final Session is the same. A fork or clone requested while an earlier replacement is pending reads its entry from the Session that was current when it was requested (`coding.WithForkSession`, `Session.ValidateFork`), so it succeeds as in Pi, and a failed check answers before that replacement does. `export_html` answers at stdin end in Pi and in PiG.
+Scope: `coding/cli/rpc_mode.go` (`awaitReplacement`, `finishReplacements`, the stdin-end wait). Replacements of one batch chain through `rpcAwaitInOrder`: each starts after the previous applied and answers after it. Pi starts them at once (`rpc-mode.ts:459-463`, `agent-session-runtime.ts:245-279`): its second replacement shuts down the Session the first has not yet applied or bound, so Pi sends `session_shutdown` twice to the outgoing Session and none to the first replacement's, or one while that Session's `session_start` handler still runs (stale ctx, `extension_error`), and answers the second first when the first's handlers run longer. PiG delivers each event once and answers in request order; the final Session is the same. A fork or clone requested while an earlier replacement is pending reads its entry from the Session that was current when it was requested (`coding.WithForkSession`, `Session.ValidateFork`), so it succeeds as in Pi, and a failed check answers before that replacement does. `export_html` answers at stdin end in Pi and in PiG.
 
 Owner decision: 2026-10-10, owner ruling that every confirmed Pi bug is fixed now, ported from Pi or not. Lead question for the stdin-end drop: `questions/comb-audit.md`, row 58. For replacements in flight together: the owner's rule of 2026-11-13T22:52:04Z ("fix all bugs": PiG's own, and Pi bugs PiG can cure without breaking Pi compatibility), the form of D632.
 By owner principle (decision 29, 2026-11-17), checked by Claude and Tern; a cure of a Pi defect under the owner's fix-all-bugs rule of 2026-11-13T22:52:04Z
@@ -2192,9 +2192,9 @@ Evidence: `TestRPCSessionReplacementUsesDefaultSessionDir`, `TestRPCModeSessionR
 
 Parity allowance: two replacements of one batch, the first replacement's `session_start` handler the longer one: PiG answers them in the order sent where Pi answers the second first, and PiG sends one `session_shutdown` to each Session (Pi: twice to the outgoing Session and none to the first replacement's, or one while that Session's `session_start` handler still runs) and one `session_start` to each Session, as Pi does. Which Session is active afterwards and the Session files are the same.
 
-Remove when: Pi answers a replacement command that is in flight when stdin ends. The part about replacements in flight together goes when Pi runs them one after the other (it starts every line at once at `rpc-mode.ts:833` and does not guard `AgentSessionRuntime` in Pi 1.5.2, and nothing upstream says it will): until then PiG keeps its order, which cannot be dropped without copying the double `session_shutdown`.
+Remove when: Pi answers a replacement command that is in flight when stdin ends. The part about replacements in flight together goes when Pi runs them one after the other (it starts every line at once at `rpc-mode.ts:824` and does not guard `AgentSessionRuntime` in Pi 1.5.2, and nothing upstream says it will): until then PiG keeps its order, which cannot be dropped without copying the double `session_shutdown`.
 
-SCRUTINIZED:approved 2026-11-17 text-sha256:637a3672de15efe8
+SCRUTINIZED:approved 2026-11-20 text-sha256:7bcffd5d2abf6983, first approved 2026-11-17, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D147 Compactions requested in one input batch run one after another
 
@@ -2769,7 +2769,7 @@ Evidence: `TestAltScreenScrolledFramesShowPisScreens` (`tui/alt_screen_oracle_te
 
 Terminal-engine evidence: `make test-term-engines` (`docs/testing/term-engines.md`) replays a deterministic corpus (streamed transcripts, wheel and PageUp scrolling, resizes, wide and styled text, overlays, random edits and the pinned fixture's scenarios) twice, as the scroll-region frames and as Pi's bytes (`PIG_TUI_SCROLL_ROWS=0`), through xterm.js, `alacritty_terminal`, `wezterm-term`, libvterm and pyte, and requires the same screen (rows, styles, shown cursor) and the whole-screen scroll margins after every frame in every engine. Removing the region reset after a move fails all five.
 
-Known visible difference (accepted by the owner on 2026-10-27): a component that renders a row wider than the screen. Pi clips such a row after it has added the row's closing SGR reset (`applyLineResets`, then `sliceByColumn(line, 0, width, true)` in `packages/tui/src/tui-alt-screen.ts` `doRender`; `applyLineResets` is in `tui.ts`), so the reset is cut off with the clipped text and the row's attributes stay on in the terminal; Pi's own recorded bytes show this (`tui/testdata/alt-screen-oracle.json.gz`, scenario 485 step 3: a component renders a bold row 157 columns wide, and Pi writes its clipped text followed directly by the next row's cursor move, with no reset). The attributes color the rows written after the clipped row, so which rows show them depends on which rows a frame writes. Pi writes every changed row and PiG's scroll frames move the others, so where the leaked attributes appear differs between the two (`known-clipped-sgr-leak` in `tui/alt_screen_term_corpus_test.go`, which the engines must keep showing; fixture scenarios 173 and 485 in `termLeakingOracleScenarios`). Rows that fit the screen never leak, and with the clipped rows closed by a reset the same scenarios are equal in all five engines. The Pi-identical bytes (`PIG_TUI_SCROLL_ROWS=0`) are unchanged.
+Known visible difference (accepted by the owner on 2026-10-27): a component that renders a row wider than the screen. Pi clips such a row after it has added the row's closing SGR reset (`applyLineResets`, then `sliceByColumn(line, 0, width, true)` in `packages/tui/src/tui-alt-screen.ts` `doRender`; `applyLineResets` is in `tui.ts`), so the reset is cut off with the clipped text and the row's attributes stay on in the terminal; Pi's own recorded bytes show this (`tui/testdata/alt-screen-oracle.json.gz`, scenario 485 step 3: a component renders a bold row 157 columns wide, and Pi writes its clipped text followed directly by the next row's cursor move, with no reset). The attributes color the rows written after the clipped row, so which rows show them depends on which rows a frame writes. Pi writes every changed row and PiG's scroll frames move the others, so where the leaked attributes appear differs between the two (`known-clipped-sgr-leak` in `tui/alt_screen_term_corpus_test.go`, which the engines must keep showing; fixture scenario 173 in `termLeakingOracleScenarios`; scenario 485 is Pi's recorded example). Rows that fit the screen never leak, and with the clipped rows closed by a reset the same scenarios are equal in all five engines. The Pi-identical bytes (`PIG_TUI_SCROLL_ROWS=0`) are unchanged.
 
 Fallback evidence: `TestAltScreenScrollFallsBackToPisBytes` (`tui/alt_screen_oracle_test.go`) replays the 500 scenarios with `TERM` unset, `dumb`, `vt52` and `unknown`, and with `PIG_TUI_SCROLL_ROWS=0` in an xterm, and requires each step's bytes to equal Pi's exactly; `TestScrollRegionsUsableIn` lists which terminals are trusted, Zellij included.
 
@@ -2777,7 +2777,7 @@ Parity allowance: the fullscreen parity scenarios compare the captured screen, w
 
 Remove when: Pi scrolls the rows that moved, or an owner decision reverses this one. Then every changed row is drawn again, and the markers, `tui/tui_alt_screen_scroll.go` and this record go.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:86a6abf8ecd307cd, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D206 The Durable core resolves HarnessOptions.settings once before each event, where Pi resolves it at each use
 
@@ -3181,9 +3181,9 @@ Pi bug: none. The difference comes from the wire and from the bound that keeps a
 
 Scope: a session-graph client's ExtensionRunner only (a client of the host, not an extension's own `ctx.signal`); case (1) for clients without a token, case (2) for two runs aborted at birth with no live read between them. A Host over a Session reads the agent's own context, one per run.
 
-Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row M4, record only; the wire fix is a later row). The text of this record was rewritten when that wire fix landed (the run token, the storm guard, the per-SDK statement); the owner has not approved the rewritten text.
+Owner decision: approved by owner Michael Kinsy for 0.7.1 (SCOPE-PROPOSAL row M4, record only; the wire fix is a later row). The text of this record was rewritten when that wire fix landed (the run token, the storm guard, the per-SDK statement); the rewritten text is approved by owner Michael Kinsy on 2026-11-20 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review"), as a narrowing of the 0.7.1 scope of 2026-11-05.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:9cf3dcdfe1981228, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: no supported client sends an answer without `run` (the host may then require it and case (1) is gone), and the host can read an aborted run without renumbering it on every sync, so that the storm guard can be dropped and two runs aborted at birth are two contexts (case (2) is gone).
 
@@ -3244,7 +3244,7 @@ Parity allowance: `TestEmptyMimeTypeImageDiffersFromPi` runs the pinned Pi for a
 
 What: `InstallDependencies` (`chord/nextnode/plugins`, the port of `installDependencies` in `packages/chord/src/node/plugins/install.ts`) waits for the install command to exit, and for the end of its stdout and stderr only for five seconds after that (the stop grace, `exec.Cmd.WaitDelay`). A process the command started that inherited its pipes (a daemon npm left behind) no longer holds the install: it returns with the command's result, the output written so far, and the pipes' Go ends closed (what the child writes later is dropped and its writes fail with a broken pipe). A command that exited with code 0 is installed even when the grace expired. Pi settles the install on the child's `close` event, which fires only when the command's stdio streams have closed, so with a process left holding them Pi's install waits for as long as that process lives.
 
-Why: A plugin install that hangs on a descendant the user cannot see blocks the plugin load behind it with no error and no way out but killing the app; the 0.7.1 fix of the Windows Node-host exit (commit 47ec6e80d8) found the same exposure in the Node host's own process wait and fixed it there (`NodeHost` waits for the process's exit, as Pi's workers do with `child.once("exit")`, `node/workers/process.ts:79`, so that path matches Pi and is no divergence). The install is the one place where PiG waits as Pi's `close` does, so it follows the exit instead. This is a cure of a Pi defect under the owner's rule of 2026-11-13T22:52:04Z ("fix all bugs"), not a difference forced by Go.
+Why: A plugin install that hangs on a descendant the user cannot see blocks the plugin load behind it with no error and no way out but killing the app; the 0.7.1 fix of the Windows Node-host exit (commit 47ec6e80d8) found the same exposure in the Node host's own process wait and fixed it there (`NodeHost` waits for the process's exit, as Pi's workers do with `child.once("exit")`, `node/workers/process.ts:85`, so that path matches Pi and is no divergence). The install is the one place where PiG waits as Pi's `close` does, so it follows the exit instead. This is a cure of a Pi defect under the owner's rule of 2026-11-13T22:52:04Z ("fix all bugs"), not a difference forced by Go.
 
 Pi bug: Pi's `installDependencies` hangs until a process that inherited npm's pipes ends (`child.on("close", resolve)`, `install.ts:217`). Not reported upstream.
 
@@ -3252,7 +3252,7 @@ Scope: `InstallDependencies`, and every other command the plugins' installer run
 
 Owner decision: 2026-11-05, approved through the coordinator for 0.7.1.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:f2d0b7333a4cec01, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: Pi stops waiting on inherited pipes (its install settles on the command's `exit`, or bounds the wait for `close`). Then the call-site marker and this record go.
 
@@ -3316,7 +3316,7 @@ Scope: `tools.LookupToolPath` and `ToolsManager.GetToolPath` (so `EnsureTool`, `
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-06 (proposed by the 0.7.1 coordinator).
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:022ed2a16ae43532, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: Pi checks that the program it found is the tool, not only that it spawns. Then the probe, the autocomplete's new session and this record go.
 
@@ -3338,7 +3338,7 @@ Scope: `/tree` navigation. The hold starts only from the choice of the prompt's 
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-06 (proposed by the 0.7.1 coordinator).
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:95cea789faf13200, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: PiG's navigation completes within one frame for every session, or the owner decides to match Pi's brief old-transcript frame.
 
@@ -3369,7 +3369,7 @@ Scope: the go command that the toolchain resolver picks, on every platform. The 
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-06.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:544373369614c976, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: the owner prefers the type checker in the binary again, or Go ships `go/types` in a form that the binary can link at no size cost.
 
@@ -3396,7 +3396,7 @@ Scope: the Go and Lisp SDKs' packed cells (a placement of the same factory the i
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-07 (proposed by the 0.7.1 coordinator).
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:d05104eebcb20b19, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: an extension's goroutine or thread can be contained in the process that serves other extensions, or the owner decides that a crash of a packed member stops its siblings until `/reload`. Then the call-site marker, the trace readers and this record go.
 
@@ -3420,7 +3420,7 @@ Scope: `render_message` and `render_entry` components of the Node runtime whose 
 
 Owner decision: approved by owner Michael Kinsy on 2026-11-07, in this narrowed form only.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:ce7f3e436b80c273, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: the host can ask the extension synchronously for a component's answer, or Pi's own components of a separate process need none.
 
@@ -3473,7 +3473,7 @@ Evidence: `app_test.go`, `app_workers_test.go`, `app_export_test.go`, `registrie
 
 Parity allowance: none needed beyond the evidence above.
 
-SCRUTINIZED:approved 2026-11-08
+SCRUTINIZED:approved 2026-11-20 text-sha256:35657887aaac3097, first approved 2026-11-08, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D462 The server and each worker have two stores, not one
 
@@ -3523,11 +3523,11 @@ Evidence: `TestNumbersMatchNode`, `TestTimesMatchNode` (random corpus against a 
 
 Parity allowance: none needed beyond the evidence above.
 
-SCRUTINIZED:approved 2026-11-08
+SCRUTINIZED:approved 2026-11-20 text-sha256:352e13fccea6e651, first approved 2026-11-08, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D465 FormatTime takes a time.Time, not `Date`, `number` or `string`
 
-What: Pi's `new Date(at)` accepts a `Date`, epoch milliseconds or an ISO/date string (`new Date(string)`'s parser, with its engine-defined formats). Go takes a `time.Time`; a caller converts milliseconds (`time.UnixMilli`) or parses its own string. The zone is `time.Local` (the process's TZ, as a `Date`'s default is), whatever location `at` carries. An invalid `Date` (a RangeError in Pi) cannot be expressed. Zone data: Go reads the system zoneinfo (or the embedded `time/tzdata`), Node uses ICU's bundled tz data with backzone history. Instants before 1970 in zones that tzdata links to another (Europe/Amsterdam before 1937: Go prints Brussels' LMT, Node Amsterdam's) and a host whose tzdata release differs from Node's bundled one can print different clock times (RevChordIntl P3-5: 0 mismatches in 19 other zones around every 2025-2027 transition). The evidence for this paragraph is a reviewer's probe, not a test in the repository.
+What: Pi's `new Date(at)` accepts a `Date`, epoch milliseconds or an ISO/date string (`new Date(string)`'s parser, with its engine-defined formats). Go takes a `time.Time`; a caller converts milliseconds (`time.UnixMilli`) or parses its own string. The zone is `time.Local` (the process's TZ, as a `Date`'s default is), whatever location `at` carries. An invalid `Date` (a RangeError in Pi) cannot be expressed. Zone data: Go reads the system zoneinfo (or the embedded `time/tzdata`), Node uses ICU's bundled tz data. For a zone that ICU links to another, the clock of an instant before 1970 differs: Go keeps the zone's own tzdata history, Node prints the target zone's clock (Europe/Amsterdam at 1930-01-01T12:00Z: Go with its embedded tzdata prints `12:19:32`, Amsterdam's own `AMT` at +0:19:32; Node 24 with ICU 78.3 prints `12:00:00`, the same as Brussels in both). A host whose tzdata release differs from Node's bundled one can also print different clock times. A reviewer's probe of 19 other zones around every 2025-2027 transition (RevChordIntl P3-5) found 0 mismatches; that is a measurement, not a test in the repository.
 
 Scope: `chord/next/surfaces`.
 
@@ -3539,11 +3539,11 @@ Remove when: never for the `time.Time` parameter (it is the Go form of a `Date`)
 
 Call-site markers: `chord/next/surfaces/intl_time.go` (`FormatTime`).
 
-Evidence: `TestFormatTimeShowsTheInstantInTheProcessZone`; `TestFormatTimeInAZoneWithADaylightSavingChangeIsTheClockNodePrintsUnderTheSameTZ` (`chord/next/surfaces/intl_zone_test.go`: the process zone across a daylight-saving change, compared with Node under the same `TZ`).
+Evidence: `TestFormatTimeShowsTheInstantInTheProcessZone`; `TestFormatTimeInAZoneWithADaylightSavingChangeIsTheClockNodePrintsUnderTheSameTZ` (`chord/next/surfaces/intl_zone_test.go`: the process zone across a daylight-saving change, compared with Node under the same `TZ`); `TestFormatTimeInAmsterdamBefore1937KeepsTzdataHistoryWhereNodePrintsBrusselsClock` (`chord/next/surfaces/intl_zone_link_test.go`: Europe/Amsterdam at 1930-01-01T12:00Z against live Node, with Brussels as the control).
 
 Parity allowance: none needed beyond the evidence above.
 
-SCRUTINIZED:approved 2026-11-08
+SCRUTINIZED:approved 2026-11-20 text-sha256:7c031338208ea963, first approved 2026-11-08, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D466 No per-language formatter cache
 
@@ -3563,7 +3563,7 @@ Evidence: `TestFormatsAllocateOnlyTheResultForCanonicalTags`.
 
 Parity allowance: none needed beyond the evidence above.
 
-SCRUTINIZED:approved 2026-11-08
+SCRUTINIZED:approved 2026-11-20 text-sha256:4fdb3dd5e0182205, first approved 2026-11-08, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D502 `TestPlugin` tests a plugin on the production topology: its host is the Node subprocess and the stubs are Go facets, not JavaScript values handed to one in-process host
 
@@ -3583,7 +3583,7 @@ Parity allowance: none needed beyond the forms above; the Pi cases pass with Go 
 
 Remove when: Pi evaluates plugins out of process (its stubs then need a wire form too) or PiG gets an in-process evaluator.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:5963840087816bb8, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D503 `TestPlugin`'s registries are named, its contributions are data, and `root` is `RootPrincipal`: no JavaScript closure or registry token crosses
 
@@ -3603,7 +3603,7 @@ Parity allowance: none needed.
 
 Remove when: PiG's plugin host can run a Go closure in the plugin's host process, or Pi's `root` takes data.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:5eefc4a6cebc286f, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D520 A connection reset as soon as it is accepted reports the response read, where Pi usually reports the connect
 
@@ -3640,7 +3640,7 @@ Scope: `appendStringify` (`ai/validate.go`) and so `ValidateToolArguments`: only
 
 Owner decision: owner approved option D (keep the string representation, record it as a numbered divergence) 2026-11-08 (owner list #22, "proceed with recommendations").
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:8d1474801c794e92, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: the tool-argument path carries a typed bigint (for example a JSON extension with a numeric tag) that every reader of the arguments understands.
 
@@ -3719,11 +3719,9 @@ Why: process boundary (a Node subprocess for the plugins) and the Go server's tw
 
 Pi bug: none.
 
-Scope: `chord/next/host` (`Host.Delegate`, `Host.Serves`, `destination`, the closure rule's placement by the staged table), `chord/nextnode/plugins` (`node/destination.mjs`, `node/resolve.mjs`, `RuntimeLoad.ParentServes`), `chord/nextnode/app` (`start`). Nothing changes for a host without a delegate, or a NodeHost without `ParentServes`. `Host.Delegate` is refused when the kind is not the host's own address kind (`delegate: <kind> is not this host's address kind`), when a route for that kind exists already (a second delegate: `delegate: <kind> is routed already`; `host_host.go:871-878`), and after load (`delegate: routes are declared before load`).
+Scope: `chord/next/host` (`Host.Delegate`, `Host.Serves`, `destination`, the closure rule's placement by the staged table), `chord/nextnode/plugins` (`node/destination.mjs`, `node/resolve.mjs`, `RuntimeLoad.ParentServes`), `chord/nextnode/app` (`start`). Nothing changes for a host without a delegate, or a NodeHost without `ParentServes`. `Host.Delegate` is refused when the kind is not the host's own address kind (`delegate: <kind> is not this host's address kind`), when a route for that kind exists already (a second delegate: `delegate: <kind> is routed already`; `host_host.go:869-880`), and after load (`delegate: routes are declared before load`).
 
 Owner decision: owner approved 2026-11-08 (17:29Z).
-
-SCRUTINIZED:approved
 
 Remove when: never for the two hosts; the principal difference goes when a child's link can name whom a hold acts for.
 
@@ -3733,7 +3731,7 @@ Evidence: `TestDelegateServesTheUnionOfTheHostsTypes...`, `TestDelegateWhatTheDe
 
 Parity allowance: none.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:97d20a6466ef6aea, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 ## D607 The plugins component loads hosts through a Node subprocess it starts: Pi's `evaluate`, `stack` and runtime run in that subprocess, not in the Go process
 
@@ -3743,7 +3741,7 @@ Why: a JavaScript facet, module instance or `Host` cannot cross the process boun
 
 Scope: `chord/nextnode/plugins` (`plugins_runtime.go`, `plugins_plugins.go`, `plugins_node*.go`, `node/`), `chord/nextnode/surfaces` (surfaces build after the server's listen, D462).
 
-Owner decision: APPROVED for 0.8.0 (owner, 2026-11-08 17:29Z): the live-JS rows evaluateFacet, EvaluateOptions, BuiltScript, mapStack and HostPackages stay under D607 with their intention checks; follow-up after 0.8.0: Load takes a host as Pi does. SCRUTINIZED:approved 2026-11-08.
+Owner decision: APPROVED for 0.8.0 (owner, 2026-11-08 17:29Z): the live-JS rows evaluateFacet, EvaluateOptions, BuiltScript, mapStack and HostPackages stay under D607 with their intention checks; follow-up after 0.8.0: Load takes a host as Pi does. SCRUTINIZED:approved 2026-11-20 text-sha256:e8a016299528470a, first approved 2026-11-08, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review").
 
 Call-site markers: `chord/nextnode/plugins/plugins_runtime.go` (`PluginRuntime`, `RuntimeLoad`), `chord/nextnode/plugins/plugins_plugins.go` (`Plugins.Load`, `Plugins.Step`, `RolloutStep`).
 
@@ -3766,7 +3764,7 @@ Scope: the Go, Python, Lisp and Rust SDKs: `ModelEventStream.Push`/`End` (Go), `
 Owner decision: approved by owner Michael Kinsy on 2026-11-09 (copy at push in the Go, Python and Lisp SDKs; keep Node as Pi does; record the burst-case difference).
 Owner decision 2026-11-17: group 3 re-approval (small edits: wording, citation, a widening that follows Pi or an approved record, or a claim checked against its code and test); checked by Claude and Tern
 
-SCRUTINIZED:approved 2026-11-17 text-sha256:66aebb71f360aca8
+SCRUTINIZED:approved 2026-11-20 text-sha256:0c4d9be4638483eb, first approved 2026-11-17, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: Pi's provider stream consumer captures each event at its push (or the Go, Python and Lisp SDKs gain a synchronization point that makes the forwarder see the provider's state at the consumer's turn). Then the three call-site markers and this record go.
 
@@ -3811,7 +3809,7 @@ Scope: the Go, Python, Rust and Lisp SDKs and `coding/extension/host/subprocess`
 
 Owner decision: owner, 2026-11-11 (`handoffs/0.8.0/OWNER-DECISIONS.md`, the section `2026-11-11T17:41Z Owner: "proceed with recommendations"`): "i want it all in 0.8.0 since we delayed anyways", and "switchSession/newSession/fork from a non-command context: red-first test, IN 0.8.0"; the decision he took (c) is that the host rejects it and returns the error to the calling handler (`TERN-CLAUDE-CHANNEL.md:19154`). The Node runtime follows Pi's shape. The narrowing to the Go, Python, Rust and Lisp SDKs is forced: Go and Rust have one static context type, and the four SDKs keep one interface.
 
-SCRUTINIZED:approved 2026-11-11
+SCRUTINIZED:approved 2026-11-20 text-sha256:c7003bf25ed11a07, first approved 2026-11-11, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: the Go, Python, Rust and Lisp SDKs hand event, tool and shortcut handlers a context type that has no command-only session actions (a separate command-context type), so the call cannot be written.
 
@@ -3837,7 +3835,7 @@ Scope: `tui` (`tuiBase.RequestRenderWithin`, `Loader`, `Loader.TickStep`) and `i
 
 Owner decision: owner approved 2026-11-11 (for 0.8.0).
 
-SCRUTINIZED:approved 2026-11-11
+SCRUTINIZED:approved 2026-11-20 text-sha256:fc2c6e7a79c141c4, first approved 2026-11-11, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: Pi's `Loader` draws a step within a time, or the owner withdraws the change.
 
@@ -3880,7 +3878,7 @@ Owner decision: approved as an OPT-IN writer. Default-on is NOT approved: it nee
 (b) "Kitty/Ghostty/iTerm2 coverage": not shown for the three applications on macOS, which no lane can run. Run on Linux with this rule, on the corpus of this tree's writer (292 recorded sessions, 584 stream pairs, 15,922 checkpoints a side, the screen after the writer's bytes against the screen after the bytes they were made from): kitty 0.50.0's screen code, every cell, 0 differ; the kitty 0.50.0 program in a window on a virtual display, 0 differ; libghostty-vt 1.4.0, Ghostty's terminal core, 0 differ; `make test-term-engines` (xterm.js, alacritty_terminal, wezterm-term, libvterm, pyte), 0 scenarios differ. iTerm2: not run at all.
 (c) the whole parity suite passes in writer mode (this record's words for the third condition; its wording is in `OWNER-DECISIONS.md`, 2026-11-12T14:42Z): shown at 08cba8629 for the hermetic suite in CI's form (`make parity-fast`, both shards): 872 of the 872 scenarios that run pass with the default as committed, and 872 of 872 with the constant set to `"pi"`; 7 of the 879 scenario files do not run in the hermetic suite by their tags. Run again at a6e5efaad, where the default is `"pi"`: 872 of 872 with nothing selected (both shards rc 0; the fullscreen family run again with `PIG_TUI_SCREEN_WRITER_LOG` set leaves no log: no screen writer wrote) and 872 of 872 with the writer selected by `PIG_TUI_SCREEN_WRITER=writer` (the same family run leaves a log of 15,345,496 bytes). What that evidence is, and is not, is under "Parity allowance" below.
 
-SCRUTINIZED:approved 2026-11-13
+SCRUTINIZED:approved 2026-11-20 text-sha256:193d3535fe54f771, first approved 2026-11-13, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: Pi sends only what changes the screen, or the owner declines the writer. It is opt-in in 0.8.0: `TerminalScreenWriterDefault` is `"pi"`. When the owner's real-terminal condition is shown the constant becomes `"writer"` and this record says so; if he declines the writer, `internal/screenwriter`, `tui/terminal_screen_writer.go`, the five hunks in `tui/terminal.go`, the setting, the markers and this record go.
 
@@ -3904,7 +3902,7 @@ Scope: `coding.Session.refreshCurrentModelFromRegistry`, `coding.ModelRuntime.Bi
 
 Owner decision: approved (owner, 2026-11-13T01:13:59Z: "Proceed with recommendations."; the line of that decision for this record: "D626 APPROVED (setModel object kept until its registry entry changes)."). Drafted by the SetModelImpl lane on 2026-11-12.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:861309708de06f43, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: the extension wire can tell an in-place edit of a registry model from a copy, or Pi changes the rule of `_refreshCurrentModelFromRegistry`.
 
@@ -4011,7 +4009,7 @@ Scope: `coding/extension` (`ExecCommand`, both output pipes) and `internal/codin
 
 Owner decision: approved. The owner said "proceed with recommendations" (2026-11-12T23:22:43Z, owner decisions of 0.8.0), and the recommendation recorded there for this item is "D631 exec/bash child stdio: KEEP PIPES, record D631 as a numbered divergence with both effects locked by tests against the Pi oracle."
 
-SCRUTINIZED:approved 2026-11-12
+SCRUTINIZED:approved 2026-11-20 text-sha256:8fa5e9db2322b061, first approved 2026-11-12, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: PiG gives the commands of `pi.exec` and the bash tool socket pairs on Unix (stdin included where the bash tool gives one), or Node gives its children pipes.
 
@@ -4074,7 +4072,7 @@ Scope: `internal/codingagent` (`SettingsManager.UpdateGlobal`, `UpdateProject` a
 
 Owner decision: approved by the owner. `OWNER-DECISIONS.md`, section "2026-11-13T00:54:22Z owner: direction for the rest of 0.8.0", the owner verbatim: "I want the divergences that keep us on brand but still want to be faithful as we can plus our additions of go support and then my hero demo I was asking for plus ensuring the optimal quality release given how I've held it back and we can make this an exciting announcment from many angles." The line of that section that applies it, quoted: "Divergences APPROVED where PiG keeps a user safe or told the truth (on brand), each numbered, minimal, with remove-when and an upstream issue draft: D630 (hold a prompt during a reload), D632 (serialised reloads), D633 (show a failed settings save), ..."
 
-SCRUTINIZED:approved 2026-11-13
+SCRUTINIZED:approved 2026-11-20 text-sha256:5476056f294a8b2c, first approved 2026-11-13, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: Pi reports a failed save at the point of change.
 
@@ -4200,7 +4198,7 @@ Observable effect: for the time above a user sees `[<customType>]` where Pi show
 
 Owner decision: owner approved 2026-11-14 (handoffs/0.8.0/OWNER-DECISIONS.md, entry `2026-11-14T20:05:57Z owner: "I'm fine with all recommendations and if you can't reproduce the compaction error maybe it's fixed"`): "D647: APPROVED as a record WITHOUT a held frame (a message or entry that an extension renders is drawn as the placeholder `[<customType>]` until the extension's first answer; ...; numbers after the load fixes: about 46 ms quiet, 74 ms loaded)." The in-between asked for before that entry (the first request at the proxy's build, and a kept frame of 50, 100 or 150 ms on a load or resume, measured by lane PlaceholderWindow) is not taken, as the entry of 2026-11-14T20:05:57Z says ("WITHOUT a held frame"): the transcript's first frame would come later by the window; the first request still starts at the first `Render`.
 
-SCRUTINIZED:approved 2026-11-14
+SCRUTINIZED:approved 2026-11-20 text-sha256:d940234408027def, first approved 2026-11-14, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: the first frame that shows a message or entry draws the component the renderer returned, not `[<customType>]`, without a wait on the render loop: that is, a test that builds the proxy, draws it once and gets the component's rows with the loop never blocked (the renderer's answer obtained before the message's first frame, off the loop), or the renderer runs in the host's process.
 
@@ -4245,7 +4243,7 @@ Scope: an `agent_settled`, `agent_before_settle` or reload handler of an extensi
 
 Owner decision: owner approved 2026-11-14T14:10:39Z ("proceed", on the recommendations of 13:2xZ; handoffs/0.8.0/OWNER-DECISIONS.md, entry `2026-11-14T14:10:39Z owner: "proceed" (on Claude's recommendations of 13:2xZ)`): "D649 APPROVED: at RPC input end a native-SDK settle-tail handler does not hold the exit." The Scope sentence for the interactive quit is approved by the owner on 2026-11-14T20:05:57Z (handoffs/0.8.0/OWNER-DECISIONS.md, entry `2026-11-14T20:05:57Z owner: "I'm fine with all recommendations and if you can't reproduce the compaction error maybe it's fixed"`, item ROWS 112 + 113: "D649 Scope: the interactive quit is in scope").
 
-SCRUTINIZED:approved 2026-11-14
+SCRUTINIZED:approved 2026-11-20 text-sha256:21f94be45d5c74f6, first approved 2026-11-14, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), so that the host can hold the exit for exactly the handlers Pi holds it for.
 
@@ -4287,7 +4285,7 @@ Owner decision: owner approved 2026-11-14T14:10:39Z ("proceed", on the recommend
 
 Owner decision (rows 112 + 113): owner approved 2026-11-14T20:05:57Z (handoffs/0.8.0/OWNER-DECISIONS.md, entry `2026-11-14T20:05:57Z owner: "I'm fine with all recommendations and if you can't reproduce the compaction error maybe it's fixed"`, item ROWS 112 + 113): the run-awaited kinds name message_end, tool_call, tool_result and context; the Node-runtime defect sentence is deleted; ACCEPTED: a native handler of tool_call / tool_result / context that never returns and ignores the cancel signal holds an abort and a quit, ended by ctrl+c, SIGINT, SIGTERM or SIGHUP.
 
-SCRUTINIZED:approved 2026-11-14
+SCRUTINIZED:approved 2026-11-20 text-sha256:41f47b538df4d147, first approved 2026-11-14, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: the SDKs report whether a handler waits on a handle (a timer, a socket, a child process), or the host can read it.
 
@@ -4347,7 +4345,7 @@ What was run (2026-11-14, xd670, tern-ci:v11; logs in `~/lanes/CredStore3.out/` 
 
 The red test is `internal/pilock` `TestAsyncLockHeldPastTheSyncStaleWindowIsNotTaken` (red at f0598bed36, green with fbe92b66a0). Not run: Windows, a real provider.
 
-Why: (A) a credential or settings write must not be able to destroy the file it replaces, and every setup in which Pi's in-place write works (a single file mounted into a container, a hard link, an ACL, a directory the process cannot write) keeps working as before. (C) with a provider that rotates a single-use refresh token, a lock taken from a live holder lets a queued refresher spend the same token a second time, and the provider then revokes the login.
+Why: (A) a credential or settings write must not be able to destroy the file it replaces, and every setup in which Pi's in-place write works (a single file mounted into a container, a hard link, an ACL, a directory the process cannot write) keeps working as before, except on Windows a file that another program holds open without delete sharing: there the replacement fails after `fsretry.RenameBudget` (10 s), as the Parity allowance says, and this is unchanged from main, not a new break. (C) with a provider that rotates a single-use refresh token, a lock taken from a live holder lets a queued refresher spend the same token a second time, and the provider then revokes the login.
 
 Pi bug: yes for part A: Pi's truncate-then-write can empty `auth.json` on a failed write, and part C's double spend of a single-use token.
 
@@ -4355,7 +4353,7 @@ Scope: pig's writes of the listed files through `internal/atomicfile`. Pi's file
 
 Owner decision: approved 2026-11-14T14:10:39Z ("proceed", handoffs/0.8.0/OWNER-DECISIONS.md, entry `## 2026-11-14T14:10:39Z owner: "proceed" (on Claude's recommendations of 13:2xZ)`); the line, verbatim: "D651 APPROVED, both parts: (1) auth.json, settings, trust, keybindings and the MCP config replaced through a private temp file + rename where that changes nothing but the inode; Pi's in-place write kept for hard links, uncarriable ACL/xattrs, bind-mounted single files and unwritable directories; (2) a 5 s refresh of the async lock so a live refresher is never taken over (single-use refresh token spent once)."
 
-SCRUTINIZED:approved 2026-11-14
+SCRUTINIZED:approved 2026-11-20 text-sha256:c8b934a41de98eff, first approved 2026-11-14, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: (A) Pi writes these files through a temporary file and a rename, or otherwise keeps a failed write from truncating them; (C) Pi renews its async lock faster than its sync stale window, or raises the sync stale window to at least twice the async heartbeat.
 
@@ -4452,7 +4450,7 @@ Parity allowance: no scenario compares a nested write of one handler read by ano
 
 ## D658 The Go, Rust, Python and Lisp SDKs invoke handlers in request arrival order, but a descheduled thread can run its handler's first statement after a later request's
 
-What: Pi runs a handler of an event, a command or a tool call synchronously up to its first `await` in the order the requests came: `runner.ts:1110` is `await handler(event, ctx)` with no await before the first handler, and a parallel batch invokes each call in source order (`agent-loop.ts:656-658`). The Node runtime serves frames on one thread and keeps that. The Go, Rust, Python and Lisp SDKs serve each request on a thread of its own. Each reserves a start place for a `tool_call`, `event` or `command` request in arrival order and invokes the handler only after every earlier request's handler was invoked or its request ended without one. That fixes the order of INVOCATION. It does not fix what a handler runs first: a thread descheduled between the gate's release and its handler's first statement can be overtaken by the thread of the next request, so a handler's own first-statement log can read [c2 c1] where Pi and Node never read it. Go: measured on 2026-11-18, about 5e-5 per start under one-cpu pressure, 0 in 600 unpressured runs; the gate arrived in v0.5.2 (before it, event and command requests had no gate). Rust: by reading, not measured: `extensions/sdk-rs/src/request_start_order.rs` states the limit itself ("a thread that the operating system preempts between its hand-off and its handler's first statement can still be overtaken, and no Rust construct closes that window"). Python: the same hand-off by the code's order (`_RequestStart.begin` in `extensions/sdk-py/pig_sdk/__init__.py` sets the place's event, then the request's thread calls the handler), measured on 2026-11-18 by lane `PySdkStartOrder` (base `3b5e51db29`, CPython 3.12.3, GIL on, switch interval 5 ms, xd670; pressure is `taskset -c 0` plus 8 busy loops on that cpu). The invocation order was the arrival order in all 2,400 rounds of a probe. The first-statement order is load-sensitive: the three tests of `test_tool_dispatch.py` (`tool_call` 16 x 24, event and command 18 x 24, the late request thread) held in 900 of 900 runs free and 900 of 900 under pressure; the conformance cell `TestToolBatchStartsInSourceOrderAcrossSDKs/subprocess-python` 100 of 100 free and 100 of 100 under pressure; the two first-statement rows of `TestOrderingRowsAcrossSDKs`, which do not apply to Python today, forced on for Python in a scratch build (-count=100): free 100 of 100 in both cells, under pressure `subprocess-python-packed` 100 of 100 and `subprocess-python` 99 of 100, the one red in row `tool-result-handlers-start-in-request-order`, round 0: got `[order-0-7 order-0-6 order-0-1 ...]`, want `[order-0-6 order-0-7 order-0-1 ...]` (two adjacent handlers swapped; plain handlers, no yield); a probe with a yield as the handler's first statement lost the first-statement order in 64 to 200 of 200 rounds depending on the yield and the load, and 0 of 200 without a yield. By reading, not measured: CPython switches threads at a blocking call or when the 5 ms interval expires, so a handler that does not block usually keeps the interpreter from the hand-off to its first statement, and a thread descheduled at the interval boundary can still lose it. Lisp: by reading, not run: `ticket-begin` in `dispatch.lisp` hands the place on before the handler runs, so the same window exists by the code's order.
+What: Pi runs a handler of an event, a command or a tool call synchronously up to its first `await` in the order the requests came: `runner.ts:1114` is `await handler(event, ctx)` with no await before the first handler, and a parallel batch starts the executions of its calls together in source order (`agent-loop.ts:646-648`). Here `tool_call` means the `tool_call` request (the call that runs an extension's tool), not the `tool_call` event: Pi awaits each call's `tool_call` event handlers in turn (`agent-loop.ts` `prepareToolCall`). The Node runtime serves frames on one thread and keeps that. The Go, Rust, Python and Lisp SDKs serve each request on a thread of its own. Each reserves a start place for a `tool_call`, `event` or `command` request in arrival order and invokes the handler only after every earlier request's handler was invoked or its request ended without one. That fixes the order of INVOCATION. It does not fix what a handler runs first: a thread descheduled between the gate's release and its handler's first statement can be overtaken by the thread of the next request, so a handler's own first-statement log can read [c2 c1] where Pi and Node never read it. Go: measured on 2026-11-18, about 5e-5 per start under one-cpu pressure, 0 in 600 unpressured runs; the gate arrived in v0.5.2 (before it, event and command requests had no gate). Rust: by reading, not measured: `extensions/sdk-rs/src/request_start_order.rs` states the limit itself ("a thread that the operating system preempts between its hand-off and its handler's first statement can still be overtaken, and no Rust construct closes that window"). Python: the same hand-off by the code's order (`_RequestStart.begin` in `extensions/sdk-py/pig_sdk/__init__.py` sets the place's event, then the request's thread calls the handler), measured on 2026-11-18 by lane `PySdkStartOrder` (base `3b5e51db29`, CPython 3.12.3, GIL on, switch interval 5 ms, xd670; pressure is `taskset -c 0` plus 8 busy loops on that cpu). The invocation order was the arrival order in all 2,400 rounds of a probe. The first-statement order is load-sensitive: the three tests of `test_tool_dispatch.py` (`tool_call` 16 x 24, event and command 18 x 24, the late request thread) held in 900 of 900 runs free and 900 of 900 under pressure; the conformance cell `TestToolBatchStartsInSourceOrderAcrossSDKs/subprocess-python` 100 of 100 free and 100 of 100 under pressure; the two first-statement rows of `TestOrderingRowsAcrossSDKs`, which do not apply to Python today, forced on for Python in a scratch build (-count=100): free 100 of 100 in both cells, under pressure `subprocess-python-packed` 100 of 100 and `subprocess-python` 99 of 100, the one red in row `tool-result-handlers-start-in-request-order`, round 0: got `[order-0-7 order-0-6 order-0-1 ...]`, want `[order-0-6 order-0-7 order-0-1 ...]` (two adjacent handlers swapped; plain handlers, no yield); a probe with a yield as the handler's first statement lost the first-statement order in 64 to 200 of 200 rounds depending on the yield and the load, and 0 of 200 without a yield. By reading, not measured: CPython switches threads at a blocking call or when the 5 ms interval expires, so a handler that does not block usually keeps the interpreter from the hand-off to its first statement, and a thread descheduled at the interval boundary can still lose it. Lisp: by reading, not run: `ticket-begin` in `dispatch.lisp` hands the place on before the handler runs, so the same window exists by the code's order.
 
 Audience: an extension author whose handlers of two requests that arrive together (two `tool_call`s of a parallel batch, two commands, two events) record or act on their FIRST statement and depend on the order, and who runs under CPU pressure. A Node extension, and Pi, never see it.
 
@@ -4464,7 +4462,7 @@ Scope: the Go, Rust, Python and Lisp SDKs, `tool_call`, `event` and `command` re
 
 Owner decision: 2026-11-18, owner Michael Kinsy approved the coordinator's recommendation "Start-order limit: give it a numbered record, covering Go, Rust and Lisp" with the words "proceed with recommendations"; on the same day, shown that the Python SDK has the same hand-off by reading, he chose "Cover Go, Rust, Python and Lisp. Python and Lisp are marked "by reading, not measured"; Pi and Node never reorder." (the coordinator's form, option text quoted). Python was measured afterwards (What). The wording of this record awaits the owner's read.
 
-SCRUTINIZED:approved
+SCRUTINIZED:approved 2026-11-20 text-sha256:ef9f9403a17d080c, approved by the owner on 2026-11-20 under decision 29 (`handoffs/0.8.0/OWNER-DECISIONS.md`, "2026-11-20 records review")
 
 Remove when: an SDK can invoke the handler and hand the place on in one step the scheduler cannot split, or a start place that is held until the handler's first host call without stalling later handlers or deadlocking.
 
