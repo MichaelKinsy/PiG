@@ -2048,4 +2048,4 @@ Locked by: the missing-finish, empty/DONE-only, finish-optional, normal-completi
 Status: local port of a proposed upstream record; awaiting maintainer scrutiny. D237 is provisional and may be renumbered.
 
 Remove when: Pi provides equivalent retained evidence or this diagnostic is removed.
-SCRUTINIZED:pending-owner-review
+SCRUTINIZED:approved
