@@ -71,10 +71,13 @@ function isChatModel(model) {
 /**
  * A llama.cpp model used as a classifier. Decision models answer natively through llama.cpp's
  * System One endpoint (`/v1/systemone`). Chat models fall back to `llama-cpp-classify`, which reads
- * answers from next-token label probabilities.
+ * answers from next-token label probabilities and takes no images. llama.cpp reads System One images
+ * from the `images` list of data URLs, not from TypeSafe's `assets`.
  */
 function toPiClassifierModel(model, serverUrl, cachedContextWindow) {
+    // Pi 5799e217e (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
     const decision = isDecisionModel(model);
+    const image = decision && model.architecture?.input_modalities?.includes("image") === true;
     return {
         type: "classifier",
         id: model.id,
@@ -82,9 +85,10 @@ function toPiClassifierModel(model, serverUrl, cachedContextWindow) {
         api: decision ? "typesafe-system-one" : "llama-cpp-classify",
         provider: LLAMA_PROVIDER_ID,
         baseUrl: decision ? llamaInferenceUrl(serverUrl) : serverUrl,
-        input: ["text"],
+        input: image ? ["text", "image"] : ["text"],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         contextWindow: contextWindowOf(model, cachedContextWindow),
+        ...(image && { compat: { imageInput: "images", sendImageOptInHeader: false } }),
     };
 }
 function isLlamaClassifierModel(model) {
