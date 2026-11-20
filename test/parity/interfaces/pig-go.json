@@ -1761,6 +1761,17 @@
       "shapeHash": "sha256:d92fa59e8f6e3c7e6f345bdd307893d56cd385e9cc93ed910270858e59df0597"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/agent#AgentMessage.EventView",
+      "package": "github.com/MichaelKinsy/PiG/agent",
+      "name": "AgentMessage.EventView",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() AgentMessage"
+      },
+      "shapeHash": "sha256:da1e88be2b2301db437c7ceb6a9c49e6f1e852a0c8c090e75d705259dcd85252"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/agent#AgentMessage.Identity",
       "package": "github.com/MichaelKinsy/PiG/agent",
       "name": "AgentMessage.Identity",
@@ -7039,17 +7050,6 @@
         "type": "func(ctx context.Context, err error) error"
       },
       "shapeHash": "sha256:804805114bead1ecaad8b509fb179e299327ef62513269fba80c79ed49cb95fe"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#startEventMessage",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "startEventMessage",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(msg AgentMessage) AgentMessage"
-      },
-      "shapeHash": "sha256:17bda044b849a56cbdd6035ec60606b03b1cabd2d1922ce577397c01f6146d9d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/agent#startWindowKey",
