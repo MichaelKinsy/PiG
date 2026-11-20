@@ -117,7 +117,7 @@ func TestMCPChannelStdioIdleAndJSONLProvenance(t *testing.T) {
 		t.Fatal(err)
 	}
 	custom, user := 0, 0
-	for _, line := range strings.Split(strings.TrimSpace(string(data)), "\n") {
+	for line := range strings.SplitSeq(strings.TrimSpace(string(data)), "\n") {
 		var entry struct {
 			Type             string `json:"type"`
 			CustomType       string `json:"customType"`
