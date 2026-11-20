@@ -2037,15 +2037,15 @@ Summary: An explicitly enabled MCP server can wake a session or enqueue attribut
 
 Audience: author
 
-Stock disposition: inert capability. Both explicit boolean server opt-in and the experimental `claude/channel` capability are required; default is off.
+Stock disposition: default off. A push must come from a server explicitly opted in with `channel: true` and declaring the experimental `claude/channel` capability. The custom message name, envelope text and extension-supplied details do not activate channel behavior.
 
-Contract: custom `mcp-channel` messages retain source provenance independently of model-visible user-role conversion. Idle admission starts a run; busy admission waits for the steering boundary and groups adjacent channel messages FIFO. No separate task, deduplication, retry or approval grant is added. Disabled/replaced/closed connections stop admission. The complete params budget is one MiB; invalid inputs are dropped. Body text escapes `&<>` while preserving quotes; attributes are fully escaped. Queue length/rate are not capped. The full contract is in `docs/mcp-channels.md`.
+Contract: the adapter attributes only validated pushes. These remain `mcp-channel` custom messages with a host-assigned `mcpChannelSource` in session JSONL, independent of model-visible user-role conversion. Idle admission starts a run; busy admission waits for the steering boundary and groups adjacent attributed pushes FIFO. Only attributed pushes receive the dedicated TUI source marker, live or on resume; a same-name extension message uses its ordinary queue and renderer. No separate task, deduplication, retry or approval grant is added. Disabled/replaced/closed connections stop admission. The complete params budget is one MiB; invalid inputs are dropped. Body text escapes `&<>` while preserving quotes; attributes are fully escaped. Queue length/rate are not capped. The full contract is in `docs/mcp-channels.md`.
 
-Call-site marker: `coding/mcpext/channel.go`.
+Call-site markers: `coding/mcpext/channel.go`, `coding/session_custom_messages.go`, `internal/codingagent/interactive_mcp_channel.go`.
 
-Locked by: channel payload/config/escaping tests, real-server session provenance and busy-FIFO tests, queue grouping and renderer tests, and `python3 scripts/probe-mcp-channels.py --pig ./bin/pig`.
+Locked by: `TestNonMCPChannelNameDoesNotGroup`, `TestNonMCPChannelNameDoesNotRenderAsChannel`, `TestMCPChannelRendererUsesHostAttribution`, `TestMCPChannelStdioIdleAndJSONLProvenance`, `TestMCPChannelStdioBusyFIFO`, `TestMCPChannelStdioGates`, and the channel payload/config/escaping tests.
 
-Status: local port of a proposed upstream record; awaiting maintainer scrutiny.
-SCRUTINIZED:approved
+Status: local port of a proposed upstream record; awaiting maintainer scrutiny of the provenance boundary.
+SCRUTINIZED:pending-owner-review
 
 Remove when: the MCP adapter has an equivalent attributed channel contract or this feature is removed.

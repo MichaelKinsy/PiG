@@ -84,19 +84,23 @@ With session persistence enabled, each event has this distinct JSONL shape
 (plus ordinary `id`, `parentId`, and `timestamp` fields):
 
 ```json
-{"type":"custom_message","customType":"mcp-channel","content":"<channel source=\"supervisor\" event_id=\"42\" kind=\"wake\">wake: inspect the latest result</channel>","display":true,"details":{"source":"supervisor","meta":{"event_id":"42","kind":"wake"}}}
+{"type":"custom_message","customType":"mcp-channel","content":"<channel source=\"supervisor\" event_id=\"42\" kind=\"wake\">wake: inspect the latest result</channel>","display":true,"details":{"source":"supervisor","meta":{"event_id":"42","kind":"wake"}},"mcpChannelSource":"supervisor"}
 ```
 
-`details.source` is the original server name; `details.meta` contains retained,
-unescaped strings. A genuine user typing the identical `<channel ...>` text
-still persists as `type: "message"` with `message.role: "user"`, **not** as a
-`custom_message`. Consumers must inspect the entry type/customType and provenance,
-not infer human approval from text or from a model/provider user role. As with all
-other messages, `--no-session` disables disk persistence.
+The host sets `mcpChannelSource` to the configured server name only after the
+MCP adapter validates a push. `details.source` repeats the name for consumers;
+`details.meta` contains retained, unescaped strings. An ordinary extension can
+use the same `customType` or supply lookalike details and text without acquiring
+channel attribution. A user typing the identical `<channel ...>` text still
+persists as `type: "message"` with `message.role: "user"`, **not** as a
+`custom_message`. Do not infer human approval from any of these fields, the text,
+or the model/provider role. As with all other messages, `--no-session` disables
+disk persistence.
 
-The interactive TUI renders with user-message styling but a distinct first line
-`← SERVER`, followed by the wrapped content. That marker is display-only, not
-added to the model text. The renderer is also registered for resumed sessions.
+The interactive TUI renders attributed pushes with user-message styling and a
+first line `← SERVER`, live and when resuming the session. That marker is
+presentation only; it is not added to the model text. Entries without host
+attribution use ordinary custom-message rendering.
 
 ## Scheduling, ordering, and dedupe
 
@@ -104,10 +108,11 @@ added to the model text. The renderer is also registered for resumed sessions.
 - **Busy:** synchronous admission to the steering queue; never aborts or injects
   into an in-flight model request or tool call. Delivery happens at the next
   ordinary between-turn steering boundary, after the current turn's tools finish.
-- Adjacent pending channel events are delivered as **one group**, FIFO, even
-  when the user's ordinary steering mode is `one-at-a-time`. They remain separate
-  custom messages and separate JSONL entries. Ordinary input interleaved into the
-  steering queue separates groups; its existing queue policy is unchanged.
+- Adjacent pending pushes with host attribution are delivered as **one group**,
+  FIFO, even when the ordinary steering mode is `one-at-a-time`. They remain
+  separate custom messages and separate JSONL entries. Ordinary input,
+  including same-name extension messages, separates groups and follows the
+  existing queue policy.
 - FIFO per server, including events sent immediately after initialization.
   Across servers, callbacks are serialized at one admission lock: their admitted
   arrival order is the delivery order. Concurrent arrivals have no independent
@@ -141,7 +146,7 @@ For the server alone, run
 stdio client; send JSON params to that relative Unix datagram path to push events.
 The socket exists after `notifications/initialized`.
 
-### Captured output (2026-10-27)
+### Captured output (2026-10-27, before the host attribution field was added)
 
 ```text
 idle: IDLE_WAKE started model request 1 without a user prompt
@@ -158,4 +163,6 @@ gates, cross-server ordering, and actual JSONL provenance versus identical user 
 `coding/mcpext/channel_internal_test.go` covers payload validation, limits,
 escaping, meta filtering, config loading, and adapter custom-message routing.
 `agent/queue_group_test.go` covers grouped FIFO without serialization leakage;
-`coding/mcpext/mcptui/channel_test.go` covers the source marker.
+`internal/codingagent/interactive_mcp_channel_test.go` covers live and resumed
+channel styling. The session and TUI tests also cover an ordinary extension
+message named `mcp-channel`.
