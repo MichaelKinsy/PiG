@@ -1,5 +1,7 @@
 package session
 
+import "github.com/MichaelKinsy/PiG/durable"
+
 // IsClosing reports whether Close began.
 func IsClosing(session *SessionImpl) bool {
 	session.mu.Lock()
@@ -54,4 +56,12 @@ func AbortPrepared(tx *Transaction) {
 			document.change.Abort()
 		}
 	}
+}
+
+// SetAfterSignalRead sets the function each signal delivery of tx calls once it read its task and took its place in line,
+// before it waits for its turn: a test parks the deliveries there to run them in an order of its own.
+func SetAfterSignalRead(tx *Transaction, after func(durable.TaskId, string, durable.JsonValue)) {
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
+	tx.afterSignalRead = after
 }
