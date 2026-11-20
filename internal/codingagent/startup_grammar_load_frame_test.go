@@ -18,10 +18,10 @@ import (
 //
 // startupWritesAroundGrammarLoad returns what the terminal got after the first frame: before the load ended, and after it. A first frame that took longer
 // than the frame interval makes the notice's frame due at once.
-func startupWritesAroundGrammarLoad(t *testing.T, slowFirstFrame bool) (before, after string) {
+func startupWritesAroundGrammarLoad(t *testing.T, mode string, slowFirstFrame bool) (before, after string) {
 	t.Helper()
 	synctest.Test(t, func(t *testing.T) {
-		m, term := newTickRenderProbe(t, "regular")
+		m, term := newTickRenderProbe(t, mode)
 		ctx, cancel := context.WithCancel(t.Context())
 		m.backgroundCtx = ctx
 		endLoad := heldLoad(t, nil)
@@ -75,17 +75,21 @@ func heldLoad(t *testing.T, after func()) (end func()) {
 }
 
 func TestAFrameDueWhileTheGrammarLoadRunsWaitsForTheLoadsContinuation(t *testing.T) {
-	// A first frame fast enough that the notice's frame is not yet due when the load ends: the order Pi's blocked loop gives in every start.
-	piBefore, piAfter := startupWritesAroundGrammarLoad(t, false)
-	if piBefore != "" || !strings.Contains(piAfter, "No models available") {
-		t.Fatalf("the reference start wrote %q before the load ended and %q after it, want nothing and the notice's frame", piBefore, piAfter)
-	}
-	before, after := startupWritesAroundGrammarLoad(t, true)
-	if before != "" {
-		t.Fatalf("a frame due while the grammar load ran was painted before the load's continuation: %q", before)
-	}
-	if after != piAfter {
-		t.Fatalf("a slow first frame changed the writes of the start.\nafter the load: %q\nwant (a first frame that was not slow): %q", after, piAfter)
+	for _, mode := range []string{"regular", "fullscreen"} {
+		t.Run(mode, func(t *testing.T) {
+			// A first frame fast enough that the notice's frame is not yet due when the load ends: the order Pi's blocked loop gives in every start.
+			piBefore, piAfter := startupWritesAroundGrammarLoad(t, mode, false)
+			if piBefore != "" || !strings.Contains(piAfter, "No models available") {
+				t.Fatalf("the reference start wrote %q before the load ended and %q after it, want nothing and the notice's frame", piBefore, piAfter)
+			}
+			before, after := startupWritesAroundGrammarLoad(t, mode, true)
+			if before != "" {
+				t.Fatalf("a frame due while the grammar load ran was painted before the load's continuation: %q", before)
+			}
+			if after != piAfter {
+				t.Fatalf("a slow first frame changed the writes of the start.\nafter the load: %q\nwant (a first frame that was not slow): %q", after, piAfter)
+			}
+		})
 	}
 }
 
