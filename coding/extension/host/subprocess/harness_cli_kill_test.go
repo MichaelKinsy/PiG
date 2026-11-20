@@ -5,13 +5,14 @@ package subprocess
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -590,17 +591,9 @@ func TestHarnessEntryNests(t *testing.T) {
 // harnessEntryEnd is how an entry ended and what it wrote to stderr, as a stub binary's end shows it to the process that ran the entry.
 type harnessEntryEnd struct{ status, stderr string }
 
-// harnessInspectorNotice is the two lines Node's inspector thread writes when SIGUSR1 starts it. The thread writes them while the main thread drains and ends the process, so one run has them in its stderr and the next, which ends a moment earlier, does not: a notice that the inspector opened, which is not how the entry ended.
-var harnessInspectorNotice = regexp.MustCompile(`(?m)^Debugger listening on ws://\S+\nFor help, see: \S+\n`)
-
-// runHarnessEntryToEnd runs the entry over /bin/sh -c script as its binary (the entry passes its arguments through) and returns how it ended: no stub file is written, so no exec can meet a file another
-// goroutine still holds open for writing (ETXTBSY). The budget only fails a hang: a process that never ends is the failure, not a slow one.
-func runHarnessEntryToEnd(t *testing.T, node, entry, script string) harnessEntryEnd {
+// harnessRunToEnd runs cmd to its end with its stderr captured and returns how it ended. The budget only fails a hang: a process that never ends is the failure, not a slow one.
+func harnessRunToEnd(t *testing.T, cmd *exec.Cmd) harnessEntryEnd {
 	t.Helper()
-	cmd := exec.Command(node, entry, "-c", script)
-	cmd.Dir = t.TempDir()
-	// SIGUSR1 opens Node's inspector; port 0 keeps concurrent runs, of this test and of others, off port 9229, where one run would find it taken and print a line of its own.
-	cmd.Env = append(os.Environ(), "PIG_HARNESS_BINARY=/bin/sh", "NODE_OPTIONS="+strings.TrimSpace(os.Getenv("NODE_OPTIONS")+" --inspect-port=0"))
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Start(); err != nil {
@@ -614,7 +607,7 @@ func runHarnessEntryToEnd(t *testing.T, node, entry, script string) harnessEntry
 	case <-time.After(budget):
 		_ = cmd.Process.Kill()
 		<-ended
-		t.Fatalf("%s never ended: it was still running %s after its binary ended (stderr %q)", filepath.Base(entry), budget, stderr.String())
+		t.Fatalf("%s never ended: it was still running %s (stderr %q)", strings.Join(cmd.Args[:2], " "), budget, stderr.String())
 	}
 	status := "exit " + strconv.Itoa(cmd.ProcessState.ExitCode())
 	if ws, ok := cmd.ProcessState.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
@@ -623,9 +616,60 @@ func runHarnessEntryToEnd(t *testing.T, node, entry, script string) harnessEntry
 	return harnessEntryEnd{status, stderr.String()}
 }
 
+// harnessNodeEnv is the environment for a Node that may meet SIGUSR1: it opens an inspector, and port 0 keeps concurrent runs, of these tests and of others, off port 9229, where one run would find it taken and print a line of its own.
+func harnessNodeEnv(options ...string) []string {
+	return append(os.Environ(), "NODE_OPTIONS="+strings.TrimSpace(strings.Join(append([]string{os.Getenv("NODE_OPTIONS"), "--inspect-port=0"}, options...), " ")))
+}
+
+// runHarnessEntryToEnd runs the entry over /bin/sh -c script as its binary (the entry passes its arguments through) and returns how it ended: no stub file is written, so no exec can meet a file another
+// goroutine still holds open for writing (ETXTBSY). With mark set, every Node process of the entry reports on stderr that it raised that signal on itself (testdata/harness-signal-mark.mjs).
+func runHarnessEntryToEnd(t *testing.T, node, entry, script string, mark syscall.Signal) harnessEntryEnd {
+	t.Helper()
+	cmd := exec.Command(node, entry, "-c", script)
+	cmd.Dir = t.TempDir()
+	cmd.Env = append(harnessNodeEnv(), "PIG_HARNESS_BINARY=/bin/sh")
+	if mark != 0 {
+		preload, err := filepath.Abs(filepath.Join("testdata", "harness-signal-mark.mjs"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		cmd.Env = append(harnessNodeEnv("--import", preload), "PIG_HARNESS_BINARY=/bin/sh", "HARNESS_MARK_SIGNALS="+strconv.Itoa(int(mark)))
+	}
+	return harnessRunToEnd(t, cmd)
+}
+
+// harnessRaise is the stub binary's script that ends it by sig, when sig ends a shell.
+func harnessRaise(sig syscall.Signal) string {
+	return "kill -" + strconv.Itoa(int(sig)) + " $$; sleep 1"
+}
+
+// harnessStubNotEndedBy tells why /bin/sh does not end by sig when it raises it on itself: it stops, or it survives. It returns "" when sig ends it. A stopped stub is killed.
+func harnessStubNotEndedBy(t *testing.T, sig syscall.Signal) string {
+	t.Helper()
+	own := exec.Command("/bin/sh", "-c", harnessRaise(sig))
+	if err := own.Start(); err != nil {
+		t.Fatal(err)
+	}
+	var ws syscall.WaitStatus
+	if _, err := syscall.Wait4(own.Process.Pid, &ws, syscall.WUNTRACED, nil); err != nil {
+		t.Fatal(err)
+	}
+	if ws.Stopped() {
+		_ = own.Process.Kill()
+		_, _ = syscall.Wait4(own.Process.Pid, &ws, 0, nil)
+		return "the stub stops on " + sig.String() + " and does not end"
+	}
+	if !ws.Signaled() || ws.Signal() != sig {
+		return "the stub does not end by " + sig.String() + " (it ended " + strconv.Itoa(ws.ExitStatus()) + ")"
+	}
+	return ""
+}
+
 // A binary ends by an exit code or by a signal, and the entry ends the same way: by the same code, by the same signal, or, where Node does not die from the signal (it ignores SIGPIPE and SIGXFSZ and takes SIGUSR1
-// for its inspector), with code 0 and what Node wrote. testdata/harness-entry-oracle.mjs is the entry as it ended its binary before it had a supervisor; the supervised entry must end as it does for every
+// for its inspector), with code 0 and without raising the signal. testdata/harness-entry-oracle.mjs is the entry as it ended its binary before it had a supervisor; the supervised entry must end as it does for every
 // exit code worth distinguishing and for every signal 1 to 31 by which a stub ends itself. A signal that does not end the stub (STOP, TSTP, CONT, CHLD, WINCH and the rest) is skipped by the stub's own wait status, not by a list.
+// The oracle raises SIGUSR1 on itself and so opens an inspector, which writes a notice once or, when the process ends first, not at all: in that one row the oracle contributes its status and not its stderr, and the
+// supervised entry must end with nothing on stderr, which is what the stub wrote.
 func TestHarnessEntryEndsAsItsBinaryEndedForEveryExitAndSignal(t *testing.T) {
 	node, err := exec.LookPath("node")
 	if err != nil {
@@ -648,38 +692,20 @@ func TestHarnessEntryEndsAsItsBinaryEndedForEveryExitAndSignal(t *testing.T) {
 		ends = append(ends, end{name: "exit " + strconv.Itoa(code), body: "exit " + strconv.Itoa(code)})
 	}
 	for n := 1; n <= 31; n++ {
-		ends = append(ends, end{name: "signal " + strconv.Itoa(n) + " " + syscall.Signal(n).String(), body: "kill -" + strconv.Itoa(n) + " $$; sleep 1", signal: syscall.Signal(n)})
+		ends = append(ends, end{name: "signal " + strconv.Itoa(n) + " " + syscall.Signal(n).String(), body: harnessRaise(syscall.Signal(n)), signal: syscall.Signal(n)})
 	}
 	for _, e := range ends {
 		t.Run(e.name, func(t *testing.T) {
 			t.Parallel()
 			if e.signal != 0 {
-				// The stub's own end decides whether this signal counts: run it alone and see how it ended. A stopped stub is killed.
-				own := exec.Command("/bin/sh", "-c", e.body)
-				if err := own.Start(); err != nil {
-					t.Fatal(err)
-				}
-				var ws syscall.WaitStatus
-				if _, err := syscall.Wait4(own.Process.Pid, &ws, syscall.WUNTRACED, nil); err != nil {
-					t.Fatal(err)
-				}
-				if ws.Stopped() {
-					_ = own.Process.Kill()
-					_, _ = syscall.Wait4(own.Process.Pid, &ws, 0, nil)
-					t.Skipf("the stub stops on %v and does not end", e.signal)
-				}
-				if !ws.Signaled() || ws.Signal() != e.signal {
-					t.Skipf("the stub does not end by %v (it ended %v)", e.signal, ws)
+				if why := harnessStubNotEndedBy(t, e.signal); why != "" {
+					t.Skip(why)
 				}
 			}
-			want := runHarnessEntryToEnd(t, node, oracle, e.body)
-			got := runHarnessEntryToEnd(t, node, entry, e.body)
+			want := runHarnessEntryToEnd(t, node, oracle, e.body, 0)
+			got := runHarnessEntryToEnd(t, node, entry, e.body, 0)
 			if e.signal == syscall.SIGUSR1 {
-				// The one row that compares the status and not the notice: it is the only row where Node opens an inspector. The inspector opens once, or not before the process ends, and everything else on stderr is still compared.
-				if n := len(harnessInspectorNotice.FindAllString(got.stderr, -1)); n > 1 {
-					t.Errorf("the entry wrote the inspector notice %d times: %q", n, got.stderr)
-				}
-				want.stderr, got.stderr = harnessInspectorNotice.ReplaceAllString(want.stderr, ""), harnessInspectorNotice.ReplaceAllString(got.stderr, "")
+				want.stderr = ""
 			}
 			if got != want {
 				t.Errorf("the entry ended %+v, the entry before the supervisor ended %+v", got, want)
@@ -687,4 +713,90 @@ func TestHarnessEntryEndsAsItsBinaryEndedForEveryExitAndSignal(t *testing.T) {
 			t.Logf("%s: both ended %q with stderr %q", e.name, got.status, got.stderr)
 		})
 	}
+}
+
+// Node does not end itself by every signal raised on it: it ignores SIGPIPE and SIGXFSZ and takes SIGUSR1 for its inspector. A hop that raised such a signal on itself to end as its binary ended would not end by it,
+// and for SIGUSR1 would open an inspector, which writes a notice and can crash Node while it opens. So relay.mjs lists the signals Node survives (survivedSignals) and a hop ends with code 0 for them without raising them.
+// This test finds what Node does for each signal that ends a stub, on the platform it runs on, and requires the list to be exactly that: a survivor missing from the list, or a signal that ends Node in it, fails. It then runs the
+// entry on a stub that ends by each survivor, with a preload that reports a Node process of the entry raising that signal on itself: none may, and the entry ends with code 0.
+func TestHarnessEntryNeverRaisesASignalNodeSurvives(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skipf("node unavailable: %v", err)
+	}
+	relay, err := filepath.Abs(filepath.Join("runtime-node", "harness", "relay.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry, err := filepath.Abs(filepath.Join("runtime-node", "harness", "cli.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The list's names as this platform's signal numbers; a name the platform has no signal for comes back null, which decodes as 0.
+	out, err := exec.Command(node, "--input-type=module", "-e", `import { constants } from "node:os";
+const { survivedSignals } = await import(process.argv[1]);
+console.log(JSON.stringify(survivedSignals.map((name) => constants.signals[name] ?? null)));`, "file://"+relay).Output()
+	if err != nil {
+		t.Fatalf("reading survivedSignals from relay.mjs: %v", err)
+	}
+	var numbers []int
+	if err := json.Unmarshal(out, &numbers); err != nil {
+		t.Fatalf("survivedSignals as signal numbers %q: %v", out, err)
+	}
+	listed := map[int]bool{}
+	for _, n := range numbers {
+		if n < 1 || n > 31 {
+			t.Errorf("survivedSignals names a signal this platform does not number from 1 to 31 (%d in %s)", n, out)
+		}
+		listed[n] = true
+	}
+
+	var mu sync.Mutex
+	survives := map[int]bool{} // for each signal that ends a stub: whether bare Node survives it raised on itself
+	t.Run("probe", func(t *testing.T) {
+		for n := 1; n <= 31; n++ {
+			sig := syscall.Signal(n)
+			t.Run(strconv.Itoa(n)+" "+sig.String(), func(t *testing.T) {
+				t.Parallel()
+				if why := harnessStubNotEndedBy(t, sig); why != "" {
+					t.Skip(why)
+				}
+				cmd := exec.Command(node, "-e", "process.kill(process.pid, Number(process.argv[1]))", strconv.Itoa(n))
+				cmd.Env = harnessNodeEnv()
+				end := harnessRunToEnd(t, cmd)
+				mu.Lock()
+				survives[n] = end.status == "exit 0"
+				mu.Unlock()
+				t.Logf("Node raised %v on itself and ended %q", sig, end.status)
+			})
+		}
+	})
+	var survivors []int
+	for n := 1; n <= 31; n++ {
+		sig := syscall.Signal(n)
+		survived, probed := survives[n]
+		switch {
+		case !probed && listed[n]:
+			t.Errorf("survivedSignals lists %v, which does not end a stub, so no binary ends by it", sig)
+		case survived && !listed[n]:
+			t.Errorf("Node survives %v raised on itself and survivedSignals does not list it: a hop would raise it", sig)
+		case probed && !survived && listed[n]:
+			t.Errorf("survivedSignals lists %v, which ends Node: a hop would not end by it", sig)
+		}
+		if survived {
+			survivors = append(survivors, n)
+		}
+	}
+	t.Run("entry", func(t *testing.T) {
+		for _, n := range survivors {
+			sig := syscall.Signal(n)
+			t.Run(sig.String(), func(t *testing.T) {
+				t.Parallel()
+				got := runHarnessEntryToEnd(t, node, entry, harnessRaise(sig), sig)
+				if want := (harnessEntryEnd{"exit 0", ""}); got != want {
+					t.Errorf("a stub that ends by %v: the entry ended %+v, want %+v (a stderr line is a hop raising the signal on itself)", sig, got, want)
+				}
+			})
+		}
+	})
 }
