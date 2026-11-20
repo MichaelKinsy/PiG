@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
@@ -153,11 +154,11 @@ type AgentMessage struct {
 
 	// source is the object a System or Custom message was decoded from, when its JSON.stringify text differs from the text the fields encode to. Custom encodes its current members in the order of the decoded object.
 	source *messageSource
-	// origin is the Identity of the message a message_start envelope was copied from (startEventMessage); nil for any other message.
+	// origin is the Identity of the message an EventView was copied from; nil for any other message.
 	origin any
 }
 
-// Identity names the message m stands for, so the transcript's message, the message_end event's and the session entry's, which share one object, and the message_start envelope copied from it (startEventMessage) all give one key. It is nil for a message with no content to name. Pi hands one object to all of them; a key is what lets a listener of this process tell its payload copies apart from messages that merely look alike.
+// Identity names the message m stands for, so the transcript's message, the message_end event's and the session entry's, which share one object, and the EventView copied from it all give one key. It is nil for a message with no content to name. Pi hands one object to all of them; a key is what lets a listener of this process tell its payload copies apart from messages that merely look alike.
 func (m AgentMessage) Identity() any {
 	if m.origin != nil {
 		return m.origin
@@ -177,7 +178,7 @@ func (m AgentMessage) Identity() any {
 	return nil
 }
 
-// Original is the message m's envelope was copied from (startEventMessage), as a message of its own shape over the object the transcript and the saved entry hold, and reports whether m is such an envelope whose original is reachable. A system, user, assistant or tool result message has one; a custom message's copy does not (its original is a map Identity only names).
+// Original is the message m's EventView was copied from, as a message of its own shape over the object the transcript and the saved entry hold, and reports whether m is such a view whose original is reachable. A system, user, assistant or tool result message has one; a custom message's view does not (its original is a map Identity only names).
 func (m AgentMessage) Original() (AgentMessage, bool) {
 	switch origin := m.origin.(type) {
 	case *ai.SystemMessage:
@@ -190,6 +191,32 @@ func (m AgentMessage) Original() (AgentMessage, bool) {
 		return AgentMessage{ToolResult: origin}, true
 	}
 	return AgentMessage{}, false
+}
+
+// EventView returns m as the consumer of an event holds it: a copy with m's Identity whose members a later in-place replacement of m (ReplaceMessageInPlace) does not change. Original returns m. A session that publishes events to consumers reading on their own goroutines gives them the view, so they read the message as it was when the event was published, as Pi's listeners do, though a later handler replaces it; message_start carries the view of the message it announces, so a message_end replacement does not reach it.
+//
+// A system, user, assistant or tool result message is copied as a struct, and a custom message's member map and member-order record are copied. What the members refer to (content blocks, usage, the values of a custom message's members) is shared with m: a replacement overwrites the members of a message or the entries of its map and never writes into the values they held. A write into those values by other code is not covered.
+func (m AgentMessage) EventView() AgentMessage {
+	out := m
+	out.origin = m.Identity()
+	switch {
+	case m.System != nil:
+		out.System = new(*m.System)
+	case m.User != nil:
+		out.User = new(*m.User)
+	case m.Assistant != nil:
+		out.Assistant = new(*m.Assistant)
+	case m.ToolResult != nil:
+		out.ToolResult = new(*m.ToolResult)
+	case m.Custom != nil:
+		out.Custom = maps.Clone(m.Custom)
+		if m.source != nil {
+			// The member-order record is shared by the copies of one message, so a replacement's adoption would reach this view; it keeps its own, as Clone does.
+			record := *m.source
+			out.source = &record
+		}
+	}
+	return out
 }
 
 // messageSource is the JSON.stringify text of the object a message was decoded from.

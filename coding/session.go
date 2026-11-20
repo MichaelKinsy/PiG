@@ -1153,6 +1153,8 @@ func (s *Session) RunAgentPrompt(ctx context.Context, start func(context.Context
 //
 // Once called, the channel is buffered and a consumer that falls behind makes the agent loop block until it catches up, as a slow synchronous Pi listener does; drain it in a dedicated goroutine, passing each event to AcknowledgeEvent first so the end-of-turn FlushEvents inside Send is answered. It carries every event in order. Every call returns the same channel and keeps delivery on.
 //
+// The message of a message_end or turn_end event is the message as it was when the event was published (agent.AgentMessage.EventView), which Pi's listeners, running at the event, see: a handler of a later event that edits the message in place (turn_end's, agent_end's) changes the transcript, the saved entry and the events published after it, and not an event a consumer still holds. The view has the Identity of the message it stands for. Subscribe listeners run at the event and receive the message itself.
+//
 // The channel is closed when the Session is Closed. A consumer that stops reading calls DiscardEvents. A Session returned by Clone has its own channel, delivering nothing until its own Events call.
 func (s *Session) Events() <-chan agent.AgentEvent {
 	s.eventsSubscribed.Store(true)

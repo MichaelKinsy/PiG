@@ -193,7 +193,7 @@ func applyEventEdits(parent context.Context, event any, edits []EventEdit) error
 		if r.envelopeOnly {
 			continue
 		}
-		// message_start carries an envelope copied from the message the transcript and the saved entry hold (agent.startEventMessage); Pi's handler edits that one object, so the edit reaches the original too.
+		// message_start carries an envelope copied from the message the transcript and the saved entry hold (agent.AgentMessage.EventView); Pi's handler edits that one object, so the edit reaches the original too.
 		if original, ok := r.target.Original(); ok {
 			agent.ReplaceMessageInPlace(original, r.replacement)
 		}

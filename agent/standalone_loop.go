@@ -248,7 +248,7 @@ func (r *loopRun) execute(initial []AgentMessage, startErr error) (err, failure 
 		for _, msg := range initial {
 			msg = msg.WithOrderRecord()
 			// message_start carries its own copy: a message_end replacement is applied in place to the message the transcript and message_end share.
-			r.h.emit(MessageStartEvent{Message: startEventMessage(msg)})
+			r.h.emit(MessageStartEvent{Message: msg.EventView()})
 			r.h.emit(MessageEndEvent{Message: msg})
 		}
 		if startErr != nil {

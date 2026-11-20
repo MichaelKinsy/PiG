@@ -175,7 +175,7 @@ func (a *Agent) StreamingMessage() *AgentMessage {
 		a.streamingStorage = AgentMessage{Assistant: shallowAssistantMessageFrom(&a.streamingCapture)}
 		a.dropStreamingCapture()
 	}
-	message := startEventMessage(*a.streamingMessage)
+	message := a.streamingMessage.EventView()
 	return &message
 }
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"math"
 	"slices"
 	"time"
@@ -444,36 +443,10 @@ func (r *loopRun) applyUpdate(context *AgentContext, model *ai.Model, thinking *
 // loop context, and the run's new messages.
 func (r *loopRun) appendMessage(msg AgentMessage) {
 	msg = msg.WithOrderRecord()
-	r.h.emit(MessageStartEvent{Message: startEventMessage(msg)})
+	r.h.emit(MessageStartEvent{Message: msg.EventView()})
 	r.context = append(r.context, msg)
 	r.newMessages = append(r.newMessages, msg)
 	r.h.emit(MessageEndEvent{Message: msg})
-}
-
-// startEventMessage gives message_start its own envelope: a message_end
-// replacement overwrites the message the transcript and message_end share,
-// and must not reach a message_start a listener may still be reading.
-func startEventMessage(msg AgentMessage) AgentMessage {
-	out := msg
-	out.origin = msg.Identity()
-	switch {
-	case msg.System != nil:
-		out.System = new(*msg.System)
-	case msg.User != nil:
-		out.User = new(*msg.User)
-	case msg.Assistant != nil:
-		out.Assistant = new(*msg.Assistant)
-	case msg.ToolResult != nil:
-		out.ToolResult = new(*msg.ToolResult)
-	case msg.Custom != nil:
-		out.Custom = maps.Clone(msg.Custom)
-		if msg.source != nil {
-			// The member-order record is shared by the copies of one message, so a replacement's adoption would reach this envelope; it keeps its own, as Clone does.
-			record := *msg.source
-			out.source = &record
-		}
-	}
-	return out
 }
 
 // appendAssistant records a streamed assistant message; consumeStream already

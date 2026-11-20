@@ -72,7 +72,19 @@ func (r *sessionEventRegions) runContext(ctx context.Context) context.Context {
 func (s *Session) endEventTask() { s.eventRegions.task.End() }
 
 // publishAgentEvent publishes an event of the Agent on Events (emitPublishedEvent), in its place among the bounds of the task that runs, if one does (sessionEventRegions).
+//
+// The message of a message_end or turn_end event is the object the transcript and the saved entry hold, which a later handler (turn_end's, agent_end's) may replace in place while a consumer of Events, reading on its own goroutine, still holds the event. Pi's listeners run at the event, so a listener sees the message as it is then: the event carries its EventView, taken here on the goroutine that publishes, before anything can replace the message. Nothing is copied while no consumer called Events.
 func (s *Session) publishAgentEvent(ev agent.AgentEvent) {
+	if s.eventsSubscribed.Load() {
+		switch event := ev.(type) {
+		case agent.MessageEndEvent:
+			event.Message = event.Message.EventView()
+			ev = event
+		case agent.TurnEndEvent:
+			event.Message = event.Message.EventView()
+			ev = event
+		}
+	}
 	r := &s.eventRegions
 	if !r.pending.Load() {
 		s.emitPublishedEvent(ev)
