@@ -865,6 +865,7 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 | [BF-6334aa7](#bf-6334aa7) | A Piglet frontend that draws the run no longer has the session resume line (`To resume this session: ...`)… | PiG's own defect | All platforms | Unreleased |
 | [BF-63b4fc8](#bf-63b4fc8) | `NodeExecutionEnv.Watch` gives a directory replaced at the same path a new watcher, reports changes to the… | A fix Pi shipped that PiG ported | macOS | 0.5.0 |
 | [BF-63bb0b7](#bf-63bb0b7) | `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call… | PiG's own defect | All platforms | 0.5.0 |
+| [BF-64373de](#bf-64373de) | A llama.cpp decision classifier whose server reports image input, such as Clef with its `mmproj`, now takes… | PiG's own defect | All platforms | Unreleased |
 | [BF-6445df7](#bf-6445df7) | PNG images are now decoded the way Pi decodes them, pixel for pixel and error for error on every file of the… | PiG's own defect | All platforms | 0.7.0 |
 | [BF-644a9f2](#bf-644a9f2) | Changelog link rewriting and `git` source parsing match a URL scheme case-insensitively as Pi's regex with… | PiG's own defect | All platforms | 0.5.0 |
 | [BF-644a9f2-2](#bf-644a9f2-2) | A Node extension's `ctx.ui.custom` factory can call `tui.showOverlay`, `tui.hideOverlay` and `tui.setFocus`… | PiG's own defect | All platforms | 0.5.0 |
@@ -14129,6 +14130,20 @@ Entries are listed by ID. The page carries no totals, so a pull request that add
 - **Fix commits:** `63bb0b7eac` (2026-10-12), `974050757c` (2026-10-12), `d305b76bda` (2026-10-12)
 - **Tests:** `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresEveryFileWhenTheRebuildFails`, `coding/cli/extension_upgrade_test.go::TestUpgraderRestoresWrittenFilesWhenAWriteFails`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestGoSDKPathOverrideKeepsCurrentStagedSDK`, `coding/extension/host/runtimecell/go_sdk_override_test.go::TestRustSDKPathOverrideIgnoresRetiredStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestGoNeedsStagedSDK`, `coding/extension/host/subprocess/builder_test.go::TestRustNeedsStagedSDK`, `extensions/sdk/upgrade/fixtures_test.go::TestFixturesUpgradeAndBuild` and 3 more in docs/bug-ledger.json
 - **Release note:** `pig extension upgrade` now rewrites a `Context` getter call that is the only argument of a variadic call, such as `fmt.Println(ctx.ConfigHome())`. That call still compiles against the current SDK because the value and the error both become arguments, so the error was printed or passed on instead of handled and the upgrade reported nothing. It is now rewritten like the other uses: the function returns the error, or, for `ConfigHome` in a function that does not return an error, the line is listed for you to change.
+
+### BF-64373de
+
+**A llama.cpp decision classifier whose server reports image input, such as Clef with its `mmproj`, now takes…**
+
+- **Source:** PiG's own defect
+- **Symptom:** A llama.cpp decision classifier whose server reports image input, such as Clef with its `mmproj`, now takes images: `models.classify()` sends them to `/v1/systemone` as data URLs instead of failing with "does not support image input".
+- **Root cause:** PiG registered every llama.cpp classifier model with input text only and no System One compat, as Pi did, so the classifier refused the images of a decision model the server had said accepts them.
+- **User impact:** Wrong output or ordering
+- **Platform:** All platforms
+- **Fixed in:** Unreleased
+- **Fix commits:** `64373deac1` (2026-11-19)
+- **Tests:** `internal/codingagent/llama/provider_images_native_test.go::TestAIClassifierModelCarriesImageInputOfDecisionModels`, `internal/codingagent/llama/provider_images_upstream_test.go::TestProviderRefusesImagesForClassifiersThatTakeNone`, `internal/codingagent/llama/provider_images_upstream_test.go::TestProviderSendsImagesToDecisionModelsThatAdvertiseImageInputAsDataURLs`
+- **Release note:** A llama.cpp decision classifier whose server reports image input, such as Clef with its `mmproj`, now takes images: `models.classify()` sends them to `/v1/systemone` as data URLs instead of failing with "does not support image input". Decision models without image input and the next-token fallback for chat models stay text-only.
 
 ### BF-6445df7
 

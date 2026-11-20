@@ -13983,8 +13983,8 @@
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
       "source": "dist/extensions/llama/provider.js",
-      "sourceSha256": "424c62c717a7b84a2aa83f121dc1971c8c8ff40e4eddede2e838391b1caa0d2d",
-      "sha256": "c8fbe58fdc8735e29c9ce17e5a5b47819230b65b94c037fbbd69c20353d5bd12",
+      "sourceSha256": "f66ed265e40616e46d4eb71191453b33aab4276fe150fe9084befdf8534c4254",
+      "sha256": "644df552e941153e2f9f659e505b75a0c09a45150553c2f1ffcbcbe0b500c494",
       "rewrite": "module specifiers"
     },
     {
@@ -15291,7 +15291,7 @@
         "version": "1.5.2",
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
-      "sha256": "b6ec73328b1e4aff8d4344feb0acd36d1b348d7352e9e18c7b9085f411a94607",
+      "sha256": "e0b43a04542b5605d0b291555005d2d761c5fdc02cc5077128beabe13585d698",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -15301,7 +15301,7 @@
         "version": "1.5.2",
         "integrity": "sha512-mUWI04rqF1Vd/m1q+Ps1XeWsTXEVvRUnsmRa83I3Dzua0Tx5bYS93imeqtIfrXf7PkkaR6ERz+AuQhIJlom5yA=="
       },
-      "sha256": "d24057cbd4cfd33317b6e93162cc64f3fe26f985ef2af95ce5c0c87209a0d646",
+      "sha256": "ed4dd0bf0369161e45828a4ce145794f0211fbfbfd6cc0370687a9d8342252d5",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {

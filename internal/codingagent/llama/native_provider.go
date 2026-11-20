@@ -79,7 +79,7 @@ func (c *LlamaProviderController) ModelsProvider() *ai.ModelsProvider {
 			return provider.Classify(ctx, ClassifierModel{
 				Type: "classifier", ID: model.ID, Name: model.Name, API: string(model.API), Provider: model.Provider, BaseURL: model.BaseURL,
 				Input: model.Input, Cost: ModelCost{Input: model.Cost.Input, Output: model.Cost.Output, CacheRead: model.Cost.CacheRead, CacheWrite: model.Cost.CacheWrite},
-				ContextWindow: model.ContextWindow,
+				ContextWindow: model.ContextWindow, Compat: model.Compat,
 			}, request, options), nil
 		},
 	}

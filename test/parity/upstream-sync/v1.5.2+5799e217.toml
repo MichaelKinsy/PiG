@@ -1,0 +1,24 @@
+from = "1.5.2+cead615b"
+to = "1.5.2+5799e217"
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/provider.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/provider_images_upstream_test.go#TestProviderSendsImagesToDecisionModelsThatAdvertiseImageInputAsDataURLs", "test:internal/codingagent/llama/provider_images_native_test.go#TestAIClassifierModelCarriesImageInputOfDecisionModels", "test:internal/codingagent/llama/provider_refresh_oracle_test.go#TestLlamaProviderRefreshMatchesPi"]
+rationale = "5799e217e (#12335, #12282): toPiClassifierModel registers a decision model whose server lists image input with input text and image and the compat imageInput images, sendImageOptInHeader false; every other classifier stays text-only. PiG's counterpart is toPiClassifierModel in internal/codingagent/llama/provider.go, whose ClassifierModel now carries Compat into the ai classifier model."
+oracle = "carried: 5799e217e (the compiled extensions/llama/provider.js)"
+
+[[files]]
+path = "packages/coding-agent/test/llama-extension.test.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/llama/provider_images_upstream_test.go#TestProviderSendsImagesToDecisionModelsThatAdvertiseImageInputAsDataURLs"]
+rationale = "5799e217e: the case 'sends images to decision models that advertise image input as data URLs' runs against a mock llama-server with the same catalog (clef with image input and decisions, vision-chat with image input and text output) and expects the same inputs, the images list of data URLs, no opt-in header and no assets."
+
+[[files]]
+path = "packages/coding-agent/CHANGELOG.md"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "5799e217e: the entry about llama.cpp decision classifiers ignoring reported image input. PiG's user-visible change is its own changelog.d fragment."
