@@ -28,7 +28,7 @@ func Extension() *sdk.Extension {
  e.OnEvent("session_start",func(_ sdk.Context, data map[string]any)(any,error) { log(fmt.Sprintf("start:%d:%s",g,data["reason"])); return nil,nil })
  e.OnEvent("input",func(_ sdk.Context,data map[string]any)(any,error) { log(fmt.Sprintf("input:%d:%s",g,data["text"])); return nil,nil })
  reload := func(ctx sdk.Context) error {
-  if err := ctx.Reload(sdk.ReloadOptions{ContinueWith:"continuation marker"}); err != nil { return err }
+  if err := ctx.ReloadWithOptions(sdk.ReloadOptions{ContinueWith:"continuation marker"}); err != nil { return err }
   err := ctx.SendUserMessage("must not arrive", "followUp")
   if err == nil { return fmt.Errorf("old context was accepted") }
   if !strings.Contains(err.Error(),"stale") { return err }

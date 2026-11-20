@@ -8,6 +8,62 @@ import (
 	"testing"
 )
 
+func TestReloadOnlyContinuationRetainsRunningTools(t *testing.T) {
+	for _, tc := range []struct {
+		name, args string
+		command    bool
+		deferStop  bool
+	}{
+		{name: "plain"},
+		{name: "null", args: `null`},
+		{name: "empty object", args: `{}`},
+		{name: "empty continuation", args: `{"continueWith":""}`},
+		{name: "plain command", command: true, deferStop: true},
+		{name: "continuation", args: `{"continueWith":"resume"}`, deferStop: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rig := newPushRig(t)
+			stops := make(chan struct{}, 2)
+			called := false
+			rig.me.requests.begin() // one pending tool
+			if tc.command {
+				rig.me.commands.begin()
+				rig.me.requests.begin()
+			}
+			rig.bridge.SetActions(&HostCallbacks{
+				Reload: func(context.Context) error {
+					called = true
+					if got := rig.h.retireGeneration(rig.me, func() { stops <- struct{}{} }); got != tc.deferStop {
+						t.Errorf("retirement deferred = %t, want %t", got, tc.deferStop)
+					}
+					return nil
+				},
+				SendUserMessage: func(any, SendUserMessageOptions) error { return nil },
+			})
+			rig.h.runCall(rig.me, rig.conn, "", &CallPayload{Method: "reload", Args: json.RawMessage(tc.args)}, nil)
+			if !called {
+				t.Error("reload callback did not run")
+			}
+			if got := len(stops); (got == 0) != tc.deferStop {
+				t.Errorf("stops before request returned = %d, want deferred stop: %t", got, tc.deferStop)
+			}
+			if tc.command {
+				rig.me.requests.end()
+				rig.me.commands.end()
+				rig.h.retirementTasks.Wait()
+				if len(stops) != 1 {
+					t.Error("plain command reload did not retire when the command returned while a tool was still pending")
+				}
+			}
+			rig.me.requests.end()
+			rig.h.retirementTasks.Wait()
+			if len(stops) != 1 {
+				t.Error("generation did not stop exactly once after the request returned")
+			}
+		})
+	}
+}
+
 func TestReloadContinuationDelegatesToTheModeOwnedOperation(t *testing.T) {
 	bridge := NewUIBridge(func() {})
 	calls := 0

@@ -659,7 +659,7 @@ type managedExt struct {
 	// wantsModelRegistry records RegisterPayload.WantsModelRegistry: only such a runtime is sent model-registry snapshots.
 	wantsModelRegistry bool
 	nodeRuntime        bool // isolated extension hosted by the Node runtime; a packed one reports through packedProcess.node
-	// commands retains running commands across reload; requests also retains tools while their generation itself awaits reload (retireGeneration).
+	// commands retains running commands across reload; requests also retains tools while their generation awaits a continuation reload (retireGeneration).
 	commands    commandGate
 	requests    commandGate
 	reloadCalls atomic.Int64
@@ -3994,7 +3994,7 @@ func (h *Host) makeMessageRenderer(me *managedExt, customType string) extension.
 func (h *Host) makeToolExecuteFunc(me *managedExt, toolName string) extension.ToolExecuteFunc {
 	return func(ctx context.Context, toolCallID string, params json.RawMessage, onUpdate extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
 		generation := me.current()
-		// pig additive (D19): a tool awaiting reload must retain its old connection until it returns, just like a command.
+		// pig additive (D658): a tool awaiting a continuation reload retains its old connection until it returns.
 		generation.requests.begin()
 		defer generation.requests.end()
 		return h.toolExecuteFunc(toolName, toolTarget{

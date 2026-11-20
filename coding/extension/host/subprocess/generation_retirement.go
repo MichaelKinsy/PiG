@@ -52,7 +52,7 @@ type generationRetirement struct {
 
 func (r *generationRetirement) do() { r.once.Do(r.run) }
 
-// retireGeneration stops a replaced or removed generation. Running commands retain it until they return. Tools retain it only while the generation awaits its own reload, so `await ctx.reload()` can resolve in its handler (agent-session.ts:3575-3625, one process). An external reload stops and drains tools synchronously. A deferred stop runs as a Host task, and Shutdown runs any still pending. It reports whether the stop was deferred; the caller reaps an immediate stop itself.
+// retireGeneration stops a replaced or removed generation. Running commands retain it until they return. Tools retain it only while the generation awaits a continuation reload. Plain and external reloads keep the command-only gate. A deferred stop runs as a Host task, and Shutdown runs any still pending. It reports whether the stop was deferred; the caller reaps an immediate stop itself.
 func (h *Host) retireGeneration(old *managedExt, stop func()) (deferred bool) {
 	retirement := &generationRetirement{run: func() {
 		stop()

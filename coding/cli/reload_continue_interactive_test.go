@@ -36,7 +36,7 @@ func Extension() *sdk.Extension {
  e.OnEvent("session_start", func(_ sdk.Context, _ map[string]any)(any,error) { log(fmt.Sprintf("start:%s:%d",version,os.Getpid())); return nil,nil })
  e.OnEvent("input",func(_ sdk.Context,data map[string]any)(any,error) { log(fmt.Sprintf("input:%s:%s",version,data["text"])); return nil,nil })
  e.Tool("reload_and_continue", "Reload then continue", sdk.Schema{"type":"object"}, func(ctx sdk.Context,_ map[string]any)(any,error) {
-  if err := ctx.Reload(sdk.ReloadOptions{ContinueWith:"Run: ext tool version {}"}); err != nil { return nil,err }
+  if err := ctx.ReloadWithOptions(sdk.ReloadOptions{ContinueWith:"Run: ext tool version {}"}); err != nil { return nil,err }
   log("tool-returned:"+version)
   return sdk.ToolResult{Content:"reload scheduled after this turn"},nil
  })
@@ -71,7 +71,7 @@ func runInteractiveReloadContinuation(t *testing.T, failReload, repeat bool) {
 	}
 	source := interactiveReloadContinueGo
 	if repeat {
-		source = strings.Replace(source, `  log("tool-returned:"+version)`, `  if err := ctx.Reload(sdk.ReloadOptions{ContinueWith:"Run: ext tool version {}"}); err != nil { return nil,err }
+		source = strings.Replace(source, `  log("tool-returned:"+version)`, `  if err := ctx.ReloadWithOptions(sdk.ReloadOptions{ContinueWith:"Run: ext tool version {}"}); err != nil { return nil,err }
   log("tool-returned:"+version)`, 1)
 	}
 	for name, content := range map[string]string{

@@ -2599,12 +2599,20 @@ func (b *UIBridge) handleSwitchSession(ctx context.Context, extName string, owne
 	return &CallResultPayload{Result: result}, nil
 }
 
-func (b *UIBridge) handleReload(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+func decodeReloadOptions(args json.RawMessage) (ReloadOptions, error) {
 	var options ReloadOptions
 	if len(args) > 0 {
 		if err := json.Unmarshal(args, &options); err != nil {
-			return nil, fmt.Errorf("parse reload args: %w", err)
+			return ReloadOptions{}, fmt.Errorf("parse reload args: %w", err)
 		}
+	}
+	return options, nil
+}
+
+func (b *UIBridge) handleReload(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+	options, err := decodeReloadOptions(args)
+	if err != nil {
+		return nil, err
 	}
 	if options.ContinueWith != "" && actions != nil && actions.ReloadContinuation != nil {
 		if err := actions.ReloadContinuation(ctx, options.ContinueWith); err != nil {
