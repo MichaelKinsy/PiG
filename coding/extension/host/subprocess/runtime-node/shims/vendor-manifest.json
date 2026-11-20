@@ -16148,8 +16148,8 @@
         "integrity": "sha512-WK8ih+c88GWizaB79y7Pq3PV7ySf5VI1pZ1i/6aBBjDOAiG2EE3ojKjl+pxQqLfyQGnzHYu4VfakOBJgumuoyw=="
       },
       "source": "dist/components/editor.js",
-      "sourceSha256": "a58560dea1ca206670183007d2eb683db11dd1bd25d99349d7e009683472a7c2",
-      "sha256": "2da827d4c0580b3f804c49fdcc444fc6a7f23be5f8942e0c611d98fd20661125",
+      "sourceSha256": "c26b5ffd18c0b823b4befd1a0427aac9e4c3062c912c98956709cfb5fe00ea86",
+      "sha256": "391cb368ce625726e38157902b90ffc200d79e0e94222617421f6bfcbcb63538",
       "rewrite": "module specifiers"
     },
     {
@@ -16689,7 +16689,7 @@
         "version": "1.5.2",
         "integrity": "sha512-WK8ih+c88GWizaB79y7Pq3PV7ySf5VI1pZ1i/6aBBjDOAiG2EE3ojKjl+pxQqLfyQGnzHYu4VfakOBJgumuoyw=="
       },
-      "sha256": "654f31e191308f5f08830fed7ab92b97d4bf78eb355da478319e4e936e0f1bc9",
+      "sha256": "25e037c0df5d826e6441560a485ab62fae2fee937e781695099bf38a1fdf9f3c",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -16699,7 +16699,7 @@
         "version": "1.5.2",
         "integrity": "sha512-WK8ih+c88GWizaB79y7Pq3PV7ySf5VI1pZ1i/6aBBjDOAiG2EE3ojKjl+pxQqLfyQGnzHYu4VfakOBJgumuoyw=="
       },
-      "sha256": "45d8dbaf4c596d52b8453096e51df545e53bdbb4f432c4566df4c3d6b21ceb09",
+      "sha256": "b46e787d909c1e8623ccecdf0bdc99e539ff22b88a9aba3cca74503dbe4caf6a",
       "rewrite": "automation/gen/bundle-pi-libraries.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {

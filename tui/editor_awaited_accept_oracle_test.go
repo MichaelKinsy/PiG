@@ -22,7 +22,9 @@ type awaitedAcceptOp struct {
 }
 
 type awaitedAcceptProbe struct {
-	Ops []awaitedAcceptOp `json:"ops"`
+	// Base is the directory a script that takes one as the base of file completion reads; the awaited-accept script does not.
+	Base string            `json:"base,omitempty"`
+	Ops  []awaitedAcceptOp `json:"ops"`
 }
 
 type awaitedAcceptLog struct {

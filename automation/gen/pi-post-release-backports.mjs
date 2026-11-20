@@ -2822,6 +2822,46 @@ function isLlamaClassifierModel`],
 // not carried: packages/ai catalog/providers/github-copilot.ts, packages/ai test and CHANGELOG: the package ships none of them; the generated data carries the change.
 // END backport e5c01ca6cb9d
 
+// BEGIN backport 9a7cfba47
+// 9a7cfba47 (#12312): Enter on an autocomplete menu submits only from the slash command name menu, not from a Tab menu for an absolute path or a command argument.
+patch("9a7cfba47", "pi-tui/components/editor.js", [
+    [`            if (kb.matches(data, "tui.select.confirm")) {
+                const selected = this.autocompleteList.getSelectedItem();
+                if (selected && this.autocompleteProvider) {
+`, `            if (kb.matches(data, "tui.select.confirm")) {
+                const selected = this.autocompleteList.getSelectedItem();
+                if (selected && this.autocompleteProvider) {
+                    ${note("9a7cfba47").trim()}
+                    // Enter runs a slash command only from the command-name menu. Path and argument menus can also have a
+                    // "/" prefix ("look at /tmp/fi", "/open /tm"), so the prefix alone does not identify the menu. Read the
+                    // context before applying the completion: the completed "/model " already contains a space.
+                    const beforeCursor = (this.state.lines[this.state.cursorLine] || "").slice(0, this.state.cursorCol);
+                    const submitsCommand = this.autocompletePrefix.startsWith("/") && this.isInSlashCommandNameContext(beforeCursor);
+`],
+    [`                    if (this.autocompletePrefix.startsWith("/")) {
+                        this.cancelAutocomplete();
+                        // Fall through to submit
+`, `                    if (submitsCommand) {
+                        this.cancelAutocomplete();
+                        // Fall through to submit
+`],
+    [`        return this.isSlashMenuAllowed() && textBeforeCursor.trimStart().startsWith("/");
+    }
+`, `        return this.isSlashMenuAllowed() && textBeforeCursor.trimStart().startsWith("/");
+    }
+    // A slash command name is being typed: "/mo", not "/model cla" or "/open /tm".
+    isInSlashCommandNameContext(textBeforeCursor) {
+        return this.isInSlashCommandContext(textBeforeCursor) && !textBeforeCursor.trimStart().includes(" ");
+    }
+`],
+    [`        if (this.isInSlashCommandContext(beforeCursor) && !beforeCursor.trimStart().includes(" ")) {
+            this.handleSlashCommandCompletion();
+`, `        if (this.isInSlashCommandNameContext(beforeCursor)) {
+            this.handleSlashCommandCompletion();
+`],
+]);
+// END backport 9a7cfba47
+
 // backportPatches keys the compiled output of a Pi package; packageFileBackports the files that are not compiled output and that the vendored runtime
 // does not carry, but that the installed Pi package (the parity oracle) and the source mirror hold, with the same text. Both are keyed by package and path.
 // Blocks of several Pi commits can name one file: their patches add up, in the order of the blocks in this script.

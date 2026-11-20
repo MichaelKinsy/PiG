@@ -1297,20 +1297,32 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 	}
 	item := e.autocompleteItems[e.autocompleteCursor]
 	prefix := e.autocompletePrefix
+	// Enter runs a command only from the command-name menu (editor.ts tui.select.confirm, Pi 9a7cfba47). Path and argument
+	// menus can also have a "/" prefix ("look at /tmp/fi", "/open /tm"), so the prefix alone does not identify the menu. Read
+	// the context before applying the completion: the completed "/model " already has a space.
+	submitsCommand := strings.HasPrefix(prefix, "/") && e.inSlashCommandNameContext()
 	e.saveHistory()
 	e.lastAction = ""
 	lines, row, byteCol := e.autocompleteView()
 	newLines, nl, nc := e.autocomplete.ApplyCompletion(lines, row, byteCol, item, prefix)
 	e.applyAutocompleteState(newLines, nl, nc)
-	// A prefix that starts with "/" falls through to submit; anything else
-	// (an argument completion) does not (upstream editor.ts
-	// tui.select.confirm).
-	isSlashName := strings.HasPrefix(prefix, "/")
+	// A slash command name falls through to submit; anything else (an argument or a path completion) does not (upstream
+	// editor.ts tui.select.confirm).
 	e.AutocompleteCancel()
-	if !isSlashName && e.OnChange != nil {
+	if !submitsCommand && e.OnChange != nil {
 		e.OnChange(e.Text())
 	}
-	return isSlashName
+	return submitsCommand
+}
+
+// inSlashCommandNameContext reports that a slash command name is being typed, "/mo", not "/model cla" or "/open /tm"
+// (Ports editor.ts isInSlashCommandNameContext, Pi 9a7cfba47).
+func (e *Editor) inSlashCommandNameContext() bool {
+	if e.cursor[0] != 0 || e.cursor[0] >= len(e.lines) {
+		return false
+	}
+	before := jsstring.Slice(e.lines[0], 0, e.cursor[1])
+	return strings.HasPrefix(widthx.JSTrim(before), "/") && !strings.Contains(strings.TrimLeftFunc(before, widthx.IsJSSpace), " ")
 }
 
 // CapturesViewportInput reports that the open autocomplete menu receives fullscreen viewport keys, such as PageUp and
@@ -1869,9 +1881,7 @@ func (e *Editor) HandleInput(data string) {
 			}
 		}
 	} else if kb.Matches(data, KBInputTab) {
-		line := e.lines[e.cursor[0]]
-		before := jsstring.Slice(line, 0, e.cursor[1])
-		if e.cursor[0] == 0 && strings.HasPrefix(widthx.JSTrim(before), "/") && !strings.Contains(strings.TrimLeftFunc(before, widthx.IsJSSpace), " ") {
+		if e.inSlashCommandNameContext() {
 			e.refreshAutocomplete()
 			return
 		}

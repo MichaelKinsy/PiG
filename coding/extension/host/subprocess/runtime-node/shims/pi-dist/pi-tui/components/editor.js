@@ -633,13 +633,19 @@ export class Editor {
             if (kb.matches(data, "tui.select.confirm")) {
                 const selected = this.autocompleteList.getSelectedItem();
                 if (selected && this.autocompleteProvider) {
+                    // Pi 9a7cfba47 (post-v1.5.2), backported by automation/gen/pi-post-release-backports.mjs.
+                    // Enter runs a slash command only from the command-name menu. Path and argument menus can also have a
+                    // "/" prefix ("look at /tmp/fi", "/open /tm"), so the prefix alone does not identify the menu. Read the
+                    // context before applying the completion: the completed "/model " already contains a space.
+                    const beforeCursor = (this.state.lines[this.state.cursorLine] || "").slice(0, this.state.cursorCol);
+                    const submitsCommand = this.autocompletePrefix.startsWith("/") && this.isInSlashCommandNameContext(beforeCursor);
                     this.pushUndoSnapshot();
                     this.lastAction = null;
                     const result = this.autocompleteProvider.applyCompletion(this.state.lines, this.state.cursorLine, this.state.cursorCol, selected, this.autocompletePrefix);
                     this.state.lines = result.lines;
                     this.state.cursorLine = result.cursorLine;
                     this.setCursorCol(result.cursorCol);
-                    if (this.autocompletePrefix.startsWith("/")) {
+                    if (submitsCommand) {
                         this.cancelAutocomplete();
                         // Fall through to submit
                     }
@@ -1852,6 +1858,10 @@ export class Editor {
     isInSlashCommandContext(textBeforeCursor) {
         return this.isSlashMenuAllowed() && textBeforeCursor.trimStart().startsWith("/");
     }
+    // A slash command name is being typed: "/mo", not "/model cla" or "/open /tm".
+    isInSlashCommandNameContext(textBeforeCursor) {
+        return this.isInSlashCommandContext(textBeforeCursor) && !textBeforeCursor.trimStart().includes(" ");
+    }
     // Autocomplete methods
     /**
      * Find the best autocomplete item index for the given prefix.
@@ -1904,7 +1914,7 @@ export class Editor {
             return;
         const currentLine = this.state.lines[this.state.cursorLine] || "";
         const beforeCursor = currentLine.slice(0, this.state.cursorCol);
-        if (this.isInSlashCommandContext(beforeCursor) && !beforeCursor.trimStart().includes(" ")) {
+        if (this.isInSlashCommandNameContext(beforeCursor)) {
             this.handleSlashCommandCompletion();
         }
         else {

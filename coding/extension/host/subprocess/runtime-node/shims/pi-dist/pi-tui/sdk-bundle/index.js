@@ -2348,13 +2348,15 @@ var Editor = class {
       if (kb.matches(data, "tui.select.confirm")) {
         const selected = this.autocompleteList.getSelectedItem();
         if (selected && this.autocompleteProvider) {
+          const beforeCursor = (this.state.lines[this.state.cursorLine] || "").slice(0, this.state.cursorCol);
+          const submitsCommand = this.autocompletePrefix.startsWith("/") && this.isInSlashCommandNameContext(beforeCursor);
           this.pushUndoSnapshot();
           this.lastAction = null;
           const result = this.autocompleteProvider.applyCompletion(this.state.lines, this.state.cursorLine, this.state.cursorCol, selected, this.autocompletePrefix);
           this.state.lines = result.lines;
           this.state.cursorLine = result.cursorLine;
           this.setCursorCol(result.cursorCol);
-          if (this.autocompletePrefix.startsWith("/")) {
+          if (submitsCommand) {
             this.cancelAutocomplete();
           } else {
             this.cancelAutocomplete();
@@ -3367,6 +3369,10 @@ var Editor = class {
   isInSlashCommandContext(textBeforeCursor) {
     return this.isSlashMenuAllowed() && textBeforeCursor.trimStart().startsWith("/");
   }
+  // A slash command name is being typed: "/mo", not "/model cla" or "/open /tm".
+  isInSlashCommandNameContext(textBeforeCursor) {
+    return this.isInSlashCommandContext(textBeforeCursor) && !textBeforeCursor.trimStart().includes(" ");
+  }
   // Autocomplete methods
   /**
    * Find the best autocomplete item index for the given prefix.
@@ -3419,7 +3425,7 @@ var Editor = class {
       return;
     const currentLine = this.state.lines[this.state.cursorLine] || "";
     const beforeCursor = currentLine.slice(0, this.state.cursorCol);
-    if (this.isInSlashCommandContext(beforeCursor) && !beforeCursor.trimStart().includes(" ")) {
+    if (this.isInSlashCommandNameContext(beforeCursor)) {
       this.handleSlashCommandCompletion();
     } else {
       this.forceFileAutocomplete(true);

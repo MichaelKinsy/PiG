@@ -169808,6 +169808,17 @@
       "shapeHash": "sha256:3b634d0eb0b5a4659de2b25b85fda6f91e281e7b63c880785e78dd6e211ad847"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewEditorComponent.inSlashCommandNameContext",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "viewEditorComponent.inSlashCommandNameContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#viewEditorComponent.insert",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "viewEditorComponent.insert",
@@ -262866,6 +262877,17 @@
         "type": "func(buf string)"
       },
       "shapeHash": "sha256:3b634d0eb0b5a4659de2b25b85fda6f91e281e7b63c880785e78dd6e211ad847"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEditor.inSlashCommandNameContext",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "CustomEditor.inSlashCommandNameContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#CustomEditor.insert",
@@ -358412,6 +358434,17 @@
         "type": "func(buf string)"
       },
       "shapeHash": "sha256:3b634d0eb0b5a4659de2b25b85fda6f91e281e7b63c880785e78dd6e211ad847"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/tui#Editor.inSlashCommandNameContext",
+      "package": "github.com/MichaelKinsy/PiG/tui",
+      "name": "Editor.inSlashCommandNameContext",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/tui#Editor.insert",
